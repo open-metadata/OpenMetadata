@@ -45,6 +45,8 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.customproperties.EnumConfig;
+import org.openmetadata.schema.type.customproperties.MetaEnumConfig;
+import org.openmetadata.schema.type.customproperties.Value;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.types.TypeResource;
@@ -70,6 +72,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     INT_TYPE = getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
     STRING_TYPE = getEntityByName("string", "", ADMIN_AUTH_HEADERS);
     ENUM_TYPE = getEntityByName("enum", "", ADMIN_AUTH_HEADERS);
+    META_ENUM_TYPE = getEntityByName("metaEnum", "", ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -278,6 +281,149 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     assertEquals(2, tableEntity.getCustomProperties().size());
     assertCustomProperties(
         new ArrayList<>(List.of(fieldA, fieldB)), tableEntity.getCustomProperties());*/
+  }
+
+  @Test
+  void put_patch_customProperty_metaEnum_200() throws IOException {
+    Type databaseEntity = getEntityByName("database", "customProperties", ADMIN_AUTH_HEADERS);
+
+    // Add a custom property of type metaEnum with PUT
+    CustomProperty metaEnumFieldA =
+        new CustomProperty()
+            .withName("metaEnumTest")
+            .withDescription("metaEnumTest")
+            .withPropertyType(META_ENUM_TYPE.getEntityReference());
+    ChangeDescription change = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(metaEnumFieldA)));
+    Type finalDatabaseEntity = databaseEntity;
+    ChangeDescription finalChange = change;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                finalDatabaseEntity.getId(),
+                metaEnumFieldA,
+                ADMIN_AUTH_HEADERS,
+                MINOR_UPDATE,
+                finalChange),
+        Status.BAD_REQUEST,
+        "MetaEnum Custom Property Type must have customPropertyConfig.");
+    metaEnumFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig().withConfig(new MetaEnumConfig()));
+    ChangeDescription change1 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    Type databaseEntity1 = databaseEntity;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                databaseEntity1.getId(), metaEnumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change1),
+        Status.BAD_REQUEST,
+        "MetaEnum Custom Property Type must have customPropertyConfig populated with values.");
+
+    List<Value> valuesWithDuplicateKey =
+        List.of(
+            new Value().withKey("A").withDescription("Description A"),
+            new Value().withKey("B").withDescription("Description B"),
+            new Value().withKey("C").withDescription("Description C"),
+            new Value().withKey("C").withDescription("Description C"));
+
+    metaEnumFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new MetaEnumConfig().withValues(valuesWithDuplicateKey)));
+    ChangeDescription change7 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    Type databaseEntity2 = databaseEntity;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                databaseEntity2.getId(), metaEnumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change7),
+        Status.BAD_REQUEST,
+        "MetaEnum Custom Property key cannot have duplicates.");
+    List<Value> valuesWithUniqueKey =
+        List.of(
+            new Value().withKey("A").withDescription("Description A"),
+            new Value().withKey("B").withDescription("Description B"),
+            new Value().withKey("C").withDescription("Description C"));
+    metaEnumFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new MetaEnumConfig().withValues(valuesWithUniqueKey)));
+    databaseEntity =
+        addCustomPropertyAndCheck(
+            databaseEntity.getId(), metaEnumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(
+        new ArrayList<>(List.of(metaEnumFieldA)), databaseEntity.getCustomProperties());
+    CustomPropertyConfig prevConfig = metaEnumFieldA.getCustomPropertyConfig();
+    // Changing custom property description with PUT
+    metaEnumFieldA.withDescription("updatedMetaEnumTest");
+    ChangeDescription change2 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    fieldUpdated(
+        change2,
+        EntityUtil.getCustomField(metaEnumFieldA, "description"),
+        "metaEnumTest",
+        "updatedMetaEnumTest");
+    databaseEntity =
+        addCustomPropertyAndCheck(
+            databaseEntity.getId(), metaEnumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change2);
+    assertCustomProperties(
+        new ArrayList<>(List.of(metaEnumFieldA)), databaseEntity.getCustomProperties());
+
+    List<Value> valuesWithUniqueKeyAB =
+        List.of(
+            new Value().withKey("A").withDescription("Description A"),
+            new Value().withKey("B").withDescription("Description B"));
+    metaEnumFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new MetaEnumConfig().withValues(valuesWithUniqueKeyAB)));
+    ChangeDescription change3 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                databaseEntity1.getId(), metaEnumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change3),
+        Status.BAD_REQUEST,
+        "Existing MetaEnum Custom Property values cannot be removed.");
+
+    metaEnumFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new MetaEnumConfig().withValues(valuesWithDuplicateKey)));
+    ChangeDescription change4 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                databaseEntity1.getId(), metaEnumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change4),
+        Status.BAD_REQUEST,
+        "MetaEnum Custom Property key cannot have duplicates.");
+    valuesWithUniqueKey =
+        List.of(
+            new Value().withKey("A").withDescription("Description A"),
+            new Value().withKey("B").withDescription("Description B"),
+            new Value().withKey("C").withDescription("Description C"),
+            new Value().withKey("D").withDescription("Description D"));
+    ChangeDescription change5 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    metaEnumFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new MetaEnumConfig().withValues(valuesWithUniqueKey)));
+    fieldUpdated(
+        change5,
+        EntityUtil.getCustomField(metaEnumFieldA, "customPropertyConfig"),
+        prevConfig,
+        metaEnumFieldA.getCustomPropertyConfig());
+    databaseEntity =
+        addCustomPropertyAndCheck(
+            databaseEntity.getId(), metaEnumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change5);
+    assertCustomProperties(
+        new ArrayList<>(List.of(metaEnumFieldA)), databaseEntity.getCustomProperties());
+
+    // Changing custom property description with PATCH
+    // Changes from this PATCH is consolidated with the previous changes
+    metaEnumFieldA.withDescription("updated2");
+    String json = JsonUtils.pojoToJson(databaseEntity);
+    databaseEntity.setCustomProperties(List.of(metaEnumFieldA));
+    change = getChangeDescription(databaseEntity, CHANGE_CONSOLIDATED);
+    fieldUpdated(
+        change5,
+        EntityUtil.getCustomField(metaEnumFieldA, "description"),
+        "updatedMetaEnumTest",
+        "updated2");
+
+    databaseEntity =
+        patchEntityAndCheck(databaseEntity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change5);
   }
 
   @Test

@@ -387,6 +387,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Type ENUM_TYPE;
 
+  public static Type META_ENUM_TYPE;
+
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
   // evey time junit tests are run to save time. But over the course of development of a release,
   // when tests are run enough times, the webhook tests are run for all the entities.

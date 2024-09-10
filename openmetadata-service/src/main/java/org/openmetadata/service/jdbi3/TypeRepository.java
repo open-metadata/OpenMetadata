@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
@@ -40,6 +41,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.customproperties.EnumConfig;
+import org.openmetadata.schema.type.customproperties.MetaEnumConfig;
+import org.openmetadata.schema.type.customproperties.Value;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.resources.types.TypeResource;
@@ -185,6 +188,27 @@ public class TypeRepository extends EntityRepository<Type> {
           }
         } else {
           throw new IllegalArgumentException("Enum Custom Property Type must have EnumConfig.");
+        }
+      }
+      case "metaEnum" -> {
+        CustomPropertyConfig config = customProperty.getCustomPropertyConfig();
+        if (config != null) {
+          MetaEnumConfig metaEnumConfig =
+              JsonUtils.convertValue(config.getConfig(), MetaEnumConfig.class);
+          if (metaEnumConfig == null
+              || (metaEnumConfig.getValues() != null && metaEnumConfig.getValues().isEmpty())) {
+            throw new IllegalArgumentException(
+                "MetaEnum Custom Property Type must have customPropertyConfig populated with values.");
+          }
+          JsonUtils.validateJsonSchema(config.getConfig(), MetaEnumConfig.class);
+          if (metaEnumConfig.getValues().stream().map(Value::getKey).distinct().count()
+              != metaEnumConfig.getValues().size()) {
+            throw new IllegalArgumentException(
+                "MetaEnum Custom Property key cannot have duplicates.");
+          }
+        } else {
+          throw new IllegalArgumentException(
+              "MetaEnum Custom Property Type must have customPropertyConfig.");
         }
       }
       case "date-cp" -> validateDateFormat(
@@ -386,6 +410,25 @@ public class TypeRepository extends EntityRepository<Type> {
         } else if (!updatedValues.containsAll(origConfig.getValues())) {
           throw new IllegalArgumentException(
               "Existing Enum Custom Property values cannot be removed.");
+        }
+      } else if (origProperty.getPropertyType().getName().equals("metaEnum")) {
+        MetaEnumConfig origConfig =
+            JsonUtils.convertValue(
+                origProperty.getCustomPropertyConfig().getConfig(), MetaEnumConfig.class);
+        MetaEnumConfig updatedConfig =
+            JsonUtils.convertValue(
+                updatedProperty.getCustomPropertyConfig().getConfig(), MetaEnumConfig.class);
+        HashSet<String> updatedValues =
+            updatedConfig.getValues().stream()
+                .map(Value::getKey)
+                .collect(Collectors.toCollection(HashSet::new));
+        if (updatedValues.size() != updatedConfig.getValues().size()) {
+          throw new IllegalArgumentException(
+              "MetaEnum Custom Property values cannot have duplicates.");
+        } else if (!updatedValues.containsAll(
+            origConfig.getValues().stream().map(Value::getKey).collect(Collectors.toSet()))) {
+          throw new IllegalArgumentException(
+              "Existing MetaEnum Custom Property values cannot be removed.");
         }
       }
     }
