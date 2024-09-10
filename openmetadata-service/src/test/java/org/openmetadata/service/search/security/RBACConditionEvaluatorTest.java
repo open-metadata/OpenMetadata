@@ -1,6 +1,17 @@
 package org.openmetadata.service.search.security;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
+import es.org.elasticsearch.index.query.QueryBuilder;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,19 +22,6 @@ import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import es.org.elasticsearch.index.query.QueryBuilder;
-
-import java.util.List;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
-
 
 class RBACConditionEvaluatorTest {
 
@@ -58,7 +56,8 @@ class RBACConditionEvaluatorTest {
     when(mockPolicyContext.getPolicyName()).thenReturn("TestPolicy");
 
     CompiledRule mockRule = mock(CompiledRule.class);
-    when(mockRule.getOperations()).thenReturn(List.of(MetadataOperation.VIEW_BASIC)); // Mock operation
+    when(mockRule.getOperations())
+        .thenReturn(List.of(MetadataOperation.VIEW_BASIC)); // Mock operation
     when(mockRule.getCondition()).thenReturn(expression);
 
     // Mock the effect of the rule (ALLOW/DENY)
@@ -107,7 +106,8 @@ class RBACConditionEvaluatorTest {
     setupMockPolicies("matchAnyTag('PII.Sensitive')", "ALLOW");
 
     // Evaluate condition
-    evaluator.evaluateSpELCondition("matchAnyTag('PII.Sensitive', 'PersonalData.Personal')", mockUser, mockQueryBuilder);
+    evaluator.evaluateSpELCondition(
+        "matchAnyTag('PII.Sensitive', 'PersonalData.Personal')", mockUser, mockQueryBuilder);
 
     // Verify that the termQuery was called for the tag
     verify(mockQueryBuilder, times(1)).termQuery("tags.tagFQN", "PII.Sensitive");
@@ -116,10 +116,15 @@ class RBACConditionEvaluatorTest {
   @Test
   void testComplexCondition() {
     // Setup the mock for complex condition
-    setupMockPolicies("(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())", "ALLOW");
+    setupMockPolicies(
+        "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
+        "ALLOW");
 
     // Evaluate complex condition
-    evaluator.evaluateSpELCondition("(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())", mockUser, mockQueryBuilder);
+    evaluator.evaluateSpELCondition(
+        "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
+        mockUser,
+        mockQueryBuilder);
 
     // Verify correct termQuery calls for the tags
     verify(mockQueryBuilder, times(1)).termQuery("tags.tagFQN", "PII.Sensitive");
@@ -133,8 +138,10 @@ class RBACConditionEvaluatorTest {
   @Test
   void testTermQueryIsolation() {
     ElasticQueryBuilder builder1 = new ElasticQueryBuilder();
-    ElasticQueryBuilder builder2 = (ElasticQueryBuilder) builder1.termQuery("tags.tagFQN", "PII.Sensitive");
-    ElasticQueryBuilder builder3 = (ElasticQueryBuilder) builder1.termQuery("tags.tagFQN", "PersonalData.Personal");
+    ElasticQueryBuilder builder2 =
+        (ElasticQueryBuilder) builder1.termQuery("tags.tagFQN", "PII.Sensitive");
+    ElasticQueryBuilder builder3 =
+        (ElasticQueryBuilder) builder1.termQuery("tags.tagFQN", "PersonalData.Personal");
 
     // builder2 should only have "PII.Sensitive"
     BoolQueryBuilder query1 = (BoolQueryBuilder) builder2.build();
@@ -151,30 +158,34 @@ class RBACConditionEvaluatorTest {
 
   @Test
   void testComplexQueryStructure() {
-    setupMockPolicies("(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())", "ALLOW");
+    setupMockPolicies(
+        "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
+        "ALLOW");
 
     // Use the real query builder
     OMQueryBuilder realQueryBuilder = new ElasticQueryBuilder();
 
     // Evaluate the complex condition
-    OMQueryBuilder finalQueryBuilder = evaluator.evaluateSpELCondition(
-        "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
-        mockUser,
-        realQueryBuilder
-    );
+    OMQueryBuilder finalQueryBuilder =
+        evaluator.evaluateSpELCondition(
+            "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
+            mockUser,
+            realQueryBuilder);
     // Capture the final query structure
     QueryBuilder finalQuery = (QueryBuilder) finalQueryBuilder.build();
     String generatedQuery = finalQuery.toString();
 
     // Assert that the query contains the expected fields and values
     assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
-    assertTrue(generatedQuery.contains("PII.Sensitive"), "The query should contain 'PII.Sensitive' tag.");
+    assertTrue(
+        generatedQuery.contains("PII.Sensitive"), "The query should contain 'PII.Sensitive' tag.");
     assertTrue(generatedQuery.contains("Test.Test1"), "The query should contain 'Test.Test1' tag.");
     assertTrue(generatedQuery.contains("Test.Test2"), "The query should contain 'Test.Test2' tag.");
     assertTrue(generatedQuery.contains("owner.id"), "The query should contain 'owner.id'.");
 
     // Verify mustNot (negation) is applied for isOwner()
-    assertTrue(generatedQuery.contains("must_not"), "The query should contain a negation (must_not).");
+    assertTrue(
+        generatedQuery.contains("must_not"), "The query should contain a negation (must_not).");
 
     // Ensure that the final query doesn't have excessive nesting
     long boolQueryCount = generatedQuery.chars().filter(ch -> ch == 'b').count();

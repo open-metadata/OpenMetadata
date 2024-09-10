@@ -4,7 +4,6 @@ import es.org.elasticsearch.index.query.BoolQueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 
-
 public class ElasticQueryBuilder implements OMQueryBuilder {
   private BoolQueryBuilder boolQuery;
 
@@ -20,6 +19,7 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
   public OMQueryBuilder boolQuery() {
     return new ElasticQueryBuilder(); // Create and return a new instance
   }
+
   @Override
   public OMQueryBuilder must(OMQueryBuilder query) {
     if (query instanceof ElasticQueryBuilder) {
@@ -46,7 +46,8 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
 
   @Override
   public OMQueryBuilder termQuery(String field, String value) {
-    BoolQueryBuilder subQuery = QueryBuilders.boolQuery().must(QueryBuilders.termQuery(field, value));
+    BoolQueryBuilder subQuery =
+        QueryBuilders.boolQuery().must(QueryBuilders.termQuery(field, value));
     return new ElasticQueryBuilder(subQuery);
   }
 

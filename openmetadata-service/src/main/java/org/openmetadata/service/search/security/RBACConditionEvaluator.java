@@ -28,9 +28,7 @@ public class RBACConditionEvaluator {
   private final SimpleEvaluationContext spelContext;
 
   public RBACConditionEvaluator() {
-    spelContext = SimpleEvaluationContext.forReadOnlyDataBinding()
-        .withInstanceMethods()
-        .build();
+    spelContext = SimpleEvaluationContext.forReadOnlyDataBinding().withInstanceMethods().build();
 
     // Register methods in the evaluation context
     spelContext.setVariable("matchAnyTag", this);
@@ -39,11 +37,13 @@ public class RBACConditionEvaluator {
     spelContext.setVariable("noOwner", this);
   }
 
-  public OMQueryBuilder evaluateConditions(SubjectContext subjectContext, OMQueryBuilder queryBuilder) {
+  public OMQueryBuilder evaluateConditions(
+      SubjectContext subjectContext, OMQueryBuilder queryBuilder) {
     User user = subjectContext.user();
     Set<String> processedPolicies = new HashSet<>();
 
-    Iterator<SubjectContext.PolicyContext> policies = subjectContext.getPolicies(List.of(user.getEntityReference()));
+    Iterator<SubjectContext.PolicyContext> policies =
+        subjectContext.getPolicies(List.of(user.getEntityReference()));
 
     while (policies.hasNext()) {
       SubjectContext.PolicyContext context = policies.next();
@@ -54,8 +54,8 @@ public class RBACConditionEvaluator {
 
       for (CompiledRule rule : context.getRules()) {
         if ((rule.getOperations().contains(MetadataOperation.ALL)
-            || rule.getOperations().contains(MetadataOperation.VIEW_ALL)
-            || rule.getOperations().contains(MetadataOperation.VIEW_BASIC))
+                || rule.getOperations().contains(MetadataOperation.VIEW_ALL)
+                || rule.getOperations().contains(MetadataOperation.VIEW_BASIC))
             && rule.getCondition() != null) {
           if (rule.getOperations().contains(MetadataOperation.ALL)
               && rule.getEffect().toString().equalsIgnoreCase("ALLOW")) {
@@ -73,7 +73,8 @@ public class RBACConditionEvaluator {
   }
 
   // Main method to evaluate and convert SpEL to Elasticsearch/OpenSearch query
-  public OMQueryBuilder evaluateSpELCondition(String condition, User user, OMQueryBuilder queryBuilder) {
+  public OMQueryBuilder evaluateSpELCondition(
+      String condition, User user, OMQueryBuilder queryBuilder) {
     spelContext.setVariable("user", user);
 
     // Parse the expression and walk through the AST
