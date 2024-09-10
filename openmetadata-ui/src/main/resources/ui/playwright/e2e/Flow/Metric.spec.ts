@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
+  addMetric,
   removeGranularity,
   removeMetricType,
   removeUnitOfMeasurement,
@@ -23,6 +25,7 @@ import {
   updateRelatedMetric,
   updateUnitOfMeasurement,
 } from '../../utils/metric';
+import { sidebarClick } from '../../utils/sidebar';
 
 const metric1 = new MetricClass();
 const metric2 = new MetricClass();
@@ -89,5 +92,20 @@ test.describe('Metric Entity Special Test Cases', () => {
   test('Verify Related Metrics Update', async ({ page }) => {
     await updateRelatedMetric(page, metric2, metric1.entity.name, 'add');
     await updateRelatedMetric(page, metric3, metric1.entity.name, 'update');
+  });
+});
+
+test.describe('Add Metric flow should work', () => {
+  test.beforeEach('Visit home page', async ({ page }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.METRICS);
+  });
+
+  test('Add metric from the "Add button"', async ({ page }) => {
+    test.slow(true);
+
+    await page.getByTestId('create-metric').click();
+
+    await addMetric(page);
   });
 });

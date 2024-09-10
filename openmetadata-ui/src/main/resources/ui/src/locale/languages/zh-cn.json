@@ -1074,6 +1074,7 @@
     "show-deleted-entity": "显示已删除{{entity}}",
     "show-less": "Show Less",
     "show-log-plural": "显示日志",
+    "show-more": "Show More",
     "show-more-entity": "显示更多{{entity}}",
     "show-or-hide-advanced-config": "{{showAdv}}高级配置",
     "sign-in-with-sso": "使用 {{sso}} 单点登录",

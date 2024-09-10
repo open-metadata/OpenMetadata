@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { MetricClass } from '../support/entity/MetricClass';
+import { descriptionBox, uuid } from './common';
+import { hardDeleteEntity } from './entity';
 
 export const updateMetricType = async (page: Page, metric: string) => {
   await page.click(`[data-testid="edit-metric-type-button"]`);
@@ -182,4 +185,99 @@ export const updateRelatedMetric = async (
     .click();
 
   await page.getByRole('link', { name: title }).click();
+};
+
+export const addMetric = async (page: Page) => {
+  const metricName = `pw-metric-${uuid()}`;
+
+  const metricData = {
+    name: metricName,
+    description: `Total sales over the last quarter ${metricName}`,
+    metricExpression: {
+      code: 'SUM(sales)',
+      language: 'SQL',
+    },
+    granularity: 'Quarter',
+    metricType: 'Sum',
+    displayName: metricName,
+    unitOfMeasurement: 'Dollars',
+  };
+
+  await page.getByTestId('create-button').click();
+
+  await expect(page.locator('#name_help')).toHaveText('Name is required');
+
+  await page.locator('#root\\/name').fill(metricData.name);
+  await page.locator('#root\\/displayName').fill(metricData.name);
+
+  await page.click(descriptionBox);
+  await page.fill(descriptionBox, metricData.description);
+
+  // Select the granularity
+  await page.locator('[id="root\\/granularity"]').fill(metricData.granularity);
+  await page.getByTitle(`${metricData.granularity}`, { exact: true }).click();
+
+  // Select the metric type
+  await page.locator('[id="root\\/metricType"]').fill(metricData.metricType);
+  await page.getByTitle(`${metricData.metricType}`, { exact: true }).click();
+
+  // Select the unit of measurement
+  await page
+    .locator('[id="root\\/unitOfMeasurement"]')
+    .fill(metricData.unitOfMeasurement);
+  await page
+    .getByTitle(`${metricData.unitOfMeasurement}`, { exact: true })
+    .click();
+
+  // Select the language
+  await page
+    .locator('[id="root\\/language"]')
+    .fill(metricData.metricExpression.language);
+  await page
+    .getByTitle(`${metricData.metricExpression.language}`, { exact: true })
+    .click();
+
+  // Enter the code
+  await page.locator("pre[role='presentation']").last().click();
+  await page.keyboard.type(metricData.metricExpression.code);
+
+  const postPromise = page.waitForResponse(
+    (response) => response.request().method() === 'POST'
+  );
+
+  const getPromise = page.waitForResponse(
+    `/api/v1/metrics/name/${metricName}?*`
+  );
+
+  await page.getByTestId('create-button').click();
+
+  await postPromise;
+
+  await getPromise;
+
+  // verify the metric type is updated
+  await expect(
+    page.getByText(`Metric Type: ${metricData.metricType.toUpperCase()}`)
+  ).toBeVisible();
+
+  // verify the unit of measurement is updated
+
+  await expect(
+    page.getByText(
+      `Unit of Measurement: ${metricData.unitOfMeasurement.toUpperCase()}`
+    )
+  ).toBeVisible();
+
+  // verify the granularity is updated
+  await expect(
+    page.getByText(`Granularity: ${metricData.granularity.toUpperCase()}`)
+  ).toBeVisible();
+
+  // clean the created metric
+
+  await hardDeleteEntity(
+    page,
+    metricData.displayName,
+    EntityTypeEndpoint.METRIC
+  );
 };

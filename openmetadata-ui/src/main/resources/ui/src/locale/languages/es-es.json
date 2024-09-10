@@ -1074,6 +1074,7 @@
     "show-deleted-entity": "Mostrar {{entity}} Eliminados",
     "show-less": "Show Less",
     "show-log-plural": "Mostrar logs",
+    "show-more": "Show More",
     "show-more-entity": "Mostrar más {{entity}}",
     "show-or-hide-advanced-config": "{{showAdv}} Configuración Avanzada",
     "sign-in-with-sso": "Iniciar sesión con {{sso}}",
