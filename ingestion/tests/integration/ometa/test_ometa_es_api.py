@@ -300,6 +300,14 @@ class OMetaESTest(TestCase):
         res = self.metadata.es_get_queries_with_lineage(self.service.name.root)
         self.assertIn(self.checksum, res)
 
+    def test_paginate_no_filter(self):
+        """We can paginate all the data"""
+        # Since the test can run in parallel with other tables being there, we just
+        # want to check we are actually getting some results
+        for asset in self.metadata.paginate_es(entity=Table, size=2):
+            assert asset
+            break
+
     def test_paginate_with_errors(self):
         """We don't want to stop the ES yields just because a single Entity has an error"""
         # 1. First, prepare some tables

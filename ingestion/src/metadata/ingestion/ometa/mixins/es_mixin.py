@@ -79,7 +79,9 @@ class ESMixin(Generic[T]):
         "&size={size}&index={index}"
     )
 
-    paginate_query = "/search/query?q=&from={from_}&size={size}&deleted=false&query_filter={filter}&index={index}"
+    paginate_query = (
+        "/search/query?q=&from={from_}&size={size}&deleted=false{filter}&index={index}"
+    )
 
     @functools.lru_cache(maxsize=512)
     def _search_es_entity(
@@ -291,7 +293,7 @@ class ESMixin(Generic[T]):
     def paginate_es(
         self,
         entity: Type[T],
-        query_filter: str,
+        query_filter: Optional[str] = None,
         size: int = 100,
         fields: Optional[List[str]] = None,
     ) -> Iterator[T]:
@@ -301,7 +303,7 @@ class ESMixin(Generic[T]):
         query = functools.partial(
             self.paginate_query.format,
             index=ES_INDEX_MAP[entity.__name__],
-            filter=quote_plus(query_filter),
+            filter="&query_filter=" + quote_plus(query_filter) if query_filter else "",
             size=size,
         )
         while True:
