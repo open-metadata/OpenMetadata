@@ -125,7 +125,7 @@ test('Logical TestSuite', async ({ page }) => {
 
   await test.step('Add test case to logical test suite', async () => {
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases?fields=*'
+      '/api/v1/dataQuality/testCases/search/list?fields=*'
     );
     await page.click('[data-testid="add-test-case-btn"]');
     await testCaseResponse;
