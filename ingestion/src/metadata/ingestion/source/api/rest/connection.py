@@ -43,6 +43,9 @@ def get_connection(connection: RESTConnection) -> Response:
     """
     Create connection
     """
+    if connection.token:
+        headers = {"Authorization": f"Bearer {connection.token.get_secret_value()}"}
+        return requests.get(connection.openAPISchemaURL, headers=headers)
     return requests.get(connection.openAPISchemaURL)
 
 
@@ -58,7 +61,10 @@ def test_connection(
     """
 
     def custom_url_exec():
-        if client.headers.get("content-type") == "application/json":
+        if (
+            "application/json" in client.headers.get("content-type")
+            and client.status_code == 200
+        ):
             return []
         raise SchemaURLError(
             "Failed to parse JSON schema url. Please check if provided url is valid JSON schema."

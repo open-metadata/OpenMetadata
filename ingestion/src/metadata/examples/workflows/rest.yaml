@@ -5,6 +5,7 @@ source:
     config:
       type: REST
       openAPISchemaURL: https://docs.open-metadata.org/swagger.json
+      token: <optional_jwt_token>
   sourceConfig:
     config:
       type: ApiMetadata

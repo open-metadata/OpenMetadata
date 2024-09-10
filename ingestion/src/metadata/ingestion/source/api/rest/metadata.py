@@ -11,7 +11,7 @@
 """REST source module"""
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Iterable, List, Optional
 
 from pydantic import AnyUrl
 
@@ -33,11 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.apiSchema import APISchema
-from metadata.generated.schema.type.basic import (
-    EntityName,
-    FullyQualifiedEntityName,
-    Markdown,
-)
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -73,141 +69,142 @@ class RestSource(ApiServiceSource):
             )
         return cls(config, metadata)
 
-    def get_api_collections(self, *args, **kwargs) -> Iterable[Any]:
+    def get_api_collections(self, *args, **kwargs) -> Iterable[RESTCollection]:
         """
         Method to list all collections to process.
         Here is where filtering happens
         """
-        json_response = {}
         try:
-            json_response = self.connection.json()
+            self.json_response = self.connection.json()
+            if self.json_response.get("tags", []):
+                # Works only if list of tags are present in schema so we can fetch collection names
+                for collection in self.json_response.get("tags", []):
+                    if not collection.get("name"):
+                        continue
+                    yield RESTCollection(**collection)
+            else:
+                # in other case collect tags from paths because we have to yield collection/tags first
+                collections_set = set()
+                for path, methods in self.json_response.get("paths", {}).items():
+                    for method_type, info in methods.items():
+                        collections_set.update({tag for tag in info.get("tags", [])})
+                for collection_name in collections_set:
+                    data = {"name": collection_name}
+                    yield RESTCollection(**data)
         except Exception as err:
             logger.error(f"Error while fetching collections from schema URL :{err}")
 
-        for collection in json_response.get("tags", []):
-            if not collection.get("name"):
-                continue
-            yield collection
-
     def yield_api_collection(
-        self, collection: dict
+        self, collection: RESTCollection
     ) -> Iterable[Either[CreateAPICollectionRequest]]:
         """Method to return api collection Entities"""
-        try:
-            rest_collection = RESTCollection(
-                name=EntityName(collection.get("name")),
-                display_name=collection.get("name"),
-                description=Markdown(collection.get("description"))
-                if collection.get("description")
-                else None,
-                service=FullyQualifiedEntityName(self.context.get().api_service),
-                endpoint_url=AnyUrl(
-                    f"{self.config.serviceConnection.root.config.openAPISchemaURL}#tag/{collection.get('name')}"
-                ),
-            )
-        except Exception as err:
-            yield Either(
-                left=StackTraceError(
-                    name=collection.get("name"),
-                    error=f"Error parsing collection: {err}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
+        collection.url = self._generate_collection_url(collection.name)
         try:
             collection_request = CreateAPICollectionRequest(
-                name=rest_collection.name,
-                displayName=rest_collection.display_name,
-                description=rest_collection.description,
-                service=rest_collection.service,
-                endpointURL=rest_collection.endpoint_url,
+                name=collection.name,
+                displayName=collection.display_name,
+                description=collection.description,
+                service=FullyQualifiedEntityName(self.context.get().api_service),
+                endpointURL=collection.url,
             )
             yield Either(right=collection_request)
             self.register_record(collection_request=collection_request)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=collection.get("name"),
+                    name=collection.name,
                     error=f"Error creating api collection request: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
 
     def yield_api_endpoint(
-        self, collection: dict
+        self, collection: RESTCollection
     ) -> Iterable[Either[CreateAPIEndpointRequest]]:
         """Method to return api endpoint Entities"""
         filtered_endpoints = self._filter_collection_endpoints(collection) or {}
         for path, methods in filtered_endpoints.items():
             for method_type, info in methods.items():
                 try:
-                    api_endpoint = RESTEndpoint(
-                        name=EntityName(info.get("operationId")),
-                        description=Markdown(info.get("description"))
-                        if info.get("description")
-                        else None,
-                        api_collection=FullyQualifiedEntityName(
-                            fqn.build(
-                                self.metadata,
-                                entity_type=APICollection,
-                                service_name=self.context.get().api_service,
-                                api_collection_name=collection.get("name"),
-                            )
-                        ),
-                        endpoint_url=AnyUrl(
-                            f"{self.config.serviceConnection.root.config.openAPISchemaURL}#operation/{info.get('operationId')}",
-                        ),
-                        request_method=self._get_api_request_method(method_type),
-                        request_schema=self._get_request_schema(info),
-                        response_schema=self._get_response_schema(info),
-                    )
-                except Exception as err:
-                    yield Either(
-                        left=StackTraceError(
-                            name=collection.get("name"),
-                            error=f"Error parsing api endpoint: {err}",
-                            stackTrace=traceback.format_exc(),
-                        )
-                    )
-                try:
+                    endpoint = self._prepare_endpoint_data(path, method_type, info)
+                    if not endpoint:
+                        continue
                     yield Either(
                         right=CreateAPIEndpointRequest(
-                            name=api_endpoint.name,
-                            description=api_endpoint.description,
-                            apiCollection=api_endpoint.api_collection,
-                            endpointURL=api_endpoint.endpoint_url,
-                            requestMethod=api_endpoint.request_method,
-                            requestSchema=api_endpoint.request_schema,
-                            responseSchema=api_endpoint.response_schema,
+                            name=endpoint.name,
+                            displayName=endpoint.display_name,
+                            description=endpoint.description,
+                            endpointURL=endpoint.url,
+                            requestMethod=self._get_api_request_method(method_type),
+                            requestSchema=self._get_request_schema(info),
+                            responseSchema=self._get_response_schema(info),
+                            apiCollection=FullyQualifiedEntityName(
+                                fqn.build(
+                                    self.metadata,
+                                    entity_type=APICollection,
+                                    service_name=self.context.get().api_service,
+                                    api_collection_name=collection.name.root,
+                                )
+                            ),
                         )
                     )
                 except Exception as exc:  # pylint: disable=broad-except
                     yield Either(
                         left=StackTraceError(
-                            name=collection.get("name"),
+                            name=endpoint.name,
                             error=f"Error creating API Endpoint request [{info.get('operationId')}]: {exc}",
                             stackTrace=traceback.format_exc(),
                         )
                     )
 
-    def _filter_collection_endpoints(self, collection: dict) -> Optional[dict]:
+    def _filter_collection_endpoints(
+        self, collection: RESTCollection
+    ) -> Optional[dict]:
         """filter endpoints related to specific collection"""
         try:
-            collection_name = collection.get("name")
-            json_response = self.connection.json().get("paths", {})
-
             filtered_paths = {}
-            for path, methods in json_response.items():
+            for path, methods in self.json_response.get("paths", {}).items():
                 for method_type, info in methods.items():
-                    if collection_name in info.get("tags", []):
+                    if collection.name.root in info.get("tags", []):
                         # path & methods are part of collection
                         filtered_paths.update({path: methods})
                     break
             return filtered_paths
         except Exception as err:
             logger.info(
-                f"Error while filtering endpoints for collection {collection_name}"
+                f"Error while filtering endpoints for collection {collection.name}"
             )
             return None
+
+    def _prepare_endpoint_data(self, path, method_type, info) -> Optional[RESTEndpoint]:
+        try:
+            endpoint = RESTEndpoint(**info)
+            endpoint.url = self._generate_endpoint_url(endpoint.name)
+            if not endpoint.name:
+                endpoint.name = f"{path} - {method_type}"
+            return endpoint
+        except Exception as err:
+            logger.info(f"Error while parsing endpoint data: {err}")
+        return None
+
+    def _generate_collection_url(self, collection_name: str) -> Optional[AnyUrl]:
+        """generate collection url"""
+        try:
+            if collection_name:
+                return AnyUrl(
+                    f"{self.config.serviceConnection.root.config.openAPISchemaURL}#tag/{collection_name}"
+                )
+        except Exception as err:
+            logger.info(f"Error while generating collection url: {err}")
+        return None
+
+    def _generate_endpoint_url(self, endpoint_name: str) -> AnyUrl:
+        """generate endpoint url"""
+        base_url = self.config.serviceConnection.root.config.openAPISchemaURL
+        if endpoint_name:
+            return AnyUrl(f"{base_url}#operation/{endpoint_name}")
+        else:
+            return AnyUrl(base_url)
 
     def _get_api_request_method(self, method_type: str) -> Optional[str]:
         """fetch endpoint request method"""
@@ -219,32 +216,40 @@ class RestSource(ApiServiceSource):
 
     def _get_request_schema(self, info: dict) -> Optional[APISchema]:
         """fetch request schema"""
-        schema_ref = (
-            info.get("requestBody", {})
-            .get("content", {})
-            .get("application/json", {})
-            .get("schema", {})
-            .get("$ref")
-        )
-        if not schema_ref:
-            logger.debug("No request schema found for the endpoint")
-            return None
-        return self._process_schema(schema_ref)
+        try:
+            schema_ref = (
+                info.get("requestBody", {})
+                .get("content", {})
+                .get("application/json", {})
+                .get("schema", {})
+                .get("$ref")
+            )
+            if not schema_ref:
+                logger.debug("No request schema found for the endpoint")
+                return None
+            return self._process_schema(schema_ref)
+        except Exception as err:
+            logger.info(f"Error while parsing request schema: {err}")
+        return None
 
     def _get_response_schema(self, info: dict) -> Optional[APISchema]:
         """fetch response schema"""
-        schema_ref = (
-            info.get("responses", {})
-            .get("200", {})
-            .get("content", {})
-            .get("application/json", {})
-            .get("schema", {})
-            .get("$ref", {})
-        )
-        if not schema_ref:
-            logger.debug("No response schema found for the endpoint")
-            return None
-        return self._process_schema(schema_ref)
+        try:
+            schema_ref = (
+                info.get("responses", {})
+                .get("200", {})
+                .get("content", {})
+                .get("application/json", {})
+                .get("schema", {})
+                .get("$ref", {})
+            )
+            if not schema_ref:
+                logger.debug("No response schema found for the endpoint")
+                return None
+            return self._process_schema(schema_ref)
+        except Exception as err:
+            logger.info(f"Error while parsing response schema: {err}")
+        return None
 
     def _process_schema(self, schema_ref: str) -> Optional[List[APISchema]]:
         """process schema"""
