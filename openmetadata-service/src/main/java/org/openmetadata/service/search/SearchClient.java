@@ -134,6 +134,15 @@ public interface SearchClient {
       String entityType)
       throws IOException;
 
+  /*
+   Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
+  */
+  @SuppressWarnings("unused")
+  default Response listPageHierarchy(String parent, String pageType) {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
   Map<String, Object> searchLineageInternal(
       String fqn,
       int upstreamDepth,
