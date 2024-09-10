@@ -726,6 +726,8 @@ site_menu:
   
   - category: Getting Started / Day 1
     url: /getting-started/day-1
+  - category: Getting Started / Day 1 / Hybrid SaaS
+    url: /getting-started/day-1/hybrid-saas
   - category: Getting Started / Day 1 / Hybrid SaaS / Airflow
     url: /getting-started/day-1/hybrid-saas/airflow
   - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
