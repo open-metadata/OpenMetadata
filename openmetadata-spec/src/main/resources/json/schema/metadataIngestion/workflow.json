@@ -13,9 +13,6 @@
         "config": {
           "oneOf": [
             {
-              "$ref": "apiServiceMetadataPipeline.json"
-            },
-            {
               "$ref": "databaseServiceMetadataPipeline.json"
             },
             {
@@ -59,6 +56,9 @@
             },
             {
               "$ref": "applicationPipeline.json"
+            },
+            {
+              "$ref": "apiServiceMetadataPipeline.json"
             }
           ]
         }
