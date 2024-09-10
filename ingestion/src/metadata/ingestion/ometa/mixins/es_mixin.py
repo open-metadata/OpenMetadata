@@ -48,8 +48,14 @@ class HitsModel(BaseModel):
     index: Annotated[str, Field(description="Index name", alias="_index")]
     type: Annotated[str, Field(description="Type of the document", alias="_type")]
     id: Annotated[str, Field(description="Document ID", alias="_id")]
-    score: Annotated[float, Field(description="Score of the document", alias="_score")]
+    score: Annotated[
+        Optional[float], Field(description="Score of the document", alias="_score")
+    ]
     source: Annotated[dict, Field(description="Document source", alias="_source")]
+    sort: Annotated[
+        List[str],
+        Field(description="Sort field. Used internally to get the next page FQN"),
+    ]
 
 
 class ESHits(BaseModel):
@@ -79,8 +85,10 @@ class ESMixin(Generic[T]):
         "&size={size}&index={index}"
     )
 
+    # sort_field needs to be unique for the pagination to work, so we can use the FQN
     paginate_query = (
-        "/search/query?q=&from={from_}&size={size}&deleted=false{filter}&index={index}"
+        "/search/query?q=&size={size}&deleted=false{filter}&index={index}"
+        "&sort_field=fullyQualifiedName{after}"
     )
 
     @functools.lru_cache(maxsize=512)
@@ -298,7 +306,7 @@ class ESMixin(Generic[T]):
         fields: Optional[List[str]] = None,
     ) -> Iterator[T]:
         """Paginate through the ES results, ignoring individual errors"""
-        from_ = 0
+        after: Optional[str] = None
         error_pages = 0
         query = functools.partial(
             self.paginate_query.format,
@@ -307,18 +315,20 @@ class ESMixin(Generic[T]):
             size=size,
         )
         while True:
-            query_string = query(from_=from_)
+            query_string = query(
+                after="&search_after=" + quote_plus(after) if after else ""
+            )
             response = self._get_es_response(query_string)
+
+            # Allow 3 errors getting pages before getting out of the loop
             if not response:
                 error_pages += 1
                 if error_pages < 3:
-                    from_ += size
                     continue
                 else:
                     break
-            if not response.hits.hits:
-                logger.debug("No more pages found in ES after %s", from_)
-                break
+
+            # Get the data
             for hit in response.hits.hits:
                 try:
                     yield self.get_by_name(
@@ -332,7 +342,13 @@ class ESMixin(Generic[T]):
                         f"Error while getting {hit.source['fullyQualifiedName']} - {exc}"
                     )
 
-            from_ += size
+            # Get next page
+            last_hit = response.hits.hits[-1] if response.hits.hits else None
+            if not last_hit or not last_hit.sort:
+                logger.info("No more pages to fetch")
+                break
+
+            after = ",".join(last_hit.sort)
 
     def _get_es_response(self, query_string: str) -> Optional[ESResponse]:
         """Get the Elasticsearch response"""
