@@ -104,7 +104,7 @@ integration_test_envs += [
     simple_integration_env("powerbi"),
     TestEnv(
         name="storage-s3",
-        extras=["test", "athena"],
+        extras=["test", "datalake-s3"],
         paths=[os.path.join(integration_test_dir, "storage-s3")],
     ),
     TestEnv(
@@ -115,7 +115,7 @@ integration_test_envs += [
     TestEnv(
         name="data_quality",
         extras=["test", "mysql", "postgres"],
-        paths=[os.path.join(integration_test_dir, "sources/database/delta_lake")],
+        paths=[os.path.join(integration_test_dir, "data_quality")],
         python_versions=["3.9", "3.10", "3.11"],
     ),
 ]
@@ -161,7 +161,7 @@ integration_test_envs += [
             if os.path.isdir(os.path.join(integration_test_dir, path))
             and os.path.join(integration_test_dir, path)
             not in chain(
-                *["integration/sources"], *[env.paths for env in integration_test_envs]
+                *["tests/integration/sources"], *[env.paths for env in integration_test_envs]
             )
             and "__pycache__" not in path
         ],
