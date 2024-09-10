@@ -244,14 +244,14 @@ def _update_column_info(  # pylint: disable=too-many-arguments
     return column_info
 
 
+# pylint: disable=unused-argument
 def _update_coltype(coltype, args, kwargs, attype, name, is_array):
     if coltype:
         coltype = coltype(*args, **kwargs)
         if is_array:
             coltype = ischema_names["_array"](coltype)
     else:
-        util.warn(f"Did not recognize type '{attype}' of column '{name}'")
-        coltype = sqltypes.NULLTYPE
+        coltype = create_sqlalchemy_type("UNKNOWN")
     return coltype
 
 
