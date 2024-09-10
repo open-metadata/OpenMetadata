@@ -20,11 +20,7 @@ from metadata.pii.processor import PIIProcessor
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
 from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
-from metadata.utils.importer import (
-    import_from_module,
-    import_sink_class,
-    import_source_class,
-)
+from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 from metadata.workflow.ingestion import IngestionWorkflow
@@ -87,15 +83,3 @@ class ProfilerWorkflow(IngestionWorkflow):
 
     def _get_pii_processor(self) -> Processor:
         return PIIProcessor.create(self.config.model_dump(), self.metadata)
-
-    def import_source_class(self):
-        source_type = self.config.source.type.lower()
-        (
-            import_from_module(
-                self.config.source.serviceConnection.root.config.sourcePythonClass
-            )
-            if source_type.startswith("custom")
-            else import_source_class(
-                service_type=self.service_type, source_type=source_type
-            )
-        )

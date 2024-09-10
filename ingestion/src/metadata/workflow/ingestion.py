@@ -46,7 +46,12 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
-from metadata.utils.importer import import_from_module, import_source_class
+from metadata.utils.importer import (
+    DynamicImportException,
+    MissingPluginException,
+    import_from_module,
+    import_source_class,
+)
 from metadata.utils.logger import ingestion_logger
 from metadata.workflow.base import BaseWorkflow, InvalidWorkflowJSONException
 from metadata.workflow.workflow_status_mixin import SUCCESS_THRESHOLD_VALUE
@@ -222,12 +227,20 @@ class IngestionWorkflow(BaseWorkflow, ABC):
 
     def import_source_class(self) -> Type[Source]:
         source_type = self.config.source.type.lower()
-        return (
-            import_from_module(
-                self.config.source.serviceConnection.root.config.sourcePythonClass
+        try:
+            return (
+                import_from_module(
+                    self.config.source.serviceConnection.root.config.sourcePythonClass
+                )
+                if source_type.startswith("custom")
+                else import_source_class(
+                    service_type=self.service_type, source_type=source_type
+                )
             )
-            if source_type.startswith("custom")
-            else import_source_class(
-                service_type=self.service_type, source_type=source_type
-            )
-        )
+        except DynamicImportException as e:
+            if source_type.startswith("custom"):
+                raise e
+            else:
+                logger.debug(traceback.format_exc())
+                logger.error(f"Failed to import source of type '{source_type}'")
+                raise MissingPluginException(source_type)

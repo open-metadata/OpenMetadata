@@ -43,6 +43,29 @@ class DynamicImportException(Exception):
     Raise it when having issues dynamically importing objects
     """
 
+    def __init__(self, module: str, key: str = None, cause: Exception = None):
+        self.module = module
+        self.key = key
+        self.cause = cause
+
+    def __str__(self):
+        import_path = self.module
+        if self.key:
+            import_path += f".{self.key}"
+        return f"Cannot import {import_path} due to {self.cause}"
+
+
+class MissingPluginException(Exception):
+    """
+    Raise it when having issues dynamically importing objects
+    """
+
+    def __init__(self, plugin: str):
+        self.plugin = plugin
+
+    def __str__(self):
+        return f"You might be missing the plugin [{self.plugin}]. Try:\npip install openmetadata-ingestion[{self.plugin}]"
+
 
 def get_module_dir(type_: str) -> str:
     """
@@ -93,13 +116,13 @@ def import_from_module(key: str) -> Type[Any]:
     Dynamically import an object from a module path
     """
 
+    module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
     try:
-        module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
         obj = getattr(importlib.import_module(module_name), obj_name)
         return obj
     except Exception as err:
         logger.debug(traceback.format_exc())
-        raise DynamicImportException(f"Cannot load object from {key} due to {err}")
+        raise DynamicImportException(module=module_name, key=obj_name, cause=err)
 
 
 # module building strings read better with .format instead of f-strings
@@ -261,9 +284,7 @@ class SideEffectsLoader(metaclass=Singleton):
                     SideEffectsLoader.modules.add(module.__name__)
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    raise DynamicImportException(
-                        f"Cannot load object from {module} due to {err}"
-                    )
+                    raise DynamicImportException(module=module, cause=err)
             else:
                 logger.debug(f"Module {module} already imported")
 
