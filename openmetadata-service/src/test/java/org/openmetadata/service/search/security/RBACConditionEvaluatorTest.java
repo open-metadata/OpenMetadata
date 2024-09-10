@@ -189,6 +189,6 @@ class RBACConditionEvaluatorTest {
 
     // Ensure that the final query doesn't have excessive nesting
     long boolQueryCount = generatedQuery.chars().filter(ch -> ch == 'b').count();
-    assertTrue(boolQueryCount <= 4, "There should be no more than 31 'bool' clauses in the query.");
+    assertTrue(boolQueryCount <= 4, "There should be no more than 4 'bool' clauses in the query.");
   }
 }
