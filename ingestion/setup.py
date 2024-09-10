@@ -333,6 +333,7 @@ dev = {
     "pycln",
     "pylint~=3.0",
     "nox",
+    "coverage",
     # For publishing
     "twine",
     "build",
