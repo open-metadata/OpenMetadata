@@ -355,6 +355,7 @@ test = {
     "pytest-order",
     # install dbt dependency
     "dbt-artifacts-parser",
+    "fastparquet",
     "freezegun",
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers==4.8.0;python_version>='3.9'",

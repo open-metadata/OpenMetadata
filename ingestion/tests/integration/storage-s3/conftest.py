@@ -17,11 +17,13 @@ import pytest
 import yaml
 from minio import Minio
 
+from _openmetadata_testutils.containers import (
+    MinioContainerConfigs,
+    get_minio_container,
+)
 from _openmetadata_testutils.ometa import OM_JWT, int_admin_ometa
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.workflow.metadata import MetadataWorkflow
-
-from ..containers import MinioContainerConfigs, get_minio_container
 
 RESOURCES_DIR = Path(__file__).parent / "resources"
 

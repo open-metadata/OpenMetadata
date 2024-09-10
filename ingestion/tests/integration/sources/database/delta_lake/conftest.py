@@ -13,7 +13,10 @@ Environment fixtures to be able to test the DeltaLake Ingestion Pipeline.
 """
 import pytest
 
-from ....containers import MinioContainerConfigs, get_minio_container
+from _openmetadata_testutils.containers import (
+    MinioContainerConfigs,
+    get_minio_container,
+)
 
 
 class DeltaLakeStorageTestConfig:

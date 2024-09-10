@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass, field
 from itertools import chain
-from typing import List, Set, Optional
+from typing import List, Optional, Set
 
 import nox
 from nox import Session

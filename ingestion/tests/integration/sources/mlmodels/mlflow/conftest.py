@@ -31,7 +31,7 @@ import pytest
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.docker_client import DockerClient
 
-from ....containers import (
+from _openmetadata_testutils.containers import (
     MinioContainerConfigs,
     MySqlContainerConfigs,
     get_docker_network,
