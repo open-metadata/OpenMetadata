@@ -338,7 +338,7 @@ export const ENTITY_SERVICE_TYPE = {
 };
 
 export const LOGIN = {
-  username: 'admin@openmetadata.org',
+  username: 'admin@open-metadata.org',
   password: 'admin',
 };
 

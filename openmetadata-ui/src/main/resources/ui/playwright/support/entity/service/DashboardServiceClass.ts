@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
@@ -48,6 +49,24 @@ export class DashboardServiceClass extends EntityClass {
       '/api/v1/services/dashboardServices',
       {
         data: this.entity,
+      }
+    );
+
+    const service = await serviceResponse.json();
+
+    this.entityResponseData = service;
+
+    return service;
+  }
+
+  async patch(apiContext: APIRequestContext, payload: Operation[]) {
+    const serviceResponse = await apiContext.patch(
+      `/api/v1/services/dashboardServices/${this.entityResponseData?.['id']}`,
+      {
+        data: payload,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
       }
     );
 
