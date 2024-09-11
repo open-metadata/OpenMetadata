@@ -44,7 +44,7 @@ class NLPEngineModel(BaseModel):
     """Required to pass the nlp_engine as {"lang_code": "en", "model_name": "en_core_web_lg"}"""
 
     lang_code: str
-    nlp_model_name: str
+    model_name: str
 
 
 # pylint: disable=import-outside-toplevel
@@ -67,7 +67,7 @@ class NERScanner(BaseScanner):
             download(SPACY_EN_MODEL)
             spacy.load(SPACY_EN_MODEL)
 
-        nlp_engine_model = NLPEngineModel(lang_code="en", nlp_model_name=SPACY_EN_MODEL)
+        nlp_engine_model = NLPEngineModel(lang_code="en", model_name=SPACY_EN_MODEL)
 
         self.analyzer = AnalyzerEngine(
             nlp_engine=SpacyNlpEngine(models=[nlp_engine_model.model_dump()])
