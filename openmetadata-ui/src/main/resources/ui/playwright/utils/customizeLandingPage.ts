@@ -35,7 +35,6 @@ export const navigateToCustomizeLandingPage = async (
   await page.click(
     `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
   );
-  //   getByTestId('persona-details-card-PW%Persona-0e0cb753').getByTestId('customize-page-button')
 
   expect((await getCustomPageDataResponse).status()).toBe(
     customPageDataResponse
@@ -119,7 +118,7 @@ export const setUserDefaultPersona = async (
   ).toContainText(personaName);
 };
 
-export const openAddWidgetModal = async (page: Page) => {
+export const openAddCustomizeWidgetModal = async (page: Page) => {
   const fetchResponse = page.waitForResponse(
     '/api/v1/docStore?fqnPrefix=KnowledgePanel*'
   );
@@ -132,23 +131,18 @@ export const openAddWidgetModal = async (page: Page) => {
   await fetchResponse;
 };
 
-export const navigateToLandingPage = async (page: Page) => {
-  const feedResponse = page.waitForResponse(`/api/v1/feed*`);
-  const dataInsightResponse = page.waitForResponse(
-    `/api/v1/analytics/dataInsights/system/charts/name/total_data_assets/data?*`
+export const saveCustomizeLayoutPage = async (
+  page: Page,
+  isCreated?: boolean
+) => {
+  const saveResponse = page.waitForResponse(
+    isCreated ? '/api/v1/docStore' : '/api/v1/docStore/*'
   );
-
-  // Click on the logo to navigate to the landing page
-  await page.locator('#openmetadata_logo').click();
-
-  await feedResponse;
-  await dataInsightResponse;
-};
-
-export const saveLayout = async (page: Page) => {
-  const saveResponse = page.waitForResponse('/api/v1/docStore/*');
   await page.locator('[data-testid="save-button"]').click();
   await saveResponse;
 
-  await toastNotification(page, 'Page layout updated successfully.');
+  await toastNotification(
+    page,
+    `Page layout ${isCreated ? 'created' : 'updated'} successfully.`
+  );
 };

@@ -14,14 +14,13 @@ import { expect, Page, test as base } from '@playwright/test';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, toastNotification } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import {
   checkAllDefaultWidgets,
   navigateToCustomizeLandingPage,
-  navigateToLandingPage,
-  openAddWidgetModal,
+  openAddCustomizeWidgetModal,
   removeAndCheckWidget,
-  saveLayout,
+  saveCustomizeLayoutPage,
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
 
@@ -89,11 +88,8 @@ test.describe('Customize Landing Page Flow', () => {
         widgetKey: 'KnowledgePanel.KPI',
       });
 
-      const saveResponse = adminPage.waitForResponse('/api/v1/docStore');
-      await adminPage.click('[data-testid="save-button"]');
-      await saveResponse;
+      await saveCustomizeLayoutPage(adminPage, true);
 
-      await toastNotification(adminPage, 'Page layout created successfully.');
       await redirectToHomePage(adminPage);
 
       // Check if removed widgets are not present on landing adminPage
@@ -139,7 +135,7 @@ test.describe('Customize Landing Page Flow', () => {
         adminPage.locator('[data-testid="ExtraWidget.EmptyWidgetPlaceholder"]')
       ).toBeVisible();
 
-      await openAddWidgetModal(adminPage);
+      await openAddCustomizeWidgetModal(adminPage);
 
       // Check if 'check' icon is present for existing widgets
       await expect(
@@ -178,7 +174,7 @@ test.describe('Customize Landing Page Flow', () => {
       ).toBeVisible();
 
       // Check if check icons are present in tab labels for newly added widgets
-      await openAddWidgetModal(adminPage);
+      await openAddCustomizeWidgetModal(adminPage);
 
       // Check if 'check' icon is present for the Following widget
       await expect(
@@ -190,11 +186,11 @@ test.describe('Customize Landing Page Flow', () => {
         .locator('[data-testid="add-widget-modal"] [aria-label="Close"]')
         .click();
 
-      // Save the layout
-      await saveLayout(adminPage);
+      // Save the updated layout
+      await saveCustomizeLayoutPage(adminPage);
 
       // Navigate to the landing page
-      await navigateToLandingPage(adminPage);
+      await redirectToHomePage(adminPage);
 
       // Check if removed widgets are not present on the landing page
       await expect(
@@ -253,7 +249,7 @@ test.describe('Customize Landing Page Flow', () => {
         await checkAllDefaultWidgets(adminPage, true);
 
         // Check if all widgets are present on landing page
-        await navigateToLandingPage(adminPage);
+        await redirectToHomePage(adminPage);
 
         await checkAllDefaultWidgets(adminPage);
       }
@@ -336,10 +332,6 @@ test.describe('Customize Landing Page Flow', () => {
     // Check if the KPI widget is added in the same placeholder,by their transform property or placement.
     expect(kpiElementStyle.transform).toEqual(followingElementStyle.transform);
 
-    const saveResponse = adminPage.waitForResponse('/api/v1/docStore');
-    await adminPage.click('[data-testid="save-button"]');
-    await saveResponse;
-
-    await toastNotification(adminPage, 'Page layout created successfully.');
+    await saveCustomizeLayoutPage(adminPage, true);
   });
 });
