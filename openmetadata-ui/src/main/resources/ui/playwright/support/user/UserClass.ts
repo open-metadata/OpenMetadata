@@ -55,12 +55,26 @@ export class UserClass {
     const dataConsumerRole = await dataConsumerRoleResponse.json();
 
     const response = await apiContext.post('/api/v1/users/signup', {
-      data: { ...this.data, roles: [dataConsumerRole.id] },
+      data: this.data,
     });
 
     this.responseData = await response.json();
+    const { entity } = await this.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/roles/0',
+          value: {
+            id: dataConsumerRole.id,
+            type: 'role',
+            name: dataConsumerRole.name,
+          },
+        },
+      ],
+    });
 
-    return response.body;
+    return entity;
   }
 
   async patch({
