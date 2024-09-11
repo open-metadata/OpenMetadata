@@ -286,7 +286,7 @@ def _(
         )
     metric_results.extend(get_metric_result(updates, table.__tablename__))  # type: ignore
 
-    return TypeAdapter(List[SystemProfile]).validate_python(metric_results).d
+    return TypeAdapter(List[SystemProfile]).validate_python(metric_results)
 
 
 @get_system_metrics_for_dialect.register(Dialects.Snowflake)
