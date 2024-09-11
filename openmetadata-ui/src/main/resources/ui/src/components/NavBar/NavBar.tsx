@@ -13,7 +13,9 @@
 
 import Icon from '@ant-design/icons';
 import {
+  Alert,
   Badge,
+  Button,
   Col,
   Dropdown,
   Input,
@@ -56,6 +58,7 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
+import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import {
   hasNotificationPermission,
@@ -108,6 +111,8 @@ const NavBar = ({
   const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
+  const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
+    useState(false);
 
   const history = useHistory();
   const {
@@ -298,7 +303,23 @@ const NavBar = ({
     if (shouldRequestPermission()) {
       Notification.requestPermission();
     }
-  }, []);
+
+    const handleDocumentVisibilityChange = async () => {
+      if (isProtectedRoute(location.pathname) && isTourRoute) {
+        return;
+      }
+      const newVersion = await getVersion();
+      if (version !== newVersion.version) {
+        setShowVersionMissMatchAlert(true);
+      }
+    };
+
+    addEventListener('focus', handleDocumentVisibilityChange);
+
+    return () => {
+      removeEventListener('focus', handleDocumentVisibilityChange);
+    };
+  }, [isTourRoute, version]);
 
   useEffect(() => {
     if (socket) {
@@ -578,6 +599,46 @@ const NavBar = ({
         onCancel={handleModalCancel}
       />
 
+      {showVersionMissMatchAlert && (
+        <Alert
+          showIcon
+          action={
+            <Button
+              size="small"
+              type="link"
+              onClick={() => {
+                location.reload();
+              }}>
+              {t('label.refresh')}
+            </Button>
+          }
+          className="refresh-alert slide-in-top"
+          description="For a seamless experience recommend you to refresh the page"
+          icon={
+            <svg
+              fill="none"
+              height="34"
+              viewBox="0 0 34 34"
+              width="34"
+              xmlns="http://www.w3.org/2000/svg">
+              <g clipPath="url(#clip0_9647_49527)">
+                <path
+                  // eslint-disable-next-line max-len
+                  d="M15.6719 23.4391V13.8251L12.9884 16.5767C12.4763 17.1019 11.6355 17.1124 11.1103 16.6003C10.5852 16.0882 10.5747 15.2473 11.0868 14.7222L16.0493 9.63362C16.2992 9.37736 16.6421 9.23279 17.0001 9.23279C17.3581 9.23279 17.701 9.37736 17.9509 9.63362L22.9133 14.7222C23.4255 15.2473 23.4149 16.0882 22.8898 16.6003C22.6316 16.8521 22.297 16.9776 21.9627 16.9776C21.6172 16.9776 21.272 16.8437 21.0117 16.5767L18.3281 13.8251V23.4391C18.3281 24.1727 17.7335 24.7673 17 24.7673C16.2665 24.7673 15.6719 24.1726 15.6719 23.4391ZM29.0209 4.97914C25.8099 1.76833 21.5409 0 17 0C12.4591 0 8.19008 1.76833 4.97914 4.97914C1.76833 8.19008 0 12.4591 0 17C0 21.5409 1.76833 25.8099 4.97914 29.0208C8.19008 32.2317 12.4591 34 17 34C20.3597 34 23.6088 33.0212 26.3962 31.1693C27.0072 30.7634 27.1734 29.9391 26.7675 29.3281C26.3616 28.7172 25.5373 28.5508 24.9263 28.9568C22.5759 30.5183 19.835 31.3438 17 31.3438C9.09082 31.3438 2.65625 24.9092 2.65625 17C2.65625 9.09082 9.09082 2.65625 17 2.65625C24.9092 2.65625 31.3438 9.09082 31.3438 17C31.3438 19.6974 30.5913 22.3251 29.1677 24.5993C28.7785 25.221 28.9671 26.0405 29.5888 26.4297C30.2102 26.8188 31.03 26.6304 31.4192 26.0086C33.1076 23.3114 34 20.1963 34 17C34 12.4591 32.2317 8.19008 29.0209 4.97914Z"
+                  fill="#2856E0"
+                />
+              </g>
+              <defs>
+                <clipPath id="clip0_9647_49527">
+                  <rect fill="white" height="34" width="34" />
+                </clipPath>
+              </defs>
+            </svg>
+          }
+          message="A new version is available"
+          type="info"
+        />
+      )}
       {renderAlertCards}
     </>
   );

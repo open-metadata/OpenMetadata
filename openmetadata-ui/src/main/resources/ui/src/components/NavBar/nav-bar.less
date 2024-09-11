@@ -28,9 +28,44 @@
       line-height: 21px;
     }
   }
+  & + .refresh-alert {
+    width: 470px;
+    top: 10px;
+    align-items: center;
+    z-index: 9999;
+    margin: 0 auto;
+    box-shadow: 13px 0px 47px 0px #0000000f;
+    border-radius: 10px;
+    border: 1px solid #0950c5;
+    background: #f5f8ff;
+
+    .ant-alert-content {
+      border-right: 1px solid #0950c5;
+    }
+
+    .ant-btn {
+      font-weight: 700;
+      color: #0950c5;
+    }
+  }
 }
 
 .domain-dropdown-menu {
   max-height: 400px;
   overflow-y: auto;
+}
+
+.slide-in-top {
+  animation: slide-in-top 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes slide-in-top {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }

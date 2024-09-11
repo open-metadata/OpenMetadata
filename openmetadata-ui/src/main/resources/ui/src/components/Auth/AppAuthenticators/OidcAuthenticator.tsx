@@ -161,6 +161,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     // eslint-disable-next-line no-console
                     console.error(error);
 
+                    onLogoutSuccess();
                     history.push(ROUTES.SIGNIN);
                   }}
                   onSuccess={(user) => {
