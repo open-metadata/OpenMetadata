@@ -98,6 +98,13 @@ jest.mock('../../../../common/NextPrevious/NextPrevious', () => {
     </div>
   ));
 });
+jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => (
+      <input data-testid="mock-searchbar" type="text" />
+    ));
+});
 jest.mock('../../DataQualityTab/DataQualityTab', () => {
   return jest
     .fn()
@@ -128,6 +135,7 @@ describe('QualityTab', () => {
     expect(await screen.findByTestId('sub-heading')).toHaveTextContent(
       'message.page-sub-header-for-data-quality'
     );
+    expect(await screen.findByTestId('mock-searchbar')).toBeInTheDocument();
     expect(
       await screen.findByText('label.test-case-plural')
     ).toBeInTheDocument();
@@ -154,7 +162,7 @@ describe('QualityTab', () => {
       mockUseTableProfiler.testCasePaging.handlePageChange
     ).toHaveBeenCalledWith(2);
     expect(mockUseTableProfiler.fetchAllTests).toHaveBeenCalledWith({
-      after: 'after',
+      offset: 10,
       testCaseStatus: undefined,
       testCaseType: 'all',
     });
