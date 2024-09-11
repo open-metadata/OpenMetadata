@@ -12,3 +12,6 @@ WHERE dqdts.entityfqnHash = tc.fqnHash;
 ALTER TABLE data_quality_data_time_series
 ADD COLUMN id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED,
 ADD CONSTRAINT id_unique UNIQUE (id);
+
+-- Create index on id column
+CREATE INDEX IF NOT EXISTS  data_quality_data_time_series_id_index  ON data_quality_data_time_series (id);
