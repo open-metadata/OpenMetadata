@@ -122,18 +122,6 @@ class SSLManager:
                     "caCertificate",
                     self.ca_file_path,
                 )
-            if matillion_connection.connection.sslConfig.root.sslCertificate:
-                setattr(
-                    matillion_connection.connection.sslConfig.root,
-                    "sslCertificate",
-                    self.cert_file_path,
-                )
-            if matillion_connection.connection.sslConfig.root.sslKey:
-                setattr(
-                    matillion_connection.connection.sslConfig.root,
-                    "sslKey",
-                    self.key_file_path,
-                )
         return connection
 
     @setup_ssl.register(PostgresConnection)
@@ -215,9 +203,6 @@ def _(connection) -> Union[SSLManager, None]:
             ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
                 "ca": ssl.root.caCertificate
             }
-            if (ssl.root.sslCertificate) and (ssl.root.sslKey):
-                ssl_dict["cert"] = ssl.root.sslCertificate
-                ssl_dict["key"] = ssl.root.sslKey
             return SSLManager(**ssl_dict)
     return None
 
