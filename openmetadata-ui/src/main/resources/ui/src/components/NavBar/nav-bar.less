@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../styles/variables.less';
+
 .global-search-overlay {
   .ant-popover-inner-content {
     padding: 8px;
@@ -36,16 +38,16 @@
     margin: 0 auto;
     box-shadow: 13px 0px 47px 0px #0000000f;
     border-radius: 10px;
-    border: 1px solid #0950c5;
+    border: 1px solid @blue-3;
     background: #f5f8ff;
 
     .ant-alert-content {
-      border-right: 1px solid #0950c5;
+      border-right: 1px solid @blue-3;
     }
 
     .ant-btn {
       font-weight: 700;
-      color: #0950c5;
+      color: @blue-3;
     }
   }
 }
