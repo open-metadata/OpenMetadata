@@ -36,7 +36,7 @@ class TokenService {
     const {
       data: { type, token },
     } = event;
-    if (type === 'TOKEN_UPDATE') {
+    if (type === 'TOKEN_UPDATE' && token) {
       if (typeof token !== 'string') {
         useApplicationStore.getState().setOidcToken(token.accessToken);
         useApplicationStore.getState().setRefreshToken(token.refreshToken);

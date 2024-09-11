@@ -141,7 +141,7 @@ export const AuthProvider = ({
     setApplicationLoading,
   } = useApplicationStore();
   const { updateDomains, updateDomainLoading } = useDomainStore();
-  const [tokenService, setTokenService] = useState<TokenService>();
+  const tokenService = useRef<TokenService>();
 
   const location = useCustomLocation();
   const history = useHistory();
@@ -186,8 +186,11 @@ export const AuthProvider = ({
   }, [timeoutId]);
 
   useEffect(() => {
-    authenticatorRef.current?.renewIdToken &&
-      setTokenService(new TokenService(authenticatorRef.current?.renewIdToken));
+    if (authenticatorRef.current?.renewIdToken) {
+      tokenService.current = new TokenService(
+        authenticatorRef.current?.renewIdToken
+      );
+    }
   }, [authenticatorRef.current?.renewIdToken]);
 
   const fetchDomainList = useCallback(async () => {
@@ -295,8 +298,8 @@ export const AuthProvider = ({
    */
   const renewIdToken = async () => {
     try {
-      if (!tokenService?.isTokenUpdateInProgress()) {
-        await tokenService?.refreshToken();
+      if (!tokenService.current?.isTokenUpdateInProgress()) {
+        await tokenService.current?.refreshToken();
       } else {
         // wait for renewal to complete
         const wait = new Promise((resolve) => {
@@ -368,8 +371,7 @@ export const AuthProvider = ({
   const startTokenExpiryTimer = () => {
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken(
-      getOidcToken(),
-      clientType
+      getOidcToken()
     );
     const refreshToken = getRefreshToken();
 
