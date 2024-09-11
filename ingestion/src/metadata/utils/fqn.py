@@ -27,6 +27,7 @@ from metadata.antlr.split_listener import FqnSplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -248,6 +249,20 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, dashboard=`{dashboard_name}``"
         )
     return _build(service_name, dashboard_name)
+
+
+@fqn_build_registry.add(APICollection)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    api_collection_name: str,
+) -> str:
+    if not service_name or not api_collection_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, collection=`{api_collection_name}``"
+        )
+    return _build(service_name, api_collection_name)
 
 
 @fqn_build_registry.add(Chart)

@@ -51,7 +51,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
         apiServiceResourceTest
             .createRequest(test)
             .withName("openmetadata")
-            .withServiceType(CreateAPIService.ApiServiceType.REST)
+            .withServiceType(CreateAPIService.APIServiceType.REST)
             .withConnection(TestUtils.API_SERVICE_CONNECTION);
 
     APIService omAPIService =
@@ -62,7 +62,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
         sampleAPIServiceResourceTest
             .createRequest(test)
             .withName("sampleAPI")
-            .withServiceType(CreateAPIService.ApiServiceType.REST)
+            .withServiceType(CreateAPIService.APIServiceType.REST)
             .withConnection(TestUtils.API_SERVICE_CONNECTION);
     APIService sampleAPIService =
         new APIServiceResourceTest().createEntity(createAPIService, ADMIN_AUTH_HEADERS);
@@ -153,7 +153,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
   public CreateAPIService createRequest(String name) {
     return new CreateAPIService()
         .withName(name)
-        .withServiceType(CreateAPIService.ApiServiceType.REST)
+        .withServiceType(CreateAPIService.APIServiceType.REST)
         .withConnection(
             new APIServiceConnection()
                 .withConfig(
@@ -211,7 +211,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
   private void validateConnection(
       APIServiceConnection expectedConnection,
       APIServiceConnection actualConnection,
-      CreateAPIService.ApiServiceType serviceType) {
+      CreateAPIService.APIServiceType serviceType) {
     if (expectedConnection != null && actualConnection != null) {
       RESTConnection restConnection = (RESTConnection) expectedConnection.getConfig();
       RESTConnection actualESConnection =

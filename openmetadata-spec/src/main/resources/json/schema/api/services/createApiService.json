@@ -21,7 +21,7 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "serviceType": {
-      "$ref": "../../entity/services/apiService.json#/definitions/apiServiceType"
+      "$ref": "../../entity/services/apiService.json#/definitions/APIServiceType"
     },
     "connection": {
       "$ref": "../../entity/services/apiService.json#/definitions/apiServiceConnection"

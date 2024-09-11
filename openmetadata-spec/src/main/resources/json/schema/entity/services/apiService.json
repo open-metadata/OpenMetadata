@@ -10,7 +10,7 @@
     "org.openmetadata.schema.ServiceEntityInterface"
   ],
   "definitions": {
-    "apiServiceType": {
+    "APIServiceType": {
       "description": "Type of api service such as REST, Webhook,...",
       "javaInterfaces": [
         "org.openmetadata.schema.EnumInterface"
@@ -41,7 +41,7 @@
           "mask": true,
           "oneOf": [
             {
-              "$ref": "connections/apiService/restConnection.json"
+              "$ref": "./connections/apiService/restConnection.json"
             }
           ]
         }
@@ -68,7 +68,7 @@
     },
     "serviceType": {
       "description": "Type of API service such as REST, WEBHOOK..",
-      "$ref": "#/definitions/apiServiceType"
+      "$ref": "#/definitions/APIServiceType"
     },
     "description": {
       "description": "Description of a API service instance.",
