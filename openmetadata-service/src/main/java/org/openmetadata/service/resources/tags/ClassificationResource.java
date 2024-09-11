@@ -440,7 +440,7 @@ public class ClassificationResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = Classification.class)))
       })
   public Response restore(
       @Context UriInfo uriInfo,
