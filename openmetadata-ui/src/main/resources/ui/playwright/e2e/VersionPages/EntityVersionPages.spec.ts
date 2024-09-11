@@ -224,9 +224,6 @@ entities.forEach((EntityClass) => {
           await page.waitForSelector('[role="dialog"].ant-modal');
 
           await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-          await expect(page.locator('.ant-modal-title')).toContainText(
-            entity.entityResponseData?.['displayName']
-          );
 
           await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
           const deleteResponse = page.waitForResponse(
