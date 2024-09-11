@@ -162,7 +162,7 @@ describe('QualityTab', () => {
       mockUseTableProfiler.testCasePaging.handlePageChange
     ).toHaveBeenCalledWith(2);
     expect(mockUseTableProfiler.fetchAllTests).toHaveBeenCalledWith({
-      after: 'after',
+      offset: 10,
       testCaseStatus: undefined,
       testCaseType: 'all',
     });
