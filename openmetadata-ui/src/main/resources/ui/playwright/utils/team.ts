@@ -216,11 +216,6 @@ export const removeOrganizationPolicyAndRole = async (
     data: [
       {
         op: 'replace',
-        path: '/policies',
-        value: [],
-      },
-      {
-        op: 'replace',
         path: '/defaultRoles',
         value: [],
       },
