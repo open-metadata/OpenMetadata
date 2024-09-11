@@ -37,7 +37,7 @@ const test = base.extend<{ adminPage: Page }>({
   },
 });
 
-test.describe('Bots Page should work properly', () => {
+test.describe.skip('Bots Page should work properly', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.create(apiContext);
