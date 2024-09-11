@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     PipelineType,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.metadataIngestion.apiServiceMetadataPipeline import (
+    ApiServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
 )
@@ -65,6 +68,7 @@ from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 
 SERVICE_TYPE_REF = {
+    ServiceType.API.value: "apiService",
     ServiceType.Database.value: "databaseService",
     ServiceType.Dashboard.value: "dashboardService",
     ServiceType.Pipeline.value: "pipelineService",
@@ -76,6 +80,7 @@ SERVICE_TYPE_REF = {
 }
 
 SOURCE_CONFIG_TYPE_INGESTION = {
+    ApiServiceMetadataPipeline.__name__: PipelineType.metadata,
     DatabaseServiceMetadataPipeline.__name__: PipelineType.metadata,
     DatabaseServiceQueryUsagePipeline.__name__: PipelineType.usage,
     DatabaseServiceQueryLineagePipeline.__name__: PipelineType.lineage,
