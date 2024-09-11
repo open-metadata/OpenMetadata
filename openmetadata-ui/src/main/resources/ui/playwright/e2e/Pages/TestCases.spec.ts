@@ -124,7 +124,7 @@ test('Table difference test case', async ({ page }) => {
         'Test case updated successfully.'
       );
 
-      await page.getByTestId('content-wrapper').getByLabel('close').click();
+      await page.getByLabel('close', { exact: true }).click();
     });
 
     await test.step('Delete', async () => {
@@ -224,7 +224,7 @@ test('Custom SQL Query', async ({ page }) => {
         'Test case updated successfully.'
       );
 
-      await page.getByTestId('content-wrapper').getByLabel('close').click();
+      await page.getByLabel('close', { exact: true }).click();
     });
 
     await test.step('Delete', async () => {
@@ -325,7 +325,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
         'Test case updated successfully.'
       );
 
-      await page.getByTestId('content-wrapper').getByLabel('close').click();
+      await page.getByLabel('close', { exact: true }).click();
     });
 
     await test.step('Delete', async () => {
