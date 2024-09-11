@@ -148,7 +148,7 @@ export const updateRelatedMetric = async (
       .first()
       .click();
   } else {
-    await page.getByTestId('edit-related-metrics').locator('svg').click();
+    await page.getByTestId('edit-related-metrics').click();
   }
 
   await page.waitForSelector(
