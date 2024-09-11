@@ -129,7 +129,7 @@ test('Table test case', async ({ page }) => {
     ).toBeVisible();
 
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases?fields=*'
+      '/api/v1/dataQuality/testCases/search/list?fields=*'
     );
     await page.click(`[data-testid="view-service-button"]`);
     await testCaseResponse;
@@ -209,7 +209,7 @@ test('Column test case', async ({ page }) => {
     await page.waitForSelector('[data-testid="view-service-button"]');
 
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases?fields=*'
+      '/api/v1/dataQuality/testCases/search/list?fields=*'
     );
     await page.click(`[data-testid="view-service-button"]`);
     await testCaseResponse;
@@ -929,6 +929,25 @@ test('TestCase filters', async ({ page }) => {
     await getTestCaseList;
     await verifyFilterTestCase(page);
     await verifyFilter2TestCase(page, true);
+    await visitDataQualityTab(page, filterTable1);
+    const searchTestCase = page.waitForResponse(
+      (url) =>
+        url.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+        url.url().includes(testCases[0])
+    );
+    await page
+      .getByTestId('table-profiler-container')
+      .getByTestId('searchbar')
+      .fill(testCases[0]);
+    await searchTestCase;
+
+    await expect(page.locator(`[data-testid="${testCases[0]}"]`)).toBeVisible();
+    await expect(
+      page.locator(`[data-testid="${testCases[1]}"]`)
+    ).not.toBeVisible();
+    await expect(
+      page.locator(`[data-testid="${testCases[2]}"]`)
+    ).not.toBeVisible();
   } finally {
     await filterTable1.delete(apiContext);
     await domain.delete(apiContext);

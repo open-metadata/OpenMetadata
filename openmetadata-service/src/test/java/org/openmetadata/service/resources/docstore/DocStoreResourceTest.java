@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.Entity.DOCUMENT;
 import static org.openmetadata.service.Entity.PERSONA;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
-import static org.openmetadata.service.util.EmailUtil.EMAIL_VERIFICATION_TEMPLATE;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -17,6 +16,7 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.put;
+import static org.openmetadata.service.util.email.TemplateConstants.EMAIL_VERIFICATION_TEMPLATE;
 
 import java.io.IOException;
 import java.util.ArrayList;
