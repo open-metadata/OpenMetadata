@@ -1,25 +1,15 @@
 # REST API Service
+In this section, we provide guides and references to use the OpenAPI(REST) service connector.
 
-REST Connection Config
-
+## Connection Details
 $$section
 ### Open API Schema URL $(id="openAPISchemaURL")
 
-Open API Schema URL.
+An OpenAPI schema URL typically refers to the URL where the OpenAPI Specification (OAS) document of a web service is hosted. The document defines the service's API, including available endpoints, request/response formats, authentication methods, etc. It is usually in JSON format. for e.g. `https://petstore3.swagger.io/api/v3/openapi.json`
 $$
 
 $$section
 ### Token $(id="token")
 
-Generated Token to connect to OpenAPI Schema.
-$$
-
-$$section
-### Ingestion with API Services
-
-Currently, ingestion is not supported for API services. However, you can manually add collections and endpoints using the provided APIs. 
-
-- `POST /api/v1/apiCollections` [create collection](/docs#post-/v1/apiCollections)
-
-- `POST /api/v1/apiEndpoints` [create endpoint](/docs#post-/v1/apiEndpoints)
+An authentication token to connect to an OpenAPI schema URL. It is only required if the API schema is protected or secured.
 $$
