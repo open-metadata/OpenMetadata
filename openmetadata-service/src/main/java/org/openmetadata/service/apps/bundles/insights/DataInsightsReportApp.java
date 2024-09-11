@@ -6,6 +6,7 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
+import static org.openmetadata.service.util.email.TemplateConstants.DATA_INSIGHT_REPORT_TEMPLATE;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -41,10 +42,10 @@ import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.Utilities;
+import org.openmetadata.service.util.email.EmailUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.quartz.JobExecutionContext;
 
@@ -142,7 +143,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
               ownershipTemplate,
               tierTemplate,
               EmailUtil.getDataInsightReportSubject(),
-              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+              DATA_INSIGHT_REPORT_TEMPLATE);
         } catch (Exception ex) {
           LOG.error(
               "[DataInsightReport] Failed for Team: {}, Reason : {}",
@@ -177,7 +178,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           ownershipTemplate,
           tierTemplate,
           EmailUtil.getDataInsightReportSubject(),
-          EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+          DATA_INSIGHT_REPORT_TEMPLATE);
     } catch (Exception ex) {
       LOG.error("[DataInsightReport] Failed for Admin, Reason : {}", ex.getMessage(), ex);
     }

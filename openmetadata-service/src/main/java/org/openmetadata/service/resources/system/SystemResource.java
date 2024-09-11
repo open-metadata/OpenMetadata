@@ -46,8 +46,8 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.email.EmailUtil;
 
 @Path("/v1/system")
 @Tag(name = "System", description = "APIs related to System configuration and settings.")

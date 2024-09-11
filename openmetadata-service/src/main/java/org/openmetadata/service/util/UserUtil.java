@@ -51,6 +51,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 public final class UserUtil {

@@ -99,13 +99,8 @@ public class SystemRepository {
       if (fetchedSettings == null) {
         return null;
       }
-      if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-        SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
-        emailConfig.setPassword("***********");
-        fetchedSettings.setConfigValue(emailConfig);
-      }
-      return fetchedSettings;
 
+      return fetchedSettings;
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings ", ex);
     }

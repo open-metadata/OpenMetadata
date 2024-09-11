@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.events;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
+import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.Path;
