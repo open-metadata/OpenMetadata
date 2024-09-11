@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { descriptionBox, uuid } from './common';
 import { validateFormNameFieldInput } from './form';
 
@@ -207,4 +207,30 @@ export const addTeamHierarchy = async (
   const saveTeamResponse = page.waitForResponse('/api/v1/teams');
   await page.click('[form="add-team-form"]');
   await saveTeamResponse;
+};
+
+export const removeOrganizationPolicyAndRole = async (
+  apiContext: APIRequestContext
+) => {
+  const organizationTeamResponse = await apiContext
+    .get(`/api/v1/teams/name/Organization`)
+    .then((res) => res.json());
+
+  await apiContext.patch(`/api/v1/teams/${organizationTeamResponse.id}`, {
+    data: [
+      {
+        op: 'replace',
+        path: '/policies',
+        value: [],
+      },
+      {
+        op: 'replace',
+        path: '/defaultRoles',
+        value: [],
+      },
+    ],
+    headers: {
+      'Content-Type': 'application/json-patch+json',
+    },
+  });
 };
