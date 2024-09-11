@@ -1,12 +1,12 @@
-package org.openmetadata.service.util;
+package org.openmetadata.service.util.email;
+
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.email.EmailTemplate;
 import org.openmetadata.schema.email.EmailTemplatePlaceholder;
 import org.openmetadata.schema.email.TemplateValidationResponse;
-import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 
@@ -32,39 +31,12 @@ public class DefaultTemplateProvider implements TemplateProvider {
   public Template getTemplate(String templateName) throws IOException {
     EmailTemplate emailTemplate = documentRepository.fetchEmailTemplateByName(templateName);
     String template = emailTemplate.getTemplate();
-    if (template == null || template.isEmpty()) {
+    if (nullOrEmpty(template)) {
       throw new IOException("Template content not found for template: " + templateName);
     }
 
     return new Template(
         templateName, new StringReader(template), new Configuration(Configuration.VERSION_2_3_31));
-  }
-
-  public Map<String, Set<EmailTemplatePlaceholder>> getDocumentPlaceHolders() {
-    List<Document> documents = documentRepository.fetchAllEmailTemplates();
-
-    return documents.stream()
-        .collect(
-            Collectors.toMap(
-                Document::getName,
-                document -> {
-                  EmailTemplate emailTemplate =
-                      JsonUtils.convertValue(document.getData(), EmailTemplate.class);
-                  return emailTemplate.getPlaceHolders();
-                }));
-  }
-
-  public Map<String, Set<String>> getPlaceholdersFromTemplate() {
-    List<Document> listOfDocuments = documentRepository.fetchAllEmailTemplates();
-
-    return listOfDocuments.stream()
-        .collect(
-            Collectors.toMap(
-                Document::getName,
-                document ->
-                    extractPlaceholders(
-                        JsonUtils.convertValue(document.getData(), EmailTemplate.class)
-                            .getTemplate())));
   }
 
   @Override
