@@ -289,19 +289,6 @@ public final class SearchIndexUtils {
                     if (Arrays.asList(subParts).indexOf(subPart) < subParts.length - 1) aggregationString.append(",");
                   }
             );
-//            Iterator<String> subPartsIterator = Arrays.stream(subParts).iterator();
-//            while (subPartsIterator.hasNext()) {
-//              String subpart = subPartsIterator.next();
-//              String[] kvPairs = subpart.split("=");
-//              aggregationString
-//                  .append("\"")
-//                  .append(kvPairs[0])
-//                  .append("\":\"")
-//                  .append(kvPairs[1])
-//                  .append("\"");
-//              if (subPartsIterator.hasNext()) aggregationString.append(",");
-//              aggregationMap.put(kvPairs[0], kvPairs[1]);
-//            }
             aggregationString.append("}");
           } else {
             String[] kvPairs = part.split("=");
