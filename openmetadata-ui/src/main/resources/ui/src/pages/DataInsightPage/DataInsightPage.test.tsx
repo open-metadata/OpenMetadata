@@ -30,30 +30,38 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
   useParams: jest.fn().mockImplementation(() => ({ tab: activeTab })),
 }));
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
-  jest.fn().mockImplementation(({ children }) => <>{children}</>)
-);
+
+jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
+  return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </div>
+  ));
+});
+
+jest.mock('../../utils/DataInsightUtils', () => ({
+  getDataInsightPathWithFqn: jest.fn().mockReturnValue('/'),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+}));
+
 jest.mock('./DataInsightProvider', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
 
-jest.mock('./KPIList', () =>
-  jest.fn().mockReturnValue(<div data-testid="kpi-list">KPI List</div>)
+jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('./DataInsightLeftPanel/DataInsightLeftPanel', () =>
-  jest.fn().mockReturnValue(<div data-testid="left-panel">Left panel</div>)
-);
 jest.mock('./DataInsightHeader/DataInsightHeader.component', () =>
   jest.fn().mockReturnValue(<div>DataInsightHeader.component</div>)
 );
-jest.mock(
-  '../../components/DataInsight/DataAssetsTab/DataAssetsTab.component',
-  () => jest.fn().mockReturnValue(<div>DataAssetsTab.component</div>)
-);
 const mockComponent = () => <div>dataAssetsComponent</div>;
 jest.mock('./DataInsightClassBase', () => ({
-  getLeftPanel: jest.fn().mockReturnValue(<div>LeftPanel</div>),
+  getLeftPanel: jest.fn().mockReturnValue(() => <div>LeftPanel</div>),
   getDataInsightTab: jest.fn().mockReturnValue([
     {
       key: 'data-assets',

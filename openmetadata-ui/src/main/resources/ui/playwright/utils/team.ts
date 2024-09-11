@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { descriptionBox, uuid } from './common';
+import { descriptionBox, toastNotification, uuid } from './common';
 import { validateFormNameFieldInput } from './form';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
@@ -75,11 +75,7 @@ export const hardDeleteTeam = async (page: Page) => {
 
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const getNewTeamDetails = (teamName: string) => {
