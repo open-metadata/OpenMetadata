@@ -38,11 +38,15 @@ class TestDatalake:
         )  # type: ignore
 
         entities = resp.entities
-        assert len(entities) == 4
+        assert len(entities) == 5
         names = [entity.name.root for entity in entities]
-        assert {"names.json", "names.jsonl", "new_users.parquet", "users.csv"} == set(
-            names
-        )
+        assert {
+            "names.json",
+            "names.jsonl",
+            "new_users.parquet",
+            "users.csv",
+            "profiler_test_.csv",
+        } == set(names)
 
         for entity in entities:
             columns = entity.columns

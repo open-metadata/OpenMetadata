@@ -184,7 +184,7 @@ def run_ingestion(metadata, ingestion_config):
     metadata.delete(DatabaseService, db_service.id, recursive=True, hard_delete=True)
 
 
-@pytest.fixture
+@pytest.fixture(scope="class")
 def run_test_suite_workflow(run_ingestion, ingestion_config):
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
     workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
