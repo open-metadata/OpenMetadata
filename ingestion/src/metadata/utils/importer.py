@@ -64,7 +64,10 @@ class MissingPluginException(Exception):
         self.plugin = plugin
 
     def __str__(self):
-        return f"You might be missing the plugin [{self.plugin}]. Try:\npip install openmetadata-ingestion[{self.plugin}]"
+        return (
+            f"You might be missing the plugin [{self.plugin}]. Try:\n"
+            "pip install openmetadata-ingestion[{self.plugin}]"
+        )
 
 
 def get_module_dir(type_: str) -> str:

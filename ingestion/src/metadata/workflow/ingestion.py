@@ -240,7 +240,6 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         except DynamicImportException as e:
             if source_type.startswith("custom"):
                 raise e
-            else:
-                logger.debug(traceback.format_exc())
-                logger.error(f"Failed to import source of type '{source_type}'")
-                raise MissingPluginException(source_type)
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to import source of type '{source_type}'")
+            raise MissingPluginException(source_type)

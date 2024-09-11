@@ -75,7 +75,7 @@ class TestSuiteSource(Source):
         table: Table = self.metadata.get_by_name(
             entity=Table,
             fqn=self.source_config.entityFullyQualifiedName.root,
-            fields=["tableProfilerConfig", "testSuite"],
+            fields=["tableProfilerConfig", "testSuite", "serviceType"],
         )
 
         return table
@@ -106,16 +106,16 @@ class TestSuiteSource(Source):
 
     def _iter(self) -> Iterable[Either[TableAndTests]]:
         table: Table = self._get_table_entity()
-        source_type = table.serviceType.lower()
-        if source_type.startswith("custom"):
-            logger.warning(
-                "Data quality tests might not work as expected with custom sources"
-            )
-        else:
-            import_source_class(
-                service_type=ServiceType.Database, source_type=source_type
-            )
         if table:
+            source_type = table.serviceType.value.lower()
+            if source_type.startswith("custom"):
+                logger.warning(
+                    "Data quality tests might not work as expected with custom sources"
+                )
+            else:
+                import_source_class(
+                    service_type=ServiceType.Database, source_type=source_type
+                )
             yield from self._process_table_suite(table)
 
         else:
