@@ -12,7 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
-import { visitOwnProfilePage } from './common';
+import { toastNotification, visitOwnProfilePage } from './common';
 import { settingClick } from './sidebar';
 
 export const navigateToCustomizeLandingPage = async (
@@ -35,6 +35,7 @@ export const navigateToCustomizeLandingPage = async (
   await page.click(
     `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
   );
+  //   getByTestId('persona-details-card-PW%Persona-0e0cb753').getByTestId('customize-page-button')
 
   expect((await getCustomPageDataResponse).status()).toBe(
     customPageDataResponse
@@ -116,4 +117,38 @@ export const setUserDefaultPersona = async (
   await expect(
     page.locator('[data-testid="user-profile-details"]')
   ).toContainText(personaName);
+};
+
+export const openAddWidgetModal = async (page: Page) => {
+  const fetchResponse = page.waitForResponse(
+    '/api/v1/docStore?fqnPrefix=KnowledgePanel*'
+  );
+  await page
+    .locator(
+      '[data-testid="ExtraWidget.EmptyWidgetPlaceholder"] [data-testid="add-widget-button"]'
+    )
+    .click();
+
+  await fetchResponse;
+};
+
+export const navigateToLandingPage = async (page: Page) => {
+  const feedResponse = page.waitForResponse(`/api/v1/feed*`);
+  const dataInsightResponse = page.waitForResponse(
+    `/api/v1/analytics/dataInsights/system/charts/name/total_data_assets/data?*`
+  );
+
+  // Click on the logo to navigate to the landing page
+  await page.locator('#openmetadata_logo').click();
+
+  await feedResponse;
+  await dataInsightResponse;
+};
+
+export const saveLayout = async (page: Page) => {
+  const saveResponse = page.waitForResponse('/api/v1/docStore/*');
+  await page.locator('[data-testid="save-button"]').click();
+  await saveResponse;
+
+  await toastNotification(page, 'Page layout updated successfully.');
 };
