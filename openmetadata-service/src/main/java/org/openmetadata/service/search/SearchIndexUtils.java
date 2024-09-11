@@ -275,20 +275,21 @@ public final class SearchIndexUtils {
           if (!partsIterator.hasNext()) {
             // last element = key=value pairs of the aggregation
             String[] subParts = part.split("&");
-            Arrays.stream(subParts).forEach(
-                  subPart -> {
-                    String[] kvPairs = subPart.split("=");
-                    aggregationString
-                            .append("\"")
-                            .append(kvPairs[0])
-                            .append("\":\"")
-                            .append(kvPairs[1])
-                            .append("\"");
-                    aggregationMap.put(kvPairs[0], kvPairs[1]);
-                    // add comma if not the last element
-                    if (Arrays.asList(subParts).indexOf(subPart) < subParts.length - 1) aggregationString.append(",");
-                  }
-            );
+            Arrays.stream(subParts)
+                .forEach(
+                    subPart -> {
+                      String[] kvPairs = subPart.split("=");
+                      aggregationString
+                          .append("\"")
+                          .append(kvPairs[0])
+                          .append("\":\"")
+                          .append(kvPairs[1])
+                          .append("\"");
+                      aggregationMap.put(kvPairs[0], kvPairs[1]);
+                      // add comma if not the last element
+                      if (Arrays.asList(subParts).indexOf(subPart) < subParts.length - 1)
+                        aggregationString.append(",");
+                    });
             aggregationString.append("}");
           } else {
             String[] kvPairs = part.split("=");
