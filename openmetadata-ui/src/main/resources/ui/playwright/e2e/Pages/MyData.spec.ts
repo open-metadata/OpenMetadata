@@ -32,7 +32,7 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
-test.describe('My Data pag', () => {
+test.describe('My Data page', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -115,13 +115,5 @@ test.describe('My Data pag', () => {
         TableEntities
       );
     });
-  });
-
-  test('Verify user as owner feed widget', async ({ page }) => {
-    //
-  });
-
-  test('Verify team as owner feed widget', async ({ page }) => {
-    //
   });
 });
