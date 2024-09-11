@@ -605,7 +605,7 @@ class Profiler(Generic[TMetric]):
                 system_profile = [
                     system_result
                     if isinstance(system_result, SystemProfile)
-                    else SystemProfile(**system_result)
+                    else SystemProfile.model_validate(system_result)
                     for system_result in self._system_results
                 ]
             else:
