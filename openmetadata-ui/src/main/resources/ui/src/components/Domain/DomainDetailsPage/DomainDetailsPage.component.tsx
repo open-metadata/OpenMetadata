@@ -635,7 +635,7 @@ const DomainDetailsPage = ({
         className="domain-details"
         data-testid="domain-details"
         gutter={[0, 12]}>
-        <Col className="p-x-md" flex="auto">
+        <Col className="p-x-md p-l-xl" flex="auto">
           <EntityHeader
             breadcrumb={breadcrumbs}
             entityData={{ ...domain, displayName, name }}
