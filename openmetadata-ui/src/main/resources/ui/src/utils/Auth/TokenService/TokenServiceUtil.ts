@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ClientType } from '../../../generated/configuration/authenticationConfiguration';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AccessTokenResponse } from '../../../rest/auth-API';
 import { extractDetailsFromToken } from '../../AuthProvider.util';
@@ -51,7 +50,7 @@ class TokenService {
   // Refresh the token if it is expired
   async refreshToken() {
     const token = getOidcToken();
-    const { isExpired } = extractDetailsFromToken(token, ClientType.Public);
+    const { isExpired } = extractDetailsFromToken(token);
 
     if (isExpired) {
       // Logic to refresh the token
@@ -67,15 +66,20 @@ class TokenService {
 
   // Call renewal method according to the provider
   async fetchNewToken() {
+    let response: string | AccessTokenResponse | null = null;
     if (typeof this.renewToken === 'function') {
-      this.tokeUpdateInProgress = true;
-      const response = await this.renewToken();
-      this.tokeUpdateInProgress = false;
-
-      return response;
+      try {
+        this.tokeUpdateInProgress = true;
+        response = await this.renewToken();
+        this.tokeUpdateInProgress = false;
+      } catch (error) {
+        // Do nothing
+      } finally {
+        this.tokeUpdateInProgress = false;
+      }
     }
 
-    return null;
+    return response;
   }
 
   // Tracker for any ongoing token update
