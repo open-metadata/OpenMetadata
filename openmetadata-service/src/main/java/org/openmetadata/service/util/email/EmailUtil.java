@@ -11,8 +11,32 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.util;
+package org.openmetadata.service.util.email;
 
+import static org.openmetadata.service.util.email.TemplateConstants.ACCOUNT_ACTIVITY_CHANGE_TEMPLATE;
+import static org.openmetadata.service.util.email.TemplateConstants.ACCOUNT_STATUS_SUBJECT;
+import static org.openmetadata.service.util.email.TemplateConstants.ACTION_KEY;
+import static org.openmetadata.service.util.email.TemplateConstants.ACTION_STATUS_KEY;
+import static org.openmetadata.service.util.email.TemplateConstants.APPLICATION_LOGIN_LINK;
+import static org.openmetadata.service.util.email.TemplateConstants.CHANGE_EVENT_TEMPLATE;
+import static org.openmetadata.service.util.email.TemplateConstants.CHANGE_EVENT_UPDATE;
+import static org.openmetadata.service.util.email.TemplateConstants.DEFAULT_EXPIRATION_TIME;
+import static org.openmetadata.service.util.email.TemplateConstants.EMAIL_IGNORE_MSG;
+import static org.openmetadata.service.util.email.TemplateConstants.EMAIL_VERIFICATION_LINKKEY;
+import static org.openmetadata.service.util.email.TemplateConstants.EMAIL_VERIFICATION_SUBJECT;
+import static org.openmetadata.service.util.email.TemplateConstants.EMAIL_VERIFICATION_TEMPLATE;
+import static org.openmetadata.service.util.email.TemplateConstants.ENTITY;
+import static org.openmetadata.service.util.email.TemplateConstants.EXPIRATION_TIME_KEY;
+import static org.openmetadata.service.util.email.TemplateConstants.INVITE_RANDOM_PASSWORD_TEMPLATE;
+import static org.openmetadata.service.util.email.TemplateConstants.INVITE_SUBJECT;
+import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD;
+import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD_RESET_SUBJECT;
+import static org.openmetadata.service.util.email.TemplateConstants.REPORT_SUBJECT;
+import static org.openmetadata.service.util.email.TemplateConstants.SUPPORT_URL;
+import static org.openmetadata.service.util.email.TemplateConstants.TASK_SUBJECT;
+import static org.openmetadata.service.util.email.TemplateConstants.TEST_EMAIL_SUBJECT;
+import static org.openmetadata.service.util.email.TemplateConstants.TEST_MAIL_TEMPLATE;
+import static org.openmetadata.service.util.email.TemplateConstants.USERNAME;
 import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP;
 import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTPS;
 import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP_TLS;
@@ -22,6 +46,7 @@ import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,46 +71,8 @@ import org.simplejavamail.mailer.MailerBuilder;
 
 @Slf4j
 public class EmailUtil {
-  public static final String USERNAME = "userName";
-  public static final String ENTITY = "entity";
-  public static final String SUPPORT_URL = "supportUrl";
-  // Email Verification
-  private static final String EMAIL_VERIFICATION_SUBJECT =
-      "%s: Verify your Email Address (Action Required)";
-  public static final String EMAIL_VERIFICATION_LINKKEY = "userEmailTokenVerificationLink";
-  public static final String EMAIL_VERIFICATION_TEMPLATE = "email-verification";
-  // Password Reset Link
-  private static final String PASSWORD_RESET_SUBJECT = "%s: Reset your Password";
-  public static final String PASSWORD_RESET_LINKKEY = "userResetPasswordLink";
-  public static final String EXPIRATION_TIME_KEY = "expirationTime";
-  public static final String DEFAULT_EXPIRATION_TIME = "60";
-  public static final String PASSWORD = "password";
-  public static final String APPLICATION_LOGIN_LINK = "applicationLoginLink";
-  public static final String PASSWORD_RESET_TEMPLATE_FILE = "reset-link";
-  // Account Change Status
-  private static final String ACCOUNT_STATUS_SUBJECT = "%s: Change in Account Status";
-  public static final String ACTION_KEY = "action";
-  public static final String ACTION_STATUS_KEY = "actionStatus";
-  public static final String ACCOUNT_STATUS_TEMPLATE_FILE = "account-activity-change";
-  private static final String INVITE_SUBJECT = "Welcome to %s";
-  private static final String CHANGE_EVENT_UPDATE = "[%s] - Change Event Update from %s";
-
-  private static final String TASK_SUBJECT = "%s : Task Assignment Notification";
-  public static final String INVITE_RANDOM_PWD = "invite-randompwd";
-
-  public static final String CHANGE_EVENT_TEMPLATE = "changeEvent";
-  public static final String INVITE_CREATE_PWD = "invite-createPassword";
-  public static final String TASK_NOTIFICATION_TEMPLATE = "taskAssignment";
-  private static final String REPORT_SUBJECT = "%s: Data Insights Weekly - %s";
-  public static final String DATA_INSIGHT_REPORT_TEMPLATE = "dataInsightReport";
-  public static final String TEST_EMAIL_TEMPLATE = "testMail";
-  public static final String TEST_EMAIL_SUBJECT = "%s : Test Email";
-  private static SmtpSettings storedSmtpSettings;
   private static Mailer mailer;
-
-  private static final String EMAIL_IGNORE_MSG =
-      "Email was not sent to {} as SMTP setting is not enabled";
-
+  private static SmtpSettings storedSmtpSettings;
   private static TemplateProvider templateProvider;
 
   static {
@@ -93,7 +80,6 @@ public class EmailUtil {
     initializeTemplateProvider();
   }
 
-  // initialize template provider
   private static void initializeTemplateProvider() {
     templateProvider = new DefaultTemplateProvider();
   }
@@ -102,7 +88,7 @@ public class EmailUtil {
     try {
       getSmtpSettings();
       initializeTemplateProvider();
-      LOG.info("Email Util cache is initialized");
+      LOG.info("Email Util Cache is initialized");
     } catch (Exception ex) {
       LOG.warn("[MAILER] Smtp Configurations are missing : Reason {} ", ex.getMessage(), ex);
     }
@@ -137,18 +123,22 @@ public class EmailUtil {
 
   public static void sendAccountStatus(User user, String action, String status)
       throws IOException, TemplateException {
+
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
-      Map<String, Object> templatePopulator = new HashMap<>();
-      templatePopulator.put(ENTITY, getEmailingEntity());
-      templatePopulator.put(SUPPORT_URL, getSupportUrl());
-      templatePopulator.put(USERNAME, user.getName());
-      templatePopulator.put(ACTION_KEY, action);
-      templatePopulator.put(ACTION_STATUS_KEY, status);
+      Map<String, Object> templatePopulator =
+          new TemplatePopulatorBuilder()
+              .add(ENTITY, getSmtpSettings().getEmailingEntity())
+              .add(SUPPORT_URL, getSmtpSettings().getSupportUrl())
+              .add(USERNAME, user.getName())
+              .add(ACTION_KEY, action)
+              .add(ACTION_STATUS_KEY, status)
+              .build();
+
       sendMail(
           getAccountStatusChangeSubject(),
           templatePopulator,
           user.getEmail(),
-          ACCOUNT_STATUS_TEMPLATE_FILE,
+          ACCOUNT_ACTIVITY_CHANGE_TEMPLATE,
           true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, user.getEmail());
@@ -158,12 +148,16 @@ public class EmailUtil {
   public static void sendEmailVerification(String emailVerificationLink, User user)
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
-      Map<String, Object> templatePopulator = new HashMap<>();
-      templatePopulator.put(ENTITY, getEmailingEntity());
-      templatePopulator.put(SUPPORT_URL, getSupportUrl());
-      templatePopulator.put(USERNAME, user.getName());
-      templatePopulator.put(EMAIL_VERIFICATION_LINKKEY, emailVerificationLink);
-      templatePopulator.put(EXPIRATION_TIME_KEY, "24");
+
+      Map<String, Object> templatePopulator =
+          new TemplatePopulatorBuilder()
+              .add(ENTITY, getSmtpSettings().getEmailingEntity())
+              .add(SUPPORT_URL, getSmtpSettings().getSupportUrl())
+              .add(USERNAME, user.getName())
+              .add(EMAIL_VERIFICATION_LINKKEY, emailVerificationLink)
+              .add(EXPIRATION_TIME_KEY, "24")
+              .build();
+
       sendMail(
           getEmailVerificationSubject(),
           templatePopulator,
@@ -179,12 +173,15 @@ public class EmailUtil {
       String passwordResetLink, User user, String subject, String templateFilePath)
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
-      Map<String, Object> templatePopulator = new HashMap<>();
-      templatePopulator.put(ENTITY, getEmailingEntity());
-      templatePopulator.put(SUPPORT_URL, getSupportUrl());
-      templatePopulator.put(USERNAME, user.getName());
-      templatePopulator.put(PASSWORD_RESET_LINKKEY, passwordResetLink);
-      templatePopulator.put(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME);
+
+      Map<String, Object> templatePopulator =
+          new TemplatePopulatorBuilder()
+              .add(ENTITY, getSmtpSettings().getEmailingEntity())
+              .add(SUPPORT_URL, getSmtpSettings().getSupportUrl())
+              .add(USERNAME, user.getName())
+              .add(EMAIL_VERIFICATION_LINKKEY, passwordResetLink)
+              .add(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME)
+              .build();
 
       sendMail(subject, templatePopulator, user.getEmail(), templateFilePath, true);
     } else {
@@ -201,15 +198,18 @@ public class EmailUtil {
       String templateFilePath)
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
-      Map<String, Object> templatePopulator = new HashMap<>();
-      templatePopulator.put("assignee", assigneeName);
-      templatePopulator.put("createdBy", thread.getCreatedBy());
-      templatePopulator.put("taskName", thread.getMessage());
-      templatePopulator.put("taskStatus", thread.getTask().getStatus().toString());
-      templatePopulator.put("taskType", thread.getTask().getType().toString());
-      templatePopulator.put("fieldOldValue", thread.getTask().getOldValue());
-      templatePopulator.put("fieldNewValue", thread.getTask().getSuggestion());
-      templatePopulator.put("taskLink", taskLink);
+
+      Map<String, Object> templatePopulator =
+          new TemplatePopulatorBuilder()
+              .add("assignee", assigneeName)
+              .add("createdBy", thread.getCreatedBy())
+              .add("taskName", thread.getMessage())
+              .add("taskStatus", thread.getTask().getStatus().toString())
+              .add("taskType", thread.getTask().getType().toString())
+              .add("fieldOldValue", thread.getTask().getOldValue())
+              .add("fieldNewValue", thread.getTask().getSuggestion())
+              .add("taskLink", taskLink)
+              .build();
 
       sendMail(subject, templatePopulator, email, templateFilePath, true);
     } else {
@@ -267,20 +267,24 @@ public class EmailUtil {
     }
   }
 
-  public static void sendInviteMailToAdmin(User user, String pwd) {
+  public static void sendInviteMailToAdmin(User user, String password) {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
-      Map<String, Object> templatePopulator = new HashMap<>();
-      templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getEmailingEntity());
-      templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getSupportUrl());
-      templatePopulator.put(EmailUtil.USERNAME, user.getName());
-      templatePopulator.put(EmailUtil.PASSWORD, pwd);
-      templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getOMUrl());
+
+      Map<String, Object> templatePopulator =
+          new TemplatePopulatorBuilder()
+              .add(ENTITY, getSmtpSettings().getEmailingEntity())
+              .add(SUPPORT_URL, getSmtpSettings().getSupportUrl())
+              .add(USERNAME, user.getName())
+              .add(PASSWORD, password)
+              .add(APPLICATION_LOGIN_LINK, getSmtpSettings().getOpenMetadataUrl())
+              .build();
+
       try {
         EmailUtil.sendMail(
             EmailUtil.getEmailInviteSubject(),
             templatePopulator,
             user.getEmail(),
-            EmailUtil.INVITE_RANDOM_PWD,
+            INVITE_RANDOM_PASSWORD_TEMPLATE,
             true);
       } catch (Exception ex) {
         LOG.error(
@@ -294,22 +298,27 @@ public class EmailUtil {
   public static void sendChangeEventMail(
       String publisherName, String receiverMail, EmailMessage emailMessaged) {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
-      Map<String, Object> templatePopulator = new HashMap<>();
-      templatePopulator.put(EmailUtil.USERNAME, receiverMail.split("@")[0]);
-      templatePopulator.put("updatedBy", emailMessaged.getUpdatedBy());
-      templatePopulator.put("entityUrl", emailMessaged.getEntityUrl());
+
       StringBuilder buff = new StringBuilder();
       for (String cmessage : emailMessaged.getChangeMessage()) {
         buff.append(cmessage);
         buff.append("\n");
       }
-      templatePopulator.put("changeMessage", buff.toString());
+
+      Map<String, Object> templatePopulator =
+          new TemplatePopulatorBuilder()
+              .add(USERNAME, receiverMail.split("@")[0])
+              .add("updatedBy", emailMessaged.getUpdatedBy())
+              .add("entityUrl", emailMessaged.getEntityUrl())
+              .add("changeMessage", buff.toString())
+              .build();
+
       try {
         EmailUtil.sendMail(
             EmailUtil.getChangeEventTemplate(publisherName),
             templatePopulator,
             receiverMail,
-            EmailUtil.CHANGE_EVENT_TEMPLATE,
+            CHANGE_EVENT_TEMPLATE,
             true);
       } catch (Exception ex) {
         LOG.error(
@@ -332,16 +341,21 @@ public class EmailUtil {
       String templateFilePath)
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
-      Map<String, Object> templatePopulator = new HashMap<>();
-      templatePopulator.put("startDate", startDate);
-      templatePopulator.put("endDate", endDate);
-      templatePopulator.put("totalAssetObj", totalAssetObj);
-      templatePopulator.put("descriptionObj", descriptionObj);
-      templatePopulator.put("ownershipObj", ownerShipObj);
-      templatePopulator.put("tierObj", tierObj);
-      templatePopulator.put(
-          "viewReportUrl",
-          String.format("%s/data-insights/data-assets", getSmtpSettings().getOpenMetadataUrl()));
+
+      Map<String, Object> templatePopulator =
+          new TemplatePopulatorBuilder()
+              .add("startDate", startDate)
+              .add("endDate", endDate)
+              .add("totalAssetObj", totalAssetObj)
+              .add("descriptionObj", descriptionObj)
+              .add("ownershipObj", ownerShipObj)
+              .add("tierObj", tierObj)
+              .add(
+                  "viewReportUrl",
+                  String.format(
+                      "%s/data-insights/data-assets", getSmtpSettings().getOpenMetadataUrl()))
+              .build();
+
       sendMailToMultiple(subject, templatePopulator, emails, templateFilePath);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, emails.toString());
@@ -351,11 +365,15 @@ public class EmailUtil {
   public static void sendTestEmail(String email, boolean async)
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
-      Map<String, Object> templatePopulator = new HashMap<>();
-      templatePopulator.put("userName", email.split("@")[0]);
-      templatePopulator.put("entity", getSmtpSettings().getEmailingEntity());
-      templatePopulator.put("supportUrl", getSmtpSettings().getSupportUrl());
-      sendMail(getTestEmailSubject(), templatePopulator, email, TEST_EMAIL_TEMPLATE, async);
+
+      Map<String, Object> templatePopulator =
+          new TemplatePopulatorBuilder()
+              .add("userName", email.split("@")[0])
+              .add("entity", getSmtpSettings().getEmailingEntity())
+              .add("supportUrl", getSmtpSettings().getSupportUrl())
+              .build();
+
+      sendMail(getTestEmailSubject(), templatePopulator, email, TEST_MAIL_TEMPLATE, async);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, email);
     }
@@ -404,18 +422,6 @@ public class EmailUtil {
         new SimpleDateFormat("dd-MM-yy").format(new Date()));
   }
 
-  public static String getEmailingEntity() {
-    return getSmtpSettings().getEmailingEntity();
-  }
-
-  public static String getSupportUrl() {
-    return getSmtpSettings().getSupportUrl();
-  }
-
-  public static String getOMUrl() {
-    return getSmtpSettings().getOpenMetadataUrl();
-  }
-
   public static SmtpSettings getSmtpSettings() {
     SmtpSettings emailConfig =
         SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
@@ -426,16 +432,27 @@ public class EmailUtil {
     return emailConfig;
   }
 
-  /**
-   * Check if given email address is valid
-   *
-   * @param email email address
-   * @return true if valid, false otherwise
-   */
   public static Boolean isValidEmail(String email) {
     if (StringUtils.isBlank(email)) {
       return false;
     }
     return email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$");
+  }
+
+  static class TemplatePopulatorBuilder {
+    private final Map<String, Object> templatePopulator;
+
+    public TemplatePopulatorBuilder() {
+      this.templatePopulator = new HashMap<>();
+    }
+
+    public TemplatePopulatorBuilder add(String key, Object value) {
+      templatePopulator.put(key, value);
+      return this;
+    }
+
+    public Map<String, Object> build() {
+      return Collections.unmodifiableMap(templatePopulator);
+    }
   }
 }
