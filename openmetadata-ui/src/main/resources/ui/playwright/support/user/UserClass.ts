@@ -48,8 +48,14 @@ export class UserClass {
   }
 
   async create(apiContext: APIRequestContext) {
+    const dataConsumerRoleResponse = await apiContext.get(
+      '/api/v1/roles/name/DataConsumer'
+    );
+
+    const dataConsumerRole = await dataConsumerRoleResponse.json();
+
     const response = await apiContext.post('/api/v1/users/signup', {
-      data: this.data,
+      data: { ...this.data, roles: [dataConsumerRole.id] },
     });
 
     this.responseData = await response.json();
