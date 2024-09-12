@@ -68,11 +68,11 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
+import org.openmetadata.service.util.email.EmailUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;
 
