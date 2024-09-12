@@ -15,7 +15,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
-import { getListTestCase } from '../../../../rest/testAPI';
+import { getListTestCaseBySearch } from '../../../../rest/testAPI';
 import { TableProfilerProvider } from './TableProfilerProvider';
 
 // Mock dependencies
@@ -38,7 +38,9 @@ jest.mock('../../../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest.fn().mockResolvedValue({}),
 }));
 jest.mock('../../../../rest/testAPI', () => ({
-  getListTestCase: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  getListTestCaseBySearch: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: {} }),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -84,7 +86,7 @@ describe('TableProfilerProvider', () => {
   });
 
   it('test cases should be fetch on data quality tab', async () => {
-    const mockGetListTestCase = getListTestCase as jest.Mock;
+    const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
 
     expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
     expect(mockGetListTestCase).toHaveBeenCalledWith({

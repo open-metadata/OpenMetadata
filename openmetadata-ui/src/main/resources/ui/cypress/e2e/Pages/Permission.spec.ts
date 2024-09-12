@@ -417,7 +417,11 @@ describe('Permissions', { tags: 'Settings' }, () => {
       serviceName: DATABASE_SERVICE.service.name,
       entity: EntityType.Table,
     });
-    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    interceptURL(
+      'GET',
+      '/api/v1/dataQuality/testCases/search/list?fields=*',
+      'testCase'
+    );
     cy.get('[data-testid="profiler"]').click();
     cy.get('[data-testid="profiler-tab-left-panel"]')
       .contains('Data Quality')
