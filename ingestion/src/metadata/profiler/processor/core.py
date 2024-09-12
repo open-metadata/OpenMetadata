@@ -603,7 +603,7 @@ class Profiler(Generic[TMetric]):
 
             if self._system_results:
                 system_profile = [
-                    SystemProfile(**system_result)
+                    SystemProfile.model_validate(system_result)
                     for system_result in self._system_results
                 ]
             else:
