@@ -67,15 +67,8 @@ export const UserTeamSelectableList = ({
   const [popupVisible, setPopupVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
   const [count, setCount] = useState({ team: 0, user: 0 });
-  const activeOwners = useMemo(() => {
-    if (isArray(owner)) {
-      return owner;
-    }
 
-    return owner ? [owner] : [];
-  }, [owner]);
-  const [selectedUsers, setSelectedUsers] =
-    useState<EntityReference[]>(activeOwners);
+  const [selectedUsers, setSelectedUsers] = useState<EntityReference[]>([]);
 
   const ownerType = useMemo(() => {
     if (owner) {
@@ -252,6 +245,11 @@ export const UserTeamSelectableList = ({
   const handleChange = (selectedItems: EntityReference[]) => {
     setSelectedUsers(selectedItems);
   };
+
+  useEffect(() => {
+    const activeOwners = isArray(owner) ? owner : owner ? [owner] : [];
+    setSelectedUsers(activeOwners);
+  }, [owner]);
 
   useEffect(() => {
     init();

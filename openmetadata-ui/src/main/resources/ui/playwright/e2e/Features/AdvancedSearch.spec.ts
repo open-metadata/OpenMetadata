@@ -91,7 +91,10 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     searchCriteria = {
       'owners.displayName.keyword': [user1.getUserName(), user2.getUserName()],
       'tags.tagFQN': ['PersonalData.Personal', 'PII.None'],
-      'tier.tagFQN': [tierTag1.data.displayName, tierTag2.data.displayName],
+      'tier.tagFQN': [
+        tierTag1.responseData.fullyQualifiedName,
+        tierTag2.responseData.fullyQualifiedName,
+      ],
       'service.displayName.keyword': [table1.service.name, table2.service.name],
       'database.displayName.keyword': [
         table1.database.name,
