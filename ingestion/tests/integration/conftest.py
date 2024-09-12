@@ -15,7 +15,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.ingestion import IngestionWorkflow
 
 if not sys.version_info >= (3, 9):
-    collect_ignore = ["trino", "kafka"]
+    # these tests use test-containers which are not supported in python 3.8
+    collect_ignore = ["trino", "kafka", "datalake"]
 
 
 @pytest.fixture(scope="session", autouse=True)

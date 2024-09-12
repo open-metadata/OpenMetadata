@@ -207,11 +207,8 @@ plugins: Dict[str, Set[str]] = {
         *COMMONS["datalake"],
     },
     "datalake-s3": {
-        # requires aiobotocore
-        # https://github.com/fsspec/s3fs/blob/9bf99f763edaf7026318e150c4bd3a8d18bb3a00/requirements.txt#L1
-        # however, the latest version of `s3fs` conflicts its `aiobotocore` dep with `boto3`'s dep on `botocore`.
-        # Leaving this marked to the automatic resolution to speed up installation.
-        "s3fs",
+        # vendoring 'boto3' to keep all dependencies aligned (s3fs, boto3, botocore, aiobotocore)
+        "s3fs[boto3]",
         *COMMONS["datalake"],
     },
     "deltalake": {"delta-spark<=2.3.0", "deltalake~=0.17"},
@@ -343,7 +340,6 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "moto~=5.0",
     "basedpyright~=1.14",
     "pytest==7.0.0",
     "pytest-cov",
