@@ -37,6 +37,7 @@ from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.importer import import_source_class
 from metadata.utils.logger import test_suite_logger
 
@@ -108,7 +109,7 @@ class TestSuiteSource(Source):
         table: Table = self._get_table_entity()
         if table:
             source_type = table.serviceType.value.lower()
-            if source_type.startswith("custom"):
+            if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):
                 logger.warning(
                     "Data quality tests might not work as expected with custom sources"
                 )

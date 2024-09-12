@@ -27,6 +27,8 @@ from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.utils.class_helper import get_service_type_from_source_type
+from metadata.utils.client_version import get_client_version
+from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.logger import utils_logger
 from metadata.utils.singleton import Singleton
 
@@ -57,16 +59,22 @@ class DynamicImportException(Exception):
 
 class MissingPluginException(Exception):
     """
-    Raise it when having issues dynamically importing objects
+    An excpetion that captures a missing openmetadata-ingestion plugin for a specific connector.
     """
 
     def __init__(self, plugin: str):
         self.plugin = plugin
 
     def __str__(self):
+        try:
+            version = "==" + get_client_version()
+        except Exception:
+            logger.warning("unable to get client version")
+            logger.debug(traceback.format_exc())
+            version = ""
         return (
             f"You might be missing the plugin [{self.plugin}]. Try:\n"
-            "pip install openmetadata-ingestion[{self.plugin}]"
+            f'pip install "openmetadata-ingestion[{self.plugin}]{version}"'
         )
 
 
@@ -226,7 +234,7 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
     # module building strings read better with .format instead of f-strings
     # pylint: disable=consider-using-f-string
 
-    if connection.type.value.lower().startswith("custom"):
+    if connection.type.value.lower().startswith(CUSTOM_CONNECTOR_PREFIX):
         python_class_parts = connection.sourcePythonClass.rsplit(".", 1)
         python_module_path = ".".join(python_class_parts[:-1])
 

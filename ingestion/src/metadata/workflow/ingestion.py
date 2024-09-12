@@ -46,6 +46,7 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
+from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.importer import (
     DynamicImportException,
     MissingPluginException,
@@ -232,13 +233,13 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                 import_from_module(
                     self.config.source.serviceConnection.root.config.sourcePythonClass
                 )
-                if source_type.startswith("custom")
+                if source_type.startswith(CUSTOM_CONNECTOR_PREFIX)
                 else import_source_class(
                     service_type=self.service_type, source_type=source_type
                 )
             )
         except DynamicImportException as e:
-            if source_type.startswith("custom"):
+            if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):
                 raise e
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to import source of type '{source_type}'")
