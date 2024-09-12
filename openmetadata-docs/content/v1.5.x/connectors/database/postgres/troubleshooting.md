@@ -47,3 +47,32 @@ LINE 2:                 SELECT relispartition as is_partition
 
 Then you might be using an unsupported postgres version. If we double-check the requirements for the postgres connector:
 Note that we only support officially supported Postgres versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
+
+## Error: `no pg_hba.conf entry for host`
+
+When trying to connect to a PostgreSQL server hosted on Azure/AWS using basic authentication, the connection may fail with the following error message:
+
+```
+(psycopg2.OperationalError) FATAL: no pg_hba.conf entry for host "x.xx.xxx.x", user "xxxxxx", database "xxxxx", no encryption
+```
+
+
+This error generally indicates that the host trying to access the Postgres server is not permitted according to the server's `pg_hba.conf` configuration, which manages authentication.
+
+1. **Whitelist the IP address**  
+   Ensure that the IP address provided by the OpenMetadata Service wizard is whitelisted in the Azure network firewall rules. You should also verify that the correct IP is added in the firewall for the database to allow connections from OpenMetadata.
+
+2. **Check pg_hba.conf File**  
+   While Azure-managed PostgreSQL doesn't allow direct access to modify the `pg_hba.conf` file, you can control access using Azure Firewall rules. Ensure that the IP address attempting to connect is allowed.
+
+3. **Verify Network Access**  
+   Ensure that the PostgreSQL server is accessible from the internet for the allowed IP addresses. If the server is behind a VPN or private network, adjust the network settings accordingly.
+
+4. **Adjust SSL Mode**  
+   The error could also be related to SSL settings. Setting the SSL mode to `allow` can help resolve this issue. Modify the connection settings in the OpenMetadata Service configuration to:
+
+```
+SSL Mode: Allow
+```
+
+This will allow the connection even if SSL is not enforced by the server.

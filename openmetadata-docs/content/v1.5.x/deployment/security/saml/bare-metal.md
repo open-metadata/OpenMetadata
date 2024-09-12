@@ -27,7 +27,7 @@ are divided into the following three sections:-
 
 ```yaml
   sp:
-    entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}
+    entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/acs"}
     acs: ${SAML_SP_ACS:-"http://localhost:8585/api/v1/saml/acs"}
     spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
     callback: ${SAML_SP_CALLBACK:-"http://localhost:8585/saml/callback"}
