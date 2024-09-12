@@ -82,10 +82,17 @@ You can configure the Sample Data Storage Credentials at the Database Schema lev
     - **Percentage**: this will use a percentage to sample the table (e.g. if table has 100 rows, and we set sample percentage tp 50%, the profiler will use 50 random rows to compute the metrics).
     - **Row Count**: this will use a number of rows to sample the table (e.g. if table has 100 rows, and we set row count to 10, the profiler will use 10 random rows to compute the metrics).
 - **Sample Data Rows Count**: Number of rows of sample data to be ingested, if generate sample data option is enabled.
-
 {% note %}
 
 The OpenMetadata UI will always show 50 or fewer rows of sample data. *Sample Data Rows Count* higher than 50 is only used for maintaining the row count of sample data that will be stored in parquet file in an object storage.
+
+{% /note %}
+
+- **Sampling Method Type**: The sampling method type can be set to **BERNOULLI** or **SYSTEM**. You can find the difference of two values in the document of the Snowflake. When you choice **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restlictions than **SYSTEM**. If no option is choiced, the default is **BERNOULLI**.
+
+{% note %}
+
+This parameter is effective for Snowflake only. 
 
 {% /note %}
 
