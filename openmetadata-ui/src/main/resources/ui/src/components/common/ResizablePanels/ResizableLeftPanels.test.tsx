@@ -62,6 +62,8 @@ describe('ResizableLeftPanels', () => {
     });
 
     expect(screen.getByTestId('first-panel')).toHaveClass('hidden');
+
+    expect(screen.getByText('Second Panel')).toBeInTheDocument();
   });
 
   it('should set the orientation of the panels to horizontal', () => {
