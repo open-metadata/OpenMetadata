@@ -24,7 +24,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   @Override
   public String getCondition(String entityType) {
     ArrayList<String> conditions = new ArrayList<>();
-    conditions.add(getIncludeCondition());
+    conditions.add(getIncludeCondition(entityType));
     conditions.add(getDomainCondition());
     conditions.add(getOwnerCondition());
 
@@ -87,7 +87,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return String.format("\"_source\": {%s}", addCondition(conditions));
   }
 
-  private String getIncludeCondition() {
+  private String getDomainCondition() {
     String domain = getQueryParam("domain");
     if (!nullOrEmpty(domain)) {
       return String.format(
@@ -96,9 +96,15 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return "";
   }
 
-  private String getDomainCondition() {
+  private String getIncludeCondition(String entityType) {
+    boolean supportsDeleted = true;
+    if (entityType != null) {
+      Class<?> clazz = Entity.getEntityClassFromType(entityType);
+      if (clazz == null) clazz = Entity.getEntityTimeSeriesClassFromType(entityType);
+      supportsDeleted = (clazz != null) && Entity.getEntityFields(clazz).contains("deleted");
+    }
     String deleted = "";
-    if (include != Include.ALL) {
+    if (include != Include.ALL && supportsDeleted) {
       deleted = String.format("{\"term\": {\"deleted\": \"%s\"}}", include == Include.DELETED);
     }
     return deleted;

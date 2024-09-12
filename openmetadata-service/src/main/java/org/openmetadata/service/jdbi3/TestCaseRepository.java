@@ -97,7 +97,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Add the canonical name for test case results
     // As test case result` does not have its own repository
     EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(
-        Entity.TEST_CASE_RESULTS.toLowerCase(Locale.ROOT), Entity.TEST_CASE_RESULTS);
+        Entity.TEST_CASE_RESULT.toLowerCase(Locale.ROOT), Entity.TEST_CASE_RESULT);
   }
 
   @Override
@@ -991,6 +991,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           original.getUseDynamicAssertion(),
           updated.getUseDynamicAssertion());
       recordChange("testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult());
+      recordChange("testCaseStatus", original.getTestCaseStatus(), updated.getTestCaseStatus());
     }
   }
 

@@ -1162,7 +1162,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
   }
 
-  private ResourceContextInterface getResourceContext(String entityLink, Filter filter) {
+  protected static ResourceContextInterface getResourceContext(
+      String entityLink, Filter<?> filter) {
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);

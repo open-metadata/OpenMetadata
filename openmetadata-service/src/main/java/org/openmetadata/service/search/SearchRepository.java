@@ -230,9 +230,7 @@ public class SearchRepository {
       }
       searchClient.createAliases(indexMapping);
     } catch (Exception e) {
-      LOG.warn(
-          String.format(
-              "Failed to Update Index for entity %s", indexMapping.getIndexName(clusterAlias)));
+      LOG.warn("Failed to Update Index for entity {}", indexMapping.getIndexName(clusterAlias));
     }
   }
 
@@ -274,13 +272,12 @@ public class SearchRepository {
         searchClient.createEntity(indexMapping.getIndexName(clusterAlias), entityId, doc);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Creating new search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
       }
     }
   }
@@ -302,13 +299,35 @@ public class SearchRepository {
         searchClient.createTimeSeriesEntity(indexMapping.getIndexName(clusterAlias), entityId, doc);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Creating new search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
+      }
+    }
+  }
+
+  public void updateTimeSeriesEntity(EntityTimeSeriesInterface entityTimeSeries) {
+    if (entityTimeSeries != null) {
+      String entityType = entityTimeSeries.getEntityReference().getType();
+      String entityId = entityTimeSeries.getId().toString();
+      try {
+        IndexMapping indexMapping = entityIndexMap.get(entityType);
+        SearchIndex elasticSearchIndex =
+            searchIndexFactory.buildIndex(entityType, entityTimeSeries);
+        Map<String, Object> doc = elasticSearchIndex.buildSearchIndexDoc();
+        searchClient.updateEntity(
+            indexMapping.getIndexName(clusterAlias), entityId, doc, DEFAULT_UPDATE_SCRIPT);
+      } catch (RuntimeException e) {
+        LOG.error(
+            "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            e.getMessage(),
+            e.getCause(),
+            ExceptionUtils.getStackTrace(e));
       }
     }
   }
@@ -337,13 +356,12 @@ public class SearchRepository {
             entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Updating the search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
       }
     }
   }
@@ -515,9 +533,11 @@ public class SearchRepository {
       searchClient.deleteByScript(indexMapping.getIndexName(clusterAlias), scriptTxt, params);
     } catch (Exception ie) {
       LOG.error(
-          String.format(
-              "Issue in Creating new search document for entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-              entityType, ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+          "Issue in Creating new search document for entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          entityType,
+          ie.getMessage(),
+          ie.getCause(),
+          ExceptionUtils.getStackTrace(ie));
     }
   }
 
@@ -531,13 +551,12 @@ public class SearchRepository {
         deleteOrUpdateChildren(entity, indexMapping);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
       }
     }
   }
@@ -551,13 +570,12 @@ public class SearchRepository {
         searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
       }
     }
   }
@@ -574,13 +592,12 @@ public class SearchRepository {
         softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Soft Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Soft Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
       }
     }
   }

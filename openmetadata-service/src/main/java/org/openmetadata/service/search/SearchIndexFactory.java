@@ -136,7 +136,7 @@ public class SearchIndexFactory {
           (ReportData) entity);
       case Entity.TEST_CASE_RESOLUTION_STATUS -> new TestCaseResolutionStatusIndex(
           (TestCaseResolutionStatus) entity);
-      case Entity.TEST_CASE_RESULTS -> new TestCaseResultIndex((TestCaseResult) entity);
+      case Entity.TEST_CASE_RESULT -> new TestCaseResultIndex((TestCaseResult) entity);
       default -> buildExternalIndexes(entityType, entity);
     };
   }

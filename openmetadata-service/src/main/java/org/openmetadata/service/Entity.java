@@ -215,7 +215,7 @@ public final class Entity {
   // Time series entities
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
-  public static final String TEST_CASE_RESULTS = "testCaseResult";
+  public static final String TEST_CASE_RESULT = "testCaseResult";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA =
       "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA =

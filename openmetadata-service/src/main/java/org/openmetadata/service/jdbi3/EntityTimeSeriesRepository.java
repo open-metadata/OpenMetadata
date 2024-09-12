@@ -1,12 +1,18 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 
+import java.beans.IntrospectionException;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.json.JsonPatch;
+import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -14,21 +20,27 @@ import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
+@Getter
 @Repository
 public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
-  @Getter protected final String collectionPath;
-  @Getter protected final EntityTimeSeriesDAO timeSeriesDao;
-  @Getter protected final SearchRepository searchRepository;
-  @Getter protected final String entityType;
-  @Getter protected final Class<T> entityClass;
-  @Getter protected final CollectionDAO daoCollection;
+  protected final String collectionPath;
+  protected final EntityTimeSeriesDAO timeSeriesDao;
+  protected final SearchRepository searchRepository;
+  protected final String entityType;
+  protected final Class<T> entityClass;
+  protected final CollectionDAO daoCollection;
 
-  protected EntityTimeSeriesRepository(
+  public EntityTimeSeriesRepository(
       String collectionPath,
       EntityTimeSeriesDAO timeSeriesDao,
       Class<T> entityClass,
@@ -81,6 +93,32 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     // Nothing to do in the default implementation
   }
 
+  protected T setFieldsInternal(T recordEntity, EntityUtil.Fields fields) {
+    setFields(recordEntity, fields);
+    return recordEntity;
+  }
+
+  protected void setFields(T recordEntity, EntityUtil.Fields fields) {
+    // Nothing to do in the default implementation
+  }
+
+  protected void clearFieldsInternal(T recordEntity, EntityUtil.Fields fields) {
+    clearFields(recordEntity, fields);
+  }
+
+  protected void clearFields(T recordEntity, EntityUtil.Fields fields) {
+    // Nothing to do in the default implementation
+  }
+
+  protected void setUpdatedFields(T updated, String user) {
+    // Nothing to do in the default implementation
+  }
+
+  protected void validatePatchFields(T updated, T original) {
+    // Nothing to do in the default implementation
+  }
+  ;
+
   @Transaction
   public final void addRelationship(
       UUID fromId,
@@ -111,6 +149,12 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     searchRepository.deleteTimeSeriesEntityById(JsonUtils.deepCopy(recordEntity, entityClass));
   }
 
+  protected void postUpdate(T updated) {
+    searchRepository.updateTimeSeriesEntity(updated);
+  }
+
+  // Database Repository Methods
+  // -------------------------
   public final List<CollectionDAO.EntityRelationshipRecord> findFromRecords(
       UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
     // When fromEntityType is null, all the relationships from any entity is returned
@@ -232,7 +276,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   public void deleteById(UUID id, boolean hardDelete) {
     if (!hardDelete) {
-      // time series entities by definition cannot be soft deleted (i.e. they do not have a state
+      // time series entities by definition cannot be soft deleted (i.e. they do not have a state,
       // and they should be immutable) thought they can be contained inside entities that can be
       // soft deleted
       return;
@@ -285,5 +329,56 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     resultList.put("entityList", entityList);
     resultList.put("errors", errors);
     return resultList;
+  }
+
+  public RestUtil.PatchResponse<T> patch(UUID id, JsonPatch patch, String user)
+      throws IntrospectionException, InvocationTargetException, IllegalAccessException {
+    String originalJson = timeSeriesDao.getById(id);
+    if (originalJson == null) {
+      throw new EntityNotFoundException(String.format("Entity with id %s not found", id));
+    }
+    T original = JsonUtils.readValue(originalJson, entityClass);
+    T updated = JsonUtils.applyPatch(original, patch, entityClass);
+
+    setUpdatedFields(updated, user);
+    validatePatchFields(updated, original);
+
+    timeSeriesDao.update(JsonUtils.pojoToJson(updated), id);
+    postUpdate(updated);
+    return new RestUtil.PatchResponse<>(Response.Status.OK, updated, ENTITY_UPDATED);
+  }
+
+  // Search Repository Methods
+  // -------------------------
+  public ResultList<T> listFromSearchWithOffset(
+      EntityUtil.Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q)
+      throws IOException {
+    List<T> entityList = new ArrayList<>();
+    long total;
+
+    if (limit > 0) {
+      SearchClient.SearchResultListMapper results =
+          searchRepository.listWithOffset(
+              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+      total = results.getTotal();
+      for (Map<String, Object> json : results.getResults()) {
+        T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+        setInheritedFields(entity);
+        clearFieldsInternal(entity, fields);
+        entityList.add(entity);
+      }
+      return new ResultList<>(entityList, offset, limit, (int) total);
+    } else {
+      SearchClient.SearchResultListMapper results =
+          searchRepository.listWithOffset(
+              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+      total = results.getTotal();
+      return new ResultList<>(entityList, null, limit, (int) total);
+    }
   }
 }
