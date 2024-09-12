@@ -10,78 +10,49 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
-import { BotClass } from '../../support/bot/BotClass';
-import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
+import { expect, test } from '@playwright/test';
 import {
   createBot,
   deleteBot,
-  getCreatedBot,
   redirectToBotPage,
   tokenExpirationForDays,
   tokenExpirationUnlimitedDays,
   updateBotDetails,
 } from '../../utils/bot';
 
-const adminUser = new UserClass();
-const bot = new BotClass();
-const bot2 = new BotClass();
+// use the admin user to login
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const test = base.extend<{ adminPage: Page }>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-});
+test.describe('Bots Page should work properly', () => {
+  test.slow(true);
 
-test.describe.skip('Bots Page should work properly', () => {
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
-    await bot.create(apiContext);
-    await bot2.create(apiContext);
-    await afterAction();
-  });
+  test('Bots Page should work properly', async ({ page }) => {
+    await redirectToBotPage(page);
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-    await bot.delete(apiContext);
-    await bot2.delete(apiContext);
-    await afterAction();
-  });
+    await test.step(
+      'Verify ingestion bot delete button is always disabled',
+      async () => {
+        await expect(
+          page.getByTestId('bot-delete-ingestion-bot')
+        ).toBeDisabled();
+      }
+    );
 
-  test('Verify ingestion bot delete button is always disabled', async ({
-    adminPage,
-  }) => {
-    await redirectToBotPage(adminPage);
+    await test.step('Create Bot', async () => {
+      await createBot(page);
+    });
 
-    await expect(
-      adminPage.getByTestId('bot-delete-ingestion-bot')
-    ).toBeDisabled();
-  });
+    await test.step('Update display name and description', async () => {
+      await updateBotDetails(page);
+    });
 
-  test('Create and Delete Bot', async ({ adminPage }) => {
-    await redirectToBotPage(adminPage);
-    await createBot(adminPage);
-    await deleteBot(adminPage);
-  });
+    await test.step('Update token expiration', async () => {
+      await tokenExpirationForDays(page);
+      await tokenExpirationUnlimitedDays(page);
+    });
 
-  test('Update display name and description', async ({ adminPage }) => {
-    await redirectToBotPage(adminPage);
-    await updateBotDetails(adminPage, bot.responseData);
-  });
-
-  test('Update token expiration', async ({ adminPage }) => {
-    test.slow(true);
-
-    await redirectToBotPage(adminPage);
-    await getCreatedBot(adminPage, bot2.responseData.name);
-    await tokenExpirationForDays(adminPage);
-    await tokenExpirationUnlimitedDays(adminPage);
+    await test.step('Delete Bot', async () => {
+      await deleteBot(page);
+    });
   });
 });
