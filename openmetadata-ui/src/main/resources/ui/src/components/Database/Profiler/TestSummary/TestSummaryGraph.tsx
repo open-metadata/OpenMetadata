@@ -135,6 +135,7 @@ function TestSummaryGraph({
       dataKey: info.label,
       type: 'line',
       color: info.color,
+      inactive: !(activeKeys.length === 0 || activeKeys.includes(info.label)),
     }));
 
     legendPayload.push({
@@ -145,7 +146,7 @@ function TestSummaryGraph({
     } as Payload);
 
     return legendPayload;
-  }, [chartData]);
+  }, [chartData?.information, activeKeys]);
 
   const handleLegendClick: LegendProps['onClick'] = (event) => {
     if (event.dataKey === 'Incident') {
@@ -226,7 +227,7 @@ function TestSummaryGraph({
 
   return (
     <ResponsiveContainer
-      className="bg-white"
+      className="bg-white custom-test-summary-graph"
       id={`${testCaseName}_graph`}
       minHeight={minHeight ?? 400}>
       <ComposedChart
