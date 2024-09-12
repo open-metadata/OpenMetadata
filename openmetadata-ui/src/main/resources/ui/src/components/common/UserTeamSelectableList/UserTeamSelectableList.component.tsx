@@ -67,7 +67,15 @@ export const UserTeamSelectableList = ({
   const [popupVisible, setPopupVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
   const [count, setCount] = useState({ team: 0, user: 0 });
-  const [selectedUsers, setSelectedUsers] = useState<EntityReference[]>([]);
+  const activeOwners = useMemo(() => {
+    if (isArray(owner)) {
+      return owner;
+    }
+
+    return owner ? [owner] : [];
+  }, [owner]);
+  const [selectedUsers, setSelectedUsers] =
+    useState<EntityReference[]>(activeOwners);
 
   const ownerType = useMemo(() => {
     if (owner) {
@@ -88,16 +96,6 @@ export const UserTeamSelectableList = ({
         selectedUsers?.filter((item) => item.type === EntityType.TEAM) ?? [],
     };
   }, [selectedUsers]);
-
-  const reset = () => {
-    let selectedUsers: EntityReference[] = [];
-    if (isArray(owner)) {
-      selectedUsers = owner;
-    } else if (owner) {
-      selectedUsers = [owner];
-    }
-    setSelectedUsers(selectedUsers);
-  };
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -216,7 +214,6 @@ export const UserTeamSelectableList = ({
 
   const init = async () => {
     if (popupVisible || popoverProps?.open) {
-      reset();
       if (ownerType === EntityType.USER) {
         await getTeamCount();
         setActiveTab('users');
