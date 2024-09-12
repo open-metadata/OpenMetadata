@@ -20,7 +20,7 @@ from metadata.config.common import load_config_file
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
 )
-from metadata.utils.logger import cli_logger
+from metadata.utils.logger import cli_logger, redacted_config
 from metadata.workflow.usage import UsageWorkflow
 from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandler
 
@@ -37,6 +37,7 @@ def run_usage(config_path: Path) -> None:
     config_dict = None
     try:
         config_dict = load_config_file(config_path)
+        logger.debug("Using workflow config:\n%s", redacted_config(config_dict))
         workflow = UsageWorkflow.create(config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())
