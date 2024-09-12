@@ -499,9 +499,7 @@ export const approveGlossaryTermTask = async (
   await taskResolve;
 
   // Display toast notification
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /Task resolved successfully/
-  );
+  await toastNotification(page, /Task resolved successfully/);
 };
 
 export const validateGlossaryTerm = async (
