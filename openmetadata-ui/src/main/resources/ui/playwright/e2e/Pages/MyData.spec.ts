@@ -14,8 +14,7 @@ import { expect, Page, test as base } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
-import { addMultiOwner, followEntity } from '../../utils/entity';
+import { redirectToHomePage, removeLandingBanner } from '../../utils/common';
 import { verifyEntities } from '../../utils/myData';
 
 const user = new UserClass();
@@ -38,6 +37,25 @@ test.describe('My Data page', () => {
     await user.create(apiContext);
     for (const table of TableEntities) {
       await table.create(apiContext);
+      await table.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/owners/0',
+            value: {
+              id: user.responseData.id,
+              type: 'user',
+              deleted: false,
+              displayName: user.responseData.displayName,
+              fullyQualifiedName: user.responseData.fullyQualifiedName,
+              href: user.responseData['href'] ?? '',
+              name: user.responseData.name,
+            },
+          },
+        ],
+      });
+      await table.followTable(apiContext, user.responseData.id);
     }
     await afterAction();
   });
@@ -53,67 +71,40 @@ test.describe('My Data page', () => {
 
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await redirectToHomePage(page);
+    await removeLandingBanner(page);
   });
 
-  test('Verify MyData and Following widget', async ({ page }) => {
-    test.slow(true);
+  test('Verify my data widget', async ({ page }) => {
+    // Verify total count
+    await expect(
+      page.locator('[data-testid="my-data-total-count"]')
+    ).toContainText('(20)');
 
-    await test.step(
-      'Set user as the Owner of the Table and also Follow it',
-      async () => {
-        for (const table of TableEntities) {
-          await table.visitEntityPage(page);
-          await addMultiOwner({
-            page,
-            ownerNames: [user.getUserName()],
-            activatorBtnDataTestId: 'edit-owner',
-            resultTestId: 'data-assets-header',
-            endpoint: table.endpoint,
-            type: 'Users',
-          });
-          await followEntity(page, table.endpoint);
-        }
-      }
+    await page
+      .locator('[data-testid="my-data-widget"] [data-testid="view-all-link"]')
+      .click();
+
+    // Verify entities
+    await verifyEntities(
+      page,
+      '/api/v1/search/query?q=*&index=all&from=0&size=25',
+      TableEntities
     );
+  });
 
-    await test.step('Verify my data widget', async () => {
-      await redirectToHomePage(page);
-      // Verify total count
-      const totalCount = await page
-        .locator('[data-testid="my-data-total-count"]')
-        .innerText();
+  test('Verify following widget', async ({ page }) => {
+    // Verify total count
+    await expect(
+      page.locator('[data-testid="following-data-total-count"]')
+    ).toContainText('(20)');
 
-      expect(totalCount).toBe('(20)');
+    await page.locator('[data-testid="following-data"]').click();
 
-      await page
-        .locator('[data-testid="my-data-widget"] [data-testid="view-all-link"]')
-        .click();
-
-      // Verify entities
-      await verifyEntities(
-        page,
-        '/api/v1/search/query?q=*&index=all&from=0&size=25',
-        TableEntities
-      );
-    });
-
-    await test.step('Verify following widget', async () => {
-      await redirectToHomePage(page);
-      // Verify total count
-      const totalCount = await page
-        .locator('[data-testid="following-data-total-count"]')
-        .innerText();
-
-      expect(totalCount).toBe('(20)');
-
-      await page.locator('[data-testid="following-data"]').click();
-
-      // Verify entities
-      await verifyEntities(
-        page,
-        '/api/v1/search/query?q=*followers:*&index=all&from=0&size=25',
-        TableEntities
-      );
-    });
+    // Verify entities
+    await verifyEntities(
+      page,
+      '/api/v1/search/query?q=*followers:*&index=all&from=0&size=25',
+      TableEntities
+    );
   });
 });
