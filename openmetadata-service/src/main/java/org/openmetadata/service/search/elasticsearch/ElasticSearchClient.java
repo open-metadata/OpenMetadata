@@ -1009,6 +1009,15 @@ public class ElasticSearchClient implements SearchClient {
                 AggregationBuilders.avg(key).field(avgAggregation.getString("field"));
             aggregationBuilders.add(avgAggregationBuilder);
             break;
+          case "date_histogram":
+            JsonObject dateHistogramAggregation = aggregation.getJsonObject(aggregationType);
+            String calendarInterval = dateHistogramAggregation.getString("calendar_interval");
+            DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
+                AggregationBuilders.dateHistogram(key)
+                    .field(dateHistogramAggregation.getString("field"))
+                    .calendarInterval(new DateHistogramInterval(calendarInterval));
+            aggregationBuilders.add(dateHistogramAggregationBuilder);
+            break;
           case "nested":
             JsonObject nestedAggregation = aggregation.getJsonObject("nested");
             AggregationBuilder nestedAggregationBuilder =
