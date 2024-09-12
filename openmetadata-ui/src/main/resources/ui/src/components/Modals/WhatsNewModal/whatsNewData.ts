@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_3'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_4'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -952,6 +952,26 @@ To continue pursuing this objective, the application was completely refactored t
 -   Cleaned Argo logs artifacts ${CollateIconWithLinkMD}
 -   Shipped VertexAI Connector ${CollateIconWithLinkMD}
 -   Fixed automator lineage propagation issues with possible None entities ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 46,
+    version: 'v1.5.4',
+    description: `Released on 12th September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Hotfix to the Term Aggregation size on Data Insights
+-   ES pagination with error handling
+-   Updated Domain in Docker Compose & Docs
+-   Fix Classification API returns Table class for restore
+-   Fix Redshift View Def regex_replace Error
+-   Make ingestion pipeline APIs public
+-   Fix token limitations using config ${CollateIconWithLinkMD}
+-   Updating the domain PRINCIPAL DOMAIN
+-   Fix Automator pagination ${CollateIconWithLinkMD}
+-   Fix MetaPilot push for no constraint ${CollateIconWithLinkMD}
+-   Glossary list selector for bulk import
+-   Unable to access import glossary page`,
     },
   },
 ];
