@@ -3,39 +3,25 @@ site_menu:
   - category: Home
     url: /
 
-  - category: Enable Security
-    url: /security
+  - category: Getting Started
+    url: /getting-started
     color: violet-70
-    icon: deployment
-
-  - category: Enable Security / Basic Authentication
-    url: /security/basic-auth
-  - category: Enable Security / Ldap Authentication
-    url: /security/ldap
-  - category: Enable Security / Auth0 SSO
-    url: /security/auth0
-  - category: Enable Security / Azure SSO
-    url: /security/azure
-  - category: Enable Security / Custom OIDC SSO
-    url: /security/custom-oidc
-  - category: Enable Security / OIDC SSO
-    url: /security/oidc
-  - category: Enable Security / Google SSO
-    url: /security/google
-  - category: Enable Security / Okta SSO
-    url: /security/okta
-  - category: Enable Security / Amazon Cognito SSO
-    url: /security/amazon-cognito
-  - category: Enable Security / One Login SSO
-    url: /security/one-login
-  - category: Enable Security / Keycloak SSO
-    url: /security/keycloak
-  - category: Enable Security / Saml
-    url: /security/saml
-  - category: Enable Security / Saml / AWS
-    url: /security/saml/aws
-  - category: Enable Security / Saml / Azure
-    url: /security/saml/azure
+    icon: openmetadata
+  
+  - category: Getting Started / Day 1
+    url: /getting-started/day-1
+  - category: Getting Started / Day 1 / Hybrid SaaS
+    url: /getting-started/day-1/hybrid-saas
+  - category: Getting Started / Day 1 / Hybrid SaaS / Airflow
+    url: /getting-started/day-1/hybrid-saas/airflow
+  - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
+    url: /getting-started/day-1/hybrid-saas/mwaa
+  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
+    url: /getting-started/day-1/hybrid-saas/gcs-composer
+  - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
+    url: /getting-started/day-1/hybrid-saas/github-actions
+  - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
+    url: /getting-started/day-1/hybrid-saas/credentials
 
   - category: Connectors
     url: /connectors
@@ -718,27 +704,41 @@ site_menu:
     url: /how-to-guides/data-governance/domains-&-data-products/domains
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
     url: /how-to-guides/data-governance/domains-&-data-products/data-products
-    
-  - category: Getting Started
-    url: /getting-started
-    color: violet-70
-    icon: openmetadata
-  
-  - category: Getting Started / Day 1
-    url: /getting-started/day-1
-  - category: Getting Started / Day 1 / Hybrid SaaS
-    url: /getting-started/day-1/hybrid-saas
-  - category: Getting Started / Day 1 / Hybrid SaaS / Airflow
-    url: /getting-started/day-1/hybrid-saas/airflow
-  - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
-    url: /getting-started/day-1/hybrid-saas/mwaa
-  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
-    url: /getting-started/day-1/hybrid-saas/gcs-composer
-  - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
-    url: /getting-started/day-1/hybrid-saas/github-actions
-  - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
-    url: /getting-started/day-1/hybrid-saas/credentials
 
+  - category: Enable Security
+    url: /security
+    color: violet-70
+    icon: deployment
+
+  - category: Enable Security / Basic Authentication
+    url: /security/basic-auth
+  - category: Enable Security / Ldap Authentication
+    url: /security/ldap
+  - category: Enable Security / Auth0 SSO
+    url: /security/auth0
+  - category: Enable Security / Azure SSO
+    url: /security/azure
+  - category: Enable Security / Custom OIDC SSO
+    url: /security/custom-oidc
+  - category: Enable Security / OIDC SSO
+    url: /security/oidc
+  - category: Enable Security / Google SSO
+    url: /security/google
+  - category: Enable Security / Okta SSO
+    url: /security/okta
+  - category: Enable Security / Amazon Cognito SSO
+    url: /security/amazon-cognito
+  - category: Enable Security / One Login SSO
+    url: /security/one-login
+  - category: Enable Security / Keycloak SSO
+    url: /security/keycloak
+  - category: Enable Security / Saml
+    url: /security/saml
+  - category: Enable Security / Saml / AWS
+    url: /security/saml/aws
+  - category: Enable Security / Saml / Azure
+    url: /security/saml/azure
+   
   - category: Releases
     url: /releases
     color: violet-70
@@ -749,6 +749,34 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.2 Release
+    url: /releases/all-releases/#1.5.2-release
+  - category: Releases / All Releases / 1.5.1 Release
+    url: /releases/all-releases/#1.5.1-release
+  - category: Releases / All Releases / 1.4.8 Release
+    url: /releases/all-releases/#1.4.8-release
+  - category: Releases / All Releases / 1.4.7 Release
+    url: /releases/all-releases/#1.4.7-release
+  - category: Releases / All Releases / 1.4.6 Release
+    url: /releases/all-releases/#1.4.6-release
+  - category: Releases / All Releases / 1.4.5 Release
+    url: /releases/all-releases/#1.4.5-release
+  - category: Releases / All Releases / 1.4.4 Release
+    url: /releases/all-releases/#1.4.4-release
+  - category: Releases / All Releases / 1.4.3 Release
+    url: /releases/all-releases/#1.4.3-release
+  - category: Releases / All Releases / 1.4.2 Release
+    url: /releases/all-releases/#1.4.2-release
+  - category: Releases / All Releases / 1.4.1 Release
+    url: /releases/all-releases/#1.4.1-release
+  - category: Releases / All Releases / 1.4.0 Release
+    url: /releases/all-releases/#1.4.0-release
+  - category: Releases / All Releases / 1.3.4 Release
+    url: /releases/all-releases/#1.3.4-release
+  - category: Releases / All Releases / 1.3.3 Release
+    url: /releases/all-releases/#1.3.3-release
+  - category: Releases / All Releases / 1.3.2 Release
+    url: /releases/all-releases/#1.3.2-release
   - category: Releases / All Releases / 1.3.1 Release
     url: /releases/all-releases/#1.3.1-release
   - category: Releases / All Releases / 1.3.0 Release
