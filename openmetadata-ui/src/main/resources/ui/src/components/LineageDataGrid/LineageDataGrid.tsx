@@ -14,20 +14,19 @@ import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import React from 'react';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
-// import './lineage-data-grid.less';
 
 const LineageDataGrid = () => {
   const { edges } = useLineageProvider();
 
   const columns = [
-    { name: 'name', header: 'Name', minWidth: 50, defaultFlex: 2 },
-    { name: 'age', header: 'Age', maxWidth: 1000, defaultFlex: 1 },
+    { name: 'name', header: 'From', defaultFlex: 1 },
+    { name: 'age', header: 'Age', defaultFlex: 1 },
   ];
 
   const gridStyle = { minHeight: 550 };
 
   return (
-    <div className="lineage-data-grid">
+    <div className="lineage-data-grid p-sm">
       <ReactDataGrid
         columns={columns}
         dataSource={edges}
