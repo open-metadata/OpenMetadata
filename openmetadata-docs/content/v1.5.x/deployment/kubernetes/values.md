@@ -77,7 +77,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.authentication.saml.idp.idpX509Certificate.secretKey |  string | `Empty` | SAML_IDP_CERTIFICATE |
 | openmetadata.config.authentication.saml.idp.authorityUrl | string | `http://openmetadata:8585/api/v1/saml/login` | SAML_AUTHORITY_URL |
 | openmetadata.config.authentication.saml.idp.nameId | string | `urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress` | SAML_IDP_NAME_ID |
-| openmetadata.config.authentication.saml.sp.entityId | string | `http://openmetadata:8585/api/v1/saml/metadata` | SAML_SP_ENTITY_ID |
+| openmetadata.config.authentication.saml.sp.entityId | string | `http://openmetadata:8585/api/v1/saml/acs` | SAML_SP_ENTITY_ID |
 | openmetadata.config.authentication.saml.sp.acs | string | `http://openmetadata:8585/api/v1/saml/acs` | SAML_SP_ACS |
 | openmetadata.config.authentication.saml.sp.spX509Certificate.secretRef | string | `Empty`  | SAML_SP_CERTIFICATE |
 | openmetadata.config.authentication.saml.sp.spX509Certificate.secretKey | string | `Empty`  | SAML_SP_CERTIFICATE |
