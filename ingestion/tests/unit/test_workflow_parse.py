@@ -42,6 +42,9 @@ from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
 )
 from metadata.generated.schema.entity.services.metadataService import MetadataConnection
+from metadata.generated.schema.metadataIngestion.apiServiceMetadataPipeline import (
+    ApiServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
 )
@@ -131,6 +134,10 @@ class TestWorkflowParse(TestCase):
         source_config_type = "DashboardMetadata"
         connection = get_source_config_class(source_config_type)
         self.assertEqual(connection, DashboardServiceMetadataPipeline)
+
+        source_config_type = "ApiMetadata"
+        connection = get_source_config_class(source_config_type)
+        self.assertEqual(connection, ApiServiceMetadataPipeline)
 
     def test_parsing_ok(self):
         """

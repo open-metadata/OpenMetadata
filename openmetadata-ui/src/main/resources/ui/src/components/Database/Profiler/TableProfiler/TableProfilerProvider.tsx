@@ -39,7 +39,10 @@ import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
 } from '../../../../rest/tableAPI';
-import { getListTestCase, ListTestCaseParams } from '../../../../rest/testAPI';
+import {
+  getListTestCaseBySearch,
+  ListTestCaseParamsBySearch,
+} from '../../../../rest/testAPI';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -202,10 +205,10 @@ export const TableProfilerProvider = ({
     }
   };
 
-  const fetchAllTests = async (params?: ListTestCaseParams) => {
+  const fetchAllTests = async (params?: ListTestCaseParamsBySearch) => {
     setIsTestsLoading(true);
     try {
-      const { data, paging } = await getListTestCase({
+      const { data, paging } = await getListTestCaseBySearch({
         ...params,
         fields: [
           TabSpecificField.TEST_CASE_RESULT,
