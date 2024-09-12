@@ -302,6 +302,18 @@ export class TableClass extends EntityClass {
     };
   }
 
+  async followTable(apiContext: APIRequestContext, userId: string) {
+    await apiContext.put(
+      `/api/v1/tables/${this.entityResponseData?.['id']}/followers`,
+      {
+        data: userId,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(

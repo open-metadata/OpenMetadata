@@ -53,8 +53,6 @@ const permanentDeleteModal = async (page: Page, entity: string) => {
   await page.click('[data-testid="confirm-button"]');
 };
 
-test.describe.configure({ mode: 'serial' });
-
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -77,6 +75,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Classification Page', async ({ page }) => {
+  test.slow();
+
   await test.step('Should render basic elements on page', async () => {
     const getTags = page.waitForResponse('/api/v1/tags*');
     await sidebarClick(page, SidebarItem.TAGS);

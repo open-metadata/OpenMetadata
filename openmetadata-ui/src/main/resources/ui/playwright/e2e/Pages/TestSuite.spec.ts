@@ -55,6 +55,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Logical TestSuite', async ({ page }) => {
+  test.slow();
+
   const NEW_TEST_SUITE = {
     name: `mysql_matrix-${uuid()}`,
     description: 'mysql critical matrix',

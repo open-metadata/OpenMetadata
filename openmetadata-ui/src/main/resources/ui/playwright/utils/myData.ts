@@ -19,8 +19,8 @@ export const verifyEntities = async (
   tables: TableClass[]
 ) => {
   // Change pagination size to 25
-  const fetchResponse = page.waitForResponse(url);
   await page.locator('[data-testid="pagination"] .ant-btn-default').click();
+  const fetchResponse = page.waitForResponse(url);
   await page.locator('[role="menu"] [value="25"]').click();
   await fetchResponse;
 
