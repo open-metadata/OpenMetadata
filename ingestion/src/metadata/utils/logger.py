@@ -170,10 +170,14 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):
 
 
 def log_ansi_encoded_string(
-    color: Optional[ANSI] = None, bold: bool = False, message: str = ""
+    color: Optional[ANSI] = None,
+    bold: bool = False,
+    message: str = "",
+    level=logging.INFO,
 ):
-    utils_logger().info(
-        f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}"
+    utils_logger().log(
+        level=level,
+        msg=f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}",
     )
 
 
