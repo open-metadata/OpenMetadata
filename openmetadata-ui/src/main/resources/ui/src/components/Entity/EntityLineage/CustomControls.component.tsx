@@ -29,6 +29,7 @@ import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.sv
 import { ReactComponent as EditIconColor } from '../../../assets/svg/ic-edit-lineage-colored.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit-lineage.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
+import { ReactComponent as GridIcon } from '../../../assets/svg/ic-grid.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
@@ -68,6 +69,7 @@ const CustomControls: FC<ControlProps> = ({
     onLineageConfigUpdate,
     onQueryFilterUpdate,
     onExportClick,
+    onUpdateTableView,
   } = useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
@@ -218,6 +220,24 @@ const CustomControls: FC<ControlProps> = ({
                   : t('label.expand-all')}
               </Button>
             )}
+
+            <Tooltip title="List View">
+              <Button
+                className="flex-center"
+                data-testid="lineage-grid-view"
+                disabled={isEditMode}
+                icon={
+                  <span className="anticon">
+                    <GridIcon
+                      color={theme.primaryColor}
+                      height={14}
+                      width={14}
+                    />
+                  </span>
+                }
+                onClick={() => onUpdateTableView(true)}
+              />
+            </Tooltip>
 
             <Tooltip
               title={t('label.export-entity', {

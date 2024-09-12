@@ -48,6 +48,7 @@ import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
+import LineageDataGrid from '../LineageDataGrid/LineageDataGrid';
 import { LineageProps } from './Lineage.interface';
 
 const Lineage = ({
@@ -66,6 +67,7 @@ const Lineage = ({
     edges,
     isEditMode,
     init,
+    tableView,
     onNodeClick,
     onEdgeClick,
     onNodeDrop,
@@ -121,6 +123,16 @@ const Lineage = ({
   useEffect(() => {
     updateEntityType(entityType);
   }, [entityType]);
+
+  if (tableView) {
+    return (
+      <Card
+        className="lineage-card card-body-full w-auto border-none card-padding-0"
+        data-testid="lineage-details">
+        <LineageDataGrid />
+      </Card>
+    );
+  }
 
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.

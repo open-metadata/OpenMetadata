@@ -69,6 +69,7 @@ export interface LineageContextType {
   selectedColumn: string;
   activeLayer: LineageLayerView[];
   expandAllColumns: boolean;
+  tableView: boolean;
   toggleColumnView: () => void;
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
   onPaneClick: () => void;
@@ -100,4 +101,5 @@ export interface LineageContextType {
   onConnect: (connection: Edge | Connection) => void;
   updateEntityType: (entityType: EntityType) => void;
   onUpdateLayerView: (layers: LineageLayerView[]) => void;
+  onUpdateTableView: (value: boolean) => void;
 }

@@ -173,6 +173,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const deletePressed = useKeyPress('Delete');
   const backspacePressed = useKeyPress('Backspace');
   const [childMap, setChildMap] = useState<EntityReferenceChild>();
+  const [tableView, setTableView] = useState(true);
   const [paginationData, setPaginationData] = useState({});
   const { showModal } = useEntityExportModalProvider();
 
@@ -292,6 +293,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     },
     [entityType, decodedFqn, entityLineage]
   );
+
+  const onUpdateTableView = useCallback((value: boolean) => {
+    setTableView(value);
+  }, []);
 
   const onExportClick = useCallback(() => {
     if (decodedFqn) {
@@ -1200,6 +1205,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       activeLayer,
       columnsHavingLineage,
       expandAllColumns,
+      tableView,
       toggleColumnView,
       onInitReactFlow,
       onPaneClick,
@@ -1224,6 +1230,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onAddPipelineClick,
       onUpdateLayerView,
       onExportClick,
+      onUpdateTableView,
     };
   }, [
     isDrawerOpen,
@@ -1245,6 +1252,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     activeLayer,
     columnsHavingLineage,
     expandAllColumns,
+    tableView,
     toggleColumnView,
     onInitReactFlow,
     onPaneClick,
@@ -1269,6 +1277,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onAddPipelineClick,
     onUpdateLayerView,
     onExportClick,
+    onUpdateTableView,
   ]);
 
   useEffect(() => {

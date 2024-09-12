@@ -66,6 +66,7 @@
     "@tiptap/extension-placeholder": "^2.3.0",
     "@tiptap/extension-table": "^2.3.0",
     "@tiptap/extension-table-cell": "^2.3.0",
+    "@inovua/reactdatagrid-community": "^5.10.2",
     "@tiptap/extension-table-header": "^2.3.0",
     "@tiptap/extension-table-row": "^2.3.0",
     "@tiptap/extension-task-item": "^2.3.0",
