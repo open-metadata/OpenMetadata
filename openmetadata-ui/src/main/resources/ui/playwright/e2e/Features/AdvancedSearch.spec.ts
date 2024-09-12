@@ -14,6 +14,7 @@ import test from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   FIELDS,
@@ -35,6 +36,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   const table2 = new TableClass();
   const topic1 = new TopicClass();
   const topic2 = new TopicClass();
+  const tierTag1 = new TagClass({ classification: 'Tier' });
+  const tierTag2 = new TagClass({ classification: 'Tier' });
 
   let searchCriteria = {};
 
@@ -49,6 +52,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       table2.create(apiContext),
       topic1.create(apiContext),
       topic2.create(apiContext),
+      tierTag1.create(apiContext),
+      tierTag2.create(apiContext),
     ]);
 
     // Add Owner & Tag to the table
@@ -76,17 +81,20 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
 
     // Add Tier To the topic 1
     await topic1.visitEntityPage(page);
-    await assignTier(page, 'Tier1', topic1.endpoint);
+    await assignTier(page, tierTag1.data.displayName, topic1.endpoint);
 
     // Add Tier To the topic 2
     await topic2.visitEntityPage(page);
-    await assignTier(page, 'Tier2', topic2.endpoint);
+    await assignTier(page, tierTag2.data.displayName, topic2.endpoint);
 
     // Update Search Criteria here
     searchCriteria = {
       'owners.displayName.keyword': [user1.getUserName(), user2.getUserName()],
       'tags.tagFQN': ['PersonalData.Personal', 'PII.None'],
-      'tier.tagFQN': ['Tier.Tier1', 'Tier.Tier2'],
+      'tier.tagFQN': [
+        tierTag1.responseData.fullyQualifiedName,
+        tierTag2.responseData.fullyQualifiedName,
+      ],
       'service.displayName.keyword': [table1.service.name, table2.service.name],
       'database.displayName.keyword': [
         table1.database.name,
@@ -111,6 +119,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       table2.delete(apiContext),
       topic1.delete(apiContext),
       topic2.delete(apiContext),
+      tierTag1.delete(apiContext),
+      tierTag2.delete(apiContext),
     ]);
     await afterAction();
   });
