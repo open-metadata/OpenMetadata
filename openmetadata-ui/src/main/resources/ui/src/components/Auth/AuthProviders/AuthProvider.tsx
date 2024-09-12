@@ -265,7 +265,11 @@ export const AuthProvider = ({
 
   const getUpdatedUser = async (updatedData: User, existingData: User) => {
     // PUT method for users api only excepts below fields
-    const updatedUserData = { ...existingData, ...updatedData };
+    const updatedUserData = {
+      ...existingData,
+      //   We want to override any profile information that is coming from the OIDC provider
+      profile: { ...existingData.profile, ...updatedData.profile },
+    };
     const jsonPatch = compare(existingData, updatedUserData);
 
     try {
