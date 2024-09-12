@@ -6,12 +6,14 @@ collate: true
 
 # Getting Started: Day 1
 
-Let’s get started with your Collate service in five steps:
-1. Set up a data connector
-2. Ingest metadata
-3. Invite users
-4. Add roles
-5. Create teams and add users
+Get started with your Collate service in just few simple steps:
+
+1. Set up a Data Connector: Connect your data sources to begin collecting metadata.
+2. Ingest Metadata: Run the metadata ingestion to gather and push data insights.
+3. Invite Users: Add team members to collaborate and manage metadata together.
+4. Explore the Features: Dive into Collate's rich feature set to unlock the full potential of your data.
+
+**Ready to begin? Let's get started!**
 
 ## Requirements
 
@@ -29,17 +31,17 @@ Connections to [custom data sources](/connectors/custom-connectors) can also be 
 There's two options on how to set up a data connector:
 1. **Run the connector in Collate SaaS**: In this scenario, you'll get an IP when you add the service. You need to give
   access to this IP in your data sources.
-2. **Run the connector in your infrastructure or laptop**: In this case, Collate won't be accessing the data, but rather
-  you'd control where and how the process is executed and Collate will only receive the output of the metadata extraction.
-  This is an interesting option for sources lying behind private networks or when external SaaS services are not allowed to
-  connect to your data sources. You can read more about how to extract metadata in these cases [here](/getting-started/day-1/hybrid-saas).
+  
+{% tilesContainer %}
+{% tile
+  title="Run the connector in Collate SaaS"
+  description="Guide to start ingesting metadata seamlessly from your data sources."
+  link="/getting-started/day-1/collate-saas"
+  icon="discovery"
+/%}
+{% /tilesContainer %}
 
-You can easily set up a database service in minutes to run the metadata extraction directly from Collate SaaS:
-- Navigate to **Settings > Services > Databases**.
-- Click on **Add New Service**.
-- Select the database type you want. Enter the information, like name and description, to identify the database.
-- Enter the Connection Details. You can view the documentation available in the side panel.
-- Test the connection to verify the connection status.
+2. **Run the connector in your infrastructure or laptop**: The hybrid model offers organizations the flexibility to run metadata ingestion components within their own infrastructure. This approach ensures that Collate's managed service doesn't require direct access to the underlying data. Instead, only the metadata is collected locally and securely transmitted to our SaaS platform, maintaining data privacy and security while still enabling robust metadata management. You can read more about how to extract metadata in these cases [here](/getting-started/day-1/hybrid-saas).
 
 ## Step 2: Ingest Metadata
 
@@ -60,47 +62,89 @@ Once the metadata is ingested into the platform, you can [invite users](/how-to-
 to collaborate on the data and assign different roles.
 
 - Navigate to **Settings > Team & User Management > Users**.
+
+{% image
+  src="/images/v1.5/getting-started/users.png"
+  alt="Users Navigation"
+  height="450px"
+  caption="Users Navigation" /%}
+
 - Click on **Add User**, and enter their email and other details to provide access to the platform.
+
+{% image
+  src="/images/v1.5/getting-started/add-users.png"
+  alt="Adding New User"
+  height="750px"
+  caption="Adding New User" /%}
+
 - You can organize users into different Teams, as well as assign them to different Roles.
 - Users will inherit the access defined for their assigned Teams and Roles.
 - Admin access can also be granted. Admins will have access to all settings and can invite other users.
 - New users will receive an email invitation to set up their account.
 
-## Step 4: Add Roles and Policies
+## Step 4: Explore Features of OpenMetadata
 
-Add well-defined roles based on the user’s job description, such as Data Scientist or Data Steward. 
-Each role can be associated with certain policies, such as the Data Consumer Policy. These policies further comprise 
-fine-grained Rules to define access.
+OpenMetadata provides a comprehensive solution for data teams to break down silos, securely share data assets across various sources, foster collaboration around trusted data, and establish a documentation-first data culture within the organization.
 
-- Navigate to **Settings > Access Control** to define the Rules, Policies, and Roles.
-- Refer to [this use case guide](/how-to-guides/admin-guide/roles-policies/use-cases) to understand the configuration for different circumstances.
-- Start by creating a Policy. Define the rules for the policy.
-- Then, create a Role and apply the related policies.
-- Navigate to **Settings > Team & User Management** to assign roles to users or teams.
+{% tilesContainer %}
+{% tile
+    title="Data Discovery"
+    description="Discover the right data assets to make timely business decisions."
+    link="/how-to-guides/data-discovery"
+    icon="discovery"
+/%}
+{% tile
+    title="Data Collaboration"
+    description="Foster data team collaboration to enhance data understanding."
+    link="/how-to-guides/data-collaboration"
+    icon="collaboration"
+/%}
+{% tile
+    title="Data Quality & Observability"
+    description="Trust your data with quality tests & monitor the health of your data systems."
+    link="/how-to-guides/data-quality-observability"
+    icon="observability"
+/%}
+{% tile
+    title="Data Lineage"
+    description="Trace the path of data across tables, pipelines, and dashboards."
+    link="/how-to-guides/data-lineage"
+    icon="lineage"
+/%}
+{% tile
+    title="Data Insights"
+    description="Define KPIs and set goals to proactively hone the data culture of your company."
+    link="/how-to-guides/data-insights"
+    icon="discovery"
+/%}
+{% tile
+    title="Data Governance"
+    description="Enhance your data platform governance using OpenMetadata."
+    link="/how-to-guides/data-governance"
+    icon="governance"
+/%}
+{% /tilesContainer %}
 
-For more detailed instructions, refer to the [Advanced Guide for Roles and Policies](/how-to-guides/admin-guide/roles-policies).
+## Deep Dive into OpenMetadata: Guides for Admins and Data Users 
 
-## Step 5: Create Teams and Assign Users
-
-Now that you have users added and roles defined, grant users access to the data assets they need. The easiest way to 
-manage this at scale is to create teams with the appropriate permissions, and to invite users to their assigned teams.
-
-- Collate supports a hierarchical team structure with [multiple team types](/how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata).
-- The root team-type Organization supports other child teams and users within it.
-- Business Units, Divisions, Departments, and Groups are the other team types in the hierarchy.
-- Note: Only the team-type Organization and Groups can have users. Only the team-type Groups can own data assets.
-
-Planning the [team hierarchy](/how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata) can help save time 
-later, when creating the teams structure in **Settings > Team and User Management > Teams**. Continue to invite additional 
-users to onboard them to Collate, with their assigned teams and roles.
-
-## Next Steps
-
-You now have data sources loaded into Collate, and team structure set up. Continue to add more data sources to gain a
-more complete view of your data estate, and invite users to foster broader collaboration. You can check out 
-the [advanced guide to roles and policies](/how-to-guides/admin-guide/roles-policies) to fine-tune role or team access to data.
+{% tilesContainer %}
+{% tile
+    title="Admin Guide"
+    description="Admin users can get started with OpenMetadata with just three quick and easy steps & know-it-all with the advanced guides."
+    link="/how-to-guides/admin-guide"
+    icon="administration"
+/%}
+{% tile
+    title="Guide for Data Users"
+    description="Get to know the basics of OpenMetadata and about the data assets that you can explore in the all-in-one platform."
+    link="/how-to-guides/guide-for-data-users"
+    icon="steward"
+/%}
+{% /tilesContainer %}
 
 From here, you can further your understanding and management of your data with Collate:
+
+ - You can check out the [advanced guide to roles and policies](/how-to-guides/admin-guide/roles-policies) to fine-tune role or team access to data.
 
 - Trace your data flow with [column-level lineage](/how-to-guides/data-lineage) graphs to understand where your data comes from, how it is used, and how it is managed.
 - Build [no-code data quality tests](how-to-guides/data-quality-observability/quality/tab) to ensure its technical and 
@@ -108,5 +152,3 @@ From here, you can further your understanding and management of your data with C
 - Write [Knowledge Center](/how-to-guides/data-collaboration/knowledge-center) articles associated with data assets to document key information for your team, such as technical details, business context, and best practices.
 - Review the different [Data Insights Reports](/how-to-guides/data-insights/report) on Data Assets, App Analytics, KPIs, and [Cost Analysis](/how-to-guides/data-insights/cost-analysis) to understand the health, utilization, and costs of your data estate.
 - Build no-code workflows with [Metadata Automations](https://www.youtube.com/watch?v=ug08aLUyTyE&ab_channel=OpenMetadata) to add attributes like owners, tiers, domains, descriptions, glossary terms, and more to data assets, as well as propagate them using column-level lineage for more automated data management.
-
-You can also review additional [How-To Guides](/how-to-guides) on popular topics like data discovery, data quality, and data governance. 
