@@ -6,6 +6,7 @@ from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
     DataType,
+    SamplingMethodType,
     Table,
 )
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
@@ -65,3 +66,17 @@ class SampleTest(TestCase):
         )
         query: CTE = sampler.get_sample_query()
         assert "FROM users SAMPLE BERNOULLI" in str(query)
+
+    def test_specify_sampling_method(self):
+        """
+        use specified sampling method.
+        """
+        sampling_method = SamplingMethodType.SYSTEM
+        sampler = SnowflakeSampler(
+            client=self.session,
+            table=User,
+            profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
+            sampling_method=sampling_method,
+        )
+        query: CTE = sampler.get_sample_query()
+        assert f"FROM users SAMPLE {sampling_method.value}" in str(query)

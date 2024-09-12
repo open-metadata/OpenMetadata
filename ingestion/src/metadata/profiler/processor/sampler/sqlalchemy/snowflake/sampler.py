@@ -15,12 +15,14 @@ for the profiler
 
 from typing import cast
 
-from sqlalchemy import Table
-from sqlalchemy.sql.selectable import CTE
-
-from metadata.generated.schema.entity.data.table import ProfileSampleType
+from metadata.generated.schema.entity.data.table import (
+    ProfileSampleType,
+    SamplingMethodType,
+)
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from sqlalchemy import Table
+from sqlalchemy.sql.selectable import CTE
 
 
 class SnowflakeSampler(SQASampler):
@@ -29,7 +31,12 @@ class SnowflakeSampler(SQASampler):
     run the query in the whole table.
     """
 
+    _sampling_method: SamplingMethodType = SamplingMethodType.BERNOULLI
+
     def __init__(self, *args, **kwargs) -> None:
+        sampling_method = kwargs.pop("sampling_method", None)
+        if sampling_method:
+            self._sampling_method = sampling_method
         super().__init__(*args, **kwargs)
 
     @partition_filter_handler(build_sample=True)
@@ -44,7 +51,7 @@ class SnowflakeSampler(SQASampler):
                     column,
                 )
                 .suffix_with(
-                    f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
+                    f"SAMPLE {self._sampling_method.value} ({self.profile_sample or 100})",
                 )
                 .cte(f"{self.table.__tablename__}_rnd")
             )

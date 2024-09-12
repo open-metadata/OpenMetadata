@@ -19,6 +19,15 @@
       ],
       "default": "PERCENTAGE"
     },
+    "SamplingMethodType": {
+      "description": "Type of Sampling Method (BERNOULLI or SYSTEM)",
+      "type": "string",
+      "enum": [
+        "BERNOULLI",
+        "SYSTEM"
+      ],
+      "default": "BERNOULLI"
+    },
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",
       "description": "This schema defines the type used for describing different types of tables.",
