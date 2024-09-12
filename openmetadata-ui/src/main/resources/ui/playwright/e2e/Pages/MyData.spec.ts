@@ -79,11 +79,10 @@ test.describe('My Data page', () => {
     await test.step('Verify my data widget', async () => {
       await redirectToHomePage(page);
       // Verify total count
-      const totalCount = await page
-        .locator('[data-testid="my-data-total-count"]')
-        .innerText();
 
-      expect(totalCount).toBe('(20)');
+      await expect(
+        page.locator('[data-testid="my-data-total-count"]')
+      ).toContainText('(20)');
 
       await page
         .locator('[data-testid="my-data-widget"] [data-testid="view-all-link"]')
@@ -100,11 +99,10 @@ test.describe('My Data page', () => {
     await test.step('Verify following widget', async () => {
       await redirectToHomePage(page);
       // Verify total count
-      const totalCount = await page
-        .locator('[data-testid="following-data-total-count"]')
-        .innerText();
 
-      expect(totalCount).toBe('(20)');
+      await expect(
+        page.locator('[data-testid="following-data-total-count"]')
+      ).toContainText('(20)');
 
       await page.locator('[data-testid="following-data"]').click();
 
