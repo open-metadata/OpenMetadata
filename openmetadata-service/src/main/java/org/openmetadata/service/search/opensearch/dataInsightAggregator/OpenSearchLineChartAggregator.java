@@ -59,7 +59,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
         excludeArr = lineChart.getExcludeGroups().toArray(new String[0]);
       }
       TermsAggregationBuilder termsAggregationBuilder =
-          AggregationBuilders.terms("0").field(lineChart.getGroupBy()).size(20);
+          AggregationBuilders.terms("0").field(lineChart.getGroupBy()).size(1000);
       termsAggregationBuilder.subAggregation(dateHistogramAggregationBuilder);
       if (includeArr != null || excludeArr != null) {
         IncludeExclude includeExclude = new IncludeExclude(includeArr, excludeArr);
