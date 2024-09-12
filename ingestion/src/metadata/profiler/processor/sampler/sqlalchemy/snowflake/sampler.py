@@ -15,14 +15,15 @@ for the profiler
 
 from typing import cast
 
+from sqlalchemy import Table
+from sqlalchemy.sql.selectable import CTE
+
 from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     SamplingMethodType,
 )
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
-from sqlalchemy import Table
-from sqlalchemy.sql.selectable import CTE
 
 
 class SnowflakeSampler(SQASampler):
