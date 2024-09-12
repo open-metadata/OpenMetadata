@@ -1,7 +1,7 @@
-# 1.5.2 Release 🎉
+# 1.5.3 Release 🎉
 
 {% note noteType="Tip" %}
-**Sep 2nd, 2024**
+**Sep 9th, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,22 +10,28 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.2!
+Learn how to upgrade your OpenMetadata instance to 1.5.3!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.2-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.3-release).
 
-# What's New
+# What's Changed
 
-- Resolved issue with lineage lookup for long Fully Qualified Names (FQNs), ensuring accurate lineage tracking and display.
-- Fixed the 'Edit Reviewers' permission issue, allowing correct permission management for editing reviewers.
-- Addressed email update issues to ensure that email addresses are properly updated throughout the system.
-- Fixed the delete lineage functionality to handle cases where override lineage is enabled, preventing errors and ensuring consistency.
-- Added support for the 'Edit Assign' button in the Incident Manager, allowing for easier assignment changes.
-- Introduced a resizable layout for the glossary page, improving usability and adaptability to different screen sizes.
-- Enhanced the display of tier tags with improved styling for better visibility and distinction.
-- Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
-- Added custom properties support in Data Product.
+## OpenMetadata
+- Added resizable columns for custom properties
+- Added support for automated ingestion of Tableau data source tags and description
+- Improved "follow data" landing page module performance
+- Improved search result suggestion by showing display name instead of FQN
+- Fixed Cost Analysis issue when service has no connection
+- Improved PII classification for JSON data types
+- Fixed issue with expand all operation on terms page
+- Fixed feed freezing when large images are part of the feed results
+- Fixed dbt run_results file name with dbt cloud connection
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.1-release...1.5.2-release
+## Collate
+- Cleaned Argo logs artifacts
+- Shipped VertexAI Connector
+- Fixed automator lineage propagation issues with possible None entities
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.2-release...1.5.3-release
