@@ -31,12 +31,12 @@ class SnowflakeSampler(SQASampler):
     run the query in the whole table.
     """
 
-    _sampling_method: SamplingMethodType = SamplingMethodType.BERNOULLI
-
     def __init__(self, *args, **kwargs) -> None:
-        sampling_method = kwargs.pop("sampling_method", None)
-        if sampling_method:
-            self._sampling_method = sampling_method
+        self.sampling_method_type = SamplingMethodType.BERNOULLI
+
+        _profile_sample_config = kwargs.get("profile_sample_config", None)
+        if _profile_sample_config and _profile_sample_config.sampling_method_type:
+            self.sampling_method_type = _profile_sample_config.sampling_method_type
         super().__init__(*args, **kwargs)
 
     @partition_filter_handler(build_sample=True)
@@ -51,7 +51,7 @@ class SnowflakeSampler(SQASampler):
                     column,
                 )
                 .suffix_with(
-                    f"SAMPLE {self._sampling_method.value} ({self.profile_sample or 100})",
+                    f"SAMPLE {self.sampling_method_type.value} ({self.profile_sample or 100})",
                 )
                 .cte(f"{self.table.__tablename__}_rnd")
             )
