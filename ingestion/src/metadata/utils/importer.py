@@ -27,6 +27,8 @@ from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.utils.class_helper import get_service_type_from_source_type
+from metadata.utils.client_version import get_client_version
+from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.logger import utils_logger
 from metadata.utils.singleton import Singleton
 
@@ -42,6 +44,38 @@ class DynamicImportException(Exception):
     """
     Raise it when having issues dynamically importing objects
     """
+
+    def __init__(self, module: str, key: str = None, cause: Exception = None):
+        self.module = module
+        self.key = key
+        self.cause = cause
+
+    def __str__(self):
+        import_path = self.module
+        if self.key:
+            import_path += f".{self.key}"
+        return f"Cannot import {import_path} due to {self.cause}"
+
+
+class MissingPluginException(Exception):
+    """
+    An excpetion that captures a missing openmetadata-ingestion plugin for a specific connector.
+    """
+
+    def __init__(self, plugin: str):
+        self.plugin = plugin
+
+    def __str__(self):
+        try:
+            version = "==" + get_client_version()
+        except Exception:
+            logger.warning("unable to get client version")
+            logger.debug(traceback.format_exc())
+            version = ""
+        return (
+            f"You might be missing the plugin [{self.plugin}]. Try:\n"
+            f'pip install "openmetadata-ingestion[{self.plugin}]{version}"'
+        )
 
 
 def get_module_dir(type_: str) -> str:
@@ -93,13 +127,13 @@ def import_from_module(key: str) -> Type[Any]:
     Dynamically import an object from a module path
     """
 
+    module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
     try:
-        module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
         obj = getattr(importlib.import_module(module_name), obj_name)
         return obj
     except Exception as err:
         logger.debug(traceback.format_exc())
-        raise DynamicImportException(f"Cannot load object from {key} due to {err}")
+        raise DynamicImportException(module=module_name, key=obj_name, cause=err)
 
 
 # module building strings read better with .format instead of f-strings
@@ -200,7 +234,7 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
     # module building strings read better with .format instead of f-strings
     # pylint: disable=consider-using-f-string
 
-    if connection.type.value.lower().startswith("custom"):
+    if connection.type.value.lower().startswith(CUSTOM_CONNECTOR_PREFIX):
         python_class_parts = connection.sourcePythonClass.rsplit(".", 1)
         python_module_path = ".".join(python_class_parts[:-1])
 
@@ -261,9 +295,7 @@ class SideEffectsLoader(metaclass=Singleton):
                     SideEffectsLoader.modules.add(module.__name__)
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    raise DynamicImportException(
-                        f"Cannot load object from {module} due to {err}"
-                    )
+                    raise DynamicImportException(module=module, cause=err)
             else:
                 logger.debug(f"Module {module} already imported")
 

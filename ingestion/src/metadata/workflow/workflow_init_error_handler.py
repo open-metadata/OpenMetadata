@@ -12,6 +12,7 @@
 """
 Module handles the init error messages from different workflows
 """
+import logging
 import traceback
 from pathlib import Path
 from typing import Any, Dict, Optional, Type, Union
@@ -25,7 +26,7 @@ from metadata.ingestion.api.parser import (
     ParsingConfigurationError,
 )
 from metadata.utils.constants import UTF_8
-from metadata.utils.logger import ANSI, log_ansi_encoded_string
+from metadata.utils.logger import ANSI, log_ansi_encoded_string, utils_logger
 
 EXAMPLES_WORKFLOW_PATH: Path = Path(__file__).parent / "../examples" / "workflows"
 
@@ -74,10 +75,10 @@ class WorkflowInitErrorHandler:
                 source_type_name, pipeline_type
             )
         else:
+            utils_logger().debug(traceback.format_exc())
             WorkflowInitErrorHandler._print_error_msg(
                 f"\nError initializing {pipeline_type.name}: {exc}"
             )
-            WorkflowInitErrorHandler._print_error_msg(traceback.format_exc())
 
         WorkflowInitErrorHandler._print_more_info(pipeline_type)
 
@@ -151,4 +152,15 @@ class WorkflowInitErrorHandler:
         """
         Print message with error style
         """
-        log_ansi_encoded_string(color=ANSI.BRIGHT_RED, bold=False, message=f"{msg}")
+        log_ansi_encoded_string(
+            color=ANSI.BRIGHT_RED, bold=False, message=f"{msg}", level=logging.ERROR
+        )
+
+    @staticmethod
+    def _print_debug_msg(msg: str) -> None:
+        """
+        Print message with error style
+        """
+        log_ansi_encoded_string(
+            color=ANSI.YELLOW, bold=False, message=f"{msg}", level=logging.DEBUG
+        )
