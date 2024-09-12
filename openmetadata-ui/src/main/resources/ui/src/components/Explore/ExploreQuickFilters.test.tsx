@@ -23,9 +23,14 @@ import {
   mockAggregations,
 } from './mocks/ExploreQuickFilters.mock';
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    search: '',
+  }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
-  useLocation: jest.fn().mockImplementation(() => ({ search: '' })),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
@@ -47,7 +52,8 @@ jest.mock('../SearchDropdown/SearchDropdown', () =>
         <div
           data-testid={`search-dropdown-${searchKey}`}
           key={searchKey}
-          title="search-dropdown">
+          title="search-dropdown"
+        >
           {options.map((option) => (
             <div data-testid={`option-${searchKey}`} key={option.key}>
               {option.label}
@@ -55,12 +61,14 @@ jest.mock('../SearchDropdown/SearchDropdown', () =>
           ))}
           <div
             data-testid={`onSearch-${searchKey}`}
-            onClick={() => onSearch('e', searchKey)}>
+            onClick={() => onSearch('e', searchKey)}
+          >
             onSearch
           </div>
           <div
             data-testid={`onChange-${searchKey}`}
-            onClick={() => onChange([{ key: '', label: '' }], searchKey)}>
+            onClick={() => onChange([{ key: '', label: '' }], searchKey)}
+          >
             onChange
           </div>
         </div>

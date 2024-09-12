@@ -26,12 +26,14 @@ import { SidebarItem } from '../../../enums/sidebar.enum';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
 import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
 const LeftSidebar = () => {
+  const location = useCustomLocation();
   const { t } = useTranslation();
   const { onLogoutHandler } = useApplicationStore();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
@@ -109,7 +111,8 @@ const LeftSidebar = () => {
       )}
       data-testid="left-sidebar"
       onMouseLeave={handleMouseOut}
-      onMouseOver={handleMouseOver}>
+      onMouseOver={handleMouseOver}
+    >
       <Row className="p-b-sm">
         <Col className="brand-logo-container" span={24}>
           <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
@@ -152,7 +155,8 @@ const LeftSidebar = () => {
           footer={null}
           open={showConfirmLogoutModal}
           width={360}
-          onCancel={hideConfirmationModal}>
+          onCancel={hideConfirmationModal}
+        >
           <Typography.Title level={5}>{t('label.logout')}</Typography.Title>
           <Typography.Text className="text-grey-muted">
             {t('message.logout-confirmation')}
@@ -166,7 +170,8 @@ const LeftSidebar = () => {
               className="confirm-btn"
               data-testid="confirm-logout"
               type="primary"
-              onClick={onLogoutHandler}>
+              onClick={onLogoutHandler}
+            >
               {t('label.logout')}
             </Button>
           </div>

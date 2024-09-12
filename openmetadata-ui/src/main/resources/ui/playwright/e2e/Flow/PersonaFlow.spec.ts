@@ -17,11 +17,11 @@ import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  descriptionBox,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    createNewPage,
+    descriptionBox,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
 import { updatePersonaDisplayName } from '../../utils/persona';
@@ -73,7 +73,12 @@ test.describe.serial('Persona operations', () => {
     await page.getByTestId('displayName').fill(PERSONA_DETAILS.displayName);
 
     await page.locator(descriptionBox).fill(PERSONA_DETAILS.description);
+
+    const userResponse = page.waitForResponse('/api/v1/users?*');
     await page.getByTestId('add-users').click();
+    await userResponse;
+
+    await page.waitForSelector('[data-testid="selectable-list"]');
 
     const searchUser = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(
@@ -83,7 +88,9 @@ test.describe.serial('Persona operations', () => {
     await page.getByTestId('searchbar').fill(user.responseData.displayName);
 
     await searchUser;
-    await page.click(`.ant-popover [title="${user.responseData.displayName}"]`);
+    await page
+      .getByRole('listitem', { name: user.responseData.displayName })
+      .click();
     await page.getByTestId('selectable-list-update-btn').click();
 
     await page.getByRole('button', { name: 'Create' }).click();

@@ -29,7 +29,7 @@ import { DateRangeObject } from 'Models';
 import Qs from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../../assets/svg/drop-down.svg';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
@@ -45,6 +45,7 @@ import {
   TestCaseStatus,
 } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
+import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { getListTestCase } from '../../../../../rest/testAPI';
 import { formatNumberWithComma } from '../../../../../utils/CommonUtils';
@@ -80,7 +81,7 @@ import { ModifiedColumn } from '../TableProfiler.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
 
 const ColumnProfileTable = () => {
-  const location = useLocation();
+  const location = useCustomLocation();
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useFqn();
@@ -142,7 +143,8 @@ const ColumnProfileTable = () => {
               type="link"
               onClick={() =>
                 updateActiveColumnFqn(record.fullyQualifiedName || '')
-              }>
+              }
+            >
               {getEntityName(record)}
             </Button>
           );
@@ -239,7 +241,8 @@ const ColumnProfileTable = () => {
                 search: Qs.stringify({
                   activeTab: TableProfilerTab.DATA_QUALITY,
                 }),
-              }}>
+              }}
+            >
               {testCounts?.total ?? 0}
             </Link>
           );
@@ -329,7 +332,8 @@ const ColumnProfileTable = () => {
                 activeTab: TableProfilerTab.COLUMN_PROFILE,
               }),
             })
-          }>
+          }
+        >
           <Space>
             <DropDownIcon className="transform-90" height={16} width={16} />
             {PAGE_HEADERS.COLUMN_PROFILE.header}
@@ -418,10 +422,12 @@ const ColumnProfileTable = () => {
                           items: addButtonContent,
                         }}
                         placement="bottomRight"
-                        trigger={['click']}>
+                        trigger={['click']}
+                      >
                         <Button
                           data-testid="profiler-add-table-test-btn"
-                          type="primary">
+                          type="primary"
+                        >
                           <Space>
                             {t('label.add')}
                             <DownOutlined />
@@ -433,11 +439,13 @@ const ColumnProfileTable = () => {
                   {editDataProfile && (
                     <Tooltip
                       placement="topRight"
-                      title={t('label.setting-plural')}>
+                      title={t('label.setting-plural')}
+                    >
                       <Button
                         className="flex-center"
                         data-testid="profiler-setting-btn"
-                        onClick={onSettingButtonClick}>
+                        onClick={onSettingButtonClick}
+                      >
                         <SettingIcon />
                       </Button>
                     </Tooltip>
@@ -467,7 +475,8 @@ const ColumnProfileTable = () => {
               className={classNames(
                 activeColumnFqn ? 'justify-start' : 'justify-between'
               )}
-              gutter={[16, 16]}>
+              gutter={[16, 16]}
+            >
               {overallSummary?.map((summery) => (
                 <Col key={summery.title}>
                   <SummaryCard

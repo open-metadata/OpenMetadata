@@ -23,7 +23,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import {
   getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -43,6 +43,7 @@ import {
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
   getListTestSuitesBySearch,
@@ -66,10 +67,11 @@ import { TestSuiteSearchParams } from '../../DataQuality.interface';
 
 export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { t } = useTranslation();
-  const { tab = DataQualityPageTabs.TABLES } =
-    useParams<{ tab: DataQualityPageTabs }>();
+  const { tab = DataQualityPageTabs.TABLES } = useParams<{
+    tab: DataQualityPageTabs;
+  }>();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
 
   const params = useMemo(() => {
     const search = location.search;
@@ -145,14 +147,16 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 search: QueryString.stringify({
                   activeTab: TableProfilerTab.DATA_QUALITY,
                 }),
-              }}>
+              }}
+            >
               {record.executableEntityReference?.fullyQualifiedName ??
                 record.executableEntityReference?.name}
             </Link>
           ) : (
             <Link
               data-testid={name}
-              to={getTestSuitePath(record.fullyQualifiedName ?? record.name)}>
+              to={getTestSuitePath(record.fullyQualifiedName ?? record.name)}
+            >
               {getEntityName(record)}
             </Link>
           );
@@ -267,7 +271,8 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     <Row
       className="p-x-lg p-y-md"
       data-testid="test-suite-container"
-      gutter={[16, 16]}>
+      gutter={[16, 16]}
+    >
       <Col span={24}>
         <Row justify="space-between">
           <Col>
@@ -275,7 +280,8 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               <Space
                 align="center"
                 className="w-full justify-between"
-                size={16}>
+                size={16}
+              >
                 <Form.Item className="m-0 w-80">
                   <Searchbar
                     removeMargin
@@ -288,11 +294,13 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 <Form.Item
                   className="m-0"
                   label={t('label.owner')}
-                  name="owner">
+                  name="owner"
+                >
                   <UserTeamSelectableList
                     hasPermission
                     owner={selectedOwner}
-                    onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
+                    onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}
+                  >
                     <Select
                       data-testid="owner-select-filter"
                       open={false}
@@ -309,7 +317,8 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               testSuitePermission?.Create && (
                 <Link
                   data-testid="add-test-suite-btn"
-                  to={ROUTES.ADD_TEST_SUITES}>
+                  to={ROUTES.ADD_TEST_SUITES}
+                >
                   <Button type="primary">
                     {t('label.add-entity', { entity: t('label.test-suite') })}
                   </Button>

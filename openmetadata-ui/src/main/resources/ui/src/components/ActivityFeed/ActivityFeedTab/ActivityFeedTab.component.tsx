@@ -156,9 +156,7 @@ export const ActivityFeedTab = ({
       return (
         <Transi18next
           i18nKey="message.no-activity-feed"
-          renderElement={
-            <Link rel="noreferrer" to={{ pathname: ROUTES.EXPLORE }} />
-          }
+          renderElement={<Link to={ROUTES.EXPLORE} />}
           values={{
             explored: t('message.have-not-explored-yet'),
           }}
@@ -413,7 +411,8 @@ export const ActivityFeedTab = ({
               onClick={() => {
                 handleUpdateTaskFilter(ThreadTaskStatus.Open);
                 setActiveThread();
-              }}>
+              }}
+            >
               <TaskIcon className="m-r-xss" width={14} /> {count.openTaskCount}{' '}
               {t('label.open')}
             </Typography.Text>
@@ -425,7 +424,8 @@ export const ActivityFeedTab = ({
               onClick={() => {
                 handleUpdateTaskFilter(ThreadTaskStatus.Closed);
                 setActiveThread();
-              }}>
+              }}
+            >
               <CheckIcon className="m-r-xss" width={14} />{' '}
               {count.closedTaskCount} {t('label.closed')}
             </Typography.Text>

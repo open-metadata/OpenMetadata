@@ -72,7 +72,8 @@ const DummyChildrenComponent = () => {
       </button>
       <button
         data-testid="edge-click"
-        onClick={() => onEdgeClick(MOCK_EDGE as Edge)}>
+        onClick={() => onEdgeClick(MOCK_EDGE as Edge)}
+      >
         On Edge Click
       </button>
       <button data-testid="openConfirmationModal">
@@ -84,10 +85,12 @@ const DummyChildrenComponent = () => {
     </div>
   );
 };
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ ...mockLocation }));
+});
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
-  useLocation: jest.fn().mockImplementation(() => mockLocation),
   useParams: jest.fn().mockReturnValue({
     fqn: 'table1',
   }),

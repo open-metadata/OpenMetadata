@@ -33,7 +33,7 @@ import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
@@ -54,6 +54,7 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   getQueryById,
@@ -91,7 +92,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   tableId,
 }: TableQueriesProp) => {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
 
@@ -116,8 +117,10 @@ const TableQueries: FC<TableQueriesProp> = ({
   const [isTagsLoading, setIsTagsLoading] = useState(false);
   const [isOwnerLoading, setIsOwnerLoading] = useState(false);
   const [isClickedCalendar, setIsClickedCalendar] = useState(false);
-  const [queryDateFilter, setQueryDateFilter] =
-    useState<{ startTs: number; endTs: number }>();
+  const [queryDateFilter, setQueryDateFilter] = useState<{
+    startTs: number;
+    endTs: number;
+  }>();
   const [sortQuery, setSortQuery] = useState<{
     field: string;
     order: SORT_ORDER;
@@ -477,12 +480,14 @@ const TableQueries: FC<TableQueriesProp> = ({
   const addButton = (
     <Tooltip
       placement="top"
-      title={!permissions?.query.Create && NO_PERMISSION_FOR_ACTION}>
+      title={!permissions?.query.Create && NO_PERMISSION_FOR_ACTION}
+    >
       <Button
         data-testid="add-query-btn"
         disabled={!permissions?.query.Create}
         type="primary"
-        onClick={handleAddQueryClick}>
+        onClick={handleAddQueryClick}
+      >
         {t('label.add')}
       </Button>
     </Tooltip>
@@ -522,7 +527,8 @@ const TableQueries: FC<TableQueriesProp> = ({
     <Col
       className="flex-center font-medium mt-24"
       data-testid="no-queries"
-      span={24}>
+      span={24}
+    >
       <ErrorPlaceHolder>
         <Typography.Paragraph>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
@@ -559,7 +565,8 @@ const TableQueries: FC<TableQueriesProp> = ({
                 className="p-x-md m-t-md"
                 data-testid="queries-container"
                 gutter={[8, 16]}
-                style={{ paddingRight: '36px' }}>
+                style={{ paddingRight: '36px' }}
+              >
                 <Col span={24}>
                   <Space className="justify-between w-full">
                     <Space size={16}>
@@ -591,7 +598,8 @@ const TableQueries: FC<TableQueriesProp> = ({
                         type="text"
                         onClick={() => {
                           setIsClickedCalendar(true);
-                        }}>
+                        }}
+                      >
                         <span>
                           <label>{t('label.created-date')}</label>
                           <DatePicker.RangePicker
@@ -625,7 +633,8 @@ const TableQueries: FC<TableQueriesProp> = ({
                           handleSortOderChange(
                             isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                           )
-                        }>
+                        }
+                      >
                         {isAscSortOrder ? (
                           <SortAscendingOutlined
                             className="text-base text-grey-muted"

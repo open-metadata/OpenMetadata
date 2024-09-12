@@ -15,10 +15,11 @@ import { Badge, Col, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
 import { TEXT_COLOR } from '../../../constants/Color.constants';
 import { ROUTES } from '../../../constants/constants';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
@@ -38,7 +39,7 @@ const EntityHeaderTitle = ({
   showName = true,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
 
   const isTourRoute = useMemo(
     () => location.pathname.includes(ROUTES.TOUR),
@@ -51,17 +52,20 @@ const EntityHeaderTitle = ({
       className={className}
       data-testid={`${serviceName}-${name}`}
       gutter={12}
-      wrap={false}>
+      wrap={false}
+    >
       <Col>{icon}</Col>
       <Col
         className={
           deleted || badge ? 'w-max-full-140' : 'entity-header-content'
-        }>
+        }
+      >
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <Typography.Text
             className="m-b-0 d-block text-grey-muted"
-            data-testid="entity-header-name">
+            data-testid="entity-header-name"
+          >
             {stringToHTML(name)}
           </Typography.Text>
         ) : null}
@@ -71,7 +75,8 @@ const EntityHeaderTitle = ({
           className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
           data-testid="entity-header-display-name"
           ellipsis={{ tooltip: true }}
-          style={{ color: color ?? TEXT_COLOR }}>
+          style={{ color: color ?? TEXT_COLOR }}
+        >
           {stringToHTML(displayName || name)}
           {openEntityInNewPage && (
             <IconExternalLink
@@ -106,7 +111,8 @@ const EntityHeaderTitle = ({
       className="no-underline d-inline-block w-full"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
-      to={link}>
+      to={link}
+    >
       {content}
     </Link>
   ) : (

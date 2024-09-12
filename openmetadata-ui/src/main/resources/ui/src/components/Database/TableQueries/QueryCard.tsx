@@ -19,7 +19,7 @@ import { Duration } from 'luxon';
 import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
@@ -35,6 +35,7 @@ import {
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
@@ -62,7 +63,7 @@ const QueryCard: FC<QueryCardProp> = ({
   const { t } = useTranslation();
   const QueryExtras = queryClassBase.getQueryExtras();
   const { fqn: datasetFQN } = useFqn();
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const { onCopyToClipBoard } = useClipboard(query.query);
   const searchFilter = useMemo(
@@ -199,7 +200,8 @@ const QueryCard: FC<QueryCardProp> = ({
               )}
             </Space>
           }
-          onClick={handleCardClick}>
+          onClick={handleCardClick}
+        >
           <Space className="query-entity-button" size={8}>
             <Button
               className="flex-center bg-white"
@@ -235,7 +237,8 @@ const QueryCard: FC<QueryCardProp> = ({
                 'h-24': !isEditMode,
                 'h-max-56': isEditMode && isAllowExpand,
               }
-            )}>
+            )}
+          >
             <SchemaEditor
               editorClass={classNames('custom-code-mirror-theme', {
                 'full-screen-editor-height': isExpanded,
@@ -263,12 +266,14 @@ const QueryCard: FC<QueryCardProp> = ({
                 <Space
                   align="end"
                   className="w-full justify-end p-r-md"
-                  size={16}>
+                  size={16}
+                >
                   <Button
                     data-testid="cancel-query-btn"
                     key="cancel"
                     size="small"
-                    onClick={() => setIsEditMode(false)}>
+                    onClick={() => setIsEditMode(false)}
+                  >
                     {t('label.cancel')}
                   </Button>
 
@@ -278,7 +283,8 @@ const QueryCard: FC<QueryCardProp> = ({
                     loading={sqlQuery.isLoading}
                     size="small"
                     type="primary"
-                    onClick={updateSqlQuery}>
+                    onClick={updateSqlQuery}
+                  >
                     {t('label.save')}
                   </Button>
                 </Space>

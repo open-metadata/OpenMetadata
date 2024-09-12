@@ -14,11 +14,11 @@ import { Form, Input, Select } from 'antd';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { CustomMetric } from '../../../generated/entity/data/table';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Loader from '../../common/Loader/Loader';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
@@ -33,7 +33,7 @@ const CustomMetricForm = ({
   isEditMode = false,
 }: CustomMetricFormProps) => {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const [isLoading, setIsLoading] = useState(true);
 
   const { activeColumnFqn } = useMemo(() => {
@@ -78,7 +78,8 @@ const CustomMetricForm = ({
       form={form}
       layout="vertical"
       validateMessages={VALIDATION_MESSAGES}
-      onFinish={onFinish}>
+      onFinish={onFinish}
+    >
       <Form.Item
         label={t('label.name')}
         name="name"
@@ -97,7 +98,8 @@ const CustomMetricForm = ({
               return Promise.resolve();
             },
           },
-        ]}>
+        ]}
+      >
         <Input
           data-testid="custom-metric-name"
           disabled={isEditMode}
@@ -112,13 +114,15 @@ const CustomMetricForm = ({
             {
               required: true,
             },
-          ]}>
+          ]}
+        >
           <Select
             data-testid="custom-metric-column"
             disabled={isEditMode}
             placeholder={t('label.please-select-entity', {
               entity: t('label.column'),
-            })}>
+            })}
+          >
             {columnOptions?.map((column) => (
               <Select.Option key={column.name} value={column.name}>
                 {getEntityName(column)}
@@ -136,7 +140,8 @@ const CustomMetricForm = ({
             required: true,
           },
         ]}
-        trigger="onChange">
+        trigger="onChange"
+      >
         <SchemaEditor
           className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
           mode={{ name: CSMode.SQL }}

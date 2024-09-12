@@ -12,24 +12,24 @@
  */
 
 import {
-  expect,
-  Page,
-  PlaywrightTestArgs,
-  PlaywrightWorkerArgs,
-  TestType,
+    expect,
+    Page,
+    PlaywrightTestArgs,
+    PlaywrightWorkerArgs,
+    TestType
 } from '@playwright/test';
 import { DBT, HTTP_CONFIG_SOURCE, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
-  checkServiceFieldSectionHighlighting,
-  Services,
+    checkServiceFieldSectionHighlighting,
+    Services
 } from '../../../utils/serviceIngestion';
 import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -152,6 +152,8 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         )
         .then((res) => res.json());
 
+      // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+      await page.waitForTimeout(2000);
       await page.click(
         `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
       );

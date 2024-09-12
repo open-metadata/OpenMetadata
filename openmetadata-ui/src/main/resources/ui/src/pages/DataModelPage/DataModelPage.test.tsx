@@ -87,7 +87,8 @@ jest.mock(
                 handleUpdateTags();
                 handleUpdateTier();
                 onUpdateDataModel();
-              }}>
+              }}
+            >
               {UPDATE_DATA_MODEL}
             </button>
             <button onClick={handleFollowDataModel}>{FOLLOW_DATA_MODEL}</button>
@@ -125,6 +126,7 @@ jest.mock('../../rest/feedsAPI', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
+  addToRecentViewed: jest.fn(),
   getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
   sortTagsCaseInsensitive: jest.fn((tags) => tags),
 }));

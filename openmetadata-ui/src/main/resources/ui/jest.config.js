@@ -24,6 +24,16 @@ module.exports = {
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
     '\\.(jpg|JPG|gif|GIF|png|PNG|less|LESS|css|CSS)$':
       '<rootDir>/src/test/unit/mocks/file.mock.js',
+    '\\.json': '<rootDir>/src/test/unit/mocks/json.mock.js',
+    '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
+    'quilljs-markdown': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
+    '@azure/msal-browser':
+      '<rootDir>/node_modules/@azure/msal-browser/lib/msal-browser.cjs',
+    '@azure/msal-react':
+      '<rootDir>/node_modules/@azure/msal-react/dist/index.js',
+    axios: 'axios/dist/node/axios.cjs',
+    'react-antd-column-resize':
+      '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.tsx',
   },
   clearMocks: true,
 };

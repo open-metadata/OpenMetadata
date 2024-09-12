@@ -21,7 +21,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { mockTablePermission } from '../../../../constants/mockTourData.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -33,6 +32,7 @@ import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { TestSummary } from '../../../../generated/tests/testCase';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
@@ -64,7 +64,7 @@ function TableSummary({
   highlights,
 }: TableSummaryProps) {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { getEntityPermission } = usePermissionProvider();
 
@@ -116,7 +116,8 @@ function TableSummary({
       return (
         <Typography.Text
           className="text-grey-body"
-          data-testid="no-permissions-to-view">
+          data-testid="no-permissions-to-view"
+        >
           {t('message.no-permission-to-view')}
         </Typography.Text>
       );
@@ -125,7 +126,8 @@ function TableSummary({
     return isUndefined(tableDetails.profile) ? (
       <Typography.Text
         className="text-grey-body"
-        data-testid="no-profiler-enabled-message">
+        data-testid="no-profiler-enabled-message"
+      >
         {t('message.no-profiler-enabled-summary-message')}
       </Typography.Text>
     ) : (
@@ -133,7 +135,8 @@ function TableSummary({
         <div className="profiler-item green" data-testid="test-passed">
           <div
             className="font-semibold text-lg"
-            data-testid="test-passed-value">
+            data-testid="test-passed-value"
+          >
             {formTwoDigitNumber(testSuiteSummary?.success ?? 0)}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
@@ -143,7 +146,8 @@ function TableSummary({
         <div className="profiler-item amber" data-testid="test-aborted">
           <div
             className="font-semibold text-lg"
-            data-testid="test-aborted-value">
+            data-testid="test-aborted-value"
+          >
             {formTwoDigitNumber(testSuiteSummary?.aborted ?? 0)}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
@@ -153,7 +157,8 @@ function TableSummary({
         <div className="profiler-item red" data-testid="test-failed">
           <div
             className="font-semibold text-lg"
-            data-testid="test-failed-value">
+            data-testid="test-failed-value"
+          >
             {formTwoDigitNumber(testSuiteSummary?.failed ?? 0)}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
@@ -231,7 +236,8 @@ function TableSummary({
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
-              data-testid="profiler-header">
+              data-testid="profiler-header"
+            >
               {t('label.profiler-amp-data-quality')}
             </Typography.Text>
           </Col>
@@ -256,7 +262,8 @@ function TableSummary({
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
-              data-testid="schema-header">
+              data-testid="schema-header"
+            >
               {t('label.schema')}
             </Typography.Text>
           </Col>

@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import {
-  interceptURL,
-  uuid,
-  verifyResponseStatusCode,
+    interceptURL,
+    uuid,
+    verifyResponseStatusCode
 } from '../../common/common';
 import UsersTestClass from '../../common/Entities/UserClass';
 import { hardDeleteService } from '../../common/EntityUtils';
 import {
-  createEntityTableViaREST,
-  visitEntityDetailsPage,
+    createEntityTableViaREST,
+    visitEntityDetailsPage
 } from '../../common/Utils/Entity';
 import { getToken } from '../../common/Utils/LocalStorage';
 import { EntityType } from '../../constants/Entity.interface';
@@ -417,7 +417,11 @@ describe('Permissions', { tags: 'Settings' }, () => {
       serviceName: DATABASE_SERVICE.service.name,
       entity: EntityType.Table,
     });
-    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    interceptURL(
+      'GET',
+      '/api/v1/dataQuality/testCases/search/list?fields=*',
+      'testCase'
+    );
     cy.get('[data-testid="profiler"]').click();
     cy.get('[data-testid="profiler-tab-left-panel"]')
       .contains('Data Quality')

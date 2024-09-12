@@ -12,7 +12,6 @@
  */
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ReactComponent as NoDataIcon } from '../../../../../assets/svg/no-data-icon.svg';
 
 const NoProfilerBanner = () => {
@@ -21,19 +20,20 @@ const NoProfilerBanner = () => {
   return (
     <div
       className="border d-flex items-center border-warning rounded-4 p-xs"
-      data-testid="no-profiler-placeholder">
+      data-testid="no-profiler-placeholder"
+    >
       <NoDataIcon />
       <p className="m-l-xs" data-testid="error-msg">
         {t('message.no-profiler-message')}
-        <Link
+        <a
           data-testid="documentation-link"
+          href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow"
+          rel="noreferrer"
           target="_blank"
-          to={{
-            pathname:
-              'https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow',
-          }}>
+          title="data quality observability profiler workflow"
+        >
           {`${t('label.here-lowercase')}.`}
-        </Link>
+        </a>
       </p>
     </div>
   );

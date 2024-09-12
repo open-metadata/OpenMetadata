@@ -63,7 +63,7 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Space className="w-full justify-between items-start">
+        <Space className="w-full justify-between items-start p-l-md">
           <div data-testid="data-insight-header">
             <Typography.Title level={5}>
               {t('label.data-insight-plural')}
@@ -77,7 +77,8 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
             <Button
               data-testid="add-kpi-btn"
               type="primary"
-              onClick={handleAddKPI}>
+              onClick={handleAddKPI}
+            >
               {t('label.add-entity', {
                 entity: t('label.kpi-uppercase'),
               })}

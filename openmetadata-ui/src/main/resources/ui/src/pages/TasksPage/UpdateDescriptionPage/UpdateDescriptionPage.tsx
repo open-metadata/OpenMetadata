@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -36,6 +36,7 @@ import {
 } from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -62,7 +63,7 @@ import { EntityData, Option } from '../TasksPage.interface';
 const UpdateDescription = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const [form] = useForm();
 
@@ -225,7 +226,8 @@ const UpdateDescription = () => {
             <div className="m-t-0 request-description" key="update-description">
               <Typography.Paragraph
                 className="text-base"
-                data-testid="form-title">
+                data-testid="form-title"
+              >
                 {t('label.create-entity', {
                   entity: t('label.task'),
                 })}
@@ -235,11 +237,13 @@ const UpdateDescription = () => {
                 form={form}
                 layout="vertical"
                 validateMessages={VALIDATION_MESSAGES}
-                onFinish={onCreateTask}>
+                onFinish={onCreateTask}
+              >
                 <Form.Item
                   data-testid="title"
                   label={`${t('label.title')}:`}
-                  name="title">
+                  name="title"
+                >
                   <Input
                     disabled
                     placeholder={t('label.task-entity', {
@@ -251,7 +255,8 @@ const UpdateDescription = () => {
                   data-testid="assignees"
                   label={`${t('label.assignee-plural')}:`}
                   name="assignees"
-                  rules={[{ required: true }]}>
+                  rules={[{ required: true }]}
+                >
                   <Assignees
                     options={options}
                     value={assignees}
@@ -265,7 +270,8 @@ const UpdateDescription = () => {
                     data-testid="description-tabs"
                     label={`${t('label.description')}:`}
                     name="description"
-                    rules={[{ required: true }]}>
+                    rules={[{ required: true }]}
+                  >
                     <DescriptionTabs
                       suggestion={currentDescription}
                       value={currentDescription}
@@ -277,7 +283,8 @@ const UpdateDescription = () => {
                   <Space
                     className="w-full justify-end"
                     data-testid="cta-buttons"
-                    size={16}>
+                    size={16}
+                  >
                     <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
@@ -285,7 +292,8 @@ const UpdateDescription = () => {
                       data-testid="submit-btn"
                       htmlType="submit"
                       loading={isLoading}
-                      type="primary">
+                      type="primary"
+                    >
                       {t('label.submit')}
                     </Button>
                   </Space>

@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -34,6 +34,7 @@ import {
 } from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { CustomMetric, Table } from '../../generated/entity/data/table';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
@@ -42,12 +43,13 @@ import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddCustomMetricPage = () => {
-  const { dashboardType } =
-    useParams<{ dashboardType: ProfilerDashboardType }>();
+  const { dashboardType } = useParams<{
+    dashboardType: ProfilerDashboardType;
+  }>();
   const { fqn } = useFqn();
 
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const isColumnMetric = dashboardType === ProfilerDashboardType.COLUMN;
   const { t } = useTranslation();
   const [form] = Form.useForm<CustomMetric>();
@@ -206,7 +208,8 @@ const AddCustomMetricPage = () => {
         children: (
           <div
             className="max-width-md w-9/10 service-form-container"
-            data-testid="add-custom-metric-page-container">
+            data-testid="add-custom-metric-page-container"
+          >
             <Row gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -215,7 +218,8 @@ const AddCustomMetricPage = () => {
                 <Typography.Title
                   className="m-b-0"
                   data-testid="heading"
-                  level={5}>
+                  level={5}
+                >
                   {t('label.add-entity-metric', {
                     entity: isColumnMetric
                       ? t('label.column')
@@ -235,7 +239,8 @@ const AddCustomMetricPage = () => {
                   <Button
                     data-testid="cancel-button"
                     disabled={isActionLoading}
-                    onClick={handleBackClick}>
+                    onClick={handleBackClick}
+                  >
                     {t('label.cancel')}
                   </Button>
                   <Button
@@ -243,7 +248,8 @@ const AddCustomMetricPage = () => {
                     htmlType="submit"
                     loading={isActionLoading}
                     type="primary"
-                    onClick={() => form.submit()}>
+                    onClick={() => form.submit()}
+                  >
                     {t('label.submit')}
                   </Button>
                 </Space>

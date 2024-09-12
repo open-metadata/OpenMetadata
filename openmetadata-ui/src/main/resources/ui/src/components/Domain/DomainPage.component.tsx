@@ -18,7 +18,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -37,6 +36,7 @@ import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
+import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
@@ -201,19 +201,30 @@ const DomainPage = () => {
             ? ERROR_PLACEHOLDER_TYPE.CREATE
             : ERROR_PLACEHOLDER_TYPE.CUSTOM
         }
-        onClick={handleAddDomainClick}>
+        onClick={handleAddDomainClick}
+      >
         {t('message.domains-not-configured')}
       </ErrorPlaceHolder>
     );
   }
 
   return (
-    <PageLayoutV1
-      className="domain-parent-page-layout"
-      leftPanel={<DomainsLeftPanel domains={rootDomains} />}
-      pageTitle={t('label.domain')}>
-      {domainPageRender}
-    </PageLayoutV1>
+    <ResizableLeftPanels
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        className: 'content-resizable-panel-container',
+        minWidth: 280,
+        flex: 0.13,
+        children: <DomainsLeftPanel domains={rootDomains} />,
+      }}
+      pageTitle={t('label.domain')}
+      secondPanel={{
+        children: domainPageRender,
+        className: 'content-resizable-panel-container p-t-sm',
+        minWidth: 800,
+        flex: 0.87,
+      }}
+    />
   );
 };
 

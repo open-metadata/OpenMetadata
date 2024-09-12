@@ -16,7 +16,7 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
@@ -28,6 +28,7 @@ import {
 } from '../../../constants/constants';
 import { OMD_REPOSITORY_LINK } from '../../../constants/docs.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getRepositoryData } from '../../../rest/commonAPI';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
 import { COOKIE_VERSION } from '../../Modals/WhatsNewModal/whatsNewData';
@@ -37,7 +38,7 @@ const cookieStorage = new CookieStorage();
 
 const GithubStarCard = () => {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { currentUser } = useApplicationStore();
   const [showGithubStarPopup, setShowGithubStarPopup] = useState(false);
   const [starredCount, setStarredCount] = useState<number>(0);
@@ -122,7 +123,8 @@ const GithubStarCard = () => {
           ? 'github-star-popup-card-with-alert'
           : 'github-star-popup-card-without-alert'
       }
-      `}>
+      `}
+    >
       <Card data-testid="github-star-popup-card">
         <Space align="center" className="d-flex justify-between">
           <Space>
@@ -151,10 +153,12 @@ const GithubStarCard = () => {
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,
-            }}>
+            }}
+          >
             <Button
               className="github-star-button github-modal-action-button"
-              icon={<Icon component={StarGithubIcon} size={12} />}>
+              icon={<Icon component={StarGithubIcon} size={12} />}
+            >
               {t('label.star')}
             </Button>
           </Link>
@@ -164,7 +168,8 @@ const GithubStarCard = () => {
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,
-            }}>
+            }}
+          >
             <Button className="github-modal-action-button">
               {isLoading ? (
                 <div data-testid="skeleton-loader">

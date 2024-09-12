@@ -12,22 +12,22 @@
  */
 
 import {
-  Page,
-  PlaywrightTestArgs,
-  PlaywrightWorkerArgs,
-  TestType,
+    Page,
+    PlaywrightTestArgs,
+    PlaywrightWorkerArgs,
+    TestType
 } from '@playwright/test';
 import { POSTGRES } from '../../../constant/service';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
-  checkServiceFieldSectionHighlighting,
-  Services,
+    checkServiceFieldSectionHighlighting,
+    Services
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
@@ -131,6 +131,8 @@ class PostgresIngestionClass extends ServiceBaseClass {
           )
           .then((res) => res.json());
 
+        // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+        await page.waitForTimeout(2000);
         await page.click(
           `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
         );

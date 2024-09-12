@@ -123,8 +123,10 @@ const DomainDetailsPage = ({
   const [form] = useForm();
   const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
-  const { tab: activeTab, version } =
-    useParams<{ tab: string; version: string }>();
+  const { tab: activeTab, version } = useParams<{
+    tab: string;
+    version: string;
+  }>();
   const { fqn: domainFqn } = useFqn();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
@@ -634,8 +636,9 @@ const DomainDetailsPage = ({
       <Row
         className="domain-details"
         data-testid="domain-details"
-        gutter={[0, 12]}>
-        <Col className="p-x-md" flex="auto">
+        gutter={[0, 12]}
+      >
+        <Col className="p-x-md p-l-xl" flex="auto">
           <EntityHeader
             breadcrumb={breadcrumbs}
             entityData={{ ...domain, displayName, name }}
@@ -674,7 +677,8 @@ const DomainDetailsPage = ({
                   items: addButtonContent,
                 }}
                 placement="bottomRight"
-                trigger={['click']}>
+                trigger={['click']}
+              >
                 <Button data-testid="domain-details-add-button" type="primary">
                   <Space>
                     {t('label.add')}
@@ -693,18 +697,21 @@ const DomainDetailsPage = ({
                         ? 'exit-version-history'
                         : 'version-plural-history'
                     }`
-                  )}>
+                  )}
+                >
                   <Button
                     className={classNames('', {
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
                     icon={<Icon component={VersionIcon} />}
-                    onClick={handleVersionClick}>
+                    onClick={handleVersionClick}
+                  >
                     <Typography.Text
                       className={classNames('', {
                         'text-primary': version,
-                      })}>
+                      })}
+                    >
                       {toString(domain.version)}
                     </Typography.Text>
                   </Button>
@@ -723,12 +730,14 @@ const DomainDetailsPage = ({
                   overlayStyle={{ width: '350px' }}
                   placement="bottomRight"
                   trigger={['click']}
-                  onOpenChange={setShowActions}>
+                  onOpenChange={setShowActions}
+                >
                   <Tooltip
                     placement="topRight"
                     title={t('label.manage-entity', {
                       entity: t('label.domain'),
-                    })}>
+                    })}
+                  >
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
@@ -766,14 +775,16 @@ const DomainDetailsPage = ({
             <Button
               key="cancel-btn"
               type="link"
-              onClick={handleCloseDataProductModal}>
+              onClick={handleCloseDataProductModal}
+            >
               {t('label.cancel')}
             </Button>,
             <Button
               data-testid="save-data-product"
               key="save-btn"
               type="primary"
-              onClick={() => form.submit()}>
+              onClick={() => form.submit()}
+            >
               {t('label.save')}
             </Button>,
           ]}
@@ -782,7 +793,8 @@ const DomainDetailsPage = ({
           open={showAddDataProductModal}
           title={t('label.add-entity', { entity: t('label.data-product') })}
           width={750}
-          onCancel={handleCloseDataProductModal}>
+          onCancel={handleCloseDataProductModal}
+        >
           <AddDomainForm
             isFormInDialog
             formRef={form}

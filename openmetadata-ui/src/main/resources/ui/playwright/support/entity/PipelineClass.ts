@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
@@ -18,6 +19,7 @@ import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class PipelineClass extends EntityClass {
+  private pipelineName = `pw-pipeline-${uuid()}`;
   service = {
     name: `pw-pipeline-service-${uuid()}`,
     serviceType: 'Dagster',
@@ -35,8 +37,8 @@ export class PipelineClass extends EntityClass {
   children = [{ name: 'snowflake_task' }];
 
   entity = {
-    name: `pw-pipeline-${uuid()}`,
-    displayName: `pw-pipeline-${uuid()}`,
+    name: this.pipelineName,
+    displayName: this.pipelineName,
     service: this.service.name,
     tasks: this.children,
   };
@@ -70,6 +72,30 @@ export class PipelineClass extends EntityClass {
     return {
       service: serviceResponse.body,
       entity: entityResponse.body,
+    };
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/pipelines/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.entityResponseData = await response.json();
+
+    return {
+      entity: this.entityResponseData,
     };
   }
 

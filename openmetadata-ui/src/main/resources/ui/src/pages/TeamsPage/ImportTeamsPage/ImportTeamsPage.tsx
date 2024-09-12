@@ -16,7 +16,7 @@ import { isUndefined } from 'lodash';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { EntityImport } from '../../../components/common/EntityImport/EntityImport.component';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -33,6 +33,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Team, TeamType } from '../../../generated/entity/teams/team';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   getTeamByName,
@@ -47,7 +48,7 @@ import { ImportType } from './ImportTeamsPage.interface';
 const ImportTeamsPage = () => {
   const { fqn } = useFqn();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -185,11 +186,13 @@ const ImportTeamsPage = () => {
           type === ImportType.USERS
             ? t('label.user-plural')
             : t('label.team-plural'),
-      })}>
+      })}
+    >
       <Row
         className="import-teams w-full page-container"
         data-testid="import-teams"
-        gutter={[16, 8]}>
+        gutter={[16, 8]}
+      >
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumb} />
         </Col>
@@ -208,7 +211,8 @@ const ImportTeamsPage = () => {
             entityName={team.name}
             onCancel={handleViewClick}
             onImport={handleImportCsv}
-            onSuccess={handleViewClick}>
+            onSuccess={handleViewClick}
+          >
             {importResult}
           </EntityImport>
         </Col>

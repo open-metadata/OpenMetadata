@@ -12,26 +12,26 @@
  *  limitations under the License.
  */
 import {
-  expect,
-  Page,
-  PlaywrightTestArgs,
-  PlaywrightWorkerArgs,
-  TestType,
+    expect,
+    Page,
+    PlaywrightTestArgs,
+    PlaywrightWorkerArgs,
+    TestType
 } from '@playwright/test';
 import {
-  descriptionBox,
-  getApiContext,
-  INVALID_NAMES,
-  NAME_VALIDATION_ERROR,
-  toastNotification,
+    descriptionBox,
+    getApiContext,
+    INVALID_NAMES,
+    NAME_VALIDATION_ERROR,
+    toastNotification
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
-  deleteService,
-  getServiceCategoryFromService,
-  Services,
-  testConnection,
+    deleteService,
+    getServiceCategoryFromService,
+    Services,
+    testConnection
 } from '../../../utils/serviceIngestion';
 
 class ServiceBaseClass {
@@ -176,7 +176,10 @@ class ServiceBaseClass {
       .getByLabel('Ingestions')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
-
+    
+    // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+    await page.waitForTimeout(2000);
+    
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
 

@@ -153,7 +153,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         dataIndex: 'name',
         key: 'name',
         ellipsis: true,
-        width: '50%',
+        width: isRenderedInRightPanel ? 150 : 400,
         render: (_, record) => getEntityName(record),
         sorter: columnSorter,
       },
@@ -198,7 +198,8 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             entityType,
             entityDetails.fullyQualifiedName,
             EntityTabs.CUSTOM_PROPERTIES
-          )}>
+          )}
+        >
           {t('label.view-all')}
         </Link>
       );
@@ -248,10 +249,11 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             <Transi18next
               i18nKey="message.no-custom-properties-table"
               renderElement={
-                <Link
+                <a
+                  href={CUSTOM_PROPERTIES_DOCS}
                   rel="noreferrer"
                   target="_blank"
-                  to={{ pathname: CUSTOM_PROPERTIES_DOCS }}
+                  title="Custom properties documentation"
                 />
               }
               values={{
@@ -279,6 +281,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           </div>
           <Table
             bordered
+            resizableColumns
             columns={tableColumn}
             data-testid="custom-properties-table"
             dataSource={entityTypeDetail?.customProperties?.slice(

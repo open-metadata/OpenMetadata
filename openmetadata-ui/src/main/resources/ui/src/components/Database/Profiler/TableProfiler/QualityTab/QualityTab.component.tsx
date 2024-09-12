@@ -37,6 +37,7 @@ import {
 import { getAddDataQualityTableTestPath } from '../../../../../utils/RouterUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
+import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import { SummaryPanel } from '../../../../DataQuality/SummaryPannel/SummaryPanel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -76,22 +77,33 @@ export const QualityTab = () => {
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<TestCaseStatus>('' as TestCaseStatus);
   const [selectedTestType, setSelectedTestType] = useState(TestCaseType.all);
+  const [searchValue, setSearchValue] = useState<string>();
   const testSuite = useMemo(() => table?.testSuite, [table]);
 
   const handleTestCasePageChange: NextPreviousProps['pagingHandler'] = ({
-    cursorType,
     currentPage,
   }) => {
-    if (cursorType) {
+    if (currentPage) {
       fetchAllTests({
-        [cursorType]: paging[cursorType],
         testCaseType: selectedTestType,
         testCaseStatus: isEmpty(selectedTestCaseStatus)
           ? undefined
           : selectedTestCaseStatus,
+        offset: (currentPage - 1) * pageSize,
       });
     }
     handlePageChange(currentPage);
+  };
+
+  const handleSearchTestCase = (value?: string) => {
+    setSearchValue(value);
+    fetchAllTests({
+      testCaseType: selectedTestType,
+      testCaseStatus: isEmpty(selectedTestCaseStatus)
+        ? undefined
+        : selectedTestCaseStatus,
+      q: value,
+    });
   };
 
   const tableBreadcrumb = useMemo(() => {
@@ -118,6 +130,15 @@ export const QualityTab = () => {
         key: EntityTabs.TEST_CASES,
         children: (
           <Row className="p-t-md">
+            <Col span={12}>
+              <Searchbar
+                placeholder={t('label.search-entity', {
+                  entity: t('label.test-case-lowercase'),
+                })}
+                searchValue={searchValue}
+                onSearch={handleSearchTestCase}
+              />
+            </Col>
             <Col span={24}>
               <DataQualityTab
                 afterDeleteAction={async (...params) => {
@@ -136,6 +157,7 @@ export const QualityTab = () => {
             <Col span={24}>
               {showPagination && (
                 <NextPrevious
+                  isNumberBased
                   currentPage={currentPage}
                   pageSize={pageSize}
                   paging={paging}
@@ -240,10 +262,12 @@ export const QualityTab = () => {
                           items: addButtonContent,
                         }}
                         placement="bottomRight"
-                        trigger={['click']}>
+                        trigger={['click']}
+                      >
                         <Button
                           data-testid="profiler-add-table-test-btn"
-                          type="primary">
+                          type="primary"
+                        >
                           <Space>
                             {t('label.add-entity', { entity: t('label.test') })}
                             <DownOutlined />

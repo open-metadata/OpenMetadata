@@ -43,7 +43,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -63,6 +63,7 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
@@ -82,7 +83,7 @@ import { TestCaseSearchParams } from '../DataQuality.interface';
 export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const [form] = useForm();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: DataQualityPageTabs }>();
   const { permissions } = usePermissionProvider();
@@ -219,7 +220,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             <Space
               data-testid={hit.fullyQualifiedName}
               direction="vertical"
-              size={0}>
+              size={0}
+            >
               <Typography.Text className="text-xs text-grey-muted">
                 {hit.fullyQualifiedName}
               </Typography.Text>
@@ -290,7 +292,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             <Space
               data-testid={hit._source.fullyQualifiedName}
               direction="vertical"
-              size={0}>
+              size={0}
+            >
               <Typography.Text className="text-xs text-grey-muted">
                 {hit._source.fullyQualifiedName}
               </Typography.Text>
@@ -328,7 +331,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             <Space
               data-testid={hit._source.fullyQualifiedName}
               direction="vertical"
-              size={0}>
+              size={0}
+            >
               <Typography.Text className="text-xs text-grey-muted">
                 {hit._source.fullyQualifiedName}
               </Typography.Text>
@@ -457,12 +461,14 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     <Row
       className="p-x-lg p-t-md"
       data-testid="test-case-container"
-      gutter={[16, 16]}>
+      gutter={[16, 16]}
+    >
       <Col span={24}>
         <Form<TestCaseSearchParams>
           form={form}
           layout="horizontal"
-          onValuesChange={handleFilterChange}>
+          onValuesChange={handleFilterChange}
+        >
           <Space wrap align="center" className="w-full" size={16}>
             <Form.Item className="m-0 w-80">
               <Searchbar
@@ -480,12 +486,14 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                   items: filterMenu,
                   selectedKeys: selectedFilter,
                 }}
-                trigger={['click']}>
+                trigger={['click']}
+              >
                 <Button
                   ghost
                   className="expand-btn"
                   data-testid="advanced-filter"
-                  type="primary">
+                  type="primary"
+                >
                   {t('label.advanced')}
                   <RightOutlined />
                 </Button>
@@ -495,7 +503,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               <Form.Item
                 className="m-0 w-80"
                 label={t('label.table')}
-                name="tableFqn">
+                name="tableFqn"
+              >
                 <Select
                   allowClear
                   showSearch
@@ -511,7 +520,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               <Form.Item
                 className="m-0 w-min-20"
                 label={t('label.platform')}
-                name="testPlatforms">
+                name="testPlatforms"
+              >
                 <Select
                   allowClear
                   data-testid="platform-select-filter"
@@ -525,7 +535,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               <Form.Item
                 className="m-0 w-40"
                 label={t('label.type')}
-                name="testCaseType">
+                name="testCaseType"
+              >
                 <Select
                   allowClear
                   data-testid="test-case-type-select-filter"
@@ -538,7 +549,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               <Form.Item
                 className="m-0 w-40"
                 label={t('label.status')}
-                name="testCaseStatus">
+                name="testCaseStatus"
+              >
                 <Select
                   allowClear
                   data-testid="status-select-filter"
@@ -553,7 +565,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 label={t('label.last-run')}
                 name="lastRunRange"
                 trigger="handleDateRangeChange"
-                valuePropName="defaultDateRange">
+                valuePropName="defaultDateRange"
+              >
                 <DatePickerMenu showSelectedCustomRange />
               </Form.Item>
             )}
@@ -561,7 +574,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               <Form.Item
                 className="m-0 w-80"
                 label={t('label.tag-plural')}
-                name="tags">
+                name="tags"
+              >
                 <Select
                   allowClear
                   showSearch
@@ -578,7 +592,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               <Form.Item
                 className="m-0 w-40"
                 label={t('label.tier')}
-                name="tier">
+                name="tier"
+              >
                 <Select
                   allowClear
                   data-testid="tier-select-filter"
@@ -591,7 +606,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               <Form.Item
                 className="m-0 w-80"
                 label={t('label.service')}
-                name="serviceName">
+                name="serviceName"
+              >
                 <Select
                   allowClear
                   showSearch

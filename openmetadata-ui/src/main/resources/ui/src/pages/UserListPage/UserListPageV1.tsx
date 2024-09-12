@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -52,6 +52,7 @@ import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { searchData } from '../../rest/miscAPI';
 import { getUsers, restoreUser, UsersQueryParams } from '../../rest/userAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -67,7 +68,7 @@ const UserListPageV1 = () => {
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
 
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
   const { isAdminUser } = useAuth();
 
@@ -318,7 +319,8 @@ const UserListPageV1 = () => {
           <Space
             align="center"
             className="w-full justify-center action-icons"
-            size={8}>
+            size={8}
+          >
             {showRestore && (
               <Tooltip
                 placement={isAdminUser ? 'bottom' : 'left'}
@@ -328,7 +330,8 @@ const UserListPageV1 = () => {
                         entity: t('label.user'),
                       })
                     : ADMIN_ONLY_ACTION
-                }>
+                }
+              >
                 <Button
                   data-testid={`restore-user-btn-${record.name}`}
                   disabled={!isAdminUser}
@@ -349,7 +352,8 @@ const UserListPageV1 = () => {
                       entity: t('label.user'),
                     })
                   : ADMIN_ONLY_ACTION
-              }>
+              }
+            >
               <Button
                 disabled={!isAdminUser}
                 icon={
@@ -410,7 +414,8 @@ const UserListPageV1 = () => {
       <Row
         className="user-listing p-b-md page-container"
         data-testid="user-list-v1-component"
-        gutter={[0, 16]}>
+        gutter={[0, 16]}
+      >
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -435,7 +440,8 @@ const UserListPageV1 = () => {
                 <Button
                   data-testid="add-user"
                   type="primary"
-                  onClick={handleAddNewUser}>
+                  onClick={handleAddNewUser}
+                >
                   {t('label.add-entity', { entity: t('label.user') })}
                 </Button>
               </LimitWrapper>
@@ -499,7 +505,8 @@ const UserListPageV1 = () => {
             setShowReactiveModal(false);
             setSelectedUser(undefined);
           }}
-          onOk={handleReactiveUser}>
+          onOk={handleReactiveUser}
+        >
           <p>
             {t('message.are-you-want-to-restore', {
               entity: getEntityName(selectedUser),

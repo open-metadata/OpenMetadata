@@ -14,8 +14,9 @@ import { Col, Menu, MenuProps, Row, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import profilerClassBase from './ProfilerClassBase';
 import { TableProfilerProps } from './TableProfiler.interface';
@@ -24,7 +25,7 @@ import { TableProfilerProvider } from './TableProfilerProvider';
 const TableProfiler = (props: TableProfilerProps) => {
   const { isTourOpen } = useTourProvider();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
 
   const { activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
     useMemo(() => {
@@ -82,7 +83,8 @@ const TableProfiler = (props: TableProfilerProps) => {
         className="table-profiler-container h-full flex-grow"
         data-testid="table-profiler-container"
         gutter={[16, 16]}
-        id="profilerDetails">
+        id="profilerDetails"
+      >
         <Col className="p-t-sm data-quality-left-panel" span={4}>
           <Menu
             className="h-full p-x-0 custom-menu"
@@ -97,7 +99,8 @@ const TableProfiler = (props: TableProfilerProps) => {
           <Space
             className="w-full h-min-full p-sm"
             direction="vertical"
-            size={16}>
+            size={16}
+          >
             {activeTabComponent}
           </Space>
         </Col>

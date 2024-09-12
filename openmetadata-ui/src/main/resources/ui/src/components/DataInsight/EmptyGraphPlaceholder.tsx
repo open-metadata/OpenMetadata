@@ -14,7 +14,6 @@
 import { Typography } from 'antd';
 import React, { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import { Transi18next } from '../../utils/CommonUtils';
@@ -27,7 +26,8 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
     <ErrorPlaceHolder
       icon={icon}
       size={SIZE.MEDIUM}
-      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+    >
       <Typography.Paragraph style={{ marginBottom: '0' }}>
         {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
           entity: t('label.data-insight'),
@@ -37,10 +37,11 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
         <Transi18next
           i18nKey="message.refer-to-our-doc"
           renderElement={
-            <Link
+            <a
+              href={DATA_INSIGHT_DOCS}
               rel="noreferrer"
               target="_blank"
-              to={{ pathname: DATA_INSIGHT_DOCS }}
+              title="Data Insight Documentation"
             />
           }
           values={{

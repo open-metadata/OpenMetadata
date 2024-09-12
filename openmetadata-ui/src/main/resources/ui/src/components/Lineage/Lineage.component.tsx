@@ -21,7 +21,7 @@ import React, {
   useRef,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import ReactFlow, {
   Background,
   Controls,
@@ -33,6 +33,7 @@ import {
   MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
   customEdges,
   dragHandle,
@@ -59,7 +60,7 @@ const Lineage = ({
   const history = useHistory();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
-  const location = useLocation();
+  const location = useCustomLocation();
   const {
     nodes,
     edges,
@@ -126,14 +127,16 @@ const Lineage = ({
   return (
     <Card
       className="lineage-card card-body-full w-auto border-none card-padding-0"
-      data-testid="lineage-details">
+      data-testid="lineage-details"
+    >
       {isFullScreen && (
         <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
       )}
       <div
         className="h-full relative lineage-container"
         data-testid="lineage-container"
-        ref={reactFlowWrapper}>
+        ref={reactFlowWrapper}
+      >
         {entityLineage && (
           <CustomControlsComponent
             className="absolute top-1 right-1 p-xs"
@@ -192,7 +195,8 @@ const Lineage = ({
               onNodeMouseLeave={onNodeMouseLeave}
               onNodeMouseMove={onNodeMouseMove}
               onNodesChange={onNodesChange}
-              onPaneClick={onPaneClick}>
+              onPaneClick={onPaneClick}
+            >
               <Background gap={12} size={1} />
               <Controls position="bottom-right" showInteractive={false} />
               <Panel position="bottom-left">

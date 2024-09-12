@@ -193,7 +193,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         activeTab: TableProfilerTab.DATA_QUALITY,
                       }),
                     }}
-                    onClick={(e) => e.stopPropagation()}>
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {tableFqn}
                   </Link>
                 );
@@ -278,7 +279,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         ? 'by ' + getEntityName(testCaseResult.updatedBy)
                         : ''
                     }`
-              }>
+              }
+            >
               <span data-testid={`${record.name}-status`}>
                 <AppBadge
                   className={classNames(
@@ -308,7 +310,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   testCaseEditPermission
                     ? t('label.edit')
                     : NO_PERMISSION_FOR_ACTION
-                }>
+                }
+              >
                 <Button
                   className="flex-center"
                   data-testid={`edit-${record.name}`}
@@ -330,7 +333,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                     testCaseDeletePermission
                       ? t('label.remove')
                       : NO_PERMISSION_FOR_ACTION
-                  }>
+                  }
+                >
                   <Button
                     className="flex-center"
                     data-testid={`remove-${record.name}`}
@@ -351,7 +355,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                     testCaseDeletePermission
                       ? t('label.delete')
                       : NO_PERMISSION_FOR_ACTION
-                  }>
+                  }
+                >
                   <Button
                     className="flex-center"
                     data-testid={`delete-${record.name}`}
@@ -436,10 +441,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   <Transi18next
                     i18nKey="message.no-data-quality-test-case"
                     renderElement={
-                      <Link
+                      <a
+                        href={DATA_QUALITY_PROFILER_DOCS}
                         rel="noreferrer"
                         target="_blank"
-                        to={{ pathname: DATA_QUALITY_PROFILER_DOCS }}
+                        title="Data Quality Profiler Documentation"
                       />
                     }
                     values={{

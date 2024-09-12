@@ -388,9 +388,9 @@ const ClassificationDetails = forwardRef(
     }));
 
     return (
-      <div className="p-x-md" data-testid="tags-container">
+      <div className="p-t-sm p-x-md" data-testid="tags-container">
         {currentClassification && (
-          <Row data-testid="header" wrap={false}>
+          <Row className="p-l-lg" data-testid="header" wrap={false}>
             <Col flex="auto">
               <EntityHeaderTitle
                 badge={
@@ -427,7 +427,8 @@ const ClassificationDetails = forwardRef(
                       data-testid="add-new-tag-button"
                       disabled={isClassificationDisabled}
                       type="primary"
-                      onClick={handleAddNewTagClick}>
+                      onClick={handleAddNewTagClick}
+                    >
                       {t('label.add-entity', {
                         entity: t('label.tag'),
                       })}
@@ -443,12 +444,14 @@ const ClassificationDetails = forwardRef(
                           ? 'exit-version-history'
                           : 'version-plural-history'
                       }`
-                    )}>
+                    )}
+                  >
                     <Button
                       className="w-16 p-0"
                       data-testid="version-button"
                       icon={<Icon component={VersionIcon} />}
-                      onClick={versionHandler}>
+                      onClick={versionHandler}
+                    >
                       <Typography.Text>{currentVersion}</Typography.Text>
                     </Button>
                   </Tooltip>
