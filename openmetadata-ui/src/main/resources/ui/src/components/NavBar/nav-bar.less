@@ -32,22 +32,33 @@
   }
   & + .refresh-alert {
     width: 470px;
-    top: 10px;
+    bottom: 30px;
     align-items: center;
     z-index: 9999;
     margin: 0 auto;
-    box-shadow: 13px 0px 47px 0px #0000000f;
+    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.12);
     border-radius: 10px;
-    border: 1px solid @blue-3;
-    background: #f5f8ff;
+    border: 1px solid @text-color;
+    background: @text-color;
+    color: @white;
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+
+    .ant-alert-message {
+      color: @white;
+    }
+    .ant-alert-description {
+      color: @grey-4;
+    }
 
     .ant-alert-content {
-      border-right: 1px solid @blue-3;
+      border-right: 1px solid @white;
     }
 
     .ant-btn {
       font-weight: 700;
-      color: @blue-3;
+      color: @white;
     }
   }
 }
@@ -63,11 +74,9 @@
 
 @keyframes slide-in-top {
   0% {
-    transform: translateY(-100%);
-    opacity: 0;
+    transform: translate(-50%, 100%);
   }
   100% {
-    transform: translateY(0);
-    opacity: 1;
+    transform: translate(-50%, 0);
   }
 }
