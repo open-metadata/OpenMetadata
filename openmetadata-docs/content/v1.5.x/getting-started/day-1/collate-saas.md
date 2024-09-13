@@ -1,5 +1,5 @@
 ---
-title: Running Connector using Collate SaaS
+title: Collate SaaS
 slug: /getting-started/day-1/collate-saas
 collate: true
 ---
@@ -13,7 +13,7 @@ You can easily set up a database service for metadata extraction from Collate Sa
 {% image
   src="/images/v1.5/getting-started/add-service.png"
   alt="Adding Database Service"
-  height="450px"
+  height="500px"
   caption="Adding Database Service" /%}
 
 2. **Select the database type** you want to use. Enter details such as the name and description to identify the database. In this Case we are selecting `Snowflake`.
@@ -29,7 +29,7 @@ You can easily set up a database service for metadata extraction from Collate Sa
 {% image
   src="/images/v1.5/getting-started/configure-connector.png"
   alt="Updating Connection Details"
-  height="850px"
+  height="950px"
   caption="Updating Connection Details" /%}
 
 5. **Allow the Collate SaaS IP**. In the Connection Details, you will see the IP Address unique to your cluster, You need to Allow the `IP` to Access the datasource.
@@ -42,7 +42,7 @@ This step is required only for Collate SaaS. If you are using Hybrid SaaS, you w
 {% image
   src="/images/v1.5/getting-started/collate-saas-ip.png"
   alt="Collate SaaS IP"
-  height="850px"
+  height="200px"
   caption="Collate SaaS IP" /%}
 
 6. **Test the connection** to verify the status. The test connection will check if the Service is reachable from Collate.
@@ -50,5 +50,5 @@ This step is required only for Collate SaaS. If you are using Hybrid SaaS, you w
 {% image
   src="/images/v1.5/getting-started/test-connection.png"
   alt="Verifying the Test Connection"
-  height="850px"
+  height="350px"
   caption="Verifying the Test Connection" /%}
