@@ -49,7 +49,7 @@ export const GenericAuthenticator = forwardRef(
       const resp = await renewToken();
       setOidcToken(resp.accessToken);
 
-      return Promise.resolve(resp);
+      return resp;
     };
 
     useImperativeHandle(ref, () => ({
