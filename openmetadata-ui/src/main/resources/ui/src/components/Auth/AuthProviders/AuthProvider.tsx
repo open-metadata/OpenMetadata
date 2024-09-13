@@ -64,6 +64,7 @@ import {
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
 import { getLoggedInUser, updateUserDetail } from '../../../rest/userAPI';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
   getAuthConfig,
@@ -140,6 +141,7 @@ export const AuthProvider = ({
     setApplicationLoading,
   } = useApplicationStore();
   const { updateDomains, updateDomainLoading } = useDomainStore();
+  const tokenService = useRef<TokenService>();
 
   const location = useCustomLocation();
   const history = useHistory();
@@ -183,9 +185,13 @@ export const AuthProvider = ({
     setApplicationLoading(false);
   }, [timeoutId]);
 
-  const onRenewIdTokenHandler = () => {
-    return authenticatorRef.current?.renewIdToken();
-  };
+  useEffect(() => {
+    if (authenticatorRef.current?.renewIdToken) {
+      tokenService.current = new TokenService(
+        authenticatorRef.current?.renewIdToken
+      );
+    }
+  }, [authenticatorRef.current?.renewIdToken]);
 
   const fetchDomainList = useCallback(async () => {
     try {
@@ -296,8 +302,20 @@ export const AuthProvider = ({
    */
   const renewIdToken = async () => {
     try {
-      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
+      if (!tokenService.current?.isTokenUpdateInProgress()) {
+        await tokenService.current?.refreshToken();
+      } else {
+        // wait for renewal to complete
+        const wait = new Promise((resolve) => {
+          setTimeout(() => {
+            return resolve(true);
+          }, 500);
+        });
+        await wait;
+
+        // should have updated token after renewal
+        return getOidcToken();
+      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(
@@ -357,8 +375,7 @@ export const AuthProvider = ({
   const startTokenExpiryTimer = () => {
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken(
-      getOidcToken(),
-      clientType
+      getOidcToken()
     );
     const refreshToken = getRefreshToken();
 

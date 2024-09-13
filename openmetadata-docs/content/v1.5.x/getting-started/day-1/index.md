@@ -66,7 +66,7 @@ to collaborate on the data and assign different roles.
 {% image
   src="/images/v1.5/getting-started/users.png"
   alt="Users Navigation"
-  height="450px"
+  height="300px"
   caption="Users Navigation" /%}
 
 - Click on **Add User**, and enter their email and other details to provide access to the platform.
