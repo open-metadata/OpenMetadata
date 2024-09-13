@@ -10,6 +10,8 @@ site_menu:
   
   - category: Getting Started / Day 1
     url: /getting-started/day-1
+  - category: Getting Started / Day 1 / Collate SaaS
+    url: /getting-started/day-1/collate-saas
   - category: Getting Started / Day 1 / Hybrid SaaS
     url: /getting-started/day-1/hybrid-saas
   - category: Getting Started / Day 1 / Hybrid SaaS / Airflow
