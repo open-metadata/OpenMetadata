@@ -116,6 +116,7 @@ $$section
 The sampling method type can be set to **BERNOULLI** or **SYSTEM**. You can find the difference of two values in the document of the Snowflake. When you choice **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restlictions than **SYSTEM**.
 
 If no option is choiced, the default is **BERNOULLI**.
+$$
 
 $$section
 ### PII Inference Confidence Level $(id="confidence")
