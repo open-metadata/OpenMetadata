@@ -68,7 +68,6 @@ import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.index.query.MatchQueryBuilder;
 import es.org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import es.org.elasticsearch.index.query.Operator;
-import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
@@ -171,7 +170,6 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
-import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
@@ -191,7 +189,6 @@ import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -531,14 +528,14 @@ public class ElasticSearchClient implements SearchClient {
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     if (subjectContext != null && !subjectContext.isAdmin()) {
       // Evaluate RBAC conditions
-      OMQueryBuilder rbacQuery =
-          rbacConditionEvaluator.evaluateConditions(subjectContext, new ElasticQueryBuilder());
+      /*OMQueryBuilder rbacQuery =
+          rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQuery != null) {
         searchSourceBuilder.query(
             QueryBuilders.boolQuery()
                 .must(searchSourceBuilder.query())
                 .filter((QueryBuilder) rbacQuery.build()));
-      }
+      }*/
     }
 
     try {

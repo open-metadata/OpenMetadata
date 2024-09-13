@@ -1,13 +1,10 @@
 package org.openmetadata.service.search.security;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
@@ -29,171 +26,140 @@ public class RBACConditionEvaluator {
 
   public RBACConditionEvaluator() {
     spelContext = SimpleEvaluationContext.forReadOnlyDataBinding().withInstanceMethods().build();
-
-    // Register methods in the evaluation context
     spelContext.setVariable("matchAnyTag", this);
     spelContext.setVariable("matchAllTags", this);
     spelContext.setVariable("isOwner", this);
     spelContext.setVariable("noOwner", this);
   }
 
-  public OMQueryBuilder evaluateConditions(
-      SubjectContext subjectContext, OMQueryBuilder queryBuilder) {
+  public OMQueryBuilder evaluateConditions(SubjectContext subjectContext) {
     User user = subjectContext.user();
-    Set<String> processedPolicies = new HashSet<>();
+    ConditionCollector collector = new ConditionCollector();
 
-    Iterator<SubjectContext.PolicyContext> policies =
-        subjectContext.getPolicies(List.of(user.getEntityReference()));
-
-    while (policies.hasNext()) {
-      SubjectContext.PolicyContext context = policies.next();
-      if (processedPolicies.contains(context.getPolicyName())) {
-        continue; // Skip already processed policies
-      }
-      processedPolicies.add(context.getPolicyName());
-
+    // Iterate over policies and collect conditions
+    for (Iterator<SubjectContext.PolicyContext> it =
+            subjectContext.getPolicies(List.of(user.getEntityReference()));
+        it.hasNext(); ) {
+      SubjectContext.PolicyContext context = it.next();
       for (CompiledRule rule : context.getRules()) {
-        if ((rule.getOperations().contains(MetadataOperation.ALL)
-                || rule.getOperations().contains(MetadataOperation.VIEW_ALL)
-                || rule.getOperations().contains(MetadataOperation.VIEW_BASIC))
-            && rule.getCondition() != null) {
-          if (rule.getOperations().contains(MetadataOperation.ALL)
-              && rule.getEffect().toString().equalsIgnoreCase("ALLOW")) {
-            continue; // Skip allow rules with ALL operations
-          }
-          if (rule.getEffect().toString().equalsIgnoreCase("DENY")) {
-            queryBuilder.mustNot(evaluateSpELCondition(rule.getCondition(), user, queryBuilder));
-          } else {
-            queryBuilder.must(evaluateSpELCondition(rule.getCondition(), user, queryBuilder));
-          }
+        if (rule.getCondition() != null && rule.getEffect().toString().equalsIgnoreCase("DENY")) {
+          OMQueryBuilder mustNotCondition = evaluateSpELCondition(rule.getCondition(), user);
+          collector.addMustNot(mustNotCondition);
+        } else if (rule.getCondition() != null) {
+          OMQueryBuilder mustCondition = evaluateSpELCondition(rule.getCondition(), user);
+          collector.addMust(mustCondition);
         }
       }
     }
-    return queryBuilder;
+
+    // Build and return the final query
+    return collector.buildFinalQuery();
   }
 
-  // Main method to evaluate and convert SpEL to Elasticsearch/OpenSearch query
-  public OMQueryBuilder evaluateSpELCondition(
-      String condition, User user, OMQueryBuilder queryBuilder) {
+  // Method to evaluate SpEL condition and collect conditions
+  public OMQueryBuilder evaluateSpELCondition(String condition, User user) {
     spelContext.setVariable("user", user);
-
-    // Parse the expression and walk through the AST
     SpelExpression parsedExpression = (SpelExpression) spelParser.parseExpression(condition);
-
-    // Handle the AST without over-complicating it
-    handleExpressionNode(parsedExpression.getAST(), queryBuilder);
-
-    return queryBuilder; // Return the global queryBuilder that has been modified
+    ConditionCollector collector = new ConditionCollector();
+    preprocessExpression(parsedExpression.getAST(), collector);
+    return collector.buildFinalQuery();
   }
 
-  private void handleExpressionNode(SpelNode node, OMQueryBuilder queryBuilder) {
-    if (node instanceof OperatorNot) {
-      SpelNode child = node.getChild(0);
-      queryBuilder.mustNot(createSubquery(child)); // Only append the negation here
-      return;
-    }
-
+  // Traverse SpEL expression tree and collect conditions (but don't build query yet)
+  private void preprocessExpression(SpelNode node, ConditionCollector collector) {
     if (node instanceof OpAnd) {
       for (int i = 0; i < node.getChildCount(); i++) {
-        SpelNode child = node.getChild(i);
-        queryBuilder.must(createSubquery(child)); // AND conditions should be appended here
+        preprocessExpression(node.getChild(i), collector);
       }
-      return;
-    }
-
-    if (node instanceof OpOr) {
+    } else if (node instanceof OpOr) {
       for (int i = 0; i < node.getChildCount(); i++) {
-        SpelNode child = node.getChild(i);
-        queryBuilder.should(createSubquery(child)); // OR conditions should be appended here
+        preprocessExpression(node.getChild(i), collector);
       }
-      queryBuilder.minimumShouldMatch(1); // At least one OR condition must match
-      return;
-    }
-
-    if (node instanceof MethodReference) {
-      handleMethodReference(node, queryBuilder); // Handle the method call and modify query
+    } else if (node instanceof OperatorNot) {
+      preprocessExpression(node.getChild(0), collector);
+    } else if (node instanceof MethodReference) {
+      handleMethodReference(node, collector);
     }
   }
 
-  // Method to create subqueries without adding excessive boolQuery layers
-  private OMQueryBuilder createSubquery(SpelNode node) {
-    OMQueryBuilder subquery = new ElasticQueryBuilder(); // Or any implementation
-    handleExpressionNode(node, subquery); // Recursively build the subquery
-    return subquery; // Return the subquery to be appended to the main one
-  }
+  private void handleMethodReference(SpelNode node, ConditionCollector collector) {
+    MethodReference methodRef = (MethodReference) node;
+    String methodName = methodRef.getName();
 
-  private void handleMethodReference(SpelNode node, OMQueryBuilder queryBuilder) {
-    if (node instanceof MethodReference) {
-      MethodReference methodRef = (MethodReference) node;
-      String methodName = methodRef.getName();
-      List<Object> args = extractMethodArguments(methodRef);
-
-      // Directly invoke the method and modify the queryBuilder in place
-      invokeMethod(methodName, args, queryBuilder);
+    if (methodName.equals("matchAnyTag")) {
+      List<String> tags = extractMethodArguments(methodRef);
+      matchAnyTag(tags, collector); // Pass collector
+    } else if (methodName.equals("matchAllTags")) {
+      List<String> tags = extractMethodArguments(methodRef);
+      matchAllTags(tags, collector); // Pass collector
+    } else if (methodName.equals("isOwner")) {
+      isOwner((User) spelContext.lookupVariable("user"), collector); // Pass collector
+    } else if (methodName.equals("noOwner")) {
+      noOwner(collector); // Pass collector
     }
   }
 
-  // Helper method to extract arguments from a method reference node
-  private List<Object> extractMethodArguments(MethodReference methodRef) {
-    List<Object> args = new ArrayList<>();
-    for (int i = 0; i < methodRef.getChildCount(); i++) {
-      SpelNode childNode = methodRef.getChild(i);
-      Object value = spelParser.parseExpression(childNode.toString()).getValue(spelContext);
-      args.add(value);
-    }
-    return args;
-  }
-
-  // Invoke methods dynamically based on method name
-  private void invokeMethod(String methodName, List<Object> args, OMQueryBuilder queryBuilder) {
-    switch (methodName) {
-      case "matchAnyTag":
-        if (!args.isEmpty()) {
-          matchAnyTag(convertArgsToList(args), queryBuilder);
-        }
-        break;
-      case "matchAllTags":
-        if (!args.isEmpty()) {
-          matchAllTags(convertArgsToList(args), queryBuilder);
-        }
-        break;
-      case "isOwner":
-        isOwner((User) spelContext.lookupVariable("user"), queryBuilder);
-        break;
-      case "noOwner":
-        noOwner(queryBuilder);
-        break;
-      default:
-        throw new IllegalArgumentException("Unsupported method: " + methodName);
-    }
-  }
-
+  // Handle method references like matchAnyTag, isOwner, etc.
   private List<String> convertArgsToList(List<Object> args) {
     return args.stream().map(Object::toString).toList();
   }
 
-  // Ensure that the methods append conditions directly to the passed queryBuilder
-  public void matchAnyTag(List<String> tags, OMQueryBuilder queryBuilder) {
-    for (String tag : tags) {
-      queryBuilder.should(queryBuilder.termQuery("tags.tagFQN", tag));
+  private List<String> extractMethodArguments(MethodReference methodRef) {
+    List<String> args = new ArrayList<>();
+    for (int i = 0; i < methodRef.getChildCount(); i++) {
+      SpelNode childNode = methodRef.getChild(i);
+      args.add(childNode.toString());
     }
-    queryBuilder.minimumShouldMatch(1);
+    return args;
   }
 
-  public void matchAllTags(List<String> tags, OMQueryBuilder queryBuilder) {
+  public void matchAnyTag(List<String> tags, ConditionCollector collector) {
+    List<OMQueryBuilder> tagQueries = new ArrayList<>();
+
+    // Create a term query for each tag
     for (String tag : tags) {
-      queryBuilder.must(queryBuilder.boolQuery().termQuery("tags.tagFQN", tag));
+      OMQueryBuilder tagQuery = new ElasticQueryBuilder().termQuery("tags.tagFQN", tag);
+      tagQueries.add(tagQuery);
     }
+
+    // Collect these as OR conditions without adding them to the query builder directly
+    collector.addShould(tagQueries);
   }
 
-  public void isOwner(User user, OMQueryBuilder queryBuilder) {
-    queryBuilder.should(queryBuilder.boolQuery().termQuery("owner.id", user.getId().toString()));
+  public void matchAllTags(List<String> tags, ConditionCollector collector) {
+    List<OMQueryBuilder> tagQueries = new ArrayList<>();
+
+    // Create a term query for each tag
+    for (String tag : tags) {
+      OMQueryBuilder tagQuery = new ElasticQueryBuilder().termQuery("tags.tagFQN", tag);
+      tagQueries.add(tagQuery);
+    }
+
+    // Collect these as AND conditions without adding them to the query builder directly
+    collector.addMust(tagQueries);
+  }
+
+  public void isOwner(User user, ConditionCollector collector) {
+    // Collect the user's ID as an OR condition for ownership
+    OMQueryBuilder ownerQuery =
+        new ElasticQueryBuilder().termQuery("owner.id", user.getId().toString());
+
+    // Collect this condition
+    collector.addMust(ownerQuery);
+
+    // Also collect team ownership conditions
     for (EntityReference team : user.getTeams()) {
-      queryBuilder.should(queryBuilder.boolQuery().termQuery("owner.id", team.getId().toString()));
+      OMQueryBuilder teamQuery =
+          new ElasticQueryBuilder().termQuery("owner.id", team.getId().toString());
+      collector.addMust(teamQuery);
     }
   }
 
-  public void noOwner(OMQueryBuilder queryBuilder) {
-    queryBuilder.mustNot(queryBuilder.boolQuery().existsQuery("owner.id"));
+  public void noOwner(ConditionCollector collector) {
+    // Collect the "no owner" condition (field does not exist)
+    OMQueryBuilder noOwnerQuery = new ElasticQueryBuilder().existsQuery("owner.id");
+
+    // Add this as a NOT condition
+    collector.addMustNot(noOwnerQuery);
   }
 }
