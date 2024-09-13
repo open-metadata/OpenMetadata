@@ -1,47 +1,42 @@
 package org.openmetadata.service.search.security;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-import es.org.elasticsearch.index.query.BoolQueryBuilder;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.org.elasticsearch.index.query.QueryBuilder;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.Assertions;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class RBACConditionEvaluatorTest {
 
   private RBACConditionEvaluator evaluator;
-  private OMQueryBuilder mockQueryBuilder;
   private User mockUser;
   private SubjectContext mockSubjectContext;
+  private QueryBuilderFactory queryBuilderFactory;
 
   @BeforeEach
   public void setUp() {
-    evaluator = new RBACConditionEvaluator();
-
-    // Mock the query builder
-    mockQueryBuilder = mock(OMQueryBuilder.class);
-    // when(mockQueryBuilder.boolQuery()).thenReturn(mockQueryBuilder);
-    // when(mockQueryBuilder.must(any())).thenReturn(mockQueryBuilder);
-    // when(mockQueryBuilder.mustNot(any())).thenReturn(mockQueryBuilder);
-    // when(mockQueryBuilder.should(any())).thenReturn(mockQueryBuilder);
+    queryBuilderFactory = new ElasticQueryBuilderFactory();
+    evaluator = new RBACConditionEvaluator(queryBuilderFactory);
   }
 
-  // Private method to setup mock user and policies
   private void setupMockPolicies(String expression, String effect) {
     // Mock the user
     mockUser = mock(User.class);
@@ -49,6 +44,7 @@ class RBACConditionEvaluatorTest {
     when(mockUser.getEntityReference()).thenReturn(mockUserReference);
     when(mockUserReference.getId()).thenReturn(UUID.randomUUID());
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
+    when(mockUser.getName()).thenReturn("testUser");
 
     // Mock the policy context and rules
     SubjectContext.PolicyContext mockPolicyContext = mock(SubjectContext.PolicyContext.class);
@@ -60,8 +56,7 @@ class RBACConditionEvaluatorTest {
     when(mockRule.getCondition()).thenReturn(expression);
 
     // Mock the effect of the rule (ALLOW/DENY)
-    CompiledRule.Effect mockEffect = mock(CompiledRule.Effect.class);
-    when(mockEffect.toString()).thenReturn(effect);
+    CompiledRule.Effect mockEffect = CompiledRule.Effect.valueOf(effect.toUpperCase());
     when(mockRule.getEffect()).thenReturn(mockEffect);
 
     when(mockPolicyContext.getRules()).thenReturn(List.of(mockRule));
@@ -74,105 +69,62 @@ class RBACConditionEvaluatorTest {
 
   @Test
   void testIsOwner() {
-    // Setup the mock for "isOwner()" expression
     setupMockPolicies("isOwner()", "ALLOW");
 
-    // Evaluate condition
-    // OMQueryBuilder resultQuery = evaluator.evaluateConditions(mockSubjectContext);
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
 
-    // Verify that the termQuery was called for the owner ID
-    verify(mockQueryBuilder, times(1)).termQuery("owner.id", mockUser.getId().toString());
-
-    // Assert that the result query is the same as mockQueryBuilder
-    // assertEquals(mockQueryBuilder, resultQuery);
+    assertTrue(generatedQuery.contains("owner.id"), "The query should contain 'owner.id'.");
+    assertTrue(
+        generatedQuery.contains(mockUser.getId().toString()),
+        "The query should contain the user's ID.");
   }
 
   @Test
   void testNegationWithIsOwner() {
-    // Setup the mock for "!isOwner()" expression
     setupMockPolicies("!isOwner()", "DENY");
 
-    // Evaluate condition
-    evaluator.evaluateSpELCondition("!isOwner()", mockUser);
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
 
-    // Verify that the mustNot query was called for the owner ID
-    verify(mockQueryBuilder, times(1)).mustNot(any(OMQueryBuilder.class));
+    assertTrue(
+        generatedQuery.contains("must_not"), "The query should contain 'must_not' for negation.");
+    assertTrue(
+        generatedQuery.contains("owner.id"),
+        "The query should contain 'owner.id' in the negation.");
+    assertTrue(
+        generatedQuery.contains(mockUser.getId().toString()),
+        "The negation should contain the user's ID.");
   }
 
   @Test
   void testMatchAnyTag() {
-    // Setup the mock for "matchAnyTag('PII.Sensitive')" expression
-    setupMockPolicies("matchAnyTag('PII.Sensitive')", "ALLOW");
+    setupMockPolicies("matchAnyTag('PII.Sensitive', 'PersonalData.Personal')", "ALLOW");
 
-    // Evaluate condition
-    evaluator.evaluateSpELCondition(
-        "matchAnyTag('PII.Sensitive', 'PersonalData.Personal')", mockUser);
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
 
-    // Verify that the termQuery was called for the tag
-    verify(mockQueryBuilder, times(1)).termQuery("tags.tagFQN", "PII.Sensitive");
+    assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
+    assertTrue(
+        generatedQuery.contains("PII.Sensitive"), "The query should contain 'PII.Sensitive' tag.");
+    assertTrue(
+        generatedQuery.contains("PersonalData.Personal"),
+        "The query should contain 'PersonalData.Personal' tag.");
   }
 
   @Test
   void testComplexCondition() {
-    // Setup the mock for complex condition
     setupMockPolicies(
         "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
         "ALLOW");
 
-    // Evaluate complex condition
-    evaluator.evaluateSpELCondition(
-        "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
-        mockUser);
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
 
-    // Verify correct termQuery calls for the tags
-    verify(mockQueryBuilder, times(1)).termQuery("tags.tagFQN", "PII.Sensitive");
-    verify(mockQueryBuilder, times(1)).termQuery("tags.tagFQN", "Test.Test1");
-    verify(mockQueryBuilder, times(1)).termQuery("tags.tagFQN", "Test.Test2");
-
-    // Verify mustNot query for isOwner() negation
-    verify(mockQueryBuilder, times(1)).mustNot(any(OMQueryBuilder.class));
-  }
-
-  @Test
-  void testTermQueryIsolation() {
-    ElasticQueryBuilder builder1 = new ElasticQueryBuilder();
-    ElasticQueryBuilder builder2 =
-        (ElasticQueryBuilder) builder1.termQuery("tags.tagFQN", "PII.Sensitive");
-    ElasticQueryBuilder builder3 =
-        (ElasticQueryBuilder) builder1.termQuery("tags.tagFQN", "PersonalData.Personal");
-
-    // builder2 should only have "PII.Sensitive"
-    BoolQueryBuilder query1 = (BoolQueryBuilder) builder2.build();
-    Assertions.assertTrue(query1.toString().contains("PII.Sensitive"));
-
-    // builder3 should only have "PersonalData.Personal"
-    BoolQueryBuilder query2 = (BoolQueryBuilder) builder3.build();
-    Assertions.assertTrue(query2.toString().contains("PersonalData.Personal"));
-
-    // builder1 should be unchanged and empty
-    BoolQueryBuilder queryOriginal = (BoolQueryBuilder) builder1.build();
-    Assertions.assertTrue(queryOriginal.must().isEmpty());
-  }
-
-  @Test
-  void testComplexQueryStructure() {
-    setupMockPolicies(
-        "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
-        "ALLOW");
-
-    // Use the real query builder
-    OMQueryBuilder realQueryBuilder = new ElasticQueryBuilder();
-
-    // Evaluate the complex condition
-    OMQueryBuilder finalQueryBuilder =
-        evaluator.evaluateSpELCondition(
-            "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
-            mockUser);
-    // Capture the final query structure
-    QueryBuilder finalQuery = (QueryBuilder) finalQueryBuilder.build();
-    String generatedQuery = finalQuery.toString();
-
-    // Assert that the query contains the expected fields and values
     assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
     assertTrue(
         generatedQuery.contains("PII.Sensitive"), "The query should contain 'PII.Sensitive' tag.");
@@ -180,12 +132,216 @@ class RBACConditionEvaluatorTest {
     assertTrue(generatedQuery.contains("Test.Test2"), "The query should contain 'Test.Test2' tag.");
     assertTrue(generatedQuery.contains("owner.id"), "The query should contain 'owner.id'.");
 
-    // Verify mustNot (negation) is applied for isOwner()
+    assertTrue(
+        generatedQuery.contains("must_not"), "The query should contain a negation (must_not).");
+  }
+
+  @Test
+  void testComplexQueryStructure() throws IOException {
+    setupMockPolicies(
+        "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
+        "ALLOW");
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
+    assertTrue(
+        generatedQuery.contains("PII.Sensitive"), "The query should contain 'PII.Sensitive' tag.");
+    assertTrue(generatedQuery.contains("Test.Test1"), "The query should contain 'Test.Test1' tag.");
+    assertTrue(generatedQuery.contains("Test.Test2"), "The query should contain 'Test.Test2' tag.");
+    assertTrue(generatedQuery.contains("owner.id"), "The query should contain 'owner.id'.");
+
     assertTrue(
         generatedQuery.contains("must_not"), "The query should contain a negation (must_not).");
 
-    // Ensure that the final query doesn't have excessive nesting
-    long boolQueryCount = generatedQuery.chars().filter(ch -> ch == 'b').count();
-    assertTrue(boolQueryCount <= 19, "There should be no more than 4 'bool' clauses in the query.");
+    ObjectMapper objectMapper = new ObjectMapper();
+    JsonNode rootNode = objectMapper.readTree(generatedQuery);
+    AtomicInteger boolQueryCount = new AtomicInteger(0);
+    countBoolQueries(rootNode, boolQueryCount);
+    assertTrue(
+        boolQueryCount.get() == 5, "There should be no more than 5 'bool' clauses in the query.");
+  }
+
+  @Test
+  void testHasDomain() {
+    setupMockPolicies("hasDomain()", "ALLOW");
+
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Finance");
+    when(mockUser.getDomain()).thenReturn(domain);
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    assertTrue(generatedQuery.contains("domain.id"), "The query should contain 'domain.id'.");
+    assertTrue(
+        generatedQuery.contains(domain.getId().toString()),
+        "The query should contain the user's domain ID.");
+  }
+
+  @Test
+  void testComplexConditionWithRolesDomainTagsTeams() throws IOException {
+    setupMockPolicies(
+        "hasAnyRole('Admin', 'DataSteward') && hasDomain() && (matchAnyTag('Sensitive') || inAnyTeam('Analytics'))",
+        "ALLOW");
+
+    EntityReference role = new EntityReference();
+    role.setName("DataSteward");
+    when(mockUser.getRoles()).thenReturn(List.of(role));
+
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Finance");
+    when(mockUser.getDomain()).thenReturn(domain);
+
+    EntityReference team = new EntityReference();
+    team.setId(UUID.randomUUID());
+    team.setName("Analytics");
+    when(mockUser.getTeams()).thenReturn(List.of(team));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    assertTrue(generatedQuery.contains("domain.id"), "The query should contain 'domain.id'.");
+    assertTrue(
+        generatedQuery.contains(domain.getId().toString()),
+        "The query should contain the user's domain ID.");
+    assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
+    assertTrue(generatedQuery.contains("Sensitive"), "The query should contain 'Sensitive' tag.");
+    assertFalse(generatedQuery.contains("match_none"), "The query should not be match_none.");
+  }
+
+  @Test
+  void testConditionUserDoesNotHaveRole() throws IOException {
+    setupMockPolicies("hasAnyRole('Admin', 'DataSteward') && isOwner()", "ALLOW");
+    EntityReference role = new EntityReference();
+    role.setName("DataConsumer");
+    when(mockUser.getRoles()).thenReturn(List.of(role));
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    // Adjust the assertion
+    assertTrue(
+        generatedQuery.contains("\"must_not\""), "The query should contain 'must_not' clause.");
+    assertTrue(
+        generatedQuery.contains("\"match_all\""),
+        "The must_not clause should contain 'match_all' query.");
+  }
+
+  @Test
+  void testNegationWithRolesAndTeams() throws IOException {
+    setupMockPolicies("!(hasAnyRole('Viewer') || inAnyTeam('Marketing')) && isOwner()", "ALLOW");
+    EntityReference role = new EntityReference();
+    role.setName("Viewer");
+    when(mockUser.getRoles()).thenReturn(List.of(role));
+
+    EntityReference team = new EntityReference();
+    team.setId(UUID.randomUUID());
+    team.setName("Marketing");
+    when(mockUser.getTeams()).thenReturn(List.of(team));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+    assertTrue(generatedQuery.contains("must_not"), "The query should contain 'must_not'.");
+    assertTrue(
+        generatedQuery.contains("match_all"), "The must_not clause should contain 'match_all'.");
+  }
+
+  @Test
+  void testComplexConditionUserMeetsAllCriteria() throws IOException {
+    setupMockPolicies(
+        "hasDomain() && inAnyTeam('Engineering', 'Analytics') && matchAllTags('Confidential', 'Internal')",
+        "ALLOW");
+
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Technology");
+    when(mockUser.getDomain()).thenReturn(domain);
+
+    EntityReference team = new EntityReference();
+    team.setId(UUID.randomUUID());
+    team.setName("Engineering");
+    when(mockUser.getTeams()).thenReturn(List.of(team));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    assertTrue(generatedQuery.contains("domain.id"), "The query should contain 'domain.id'.");
+    assertTrue(
+        generatedQuery.contains(domain.getId().toString()),
+        "The query should contain the user's domain ID.");
+    assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
+    assertTrue(
+        generatedQuery.contains("Confidential"), "The query should contain 'Confidential' tag.");
+    assertTrue(generatedQuery.contains("Internal"), "The query should contain 'Internal' tag.");
+    assertFalse(generatedQuery.contains("match_none"), "The query should not be match_none.");
+  }
+
+  @Test
+  void testConditionUserLacksDomain() throws IOException {
+    setupMockPolicies("hasDomain() && isOwner() && matchAnyTag('Public')", "ALLOW");
+    when(mockUser.getDomain()).thenReturn(null);
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    assertTrue(
+        generatedQuery.contains("\"must_not\""), "The query should contain 'must_not' clause.");
+    assertTrue(
+        generatedQuery.contains("\"match_all\""),
+        "The must_not clause should contain 'match_all' query.");
+  }
+
+  @Test
+  void testNestedLogicalOperators() throws IOException {
+    setupMockPolicies(
+        "(hasAnyRole('Admin') || inAnyTeam('Engineering')) && (matchAnyTag('Sensitive') || isOwner())",
+        "ALLOW");
+
+    EntityReference role = new EntityReference();
+    role.setName("Admin");
+    when(mockUser.getRoles()).thenReturn(List.of(role));
+
+    EntityReference team = new EntityReference();
+    team.setId(UUID.randomUUID());
+    team.setName("Marketing");
+    when(mockUser.getTeams()).thenReturn(List.of(team));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
+    assertTrue(generatedQuery.contains("Sensitive"), "The query should contain 'Sensitive' tag.");
+    assertTrue(generatedQuery.contains("owner.id"), "The query should contain 'owner.id'.");
+    assertFalse(generatedQuery.contains("match_none"), "The query should not be match_none.");
+  }
+
+  private void countBoolQueries(JsonNode node, AtomicInteger count) {
+    if (node.isObject()) {
+      if (node.has("bool")) {
+        count.incrementAndGet();
+        countBoolQueries(node.get("bool"), count);
+      } else {
+        node.fields()
+            .forEachRemaining(
+                entry -> {
+                  countBoolQueries(entry.getValue(), count);
+                });
+      }
+    } else if (node.isArray()) {
+      node.forEach(
+          element -> {
+            countBoolQueries(element, count);
+          });
+    }
   }
 }

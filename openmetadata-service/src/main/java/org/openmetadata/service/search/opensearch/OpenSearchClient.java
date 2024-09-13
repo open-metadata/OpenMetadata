@@ -110,7 +110,6 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
-import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -202,7 +201,7 @@ public class OpenSearchClient implements SearchClient {
   protected final RestHighLevelClient client;
   public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
-  private final RBACConditionEvaluator rbacConditionEvaluator;
+  // private final RBACConditionEvaluator rbacConditionEvaluator;
 
   private final String clusterAlias;
 
@@ -227,7 +226,7 @@ public class OpenSearchClient implements SearchClient {
     client = createOpenSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
-    rbacConditionEvaluator = new RBACConditionEvaluator();
+    //    rbacConditionEvaluator = new RBACConditionEvaluator();
   }
 
   @Override

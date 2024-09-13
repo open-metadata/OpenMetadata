@@ -4,26 +4,23 @@ import java.util.List;
 
 public interface OMQueryBuilder {
 
-  OMQueryBuilder must(List<OMQueryBuilder> queries); // Add multiple "must" conditions (AND)
+  boolean isEmpty();
 
-  OMQueryBuilder must(OMQueryBuilder query); // Add a single "must" condition
+  boolean isMatchNone();
 
-  OMQueryBuilder should(List<OMQueryBuilder> queries); // Add multiple "should" conditions (OR)
+  boolean isMatchAll();
 
-  OMQueryBuilder should(OMQueryBuilder query); // Add a single "should" condition
+  OMQueryBuilder must(List<OMQueryBuilder> queries);
 
-  OMQueryBuilder mustNot(OMQueryBuilder query); // Add a single "mustNot" condition (NOT)
+  OMQueryBuilder should(List<OMQueryBuilder> queries);
 
-  OMQueryBuilder termQuery(
-      String field, String value); // Create a term query for a specific field and value
+  OMQueryBuilder mustNot(List<OMQueryBuilder> queries);
 
-  OMQueryBuilder existsQuery(String field); // Create an exists query for a specific field
+  OMQueryBuilder must(OMQueryBuilder query);
 
-  OMQueryBuilder minimumShouldMatch(int count); // Set minimum should match for OR conditions
+  OMQueryBuilder should(OMQueryBuilder query);
 
-  Object build(); // Returns the final query object for execution
+  OMQueryBuilder mustNot(OMQueryBuilder query);
 
-  boolean isEmpty(); // Check if the query has no conditions
-
-  OMQueryBuilder innerQuery(OMQueryBuilder subQuery);
+  boolean hasClauses();
 }

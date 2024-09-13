@@ -1,101 +1,156 @@
 package org.openmetadata.service.search.elasticsearch.queries;
 
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
+import es.org.elasticsearch.index.query.MatchAllQueryBuilder;
+import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import java.util.List;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 
 public class ElasticQueryBuilder implements OMQueryBuilder {
-  private BoolQueryBuilder boolQuery;
+
+  private QueryBuilder query;
 
   public ElasticQueryBuilder() {
-    this.boolQuery = QueryBuilders.boolQuery();
+    // Default constructor
   }
 
-  public ElasticQueryBuilder(BoolQueryBuilder boolQuery) {
-    this.boolQuery = boolQuery;
+  public ElasticQueryBuilder(QueryBuilder query) {
+    this.query = query;
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return query == null;
+  }
+
+  @Override
+  public boolean isMatchNone() {
+    // Check if the query is a bool query with must_not match_all
+    if (query instanceof BoolQueryBuilder) {
+      BoolQueryBuilder boolQuery = (BoolQueryBuilder) query;
+      return boolQuery.must().isEmpty()
+          && boolQuery.should().isEmpty()
+          && boolQuery.mustNot().size() == 1
+          && boolQuery.mustNot().get(0) instanceof MatchAllQueryBuilder;
+    }
+    return false;
+  }
+
+  @Override
+  public boolean isMatchAll() {
+    return query instanceof MatchAllQueryBuilder;
   }
 
   @Override
   public OMQueryBuilder must(List<OMQueryBuilder> queries) {
-    for (OMQueryBuilder query : queries) {
-      if (query instanceof ElasticQueryBuilder) {
-        boolQuery.must(((ElasticQueryBuilder) query).boolQuery);
-      }
+    BoolQueryBuilder boolQuery = getOrCreateBoolQuery();
+    for (OMQueryBuilder q : queries) {
+      ElasticQueryBuilder eqb = (ElasticQueryBuilder) q;
+      boolQuery.must(eqb.build());
     }
-    return this;
-  }
-
-  @Override
-  public OMQueryBuilder must(OMQueryBuilder query) {
-    if (query instanceof ElasticQueryBuilder) {
-      boolQuery.must(((ElasticQueryBuilder) query).boolQuery);
-    }
+    this.query = boolQuery;
     return this;
   }
 
   @Override
   public OMQueryBuilder should(List<OMQueryBuilder> queries) {
-    for (OMQueryBuilder query : queries) {
-      if (query instanceof ElasticQueryBuilder) {
-        boolQuery.should(((ElasticQueryBuilder) query).boolQuery);
-      }
+    BoolQueryBuilder boolQuery = getOrCreateBoolQuery();
+    for (OMQueryBuilder q : queries) {
+      ElasticQueryBuilder eqb = (ElasticQueryBuilder) q;
+      boolQuery.should(eqb.build());
     }
+    this.query = boolQuery;
     return this;
+  }
+
+  @Override
+  public OMQueryBuilder mustNot(List<OMQueryBuilder> queries) {
+    BoolQueryBuilder boolQuery = getOrCreateBoolQuery();
+    for (OMQueryBuilder q : queries) {
+      ElasticQueryBuilder eqb = (ElasticQueryBuilder) q;
+      boolQuery.mustNot(eqb.build());
+    }
+    this.query = boolQuery;
+    return this;
+  }
+
+  @Override
+  public OMQueryBuilder must(OMQueryBuilder query) {
+    return must(List.of(query));
   }
 
   @Override
   public OMQueryBuilder should(OMQueryBuilder query) {
-    if (query instanceof ElasticQueryBuilder) {
-      boolQuery.should(((ElasticQueryBuilder) query).boolQuery);
-    }
-    return this;
+    return should(List.of(query));
   }
 
   @Override
   public OMQueryBuilder mustNot(OMQueryBuilder query) {
-    if (query instanceof ElasticQueryBuilder) {
-      boolQuery.mustNot(((ElasticQueryBuilder) query).boolQuery);
+    return mustNot(List.of(query));
+  }
+
+  @Override
+  public boolean hasClauses() {
+    if (query instanceof BoolQueryBuilder) {
+      BoolQueryBuilder boolQuery = (BoolQueryBuilder) query;
+      return !boolQuery.must().isEmpty()
+          || !boolQuery.should().isEmpty()
+          || !boolQuery.mustNot().isEmpty();
     }
+    return query != null;
+  }
+
+  public QueryBuilder build() {
+    return query;
+  }
+
+  public ElasticQueryBuilder setQuery(QueryBuilder query) {
+    this.query = query;
     return this;
   }
 
-  @Override
-  public OMQueryBuilder termQuery(String field, String value) {
-    boolQuery.must(QueryBuilders.termQuery(field, value));
+  // Helper methods
+
+  public ElasticQueryBuilder matchNoneQuery() {
+    this.query = QueryBuilders.boolQuery().mustNot(QueryBuilders.matchAllQuery());
     return this;
   }
 
-  @Override
-  public OMQueryBuilder existsQuery(String field) {
-    boolQuery.must(QueryBuilders.existsQuery(field));
+  public ElasticQueryBuilder matchAllQuery() {
+    this.query = QueryBuilders.matchAllQuery();
     return this;
   }
 
-  @Override
-  public OMQueryBuilder minimumShouldMatch(int count) {
-    boolQuery.minimumShouldMatch(count);
+  public ElasticQueryBuilder boolQuery() {
+    this.query = QueryBuilders.boolQuery();
     return this;
   }
 
-  @Override
-  public OMQueryBuilder innerQuery(OMQueryBuilder subQuery) {
-    if (subQuery instanceof ElasticQueryBuilder) {
-      boolQuery.filter(
-          ((ElasticQueryBuilder) subQuery).boolQuery); // Combine using filter to avoid bool layer
+  public ElasticQueryBuilder termQuery(String field, String value) {
+    this.query = QueryBuilders.termQuery(field, value);
+    return this;
+  }
+
+  public ElasticQueryBuilder termsQuery(String field, List<String> values) {
+    this.query = QueryBuilders.termsQuery(field, values);
+    return this;
+  }
+
+  public ElasticQueryBuilder existsQuery(String field) {
+    this.query = QueryBuilders.existsQuery(field);
+    return this;
+  }
+
+  private BoolQueryBuilder getOrCreateBoolQuery() {
+    if (query instanceof BoolQueryBuilder) {
+      return (BoolQueryBuilder) query;
+    } else {
+      BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+      if (query != null) {
+        boolQuery.must(query);
+      }
+      return boolQuery;
     }
-    return this;
-  }
-
-  @Override
-  public boolean isEmpty() {
-    return boolQuery.must().isEmpty()
-        && boolQuery.should().isEmpty()
-        && boolQuery.mustNot().isEmpty();
-  }
-
-  @Override
-  public Object build() {
-    return boolQuery;
   }
 }

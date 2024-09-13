@@ -189,7 +189,6 @@ import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -202,7 +201,7 @@ public class ElasticSearchClient implements SearchClient {
   @SuppressWarnings("deprecated")
   protected final RestHighLevelClient client;
 
-  private final RBACConditionEvaluator rbacConditionEvaluator;
+  // private final RBACConditionEvaluator rbacConditionEvaluator;
 
   private final boolean isClientAvailable;
   public static final NamedXContentRegistry xContentRegistry;
@@ -230,7 +229,7 @@ public class ElasticSearchClient implements SearchClient {
     client = createElasticSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
-    rbacConditionEvaluator = new RBACConditionEvaluator();
+    // rbacConditionEvaluator = new RBACConditionEvaluator();
   }
 
   @Override
