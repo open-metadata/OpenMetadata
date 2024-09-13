@@ -12,7 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
-import { visitOwnProfilePage } from './common';
+import { toastNotification, visitOwnProfilePage } from './common';
 import { settingClick } from './sidebar';
 
 export const navigateToCustomizeLandingPage = async (
@@ -116,4 +116,33 @@ export const setUserDefaultPersona = async (
   await expect(
     page.locator('[data-testid="user-profile-details"]')
   ).toContainText(personaName);
+};
+
+export const openAddCustomizeWidgetModal = async (page: Page) => {
+  const fetchResponse = page.waitForResponse(
+    '/api/v1/docStore?fqnPrefix=KnowledgePanel*'
+  );
+  await page
+    .locator(
+      '[data-testid="ExtraWidget.EmptyWidgetPlaceholder"] [data-testid="add-widget-button"]'
+    )
+    .click();
+
+  await fetchResponse;
+};
+
+export const saveCustomizeLayoutPage = async (
+  page: Page,
+  isCreated?: boolean
+) => {
+  const saveResponse = page.waitForResponse(
+    isCreated ? '/api/v1/docStore' : '/api/v1/docStore/*'
+  );
+  await page.locator('[data-testid="save-button"]').click();
+  await saveResponse;
+
+  await toastNotification(
+    page,
+    `Page layout ${isCreated ? 'created' : 'updated'} successfully.`
+  );
 };
