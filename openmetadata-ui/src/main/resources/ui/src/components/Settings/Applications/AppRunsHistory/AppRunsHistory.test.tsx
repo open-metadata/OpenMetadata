@@ -201,8 +201,6 @@ describe('AppRunsHistory component', () => {
       startTs: 'startDay',
       endTs: Date.now(),
     });
-
-    jest.useRealTimers();
   });
 
   it('should expose children method to parent using ref', async () => {
