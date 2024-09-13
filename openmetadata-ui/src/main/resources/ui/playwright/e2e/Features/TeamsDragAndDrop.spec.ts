@@ -107,7 +107,7 @@ test.describe('Teams drag and drop should work properly', () => {
       await addTeamHierarchy(page, teamDetails);
       await getOrganizationResponse;
 
-      expect(
+      await expect(
         page.locator(`[data-row-key="${teamDetails.name}"]`)
       ).toContainText(teamDetails.description);
     }

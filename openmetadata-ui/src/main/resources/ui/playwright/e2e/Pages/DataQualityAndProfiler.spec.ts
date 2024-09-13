@@ -557,7 +557,7 @@ test('Update profiler setting modal', async ({ page }) => {
 });
 
 test('TestCase filters', async ({ page }) => {
-  test.slow();
+  test.setTimeout(360000);
 
   const { apiContext, afterAction } = await getApiContext(page);
   const filterTable1 = new TableClass();
