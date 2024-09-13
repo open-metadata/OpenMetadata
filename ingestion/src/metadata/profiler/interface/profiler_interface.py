@@ -17,6 +17,8 @@ supporting sqlalchemy abstraction layer
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
+from sqlalchemy import Column
+
 from metadata.generated.schema.entity.data.database import (
     Database,
     DatabaseProfilerConfig,
@@ -62,7 +64,6 @@ from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.partition import get_partition_details
 from metadata.utils.ssl_manager import get_ssl_connection
-from sqlalchemy import Column
 
 
 class ProfilerProcessorStatus(Status):

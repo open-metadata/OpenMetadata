@@ -18,6 +18,10 @@ multiple profilers per table and columns.
 
 from typing import List, Optional, Type, Union
 
+from pydantic import ConfigDict
+from sqlalchemy import Column
+from sqlalchemy.orm import DeclarativeMeta
+
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -39,9 +43,6 @@ from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.processor.models import ProfilerDef
 from metadata.utils.sqa_like_column import SQALikeColumn
-from pydantic import ConfigDict
-from sqlalchemy import Column
-from sqlalchemy.orm import DeclarativeMeta
 
 
 class ColumnConfig(ConfigModel):

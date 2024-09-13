@@ -2,6 +2,10 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
+from sqlalchemy import Column, Integer
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.sql.selectable import CTE
+
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
@@ -20,9 +24,6 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 from metadata.profiler.processor.sampler.sqlalchemy.snowflake.sampler import (
     SnowflakeSampler,
 )
-from sqlalchemy import Column, Integer
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.sql.selectable import CTE
 
 Base = declarative_base()
 
