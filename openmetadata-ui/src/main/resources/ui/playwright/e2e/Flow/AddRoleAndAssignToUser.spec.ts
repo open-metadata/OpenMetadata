@@ -22,6 +22,7 @@ import {
   uuid,
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { visitUserProfilePage } from '../../utils/user';
 
 const roleName = `Role-test-${uuid()}`;
 const user = generateRandomUsername();
@@ -29,7 +30,7 @@ const userDisplayName = user.firstName + ' ' + user.lastName;
 const userName = user.email.split('@')[0].toLowerCase();
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json', trace: 'off' });
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe.serial('Add role and assign it to the user', () => {
   test.beforeEach(async ({ page }) => {
@@ -47,6 +48,7 @@ test.describe.serial('Add role and assign it to the user', () => {
 
   test('Create role', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ROLES);
+    await page.waitForLoadState('networkidle');
 
     await page.click('[data-testid="add-role"]');
 
@@ -79,12 +81,18 @@ test.describe.serial('Add role and assign it to the user', () => {
   test('Create new user and assign new role to him', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.USERS);
 
+    await page.waitForLoadState('networkidle');
+
     await page.click('[data-testid="add-user"]');
 
     await page.fill('[data-testid="email"]', user.email);
     await page.fill('[data-testid="displayName"]', userDisplayName);
     await page.fill(descriptionBox, 'Adding user');
+    const generatePasswordResponse = page.waitForResponse(
+      `/api/v1/users/generateRandomPwd`
+    );
     await page.click('[data-testid="password-generator"]');
+    await generatePasswordResponse;
 
     await page.click('[data-testid="roles-dropdown"]');
     await page.fill('#roles', roleName);
@@ -98,26 +106,15 @@ test.describe.serial('Add role and assign it to the user', () => {
   });
 
   test('Verify assigned role to new user', async ({ page }) => {
-    await settingClick(page, GlobalSettingOptions.USERS);
+    await visitUserProfilePage(page, userName);
 
-    const searchUser = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(userDisplayName)}*`
-    );
-    await page.waitForSelector('[data-testid="searchbar"]');
-    await page.fill('[data-testid="searchbar"]', userDisplayName);
-
-    await searchUser;
-    await page.waitForSelector(`[data-testid="${userName}"]`);
-    await page.click(`[data-testid="${userName}"]`);
     await page.waitForSelector('[data-testid="user-profile"]');
     await page.click(
       '[data-testid="user-profile"] .ant-collapse-expand-icon > .anticon'
     );
 
-    expect(
-      await page.textContent(
-        '[data-testid="user-profile"] [data-testid="user-profile-roles"]'
-      )
-    ).toContain(roleName);
+    await expect(
+      page.getByTestId('user-profile').getByTestId('user-profile-roles')
+    ).toContainText(roleName);
   });
 });

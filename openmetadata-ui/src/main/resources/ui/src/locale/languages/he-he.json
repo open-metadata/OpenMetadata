@@ -1803,6 +1803,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> הושקע בהצלחה והוצב בהצלחה",
     "successfully-completed-the-tour": "סיימת בהצלחה את הסיור.",
     "synonym-placeholder": "כדי להוסיף שם נרדף, פשוט הקלד אותו ולחץ Enter",
+    "system-alert-edit-message": "Editing a system generated alert is not allowed.",
     "system-tag-delete-disable-message": "מחיקת תגיות שנוצרו באופן מערכתי אינה מותרת. ניתן לנסות לנטרל את התג במקום.",
     "tag-update-confirmation": "Would you like to proceed with updating the tags?",
     "take-quick-product-tour": "התחל סיור במוצר כדי להתחיל!",

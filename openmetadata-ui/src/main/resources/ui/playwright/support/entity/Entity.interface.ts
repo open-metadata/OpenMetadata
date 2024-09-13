@@ -69,6 +69,13 @@ export enum ENTITY_PATH {
   'metrics' = 'metric',
 }
 
+export type ResponseDataType = {
+  name: string;
+  displayName: string;
+  description: string;
+  id: string;
+  fullyQualifiedName: string;
+};
 export type TestCaseData = {
   parameterValues?: unknown[];
   name?: string;

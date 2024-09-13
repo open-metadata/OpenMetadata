@@ -376,6 +376,10 @@ public class ElasticSearchClient implements SearchClient {
       }
     }
 
+    if (!nullOrEmpty(request.getSearchAfter())) {
+      searchSourceBuilder.searchAfter(request.getSearchAfter());
+    }
+
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
     if (request
             .getIndex()
@@ -1004,6 +1008,15 @@ public class ElasticSearchClient implements SearchClient {
             AvgAggregationBuilder avgAggregationBuilder =
                 AggregationBuilders.avg(key).field(avgAggregation.getString("field"));
             aggregationBuilders.add(avgAggregationBuilder);
+            break;
+          case "date_histogram":
+            JsonObject dateHistogramAggregation = aggregation.getJsonObject(aggregationType);
+            String calendarInterval = dateHistogramAggregation.getString("calendar_interval");
+            DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
+                AggregationBuilders.dateHistogram(key)
+                    .field(dateHistogramAggregation.getString("field"))
+                    .calendarInterval(new DateHistogramInterval(calendarInterval));
+            aggregationBuilders.add(dateHistogramAggregationBuilder);
             break;
           case "nested":
             JsonObject nestedAggregation = aggregation.getJsonObject("nested");

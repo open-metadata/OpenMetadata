@@ -176,7 +176,6 @@ export const setupEntitiesForLineage = async (
   for (const entity of entities) {
     await entity.create(apiContext);
   }
-
   await currentEntity.create(apiContext);
 
   const cleanup = async () => {

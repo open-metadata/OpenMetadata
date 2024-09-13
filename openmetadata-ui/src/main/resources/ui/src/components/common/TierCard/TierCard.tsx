@@ -52,6 +52,7 @@ const TierCard = ({
     try {
       const { data } = await getTags({
         parent: 'Tier',
+        limit: 50,
       });
 
       if (data) {
@@ -131,7 +132,7 @@ const TierCard = ({
             <Radio.Group value={currentTier} onChange={handleTierSelection}>
               <Collapse
                 accordion
-                className="bg-white border-none"
+                className="bg-white border-none tier-card-content"
                 collapsible="icon"
                 defaultActiveKey={currentTier}
                 expandIconPosition="end">
