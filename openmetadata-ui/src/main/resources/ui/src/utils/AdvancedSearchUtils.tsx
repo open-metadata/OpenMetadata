@@ -417,6 +417,7 @@ export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
   try {
     const { data: tiers } = await getTags({
       parent: 'Tier',
+      limit: 50,
     });
 
     const tierFields = tiers.map((tier) => ({

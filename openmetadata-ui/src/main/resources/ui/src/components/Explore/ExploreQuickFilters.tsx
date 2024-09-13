@@ -94,7 +94,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           JSON.stringify(combinedQueryFilter)
         ),
         key === TIER_FQN_KEY
-          ? getTags({ parent: 'Tier' })
+          ? getTags({ parent: 'Tier', limit: 50 })
           : Promise.resolve(null),
       ]);
 

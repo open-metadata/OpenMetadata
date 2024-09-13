@@ -12,6 +12,7 @@
  */
 
 import { Col, Row, Space, Tabs } from 'antd';
+import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -271,7 +272,11 @@ const GlossaryDetails = ({
       className="glossary-details"
       data-testid="glossary-details"
       gutter={[0, 16]}>
-      <Col className="p-x-md p-l-xl" span={24}>
+      <Col
+        className={classNames('p-x-md', {
+          'p-l-xl': !isVersionView,
+        })}
+        span={24}>
         <GlossaryHeader
           isGlossary
           isVersionView={isVersionView}
