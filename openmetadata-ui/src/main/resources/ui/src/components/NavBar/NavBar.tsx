@@ -13,7 +13,9 @@
 
 import Icon from '@ant-design/icons';
 import {
+  Alert,
   Badge,
+  Button,
   Col,
   Dropdown,
   Input,
@@ -45,6 +47,7 @@ import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
+import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
 import {
   NOTIFICATION_READ_TIMER,
@@ -54,8 +57,10 @@ import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
+import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import {
   hasNotificationPermission,
@@ -108,7 +113,9 @@ const NavBar = ({
   const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
-
+  const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
+    useState(false);
+  const location = useCustomLocation();
   const history = useHistory();
   const {
     domainOptions,
@@ -298,7 +305,23 @@ const NavBar = ({
     if (shouldRequestPermission()) {
       Notification.requestPermission();
     }
-  }, []);
+
+    const handleDocumentVisibilityChange = async () => {
+      if (isProtectedRoute(location.pathname) && isTourRoute) {
+        return;
+      }
+      const newVersion = await getVersion();
+      if (version !== newVersion.version) {
+        setShowVersionMissMatchAlert(true);
+      }
+    };
+
+    addEventListener('focus', handleDocumentVisibilityChange);
+
+    return () => {
+      removeEventListener('focus', handleDocumentVisibilityChange);
+    };
+  }, [isTourRoute, version]);
 
   useEffect(() => {
     if (socket) {
@@ -578,6 +601,26 @@ const NavBar = ({
         onCancel={handleModalCancel}
       />
 
+      {showVersionMissMatchAlert && (
+        <Alert
+          showIcon
+          action={
+            <Button
+              size="small"
+              type="link"
+              onClick={() => {
+                history.go(0);
+              }}>
+              {t('label.refresh')}
+            </Button>
+          }
+          className="refresh-alert slide-in-top"
+          description="For a seamless experience recommend you to refresh the page"
+          icon={<RefreshIcon />}
+          message="A new version is available"
+          type="info"
+        />
+      )}
       {renderAlertCards}
     </>
   );

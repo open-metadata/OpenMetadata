@@ -97,15 +97,9 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     useImperativeHandle(ref, () => ({
-      invokeLogin() {
-        login();
-      },
-      invokeLogout() {
-        logout();
-      },
-      async renewIdToken() {
-        return handleSilentSignIn();
-      },
+      invokeLogin: login,
+      invokeLogout: logout,
+      renewIdToken: handleSilentSignIn,
     }));
 
     return <Fragment>{children}</Fragment>;

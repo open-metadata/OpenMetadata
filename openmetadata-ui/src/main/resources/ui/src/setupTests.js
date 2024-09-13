@@ -55,6 +55,13 @@ window.DOMMatrixReadOnly = jest.fn().mockImplementation(() => ({
   isIdentity: true,
 }));
 
+window.BroadcastChannel = jest.fn().mockImplementation(() => ({
+  postMessage: jest.fn(),
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  close: jest.fn(),
+}));
+
 /**
  * mock implementation of ResizeObserver
  */
