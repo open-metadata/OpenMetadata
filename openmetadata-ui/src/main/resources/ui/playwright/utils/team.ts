@@ -59,12 +59,11 @@ export const softDeleteTeam = async (page: Page) => {
     .click();
   await page.getByTestId('delete-button').click();
 
-  await page.waitForSelector('[role="dialog"].ant-modal');
+  await page.waitForLoadState('domcontentloaded');
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  await expect(page.getByTestId('confirmation-text-input')).toBeVisible();
 
   await page.click('[data-testid="soft-delete-option"]');
-  await page.check('[data-testid="soft-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const deleteResponse = page.waitForResponse(
