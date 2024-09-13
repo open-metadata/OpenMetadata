@@ -67,6 +67,13 @@ export enum ENTITY_PATH {
   'dataProducts' = 'dataProduct',
 }
 
+export type ResponseDataType = {
+  name: string;
+  displayName: string;
+  description: string;
+  id: string;
+  fullyQualifiedName: string;
+};
 export type TestCaseData = {
   parameterValues?: unknown[];
   name?: string;

@@ -1795,6 +1795,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0>  has been {{entityStatus}} and deployed successfully",
     "successfully-completed-the-tour": "あなたは無事ツアーを終了しました。",
     "synonym-placeholder": "To add a synonym, simply type it in and press Enter",
+    "system-alert-edit-message": "Editing a system generated alert is not allowed.",
     "system-tag-delete-disable-message": "Deleting a system generated tags is not allowed. You can try disabling the tag instead.",
     "tag-update-confirmation": "Would you like to proceed with updating the tags?",
     "take-quick-product-tour": "Take a product tour to get started!",
