@@ -58,6 +58,7 @@ public class RBACConditionEvaluator {
   }
 
   private void preprocessExpression(SpelNode node, ConditionCollector collector) {
+    // Delay this check until after processing necessary expressions
     if (collector.isMatchNothing()) {
       return;
     }
@@ -93,8 +94,20 @@ public class RBACConditionEvaluator {
     } else if (node instanceof OperatorNot) {
       ConditionCollector subCollector = new ConditionCollector(queryBuilderFactory);
       preprocessExpression(node.getChild(0), subCollector);
-      if (!subCollector.isMatchNothing()) {
-        collector.mergeMustNot(subCollector);
+
+      if (subCollector.isMatchAllQuery()) {
+        // NOT TRUE == FALSE
+        collector.setMatchNothing(true);
+      } else if (subCollector.isMatchNothing()) {
+        // NOT FALSE == TRUE: No filtering required (skip)
+        // Do not add anything to must_not because negating "nothing" is equivalent to matching
+        // everything
+      } else {
+        OMQueryBuilder subQuery = subCollector.buildFinalQuery();
+        if (subQuery != null && !subQuery.isEmpty()) {
+          // Add the subquery to must_not for negation
+          collector.addMustNot(subQuery);
+        }
       }
     } else if (node instanceof MethodReference) {
       handleMethodReference(node, collector);

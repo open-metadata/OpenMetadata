@@ -72,6 +72,14 @@ public class ConditionCollector {
     }
   }
 
+  public boolean isMatchAllQuery() {
+    if (mustQueries.size() == 1 && shouldQueries.isEmpty() && mustNotQueries.isEmpty()) {
+      OMQueryBuilder query = mustQueries.get(0);
+      return query.isMatchAll();
+    }
+    return false;
+  }
+
   public OMQueryBuilder buildFinalQuery() {
     if (matchNothing) {
       return queryBuilderFactory.matchNoneQuery();
