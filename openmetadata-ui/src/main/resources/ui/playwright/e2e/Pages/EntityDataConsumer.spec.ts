@@ -62,6 +62,7 @@ entities.forEach((EntityClass) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await user.create(apiContext);
+
       await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();
