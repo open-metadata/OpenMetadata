@@ -102,15 +102,9 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     useImperativeHandle(ref, () => ({
-      invokeLogin() {
-        login();
-      },
-      invokeLogout() {
-        logout();
-      },
-      renewIdToken() {
-        return signInSilently();
-      },
+      invokeLogin: login,
+      invokeLogout: logout,
+      renewIdToken: signInSilently,
     }));
 
     const AppWithAuth = getAuthenticator(childComponentType, userManager);
@@ -165,6 +159,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     // eslint-disable-next-line no-console
                     console.error(error);
 
+                    onLogoutSuccess();
                     history.push(ROUTES.SIGNIN);
                   }}
                   onSuccess={(user) => {

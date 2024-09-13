@@ -36,11 +36,8 @@ import { isDev } from './EnvironmentUtils';
 
 const cookieStorage = new CookieStorage();
 
-// 25s for server auth approach
-export const EXPIRY_THRESHOLD_MILLES = 25 * 1000;
-
-// 2 minutes for client auth approach
-export const EXPIRY_THRESHOLD_MILLES_PUBLIC = 2 * 60 * 1000;
+// 1 minutes for client auth approach
+export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
@@ -328,10 +325,7 @@ export const getUrlPathnameExpiry = () => {
  * @timeoutExpiry time in ms for try to silent sign-in
  * @returns exp, isExpired, diff, timeoutExpiry
  */
-export const extractDetailsFromToken = (
-  token: string,
-  clientType = ClientType.Public
-) => {
+export const extractDetailsFromToken = (token: string) => {
   if (token) {
     try {
       const { exp } = jwtDecode<JwtPayload>(token);
@@ -343,10 +337,7 @@ export const extractDetailsFromToken = (
           isExpired: false,
         };
       }
-      const threshouldMillis =
-        clientType === ClientType.Public
-          ? EXPIRY_THRESHOLD_MILLES_PUBLIC
-          : EXPIRY_THRESHOLD_MILLES;
+      const threshouldMillis = EXPIRY_THRESHOLD_MILLES;
 
       const diff = exp && exp * 1000 - dateNow;
       const timeoutExpiry =
