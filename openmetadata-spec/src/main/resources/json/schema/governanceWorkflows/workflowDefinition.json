@@ -1,0 +1,134 @@
+{
+  "$id": "https://open-metadata.org/schema/governanceWorkflows/workflowDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WorkflowDefinition",
+  "description": "Defines a workflow, having all the different pieces and attributes.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.governanceWorkflows.WorkflowDefinition",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "edge": {
+      "description": "Connects two workflow elements.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "description": "Element from which the edge will start.",
+          "type": "string"
+        },
+        "to": {
+          "description": "Element on which the edge will end.",
+          "type": "string"
+        },
+        "condition": {
+          "description": "If this condition is true, the workflow will follow this edge. Otherwise it won't.",
+          "type": "string"
+        }
+      },
+      "required": ["to", "from"],
+      "additionalProperties": false
+    },
+    "endEvent": {
+      "description": "State on which the workflow might end.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name that identifies this end event.",
+          "$ref": "../type/basic.json#/definitions/entityName"
+        },
+        "displayName": {
+          "description": "Display name that identifies this end event.",
+          "type": "string"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this workflow definition.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this workflow definition.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this workflow definition.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the workflow definition.",
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "owners": {
+      "description": "Owners of this workflow definition.",
+      "$ref": "../type/entityReferenceList.json",
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "startEvent": {
+      "description": "Event that triggers the start of the workflow.",
+      "$ref": "./elements/events/start/entityEvent.json"
+    },
+    "endEvents": {
+      "description": "List of states on which the workflow might end.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/endEvent"
+      }
+    },
+    "processes": {
+      "description": "List of processes used on the workflow.",
+      "type": "array",
+      "oneOf": [
+        {
+          "$ref": "./elements/processes/automated/checkEntityAttributes.json"
+        },
+        {
+          "$ref": "./elements/processes/automated/updateEntity.json"
+        },
+        {
+          "$ref": "./elements/processes/user/approval.json"
+        }
+      ]
+    },
+    "edges": {
+      "description": "List of edges that connect the workflow elements and guide its flow.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/edge"
+      }
+    }
+  },
+  "required": ["name", "description"],
+  "additionalProperties": false
+}

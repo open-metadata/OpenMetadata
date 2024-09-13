@@ -1,0 +1,63 @@
+{
+  "$id": "https://open-metadata.org/schema/governanceWorkflows/elements/processes/automated/checkEntityAttributes.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CheckEntityAttributes",
+  "description": "Check Entity Attributes process.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.governanceWorkflows.elements.processes.automated.CheckEntityAttributes",
+  "properties": {
+    "type": {
+      "description": "Process Type.",
+      "type": "string",
+      "enum": [
+        "CHECK_ENTITY_ATTRIBUTES"
+      ],
+      "default": "CHECK_ENTITY_ATTRIBUTES"
+    },
+    "name": {
+      "description": "Name that identifies this Process.",
+      "$ref": "../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Process.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Process.",
+      "$ref": "../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "description": "Process configuration.",
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "description": "Conditions to check.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["conditions"],
+      "additionalProperties": false
+    },
+    "input": {
+      "entityType": {
+        "description": "Entity Type.",
+        "type": "string"
+      },
+      "relatedEntity": {
+        "description": "Entity.",
+        "$ref": "../../../../type/entityReference.json"
+      }
+    },
+    "output": {
+      "checkPassed": {
+        "description": "True if ALL check Passed. False otherwise.",
+        "type": "boolean"
+      }
+    }
+  },
+  "required": ["type", "name", "config"],
+  "additionalProperties": false
+}

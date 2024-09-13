@@ -626,6 +626,13 @@
       <artifactId>slack-api-client</artifactId>
       <version>1.42.0</version>
     </dependency>
+    <!-- Governance Workflows -->
+    <dependency>
+      <groupId>org.flowable</groupId>
+      <artifactId>flowable-engine</artifactId>
+      <version>7.0.1</version>
+    </dependency>
+    <!-- ################ -->
   </dependencies>
 
   <profiles>

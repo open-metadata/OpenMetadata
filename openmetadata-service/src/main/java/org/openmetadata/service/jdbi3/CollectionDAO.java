@@ -112,6 +112,7 @@ import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.governanceWorkflows.WorkflowDefinition;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
@@ -348,6 +349,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   APIEndpointDAO apiEndpointDAO();
+
+  @CreateSqlObject
+  WorkflowDefinitionDAO workflowDefinitionDAO();
+
+  @CreateSqlObject
+  WorkflowInstanceStateTimeSeriesDAO workflowInstanceStateTimeSeriesDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -5119,5 +5126,102 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+  }
+
+  interface WorkflowDefinitionDAO extends EntityDAO<WorkflowDefinition> {
+    @Override
+    default String getTableName() {
+      return "workflow_definition_entity";
+    }
+
+    @Override
+    default Class<WorkflowDefinition> getEntityClass() {
+      return WorkflowDefinition.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface WorkflowInstanceStateTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "workflow_instance_state_time_series";
+    }
+
+    //    @SqlQuery(
+    //            value =
+    //                    "SELECT json FROM test_case_resolution_status_time_series "
+    //                            + "WHERE stateId = :stateId ORDER BY timestamp DESC")
+    //    List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+    //
+    //    @SqlUpdate(
+    //            "DELETE FROM test_case_resolution_status_time_series WHERE entityFQNHash =
+    // :entityFQNHash")
+    //    void delete(@BindFQN("entityFQNHash") String entityFQNHash);
+    //
+    //    @SqlQuery(
+    //            "SELECT json FROM "
+    //                    + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER()
+    // OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+    //                    + "FROM <table> <cond> "
+    //                    + "AND timestamp BETWEEN :startTs AND :endTs "
+    //                    + "ORDER BY timestamp DESC) ranked "
+    //                    + "<outerCond> AND ranked.row_num = 1 LIMIT :limit OFFSET :offset")
+    //    List<String> listWithOffset(
+    //            @Define("table") String table,
+    //            @BindMap Map<String, ?> params,
+    //            @Define("cond") String cond,
+    //            @Define("partition") String partition,
+    //            @Bind("limit") int limit,
+    //            @Bind("offset") int offset,
+    //            @Bind("startTs") Long startTs,
+    //            @Bind("endTs") Long endTs,
+    //            @BindMap Map<String, ?> outerParams,
+    //            @Define("outerCond") String outerFilter);
+    //
+    //    @Override
+    //    default List<String> listWithOffset(
+    //            ListFilter filter, int limit, int offset, Long startTs, Long endTs, boolean
+    // latest) {
+    //      if (latest) {
+    //        // When fetching latest, we need to apply Assignee and Status filters on the outer
+    // query
+    //        // i.e. after we have fetched the latest records for each testCaseFQNHash
+    //        // We'll first get the values, remove then from `filter` and then create `outerFilter`
+    //        String testCaseResolutionStatusType =
+    // filter.getQueryParam("testCaseResolutionStatusType");
+    //        filter.removeQueryParam("testCaseResolutionStatusType");
+    //        String assignee = filter.getQueryParam("assignee");
+    //        filter.removeQueryParam("assignee");
+    //
+    //        ListFilter outerFilter = new ListFilter(null);
+    //        outerFilter.addQueryParam("testCaseResolutionStatusType",
+    // testCaseResolutionStatusType);
+    //        outerFilter.addQueryParam("assignee", assignee);
+    //
+    //        return listWithOffset(
+    //                getTimeSeriesTableName(),
+    //                filter.getQueryParams(),
+    //                filter.getCondition(),
+    //                getPartitionFieldName(),
+    //                limit,
+    //                offset,
+    //                startTs,
+    //                endTs,
+    //                filter.getQueryParams(),
+    //                outerFilter.getCondition());
+    //      }
+    //      return listWithOffset(
+    //              getTimeSeriesTableName(),
+    //              filter.getQueryParams(),
+    //              filter.getCondition(),
+    //              limit,
+    //              offset,
+    //              startTs,
+    //              endTs);
+    //    }
   }
 }

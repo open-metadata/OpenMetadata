@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/governanceWorkflows/workflowInstanceState.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WorkflowInstanceState",
+  "description": "Defines a workflow instance.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.governanceWorkflows.WorkflowInstanceState",
+  "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this workflow instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "workflowInstanceId": {
+      "description": "Unique identifier of this workflow instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "workflowDefinitionReference": {
+      "description": "Workflow Definition Reference.",
+      "$ref": "../type/entityReference.json"
+    },
+    "timestamp": {
+      "description": "Timestamp on which the failure was created.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}
