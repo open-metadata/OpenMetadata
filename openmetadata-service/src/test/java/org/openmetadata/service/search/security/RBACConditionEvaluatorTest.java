@@ -213,7 +213,7 @@ class RBACConditionEvaluatorTest {
   @Test
   void testComplexConditionWithRolesDomainTagsTeams() throws IOException {
     setupMockPolicies(
-        "hasAnyRole('Admin', 'DataSteward') && hasDomain() && (matchAnyTag('Sensitive') || inAnyTeam('Analytics'))",
+        "hasAnyRole('Admin', 'DataSteward') && hasDomain() && (matchAnyTag('Sensitive') || inAnyTeam('Interns'))",
         "ALLOW");
 
     EntityReference role = new EntityReference();
@@ -234,13 +234,27 @@ class RBACConditionEvaluatorTest {
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
 
-    assertTrue(generatedQuery.contains("domain.id"), "The query should contain 'domain.id'.");
-    assertTrue(
-        generatedQuery.contains(domain.getId().toString()),
-        "The query should contain the user's domain ID.");
-    assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
-    assertTrue(generatedQuery.contains("Sensitive"), "The query should contain 'Sensitive' tag.");
-    assertFalse(generatedQuery.contains("match_none"), "The query should not be match_none.");
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // Assert that the query contains 'domain.id'
+    assertFieldExists(jsonContext, "$.bool.must[?(@.term['domain.id'])]", "domain.id");
+
+    // Assert that the query contains the user's domain ID
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[?(@.term['domain.id'].value=='" + domain.getId().toString() + "')]",
+        "user's domain ID");
+
+    // Assert that the query contains 'inAnyTeam' logic for 'Analytics'
+    assertFieldExists(
+        jsonContext, "$.bool.must[?(@.match_all)]", "match_all for inAnyTeam 'Analytics'");
+
+    // Ensure no match_any_tag query is processed since inAnyTeam('Analytics') is true
+    assertFieldDoesNotExist(
+        jsonContext, "$.bool.should[?(@.term['tags.tagFQN'])]", "matchAnyTag 'Sensitive'");
+
+    // Ensure the query does not contain a match_none condition
+    assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none");
   }
 
   @Test
@@ -398,25 +412,18 @@ class RBACConditionEvaluatorTest {
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     // Assertions
-    // Check for match_all for hasAnyRole('Admin')
     assertFieldExists(
-        jsonContext, "$.bool.should[?(@.match_all)]", "match_all for hasAnyRole 'Admin'");
+        jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'Admin'");
 
-    // Check for the presence of domain.id (hasDomain method)
-    assertFieldExists(
-        jsonContext, "$.bool.should[1].bool.must[?(@.term['domain.id'])]", "domain.id");
+    // Ensure no further processing for matchAnyTag('Confidential') or hasDomain()
+    assertFieldDoesNotExist(
+        jsonContext, "$.bool.must[?(@.term['tags.tagFQN'])]", "matchAnyTag 'Confidential'");
+    assertFieldDoesNotExist(
+        jsonContext, "$.bool.must[?(@.term['domain.id'])]", "hasDomain 'domain.id'");
 
-    // Check for the presence of Confidential tag in matchAnyTag('Confidential')
-    assertFieldExists(
-        jsonContext,
-        "$.bool.should[1].bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
-        "Confidential tag");
-
-    // Check for the presence of must_not for noOwner()
-    assertFieldExists(
-        jsonContext,
-        "$.bool.should[2].bool.must_not[?(@.exists.field=='owner.id')]",
-        "no owner must_not clause");
+    // Ensure that the query does not check for noOwner since inAnyTeam('HR') is false
+    assertFieldDoesNotExist(
+        jsonContext, "$.bool.must_not[?(@.exists.field=='owner.id')]", "noOwner clause");
 
     // Ensure the query does not contain a match_none condition
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none");
@@ -602,23 +609,28 @@ class RBACConditionEvaluatorTest {
     // Assertions
     // Assert that the `hasAnyRole` check results in `match_all` since the user has 'DataSteward'
     // role
-    assertFieldExists(jsonContext, "$.bool.should[?(@.match_all)]", "match_all for hasAnyRole");
+    // Assert that the `hasAnyRole` check results in `match_all`
+    assertFieldExists(jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole");
 
-    // Assert that the query contains tag conditions for matchAnyTag and matchAllTags
+    // Assert that the query contains tag conditions for matchAnyTag('Finance') and
+    // matchAllTags('Confidential', 'Internal')
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.should[?(@.term['tags.tagFQN'].value=='Finance')]",
+        "$.bool.should[0].bool.should[?(@.term['tags.tagFQN'].value=='Finance')]",
         "Finance tag");
+
     assertFieldExists(
         jsonContext,
-        "$.bool.should[2].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential tag");
+
     assertFieldExists(
         jsonContext,
-        "$.bool.should[2].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
+        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal tag");
 
-    assertFieldDoesNotExist(jsonContext, "$.bool.must_not", "must_not for inAnyTeam");
+    // Ensure no must_not for inAnyTeam('Data') since the user is in 'Engineering'
+    assertFieldDoesNotExist(jsonContext, "$.bool.must_not", "must_not for inAnyTeam('Data')");
   }
 
   @Test

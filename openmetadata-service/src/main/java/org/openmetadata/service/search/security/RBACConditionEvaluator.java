@@ -73,20 +73,35 @@ public class RBACConditionEvaluator {
     } else if (node instanceof OpOr) {
       List<OMQueryBuilder> orQueries = new ArrayList<>();
       boolean allMatchNothing = true;
+      boolean hasTrueCondition = false; // Track if any condition evaluated to true
+
       for (int i = 0; i < node.getChildCount(); i++) {
         ConditionCollector childCollector = new ConditionCollector(queryBuilderFactory);
         preprocessExpression(node.getChild(i), childCollector);
-        if (!childCollector.isMatchNothing()) {
-          allMatchNothing = false;
-          OMQueryBuilder childQuery = childCollector.buildFinalQuery();
-          if (childQuery != null) {
-            orQueries.add(childQuery);
-          }
+
+        if (childCollector.isMatchNothing()) {
+          continue; // If this child evaluates to match nothing, skip it
+        }
+
+        if (childCollector.isMatchAllQuery()) {
+          hasTrueCondition = true; // If any condition evaluates to true, mark it
+          break; // Short-circuit: if any condition in OR evaluates to true, the whole OR is true
+        }
+
+        OMQueryBuilder childQuery = childCollector.buildFinalQuery();
+        if (childQuery != null) {
+          allMatchNothing =
+              false; // If at least one child query is valid, it’s not all match nothing
+          orQueries.add(childQuery);
         }
       }
-      if (allMatchNothing) {
-        collector.setMatchNothing(true);
+
+      if (hasTrueCondition) {
+        collector.addMust(queryBuilderFactory.matchAllQuery()); // OR is true, add match_all
+      } else if (allMatchNothing) {
+        collector.setMatchNothing(true); // OR is false
       } else {
+        // Add the valid OR queries to the collector
         for (OMQueryBuilder orQuery : orQueries) {
           collector.addShould(orQuery);
         }
@@ -96,17 +111,13 @@ public class RBACConditionEvaluator {
       preprocessExpression(node.getChild(0), subCollector);
 
       if (subCollector.isMatchAllQuery()) {
-        // NOT TRUE == FALSE
-        collector.setMatchNothing(true);
+        collector.setMatchNothing(true); // NOT TRUE == FALSE
       } else if (subCollector.isMatchNothing()) {
-        // NOT FALSE == TRUE: No filtering required (skip)
-        // Do not add anything to must_not because negating "nothing" is equivalent to matching
-        // everything
+        collector.addMust(queryBuilderFactory.matchAllQuery());
       } else {
         OMQueryBuilder subQuery = subCollector.buildFinalQuery();
         if (subQuery != null && !subQuery.isEmpty()) {
-          // Add the subquery to must_not for negation
-          collector.addMustNot(subQuery);
+          collector.addMustNot(subQuery); // Add to must_not for negation
         }
       }
     } else if (node instanceof MethodReference) {
@@ -189,9 +200,10 @@ public class RBACConditionEvaluator {
       collector.setMatchNothing(true);
       return;
     }
-    List<String> userRoleNames = user.getRoles().stream().map(EntityReference::getName).toList();
 
+    List<String> userRoleNames = user.getRoles().stream().map(EntityReference::getName).toList();
     boolean hasRole = userRoleNames.stream().anyMatch(roles::contains);
+
     if (hasRole) {
       collector.addMust(queryBuilderFactory.matchAllQuery());
     } else {
