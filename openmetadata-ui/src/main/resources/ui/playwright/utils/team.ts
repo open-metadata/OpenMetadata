@@ -52,6 +52,32 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
   return teamData;
 };
 
+export const softDeleteTeam = async (page: Page) => {
+  await page
+    .getByTestId('team-details-collapse')
+    .getByTestId('manage-button')
+    .click();
+  await page.getByTestId('delete-button').click();
+
+  await page.waitForSelector('[role="dialog"].ant-modal');
+
+  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+  await page.click('[data-testid="soft-delete-option"]');
+  await page.check('[data-testid="soft-delete"]');
+  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+
+  const deleteResponse = page.waitForResponse(
+    '/api/v1/teams/*?hardDelete=false&recursive=true'
+  );
+
+  await page.click('[data-testid="confirm-button"]');
+
+  await deleteResponse;
+
+  await toastNotification(page, /deleted successfully!/);
+};
+
 export const hardDeleteTeam = async (page: Page) => {
   await page
     .getByTestId('team-details-collapse')
