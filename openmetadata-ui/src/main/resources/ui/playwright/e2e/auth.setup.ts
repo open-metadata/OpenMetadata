@@ -15,6 +15,7 @@ import { JWT_EXPIRY_TIME_MAP } from '../constant/login';
 import { AdminClass } from '../support/user/AdminClass';
 import { getApiContext } from '../utils/common';
 import { updateJWTTokenExpiryTime } from '../utils/login';
+import { removeOrganizationPolicyAndRole } from '../utils/team';
 const adminFile = 'playwright/.auth/admin.json';
 
 setup('authenticate as admin', async ({ page }) => {
@@ -25,6 +26,7 @@ setup('authenticate as admin', async ({ page }) => {
   await page.waitForURL('**/my-data');
   const { apiContext, afterAction } = await getApiContext(page);
   await updateJWTTokenExpiryTime(apiContext, JWT_EXPIRY_TIME_MAP['4 hours']);
+  await removeOrganizationPolicyAndRole(apiContext);
   await afterAction();
   await admin.logout(page);
   await page.waitForURL('**/signin');

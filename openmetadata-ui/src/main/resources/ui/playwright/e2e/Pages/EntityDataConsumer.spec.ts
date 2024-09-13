@@ -63,27 +63,6 @@ entities.forEach((EntityClass) => {
 
       await user.create(apiContext);
 
-      const dataConsumerRoleResponse = await apiContext.get(
-        '/api/v1/roles/name/DataConsumer'
-      );
-
-      const dataConsumerRole = await dataConsumerRoleResponse.json();
-
-      await user.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/roles/0',
-            value: {
-              id: dataConsumerRole.id,
-              type: 'role',
-              name: dataConsumerRole.name,
-            },
-          },
-        ],
-      });
-
       await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();

@@ -110,6 +110,7 @@ export class TableClass extends EntityClass {
   testSuiteResponseData: unknown;
   testSuitePipelineResponseData: unknown[] = [];
   testCasesResponseData: unknown[] = [];
+  queryResponseData: unknown[] = [];
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Table);
@@ -170,6 +171,25 @@ export class TableClass extends EntityClass {
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,
     });
+  }
+
+  async createQuery(apiContext: APIRequestContext, queryText?: string) {
+    const queryResponse = await apiContext.post('/api/v1/queries', {
+      data: {
+        query:
+          queryText ??
+          `select * from ${this.entityResponseData?.['fullyQualifiedName']}`,
+        queryUsedIn: [{ id: this.entityResponseData?.['id'], type: 'table' }],
+        queryDate: Date.now(),
+        service: this.serviceResponseData?.['name'],
+      },
+    });
+
+    const query = await queryResponse.json();
+
+    this.queryResponseData.push(query);
+
+    return query;
   }
 
   async createTestSuiteAndPipelines(
