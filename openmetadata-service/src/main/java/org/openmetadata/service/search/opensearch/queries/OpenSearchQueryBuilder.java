@@ -1,21 +1,21 @@
-package org.openmetadata.service.search.elasticsearch.queries;
+package org.openmetadata.service.search.opensearch.queries;
 
-import es.org.elasticsearch.index.query.BoolQueryBuilder;
-import es.org.elasticsearch.index.query.MatchAllQueryBuilder;
-import es.org.elasticsearch.index.query.QueryBuilder;
-import es.org.elasticsearch.index.query.QueryBuilders;
 import java.util.List;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import os.org.opensearch.index.query.BoolQueryBuilder;
+import os.org.opensearch.index.query.MatchAllQueryBuilder;
+import os.org.opensearch.index.query.QueryBuilder;
+import os.org.opensearch.index.query.QueryBuilders;
 
-public class ElasticQueryBuilder implements OMQueryBuilder {
+public class OpenSearchQueryBuilder implements OMQueryBuilder {
   private boolean isMustNot = false;
   private QueryBuilder query;
 
-  public ElasticQueryBuilder() {
+  public OpenSearchQueryBuilder() {
     // Default constructor
   }
 
-  public ElasticQueryBuilder(QueryBuilder query) {
+  public OpenSearchQueryBuilder(QueryBuilder query) {
     this.query = query;
   }
 
@@ -46,7 +46,7 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
   public OMQueryBuilder must(List<OMQueryBuilder> queries) {
     BoolQueryBuilder boolQuery = getOrCreateBoolQuery();
     for (OMQueryBuilder q : queries) {
-      ElasticQueryBuilder eqb = (ElasticQueryBuilder) q;
+      OpenSearchQueryBuilder eqb = (OpenSearchQueryBuilder) q;
       boolQuery.must(eqb.build());
     }
     this.query = boolQuery;
@@ -57,7 +57,7 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
   public OMQueryBuilder should(List<OMQueryBuilder> queries) {
     BoolQueryBuilder boolQuery = getOrCreateBoolQuery();
     for (OMQueryBuilder q : queries) {
-      ElasticQueryBuilder eqb = (ElasticQueryBuilder) q;
+      OpenSearchQueryBuilder eqb = (OpenSearchQueryBuilder) q;
       boolQuery.should(eqb.build());
     }
     this.query = boolQuery;
@@ -68,7 +68,7 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
   public OMQueryBuilder mustNot(List<OMQueryBuilder> queries) {
     BoolQueryBuilder boolQuery = getOrCreateBoolQuery();
     for (OMQueryBuilder q : queries) {
-      ElasticQueryBuilder eqb = (ElasticQueryBuilder) q;
+      OpenSearchQueryBuilder eqb = (OpenSearchQueryBuilder) q;
       boolQuery.mustNot(eqb.build());
     }
     this.query = boolQuery;
@@ -100,39 +100,39 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
     return query;
   }
 
-  public ElasticQueryBuilder setQuery(QueryBuilder query) {
+  public OpenSearchQueryBuilder setQuery(QueryBuilder query) {
     this.query = query;
     return this;
   }
 
   // Helper methods
 
-  public ElasticQueryBuilder matchNoneQuery() {
+  public OpenSearchQueryBuilder matchNoneQuery() {
     this.query = QueryBuilders.boolQuery().mustNot(QueryBuilders.matchAllQuery());
     return this;
   }
 
-  public ElasticQueryBuilder matchAllQuery() {
+  public OpenSearchQueryBuilder matchAllQuery() {
     this.query = QueryBuilders.matchAllQuery();
     return this;
   }
 
-  public ElasticQueryBuilder boolQuery() {
+  public OpenSearchQueryBuilder boolQuery() {
     this.query = QueryBuilders.boolQuery();
     return this;
   }
 
-  public ElasticQueryBuilder termQuery(String field, String value) {
+  public OpenSearchQueryBuilder termQuery(String field, String value) {
     this.query = QueryBuilders.termQuery(field, value);
     return this;
   }
 
-  public ElasticQueryBuilder termsQuery(String field, List<String> values) {
+  public OpenSearchQueryBuilder termsQuery(String field, List<String> values) {
     this.query = QueryBuilders.termsQuery(field, values);
     return this;
   }
 
-  public ElasticQueryBuilder existsQuery(String field) {
+  public OpenSearchQueryBuilder existsQuery(String field) {
     this.query = QueryBuilders.existsQuery(field);
     return this;
   }

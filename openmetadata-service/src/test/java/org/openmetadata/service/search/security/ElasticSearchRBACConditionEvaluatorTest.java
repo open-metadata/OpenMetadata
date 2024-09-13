@@ -4,16 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.openmetadata.service.util.TestUtils.assertFieldDoesNotExist;
+import static org.openmetadata.service.util.TestUtils.assertFieldExists;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.PathNotFoundException;
 import es.org.elasticsearch.index.query.QueryBuilder;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +28,7 @@ import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
-class RBACConditionEvaluatorTest {
+class ElasticSearchRBACConditionEvaluatorTest {
 
   private RBACConditionEvaluator evaluator;
   private User mockUser;
@@ -333,12 +333,17 @@ class RBACConditionEvaluatorTest {
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+    assertFieldExists(
+        jsonContext, "$.bool.must_not[?(@.exists.field=='domain.id')]", "must_not for domain.id");
 
-    assertTrue(
-        generatedQuery.contains("\"must_not\""), "The query should contain 'must_not' clause.");
-    assertTrue(
-        generatedQuery.contains("\"match_all\""),
-        "The must_not clause should contain 'match_all' query.");
+    // Check for owner ID and Public tag in the query
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['owner.id'].value=='" + mockUser.getId().toString() + "')]",
+        "owner.id");
+    assertFieldExists(
+        jsonContext, "$.bool.should[?(@.term['tags.tagFQN'].value=='Public')]", "Public tag");
   }
 
   @Test
@@ -690,19 +695,26 @@ class RBACConditionEvaluatorTest {
     assertFieldExists(jsonContext, "$.bool.should[?(@.term['owner.id'])]", "owner.id");
   }
 
-  private void assertFieldExists(DocumentContext jsonContext, String jsonPath, String fieldName) {
-    List<Map<String, Object>> result = jsonContext.read(jsonPath, List.class);
-    assertTrue(result.size() > 0, "The query should contain '" + fieldName + "' term.");
-  }
+  @Test
+  void testNotHasDomainWhenUserHasNoDomain() throws IOException {
+    setupMockPolicies("!hasDomain() && isOwner()", "ALLOW");
+    when(mockUser.getDomain()).thenReturn(null);
+    when(mockUser.getId()).thenReturn(UUID.randomUUID());
 
-  private void assertFieldDoesNotExist(
-      DocumentContext jsonContext, String jsonPath, String fieldName) {
-    try {
-      List<Map<String, Object>> result = jsonContext.read(jsonPath, List.class);
-      assertTrue(result.isEmpty(), "The query should not contain '" + fieldName + "' term.");
-    } catch (PathNotFoundException e) {
-      // If the path doesn't exist, this is expected behavior, so the test should pass.
-      assertTrue(true, "The path does not exist as expected: " + jsonPath);
-    }
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[0].bool.must_not[?(@.exists.field=='domain.id')]",
+        "must_not for hasDomain");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['owner.id'].value=='" + mockUser.getId().toString() + "')]",
+        "owner.id");
+    assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
   }
 }

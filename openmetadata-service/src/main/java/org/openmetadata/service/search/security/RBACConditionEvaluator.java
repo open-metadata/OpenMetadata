@@ -111,13 +111,13 @@ public class RBACConditionEvaluator {
       preprocessExpression(node.getChild(0), subCollector);
 
       if (subCollector.isMatchAllQuery()) {
-        collector.setMatchNothing(true); // NOT TRUE == FALSE
+        collector.setMatchNothing(true);
       } else if (subCollector.isMatchNothing()) {
         collector.addMust(queryBuilderFactory.matchAllQuery());
       } else {
         OMQueryBuilder subQuery = subCollector.buildFinalQuery();
         if (subQuery != null && !subQuery.isEmpty()) {
-          collector.addMustNot(subQuery); // Add to must_not for negation
+          collector.addMustNot(subQuery); // Add must_not without extra nesting
         }
       }
     } else if (node instanceof MethodReference) {
@@ -214,13 +214,13 @@ public class RBACConditionEvaluator {
   public void hasDomain(ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
     if (user.getDomain() == null) {
-      collector.setMatchNothing(true);
-      return;
+      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domain.id");
+      collector.addMustNot(existsQuery);
+    } else {
+      String userDomainId = user.getDomain().getId().toString();
+      OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domain.id", userDomainId);
+      collector.addMust(domainQuery);
     }
-    String userDomainId = user.getDomain().getId().toString();
-
-    OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domain.id", userDomainId);
-    collector.addMust(domainQuery);
   }
 
   public void inAnyTeam(List<String> teamNames, ConditionCollector collector) {

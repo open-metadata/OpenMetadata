@@ -46,32 +46,6 @@ public class ConditionCollector {
     }
   }
 
-  public void mergeMust(ConditionCollector other) {
-    if (other.isMatchNothing()) {
-      this.setMatchNothing(true);
-    } else {
-      this.mustQueries.addAll(other.mustQueries);
-      this.mustNotQueries.addAll(other.mustNotQueries);
-      this.shouldQueries.addAll(other.shouldQueries);
-    }
-  }
-
-  public void mergeShould(ConditionCollector other) {
-    if (!other.isMatchNothing()) {
-      this.shouldQueries.addAll(other.mustQueries);
-      this.shouldQueries.addAll(other.shouldQueries);
-      this.mustNotQueries.addAll(other.mustNotQueries);
-    }
-  }
-
-  public void mergeMustNot(ConditionCollector other) {
-    if (!other.isMatchNothing()) {
-      this.mustNotQueries.addAll(other.mustQueries);
-      this.mustNotQueries.addAll(other.shouldQueries);
-      this.mustQueries.addAll(other.mustNotQueries);
-    }
-  }
-
   public boolean isMatchAllQuery() {
     if (mustQueries.size() == 1 && shouldQueries.isEmpty() && mustNotQueries.isEmpty()) {
       OMQueryBuilder query = mustQueries.get(0);

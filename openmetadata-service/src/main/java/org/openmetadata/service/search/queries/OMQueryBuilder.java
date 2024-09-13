@@ -20,7 +20,5 @@ public interface OMQueryBuilder {
 
   OMQueryBuilder should(OMQueryBuilder query);
 
-  OMQueryBuilder mustNot(OMQueryBuilder query);
-
   boolean hasClauses();
 }
