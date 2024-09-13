@@ -57,6 +57,12 @@ export const redirectToHomePage = async (page: Page) => {
   await page.waitForURL('**/my-data');
 };
 
+export const removeLandingBanner = async (page: Page) => {
+  const widgetResponse = page.waitForResponse('/api/v1/search/query?q=**');
+  await page.click('[data-testid="welcome-screen-close-btn"]');
+  await widgetResponse;
+};
+
 export const createNewPage = async (browser: Browser) => {
   // create a new page
   const page = await browser.newPage();
@@ -127,7 +133,7 @@ export const clickOutside = async (page: Page) => {
   await page.mouse.move(1280, 0); // moving out side left menu bar to avoid random failure due to left menu bar
 };
 
-export const visitUserProfilePage = async (page: Page) => {
+export const visitOwnProfilePage = async (page: Page) => {
   await page.locator('[data-testid="dropdown-profile"] svg').click();
   await page.waitForSelector('[role="menu"].profile-dropdown', {
     state: 'visible',

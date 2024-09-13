@@ -30,7 +30,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
-  visitUserProfilePage,
+  visitOwnProfilePage,
 } from '../../utils/common';
 import { addOwner, updateDescription } from '../../utils/entity';
 import { clickOnLogo } from '../../utils/sidebar';
@@ -169,7 +169,7 @@ test.describe('Activity feed', () => {
   }) => {
     await redirectToHomePage(page);
 
-    await visitUserProfilePage(page);
+    await visitOwnProfilePage(page);
 
     const secondFeedConversation = page
       .locator('#center-container [data-testid="message-container"]')
@@ -479,7 +479,7 @@ test.describe('Activity feed', () => {
   });
 });
 
-base.describe('Activity feed with Data Steward User', () => {
+base.describe('Activity feed with Data Consumer User', () => {
   base.slow(true);
 
   const id = uuid();

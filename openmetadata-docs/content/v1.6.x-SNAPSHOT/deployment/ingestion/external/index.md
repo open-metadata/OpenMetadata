@@ -1,6 +1,7 @@
 ---
 title: Run the Ingestion Framework Externally
 slug: /deployment/ingestion/external
+collate: false
 ---
 
 # Ingestion Framework External Deployment

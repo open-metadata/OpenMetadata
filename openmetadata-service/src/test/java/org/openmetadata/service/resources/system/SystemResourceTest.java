@@ -183,10 +183,10 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Test Email Config
     Settings emailSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
     SmtpSettings smtp = JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
-    // Password for Email is always sent in hidden
+    // Password for Email is encrypted using fernet
     SmtpSettings expected = config.getSmtpSettings();
-    expected.setPassword("***********");
-    assertEquals(expected, smtp);
+    expected.setPassword(smtp.getPassword());
+    assertEquals(config.getSmtpSettings(), smtp);
 
     // Test Custom Ui Theme Preference Config
     Settings uiThemeConfigWrapped = getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE);

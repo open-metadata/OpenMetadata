@@ -4,7 +4,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 
 import java.io.IOException;
 import java.security.KeyStoreException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -135,6 +134,10 @@ public interface SearchClient {
       String entityType)
       throws IOException;
 
+  /*
+   Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
+  */
+  @SuppressWarnings("unused")
   default Response listPageHierarchy(String parent, String pageType) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
@@ -203,10 +206,10 @@ public interface SearchClient {
       Integer from,
       String queryFilter,
       String dataReportIndex)
-      throws IOException, ParseException;
+      throws IOException;
 
   // TODO: Think if it makes sense to have this or maybe a specific deleteByRange
-  public void deleteByQuery(String index, String query) throws IOException;
+  void deleteByQuery(String index, String query);
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(
@@ -217,16 +220,6 @@ public interface SearchClient {
       es.org.elasticsearch.action.bulk.BulkRequest data,
       es.org.elasticsearch.client.RequestOptions options)
       throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default int getSuccessFromBulkResponse(BulkResponse response) {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default int getSuccessFromBulkResponse(es.org.elasticsearch.action.bulk.BulkResponse response) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }

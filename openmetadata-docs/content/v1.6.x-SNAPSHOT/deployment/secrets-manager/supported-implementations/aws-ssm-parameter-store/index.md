@@ -1,6 +1,7 @@
 ---
 title: AWS Systems Manager Parameter Store
 slug: /deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
+collate: false
 ---
 
 # AWS Systems Manager Parameter Store

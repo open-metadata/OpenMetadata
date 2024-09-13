@@ -1,6 +1,7 @@
 ---
 title: Azure SSO for Docker
 slug: /deployment/security/azure/docker
+collate: false
 ---
 
 # Azure SSO for Docker

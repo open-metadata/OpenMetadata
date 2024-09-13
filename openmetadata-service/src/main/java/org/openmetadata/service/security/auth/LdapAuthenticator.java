@@ -62,18 +62,17 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
+import org.openmetadata.service.util.email.EmailUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;
 
@@ -165,13 +164,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     } catch (EntityNotFoundException ex) {
       // User does not exist
       return userRepository.create(null, getUserForLdap(email, name));
-    } catch (LDAPException e) {
-      LOG.error(
-          "An error occurs when reassigning roles for an LDAP user({}): {}",
-          name,
-          e.getMessage(),
-          e);
-      throw new UnhandledServerException(e.getMessage());
     }
   }
 
@@ -278,7 +270,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             .withAuthenticationMechanism(null);
     try {
       getRoleForLdap(user, false);
-    } catch (LDAPException | JsonProcessingException e) {
+    } catch (JsonProcessingException e) {
       LOG.error(
           "Failed to assign roles from LDAP to OpenMetadata for the user {} due to {}",
           user.getName(),
@@ -294,8 +286,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
    * @param reAssign flag to decide whether to reassign roles
    * @author Eric Wen@2023-07-16 17:23:57
    */
-  private void getRoleForLdap(User user, Boolean reAssign)
-      throws LDAPException, JsonProcessingException {
+  private void getRoleForLdap(User user, Boolean reAssign) throws JsonProcessingException {
     // Get user's groups from LDAP server using the DN of the user
     try {
       Filter groupFilter =

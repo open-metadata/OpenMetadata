@@ -22,8 +22,15 @@ import ServiceBaseClass from './ServiceBaseClass';
 class SnowflakeIngestionClass extends ServiceBaseClass {
   schema: string;
   constructor() {
-    super(Services.Database, `pw-snowflake-${uuid()}`, 'Snowflake', 'CUSTOMER');
+    super(
+      Services.Database,
+      `pw-snowflake-with-%-${uuid()}`,
+      'Snowflake',
+      'CUSTOMER'
+    );
     this.schema = 'TPCH_SF1000';
+    const database = process.env.PLAYWRIGHT_SNOWFLAKE_DATABASE ?? '';
+    this.entityFQN = `${this.serviceName}.${database}.${this.schema}.${this.entityName} `;
   }
 
   async createService(page: Page) {

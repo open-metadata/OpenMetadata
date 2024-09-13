@@ -387,6 +387,15 @@ public interface MessageDecorator<T> {
                 String.format(
                     "Ends At : %s", getDateString(thread.getAnnouncement().getEndTime())));
           }
+          case ENTITY_DELETED -> {
+            headerMessage =
+                String.format(
+                    "[%s] **@%s** posted an update on  **Announcement**",
+                    publisherName, thread.getUpdatedBy());
+            attachmentList.add(
+                String.format(
+                    "Announcement Deleted: %s", thread.getAnnouncement().getDescription()));
+          }
         }
       }
     }

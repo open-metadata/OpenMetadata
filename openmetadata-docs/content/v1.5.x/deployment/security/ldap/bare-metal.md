@@ -1,6 +1,7 @@
 ---
 title: Ldap Authentication for Bare Metal
 slug: /deployment/security/ldap/bare-metal
+collate: false
 ---
 
 # Ldap Authentication for Bare Metal
@@ -59,7 +60,7 @@ Mandatory LDAP Specific Configuration:
 
 - `host`: hostName for the Ldap Server (Ex - localhost).
 - `port`: port of the Ldap Server to connect to (Ex - 10636).
-- `dnAdminPrincipal`: This is the DN Admin Principal(Complete path Example :- cn=admin,dc=example,dc=com ) with a lookup access in the Directory.
+- `dnAdminPrincipal`: This is the DN Admin Principal(Complete path Example :- cn=admin,dc=example,dc=com) with a lookup access in the Directory.
 - `dnAdminPassword`: Above Admin Principal Password.
 - `userBaseDN`: User Base DN(Complete path Example :- ou=people,dc=example,dc=com).
 
@@ -143,12 +144,12 @@ This configuration controls the authorizer for OpenMetadata:
 ```yaml
 authorizerConfiguration:
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
-  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
 ```
 
 For the Ldap we need to set:
 
-- `adminPrincipals`: This is the list of admin Principal for the OpenMetadata , if mail in ldap is example@openmetadata.org, then if we want this user to be admin in the OM, we should add 'example', in this list.
+- `adminPrincipals`: This is the list of admin Principal for the OpenMetadata , if mail in ldap is example@open-metadata.org, then if we want this user to be admin in the OM, we should add 'example', in this list.
 - `principalDomain`: Company Domain.
 
 {% partial file="/v1.5/deployment/configure-ingestion.md" /%}

@@ -44,10 +44,11 @@ class ProfilerWorkflow(IngestionWorkflow):
 
     def _get_source_class(self):
         if self.config.source.serviceName:
+            self.import_source_class()
             return OpenMetadataSource
         logger.info(
-            "Database Service name not provided, we will scan all the tables"
-            "available within data source and locate table entity in OpenMetadata"
+            "Database Service name not provided, we will scan all the tables "
+            "available within data source and locate table entity in OpenMetadata "
             "to ingest profiler data."
         )
         return OpenMetadataSourceExt

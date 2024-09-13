@@ -12,7 +12,11 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { generateRandomUsername } from '../../utils/common';
+import { DATA_STEWARD_RULES } from '../../constant/permission';
+import { generateRandomUsername, uuid } from '../../utils/common';
+import { PolicyClass } from '../access-control/PoliciesClass';
+import { RolesClass } from '../access-control/RolesClass';
+import { TeamClass } from '../team/TeamClass';
 
 type ResponseDataType = {
   name: string;
@@ -29,23 +33,48 @@ type UserData = {
   password: string;
 };
 
+const dataStewardPolicy = new PolicyClass();
+const dataStewardRoles = new RolesClass();
+let dataStewardTeam: TeamClass;
+
 export class UserClass {
   data: UserData;
 
   responseData: ResponseDataType;
+  isUserDataSteward = false;
 
   constructor(data?: UserData) {
     this.data = data ? data : generateRandomUsername();
   }
 
   async create(apiContext: APIRequestContext) {
+    const dataConsumerRoleResponse = await apiContext.get(
+      '/api/v1/roles/name/DataConsumer'
+    );
+
+    const dataConsumerRole = await dataConsumerRoleResponse.json();
+
     const response = await apiContext.post('/api/v1/users/signup', {
       data: this.data,
     });
 
     this.responseData = await response.json();
+    const { entity } = await this.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/roles/0',
+          value: {
+            id: dataConsumerRole.id,
+            type: 'role',
+            name: dataConsumerRole.name,
+          },
+        },
+      ],
+    });
 
-    return response.body;
+    return entity;
   }
 
   async patch({
@@ -85,7 +114,33 @@ export class UserClass {
     });
   }
 
+  async setDataStewardRole(apiContext: APIRequestContext) {
+    this.isUserDataSteward = true;
+    const id = uuid();
+    await dataStewardPolicy.create(apiContext, DATA_STEWARD_RULES);
+    await dataStewardRoles.create(apiContext, [
+      dataStewardPolicy.responseData.name,
+    ]);
+    dataStewardTeam = new TeamClass({
+      name: `PW%data_steward_team-${id}`,
+      displayName: `PW Data Steward Team ${id}`,
+      description: 'playwright data steward team description',
+      teamType: 'Group',
+      users: [this.responseData.id],
+      defaultRoles: dataStewardRoles.responseData.id
+        ? [dataStewardRoles.responseData.id]
+        : [],
+    });
+    await dataStewardTeam.create(apiContext);
+  }
+
   async delete(apiContext: APIRequestContext) {
+    if (this.isUserDataSteward) {
+      await dataStewardPolicy.delete(apiContext);
+      await dataStewardRoles.delete(apiContext);
+      await dataStewardTeam.delete(apiContext);
+    }
+
     const response = await apiContext.delete(
       `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=true`
     );

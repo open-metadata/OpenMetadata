@@ -1,6 +1,7 @@
 ---
 title: OIDC Based Authentication
 slug: /deployment/security/oidc
+collate: false
 ---
 
 # Setting up Any Oidc Provider

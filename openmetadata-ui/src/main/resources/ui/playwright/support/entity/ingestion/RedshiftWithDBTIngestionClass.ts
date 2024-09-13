@@ -11,10 +11,20 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import {
+  expect,
+  Page,
+  PlaywrightTestArgs,
+  PlaywrightWorkerArgs,
+  TestType,
+} from '@playwright/test';
 import { DBT, HTTP_CONFIG_SOURCE, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
-import { redirectToHomePage } from '../../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+} from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
@@ -75,12 +85,14 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       .fill(this.schemaFilterPattern);
 
     await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
-
-    await page.click('#root\\/includeViews');
   }
 
-  async runAdditionalTests(test) {
-    test('Add DBT ingestion', async ({ page }) => {
+  async runAdditionalTests(
+    page: Page,
+    test: TestType<PlaywrightTestArgs, PlaywrightWorkerArgs>
+  ) {
+    await test.step('Add DBT ingestion', async () => {
+      const { apiContext } = await getApiContext(page);
       await redirectToHomePage(page);
       await visitServiceDetailsPage(
         page,
@@ -94,6 +106,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
       await page.click('[data-testid="ingestions"]');
       await page.waitForSelector('[data-testid="ingestion-details-container"]');
+      await page.waitForTimeout(1000);
       await page.click('[data-testid="add-new-ingestion-button"]');
       await page.waitForTimeout(1000);
       await page.click('[data-menu-id*="dbt"]');
@@ -115,35 +128,55 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         '#root\\/dbtConfigSource\\/dbtRunResultsHttpPath',
         HTTP_CONFIG_SOURCE.DBT_RUN_RESULTS_FILE_PATH
       );
-      const deployResponse = page.waitForResponse(
-        '/api/v1/services/ingestionPipelines/deploy/*'
-      );
 
       await page.click('[data-testid="submit-btn"]');
-      await page.click('[data-testid="deploy-button"]');
-
-      await deployResponse;
+      // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
+      await this.scheduleIngestion(page);
 
       await page.click('[data-testid="view-service-button"]');
 
-      await page.waitForResponse(
-        '**/api/v1/services/ingestionPipelines/status'
+      // Header available once page loads
+      await page.waitForSelector('[data-testid="data-assets-header"]');
+      await page.getByTestId('loader').waitFor({ state: 'detached' });
+      await page.getByTestId('ingestions').click();
+      await page
+        .getByLabel('Ingestions')
+        .getByTestId('loader')
+        .waitFor({ state: 'detached' });
+
+      const response = await apiContext
+        .get(
+          `/api/v1/services/ingestionPipelines?service=${encodeURIComponent(
+            this.serviceName
+          )}&pipelineType=dbt&serviceType=databaseService&limit=1`
+        )
+        .then((res) => res.json());
+
+      // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+      await page.waitForTimeout(2000);
+      await page.click(
+        `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
       );
+      await page.getByTestId('run-button').click();
+
+      await toastNotification(page, `Pipeline triggered successfully!`);
+
+      await this.handleIngestionRetry('dbt', page);
     });
 
-    test('Validate DBT is ingested properly', async ({ page }) => {
+    await test.step('Validate DBT is ingested properly', async () => {
       await sidebarClick(page, SidebarItem.TAGS);
 
       await page.waitForSelector('[data-testid="data-summary-container"]');
+
       await page.click(
         `[data-testid="data-summary-container"] >> text=${DBT.classification}`
       );
 
       // Verify DBT tag category is added
-      await page.waitForSelector('[data-testid="tag-name"]');
-      const tagName = await page.textContent('[data-testid="tag-name"]');
-
-      expect(tagName).toContain(DBT.classification);
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await page.waitForSelector('.ant-table-row');
 
@@ -153,16 +186,18 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await visitEntityPage({
         page,
         searchTerm: REDSHIFT.DBTTable,
-        dataTestId: `${REDSHIFT.serviceName}.${REDSHIFT.DBTTable}`,
+        dataTestId: `${REDSHIFT.serviceName}-${REDSHIFT.DBTTable}`,
       });
 
       // Verify tags
       await page.waitForSelector('[data-testid="entity-tags"]');
-      const entityTagsText = await page.textContent(
-        '[data-testid="entity-tags"]'
-      );
 
-      expect(entityTagsText).toContain(DBT.tagName);
+      await expect(
+        page
+          .getByTestId('entity-right-panel')
+          .getByTestId('tags-container')
+          .getByTestId('entity-tags')
+      ).toContainText(DBT.tagName);
 
       // Verify DBT tab is present
       await page.click('[data-testid="dbt"]');
@@ -186,25 +221,15 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.click('[data-testid="profiler"]');
 
       await page.waitForSelector('[data-testid="profiler-tab-left-panel"]');
-      const profilerTabLeftPanelText = await page.textContent(
-        '[data-testid="profiler-tab-left-panel"]'
+      await page.getByRole('menuitem', { name: 'Data Quality' }).click();
+
+      await expect(page.getByTestId(DBT.dataQualityTest1)).toHaveText(
+        DBT.dataQualityTest1
       );
 
-      expect(profilerTabLeftPanelText).toContain('Data Quality');
-
-      await page.waitForSelector(`[data-testid=${DBT.dataQualityTest1}]`);
-      const dataQualityTest1Text = await page.textContent(
-        `[data-testid=${DBT.dataQualityTest1}]`
+      await expect(page.getByTestId(DBT.dataQualityTest1)).toHaveText(
+        DBT.dataQualityTest1
       );
-
-      expect(dataQualityTest1Text).toContain(DBT.dataQualityTest1);
-
-      await page.waitForSelector(`[data-testid=${DBT.dataQualityTest2}]`);
-      const dataQualityTest2Text = await page.textContent(
-        `[data-testid=${DBT.dataQualityTest2}]`
-      );
-
-      expect(dataQualityTest2Text).toContain(DBT.dataQualityTest2);
     });
   }
 

@@ -36,7 +36,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-import es.org.elasticsearch.action.bulk.BulkItemResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
@@ -54,10 +53,7 @@ import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import es.org.elasticsearch.client.indices.CreateIndexRequest;
 import es.org.elasticsearch.client.indices.CreateIndexResponse;
 import es.org.elasticsearch.client.indices.GetIndexRequest;
-import es.org.elasticsearch.client.indices.GetMappingsRequest;
-import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
-import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
 import es.org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction;
 import es.org.elasticsearch.common.lucene.search.function.FunctionScoreQuery;
@@ -114,7 +110,6 @@ import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -156,7 +151,6 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
-import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
@@ -189,6 +183,7 @@ import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
+import org.openmetadata.service.search.indexes.TestCaseResultIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -379,6 +374,10 @@ public class ElasticSearchClient implements SearchClient {
       } catch (Exception ex) {
         LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
       }
+    }
+
+    if (!nullOrEmpty(request.getSearchAfter())) {
+      searchSourceBuilder.searchAfter(request.getSearchAfter());
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
@@ -1010,6 +1009,15 @@ public class ElasticSearchClient implements SearchClient {
                 AggregationBuilders.avg(key).field(avgAggregation.getString("field"));
             aggregationBuilders.add(avgAggregationBuilder);
             break;
+          case "date_histogram":
+            JsonObject dateHistogramAggregation = aggregation.getJsonObject(aggregationType);
+            String calendarInterval = dateHistogramAggregation.getString("calendar_interval");
+            DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
+                AggregationBuilders.dateHistogram(key)
+                    .field(dateHistogramAggregation.getString("field"))
+                    .calendarInterval(new DateHistogramInterval(calendarInterval));
+            aggregationBuilders.add(dateHistogramAggregationBuilder);
+            break;
           case "nested":
             JsonObject nestedAggregation = aggregation.getJsonObject("nested");
             AggregationBuilder nestedAggregationBuilder =
@@ -1472,6 +1480,13 @@ public class ElasticSearchClient implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
+  private static SearchSourceBuilder buildTestCaseResultSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
   private static SearchSourceBuilder buildServiceSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
@@ -1601,7 +1616,7 @@ public class ElasticSearchClient implements SearchClient {
     if (isClientAvailable) {
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       DeleteByQueryRequest deleteByQueryRequest =
-          new DeleteByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new DeleteByQueryRequest(indexName.toArray(new String[0]));
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
@@ -1626,7 +1641,7 @@ public class ElasticSearchClient implements SearchClient {
       List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new UpdateByQueryRequest(indexName.toArray(new String[0]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
@@ -1739,15 +1754,11 @@ public class ElasticSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new UpdateByQueryRequest(indexName.toArray(new String[0]));
       updateChildren(updateByQueryRequest, fieldAndValue, updates);
     }
   }
 
-  /**
-   * @param indexName
-   * @param fieldAndValue
-   */
   @Override
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineageData) {
@@ -1803,7 +1814,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @SneakyThrows
-  public void deleteByQuery(String index, String query) throws IOException {
+  public void deleteByQuery(String index, String query) {
     DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
     // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
     // first token from the Parser
@@ -1828,17 +1839,6 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public int getSuccessFromBulkResponse(BulkResponse response) {
-    int success = 0;
-    for (BulkItemResponse bulkItemResponse : response) {
-      if (!bulkItemResponse.isFailed()) {
-        success++;
-      }
-    }
-    return success;
-  }
-
-  @Override
   public Response listDataInsightChartResult(
       Long startTs,
       Long endTs,
@@ -1849,7 +1849,7 @@ public class ElasticSearchClient implements SearchClient {
       Integer from,
       String queryFilter,
       String dataReportIndex)
-      throws IOException, ParseException {
+      throws IOException {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         buildSearchRequest(
             startTs,
@@ -1869,8 +1869,7 @@ public class ElasticSearchClient implements SearchClient {
 
   private static DataInsightChartResult processDataInsightChartResult(
       SearchResponse searchResponse,
-      DataInsightChartResult.DataInsightChartType dataInsightChartType)
-      throws ParseException {
+      DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     DataInsightAggregatorInterface processor =
         createDataAggregator(searchResponse, dataInsightChartType);
     return processor.process(dataInsightChartType);
@@ -1996,24 +1995,6 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     return searchSourceBuilder;
-  }
-
-  @Override
-  public List<Map<String, String>> fetchDIChartFields() throws IOException {
-    List<Map<String, String>> fields = new ArrayList<>();
-    GetMappingsRequest request =
-        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
-
-    // Execute request
-    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
-
-    // Get mappings for the index
-    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
-      // Get fields for the index
-      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
-    }
-    return fields;
   }
 
   void getFieldNames(
@@ -2273,6 +2254,7 @@ public class ElasticSearchClient implements SearchClient {
       case "data_product_search_index" -> buildDataProductSearch(q, from, size);
       case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
           q, from, size);
+      case "test_case_result_search_index" -> buildTestCaseResultSearch(q, from, size);
       case "mlmodel_service_search_index",
           "database_service_search_index",
           "messaging_service_index",

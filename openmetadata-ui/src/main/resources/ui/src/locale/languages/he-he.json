@@ -1546,6 +1546,7 @@
     "hex-code-placeholder": "בחר או הזן קוד צבע HEX.",
     "hex-color-validation": "הקלט אינו קוד HEX תקין.",
     "hi-user-welcome-to": "שלום {{user}}, ברוך הבא אל",
+    "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
     "import-entity-help": "חסוך זמן ומאמץ על ידי העלאת קובץ CSV עם מספר {{entity}} בפעם אחת.",
     "in-this-database": "במסד נתונים זה",
     "include-assets-message": "הפעל את החילוץ של {{assets}} ממקור הנתונים.",

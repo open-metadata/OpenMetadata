@@ -1,6 +1,7 @@
 ---
 title: Managing Credentials
 slug: /deployment/ingestion/external/credentials
+collate: false
 ---
 
 # Managing Credentials

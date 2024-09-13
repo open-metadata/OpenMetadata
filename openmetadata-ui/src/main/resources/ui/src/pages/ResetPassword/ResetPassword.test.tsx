@@ -14,12 +14,15 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import ResetPassword from './ResetPassword.component';
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => ({ search: '?user=admin&token=token' }));
+});
+
 jest.mock('react-router-dom', () => {
   return {
     useHistory: jest.fn(),
-    useLocation: jest
-      .fn()
-      .mockImplementation(() => ({ search: '?user=admin&token=token' })),
   };
 });
 const mockHandleResetPassword = jest.fn();

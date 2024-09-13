@@ -16,20 +16,62 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
-from typing import Generic, Iterable, List, Optional, Set, Type, TypeVar
+from typing import Generic, Iterable, Iterator, List, Optional, Set, Type, TypeVar
+from urllib.parse import quote_plus
 
-from pydantic import BaseModel
-from requests.utils import quote
+from pydantic import Field
+from typing_extensions import Annotated
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.query import Query
+from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import REST, APIError
+from metadata.ingestion.ometa.utils import quote
 from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
+
+
+class TotalModel(BaseModel):
+    """Elasticsearch total model"""
+
+    relation: str
+    value: int
+
+
+class HitsModel(BaseModel):
+    """Elasticsearch hits model"""
+
+    index: Annotated[str, Field(description="Index name", alias="_index")]
+    type: Annotated[
+        Optional[str],
+        Field(default=None, description="Type of the document", alias="_type"),
+    ]
+    id: Annotated[str, Field(description="Document ID", alias="_id")]
+    score: Annotated[
+        Optional[float], Field(description="Score of the document", alias="_score")
+    ]
+    source: Annotated[dict, Field(description="Document source", alias="_source")]
+    sort: Annotated[
+        List[str],
+        Field(description="Sort field. Used internally to get the next page FQN"),
+    ]
+
+
+class ESHits(BaseModel):
+    """Elasticsearch hits model"""
+
+    total: Annotated[TotalModel, Field(description="Total matched elements")]
+    hits: Annotated[List[HitsModel], Field(description="List of matched elements")]
+
+
+class ESResponse(BaseModel):
+    """Elasticsearch response model"""
+
+    hits: ESHits
 
 
 class ESMixin(Generic[T]):
@@ -44,6 +86,12 @@ class ESMixin(Generic[T]):
     fqdn_search = (
         "/search/fieldQuery?fieldName={field_name}&fieldValue={field_value}&from={from_}"
         "&size={size}&index={index}"
+    )
+
+    # sort_field needs to be unique for the pagination to work, so we can use the FQN
+    paginate_query = (
+        "/search/query?q=&size={size}&deleted=false{filter}&index={index}"
+        "&sort_field=fullyQualifiedName{after}"
     )
 
     @functools.lru_cache(maxsize=512)
@@ -252,3 +300,65 @@ class ESMixin(Generic[T]):
             logger.debug(traceback.format_exc())
             logger.warning(f"Unknown error extracting results from ES query [{err}]")
             return None
+
+    def paginate_es(
+        self,
+        entity: Type[T],
+        query_filter: Optional[str] = None,
+        size: int = 100,
+        fields: Optional[List[str]] = None,
+    ) -> Iterator[T]:
+        """Paginate through the ES results, ignoring individual errors"""
+        after: Optional[str] = None
+        error_pages = 0
+        query = functools.partial(
+            self.paginate_query.format,
+            index=ES_INDEX_MAP[entity.__name__],
+            filter="&query_filter=" + quote_plus(query_filter) if query_filter else "",
+            size=size,
+        )
+        while True:
+            query_string = query(
+                after="&search_after=" + quote_plus(after) if after else ""
+            )
+            response = self._get_es_response(query_string)
+
+            # Allow 3 errors getting pages before getting out of the loop
+            if not response:
+                error_pages += 1
+                if error_pages < 3:
+                    continue
+                else:
+                    break
+
+            # Get the data
+            for hit in response.hits.hits:
+                try:
+                    yield self.get_by_name(
+                        entity=entity,
+                        fqn=hit.source["fullyQualifiedName"],
+                        fields=fields,
+                        nullable=False,  # Raise an error if we don't find the Entity
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        f"Error while getting {hit.source['fullyQualifiedName']} - {exc}"
+                    )
+
+            # Get next page
+            last_hit = response.hits.hits[-1] if response.hits.hits else None
+            if not last_hit or not last_hit.sort:
+                logger.info("No more pages to fetch")
+                break
+
+            after = ",".join(last_hit.sort)
+
+    def _get_es_response(self, query_string: str) -> Optional[ESResponse]:
+        """Get the Elasticsearch response"""
+        try:
+            response = self.client.get(query_string)
+            return ESResponse.model_validate(response)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error while getting ES response: {exc}")
+        return None
