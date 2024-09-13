@@ -46,7 +46,9 @@ class HitsModel(BaseModel):
     """Elasticsearch hits model"""
 
     index: Annotated[str, Field(description="Index name", alias="_index")]
-    type: Annotated[str, Field(description="Type of the document", alias="_type")]
+    type: Annotated[
+        Optional[str], Field(description="Type of the document", alias="_type")
+    ]
     id: Annotated[str, Field(description="Document ID", alias="_id")]
     score: Annotated[
         Optional[float], Field(description="Score of the document", alias="_score")
