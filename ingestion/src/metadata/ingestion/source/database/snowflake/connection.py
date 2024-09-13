@@ -45,6 +45,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_TEST_FETCH_TAG,
     SNOWFLAKE_TEST_GET_QUERIES,
     SNOWFLAKE_TEST_GET_TABLES,
+    SNOWFLAKE_TEST_GET_VIEWS,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -176,7 +177,11 @@ def test_connection(
             statement=SNOWFLAKE_TEST_GET_TABLES,
             engine_wrapper=engine_wrapper,
         ),
-        "GetViews": partial(execute_inspector_func, engine_wrapper, "get_view_names"),
+        "GetViews": partial(
+            test_table_query,
+            statement=SNOWFLAKE_TEST_GET_VIEWS,
+            engine_wrapper=engine_wrapper,
+        ),
         "GetQueries": partial(
             test_query, statement=SNOWFLAKE_TEST_GET_QUERIES, engine=engine
         ),

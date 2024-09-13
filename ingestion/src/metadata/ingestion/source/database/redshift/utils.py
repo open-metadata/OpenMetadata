@@ -386,7 +386,7 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
     result = connection.execute(
         sa.text(
             REDSHIFT_GET_ALL_RELATIONS.format(
-                schema_clause=schema_clause, table_clause=table_clause
+                schema_clause=schema_clause, table_clause=table_clause, limit_clause=""
             )
         )
     )
