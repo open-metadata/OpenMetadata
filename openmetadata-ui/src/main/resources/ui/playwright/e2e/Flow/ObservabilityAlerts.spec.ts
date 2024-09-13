@@ -77,8 +77,10 @@ test.describe('Observability Alert Flow', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await table1.create(apiContext);
     await table2.create(apiContext);
-    await table1.createTestSuiteAndPipelines(apiContext, TEST_SUITE_NAME);
-    await table1.createTestCase(apiContext, TEST_CASE_NAME);
+    await table1.createTestSuiteAndPipelines(apiContext, {
+      name: TEST_SUITE_NAME,
+    });
+    await table1.createTestCase(apiContext, { name: TEST_CASE_NAME });
     await pipeline.create(apiContext);
     await pipeline.createIngestionPipeline(apiContext, INGESTION_PIPELINE_NAME);
     await user1.create(apiContext);

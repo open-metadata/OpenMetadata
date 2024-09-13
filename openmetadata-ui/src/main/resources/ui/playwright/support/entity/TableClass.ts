@@ -194,8 +194,7 @@ export class TableClass extends EntityClass {
 
   async createTestSuiteAndPipelines(
     apiContext: APIRequestContext,
-    testSuite?: TestSuiteData,
-    name?: string
+    testSuite?: TestSuiteData
   ) {
     if (!this.entityResponseData) {
       await this.create(apiContext);
@@ -204,7 +203,7 @@ export class TableClass extends EntityClass {
     const testSuiteData = await apiContext
       .post('/api/v1/dataQuality/testSuites/executable', {
         data: {
-          name: name ?? `pw-test-suite-${uuid()}`,
+          name: `pw-test-suite-${uuid()}`,
           executableEntityReference:
             this.entityResponseData?.['fullyQualifiedName'],
           description: 'Playwright test suite for table',
@@ -259,8 +258,7 @@ export class TableClass extends EntityClass {
 
   async createTestCase(
     apiContext: APIRequestContext,
-    testCaseData?: TestCaseData,
-    name?: string
+    testCaseData?: TestCaseData
   ) {
     if (!this.testSuiteResponseData) {
       await this.createTestSuiteAndPipelines(apiContext);
@@ -269,7 +267,7 @@ export class TableClass extends EntityClass {
     const testCase = await apiContext
       .post('/api/v1/dataQuality/testCases', {
         data: {
-          name: name ?? `pw-test-case-${uuid()}`,
+          name: `pw-test-case-${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
           testDefinition: 'tableRowCountToBeBetween',
           testSuite: this.testSuiteResponseData?.['fullyQualifiedName'],
