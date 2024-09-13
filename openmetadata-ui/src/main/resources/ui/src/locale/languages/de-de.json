@@ -1795,6 +1795,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> wurde {{entityStatus}} und erfolgreich bereitgestellt",
     "successfully-completed-the-tour": "Sie haben die Tour erfolgreich abgeschlossen.",
     "synonym-placeholder": "Um ein Synonym hinzuzufügen, geben Sie es einfach ein und drücken Sie Enter",
+    "system-alert-edit-message": "Editing a system generated alert is not allowed.",
     "system-tag-delete-disable-message": "Das Löschen von systemgenerierten Tags ist nicht zulässig. Sie können versuchen, den Tag stattdessen zu deaktivieren.",
     "tag-update-confirmation": "Would you like to proceed with updating the tags?",
     "take-quick-product-tour": "Machen Sie eine Produkttour, um loszulegen!",
