@@ -15,6 +15,9 @@ for the profiler
 
 from typing import Dict, Optional, cast
 
+from sqlalchemy import Table
+from sqlalchemy.sql.selectable import CTE
+
 from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     SamplingMethodType,
@@ -23,8 +26,6 @@ from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
-from sqlalchemy import Table
-from sqlalchemy.sql.selectable import CTE
 
 
 class SnowflakeSampler(SQASampler):
