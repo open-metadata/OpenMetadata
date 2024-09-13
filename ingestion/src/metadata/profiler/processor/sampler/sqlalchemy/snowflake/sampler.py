@@ -13,7 +13,7 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import cast
+from typing import Dict, Optional, cast
 
 from sqlalchemy import Table
 from sqlalchemy.sql.selectable import CTE
@@ -22,8 +22,10 @@ from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     SamplingMethodType,
 )
+from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 
 
 class SnowflakeSampler(SQASampler):
@@ -32,13 +34,27 @@ class SnowflakeSampler(SQASampler):
     run the query in the whole table.
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    # pylint: disable=too-many-arguments
+    def __init__(
+        self,
+        client,
+        table,
+        profile_sample_config: Optional[ProfileSampleConfig] = None,
+        partition_details: Optional[Dict] = None,
+        profile_sample_query: Optional[str] = None,
+        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+    ):
+        super().__init__(
+            client,
+            table,
+            profile_sample_config,
+            partition_details,
+            profile_sample_query,
+            sample_data_count,
+        )
         self.sampling_method_type = SamplingMethodType.BERNOULLI
-
-        _profile_sample_config = kwargs.get("profile_sample_config", None)
-        if _profile_sample_config and _profile_sample_config.sampling_method_type:
-            self.sampling_method_type = _profile_sample_config.sampling_method_type
-        super().__init__(*args, **kwargs)
+        if profile_sample_config:
+            self.sampling_method_type = profile_sample_config.sampling_method_type
 
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self, *, column=None) -> CTE:
