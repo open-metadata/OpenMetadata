@@ -28,7 +28,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.jdbi3.TestCaseRepository.FAILED_ROWS_SAMPLE_EXTENSION;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -78,7 +77,6 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.tests.DataQualityReport;
-import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestPlatform;
@@ -2891,7 +2889,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   @Test
   void aggregate_testCaseResults(TestInfo testInfo) throws IOException, ParseException {
     // Set up tests
-    SearchRepository searchRepository = getSearchRepository();
+    SearchRepository searchRepository = Entity.getSearchRepository();
     CreateTestCase create = createRequest(testInfo);
     create
         .withEntityLink(TABLE_COLUMN_LINK)
@@ -2901,12 +2899,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     for (int i = 1; i < 10; i++) {
-      TestCaseResult testCaseResult =
-          new TestCaseResult()
+      CreateTestCaseResult createTestCaseResult =
+          new CreateTestCaseResult()
               .withResult("tested")
               .withTestCaseStatus(TestCaseStatus.Success)
               .withTimestamp(TestUtils.dateToTimestamp("2021-09-0%s".formatted(i)));
-      putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+      postTestCaseResult(testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
     }
 
     // Test aggregation
@@ -2923,14 +2921,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   void createTestCaseResults_wrongTs(TestInfo testInfo) throws IOException, HttpResponseException {
     CreateTestCase create = createRequest(testInfo);
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    TestCaseResult testCaseResult =
-        new TestCaseResult()
+    CreateTestCaseResult createTestCaseResult =
+        new CreateTestCaseResult()
             .withResult("result")
             .withTestCaseStatus(TestCaseStatus.Failed)
             .withTimestamp(1725521153L);
     assertResponse(
         () ->
-            putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS),
+            postTestCaseResult(testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Timestamp 1725521153 is not valid, it should be in milliseconds since epoch");
   }

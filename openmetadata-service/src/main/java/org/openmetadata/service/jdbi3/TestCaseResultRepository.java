@@ -163,7 +163,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
         Entity.getEntityByName(
             TEST_CASE,
             testCaseResult.getTestCaseFQN(),
-            "testDefinition,testCaseResult",
+            "*",
             Include.ALL);
     TestCase updated = JsonUtils.deepCopy(original, TestCase.class);
     updated.setTestCaseStatus(testCaseResult.getTestCaseStatus());
