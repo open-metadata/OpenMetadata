@@ -571,7 +571,7 @@ const GlossaryHeader = ({
         </Col>
         <Col flex="360px">
           <div className="d-flex gap-2 justify-end">
-            {createButtons}
+            {!isVersionView && createButtons}
 
             <ButtonGroup className="p-l-xs" size="small">
               {updateVote && (

@@ -170,17 +170,18 @@ export const setupEntitiesForLineage = async (
   ] as const;
 
   const { apiContext, afterAction } = await getApiContext(page);
-  for (const entity of entities) {
-    await entity.create(apiContext);
-  }
+  await Promise.all([
+    ...entities.map((entity) => entity.create(apiContext)),
+    currentEntity.create(apiContext),
+  ]);
 
   await currentEntity.create(apiContext);
 
   const cleanup = async () => {
-    await currentEntity.delete(apiContext);
-    for (const entity of entities) {
-      await entity.delete(apiContext);
-    }
+    await Promise.all([
+      currentEntity.delete(apiContext),
+      ...entities.map((entity) => entity.delete(apiContext)),
+    ]);
     await afterAction();
   };
 
