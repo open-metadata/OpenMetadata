@@ -203,7 +203,7 @@ describe('AppRunsHistory component', () => {
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
-      endTs: new Date('2021-01-01').valueOf(),
+      endTs: new Date('2024-02-05').valueOf(),
     });
   });
 
