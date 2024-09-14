@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import antlr4 from 'antlr4';
-import { ParseTreeWalker } from 'antlr4/src/antlr4/tree';
+import {
+  CommonTokenStream,
+  InputStream,
+  ParseTreeListener,
+  ParseTreeWalker,
+} from 'antlr4';
 import EntityLinkSplitListener from '../antlr/EntityLinkSplitListener';
 import EntityLinkLexer from '../generated/antlr/EntityLinkLexer';
 import EntityLinkParser from '../generated/antlr/EntityLinkParser';
@@ -25,13 +29,16 @@ export default class EntityLink {
    */
   static split(entityLink: string) {
     if (entityLink) {
-      const chars = new antlr4.InputStream(entityLink);
+      const chars = new InputStream(entityLink);
       const lexer = new EntityLinkLexer(chars);
-      const tokens = new antlr4.CommonTokenStream(lexer);
+      const tokens = new CommonTokenStream(lexer);
       const parser = new EntityLinkParser(tokens);
       const tree = parser.entitylink();
       const splitter = new EntityLinkSplitListener();
-      ParseTreeWalker.DEFAULT.walk(splitter, tree);
+      ParseTreeWalker.DEFAULT.walk(
+        splitter as unknown as ParseTreeListener,
+        tree
+      );
 
       return splitter.split();
     }
