@@ -446,12 +446,6 @@ export const USER_DETAILS = {
   password: 'User@OMD123',
 };
 
-export const PERSONA_DETAILS = {
-  name: `persona-${uuid()}`,
-  displayName: `persona ${uuid()}`,
-  description: `Persona description.`,
-};
-
 export const DOMAIN_CREATION_DETAILS = {
   name: `domain-name-${uuid()}`,
   description: `Description for`,

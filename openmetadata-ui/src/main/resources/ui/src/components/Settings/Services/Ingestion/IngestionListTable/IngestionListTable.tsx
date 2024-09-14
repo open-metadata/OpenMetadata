@@ -79,6 +79,7 @@ function IngestionListTable({
   showDescriptionCol,
   triggerIngestion,
   customRenderNameField,
+  tableClassName,
 }: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -333,6 +334,7 @@ function IngestionListTable({
         <Col span={24}>
           <Table
             bordered
+            className={tableClassName}
             columns={tableColumn}
             data-testid="ingestion-list-table"
             dataSource={ingestionData}
