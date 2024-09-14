@@ -101,10 +101,6 @@ const mockSearchAPIResponse = {
 };
 
 describe('DataAssetAsyncSelectList', () => {
-  //   function toggleOpen(container: ReturnType<typeof render>['container']): void {
-  //     fireEvent.mouseDown(container.querySelector('.ant-select-selector'));
-  //   }
-
   it('should render without crashing', async () => {
     await act(async () => {
       render(<DataAssetAsyncSelectList />);
