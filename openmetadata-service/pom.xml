@@ -624,7 +624,7 @@
     <dependency>
       <groupId>com.slack.api</groupId>
       <artifactId>slack-api-client</artifactId>
-      <version>1.42.0</version>
+      <version>1.42.1</version>
     </dependency>
     <dependency>
       <groupId>com.sun.activation</groupId>
