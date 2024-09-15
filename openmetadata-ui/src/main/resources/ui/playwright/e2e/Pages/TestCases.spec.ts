@@ -54,14 +54,15 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
       await page.getByTitle('Compare 2 tables for').click();
-      const tableSearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(
-          testCase.table2
-        )}*index=table_search_index*`
-      );
       await page.click('#tableTestForm_params_table2');
+      const tableSearchResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*index=table_search_index*`
+      );
       await page.fill(`#tableTestForm_params_table2`, testCase.table2);
       await tableSearchResponse;
+      // The 'networkidle' parameter tells Playwright to wait until there are no network connections
+      // for at least 500 ms.
+      await page.waitForLoadState('networkidle');
       await page
         .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
         .click();
