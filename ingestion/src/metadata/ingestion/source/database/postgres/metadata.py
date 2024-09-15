@@ -13,54 +13,74 @@ Postgres source module
 """
 import traceback
 from collections import namedtuple
-from typing import Iterable, Tuple
+from typing import Iterable, Optional, Tuple
 
+from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
-from sqlalchemy.engine import reflection
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql.sqltypes import String
+from sqlalchemy.engine import Inspector
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
+    POSTGRES_GET_DB_NAMES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
-    POSTGRES_TABLE_COMMENTS,
-    POSTGRES_VIEW_DEFINITIONS,
+    POSTGRES_SCHEMA_COMMENTS,
+)
+from metadata.ingestion.source.database.postgres.utils import (
+    get_column_info,
+    get_columns,
+    get_etable_owner,
+    get_foreign_keys,
+    get_json_fields_and_type,
+    get_table_comment,
+    get_table_owner,
+    get_view_definition,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
+from metadata.utils.importer import import_side_effects
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
+    get_all_table_owners,
     get_all_view_definitions,
-    get_table_comment_wrapper,
-    get_view_definition_wrapper,
+    get_schema_descriptions,
+    get_table_ddl,
+)
+from metadata.utils.tag_utils import get_ometa_tag_and_classification
+
+import_side_effects(
+    "metadata.ingestion.source.database.postgres.converter_orm",
+    "metadata.ingestion.source.database.postgres.metrics",
 )
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
@@ -69,9 +89,9 @@ logger = ingestion_logger()
 
 
 INTERVAL_TYPE_MAP = {
-    "list": IntervalType.COLUMN_VALUE.value,
-    "hash": IntervalType.COLUMN_VALUE.value,
-    "range": IntervalType.TIME_UNIT.value,
+    "list": PartitionIntervalTypes.COLUMN_VALUE,
+    "hash": PartitionIntervalTypes.COLUMN_VALUE,
+    "range": PartitionIntervalTypes.TIME_UNIT,
 }
 
 RELKIND_MAP = {
@@ -80,79 +100,82 @@ RELKIND_MAP = {
     "f": TableType.Foreign,
 }
 
+GEOMETRY = create_sqlalchemy_type("GEOMETRY")
+POINT = create_sqlalchemy_type("POINT")
+POLYGON = create_sqlalchemy_type("POLYGON")
 
-class GEOMETRY(String):
-    """The SQL GEOMETRY type."""
-
-    __visit_name__ = "GEOMETRY"
-
-
-class POINT(String):
-    """The SQL POINT type."""
-
-    __visit_name__ = "POINT"
-
-
-class POLYGON(String):
-    """The SQL GEOMETRY type."""
-
-    __visit_name__ = "POLYGON"
-
-
-ischema_names.update({"geometry": GEOMETRY, "point": POINT, "polygon": POLYGON})
-
-
-@reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return get_table_comment_wrapper(
-        self,
-        connection,
-        table_name=table_name,
-        schema=schema,
-        query=POSTGRES_TABLE_COMMENTS,
-    )
+ischema_names.update(
+    {
+        "geometry": GEOMETRY,
+        "point": POINT,
+        "polygon": POLYGON,
+        "box": create_sqlalchemy_type("BOX"),
+        "bpchar": SqlAlchemyString,
+        "circle": create_sqlalchemy_type("CIRCLE"),
+        "line": create_sqlalchemy_type("LINE"),
+        "lseg": create_sqlalchemy_type("LSEG"),
+        "path": create_sqlalchemy_type("PATH"),
+        "pg_lsn": create_sqlalchemy_type("PG_LSN"),
+        "pg_snapshot": create_sqlalchemy_type("PG_SNAPSHOT"),
+        "tsquery": create_sqlalchemy_type("TSQUERY"),
+        "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
+        "xid": SqlAlchemyString,
+        "xml": create_sqlalchemy_type("XML"),
+    }
+)
 
 
 PGDialect.get_all_table_comments = get_all_table_comments
 PGDialect.get_table_comment = get_table_comment
-
-
-@reflection.cache
-def get_view_definition(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return get_view_definition_wrapper(
-        self,
-        connection,
-        table_name=table_name,
-        schema=schema,
-        query=POSTGRES_VIEW_DEFINITIONS,
-    )
-
-
+PGDialect._get_column_info = get_column_info  # pylint: disable=protected-access
 PGDialect.get_view_definition = get_view_definition
+PGDialect.get_columns = get_columns
 PGDialect.get_all_view_definitions = get_all_view_definitions
 
+PGDialect.get_all_table_owners = get_all_table_owners
+PGDialect.get_table_owner = get_table_owner
 PGDialect.ischema_names = ischema_names
 
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
+Inspector.get_table_owner = get_etable_owner
+Inspector.get_json_fields_and_type = get_json_fields_and_type
 
-class PostgresSource(CommonDbSourceService):
+PGDialect.get_foreign_keys = get_foreign_keys
+
+
+class PostgresSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Postgres Source
     """
 
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
+        self.schema_desc_map = {}
+
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: PostgresConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
             raise InvalidSourceException(
                 f"Expected PostgresConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        """
+        return self.schema_desc_map.get(schema_name)
+
+    def set_schema_description_map(self) -> None:
+        self.schema_desc_map = get_schema_descriptions(
+            self.engine, POSTGRES_SCHEMA_COMMENTS
+        )
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -163,7 +186,7 @@ class PostgresSource(CommonDbSourceService):
         """
         result = self.connection.execute(
             sql.text(POSTGRES_GET_TABLE_NAMES),
-            dict(schema=schema_name),
+            {"schema": schema_name},
         )
 
         return [
@@ -173,36 +196,43 @@ class PostgresSource(CommonDbSourceService):
             for name, relkind in result
         ]
 
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self._execute_database_query(POSTGRES_GET_DB_NAMES)
+
     def get_database_names(self) -> Iterable[str]:
-        configured_db = self.config.serviceConnection.__root__.config.database
-        if configured_db:
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:
+            configured_db = self.config.serviceConnection.root.config.database
             self.set_inspector(database_name=configured_db)
+            self.set_schema_description_map()
             yield configured_db
         else:
-            results = self.connection.execute(
-                "select datname from pg_catalog.pg_database"
-            )
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
                 try:
                     self.set_inspector(database_name=new_database)
+                    self.set_schema_description_map()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -211,53 +241,62 @@ class PostgresSource(CommonDbSourceService):
                     )
 
     def get_table_partition_details(
-        self, table_name: str, schema_name: str, inspector: Inspector
+        self, table_name: str, schema_name: str, inspector
     ) -> Tuple[bool, TablePartition]:
         result = self.engine.execute(
-            POSTGRES_PARTITION_DETAILS.format(
-                table_name=table_name, schema_name=schema_name
-            )
+            POSTGRES_PARTITION_DETAILS, table_name=table_name, schema_name=schema_name
         ).all()
+
         if result:
             partition_details = TablePartition(
-                intervalType=INTERVAL_TYPE_MAP.get(
-                    result[0].partition_strategy, IntervalType.COLUMN_VALUE.value
-                ),
-                columns=[row.column_name for row in result if row.column_name],
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=row.column_name,
+                        intervalType=INTERVAL_TYPE_MAP.get(
+                            row.partition_strategy, PartitionIntervalTypes.COLUMN_VALUE
+                        ),
+                        interval=None,
+                    )
+                    for row in result
+                    if row.column_name
+                ]
             )
             return True, partition_details
         return False, None
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Fetch Tags
         """
         try:
             result = self.engine.execute(
                 POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
-                    database_name=self.context.database.name.__root__,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                 )
             ).all()
-
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
-                yield OMetaTagAndClassification(
-                    fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.database_service.name.__root__, *fqn_elements
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=FullyQualifiedEntityName(
+                        fqn._build(  # pylint: disable=protected-access
+                            self.context.get().database_service, *fqn_elements
+                        )
                     ),
-                    classification_request=CreateClassificationRequest(
-                        name=self.service_connection.classificationName,
-                        description="Postgres Tag Name",
-                    ),
-                    tag_request=CreateTagRequest(
-                        classification=self.service_connection.classificationName,
-                        name=row[1],
-                        description="Postgres Tag Value",
-                    ),
+                    tags=[row[1]],
+                    classification_name=self.service_connection.classificationName,
+                    tag_description="Postgres Tag Value",
+                    classification_description="Postgres Tag Name",
                 )
 
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Skipping Policy Tag: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name="Tags and Classification",
+                    error=f"Skipping Policy Tag: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )

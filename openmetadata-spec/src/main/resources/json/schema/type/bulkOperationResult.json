@@ -1,0 +1,77 @@
+{
+  "$id": "https://open-metadata.org/schema/type/csvImportResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkOperationResult",
+  "description": "Represents result of bulk Operation performed on entities.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.api.BulkOperationResult",
+  "definitions": {
+    "rowCount" : {
+      "description": "Type used to indicate row count",
+      "type": "integer",
+      "format" : "int64",
+      "minimum": 0,
+      "default": 0
+    },
+    "index" : {
+      "description": "Type used to indicate row number or field number. In CSV the indexes start with 1.",
+      "type": "integer",
+      "format" : "int64",
+      "minimum": 1
+    },
+    "response": {
+      "javaType": "org.openmetadata.schema.type.api.BulkResponse",
+      "description": "Request that can be processed successfully.",
+      "type": "object",
+      "properties": {
+        "request": {
+          "description": "Request that can be processed successfully."
+        },
+        "message": {
+          "description": "Message for the request.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "dryRun" : {
+      "description": "True if the operation has dryRun flag enabled",
+      "type" : "boolean"
+    },
+    "status" : {
+      "$ref" : "basic.json#/definitions/status"
+    },
+    "abortReason": {
+      "description": "Reason why import was aborted. This is set only when the `status` field is set to `aborted`",
+      "type" : "string"
+    },
+    "numberOfRowsProcessed" : {
+      "$ref": "#/definitions/rowCount"
+    },
+    "numberOfRowsPassed" : {
+      "$ref": "#/definitions/rowCount"
+    },
+    "numberOfRowsFailed" : {
+      "$ref": "#/definitions/rowCount"
+    },
+    "successRequest": {
+      "description": "Request that can be processed successfully.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/response"
+      },
+      "default": null
+    },
+    "failedRequest": {
+      "description": "Failure Request that can be processed successfully.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/response"
+      },
+      "default": null
+    }
+  },
+  "additionalProperties": false
+}

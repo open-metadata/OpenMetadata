@@ -14,15 +14,30 @@ Source connection handler
 """
 from dataclasses import dataclass
 from functools import singledispatch
+from typing import Optional
 
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
-    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.gcsConfig import (
     GCSConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.utils.credentials import set_google_credentials
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.datalake.clients.azure_blob import (
+    DatalakeAzureBlobClient,
+)
+from metadata.ingestion.source.database.datalake.clients.gcs import DatalakeGcsClient
+from metadata.ingestion.source.database.datalake.clients.s3 import DatalakeS3Client
 
 
 # Only import specific datalake dependencies if necessary
@@ -46,43 +61,17 @@ def get_datalake_client(config):
 
 @get_datalake_client.register
 def _(config: S3Config):
-    from metadata.clients.aws_client import AWSClient
-
-    s3_client = AWSClient(config.securityConfig).get_client(service_name="s3")
-    return s3_client
+    return DatalakeS3Client.from_config(config)
 
 
 @get_datalake_client.register
 def _(config: GCSConfig):
-    from google.cloud import storage
-
-    set_google_credentials(gcs_credentials=config.securityConfig)
-    gcs_client = storage.Client()
-    return gcs_client
+    return DatalakeGcsClient.from_config(config)
 
 
 @get_datalake_client.register
 def _(config: AzureConfig):
-    from azure.identity import ClientSecretCredential
-    from azure.storage.blob import BlobServiceClient
-
-    try:
-        credentials = ClientSecretCredential(
-            config.securityConfig.tenantId,
-            config.securityConfig.clientId,
-            config.securityConfig.clientSecret.get_secret_value(),
-        )
-
-        azure_client = BlobServiceClient(
-            f"https://{config.securityConfig.accountName}.blob.core.windows.net/",
-            credential=credentials,
-        )
-        return azure_client
-
-    except Exception as exc:
-        raise RuntimeError(
-            f"Unknown error connecting with {config.securityConfig}: {exc}."
-        )
+    return DatalakeAzureBlobClient.from_config(config)
 
 
 def get_connection(connection: DatalakeConnection) -> DatalakeClient:
@@ -97,31 +86,25 @@ def get_connection(connection: DatalakeConnection) -> DatalakeClient:
     )
 
 
-def test_connection(connection: DatalakeClient) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    connection: DatalakeClient,
+    service_connection: DatalakeConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test that we can connect to the source using the given aws resource
-    :param engine: boto service resource to test
-    :return: None or raise an exception if we cannot connect
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    from botocore.client import ClientError
+    test_fn = {
+        "ListBuckets": connection.client.get_test_list_buckets_fn(
+            connection.config.bucketName
+        ),
+    }
 
-    try:
-        config = connection.config.configSource
-        if isinstance(config, GCSConfig):
-            if connection.config.bucketName:
-                connection.client.get_bucket(connection.config.bucketName)
-            else:
-                connection.client.list_buckets()
-
-        if isinstance(config, S3Config):
-            if connection.config.bucketName:
-                connection.client.list_objects(Bucket=connection.config.bucketName)
-            else:
-                connection.client.list_buckets()
-
-        if isinstance(config, AzureConfig):
-            connection.client.list_containers(name_starts_with="")
-
-    except ClientError as err:
-        msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

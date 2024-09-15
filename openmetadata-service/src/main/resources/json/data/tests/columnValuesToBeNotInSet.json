@@ -14,5 +14,8 @@
       "dataType": "ARRAY",
       "required": true
     }
-  ]
+  ],
+  "supportsRowLevelPassedFailed": true,
+  "provider": "system",
+  "dataQualityDimension": "Validity"
 }

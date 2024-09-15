@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,35 +11,81 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { SortingField } from 'components/Explore/SortingDropDown';
-import { t } from 'i18next';
-import { SearchIndex } from '../enums/search.enum';
-import { Icons } from '../utils/SvgUtils';
+import { SortingField } from '../components/Explore/SortingDropDown';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { SORT_ORDER } from '../enums/common.enum';
+import { EntityType } from '../enums/entity.enum';
+import i18n from '../utils/i18next/LocalUtil';
 
-export const INITIAL_SORT_FIELD = '_score';
-export const INITIAL_SORT_ORDER = 'desc';
+export const INITIAL_SORT_FIELD = 'totalVotes';
+export const TAGS_INITIAL_SORT_FIELD = 'name.keyword';
+export const INITIAL_SORT_ORDER = SORT_ORDER.DESC;
+export const TAGS_INITIAL_SORT_ORDER = SORT_ORDER.ASC;
+export const TIER_FQN_KEY = 'tier.tagFQN';
+export const TAG_FQN_KEY = 'tags.tagFQN';
 
 export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';
 export const MAX_RESULT_HITS = 10000;
 
+export const SUPPORTED_EMPTY_FILTER_FIELDS = [
+  EntityFields.OWNERS,
+  EntityFields.DOMAIN,
+  EntityFields.TIER,
+  EntityFields.TAG,
+];
+
+export const NOT_INCLUDE_AGGREGATION_QUICK_FILTER = [
+  EntityType.INGESTION_PIPELINE,
+];
+
 // as it is used only in unit tests it's not needed for translation
 export const tableSortingFields: SortingField[] = [
   {
-    name: 'Last Updated',
+    name: i18n.t('label.popularity'),
+    value: 'totalVotes',
+  },
+  {
+    name: i18n.t('label.name'),
+    value: 'name.keyword',
+  },
+  {
+    name: i18n.t('label.weekly-usage'),
+    value: 'usageSummary.weeklyStats.count',
+  },
+  { name: i18n.t('label.relevance'), value: '_score' },
+  {
+    name: i18n.t('label.last-updated'),
     value: 'updatedAt',
   },
-  { name: 'Weekly Usage', value: 'usageSummary.weeklyStats.count' },
-  { name: 'Relevance', value: '_score' },
 ];
 
 export const entitySortingFields = [
   {
-    name: 'Last Updated',
+    name: i18n.t('label.popularity'),
+    value: 'totalVotes',
+  },
+  {
+    name: i18n.t('label.name'),
+    value: 'name.keyword',
+  },
+  { name: i18n.t('label.relevance'), value: '_score' },
+  {
+    name: i18n.t('label.last-updated'),
     value: 'updatedAt',
   },
-  { name: 'Relevance', value: '_score' },
+];
+
+export const tagSortingFields = [
+  {
+    name: i18n.t('label.name'),
+    value: 'name.keyword',
+  },
+  { name: i18n.t('label.relevance'), value: '_score' },
+  {
+    name: i18n.t('label.last-updated'),
+    value: 'updatedAt',
+  },
 ];
 
 export interface ExploreTabInfo {
@@ -51,43 +97,80 @@ export interface ExploreTabInfo {
   selectedIcon?: string;
 }
 
-export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
-  [SearchIndex.TABLE]: {
-    label: t('label.tables'),
-    sortingFields: tableSortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'tables',
-    icon: Icons.TABLE_GREY,
-    selectedIcon: Icons.TABLE,
+export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
+  'owner.displayName',
+  'tags.tagFQN',
+];
+
+export const FAILED_TO_FIND_INDEX_ERROR = 'Failed to to find index';
+
+export const ES_EXCEPTION_SHARDS_FAILED = 'reason=all shards failed';
+
+export const SEARCH_INDEXING_APPLICATION = 'SearchIndexingApplication';
+
+export const INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER = {
+  id: 'descriptionID1',
+  type: 'group',
+  properties: { conjunction: 'AND', not: false },
+  children1: {
+    descriptionID2: {
+      type: 'group',
+      properties: { conjunction: 'AND', not: false },
+      children1: {
+        descriptionID3: {
+          type: 'rule',
+          properties: {
+            field: 'descriptionStatus',
+            operator: 'select_equals',
+            value: ['INCOMPLETE'],
+            valueSrc: ['value'],
+            operatorOptions: null,
+            valueType: ['select'],
+            asyncListValues: [
+              {
+                key: 'INCOMPLETE',
+                value: 'INCOMPLETE',
+                children: 'Incomplete',
+              },
+            ],
+          },
+          id: 'descriptionID3',
+          path: ['descriptionID1', 'descriptionID2', 'descriptionID3'],
+        },
+      },
+      id: 'descriptionID2',
+      path: ['descriptionID1', 'descriptionID2'],
+    },
   },
-  [SearchIndex.TOPIC]: {
-    label: t('label.topics'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'topics',
-    icon: Icons.TOPIC_GREY,
-    selectedIcon: Icons.TOPIC,
+  path: ['descriptionID1'],
+};
+
+export const NO_OWNER_ADVANCE_SEARCH_FILTER = {
+  id: 'ownerID1',
+  type: 'group',
+  properties: { conjunction: 'AND', not: false },
+  children1: {
+    ownerID3: {
+      type: 'group',
+      properties: { conjunction: 'AND', not: false },
+      children1: {
+        ownerID2: {
+          type: 'rule',
+          properties: {
+            field: 'owners.displayName.keyword',
+            operator: 'is_null',
+            value: [],
+            valueSrc: [],
+            operatorOptions: null,
+            valueType: [],
+          },
+          id: 'ownerID2',
+          path: ['ownerID1', 'ownerID3', 'ownerID2'],
+        },
+      },
+      id: 'ownerID3',
+      path: ['ownerID1', 'ownerID3'],
+    },
   },
-  [SearchIndex.DASHBOARD]: {
-    label: t('label.dashboard-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'dashboards',
-    icon: Icons.DASHBOARD_GREY,
-    selectedIcon: Icons.DASHBOARD,
-  },
-  [SearchIndex.PIPELINE]: {
-    label: t('label.pipeline-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'pipelines',
-    icon: Icons.PIPELINE_GREY,
-    selectedIcon: Icons.PIPELINE,
-  },
-  [SearchIndex.MLMODEL]: {
-    label: t('label.ml-model-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'mlmodels',
-  },
+  path: ['ownerID1'],
 };

@@ -14,7 +14,7 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserByName } from 'rest/userAPI';
+import { getUserByName } from '../../rest/userAPI';
 import BotDetailsPage from './BotDetailsPage';
 
 const mockUserDetail = {
@@ -51,20 +51,27 @@ const botData = {
   deleted: false,
 };
 
-jest.mock('components/BotDetails/BotDetails.component', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<div data-testid="bots-details">BotsDetails</div>);
-});
+jest.mock('../../hooks/authHooks', () => ({
+  useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
+}));
 
-jest.mock('rest/userAPI', () => ({
+jest.mock(
+  '../../components/Settings/Bot/BotDetails/BotDetails.component',
+  () => {
+    return jest
+      .fn()
+      .mockReturnValue(<div data-testid="bots-details">BotsDetails</div>);
+  }
+);
+
+jest.mock('../../rest/userAPI', () => ({
   getBotByName: jest.fn().mockImplementation(() => Promise.resolve(botData)),
   getUserByName: jest.fn().mockImplementation(() => Promise.resolve()),
   revokeUserToken: jest.fn().mockImplementation(() => Promise.resolve()),
   updateUserDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -100,7 +107,7 @@ describe('Test BotsPage Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const errorPlaceholder = await findByTestId('error');
+    const errorPlaceholder = await findByTestId('no-data-placeholder');
 
     expect(errorPlaceholder).toBeInTheDocument();
   });

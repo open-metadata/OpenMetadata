@@ -11,7 +11,7 @@
       "name": "OrganizationPolicy-Owner-Rule",
       "description" : "Allow all the operations on an entity for the owner.",
       "resources" : ["all"],
-      "operations": ["EditAll", "ViewAll", "Delete"],
+      "operations": ["All"],
       "effect": "allow",
       "condition": "isOwner()"
     },
@@ -19,7 +19,7 @@
       "name": "OrganizationPolicy-NoOwner-Rule",
       "description" : "Allow any one to set the owner of an entity that has no owner set.",
       "resources" : ["all"],
-      "operations": ["EditOwner"],
+      "operations": ["EditOwners"],
       "effect": "allow",
       "condition": "noOwner()"
     }

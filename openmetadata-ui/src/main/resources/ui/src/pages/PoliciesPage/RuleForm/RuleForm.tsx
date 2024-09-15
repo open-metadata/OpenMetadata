@@ -15,16 +15,11 @@
 import { AutoComplete, Form, Input, Select, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getPolicyFunctions,
-  getPolicyResources,
-  validateRuleCondition,
-} from 'rest/rolesAPIV1';
-import { allowedNameRegEx } from '../../../constants/regex.constants';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import {
   Effect,
   Operation,
@@ -32,6 +27,12 @@ import {
 } from '../../../generated/api/policies/createPolicy';
 import { ResourceDescriptor } from '../../../generated/entity/policies/accessControl/resourceDescriptor';
 import { Function } from '../../../generated/type/function';
+import {
+  getPolicyFunctions,
+  getPolicyResources,
+  validateRuleCondition,
+} from '../../../rest/rolesAPIV1';
+import { ALL_TYPE_RESOURCE_LIST } from '../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -63,12 +64,12 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
    */
   const resourcesOptions = useMemo(() => {
     const resources = policyResources.filter(
-      (resource) => resource.name !== 'all'
+      (resource) => !ALL_TYPE_RESOURCE_LIST.includes(resource.name || '')
     );
     const option = [
       {
         title: 'All',
-        value: 'all',
+        value: 'All',
         key: 'all',
         children: resources.map((resource) => ({
           title: startCase(resource.name),
@@ -85,9 +86,16 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
    * Derive the operations from selected resources
    */
   const operationOptions = useMemo(() => {
-    const selectedResources = policyResources.filter((resource) =>
-      ruleData.resources?.includes(resource.name || '')
-    );
+    const selectedResources = policyResources.filter((resource) => {
+      // if resource is all then check for both case lower and upper
+      if (ALL_TYPE_RESOURCE_LIST.includes(resource.name || '')) {
+        return ALL_TYPE_RESOURCE_LIST.some((val) =>
+          ruleData.resources?.includes(val)
+        );
+      }
+
+      return ruleData.resources?.includes(resource.name || '');
+    });
     const operations = selectedResources
       .reduce(
         (prev: Operation[], curr: ResourceDescriptor) =>
@@ -195,27 +203,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
       <Form.Item
         label={`${t('label.rule-name')}:`}
         name="ruleName"
-        rules={[
-          {
-            required: true,
-            max: 128,
-            min: 1,
-            message: t('label.field-required', { field: t('label.rule-name') }),
-          },
-          {
-            validator: (_, value) => {
-              if (allowedNameRegEx.test(value)) {
-                return Promise.reject(
-                  t('message.field-text-is-invalid', {
-                    fieldText: t('label.rule-name'),
-                  })
-                );
-              }
-
-              return Promise.resolve();
-            },
-          },
-        ]}>
+        rules={NAME_FIELD_RULES}>
         <Input
           data-testid="rule-name"
           placeholder={t('label.rule-name')}
@@ -250,6 +238,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <TreeSelect
           treeCheckable
+          autoClearSearchValue={false}
           className="w-full"
           data-testid="resources"
           placeholder={t('label.select-field', {
@@ -278,9 +267,12 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <TreeSelect
           treeCheckable
+          autoClearSearchValue={false}
           className="w-full"
           data-testid="operations"
-          placeholder="Select Operations"
+          placeholder={t('label.select-field', {
+            field: t('label.operation-plural'),
+          })}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={operationOptions}
           onChange={(values: Operation[]) => {
@@ -329,12 +321,12 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           />
           {validationError && (
             <div className="m-t-xss" data-testid="condition-error" role="alert">
-              {`❌ Invalid condition : ${validationError}`}
+              {`❌ ${t('label.invalid-condition')} : ${validationError}`}
             </div>
           )}
           {isValidatingCondition && (
             <div className="m-t-xss" role="alert">
-              Validating the condition...
+              {t('label.validating-condition')}
             </div>
           )}
           {isValidCondition && !isValidatingCondition && !validationError && (
@@ -342,7 +334,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
               className="m-t-xss"
               data-testid="condition-success"
               role="alert">
-              ✅ Valid condition
+              {`✅ ${t('label.valid-condition')}`}
             </div>
           )}
         </>

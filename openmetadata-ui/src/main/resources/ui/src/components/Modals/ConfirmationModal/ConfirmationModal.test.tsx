@@ -63,6 +63,7 @@ describe('Test Ingestion modal component', () => {
     await act(async () => {
       render(
         <ConfirmationModal
+          isLoading
           visible
           bodyClassName=""
           bodyText="Are you sure?"
@@ -73,7 +74,6 @@ describe('Test Ingestion modal component', () => {
           footerClassName=""
           header="confirmation modal"
           headerClassName=""
-          loadingState="waiting"
           onCancel={mockCancel}
           onConfirm={mockConfirmation}
         />

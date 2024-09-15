@@ -13,8 +13,12 @@
 
 package org.openmetadata.schema;
 
+import java.util.List;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.LifeCycle;
+import org.openmetadata.schema.type.TagLabel;
 
+@SuppressWarnings("unchecked")
 public interface CreateEntity {
   String getName();
 
@@ -22,11 +26,31 @@ public interface CreateEntity {
 
   String getDescription();
 
-  default EntityReference getOwner() {
+  default List<EntityReference> getOwners() {
+    return null;
+  }
+
+  default List<EntityReference> getReviewers() {
+    return null;
+  }
+
+  default List<TagLabel> getTags() {
     return null;
   }
 
   default Object getExtension() {
+    return null;
+  }
+
+  default String getDomain() {
+    return null;
+  }
+
+  default List<String> getDataProducts() {
+    return null;
+  }
+
+  default LifeCycle getLifeCycle() {
     return null;
   }
 
@@ -36,11 +60,21 @@ public interface CreateEntity {
 
   <K extends CreateEntity> K withDescription(String description);
 
-  default <K extends CreateEntity> K withOwner(EntityReference owner) {
-    return (K) this;
+  default void setOwners(List<EntityReference> owners) {}
+
+  default void setTags(List<TagLabel> tags) {
+    /* no-op implementation to be overridden */
   }
 
   default <K extends CreateEntity> K withExtension(Object extension) {
+    return (K) this;
+  }
+
+  default <K extends CreateEntity> K withDomain(String domain) {
+    return (K) this;
+  }
+
+  default <K extends CreateEntity> K withLifeCycle(LifeCycle lifeCycle) {
     return (K) this;
   }
 }

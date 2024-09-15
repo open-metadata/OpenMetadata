@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/applicationConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ApplicationConfigModel",
+  "description": "Application Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "appConfig": {
+      "oneOf": [
+        {
+          "$ref": "external/metaPilotAppConfig.json"
+        },
+        {
+          "$ref": "external/automatorAppConfig.json"
+        },
+        {
+          "$ref": "internal/dataInsightsAppConfig.json"
+        },
+        {
+          "$ref": "internal/dataInsightsReportAppConfig.json"
+        },
+        {
+          "$ref": "internal/searchIndexingAppConfig.json"
+        }
+      ]
+    },
+    "privateConfig": {
+      "oneOf": [
+        {
+          "$ref": "./private/external/metaPilotAppPrivateConfig.json"
+        }
+      ]
+    }
+  }
+}

@@ -23,7 +23,7 @@ export interface ActivityThreadPanelProp
   threadType?: ThreadType;
   open?: boolean;
   postFeedHandler: (value: string, id: string) => void;
-  createThread: (data: CreateThread) => void;
+  createThread: (data: CreateThread) => Promise<void>;
   updateThreadHandler: ThreadUpdatedFunc;
   onCancel?: () => void;
   deletePostHandler?: (
@@ -51,6 +51,7 @@ export interface ActivityThreadPanelBodyProp
 export interface ActivityThreadListProp
   extends HTMLAttributes<HTMLDivElement>,
     Pick<ActivityThreadPanelProp, 'deletePostHandler' | 'updateThreadHandler'> {
+  editAnnouncementPermission?: boolean;
   threads: Thread[];
   selectedThreadId: string;
   postFeed: (value: string) => void;

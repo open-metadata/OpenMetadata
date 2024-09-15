@@ -12,355 +12,225 @@
  */
 
 import { AxiosError } from 'axios';
-import PageContainerV1 from 'components/containers/PageContainerV1';
-import GithubStarButton from 'components/GithubStarButton/GithubStarButton';
-import Loader from 'components/Loader/Loader';
-import MyData from 'components/MyData/MyData.component';
-import { MyDataState } from 'components/MyData/MyData.interface';
-import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
-import { Operation } from 'fast-json-patch';
-import { isEmpty, isNil, isUndefined } from 'lodash';
-import { observer } from 'mobx-react';
+import { isEmpty } from 'lodash';
 import React, {
-  Fragment,
-  Reducer,
   useCallback,
   useEffect,
   useMemo,
-  useReducer,
+  useRef,
   useState,
 } from 'react';
-import { useLocation } from 'react-router-dom';
-import { getFeedsWithFilter, postFeedById } from 'rest/feedsAPI';
-import { fetchSandboxConfig, getAllEntityCount } from 'rest/miscAPI';
-import { getUserById } from 'rest/userAPI';
-import AppState from '../../AppState';
-import { SOCKET_EVENTS } from '../../constants/constants';
-import { AssetsType } from '../../enums/entity.enum';
-import { FeedFilter } from '../../enums/mydata.enum';
-import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
+import RGL, { WidthProvider } from 'react-grid-layout';
+import { useTranslation } from 'react-i18next';
+import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import Loader from '../../components/common/Loader/Loader';
+import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import {
+  KNOWLEDGE_LIST_LENGTH,
+  LOGGED_IN_USER_STORAGE_KEY,
+} from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import { Thread } from '../../generated/entity/feed/thread';
+import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
-import { Paging } from '../../generated/type/paging';
-import { useAuth } from '../../hooks/authHooks';
-import jsonData from '../../jsons/en';
-import { reducerWithoutAction } from '../../utils/CommonUtils';
-import { deletePost, updateThreadData } from '../../utils/FeedUtils';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
+import { getDocumentByFQN } from '../../rest/DocStoreAPI';
+import { getActiveAnnouncement } from '../../rest/feedsAPI';
+import { searchQuery } from '../../rest/searchAPI';
+import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
+import customizePageClassBase from '../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
+import './my-data.less';
+
+const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPage = () => {
-  const location = useLocation();
-  const { isAuthDisabled } = useAuth(location.pathname);
-  const [error, setError] = useState<string>('');
-
-  const initialState = useMemo(
-    () => ({
-      entityCounts: {
-        tableCount: 0,
-        topicCount: 0,
-        dashboardCount: 0,
-        pipelineCount: 0,
-        mlmodelCount: 0,
-        servicesCount: 0,
-        userCount: 0,
-        teamCount: 0,
-      },
-      entityCountLoading: false,
-    }),
-    []
-  );
-
-  const [state, dispatch] = useReducer<
-    Reducer<MyDataState, Partial<MyDataState>>
-  >(reducerWithoutAction, initialState);
-
-  const handleStateChange = useCallback((newState: Partial<MyDataState>) => {
-    dispatch(newState);
-  }, []);
-
-  const [ownedData, setOwnedData] = useState<Array<EntityReference>>();
-  const [followedData, setFollowedData] = useState<Array<EntityReference>>();
-  const [ownedDataCount, setOwnedDataCount] = useState(0);
+  const { t } = useTranslation();
+  const { currentUser, selectedPersona } = useApplicationStore();
+  const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
   const [followedDataCount, setFollowedDataCount] = useState(0);
-  const [pendingTaskCount, setPendingTaskCount] = useState(0);
-
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
-  const [isSandbox, setIsSandbox] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
+  const isMounted = useRef(false);
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
+  const [isAnnouncementLoading, setIsAnnouncementLoading] =
+    useState<boolean>(true);
+  const [announcements, setAnnouncements] = useState<Thread[]>([]);
+  const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
-  const [activityFeeds, setActivityFeeds] = useState<Thread[]>([]);
+  const loggedInUserName = useMemo(() => {
+    return currentUser?.name ?? '';
+  }, [currentUser]);
 
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-  const { socket } = useWebSocketConnector();
+  const usernameExistsInCookie = useMemo(() => {
+    return storageData
+      ? storageData.split(',').includes(loggedInUserName)
+      : false;
+  }, [storageData, loggedInUserName]);
 
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
-
-  const fetchEntityCount = async () => {
-    handleStateChange({
-      entityCountLoading: true,
-    });
+  const fetchDocument = async () => {
     try {
-      const res = await getAllEntityCount();
-      handleStateChange({
-        entityCounts: {
-          ...res,
-        },
-      });
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-      handleStateChange({
-        entityCounts: {
-          tableCount: 0,
-          topicCount: 0,
-          dashboardCount: 0,
-          pipelineCount: 0,
-          mlmodelCount: 0,
-          servicesCount: 0,
-          userCount: 0,
-          teamCount: 0,
-        },
-      });
+      setIsLoading(true);
+      if (!isEmpty(selectedPersona)) {
+        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
+        const pageData = await getDocumentByFQN(pageFQN);
+        setLayout(pageData.data.page.layout);
+      } else {
+        setLayout(customizePageClassBase.defaultLayout);
+      }
+    } catch {
+      setLayout(customizePageClassBase.defaultLayout);
     } finally {
-      handleStateChange({
-        entityCountLoading: false,
-      });
+      setIsLoading(false);
     }
   };
 
-  const fetchData = () => {
-    setError('');
-    fetchEntityCount();
+  const updateWelcomeScreen = (show: boolean) => {
+    if (loggedInUserName) {
+      const arr = storageData ? storageData.split(',') : [];
+      if (!arr.includes(loggedInUserName)) {
+        arr.push(loggedInUserName);
+        localStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, arr.join(','));
+      }
+    }
+    setShowWelcomeScreen(show);
   };
 
-  const fetchMyData = async () => {
-    if (!currentUser || !currentUser.id) {
+  useEffect(() => {
+    fetchDocument();
+  }, [selectedPersona]);
+
+  useEffect(() => {
+    isMounted.current = true;
+    updateWelcomeScreen(!usernameExistsInCookie);
+
+    return () => updateWelcomeScreen(false);
+  }, []);
+
+  const fetchUserFollowedData = async () => {
+    if (!currentUser?.id) {
       return;
     }
     setIsLoadingOwnedData(true);
     try {
-      const userData = await getUserById(currentUser?.id, 'follows, owns');
+      const res = await searchQuery({
+        pageSize: KNOWLEDGE_LIST_LENGTH,
+        searchIndex: SearchIndex.ALL,
+        query: '*',
+        filters: `followers:${currentUser.id}`,
+      });
 
-      if (userData) {
-        const includeData = Object.values(AssetsType);
-        const owns: EntityReference[] = userData.owns ?? [];
-        const follows: EntityReference[] = userData.follows ?? [];
-
-        const includedFollowsData = follows.filter((data) =>
-          includeData.includes(data.type as AssetsType)
-        );
-        const includedOwnsData = owns.filter((data) =>
-          includeData.includes(data.type as AssetsType)
-        );
-
-        setFollowedDataCount(includedFollowsData.length);
-        setOwnedDataCount(includedOwnsData.length);
-
-        setFollowedData(includedFollowsData.slice(0, 8));
-        setOwnedData(includedOwnsData.slice(0, 8));
-      }
+      setFollowedDataCount(res?.hits?.total.value ?? 0);
+      setFollowedData(res.hits.hits.map((hit) => hit._source));
     } catch (err) {
-      setOwnedData([]);
-      setFollowedData([]);
+      showErrorToast(err as AxiosError);
     } finally {
       setIsLoadingOwnedData(false);
     }
   };
 
-  const getFeedData = (
-    filterType?: FeedFilter,
-    after?: string,
-    type?: ThreadType
-  ) => {
-    setIsFeedLoading(true);
-    const feedFilterType = filterType ?? FeedFilter.ALL;
-    const userId =
-      feedFilterType === FeedFilter.ALL ? undefined : currentUser?.id;
-
-    getFeedsWithFilter(userId, feedFilterType, after, type)
-      .then((res) => {
-        const { data, paging: pagingObj } = res;
-        setPaging(pagingObj);
-        setEntityThread((prevData) => [...prevData, ...data]);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-activity-feed-error']
-        );
-      })
-      .finally(() => {
-        setIsFeedLoading(false);
-      });
-  };
-
-  const handleFeedFetchFromFeedList = useCallback(
-    (filterType?: FeedFilter, after?: string, type?: ThreadType) => {
-      !after && setEntityThread([]);
-      getFeedData(filterType, after, type);
-    },
-    [getFeedData, setEntityThread]
-  );
-
-  const postFeedHandler = (value: string, id: string) => {
-    const data = {
-      message: value,
-      from: currentUser?.name,
-    };
-    postFeedById(id, data as Post)
-      .then((res) => {
-        if (res) {
-          const { id, posts } = res;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              if (thread.id === id) {
-                return { ...res, posts: posts?.slice(-3) };
-              } else {
-                return thread;
-              }
-            });
-          });
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['feed-post-error']);
-      });
-  };
-
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread, setEntityThread);
-  };
-
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadData(threadId, postId, isThread, data, setEntityThread);
-  };
-
-  const fetchSandboxMode = () => {
-    fetchSandboxConfig()
-      .then((res) => {
-        if (!isUndefined(res.sandboxModeEnabled)) {
-          setIsSandbox(Boolean(res.sandboxModeEnabled));
-        } else {
-          throw '';
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setIsSandbox(false);
-      });
-  };
-
-  // Fetch tasks list to show count for Pending tasks
-  const fetchMyTaskData = useCallback(() => {
-    if (!currentUser || !currentUser.id) {
-      return;
+  useEffect(() => {
+    if (currentUser) {
+      fetchUserFollowedData();
     }
-
-    getFeedsWithFilter(
-      currentUser.id,
-      FeedFilter.ASSIGNED_TO,
-      undefined,
-      ThreadType.Task
-    ).then((res) => {
-      res.data && setPendingTaskCount(res.paging.total);
-    });
   }, [currentUser]);
 
-  useEffect(() => {
-    fetchSandboxMode();
-    fetchData();
-    fetchMyTaskData();
+  const widgets = useMemo(
+    () =>
+      // Adding announcement widget to the layout when announcements are present
+      // Since the widget wont be in the layout config of the page
+      // ok
+      [
+        ...(isEmpty(announcements)
+          ? []
+          : [customizePageClassBase.announcementWidget]),
+        ...layout,
+      ].map((widget) => (
+        <div data-grid={widget} key={widget.i}>
+          {getWidgetFromKey({
+            announcements: announcements,
+            followedData,
+            followedDataCount,
+            isLoadingOwnedData: isLoadingOwnedData,
+            widgetConfig: widget,
+          })}
+        </div>
+      )),
+    [
+      layout,
+      isAnnouncementLoading,
+      announcements,
+      followedData,
+      followedDataCount,
+      isLoadingOwnedData,
+    ]
+  );
+
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      setIsAnnouncementLoading(true);
+      const response = await getActiveAnnouncement();
+
+      setAnnouncements(response.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsAnnouncementLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    getFeedData(FeedFilter.OWNER);
+    fetchAnnouncements();
   }, []);
 
-  useEffect(() => {
-    if (
-      ((isAuthDisabled && AppState.users.length) ||
-        !isEmpty(AppState.userDetails)) &&
-      (isNil(ownedData) || isNil(followedData))
-    ) {
-      fetchMyData();
-    }
-  }, [AppState.userDetails, AppState.users, isAuthDisabled]);
+  // call the hook to set the direction of the grid layout
+  useGridLayoutDirection(isLoading);
 
-  useEffect(() => {
-    if (socket) {
-      socket.on(SOCKET_EVENTS.ACTIVITY_FEED, (newActivity) => {
-        if (newActivity) {
-          setActivityFeeds((prevActivities) => [
-            JSON.parse(newActivity),
-            ...prevActivities,
-          ]);
-        }
-      });
-      socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
-        if (newActivity) {
-          setPendingTaskCount((prevCount) =>
-            prevCount ? prevCount + 1 : prevCount
-          );
-        }
-      });
-    }
-
-    return () => {
-      socket && socket.off(SOCKET_EVENTS.ACTIVITY_FEED);
-      socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
-    };
-  }, [socket]);
-
-  const onRefreshFeeds = () => {
-    getFeedData();
-    setEntityThread([]);
-    setActivityFeeds([]);
-  };
+  if (showWelcomeScreen) {
+    return (
+      <div className="bg-white full-height">
+        <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
+      </div>
+    );
+  }
 
   return (
-    <PageContainerV1>
-      {!isEmpty(state.entityCounts) ? (
-        <Fragment>
-          <MyData
-            activityFeeds={activityFeeds}
-            data={state}
-            deletePostHandler={deletePostHandler}
-            error={error}
-            feedData={entityThread || []}
-            fetchFeedHandler={handleFeedFetchFromFeedList}
-            followedData={followedData || []}
-            followedDataCount={followedDataCount}
-            isFeedLoading={isFeedLoading}
-            isLoadingOwnedData={isLoadingOwnedData}
-            ownedData={ownedData || []}
-            ownedDataCount={ownedDataCount}
-            paging={paging}
-            pendingTaskCount={pendingTaskCount}
-            postFeedHandler={postFeedHandler}
-            updateThreadHandler={updateThreadHandler}
-            onRefreshFeeds={onRefreshFeeds}
-          />
-          {isSandbox ? <GithubStarButton /> : null}
-        </Fragment>
-      ) : (
-        <Loader />
-      )}
-    </PageContainerV1>
+    <ActivityFeedProvider>
+      <PageLayoutV1
+        mainContainerClassName="p-t-0"
+        pageTitle={t('label.my-data')}>
+        {isLoading ? (
+          <div className="ant-layout-content flex-center">
+            <Loader />
+          </div>
+        ) : (
+          <>
+            <ReactGridLayout
+              className="bg-white"
+              cols={4}
+              isDraggable={false}
+              isResizable={false}
+              margin={[
+                customizePageClassBase.landingPageWidgetMargin,
+                customizePageClassBase.landingPageWidgetMargin,
+              ]}
+              rowHeight={100}>
+              {widgets}
+            </ReactGridLayout>
+            <LimitWrapper resource="dataAssets">
+              <br />
+            </LimitWrapper>
+          </>
+        )}
+      </PageLayoutV1>
+    </ActivityFeedProvider>
   );
 };
 
-export default observer(MyDataPage);
+export default MyDataPage;

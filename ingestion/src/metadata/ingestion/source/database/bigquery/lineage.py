@@ -27,9 +27,8 @@ class BigqueryLineageSource(BigqueryQueryParserSource, LineageSource):
     sql_stmt = BIGQUERY_STATEMENT
 
     filters = """
-        AND statement_type IN ("INSERT", "MERGE", "CREATE_TABLE_AS_SELECT", "UPDATE")
+        AND (
+            statement_type IN ("MERGE", "CREATE_TABLE_AS_SELECT", "UPDATE") 
+            OR (statement_type = "INSERT" and UPPER(query) like '%%INSERT%%INTO%%SELECT%%')
+        )
     """
-
-    database_field = "project_id"
-
-    schema_field = ""  # schema filtering not available

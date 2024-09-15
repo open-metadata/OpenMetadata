@@ -17,6 +17,7 @@ import feign.RequestTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 @Slf4j
@@ -26,12 +27,13 @@ public class OpenMetadataAuthenticationProvider implements AuthenticationProvide
   private Long expirationTimeMillis;
 
   public OpenMetadataAuthenticationProvider(OpenMetadataConnection iConfig) {
-    if (!iConfig.getAuthProvider().equals(OpenMetadataConnection.AuthProvider.OPENMETADATA)) {
+    if (!iConfig.getAuthProvider().equals(AuthProvider.OPENMETADATA)) {
       LOG.error("Required type to invoke is OpenMetadata for OpenMetadataAuthentication Provider");
-      throw new RuntimeException("Required type to invoke is OpenMetadata for OpenMetadataAuthentication Provider");
+      throw new RuntimeException(
+          "Required type to invoke is OpenMetadata for OpenMetadataAuthentication Provider");
     }
 
-    securityConfig = (OpenMetadataJWTClientConfig) iConfig.getSecurityConfig();
+    securityConfig = iConfig.getSecurityConfig();
     if (securityConfig == null) {
       LOG.error("Security Config is missing, it is required");
       throw new RuntimeException("Security Config is missing, it is required");

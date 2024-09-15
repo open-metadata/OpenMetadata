@@ -13,108 +13,52 @@
 package org.openmetadata.service.pipelineService.airflow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest.DATABASE_METADATA_CONFIG;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import lombok.SneakyThrows;
-import org.joda.time.DateTime;
-import org.junit.jupiter.api.BeforeEach;
+import java.security.KeyStoreException;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.extension.RegisterExtension;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
-import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
-import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.service.airflow.AirflowRESTClient;
-import org.openmetadata.service.exception.PipelineServiceClientException;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient;
 
-@ExtendWith(MockitoExtension.class)
-class AirflowRESTClientIntegrationTest {
-
-  private static final String DAG_NAME = "test_dag";
-  private static final String URI_TO_HANDLE_REQUEST = "/";
-
-  public static final IngestionPipeline INGESTION_PIPELINE =
-      new IngestionPipeline()
-          .withName(DAG_NAME)
-          .withId(UUID.randomUUID())
-          .withPipelineType(PipelineType.METADATA)
-          .withSourceConfig(DATABASE_METADATA_CONFIG)
-          .withAirflowConfig(new AirflowConfig().withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
-
-  @RegisterExtension private static final HttpServerExtension httpServerExtension = new HttpServerExtension();
-
-  AirflowRESTClient airflowRESTClient;
-
-  @BeforeEach
-  void setUp() {
-    AirflowConfiguration airflowConfiguration = createDefaultAirflowConfiguration();
-    airflowRESTClient = new AirflowRESTClient(airflowConfiguration);
-    httpServerExtension.unregisterHandler();
-  }
+class AirflowRESTClientTest {
 
   @Test
-  void testLastIngestionLogsAreRetrievedWhenStatusCodesAre200() {
-    Map<String, String> expectedMap = Map.of("key1", "value1", "key2", "value2");
+  void test_buildUri() throws KeyStoreException {
+    // We build the right URI for a simple url
+    PipelineServiceClientConfiguration config = getPipelineServiceConfiguration();
+    AirflowRESTClient restClient = new AirflowRESTClient(config);
+    assertEquals(
+        "http://localhost:8080/api/v1/openmetadata/last_dag_logs",
+        restClient.buildURI("last_dag_logs").toString());
 
-    registerMockedEndpoints(200);
+    // We build the right URI for a service URLs with paths
+    config.setApiEndpoint("http://localhost:8080/airflow");
+    restClient = new AirflowRESTClient(config);
+    assertEquals(
+        "http://localhost:8080/airflow/api/v1/openmetadata/last_dag_logs",
+        restClient.buildURI("last_dag_logs").toString());
 
-    assertEquals(expectedMap, airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE, "after"));
+    // The same works with more segments
+    config.setApiEndpoint("http://localhost:8080/airflow/foo");
+    restClient = new AirflowRESTClient(config);
+    assertEquals(
+        "http://localhost:8080/airflow/foo/api/v1/openmetadata/health",
+        restClient.buildURI("health").toString());
   }
 
-  @Test
-  void testLastIngestionLogsExceptionWhenLoginFails() {
-    registerMockedEndpoints(200);
+  private PipelineServiceClientConfiguration getPipelineServiceConfiguration() {
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
+        new PipelineServiceClientConfiguration();
+    pipelineServiceClientConfiguration.setHostIp("111.11.11.1");
+    pipelineServiceClientConfiguration.setApiEndpoint("http://localhost:8080");
 
-    Exception exception =
-        assertThrows(
-            PipelineServiceClientException.class,
-            () -> airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE, "after"));
+    Parameters params = new Parameters();
+    params.setAdditionalProperty("username", "user");
+    params.setAdditionalProperty("password", "pass");
+    params.setAdditionalProperty("timeout", 60);
 
-    String expectedMessage = "Failed to get last ingestion logs.";
-    String actualMessage = exception.getMessage();
+    pipelineServiceClientConfiguration.setParameters(params);
 
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void testLastIngestionLogsExceptionWhenStatusCode404() {
-    registerMockedEndpoints(404);
-
-    Exception exception =
-        assertThrows(
-            PipelineServiceClientException.class,
-            () -> airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE, "after"));
-
-    String expectedMessage = "Failed to get last ingestion logs.";
-    String actualMessage = exception.getMessage();
-
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @SneakyThrows
-  private AirflowConfiguration createDefaultAirflowConfiguration() {
-    AirflowConfiguration airflowConfiguration = new AirflowConfiguration();
-    airflowConfiguration.setApiEndpoint(HttpServerExtension.getUriFor("").toString());
-    airflowConfiguration.setUsername("user");
-    airflowConfiguration.setPassword("pass");
-    airflowConfiguration.setTimeout(60);
-    return airflowConfiguration;
-  }
-
-  private void registerMockedEndpoints(int lastDagLogStatusCode) {
-    String jsonResponse = "{ \"key1\": \"value1\", \"key2\": \"value2\" }";
-
-    Map<String, MockResponse> pathResponses = new HashMap<>();
-    pathResponses.put(
-        "/api/v1/openmetadata/last_dag_logs&dag_id=" + DAG_NAME,
-        new MockResponse(jsonResponse, "application/json", lastDagLogStatusCode));
-
-    httpServerExtension.registerHandler(URI_TO_HANDLE_REQUEST, new JsonHandler(pathResponses));
+    return pipelineServiceClientConfiguration;
   }
 }

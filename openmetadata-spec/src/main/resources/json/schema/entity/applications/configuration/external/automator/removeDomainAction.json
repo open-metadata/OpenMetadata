@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/removeDomainAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RemoveDomainAction",
+  "description": "Remove Owner Action Type",
+  "type": "object",
+  "definitions": {
+    "removeDomainActionType": {
+      "description": "Remove Domain Action Type",
+      "type": "string",
+      "enum": ["RemoveDomainAction"],
+      "default": "RemoveDomainAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/removeDomainActionType",
+      "default": "RemoveDomainAction"
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}

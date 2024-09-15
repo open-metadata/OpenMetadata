@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,18 +18,18 @@ import com.google.common.annotations.VisibleForTesting;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
+import software.amazon.awssdk.services.ssm.model.DeleteParameterRequest;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
 import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
+import software.amazon.awssdk.services.ssm.model.Tag;
 
 public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
-
-  private static AWSSSMSecretsManager INSTANCE = null;
-
+  private static AWSSSMSecretsManager instance = null;
   private SsmClient ssmClient;
 
-  private AWSSSMSecretsManager(SecretsManagerConfiguration config, String clusterPrefix) {
-    super(MANAGED_AWS_SSM, config, clusterPrefix);
+  private AWSSSMSecretsManager(SecretsConfig secretsConfig) {
+    super(MANAGED_AWS_SSM, secretsConfig);
   }
 
   @Override
@@ -40,7 +40,10 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   @Override
   void initClientWithCredentials(String region, AwsCredentialsProvider staticCredentialsProvider) {
     this.ssmClient =
-        SsmClient.builder().region(Region.of(region)).credentialsProvider(staticCredentialsProvider).build();
+        SsmClient.builder()
+            .region(Region.of(region))
+            .credentialsProvider(staticCredentialsProvider)
+            .build();
   }
 
   @Override
@@ -61,19 +64,31 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
             .value(parameterValue)
             .overwrite(overwrite)
             .type(ParameterType.SECURE_STRING)
+            .tags(
+                SecretsManager.getTags(getSecretsConfig()).entrySet().stream()
+                    .map(entry -> Tag.builder().key(entry.getKey()).value(entry.getValue()).build())
+                    .toList())
             .build();
     this.ssmClient.putParameter(putParameterRequest);
   }
 
   @Override
   public String getSecret(String secretName) {
-    GetParameterRequest parameterRequest = GetParameterRequest.builder().name(secretName).withDecryption(true).build();
+    GetParameterRequest parameterRequest =
+        GetParameterRequest.builder().name(secretName).withDecryption(true).build();
     return ssmClient.getParameter(parameterRequest).parameter().value();
   }
 
-  public static AWSSSMSecretsManager getInstance(SecretsManagerConfiguration config, String clusterPrefix) {
-    if (INSTANCE == null) INSTANCE = new AWSSSMSecretsManager(config, clusterPrefix);
-    return INSTANCE;
+  @Override
+  protected void deleteSecretInternal(String secretName) {
+    DeleteParameterRequest deleteParameterRequest =
+        DeleteParameterRequest.builder().name(secretName).build();
+    this.ssmClient.deleteParameter(deleteParameterRequest);
+  }
+
+  public static AWSSSMSecretsManager getInstance(SecretsConfig secretsConfig) {
+    if (instance == null) instance = new AWSSSMSecretsManager(secretsConfig);
+    return instance;
   }
 
   @VisibleForTesting

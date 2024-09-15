@@ -11,22 +11,23 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import './Badge.less';
+import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
+import './task-badge.less';
 
 const AnnouncementBadge = () => {
   const { t } = useTranslation();
 
   return (
     <div className="announcement-badge-container">
-      <SVGIcons
-        alt="announcement"
-        className="announcement-badge"
-        icon={Icons.ANNOUNCEMENT_YELLOW}
-      />
-      <span className="announcement-content">{t('label.announcement')}</span>
+      <Icon className="announcement-badge" component={AnnouncementIcon} />
+
+      <Typography.Text className="announcement-text">
+        {t('label.announcement')}
+      </Typography.Text>
     </div>
   );
 };

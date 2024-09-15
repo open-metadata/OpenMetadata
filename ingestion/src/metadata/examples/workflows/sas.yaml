@@ -1,0 +1,28 @@
+source:
+  type: sas
+  serviceName: local_sas
+  serviceConnection:
+    config:
+      type: SAS
+      username: username
+      password: password
+      serverHost: http://your-server-host.org
+      datatables: True
+      dataTablesCustomFilter: None
+      reports: False
+      reportsCustomFilter: None
+      dataflows: False
+      dataflowsCustomFilter: None
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort:  http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImluZ2VzdGlvbi1ib3QiLCJlbWFpbCI6ImluZ2VzdGlvbi1ib3RAb3Blbm1ldGFkYXRhLm9yZyIsImlzQm90Ijp0cnVlLCJ0b2tlblR5cGUiOiJCT1QiLCJpYXQiOjE3MDQ3NDY0MzYsImV4cCI6bnVsbH0.qRWByaRw3F1B0bDqdpmxDsHEUx9Npk5VNelpabuvmVERjIG8AY88p1dv5gBME6Y1-kfTtCAMtSxsll0_gTR35D1foVdXgGMRAPyNXH0JHRpENBnT1V3OVO0yRWmeqsp5K7yqiaVa-CeqxitSgYrns58BFRD_vFX5vxMHirFBrFddH7b8af8823a8Oh-wMDCuJJd7Ya61Kv6gUpssE7Y403PwomLK6pE7gsAgZ5YOyjHlQ889C9z8oLQ268BX3ndmTp6t1J7MYgOEqeIzeCoBQZf6aBdyCqYajB3TTwb3SHFz2TEYF5xeLvYlZ77ek3l22m6Ehh5d4t2jB-ZOFDUkqA

@@ -21,11 +21,18 @@
         "GluePipeline",
         "Airbyte",
         "Fivetran",
+        "Flink",
         "Dagster",
         "Nifi",
         "DomoPipeline",
         "CustomPipeline",
-        "DatabricksPipeline"
+        "DatabricksPipeline",
+        "Spline",
+        "Spark",
+        "OpenLineage",
+        "KafkaConnect",
+        "DBTCloud",
+        "Matillion"
       ],
       "javaEnums": [
         {
@@ -41,6 +48,9 @@
           "name": "Fivetran"
         },
         {
+          "name": "Flink"
+        },
+        {
           "name": "Dagster"
         },
         {
@@ -54,6 +64,24 @@
         },
         {
           "name": "DatabricksPipeline"
+        },
+        {
+          "name": "Spline"
+        },
+        {
+          "name": "Spark"
+        },
+        {
+          "name": "OpenLineage"
+        },
+        {
+          "name": "KafkaConnect"
+        },
+        {
+          "name": "DBTCloud"
+        },
+        {
+          "name": "Matillion"
         }
       ]
     },
@@ -81,6 +109,9 @@
               "$ref": "./connections/pipeline/fivetranConnection.json"
             },
             {
+              "$ref": "./connections/pipeline/flinkConnection.json"
+            },
+            {
               "$ref": "./connections/pipeline/dagsterConnection.json"
             },
             {
@@ -94,6 +125,24 @@
             },
             {
               "$ref": "./connections/pipeline/databricksPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/splineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/sparkConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/openLineageConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/kafkaConnectConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/dbtCloudConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/matillionConnection.json"
             }
           ]
         }
@@ -138,6 +187,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
     "tags": {
       "description": "Tags for this Pipeline Service.",
       "type": "array",
@@ -148,14 +201,14 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this pipeline service to extract metadata",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "connection": {
       "$ref": "#/definitions/pipelineConnection"
     },
-    "owner": {
-      "description": "Owner of this pipeline service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this pipeline service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this pipeline service.",
@@ -169,6 +222,14 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "domain" : {
+      "description": "Domain the Pipeline service belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": [

@@ -14,12 +14,13 @@ Mixin class containing ingestion pipeline specific methods
 To be used by OpenMetadata class
 """
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
     PipelineStatus,
 )
+from metadata.ingestion.api.parser import parse_ingestion_pipeline_config_gracefully
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 
@@ -45,11 +46,11 @@ class OMetaIngestionPipelineMixin:
         :param pipeline_status: Pipeline Status data to add
         """
         resp = self.client.put(
-            f"/services/ingestionPipelines/{ingestion_pipeline_fqn}/pipelineStatus",
-            data=pipeline_status.json(),
+            f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus",
+            data=pipeline_status.model_dump_json(),
         )
         logger.debug(
-            f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {resp}"
+            f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {pipeline_status}"
         )
         return resp
 
@@ -63,7 +64,7 @@ class OMetaIngestionPipelineMixin:
         :param pipeline_status_run_id: Pipeline Status run id
         """
         resp = self.client.get(
-            f"/services/ingestionPipelines/{ingestion_pipeline_fqn}/pipelineStatus/{pipeline_status_run_id}"
+            f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus/{pipeline_status_run_id}"
         )
         if resp:
             return PipelineStatus(**resp)
@@ -76,10 +77,10 @@ class OMetaIngestionPipelineMixin:
             ingestion_pipeline_id (str): ingestion pipeline uuid
         """
         resp = self.client.post(
-            f"/services/ingestionPipelines/trigger/{ingestion_pipeline_id}"
+            f"{self.get_suffix(IngestionPipeline)}/trigger/{ingestion_pipeline_id}"
         )
 
-        return IngestionPipeline.parse_obj(resp)
+        return parse_ingestion_pipeline_config_gracefully(resp)
 
     def get_pipeline_status_between_ts(
         self,
@@ -98,10 +99,35 @@ class OMetaIngestionPipelineMixin:
         params = {"startTs": start_ts, "endTs": end_ts}
 
         resp = self.client.get(
-            f"/services/ingestionPipelines/{ingestion_pipeline_fqn}/pipelineStatus",
+            f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus",
             data=params,
         )
 
         if resp:
-            return [PipelineStatus.parse_obj(status) for status in resp.get("data")]
+            return [
+                PipelineStatus.model_validate(status) for status in resp.get("data")
+            ]
+        return None
+
+    def get_ingestion_pipeline_by_name(
+        self,
+        fields: Optional[List[str]] = None,
+        params: Optional[Dict[str, str]] = None,
+    ) -> Optional[IngestionPipeline]:
+        """
+        Get ingestion pipeline statues based on name
+
+        Args:
+            name (str): Ingestion Pipeline Name
+            fields (List[str]): List of all the fields
+        """
+        fields_str = "?fields=" + ",".join(fields) if fields else ""
+        resp = self.client.get(
+            f"{self.get_suffix(IngestionPipeline)}{fields_str}",
+            data=params,
+        )
+
+        if hasattr(resp, "sourceConfig"):
+            return parse_ingestion_pipeline_config_gracefully(resp)
+
         return None

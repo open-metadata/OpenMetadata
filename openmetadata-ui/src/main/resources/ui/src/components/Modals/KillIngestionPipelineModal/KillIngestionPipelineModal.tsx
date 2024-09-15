@@ -15,20 +15,13 @@ import { Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { postKillIngestionPipelineById } from 'rest/ingestionPipelineAPI';
+import { postKillIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-
-interface KillIngestionModalProps {
-  pipelineId: string;
-  pipelinName: string;
-  isModalOpen: boolean;
-  onClose: () => void;
-  onIngestionWorkflowsUpdate: () => void;
-}
+import { KillIngestionModalProps } from './KillIngestionPipelineModal.interface';
 
 const KillIngestionModal: FC<KillIngestionModalProps> = ({
   pipelineId,
-  pipelinName,
+  pipelineName,
   isModalOpen,
   onClose,
   onIngestionWorkflowsUpdate,
@@ -39,17 +32,20 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
   const handleConfirm = async () => {
     setIsLoading(true);
     try {
-      const response = await postKillIngestionPipelineById(pipelineId);
-      const status = response.status;
+      const { status } = await postKillIngestionPipelineById(pipelineId);
       if (status === 200) {
-        onClose();
-        showSuccessToast(` ${t('message.kill-successfully')}  ${pipelinName}.`);
-        onIngestionWorkflowsUpdate();
+        showSuccessToast(
+          t('message.pipeline-killed-successfully', {
+            pipelineName,
+          })
+        );
+        onIngestionWorkflowsUpdate?.();
       }
     } catch (error) {
       // catch block error is unknown type so we have to cast it to respective type
       showErrorToast(error as AxiosError);
     } finally {
+      onClose();
       setIsLoading(false);
     }
   };
@@ -57,12 +53,14 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
   return (
     <Modal
       destroyOnClose
+      cancelText={t('label.cancel')}
       closable={false}
       confirmLoading={isLoading}
       data-testid="kill-modal"
-      okText="Confirm"
-      title={`${t('label.kill')} ${pipelinName} ?`}
-      visible={isModalOpen}
+      maskClosable={false}
+      okText={t('label.confirm')}
+      open={isModalOpen}
+      title={`${t('label.kill')} ${pipelineName} ?`}
       onCancel={onClose}
       onOk={handleConfirm}>
       <Typography.Text data-testid="kill-modal-body">

@@ -9,13 +9,17 @@
     "redshiftType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Redshift"],
+      "enum": [
+        "Redshift"
+      ],
       "default": "Redshift"
     },
     "redshiftScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["redshift+psycopg2"],
+      "enum": [
+        "redshift+psycopg2"
+      ],
       "default": "redshift+psycopg2"
     }
   },
@@ -59,6 +63,12 @@
       "type": "boolean",
       "default": false
     },
+    "sslMode": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -91,8 +101,16 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username", "database"]
+  "required": [
+    "hostPort",
+    "username",
+    "database"
+  ]
 }

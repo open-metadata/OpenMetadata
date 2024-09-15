@@ -1,0 +1,14 @@
+{
+  "name": "DynamoDB",
+  "displayName": "DynamoDB Test Connection",
+  "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+  "steps": [
+    {
+      "name": "ListTables",
+      "description": "List all the tables available to the user.",
+      "errorMessage": "Failed to fetch tables, please validate the credentials & validate if user has access to list tables",
+      "shortCircuit": true,
+      "mandatory": true
+    }
+  ]
+}

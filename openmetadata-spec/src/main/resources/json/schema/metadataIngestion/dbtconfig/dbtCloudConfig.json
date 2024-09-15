@@ -6,6 +6,12 @@
   "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig",
   "type": "object",
   "properties": {
+    "dbtConfigType": {
+      "description": "dbt Configuration type",
+      "type": "string",
+      "enum": ["cloud"],
+      "default": "cloud"
+    },
     "dbtCloudAuthToken": {
       "title": "dbt Cloud Authentication Token",
       "description": "dbt cloud account authentication token",
@@ -22,6 +28,11 @@
       "description": "In case of multiple projects in a dbt cloud account, specify the project's id from which you want to extract the dbt run artifacts",
       "type": "string"
     },
+    "dbtCloudJobId": {
+      "title": "dbt Cloud Job Id",
+      "description": "dbt cloud job id.",
+      "type": "string"
+    },
     "dbtCloudUrl": {
       "title": "dbt Cloud URL",
       "description": "URL to connect to your dbt cloud instance. E.g., https://cloud.getdbt.com or https://emea.dbt.com/",
@@ -31,5 +42,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["dbtCloudAuthToken", "dbtCloudAccountId", "dbtCloudUrl"]
+  "required": ["dbtCloudAuthToken", "dbtCloudAccountId", "dbtCloudUrl", "dbtConfigType"]
 }

@@ -17,7 +17,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { POLICY_LIST_WITH_PAGING, ROLES_LIST_WITH_PAGING } from '../Roles.mock';
 import AddAttributeModal from './AddAttributeModal';
 
-jest.mock('rest/rolesAPIV1', () => ({
+jest.mock('../../../rest/rolesAPIV1', () => ({
   getPolicies: jest
     .fn()
     .mockImplementation(() => Promise.resolve(POLICY_LIST_WITH_PAGING)),
@@ -26,11 +26,12 @@ jest.mock('rest/rolesAPIV1', () => ({
     .mockImplementation(() => Promise.resolve(ROLES_LIST_WITH_PAGING)),
 }));
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
+jest.mock(
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
@@ -41,6 +42,13 @@ jest.mock('../../../utils/CommonUtils', () => ({
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+
+jest.mock(
+  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
+  }
+);
 
 const onSave = jest.fn();
 const onCancel = jest.fn();

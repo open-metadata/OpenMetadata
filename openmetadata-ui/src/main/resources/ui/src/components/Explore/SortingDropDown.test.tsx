@@ -33,7 +33,7 @@ describe('Test Sorting DropDown Component', () => {
         <SortingDropDown {...mockPorps} />
       );
 
-      const dropdownLabel = await findByTestId('dropdown-label');
+      const dropdownLabel = await findByTestId('sorting-dropdown-label');
 
       expect(dropdownLabel).toBeInTheDocument();
 
@@ -55,7 +55,7 @@ describe('Test Sorting DropDown Component', () => {
         <SortingDropDown {...mockPorps} />
       );
 
-      const dropdownLabel = await findByTestId('dropdown-label');
+      const dropdownLabel = await findByTestId('sorting-dropdown-label');
 
       expect(dropdownLabel).toBeInTheDocument();
 
@@ -73,7 +73,7 @@ describe('Test Sorting DropDown Component', () => {
         fireEvent.click(menuItems[0]);
       });
 
-      expect(handleFieldDropDown).toHaveBeenCalledWith('updatedAt');
+      expect(handleFieldDropDown).toHaveBeenCalledWith('totalVotes');
     });
   });
 });

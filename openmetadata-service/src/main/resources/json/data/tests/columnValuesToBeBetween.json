@@ -10,14 +10,26 @@
     {
       "name": "minValue",
       "displayName": "Min",
-      "description": "The {minValue} value for the column entry. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of rows",
-      "dataType": "INT"
+      "description": "The {minValue} value for the column entry. If minValue is not included, maxValue is treated as upperBound and there will be no minimum",
+      "dataType": "INT",
+      "validationRule": {
+        "parameterField": "maxValue",
+        "rule": "LESS_THAN_OR_EQUALS"
+      }
     },
     {
       "name": "maxValue",
       "displayName": "Max",
-      "description": "The {maxValue} value for the column entry. if maxValue is not included, minValue is treated as lowerBound and there will eb no maximum number of rows",
-      "dataType": "INT"
+      "description": "The {maxValue} value for the column entry. if maxValue is not included, minValue is treated as lowerBound and there will be no maximum",
+      "dataType": "INT",
+      "validationRule": {
+          "parameterField": "minValue",
+          "rule": "GREATER_THAN_OR_EQUALS"
+      }
     }
-  ]
+  ],
+  "supportsRowLevelPassedFailed": true,
+  "supportsDynamicAssertion": true,
+  "provider": "system",
+  "dataQualityDimension": "Accuracy"
 }

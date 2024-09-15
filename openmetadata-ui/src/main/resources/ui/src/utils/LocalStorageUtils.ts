@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,26 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OM_SESSION_KEY } from '../hooks/useApplicationStore';
 
-import { oidcTokenKey, refreshTokenKey } from '../constants/constants';
-
-/* A util that sets and gets the data in/from local storage. 
-    @getter
-    @setter
-*/
-const localState = {
-  getRefreshToken: () => localStorage.getItem(refreshTokenKey) as string,
-  getOidcToken: () => localStorage.getItem(oidcTokenKey) as string,
-
-  setRefreshToken: (token: string) => {
-    localStorage.setItem(refreshTokenKey, token);
-  },
-
-  setOidcToken: (_oidcTokenKey: string) => {
-    localStorage.setItem(oidcTokenKey, _oidcTokenKey);
-  },
-
-  removeOidcToken: () => localStorage.removeItem(oidcTokenKey),
+export const getOidcToken = (): string => {
+  return (
+    JSON.parse(localStorage.getItem(OM_SESSION_KEY) ?? '{}')?.state
+      ?.oidcIdToken ?? ''
+  );
 };
-
-export default localState;

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,18 +21,18 @@ import org.openmetadata.service.exception.SecretsManagerException;
 
 /** Secret Manager used for testing */
 public class InMemorySecretsManager extends ExternalSecretsManager {
-
-  private static InMemorySecretsManager INSTANCE;
-
+  private static InMemorySecretsManager instance;
   @Getter private final Map<String, String> secretsMap = new HashMap<>();
 
-  protected InMemorySecretsManager(String clusterPrefix) {
-    super(SecretsManagerProvider.IN_MEMORY, clusterPrefix, 0);
+  protected InMemorySecretsManager(SecretsConfig secretsConfig) {
+    super(SecretsManagerProvider.IN_MEMORY, secretsConfig, 0);
   }
 
-  public static InMemorySecretsManager getInstance(String clusterPrefix) {
-    if (INSTANCE == null) INSTANCE = new InMemorySecretsManager(clusterPrefix);
-    return INSTANCE;
+  public static InMemorySecretsManager getInstance(SecretsConfig secretsConfig) {
+    if (instance == null) {
+      instance = new InMemorySecretsManager(secretsConfig);
+    }
+    return instance;
   }
 
   @Override
@@ -46,10 +46,16 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
   }
 
   @Override
+  protected void deleteSecretInternal(String secretName) {
+    secretsMap.remove(secretName);
+  }
+
+  @Override
   String getSecret(String secretName) {
     String value = secretsMap.getOrDefault(secretName, null);
     if (value == null) {
-      throw new SecretsManagerException(String.format("Key [%s] not found in in-memory secrets manager", secretName));
+      throw new SecretsManagerException(
+          String.format("Key [%s] not found in in-memory secrets manager", secretName));
     }
     return value;
   }

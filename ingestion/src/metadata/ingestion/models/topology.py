@@ -11,12 +11,23 @@
 """
 Defines the topology for ingesting sources
 """
+import queue
+import threading
+from functools import singledispatchmethod
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
-from typing import Any, Generic, List, Optional, Type, TypeVar
+from pydantic import BaseModel, ConfigDict, Field, create_model
 
-from pydantic import BaseModel, Extra, create_model
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
+from metadata.ingestion.ometa.utils import model_str
+from metadata.utils import fqn
 
 T = TypeVar("T", bound=BaseModel)
+C = TypeVar("C", bound=BaseModel)
 
 
 class NodeStage(BaseModel, Generic[T]):
@@ -27,23 +38,59 @@ class NodeStage(BaseModel, Generic[T]):
     source.
     """
 
-    class Config:
-        extra = Extra.forbid
-
-    type_: Type[T]  # Entity type
-    processor: str  # has the producer results as an argument. Here is where filters happen
-    context: Optional[str] = None  # context key storing stage state, if needed
-    ack_sink: bool = True  # Validate that the request is present in OM and update the context with the results
-    nullable: bool = False  # The yielded value can be null
-    must_return: bool = False  # The sink MUST return a value back after ack. Useful to validate services are correct.
-    cache_all: bool = (
-        False  # If we need to cache all values being yielded in the context
+    model_config = ConfigDict(
+        extra="forbid",
     )
-    clear_cache: bool = False  # If we need to clean cache values  in the context for each produced element
-    overwrite: bool = True  # If we want to overwrite existing data from OM
-    consumer: Optional[
-        List[str]
-    ] = None  # keys in the source context to fetch state from the parent's context
+
+    # Required fields to define the yielded entity type and the function processing it
+    type_: Type[T] = Field(
+        ..., description="Entity Type. E.g., DatabaseService, Database or Table"
+    )
+    processor: str = Field(
+        ...,
+        description="Has the producer results as an argument. Here is where filters happen. It will yield an Entity.",
+    )
+
+    # Topology behavior
+    nullable: bool = Field(False, description="Flags if the yielded value can be null")
+    must_return: bool = Field(
+        False,
+        description="The sink MUST return a value back after ack. Useful to validate if services are correct.",
+    )
+    overwrite: bool = Field(
+        True,
+        description="If we want to update existing data from OM. E.g., we don't want to overwrite services.",
+    )
+    consumer: Optional[List[str]] = Field(
+        None,
+        description="Stage dependency from parent nodes. Used to build the FQN of the processed Entity.",
+    )
+
+    # Context-related flags
+    context: Optional[str] = Field(
+        None, description="Context key storing stage state, if needed"
+    )
+    store_all_in_context: bool = Field(
+        False, description="If we need to store all values being yielded in the context"
+    )
+    clear_context: bool = Field(
+        False,
+        description="If we need to clean the values in the context for each produced element",
+    )
+    store_fqn: bool = Field(
+        False,
+        description="If true, store the entity FQN in the context instead of just the name",
+    )
+
+    # Used to compute the fingerprint
+    cache_entities: bool = Field(
+        False,
+        description="Cache all the entities which have use_cache set as True. Used for fingerprint comparison.",
+    )
+    use_cache: bool = Field(
+        False,
+        description="Enable this to get the entity from cached state in the context",
+    )
 
 
 class TopologyNode(BaseModel):
@@ -54,21 +101,29 @@ class TopologyNode(BaseModel):
     with the updated element from the OM API.
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
-    # method name in the source to use to generate the data to process
-    # does not accept input parameters
-    producer: str
-
-    # list of functions to execute - in order - for each element produced by the producer
-    # each stage accepts the producer results as an argument
-    stages: List[NodeStage]
-
-    children: Optional[List[str]] = None  # nodes to call execute next
-    post_process: Optional[
-        List[str]
-    ] = None  # Method to be run after the node has been fully processed
+    producer: str = Field(
+        ...,
+        description="Method name in the source called to generate the data. Does not accept input parameters",
+    )
+    stages: List[NodeStage] = Field(
+        ...,
+        description=(
+            "List of functions to execute - in order - for each element produced by the producer. "
+            "Each stage accepts the producer results as an argument"
+        ),
+    )
+    children: Optional[List[str]] = Field(None, description="Nodes to execute next")
+    post_process: Optional[List[str]] = Field(
+        None, description="Method to be run after the node has been fully processed"
+    )
+    threads: bool = Field(
+        False,
+        description="Flag that defines if a node is open to MultiThreading processing.",
+    )
 
 
 class ServiceTopology(BaseModel):
@@ -76,8 +131,7 @@ class ServiceTopology(BaseModel):
     Bounds all service topologies
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
 
 class TopologyContext(BaseModel):
@@ -85,12 +139,196 @@ class TopologyContext(BaseModel):
     Bounds all topology contexts
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     def __repr__(self):
-        ctx = {key: value.name.__root__ for key, value in self.__dict__.items()}
+        ctx = {key: value.name.root for key, value in self.__dict__.items()}
         return f"TopologyContext({ctx})"
+
+    @classmethod
+    def create(cls, topology: ServiceTopology) -> "TopologyContext":
+        """
+        Dynamically build a context based on the topology nodes.
+
+        Builds a Pydantic BaseModel class.
+
+        :param topology: ServiceTopology
+        :return: TopologyContext
+        """
+        nodes = get_topology_nodes(topology)
+        ctx_fields = {
+            stage.context: (Optional[stage.type_], None)
+            for node in nodes
+            for stage in node.stages
+            if stage.context
+        }
+        return create_model(
+            "GeneratedContext", **ctx_fields, __base__=TopologyContext
+        )()
+
+    def upsert(self, key: str, value: Any) -> None:
+        """
+        Update the key of the context with the given value
+        :param key: element to update from the source context
+        :param value: value to use for the update
+        """
+        self.__dict__[key] = value
+
+    def append(self, key: str, value: Any) -> None:
+        """
+        Update the key of the context with the given value
+        :param key: element to update from the source context
+        :param value: value to use for the update
+        """
+        if self.__dict__.get(key):
+            self.__dict__[key].append(value)
+        else:
+            self.__dict__[key] = [value]
+
+    def clear_stage(self, stage: NodeStage) -> None:
+        """
+        Clear the available context
+        :param stage: Update stage context to the default values
+        """
+        self.__dict__[stage.context] = None
+
+    def fqn_from_stage(self, stage: NodeStage, entity_name: str) -> str:
+        """
+        Read the context
+        :param stage: Topology node being processed
+        :param entity_name: name being stored
+        :return: Entity FQN derived from context
+        """
+        context_names = [
+            self.__dict__[dependency]
+            for dependency in stage.consumer or []  # root nodes do not have consumers
+        ]
+
+        # DashboardDataModel requires extra parameter to build the correct FQN
+        if stage.type_ == DashboardDataModel:
+            context_names.append("model")
+
+        return fqn._build(  # pylint: disable=protected-access
+            *context_names, entity_name
+        )
+
+    def update_context_name(self, stage: NodeStage, right: C) -> None:
+        """
+        Append or update context
+
+        We'll store the entity name or FQN in the topology context.
+        If we store the name, the FQN will be built in the source itself when needed.
+        """
+
+        if stage.store_fqn:
+            new_context = self._build_new_context_fqn(right)
+        else:
+            new_context = model_str(right.name)
+
+        self.update_context_value(stage=stage, value=new_context)
+
+    def update_context_value(self, stage: NodeStage, value: Any) -> None:
+        if stage.context and not stage.store_all_in_context:
+            self.upsert(key=stage.context, value=value)
+        if stage.context and stage.store_all_in_context:
+            self.append(key=stage.context, value=value)
+
+    @singledispatchmethod
+    def _build_new_context_fqn(self, right: C) -> str:
+        """Build context fqn string"""
+        raise NotImplementedError(f"Missing implementation for [{type(C)}]")
+
+    @_build_new_context_fqn.register
+    def _(self, right: CreateStoredProcedureRequest) -> str:
+        """
+        Implement FQN context building for Stored Procedures.
+
+        We process the Stored Procedures lineage at the very end of the service. If we
+        just store the SP name, we lose the information of which db/schema the SP belongs to.
+        """
+
+        return fqn.build(
+            metadata=None,
+            entity_type=StoredProcedure,
+            service_name=self.__dict__["database_service"],
+            database_name=self.__dict__["database"],
+            schema_name=self.__dict__["database_schema"],
+            procedure_name=right.name.root,
+        )
+
+
+class TopologyContextManager:
+    """Manages the Context held for different threads."""
+
+    def __init__(self, topology: ServiceTopology):
+        # Due to our code strucutre, the first time the ContextManager is called will be within the MainThread.
+        # We can leverage this to guarantee we keep track of the MainThread ID.
+        self.main_thread = self.get_current_thread_id()
+        self.contexts: Dict[int, TopologyContext] = {
+            self.main_thread: TopologyContext.create(topology)
+        }
+
+        # Starts with the Multithreading disabled
+        self.threads = 0
+
+    def set_threads(self, threads: Optional[int]):
+        self.threads = threads or 0
+
+    def get_current_thread_id(self):
+        return threading.get_ident()
+
+    def get_global(self) -> TopologyContext:
+        return self.contexts[self.main_thread]
+
+    def get(self, thread_id: Optional[int] = None) -> TopologyContext:
+        """Returns the TopologyContext of a given thread."""
+        if thread_id:
+            return self.contexts[thread_id]
+
+        thread_id = self.get_current_thread_id()
+
+        return self.contexts[thread_id]
+
+    def pop(self, thread_id: Optional[int] = None):
+        """Cleans the TopologyContext of a given thread in order to lower the Memory Profile."""
+        if not thread_id:
+            self.contexts.pop(self.get_current_thread_id())
+        else:
+            self.contexts.pop(thread_id)
+
+    def copy_from(self, parent_thread_id: int):
+        """Copies the TopologyContext from a given Thread to the new thread TopologyContext."""
+        thread_id = self.get_current_thread_id()
+
+        # If it does not exist yet, copies the Parent Context in order to have all context gathered until this point.
+        self.contexts.setdefault(
+            thread_id, self.contexts[parent_thread_id].model_copy(deep=True)
+        )
+
+
+class Queue:
+    """Small Queue wrapper"""
+
+    def __init__(self):
+        self._queue = queue.Queue()
+
+    def has_tasks(self) -> bool:
+        """Checks that the Queue is not Empty."""
+        return not self._queue.empty()
+
+    def process(self) -> Any:
+        """Yields all the items currently on the Queue."""
+        while True:
+            try:
+                item = self._queue.get_nowait()
+                yield item
+                self._queue.task_done()
+            except queue.Empty:
+                break
+
+    def put(self, item: Any):
+        """Puts new item in the Queue."""
+        self._queue.put(item)
 
 
 def get_topology_nodes(topology: ServiceTopology) -> List[TopologyNode]:
@@ -123,34 +361,6 @@ def get_topology_root(topology: ServiceTopology) -> List[TopologyNode]:
     """
     nodes = get_topology_nodes(topology)
     return [node for node in nodes if node_has_no_consumers(node)]
-
-
-def get_ctx_default(stage: NodeStage) -> Optional[List[Any]]:
-    """
-    If we cache all, default value is an empty list
-    :param stage: Node Stage
-    :return: None or []
-    """
-    return [] if stage.cache_all else None
-
-
-def create_source_context(topology: ServiceTopology) -> TopologyContext:
-    """
-    Dynamically build a context based on the topology nodes.
-
-    Builds a Pydantic BaseModel class.
-
-    :param topology: ServiceTopology
-    :return: TopologyContext
-    """
-    nodes = get_topology_nodes(topology)
-    ctx_fields = {
-        stage.context: (Optional[stage.type_], get_ctx_default(stage))
-        for node in nodes
-        for stage in node.stages
-        if stage.context
-    }
-    return create_model("GeneratedContext", **ctx_fields, __base__=TopologyContext)()
 
 
 def get_topology_node(name: str, topology: ServiceTopology) -> TopologyNode:

@@ -1,23 +1,17 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.jupiter.api.Test;
 
 class FullyQualifiedNameTest {
-  private static class FQNTest {
-    private final String[] parts;
-    private final String fqn;
-
-    FQNTest(String[] parts, String fqn) {
-      this.parts = parts;
-      this.fqn = fqn;
-    }
-
+  private record FQNTest(String[] parts, String fqn) {
     public void validate(String[] actualParts, String actualFQN) {
       assertEquals(fqn, actualFQN);
       assertEquals(parts.length, actualParts.length);
@@ -42,7 +36,8 @@ class FullyQualifiedNameTest {
             new FQNTest(new String[] {"a", "b", "c", "d.4"}, "a.b.c.\"d.4\""),
             new FQNTest(new String[] {"a.1", "b.2", "c", "d"}, "\"a.1\".\"b.2\".c.d"),
             new FQNTest(new String[] {"a.1", "b.2", "c.3", "d"}, "\"a.1\".\"b.2\".\"c.3\".d"),
-            new FQNTest(new String[] {"a.1", "b.2", "c.3", "d.4"}, "\"a.1\".\"b.2\".\"c.3\".\"d.4\""));
+            new FQNTest(
+                new String[] {"a.1", "b.2", "c.3", "d.4"}, "\"a.1\".\"b.2\".\"c.3\".\"d.4\""));
     for (FQNTest test : list) {
       String[] actualParts = FullyQualifiedName.split(test.fqn);
       String actualFqn = FullyQualifiedName.build(test.parts);
@@ -53,7 +48,7 @@ class FullyQualifiedNameTest {
   @Test
   void test_quoteName() {
     assertEquals("a", FullyQualifiedName.quoteName("a")); // Unquoted name remains unquoted
-    assertEquals("\"a.b\"", FullyQualifiedName.quoteName("a.b")); // Add quotes when "." exists in the name
+    assertEquals("\"a.b\"", FullyQualifiedName.quoteName("a.b")); // Add quotes when "." in the name
     assertEquals("\"a.b\"", FullyQualifiedName.quoteName("\"a.b\"")); // Leave existing valid quotes
     assertEquals("a", FullyQualifiedName.quoteName("\"a\"")); // Remove quotes when not needed
 
@@ -67,7 +62,9 @@ class FullyQualifiedNameTest {
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> FullyQualifiedName.quoteName("a\"b")); // Error when invalid quote is present in the middle of the string
+        () ->
+            FullyQualifiedName.quoteName(
+                "a\"b")); // Error when invalid quote is present in the middle of the string
   }
 
   @Test
@@ -82,11 +79,13 @@ class FullyQualifiedNameTest {
   }
 
   @Test
-  void test_getParent() {
-    assertEquals("a.b.c", FullyQualifiedName.getParent("a.b.c.d"));
-    assertEquals("a.b", FullyQualifiedName.getParent("a.b.c"));
-    assertEquals("a", FullyQualifiedName.getParent("a.b"));
-    assertNull(FullyQualifiedName.getParent("a"));
+  void test_getParentFQN() {
+    assertEquals("a.b.c", FullyQualifiedName.getParentFQN("a.b.c.d"));
+    assertEquals("\"a.b\"", FullyQualifiedName.getParentFQN("\"a.b\".c"));
+    assertEquals("a", FullyQualifiedName.getParentFQN("a.b"));
+    assertEquals("a", FullyQualifiedName.getParentFQN("a.\"b.c\""));
+    assertEquals("a.\"b.c\"", FullyQualifiedName.getParentFQN("a.\"b.c\".d"));
+    assertNull(FullyQualifiedName.getParentFQN("a"));
   }
 
   @Test
@@ -95,5 +94,15 @@ class FullyQualifiedNameTest {
     assertEquals("a", FullyQualifiedName.getRoot("a.b.c"));
     assertEquals("a", FullyQualifiedName.getRoot("a.b"));
     assertNull(FullyQualifiedName.getRoot("a"));
+  }
+
+  @Test
+  void test_isParent() {
+    assertTrue(FullyQualifiedName.isParent("a.b.c", "a.b"));
+    assertTrue(FullyQualifiedName.isParent("a.b.c", "a"));
+    assertFalse(FullyQualifiedName.isParent("a", "a.b.c"));
+    assertFalse(FullyQualifiedName.isParent("a.b", "a.b.c"));
+    assertFalse(FullyQualifiedName.isParent("a.b.c", "a.b.c"));
+    assertFalse(FullyQualifiedName.isParent("a.b c", "a.b"));
   }
 }

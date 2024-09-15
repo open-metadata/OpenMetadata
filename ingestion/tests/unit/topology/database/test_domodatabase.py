@@ -1,3 +1,14 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 """
 Test Domo Dashboard using the topology
 """
@@ -33,7 +44,7 @@ MOCK_DATABASE_SERVICE = DatabaseService(
 MOCK_DATABASE = Database(
     id="a58b1856-729c-493b-bc87-6d2269b43ec0",
     name="do_it_all_with_default_config",
-    fullyQualifiedName="domodatabase_source.do_it_all_with_default_config",
+    fullyQualifiedName="domodashboard_source_test.do_it_all_with_default_config",
     displayName="do_it_all_with_default_config",
     description="",
     service=EntityReference(
@@ -44,7 +55,7 @@ MOCK_DATABASE = Database(
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="do_it_all_with_default_schema",
-    fullyQualifiedName="domodatabase_source.do_it_all_with_default_config.do_it_all_with_default_schema",
+    fullyQualifiedName="domodashboard_source_test.do_it_all_with_default_config.do_it_all_with_default_schema",
     service=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="database"),
     database=EntityReference(
         id="a58b1856-729c-493b-bc87-6d2269b43ec0",
@@ -52,22 +63,13 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
     ),
 )
 
-EXPTECTED_DATABASE_SCHEMA = [
+EXPECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
         name="do_it_all_with_default_schema",
         displayName=None,
         description=None,
-        owner=None,
-        database=EntityReference(
-            id="a58b1856-729c-493b-bc87-6d2269b43ec0",
-            type="database",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        owners=None,
+        database="domodashboard_source_test.do_it_all_with_default_config",
     )
 ]
 
@@ -82,7 +84,7 @@ mock_domodatabase_config = {
                 "secretToken": "abcdefg",
                 "accessToken": "accessTpokem",
                 "apiHost": "api.domo.com",
-                "sandboxDomain": "https://domain.domo.com",
+                "instanceDomain": "https://domain.domo.com",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -225,19 +227,10 @@ EXPTECTED_TABLE = [
         tableConstraints=None,
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
-        databaseSchema=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="databaseSchema",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        owners=None,
+        databaseSchema="domodashboard_source_test.do_it_all_with_default_config.do_it_all_with_default_schema",
         tags=None,
-        viewDefinition=None,
+        schemaDefinition=None,
         extension=None,
     )
 ]
@@ -261,19 +254,25 @@ class DomoDatabaseUnitTest(TestCase):
     ) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_domodatabase_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_domodatabase_config
+        )
         self.domodatabase = DomodatabaseSource.create(
             mock_domodatabase_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.domodatabase.context.__dict__["database"] = MOCK_DATABASE
-        self.domodatabase.context.__dict__["dashboard_service"] = MOCK_DATABASE_SERVICE
-        self.domodatabase.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
+        self.domodatabase.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.domodatabase.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.domodatabase.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_schema(self):
         schema_list = []
         yield_schemas = self.domodatabase.yield_database_schema(
-            schema_name=MOCK_DATABASE_SCHEMA.name
+            schema_name=MOCK_DATABASE_SCHEMA.name.root
         )
 
         for schema in yield_schemas:
@@ -281,7 +280,7 @@ class DomoDatabaseUnitTest(TestCase):
                 schema_list.append(schema)
 
         for _, (exptected, original) in enumerate(
-            zip(EXPTECTED_DATABASE_SCHEMA, schema_list)
+            zip(EXPECTED_DATABASE_SCHEMA, schema_list)
         ):
             self.assertEqual(exptected, original)
 

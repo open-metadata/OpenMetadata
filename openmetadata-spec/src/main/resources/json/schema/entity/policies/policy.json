@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/policies/policy.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Policy",
-  "description": "This schema defines the Policy entity. A Policy defines lifecycle or access control that needs to be applied across different Data Entities.",
+  "description": "A `Policy` defines control that needs to be applied across different Data Entities.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.policies.Policy",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -36,9 +36,9 @@
       "description": "A short description of the Policy, comprehensible to regular users.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this Policy.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Policy.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "href": {
@@ -72,11 +72,11 @@
     },
     "teams" : {
       "description": "Teams that use this policy directly and not through roles.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "roles" : {
       "description": "Roles that use this policy.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "location": {
       "description": "Location to which a policy is applied. This field is relevant only for `lifeCycle` policies.",
@@ -102,6 +102,10 @@
     "disabled" : {
       "description": "System policy can't be deleted. Use this flag to disable them.",
       "type": "boolean"
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "rules"],

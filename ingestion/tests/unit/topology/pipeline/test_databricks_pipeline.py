@@ -21,7 +21,6 @@ from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequ
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
-    StatusType,
     Task,
     TaskStatus,
 )
@@ -33,10 +32,14 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
+)
+from metadata.ingestion.source.pipeline.databrickspipeline.models import (
+    DataBrickPipelineDetails,
 )
 from metadata.utils.logger import log_ansi_encoded_string
 
@@ -52,7 +55,7 @@ mock_file_path = (
     / "resources/datasets/databricks_pipeline_history.json"
 )
 with open(mock_file_path) as file:
-    mock_history_data: dict = json.load(file)
+    mock_run_data: dict = json.load(file)
 
 
 mock_databricks_config = {
@@ -91,45 +94,37 @@ mock_databricks_config = {
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="databricks_pipeline_test",
+    fullyQualifiedName=FullyQualifiedEntityName("databricks_pipeline_test"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.DatabricksPipeline,
 )
 
 MOCK_PIPELINE = Pipeline(
     id="2aaa012e-099a-11ed-861d-0242ac120002",
-    name="606358633757175",
-    fullyQualifiedName="databricks_pipeline_source.606358633757175",
+    name="11223344",
+    fullyQualifiedName="databricks_pipeline_test.11223344",
     displayName="OpenMetadata Databricks Workflow",
     tasks=[
         Task(
-            name="task_1",
-            displayName="task_1",
-            taskType="notebook_task",
-            downstreamTasks=["task_2", "task_3", "task_4"],
-        ),
-        Task(
-            name="task_2",
-            displayName="task_2",
-            taskType="spark_python_task",
+            name="Orders_Ingest",
+            description="Ingests order data",
+            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
             downstreamTasks=[],
+            taskType="SINGLE_TASK",
         ),
         Task(
-            name="task_3",
-            displayName="task_3",
-            taskType="python_wheel_task",
-            downstreamTasks=["task_5"],
+            name="Match",
+            description="Matches orders with user sessions",
+            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+            downstreamTasks=["Orders_Ingested", "Sessionize"],
+            taskType="SINGLE_TASK",
         ),
         Task(
-            name="task_4",
-            displayName="task_4",
-            taskType="pipeline_task",
-            downstreamTasks=["task_5"],
-        ),
-        Task(
-            name="task_5",
-            displayName="task_5",
-            taskType="sql_task",
+            name="Sessionize",
+            description="Extracts session data from events",
+            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
             downstreamTasks=[],
+            taskType="SINGLE_TASK",
         ),
     ],
     service=EntityReference(
@@ -138,81 +133,70 @@ MOCK_PIPELINE = Pipeline(
 )
 
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
-    name="606358633757175",
+    name="11223344",
     displayName="OpenMetadata Databricks Workflow",
-    description="OpenMetadata Databricks Workflow",
+    description="This job contain multiple tasks that are required to produce the weekly shark sightings report.",
     tasks=[
         Task(
-            name="task_1",
-            displayName="task_1",
-            taskType="notebook_task",
-            downstreamTasks=["task_2", "task_3", "task_4"],
-        ),
-        Task(
-            name="task_2",
-            displayName="task_2",
-            taskType="spark_python_task",
+            name="Orders_Ingest",
+            description="Ingests order data",
+            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
             downstreamTasks=[],
+            taskType="SINGLE_TASK",
         ),
         Task(
-            name="task_3",
-            displayName="task_3",
-            taskType="python_wheel_task",
-            downstreamTasks=["task_5"],
+            name="Match",
+            description="Matches orders with user sessions",
+            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+            downstreamTasks=["Orders_Ingested", "Sessionize"],
+            taskType="SINGLE_TASK",
         ),
         Task(
-            name="task_4",
-            displayName="task_4",
-            taskType="pipeline_task",
-            downstreamTasks=["task_5"],
-        ),
-        Task(
-            name="task_5",
-            displayName="task_5",
-            taskType="sql_task",
+            name="Sessionize",
+            description="Extracts session data from events",
+            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
             downstreamTasks=[],
+            taskType="SINGLE_TASK",
         ),
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    scheduleInterval="20 30 * * * ?",
+    service=FullyQualifiedEntityName(root="databricks_pipeline_test"),
 )
-
 
 EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
-        pipeline_fqn="databricks_pipeline_source.606358633757175",
+        pipeline_fqn="databricks_pipeline_test.11223344",
         pipeline_status=PipelineStatus(
-            executionStatus=StatusType.Successful.value,
+            timestamp=1625060460483,
+            executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
-                    name="one_task",
-                    executionStatus=StatusType.Successful.value,
-                    startTime=1672691730568,
-                    endTime=1672691793559,
-                    logLink="https://workspace.azuredatabricks.net/?o=workspace_id#job/325697581681107/run/821029",
-                )
-            ],
-            timestamp=1672691730552,
-        ),
-    ),
-    OMetaPipelineStatus(
-        pipeline_fqn="databricks_pipeline_source.606358633757175",
-        pipeline_status=PipelineStatus(
-            executionStatus=StatusType.Failed.value,
-            taskStatus=[
+                    name="Orders_Ingest",
+                    executionStatus="Successful",
+                    startTime=1625060460483,
+                    endTime=1625060863413,
+                    logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+                ),
                 TaskStatus(
-                    name="one_task",
-                    executionStatus=StatusType.Failed.value,
-                    startTime=1672691610544,
-                    endTime=1672691677696,
-                    logLink="https://workspace.azuredatabricks.net/?o=workspace_id#job/325697581681107/run/820956",
-                )
+                    name="Match",
+                    executionStatus="Successful",
+                    startTime=1625060460483,
+                    endTime=1625060863413,
+                    logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+                ),
+                TaskStatus(
+                    name="Sessionize",
+                    executionStatus="Successful",
+                    startTime=1625060460483,
+                    endTime=1625060863413,
+                    logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+                ),
             ],
-            timestamp=1672691610525,
         ),
     ),
 ]
+
+PIPELINE_LIST = [DataBrickPipelineDetails(**data) for data in mock_data]
 
 
 class DatabricksPipelineTests(TestCase):
@@ -230,36 +214,45 @@ class DatabricksPipelineTests(TestCase):
         super().__init__(methodName)
         log_ansi_encoded_string(message="init")
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
 
         self.databricks = DatabrickspipelineSource.create(
             mock_databricks_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.databricks.context.__dict__["pipeline"] = MOCK_PIPELINE
-        self.databricks.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
-        self.databricks.context.__dict__["job_id_list"] = [
-            mock_history_data[0]["job_id"]
-        ]
+        self.databricks.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+        self.databricks.context.get().__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.root
 
     @patch(
         "metadata.ingestion.source.database.databricks.client.DatabricksClient.list_jobs"
     )
+    # @patch(
+    #     "metadata.ingestion.source.database.databricks.client.DatabricksClient.get_job_runs"
+    # )
     def test_get_pipelines_list(self, list_jobs):
         list_jobs.return_value = mock_data
         results = list(self.databricks.get_pipelines_list())
-        self.assertEqual(mock_data, results)
+        self.assertEqual(PIPELINE_LIST, results)
 
-    def test_yield_pipeline(self):
-        pipelines = list(self.databricks.yield_pipeline(mock_data[0]))[0]
+    @patch(
+        "metadata.ingestion.source.database.databricks.client.DatabricksClient.get_job_runs"
+    )
+    def test_yield_pipeline(self, get_job_runs):
+        get_job_runs.return_value = mock_run_data
+        pipelines = list(self.databricks.yield_pipeline(PIPELINE_LIST[0]))[0].right
         self.assertEqual(pipelines, EXPECTED_CREATED_PIPELINES)
 
     @patch(
         "metadata.ingestion.source.database.databricks.client.DatabricksClient.get_job_runs"
     )
     def test_yield_pipeline_status(self, get_job_runs):
-        get_job_runs.return_value = mock_history_data
-        pipeline_status = list(
-            self.databricks.yield_pipeline_status(mock_history_data[0]["job_id"])
-        )
+        get_job_runs.return_value = mock_run_data
+        pipeline_status = [
+            either.right
+            for either in self.databricks.yield_pipeline_status(
+                DataBrickPipelineDetails(**mock_data[0])
+            )
+        ]
         self.assertEqual(pipeline_status, EXPECTED_PIPELINE_STATUS)

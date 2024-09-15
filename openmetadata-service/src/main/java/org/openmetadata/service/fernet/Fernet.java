@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.fernet;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.FERNET_KEY_NULL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.FIELD_ALREADY_TOKENIZED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.FIELD_NOT_TOKENIZED;
@@ -25,15 +26,20 @@ import com.macasaet.fernet.Validator;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.TemporalAmount;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.util.JsonUtils;
 
 public class Fernet {
-  private static Fernet instance;
+  private static final Fernet instance = new Fernet();
   private String fernetKey;
   public static final String FERNET_PREFIX = "fernet:";
   public static final String FERNET_NO_ENCRYPTION = "no_encryption_at_rest";
@@ -45,18 +51,18 @@ public class Fernet {
         }
       };
 
-  private Fernet() {}
+  private Fernet() {
+    /* Private constructor for singleton */
+  }
 
   public static Fernet getInstance() {
-    if (instance == null) {
-      instance = new Fernet();
-    }
     return instance;
   }
 
   public void setFernetKey(OpenMetadataApplicationConfig config) {
     FernetConfiguration fernetConfiguration = config.getFernetConfiguration();
-    if (fernetConfiguration != null && !FERNET_NO_ENCRYPTION.equals(fernetConfiguration.getFernetKey())) {
+    if (fernetConfiguration != null
+        && !FERNET_NO_ENCRYPTION.equals(fernetConfiguration.getFernetKey())) {
       setFernetKey(fernetConfiguration.getFernetKey());
     }
   }
@@ -97,9 +103,47 @@ public class Fernet {
     if (tokenized != null && tokenized.startsWith(FERNET_PREFIX)) {
       String str = tokenized.split(FERNET_PREFIX, 2)[1];
       Token token = Token.fromString(str);
-      List<Key> keys = Arrays.stream(fernetKey.split(",")).map(Key::new).collect(Collectors.toList());
+      List<Key> keys =
+          Arrays.stream(fernetKey.split(",")).map(Key::new).collect(Collectors.toList());
       return token.validateAndDecrypt(keys, validator);
     }
     throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
+  }
+
+  /** Decrypts value without throwing an Exception in case it is not a Fernet encrypted value */
+  public String decryptIfApplies(String value) {
+    return Fernet.isTokenized(value) ? decrypt(value) : value;
+  }
+
+  /** Encrypt value without throwing an Exception in case it is not encrypted */
+  public String encryptIfApplies(@NonNull String secret) {
+    return isTokenized(secret) ? secret : encrypt(secret);
+  }
+
+  public static List<SubscriptionDestination> encryptWebhookSecretKey(
+      List<SubscriptionDestination> subscriptions) {
+    List<SubscriptionDestination> result = new ArrayList<>();
+
+    subscriptions.forEach(
+        subscription -> {
+          if (SubscriptionDestination.SubscriptionType.WEBHOOK.equals(subscription.getType())) {
+            Webhook webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
+
+            if (webhook != null && !nullOrEmpty(webhook.getSecretKey())) {
+              String encryptedSecretKey =
+                  Fernet.getInstance().encryptIfApplies(webhook.getSecretKey());
+              webhook.withSecretKey(encryptedSecretKey);
+
+              Map<String, Object> config = (Map<String, Object>) subscription.getConfig();
+              if (config != null) {
+                config.put("secretKey", encryptedSecretKey);
+                subscription.withConfig(config);
+              }
+            }
+          }
+
+          result.add(subscription);
+        });
+    return result;
   }
 }

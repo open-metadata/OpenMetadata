@@ -1,0 +1,10 @@
+{
+  "name": "TotalAssets",
+  "displayName": "Total Assets",
+  "description": "Total Assets KnowledgePanel shows Data Asset growth across the organization.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.TotalAssets",
+  "data": {
+    "gridSizes": ["medium","large"]
+  }
+}

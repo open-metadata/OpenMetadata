@@ -29,9 +29,13 @@ class RestUtilTest {
   void hrefTests() throws URISyntaxException {
     URI baseUri = URI.create("http://base");
     assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "path"));
-    assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path")); // Remove leading slash
-    assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "path/")); // Removing trailing slash
-    assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path/")); // Remove both slashes
+    assertEquals(
+        URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path")); // Remove leading slash
+    assertEquals(
+        URI.create("http://base/path"),
+        RestUtil.getHref(baseUri, "path/")); // Removing trailing slash
+    assertEquals(
+        URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path/")); // Remove both slashes
 
     UriInfo uriInfo = mockUriInfo("http://base/");
     assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "collection"));
@@ -40,20 +44,39 @@ class RestUtilTest {
     assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "/collection/"));
 
     UUID id = UUID.randomUUID();
-    assertEquals(URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "collection", id));
-    assertEquals(URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "/collection", id));
-    assertEquals(URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "collection/", id));
-    assertEquals(URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "/collection/", id));
+    assertEquals(
+        URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "collection", id));
+    assertEquals(
+        URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "/collection", id));
+    assertEquals(
+        URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "collection/", id));
+    assertEquals(
+        URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "/collection/", id));
 
-    assertEquals(URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "collection", "path"));
-    assertEquals(URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "/collection", "/path"));
-    assertEquals(URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "collection/", "path/"));
-    assertEquals(URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "/collection/", "/path/"));
+    assertEquals(
+        URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "collection", "path"));
+    assertEquals(
+        URI.create("http://base/collection/path"),
+        RestUtil.getHref(uriInfo, "/collection", "/path"));
+    assertEquals(
+        URI.create("http://base/collection/path"),
+        RestUtil.getHref(uriInfo, "collection/", "path/"));
+    assertEquals(
+        URI.create("http://base/collection/path"),
+        RestUtil.getHref(uriInfo, "/collection/", "/path/"));
 
-    assertEquals(URI.create("http://base/collection/path%201"), RestUtil.getHref(uriInfo, "collection", "path 1"));
-    assertEquals(URI.create("http://base/collection/path%201"), RestUtil.getHref(uriInfo, "/collection", "/path 1"));
-    assertEquals(URI.create("http://base/collection/path%201"), RestUtil.getHref(uriInfo, "collection/", "path 1/"));
-    assertEquals(URI.create("http://base/collection/path%201"), RestUtil.getHref(uriInfo, "/collection/", "/path 1/"));
+    assertEquals(
+        URI.create("http://base/collection/path%201"),
+        RestUtil.getHref(uriInfo, "collection", "path 1"));
+    assertEquals(
+        URI.create("http://base/collection/path%201"),
+        RestUtil.getHref(uriInfo, "/collection", "/path 1"));
+    assertEquals(
+        URI.create("http://base/collection/path%201"),
+        RestUtil.getHref(uriInfo, "collection/", "path 1/"));
+    assertEquals(
+        URI.create("http://base/collection/path%201"),
+        RestUtil.getHref(uriInfo, "/collection/", "/path 1/"));
   }
 
   private UriInfo mockUriInfo(String uri) throws URISyntaxException {

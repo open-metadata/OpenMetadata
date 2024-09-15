@@ -16,7 +16,7 @@ import { ActivityFeedCardProp } from '../ActivityFeed/ActivityFeedCard/ActivityF
 
 export interface NotificationFeedProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'feedType' | 'taskDetails'> {
+    Pick<ActivityFeedCardProp, 'feedType' | 'task'> {
   createdBy: string;
   entityType: string;
   entityFQN: string;

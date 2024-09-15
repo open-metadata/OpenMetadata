@@ -17,87 +17,46 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-try:
-    from typing import get_args
-except ImportError:
-    from typing_compat import get_args
-
 from pydantic import BaseModel
-from requests.utils import quote
 
-from metadata.generated.schema.analytics.webAnalyticEventData import (
-    WebAnalyticEventData,
+from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
+    CreateIngestionPipelineRequest,
 )
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
-from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
-from metadata.generated.schema.entity.classification.classification import (
-    Classification,
-)
-from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.glossary import Glossary
-from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
-from metadata.generated.schema.entity.data.location import Location
-from metadata.generated.schema.entity.data.metrics import Metrics
-from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.report import Report
-from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
-from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.metadataService import MetadataService
-from metadata.generated.schema.entity.services.mlmodelService import MlModelService
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
-from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.entity.teams.role import Role
-from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testDefinition import TestDefinition
-from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
+from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.custom_property_mixin import (
+    OMetaCustomPropertyMixin,
+)
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
-from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
+from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
+from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
+from metadata.ingestion.ometa.mixins.suggestions_mixin import OMetaSuggestionsMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
-from metadata.ingestion.ometa.provider_registry import (
-    InvalidAuthProviderException,
-    auth_provider_registry,
-)
-from metadata.ingestion.ometa.utils import get_entity_type, model_str
+from metadata.ingestion.ometa.routes import ROUTES
+from metadata.ingestion.ometa.utils import get_entity_type, model_str, quote
 from metadata.utils.logger import ometa_logger
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.ssl_registry import get_verify_ssl_fn
@@ -135,7 +94,6 @@ class OpenMetadata(
     OMetaTableMixin,
     OMetaTopicMixin,
     OMetaVersionMixin,
-    GlossaryMixin,
     OMetaServiceMixin,
     ESMixin,
     OMetaServerMixin,
@@ -145,6 +103,11 @@ class OpenMetadata(
     DataInsightMixin,
     OMetaIngestionPipelineMixin,
     OMetaUserMixin,
+    OMetaQueryMixin,
+    OMetaRolePolicyMixin,
+    OMetaSearchIndexMixin,
+    OMetaCustomPropertyMixin,
+    OMetaSuggestionsMixin,
     Generic[T, C],
 ):
     """
@@ -156,38 +119,28 @@ class OpenMetadata(
     """
 
     client: REST
-    _auth_provider: AuthenticationProvider
+    _auth_provider: OpenMetadataAuthenticationProvider
     config: OpenMetadataConnection
 
     class_root = ".".join(["metadata", "generated", "schema"])
     entity_path = "entity"
     api_path = "api"
     data_path = "data"
-    policies_path = "policies"
-    services_path = "services"
-    teams_path = "teams"
-    classifications_path = "classification"
-    tests_path = "tests"
 
-    def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
+    def __init__(
+        self,
+        config: OpenMetadataConnection,
+        raw_data: bool = False,
+    ):
         self.config = config
 
         # Load the secrets' manager client
         self.secrets_manager_client = SecretsManagerFactory(
             config.secretsManagerProvider,
-            config.secretsManagerCredentials,
+            config.secretsManagerLoader,
         ).get_secrets_manager()
 
-        # Load the auth provider init from the registry
-        auth_provider_fn = auth_provider_registry.registry.get(
-            self.config.authProvider.value
-        )
-        if not auth_provider_fn:
-            raise InvalidAuthProviderException(
-                f"Cannot find {self.config.authProvider.value} in {auth_provider_registry.registry}"
-            )
-
-        self._auth_provider = auth_provider_fn(self.config)
+        self._auth_provider = OpenMetadataAuthenticationProvider.create(self.config)
 
         get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 
@@ -204,256 +157,33 @@ class OpenMetadata(
         if self.config.enableVersionValidation:
             self.validate_versions()
 
-    def get_suffix(self, entity: Type[T]) -> str:  # pylint: disable=R0911,R0912
+    @staticmethod
+    def get_suffix(entity: Type[T]) -> str:
         """
         Given an entity Type from the generated sources,
         return the endpoint to run requests.
-
-        Might be interesting to follow a more strict
-        and type-checked approach
-
-        Disabled pylint R0911: too-many-return-statements
-        Disabled pylint R0912: too-many-branches
         """
 
-        # Entity Schemas
-        if issubclass(
-            entity, get_args(Union[MlModel, self.get_create_entity_type(MlModel)])
-        ):
-            return "/mlmodels"
+        route = ROUTES.get(entity.__name__)
+        if route is None:
+            raise MissingEntityTypeException(
+                f"Missing {entity} type when generating suffixes"
+            )
 
-        if issubclass(
-            entity, get_args(Union[Chart, self.get_create_entity_type(Chart)])
-        ):
-            return "/charts"
-
-        if issubclass(
-            entity, get_args(Union[Dashboard, self.get_create_entity_type(Dashboard)])
-        ):
-            return "/dashboards"
-
-        if issubclass(
-            entity, get_args(Union[Database, self.get_create_entity_type(Database)])
-        ):
-            return "/databases"
-
-        if issubclass(
-            entity,
-            get_args(
-                Union[DatabaseSchema, self.get_create_entity_type(DatabaseSchema)]
-            ),
-        ):
-            return "/databaseSchemas"
-
-        if issubclass(
-            entity, get_args(Union[Pipeline, self.get_create_entity_type(Pipeline)])
-        ):
-            return "/pipelines"
-
-        if issubclass(
-            entity, get_args(Union[Location, self.get_create_entity_type(Location)])
-        ):
-            return "/locations"
-
-        if issubclass(
-            entity, get_args(Union[Policy, self.get_create_entity_type(Policy)])
-        ):
-            return "/policies"
-
-        if issubclass(
-            entity, get_args(Union[Table, self.get_create_entity_type(Table)])
-        ):
-            return "/tables"
-
-        if issubclass(
-            entity, get_args(Union[Topic, self.get_create_entity_type(Topic)])
-        ):
-            return "/topics"
-
-        if issubclass(entity, Metrics):
-            return "/metrics"
-
-        if issubclass(entity, AddLineageRequest):
-            return "/lineage"
-
-        if issubclass(entity, Report):
-            return "/reports"
-
-        if issubclass(
-            entity,
-            get_args(
-                Union[
-                    Tag,
-                    self.get_create_entity_type(Tag),
-                ]
-            ),
-        ):
-            return "/tags"
-
-        if issubclass(
-            entity,
-            get_args(
-                Union[
-                    Classification,
-                    self.get_create_entity_type(Classification),
-                ]
-            ),
-        ):
-            return "/classifications"
-
-        if issubclass(
-            entity, get_args(Union[Glossary, self.get_create_entity_type(Glossary)])
-        ):
-            return "/glossaries"
-
-        if issubclass(
-            entity,
-            get_args(Union[GlossaryTerm, self.get_create_entity_type(GlossaryTerm)]),
-        ):
-            return "/glossaryTerms"
-
-        if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
-            return "/roles"
-
-        if issubclass(entity, get_args(Union[Team, self.get_create_entity_type(Team)])):
-            return "/teams"
-
-        if issubclass(entity, get_args(Union[User, self.get_create_entity_type(User)])):
-            return "/users"
-
-        # Services Schemas
-        if issubclass(
-            entity,
-            get_args(
-                Union[DatabaseService, self.get_create_entity_type(DatabaseService)]
-            ),
-        ):
-            return "/services/databaseServices"
-
-        if issubclass(
-            entity,
-            get_args(
-                Union[DashboardService, self.get_create_entity_type(DashboardService)]
-            ),
-        ):
-            return "/services/dashboardServices"
-
-        if issubclass(
-            entity,
-            get_args(
-                Union[MessagingService, self.get_create_entity_type(MessagingService)]
-            ),
-        ):
-            return "/services/messagingServices"
-
-        if issubclass(
-            entity,
-            get_args(
-                Union[PipelineService, self.get_create_entity_type(PipelineService)]
-            ),
-        ):
-            return "/services/pipelineServices"
-
-        if issubclass(
-            entity,
-            get_args(
-                Union[StorageService, self.get_create_entity_type(StorageService)]
-            ),
-        ):
-            return "/services/storageServices"
-
-        if issubclass(
-            entity,
-            get_args(
-                Union[MlModelService, self.get_create_entity_type(MlModelService)]
-            ),
-        ):
-            return "/services/mlmodelServices"
-
-        if issubclass(
-            entity,
-            get_args(
-                Union[MetadataService, self.get_create_entity_type(MetadataService)]
-            ),
-        ):
-            return "/services/metadataServices"
-
-        if issubclass(
-            entity,
-            IngestionPipeline,
-        ):
-            return "/services/ingestionPipelines"
-
-        if issubclass(
-            entity,
-            get_args(
-                Union[TestDefinition, self.get_create_entity_type(TestDefinition)]
-            ),
-        ):
-            return "/testDefinition"
-
-        if issubclass(
-            entity,
-            get_args(Union[TestSuite, self.get_create_entity_type(TestSuite)]),
-        ):
-            return "/testSuite"
-
-        if issubclass(
-            entity,
-            get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
-        ):
-            return "/testCase"
-
-        if issubclass(entity, WebAnalyticEventData):
-            return "/analytics/webAnalyticEvent/collect"
-
-        if issubclass(entity, DataInsightChart):
-            return "/dataInsight"
-
-        if issubclass(
-            entity,
-            Kpi,
-        ):
-            return "/kpi"
-
-        raise MissingEntityTypeException(
-            f"Missing {entity} type when generating suffixes"
-        )
+        return route
 
     def get_module_path(self, entity: Type[T]) -> str:
         """
         Based on the entity, return the module path
         it is found inside generated
         """
-
-        if "policy" in entity.__name__.lower():
-            return self.policies_path
-
-        if "service" in entity.__name__.lower():
-            return self.services_path
-
-        if (
-            "tag" in entity.__name__.lower()
-            or "classification" in entity.__name__.lower()
-        ):
-            return self.classifications_path
-
-        if "test" in entity.__name__.lower():
-            return self.tests_path
-
-        if (
-            "user" in entity.__name__.lower()
-            or "role" in entity.__name__.lower()
-            or "team" in entity.__name__.lower()
-        ):
-            return self.teams_path
-
-        return self.data_path
+        if issubclass(entity, CreateIngestionPipelineRequest):
+            return "services.ingestionPipelines"
+        return entity.__module__.split(".")[-2]
 
     def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
         """
         imports and returns the Create Type from an Entity Type T.
-
         We are following the expected path structure to import
         on-the-fly the necessary class and pass it to the consumer
         """
@@ -491,11 +221,17 @@ class OpenMetadata(
         file_name = (
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
+            .replace("dashboarddatamodel", "dashboardDataModel")
+            .replace("apiendpoint", "apiEndpoint")
+            .replace("apicollection", "apiCollection")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")
+            .replace("searchindex", "searchIndex")
+            .replace("storedprocedure", "storedProcedure")
+            .replace("ingestionpipeline", "ingestionPipeline")
+            .replace("dataproduct", "dataProduct")
         )
-
         class_path = ".".join(
             filter(
                 None,
@@ -507,17 +243,14 @@ class OpenMetadata(
                 ],
             )
         )
-
         entity_class = getattr(
             __import__(class_path, globals(), locals(), [class_name]), class_name
         )
         return entity_class
 
-    def create_or_update(self, data: C) -> T:
+    def _create(self, data: C, method: str) -> T:
         """
-        We allow CreateEntity for PUT, so we expect a type C.
-
-        We PUT to the endpoint and return the Entity generated result
+        Internal logic to run POST vs. PUT
         """
         entity = data.__class__
         is_create = "create" in data.__class__.__name__.lower()
@@ -527,22 +260,31 @@ class OpenMetadata(
             entity_class = self.get_entity_from_create(entity)
         else:
             raise InvalidEntityException(
-                f"PUT operations need a CrateEntity, not {entity}"
+                f"PUT operations need a CreateEntity, not {entity}"
             )
-        resp = self.client.put(
-            self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder)
-        )
+
+        fn = getattr(self.client, method)
+        resp = fn(self.get_suffix(entity), data=data.model_dump_json())
         if not resp:
             raise EmptyPayloadException(
-                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.json()}"
+                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.model_dump_json()}"
             )
         return entity_class(**resp)
+
+    def create_or_update(self, data: C) -> T:
+        """Run a PUT requesting via create request C"""
+        return self._create(data=data, method="put")
+
+    def create(self, data: C) -> T:
+        """Run a POST requesting via create request C"""
+        return self._create(data=data, method="post")
 
     def get_by_name(
         self,
         entity: Type[T],
         fqn: Union[str, FullyQualifiedEntityName],
         fields: Optional[List[str]] = None,
+        nullable: bool = True,
     ) -> Optional[T]:
         """
         Return entity by name or None
@@ -550,8 +292,9 @@ class OpenMetadata(
 
         return self._get(
             entity=entity,
-            path=f"name/{quote(model_str(fqn), safe='')}",
+            path=f"name/{quote(fqn)}",
             fields=fields,
+            nullable=nullable,
         )
 
     def get_by_id(
@@ -559,15 +302,24 @@ class OpenMetadata(
         entity: Type[T],
         entity_id: Union[str, basic.Uuid],
         fields: Optional[List[str]] = None,
+        nullable: bool = True,
     ) -> Optional[T]:
         """
         Return entity by ID or None
         """
-
-        return self._get(entity=entity, path=model_str(entity_id), fields=fields)
+        return self._get(
+            entity=entity,
+            path=model_str(entity_id),
+            fields=fields,
+            nullable=nullable,
+        )
 
     def _get(
-        self, entity: Type[T], path: str, fields: Optional[List[str]] = None
+        self,
+        entity: Type[T],
+        path: str,
+        fields: Optional[List[str]] = None,
+        nullable: bool = True,
     ) -> Optional[T]:
         """
         Generic GET operation for an entity
@@ -584,6 +336,12 @@ class OpenMetadata(
                 )
             return entity(**resp)
         except APIError as err:
+            # We can expect some GET calls to return us a None and manage it in following steps.
+            # No need to pollute the logs in these cases.
+            if err.code == 404 and nullable:
+                return None
+
+            # Any other API errors will be passed to the client
             logger.debug(traceback.format_exc())
             logger.debug(
                 "GET %s for %s. Error %s - %s",
@@ -592,7 +350,7 @@ class OpenMetadata(
                 err.status_code,
                 err,
             )
-            return None
+            raise err
 
     def get_entity_reference(
         self, entity: Type[T], fqn: str
@@ -616,13 +374,15 @@ class OpenMetadata(
         logger.debug("Cannot find the Entity %s", fqn)
         return None
 
+    # pylint: disable=too-many-locals
     def list_entities(
         self,
         entity: Type[T],
         fields: Optional[List[str]] = None,
-        after: str = None,
+        after: Optional[str] = None,
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
+        skip_on_failure: bool = False,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -639,7 +399,22 @@ class OpenMetadata(
         if self._use_raw_data:
             return resp
 
-        entities = [entity(**t) for t in resp["data"]]
+        if skip_on_failure:
+            entities = []
+            for elmt in resp["data"]:
+                try:
+                    entities.append(entity(**elmt))
+                except Exception as exc:
+                    logger.error(
+                        f"Error creating entity [{entity.__name__}]. Failed with exception {exc}"
+                    )
+                    logger.debug(
+                        f"Can't create [{entity.__name__}] from [{elmt}]. Skipping."
+                    )
+                    continue
+        else:
+            entities = [entity(**elmt) for elmt in resp["data"]]
+
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
         return EntityList(entities=entities, total=total, after=after)
@@ -648,8 +423,9 @@ class OpenMetadata(
         self,
         entity: Type[T],
         fields: Optional[List[str]] = None,
-        limit: int = 1000,
+        limit: int = 100,
         params: Optional[Dict[str, str]] = None,
+        skip_on_failure: bool = False,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -663,18 +439,25 @@ class OpenMetadata(
 
         # First batch of Entities
         entity_list = self.list_entities(
-            entity=entity, fields=fields, limit=limit, params=params
+            entity=entity,
+            fields=fields,
+            limit=limit,
+            params=params,
+            skip_on_failure=skip_on_failure,
         )
-        for elem in entity_list.entities:
-            yield elem
+        yield from entity_list.entities
 
         after = entity_list.after
         while after:
             entity_list = self.list_entities(
-                entity=entity, fields=fields, limit=limit, params=params, after=after
+                entity=entity,
+                fields=fields,
+                limit=limit,
+                params=params,
+                after=after,
+                skip_on_failure=skip_on_failure,
             )
-            for elem in entity_list.entities:
-                yield elem
+            yield from entity_list.entities
             after = entity_list.after
 
     def list_versions(
@@ -736,7 +519,7 @@ class OpenMetadata(
         """
         Run version api call. Return `true` if response is not None
         """
-        raw_version = self.client.get("/version")["version"]
+        raw_version = self.client.get("/system/version")["version"]
         return raw_version is not None
 
     def close(self):

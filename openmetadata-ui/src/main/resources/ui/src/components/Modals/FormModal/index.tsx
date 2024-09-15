@@ -65,6 +65,7 @@ const FormModal = ({
           </Button>
         </Space>
       }
+      maskClosable={false}
       open={visible}
       title={
         <Typography.Text strong data-testid="header">

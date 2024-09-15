@@ -11,12 +11,15 @@ source:
       type: Snowflake
       connectionOptions: {}
       connectionArguments: {}
+      clientSessionKeepAlive: True
   sourceConfig:
     config:
       markDeletedTables: true
       includeTables: true
       includeViews: true
+      includeStoredProcedures: false
       type: DatabaseMetadata
+      includeDDL: true
       schemaFilterPattern:
         excludes:
         - information_schema.*
@@ -24,6 +27,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  loggerLevel: DEBUG
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

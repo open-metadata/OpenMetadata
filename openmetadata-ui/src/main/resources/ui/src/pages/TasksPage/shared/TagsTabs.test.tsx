@@ -29,7 +29,7 @@ jest.mock('./TagsDiffView', () => ({
 
 const mockProps = {
   tags: [],
-  suggestedTags: [],
+  value: [],
   onChange: jest.fn(),
 };
 
@@ -48,7 +48,7 @@ describe('Test Description Tabs Component', () => {
     expect(await screen.findByText('New')).toBeInTheDocument();
   });
 
-  it('Should render the component relavant tab component', async () => {
+  it('Should render the component relevant tab component', async () => {
     render(<TagsTabs {...mockProps} />);
 
     const tabs = await screen.findAllByRole('tab');

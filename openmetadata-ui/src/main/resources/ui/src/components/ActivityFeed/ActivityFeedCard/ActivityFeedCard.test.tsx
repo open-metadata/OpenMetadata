@@ -14,17 +14,12 @@
 import { findByText, queryByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Post, ThreadType } from '../../../generated/entity/feed/thread';
+import {
+  Post,
+  Thread,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from './ActivityFeedCard';
-
-jest.mock('../../../AppState', () => ({
-  userDetails: {
-    name: '',
-  },
-  users: [{ name: '' }],
-  getCurrentUserDetails: jest.fn(),
-  isProfilePicLoading: jest.fn(),
-}));
 
 jest.mock('../../../utils/FeedUtils', () => ({
   getEntityField: jest.fn(),
@@ -42,6 +37,10 @@ jest.mock('./FeedCardHeader/FeedCardHeader', () => {
   return jest.fn().mockReturnValue(<p>FeedCardHeader</p>);
 });
 
+jest.mock('../../common/PopOverCard/UserPopOverCard', () => {
+  return jest.fn().mockImplementation(() => <>testUserPopOverCard</>);
+});
+
 const mockFeedCardProps = {
   feed: {} as Post,
   replies: 0,
@@ -55,6 +54,7 @@ const mockFeedCardProps = {
   deletePostHandler: jest.fn(),
   updateThreadHandler: jest.fn(),
   onReply: jest.fn(),
+  task: {} as Thread,
   feedType: ThreadType.Conversation,
 };
 

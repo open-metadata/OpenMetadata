@@ -11,9 +11,35 @@
  *  limitations under the License.
  */
 
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { Column as ContainerColumn } from '../generated/entity/data/container';
+import { Database } from '../generated/entity/data/database';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Glossary } from '../generated/entity/data/glossary';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { Column as TableColumn } from '../generated/entity/data/table';
+import { Field } from '../generated/entity/data/topic';
 import { TagLabel } from '../generated/type/tagLabel';
+import { ServicesType } from '../interface/service.interface';
+import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 
 export interface TagLabelWithStatus extends TagLabel {
   added: boolean | undefined;
   removed: boolean | undefined;
 }
+
+export interface VersionStatus {
+  added?: boolean;
+  removed?: boolean;
+}
+
+export type VersionEntityTypes =
+  | VersionData
+  | Glossary
+  | GlossaryTerm
+  | ServicesType
+  | Database
+  | DatabaseSchema
+  | APICollection;
+
+export type AssetsChildForVersionPages = TableColumn | ContainerColumn | Field;

@@ -13,88 +13,70 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isNil, isUndefined } from 'lodash';
-import { PagingResponse } from 'Models';
+
+import { PagingResponse, RestoreRequestType } from 'Models';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import {
   AuthenticationMechanism,
   CreateUser,
 } from '../generated/api/teams/createUser';
 import { JwtAuth } from '../generated/auth/jwtAuth';
+import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
 import { Bot } from '../generated/entity/bot';
 import { Role } from '../generated/entity/teams/role';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { Include } from '../generated/type/include';
+import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
-export const getUsers = async (
-  arrQueryFields?: string,
-  limit?: number,
-  team?: { [key: string]: string },
-  isAdmin?: boolean,
-  isBot?: boolean
-) => {
-  let qParam = '';
-  if (!isUndefined(team)) {
-    const paramArr = Object.entries(team);
-    qParam = paramArr.reduce((pre, curr, index) => {
-      return (
-        pre + `${curr[0]}=${curr[1]}${index !== paramArr.length - 1 ? '&' : ''}`
-      );
-    }, '');
-  }
-  if (!isUndefined(isAdmin)) {
-    qParam = `${qParam}&isAdmin=${isAdmin}`;
-  }
-  if (!isUndefined(isBot)) {
-    qParam = `${qParam}&isBot=${isBot}`;
-  }
-  const url =
-    `${getURLWithQueryFields('/users', arrQueryFields, qParam)}` +
-    (!isNil(limit)
-      ? `${arrQueryFields?.length || qParam ? '&' : '?'}limit=${limit}`
-      : '');
+export interface UsersQueryParams {
+  fields?: string;
+  team?: string;
+  limit?: number;
+  before?: string;
+  after?: string;
+  isAdmin?: boolean;
+  isBot?: boolean;
+  include?: Include;
+}
 
-  const response = await APIClient.get<PagingResponse<User[]>>(url);
+export const getUsers = async (params: UsersQueryParams) => {
+  const response = await APIClient.get<PagingResponse<User[]>>('/users', {
+    params,
+  });
 
   return response.data;
 };
 
 export const updateUserDetail = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<User>>(
     `/users/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
 };
 
-export const getUserByName = async (name: string, arrQueryFields?: string) => {
-  const url = getURLWithQueryFields('/users/name/' + name, arrQueryFields);
-
-  const response = await APIClient.get<User>(url);
-
-  return response.data;
-};
-
-export const getUserById = async (id: string, arrQueryFields?: string) => {
-  const url = getURLWithQueryFields(`/users/${id}`, arrQueryFields);
-
-  const response = await APIClient.get<User>(url);
+export const getUserByName = async (name: string, params?: ListParams) => {
+  const response = await APIClient.get<User>(
+    `/users/name/${getEncodedFqn(name)}`,
+    { params }
+  );
 
   return response.data;
 };
 
-export const getLoggedInUser = async (arrQueryFields?: string) => {
-  const url = getURLWithQueryFields('/users/loggedInUser', arrQueryFields);
+export const getUserById = async (id: string, params?: ListParams) => {
+  const response = await APIClient.get<User>(`/users/${id}`, { params });
 
-  const response = await APIClient.get<User>(url);
+  return response.data;
+};
+
+export const getLoggedInUser = async (params?: ListParams) => {
+  const response = await APIClient.get<User>('/users/loggedInUser', { params });
 
   return response.data;
 };
@@ -142,6 +124,15 @@ export const updateUser = (
   return APIClient.put('/users', data);
 };
 
+export const restoreUser = async (id: string) => {
+  const response = await APIClient.put<RestoreRequestType, AxiosResponse<User>>(
+    `/users/restore`,
+    { id }
+  );
+
+  return response.data;
+};
+
 export const getUserCounts = (): Promise<AxiosResponse<unknown>> => {
   return APIClient.get(
     `/search/query?q=*&from=0&size=0&index=${SearchIndex.USER}`
@@ -159,9 +150,6 @@ export const getUserToken = async (id: string) => {
 };
 
 export const generateUserToken = async (id: string, expiry: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
   const payload = {
     JWTTokenExpiry: expiry,
   };
@@ -169,7 +157,7 @@ export const generateUserToken = async (id: string, expiry: string) => {
   const response = await APIClient.put<typeof payload, AxiosResponse<JwtAuth>>(
     `/users/generateToken/${id}`,
     payload,
-    configOptions
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
   );
 
   return response.data;
@@ -200,23 +188,19 @@ export const getAuthMechanismForBotUser = async (botId: string) => {
   return response.data;
 };
 
-export const getBotByName = async (name: string, arrQueryFields?: string) => {
-  const url = getURLWithQueryFields(`/bots/name/${name}`, arrQueryFields);
-
-  const response = await APIClient.get<Bot>(url);
+export const getBotByName = async (name: string, params?: ListParams) => {
+  const response = await APIClient.get<Bot>(
+    `/bots/name/${getEncodedFqn(name)}`,
+    { params }
+  );
 
   return response.data;
 };
 
 export const updateBotDetail = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Bot>>(
     `/bots/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
@@ -226,6 +210,43 @@ export const createUserWithPut = async (userDetails: CreateUser) => {
   const response = await APIClient.put<CreateUser, AxiosResponse<User>>(
     `/users`,
     userDetails
+  );
+
+  return response.data;
+};
+
+export const getUserAccessToken = async () => {
+  const response = await APIClient.get<{
+    data: PersonalAccessToken[];
+  }>('/users/security/token');
+
+  return response.data.data;
+};
+
+export const updateUserAccessToken = async ({
+  JWTTokenExpiry,
+  tokenName,
+}: {
+  JWTTokenExpiry?: string;
+  tokenName?: string;
+}) => {
+  const response = await APIClient.put<
+    {
+      JWTTokenExpiry?: string;
+      tokenName?: string;
+    },
+    AxiosResponse<PersonalAccessToken>
+  >(`/users/security/token`, {
+    JWTTokenExpiry,
+    tokenName,
+  });
+
+  return response.data;
+};
+
+export const revokeAccessToken = async (params: string) => {
+  const response = await APIClient.put<PersonalAccessToken[]>(
+    '/users/security/token/revoke?' + params
   );
 
   return response.data;

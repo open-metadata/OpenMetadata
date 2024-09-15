@@ -18,13 +18,12 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TablePartition;
-import org.openmetadata.schema.type.TableType;
 
 public final class DatabaseUtil {
   private DatabaseUtil() {}
@@ -35,7 +34,8 @@ public final class DatabaseUtil {
       if (c.getConstraint() == ColumnConstraint.PRIMARY_KEY) {
         primaryKeyColumns++;
         if (primaryKeyColumns > 1) {
-          throw new IllegalArgumentException("Multiple columns tagged with primary key constraints");
+          throw new IllegalArgumentException(
+              "Multiple columns tagged with primary key constraints");
         }
       }
     }
@@ -43,7 +43,8 @@ public final class DatabaseUtil {
   }
 
   /** Validate column and table constraints */
-  public static void validateConstraints(List<Column> columns, List<TableConstraint> tableConstraints) {
+  public static void validateConstraints(
+      List<Column> columns, List<TableConstraint> tableConstraints) {
     boolean primaryColumnExists = validateSinglePrimaryColumn(columns);
     if (tableConstraints == null) {
       return;
@@ -53,7 +54,8 @@ public final class DatabaseUtil {
     List<String> columnNames = new ArrayList<>();
     columns.forEach(c -> columnNames.add(c.getName()));
     for (TableConstraint t : tableConstraints) {
-      if (t.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY && primaryColumnExists) {
+      if (t.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY
+          && primaryColumnExists) {
         throw new IllegalArgumentException(
             "A column already tagged as a primary key and table constraint also includes primary key");
       }
@@ -72,25 +74,19 @@ public final class DatabaseUtil {
     }
     List<String> columnNames = new ArrayList<>();
     columns.forEach(c -> columnNames.add(c.getName()));
-    for (String columnName : tablePartition.getColumns()) {
-      if (!columnNames.contains(columnName)) {
+    // Add BigQuery partition pseudo columns
+    columnNames.add("_PARTITIONDATE");
+    columnNames.add("_PARTITIONTIME");
+    for (PartitionColumnDetails partitionColumnDetails : tablePartition.getColumns()) {
+      if (!columnNames.contains(partitionColumnDetails.getColumnName())) {
         throw new IllegalArgumentException("Invalid column name found in table partition");
       }
     }
   }
 
-  public static void validateViewDefinition(TableType tableType, String viewDefinition) {
-    if ((tableType == null || tableType.equals(TableType.Regular) || tableType.equals(TableType.External))
-        && viewDefinition != null
-        && !viewDefinition.isEmpty()) {
-      throw new IllegalArgumentException(
-          "ViewDefinition can only be set on TableType View, " + "SecureView or MaterializedView");
-    }
-  }
-
-  public static void validateColumns(Table table) {
-    validateColumnNames(table.getColumns());
-    for (Column c : table.getColumns()) {
+  public static void validateColumns(List<Column> columns) {
+    validateColumnNames(columns);
+    for (Column c : columns) {
       validateColumnDataTypeDisplay(c);
       validateColumnDataLength(c);
       validateArrayColumn(c);
@@ -103,7 +99,8 @@ public final class DatabaseUtil {
     List<String> columnNames = new ArrayList<>();
     for (Column c : columns) {
       if (columnNames.contains(c.getName())) {
-        throw new IllegalArgumentException(String.format("Column name %s is repeated", c.getName()));
+        throw new IllegalArgumentException(
+            String.format("Column name %s is repeated", c.getName()));
       }
       columnNames.add(c.getName());
     }
@@ -130,7 +127,7 @@ public final class DatabaseUtil {
             || dataType == ColumnDataType.VARBINARY)
         && column.getDataLength() == null) {
       throw new IllegalArgumentException(
-          "For column data types char, varchar, binary, varbinary dataLength " + "must not be null");
+          "For column data types char, varchar, binary, varbinary dataLength must not be null");
     }
   }
 
@@ -141,15 +138,9 @@ public final class DatabaseUtil {
       column.setArrayDataType(null);
     }
 
-    if (dataType == ColumnDataType.ARRAY) {
-      if (column.getArrayDataType() == null) {
-        throw new IllegalArgumentException("For column data type array, arrayDataType " + "must not be null");
-      }
-
-      if (!column.getDataTypeDisplay().startsWith("array<")) {
-        throw new IllegalArgumentException(
-            "For column data type array, dataTypeDisplay must be of type " + "array<arrayDataType>");
-      }
+    if (dataType == ColumnDataType.ARRAY && (column.getArrayDataType() == null)) {
+      throw new IllegalArgumentException(
+          "For column data type array, arrayDataType must not be null");
     }
   }
 
@@ -157,14 +148,11 @@ public final class DatabaseUtil {
     ColumnDataType dataType = column.getDataType();
     if (dataType == ColumnDataType.STRUCT) {
       if (column.getChildren() == null) {
-        throw new IllegalArgumentException("For column data type struct, children " + "must not be null");
+        throw new IllegalArgumentException(
+            "For column data type struct, children must not be null");
       }
 
       validateColumnNames(column.getChildren());
-      if (!column.getDataTypeDisplay().startsWith("struct<")) {
-        throw new IllegalArgumentException(
-            "For column data type struct, dataTypeDisplay must be of type " + "struct<member fields>");
-      }
     }
   }
 
@@ -174,7 +162,8 @@ public final class DatabaseUtil {
     }
     if (column.getScale() != null) {
       if (column.getPrecision() == null) {
-        throw new IllegalArgumentException("Scale is set but precision is not set for the column " + column.getName());
+        throw new IllegalArgumentException(
+            "Scale is set but precision is not set for the column " + column.getName());
       }
       if (column.getScale() > column.getPrecision()) {
         throw new IllegalArgumentException(

@@ -38,7 +38,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.lineage_mixin import OMetaLineageMixin
 from metadata.ingestion.ometa.utils import format_name
@@ -56,11 +55,14 @@ class OMetaMlModelMixin(OMetaLineageMixin):
 
     client: REST
 
-    def add_mlmodel_lineage(self, model: MlModel) -> Dict[str, Any]:
+    def add_mlmodel_lineage(
+        self, model: MlModel, description: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Iterates over MlModel's Feature Sources and
         add the lineage information.
         :param model: MlModel containing EntityReferences
+        :param description: Lineage description
         :return: List of added lineage information
         """
 
@@ -78,8 +80,8 @@ class OMetaMlModelMixin(OMetaLineageMixin):
         for entity_ref in refs:
             self.add_lineage(
                 AddLineageRequest(
-                    description="MlModel uses FeatureSource",
                     edge=EntitiesEdge(
+                        description=description,
                         fromEntity=entity_ref,
                         toEntity=self.get_entity_reference(
                             entity=MlModel, fqn=model.fullyQualifiedName
@@ -88,7 +90,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                 )
             )
 
-        mlmodel_lineage = self.get_lineage_by_id(MlModel, str(model.id.__root__))
+        mlmodel_lineage = self.get_lineage_by_id(MlModel, str(model.id.root))
 
         return mlmodel_lineage
 
@@ -149,9 +151,9 @@ class OMetaMlModelMixin(OMetaLineageMixin):
             mlHyperParameters=[
                 MlHyperParameter(
                     name=key,
-                    value=value,
+                    value=str(value),
                 )
                 for key, value in model.get_params().items()
             ],
-            service=EntityReference(id=service.id, type="mlmodelService"),
+            service=service.fullyQualifiedName,
         )

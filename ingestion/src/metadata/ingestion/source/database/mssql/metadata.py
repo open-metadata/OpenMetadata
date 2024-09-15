@@ -10,294 +10,133 @@
 #  limitations under the License.
 """MSSQL source module"""
 import traceback
-from typing import Iterable
+from typing import Dict, Iterable, List, Optional
 
-from sqlalchemy import sql
-from sqlalchemy import types as sqltypes
-from sqlalchemy import util
-from sqlalchemy.dialects.mssql import information_schema as ischema
-from sqlalchemy.dialects.mssql.base import (
-    MSBinary,
-    MSChar,
-    MSDialect,
-    MSNChar,
-    MSNText,
-    MSNVarchar,
-    MSString,
-    MSText,
-    MSVarBinary,
-    _db_plus_owner,
+from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
+from sqlalchemy.engine.reflection import Inspector
+
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
 )
-from sqlalchemy.engine import reflection
-from sqlalchemy.sql import func
-from sqlalchemy.types import NVARCHAR
-from sqlalchemy.util import compat
-
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.generated.schema.type.basic import EntityName
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.mssql.constants import (
+    DEFAULT_DATETIME_FORMAT,
+    MSSQL_DATEFORMAT_DATETIME_MAP,
+)
+from metadata.ingestion.source.database.mssql.models import (
+    STORED_PROC_LANGUAGE_MAP,
+    MssqlStoredProcedure,
+)
 from metadata.ingestion.source.database.mssql.queries import (
-    MSSQL_ALL_VIEW_DEFINITIONS,
-    MSSQL_GET_COLUMN_COMMENTS,
-    MSSQL_GET_TABLE_COMMENTS,
+    MSSQL_GET_DATABASE,
+    MSSQL_GET_STORED_PROCEDURE_QUERIES,
+    MSSQL_GET_STORED_PROCEDURES,
+)
+from metadata.ingestion.source.database.mssql.utils import (
+    get_columns,
+    get_foreign_keys,
+    get_pk_constraint,
+    get_sqlalchemy_engine_dateformat,
+    get_table_comment,
+    get_table_names,
+    get_unique_constraints,
+    get_view_definition,
+    get_view_names,
+)
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureMixin,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
+from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqa_utils import update_mssql_ischema_names
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_all_view_definitions,
-    get_table_comment_wrapper,
-    get_view_definition_wrapper,
+    get_table_ddl,
 )
 
 logger = ingestion_logger()
 
-
-@reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return get_table_comment_wrapper(
-        self,
-        connection,
-        table_name=table_name,
-        schema=schema,
-        query=MSSQL_GET_TABLE_COMMENTS,
-    )
-
-
-@reflection.cache
-@_db_plus_owner
-def get_columns(
-    self, connection, tablename, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
-    """
-    This function overrides to add support for column comments
-    """
-    is_temp_table = tablename.startswith("#")
-    if is_temp_table:
-        (
-            owner,
-            tablename,
-        ) = self._get_internal_temp_table_name(  # pylint: disable=protected-access
-            connection, tablename
-        )
-
-        columns = ischema.mssql_temp_table_columns
-    else:
-        columns = ischema.columns
-
-    computed_cols = ischema.computed_columns
-    identity_cols = ischema.identity_columns
-    if owner:
-        whereclause = sql.and_(
-            columns.c.table_name == tablename,
-            columns.c.table_schema == owner,
-        )
-        full_name = columns.c.table_schema + "." + columns.c.table_name
-    else:
-        whereclause = columns.c.table_name == tablename
-        full_name = columns.c.table_name
-
-    join = columns.join(
-        computed_cols,
-        onclause=sql.and_(
-            computed_cols.c.object_id == func.object_id(full_name),
-            computed_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
-        ),
-        isouter=True,
-    ).join(
-        identity_cols,
-        onclause=sql.and_(
-            identity_cols.c.object_id == func.object_id(full_name),
-            identity_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
-        ),
-        isouter=True,
-    )
-
-    if self._supports_nvarchar_max:  # pylint: disable=protected-access
-        computed_definition = computed_cols.c.definition
-    else:
-        # tds_version 4.2 does not support NVARCHAR(MAX)
-        computed_definition = sql.cast(computed_cols.c.definition, NVARCHAR(4000))
-
-    s = (  # pylint: disable=invalid-name
-        sql.select(
-            columns,
-            computed_definition,
-            computed_cols.c.is_persisted,
-            identity_cols.c.is_identity,
-            identity_cols.c.seed_value,
-            identity_cols.c.increment_value,
-        )
-        .where(whereclause)
-        .select_from(join)
-        .order_by(columns.c.ordinal_position)
-    )
-
-    c = connection.execution_options(  # pylint:disable=invalid-name
-        future_result=True
-    ).execute(s)
-
-    cols = []
-    for row in c.mappings():
-        name = row[columns.c.column_name]
-        type_ = row[columns.c.data_type]
-        nullable = row[columns.c.is_nullable] == "YES"
-        charlen = row[columns.c.character_maximum_length]
-        numericprec = row[columns.c.numeric_precision]
-        numericscale = row[columns.c.numeric_scale]
-        default = row[columns.c.column_default]
-        collation = row[columns.c.collation_name]
-        definition = row[computed_definition]
-        is_persisted = row[computed_cols.c.is_persisted]
-        is_identity = row[identity_cols.c.is_identity]
-        identity_start = row[identity_cols.c.seed_value]
-        identity_increment = row[identity_cols.c.increment_value]
-
-        coltype = self.ischema_names.get(type_, None)
-        comment = None
-        kwargs = {}
-        if coltype in (
-            MSString,
-            MSChar,
-            MSNVarchar,
-            MSNChar,
-            MSText,
-            MSNText,
-            MSBinary,
-            MSVarBinary,
-            sqltypes.LargeBinary,
-        ):
-            if charlen == -1:
-                charlen = None
-            kwargs["length"] = charlen
-            if collation:
-                kwargs["collation"] = collation
-
-        if coltype is None:
-            util.warn(f"Did not recognize type '{type_}' of column '{name}'")
-            coltype = sqltypes.NULLTYPE
-        else:
-            if issubclass(coltype, sqltypes.Numeric):
-                kwargs["precision"] = numericprec
-
-                if not issubclass(coltype, sqltypes.Float):
-                    kwargs["scale"] = numericscale
-
-            coltype = coltype(**kwargs)
-        cdict = {
-            "name": name,
-            "type": coltype,
-            "nullable": nullable,
-            "default": default,
-            "autoincrement": is_identity is not None,
-            "comment": comment,
-        }
-
-        if definition is not None and is_persisted is not None:
-            cdict["computed"] = {
-                "sqltext": definition,
-                "persisted": is_persisted,
-            }
-
-        if is_identity is not None:
-            # identity_start and identity_increment are Decimal or None
-            if identity_start is None or identity_increment is None:
-                cdict["identity"] = {}
-            else:
-                if isinstance(coltype, sqltypes.BigInteger):
-                    start = compat.long_type(identity_start)
-                    increment = compat.long_type(identity_increment)
-                elif isinstance(coltype, sqltypes.Integer):
-                    start = int(identity_start)
-                    increment = int(identity_increment)
-                else:
-                    start = identity_start
-                    increment = identity_increment
-
-                cdict["identity"] = {
-                    "start": start,
-                    "increment": increment,
-                }
-
-        cols.append(cdict)
-    cursor = connection.execute(
-        MSSQL_GET_COLUMN_COMMENTS.format(schema_name=schema, table_name=tablename)
-    )
-    try:
-        for index, result in enumerate(cursor):
-            if result[2]:
-                cols[index]["comment"] = result[2]
-    except Exception:
-        logger.debug(traceback.format_exc())
-    return cols
-
-
-@reflection.cache
-@_db_plus_owner
-def get_view_definition(
-    self, connection, viewname, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument
-    return get_view_definition_wrapper(
-        self,
-        connection,
-        table_name=viewname,
-        schema=owner,
-        query=MSSQL_ALL_VIEW_DEFINITIONS,
-    )
-
+# The ntext, text, and image data types will be removed in a future version of SQL Server.
+# Avoid using these data types in new development work, and plan to modify applications that currently use them.
+# Use nvarchar(max), varchar(max), and varbinary(max) instead.
+# ref: https://learn.microsoft.com/en-us/sql/t-sql/data-types/ntext-text-and-image-transact-sql?view=sql-server-ver16
+ischema_names = update_mssql_ischema_names(ischema_names)
 
 MSDialect.get_table_comment = get_table_comment
 MSDialect.get_view_definition = get_view_definition
 MSDialect.get_all_view_definitions = get_all_view_definitions
 MSDialect.get_all_table_comments = get_all_table_comments
 MSDialect.get_columns = get_columns
+MSDialect.get_pk_constraint = get_pk_constraint
+MSDialect.get_unique_constraints = get_unique_constraints
+MSDialect.get_foreign_keys = get_foreign_keys
+MSDialect.get_table_names = get_table_names
+MSDialect.get_view_names = get_view_names
+
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
 
-class MssqlSource(CommonDbSourceService):
+class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from MSSQL Source
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: MssqlConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: MssqlConnection = config.serviceConnection.root.config
         if not isinstance(connection, MssqlConnection):
             raise InvalidSourceException(
                 f"Expected MssqlConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
+
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
     def get_database_names(self) -> Iterable[str]:
-        configured_db = self.config.serviceConnection.__root__.config.database
-        if configured_db:
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:
+            configured_db = self.config.serviceConnection.root.config.database
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
-            results = self.connection.execute(
-                "SELECT name FROM master.sys.databases order by name"
-            )
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
@@ -318,3 +157,90 @@ class MssqlSource(CommonDbSourceService):
                     logger.error(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
+
+    def get_stored_procedures(self) -> Iterable[MssqlStoredProcedure]:
+        """List Snowflake stored procedures"""
+        if self.source_config.includeStoredProcedures:
+            results = self.engine.execute(
+                MSSQL_GET_STORED_PROCEDURES.format(
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                )
+            ).all()
+            for row in results:
+                try:
+                    stored_procedure = MssqlStoredProcedure.model_validate(dict(row))
+                    yield stored_procedure
+                except Exception as exc:
+                    logger.error()
+                    self.status.failed(
+                        error=StackTraceError(
+                            name=dict(row).get("name", "UNKNOWN"),
+                            error=f"Error parsing Stored Procedure payload: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+
+    def yield_stored_procedure(
+        self, stored_procedure: MssqlStoredProcedure
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Prepare the stored procedure payload"""
+
+        try:
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(stored_procedure.name),
+                description=None,
+                storedProcedureCode=StoredProcedureCode(
+                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
+                    code=stored_procedure.definition,
+                ),
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                ),
+            )
+            yield Either(right=stored_procedure_request)
+            self.register_record_stored_proc_request(stored_procedure_request)
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=stored_procedure.name,
+                    error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+        """
+        Return the dictionary associating stored procedures to the
+        queries they triggered
+        """
+        start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
+        current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(
+            server_date_format, DEFAULT_DATETIME_FORMAT
+        )
+        start = start.strftime(current_datetime_format)
+        query = MSSQL_GET_STORED_PROCEDURE_QUERIES.format(
+            start_date=start,
+        )
+        try:
+            queries_dict = self.procedure_queries_dict(
+                query=query,
+            )
+        except Exception as ex:  # pylint: disable=broad-except
+            logger.debug(f"Error runnning query:\n{query}")
+            self.status.failed(
+                StackTraceError(
+                    name="Stored Procedure",
+                    error=f"Error trying to get stored procedure queries: {ex}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return {}
+
+        return queries_dict

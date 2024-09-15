@@ -11,70 +11,107 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Table, Tag, Tooltip } from 'antd';
+import { FilterOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Button, Col, Modal, Row, Space, TableProps, Tooltip } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Searchbar from 'components/common/searchbar/Searchbar';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { API_RES_MAX_SIZE } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { TagLabel } from 'generated/entity/data/glossaryTerm';
-import { Operation } from 'generated/entity/policies/policy';
-import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { compare } from 'fast-json-patch';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import React, { useCallback, useMemo, useState } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
-import { getGlossaryTerms, ListGlossaryTermsParams } from 'rest/glossaryAPI';
-import { getEntityName } from 'utils/CommonUtils';
+import { Link } from 'react-router-dom';
+import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
+import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
+import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
+import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
+import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
-  createGlossaryTermTree,
-  getRootLevelGlossaryTerm,
-  getSearchedDataFromGlossaryTree,
-} from 'utils/GlossaryUtils';
-import { checkPermission } from 'utils/PermissionsUtils';
+  API_RES_MAX_SIZE,
+  DE_ACTIVE_COLOR,
+  TEXT_BODY_COLOR,
+} from '../../../constants/constants';
+import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import {
-  getAddGlossaryTermsPath,
-  getGlossaryPath,
-  getTagPath,
-} from 'utils/RouterUtils';
-import { getTableExpandableConfig } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+  EntityReference,
+  GlossaryTerm,
+  Status,
+} from '../../../generated/entity/data/glossaryTerm';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  getFirstLevelGlossaryTerms,
+  getGlossaryTerms,
+  GlossaryTermWithChildren,
+  patchGlossaryTerm,
+} from '../../../rest/glossaryAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import Fqn from '../../../utils/Fqn';
+import {
+  buildTree,
+  findExpandableKeysForArray,
+  findGlossaryTermByFqn,
+  StatusClass,
+  StatusFilters,
+} from '../../../utils/GlossaryUtils';
+import { getGlossaryPath } from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
+import Loader from '../../common/Loader/Loader';
+import Table from '../../common/Table/Table';
+import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
+  MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
 
 const GlossaryTermTab = ({
-  glossaryId,
-  glossaryTermId,
-  selectedGlossaryFqn,
+  refreshGlossaryTerms,
+  permissions,
+  isGlossary,
+  termsLoading,
+  onAddGlossaryTerm,
+  onEditGlossaryTerm,
+  className,
 }: GlossaryTermTabProps) => {
+  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
+    useGlossaryStore();
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
-  const history = useHistory();
 
-  const { glossaryName } = useParams<{ glossaryName: string }>();
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [glossaryTerms, setGlossaryTerms] = useState<ModifiedGlossaryTerm[]>(
-    []
-  );
-  const [filterData, setFilterData] = useState<ModifiedGlossaryTerm[]>([]);
+  const glossaryTerms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
 
-  const createGlossaryTermPermission = useMemo(
-    () =>
-      checkPermission(
-        Operation.Create,
-        ResourceEntity.GLOSSARY_TERM,
-        permissions
-      ),
-    [permissions]
-  );
+  const [movedGlossaryTerm, setMovedGlossaryTerm] =
+    useState<MoveGlossaryTermType>();
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [isTableHovered, setIsTableHovered] = useState(false);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  const glossaryTermStatus: Status | null = useMemo(() => {
+    if (!isGlossary) {
+      return (activeGlossary as GlossaryTerm).status ?? Status.Approved;
+    }
+
+    return null;
+  }, [isGlossary, activeGlossary]);
+
+  const expandableKeys = useMemo(() => {
+    return findExpandableKeysForArray(glossaryTerms);
+  }, [glossaryTerms]);
 
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
@@ -82,239 +119,408 @@ const GlossaryTermTab = ({
         title: t('label.term-plural'),
         dataIndex: 'name',
         key: 'name',
-        width: 250,
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
-            {getEntityName(record)}
-          </Link>
-        ),
+        className: 'glossary-name-column',
+        ellipsis: true,
+        width: '40%',
+        render: (_, record) => {
+          const name = getEntityName(record);
+
+          return (
+            <>
+              {record.style?.iconURL && (
+                <img
+                  className="m-r-xss vertical-baseline"
+                  data-testid="tag-icon"
+                  height={12}
+                  src={record.style.iconURL}
+                />
+              )}
+              <Link
+                className="cursor-pointer vertical-baseline"
+                data-testid={name}
+                style={{ color: record.style?.color }}
+                to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
+                {name}
+              </Link>
+            </>
+          );
+        },
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: permissions.Create ? '21%' : '33%',
         render: (description: string) =>
           description.trim() ? (
             <RichTextEditorPreviewer
               enableSeeMoreVariant
               markdown={description}
-              maxLength={200}
+              maxLength={120}
             />
           ) : (
-            <span className="tw-no-description">
-              {t('label.no-description')}
-            </span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
       {
-        title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        width: 250,
-        render: (tags: TagLabel[]) =>
-          tags?.length
-            ? tags.map((tag) => (
-                <Tooltip
-                  className="cursor-pointer"
-                  key={tag.tagFQN}
-                  placement="bottomLeft"
-                  title={
-                    <div className="text-left p-xss">
-                      <div className="m-b-xs">
-                        <RichTextEditorPreviewer
-                          enableSeeMoreVariant={false}
-                          markdown={
-                            !isEmpty(tag.description)
-                              ? `**${tag.tagFQN}**\n${tag.description}`
-                              : t('label.no-entity', {
-                                  entity: t('label.description'),
-                                })
-                          }
-                          textVariant="white"
-                        />
-                      </div>
-                    </div>
-                  }
-                  trigger="hover">
-                  <Link
-                    to={getTagPath(tag.tagFQN.split(FQN_SEPARATOR_CHAR)[0])}>
-                    <Tag>{tag.tagFQN}</Tag>
-                  </Link>
-                </Tooltip>
-              ))
-            : '--',
+        title: t('label.owner'),
+        dataIndex: 'owners',
+        key: 'owners',
+        width: '17%',
+        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
+      },
+      {
+        title: t('label.status'),
+        dataIndex: 'status',
+        key: 'status',
+        width: '12%',
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
+          />
+        ),
+        filters: StatusFilters,
+        render: (_, record) => {
+          const status = record.status ?? Status.Approved;
+
+          return (
+            <StatusBadge
+              dataTestId={record.fullyQualifiedName + '-status'}
+              label={status}
+              status={StatusClass[status]}
+            />
+          );
+        },
+        onFilter: (value, record) => record.status === value,
       },
     ];
+    if (permissions.Create) {
+      data.push({
+        title: t('label.action-plural'),
+        key: 'new-term',
+        width: '10%',
+        render: (_, record) => {
+          const status = record.status ?? Status.Approved;
+          const allowAddTerm = status === Status.Approved;
+
+          return (
+            <div className="d-flex items-center">
+              {allowAddTerm && (
+                <Tooltip
+                  title={t('label.add-entity', {
+                    entity: t('label.glossary-term'),
+                  })}>
+                  <Button
+                    className="add-new-term-btn text-grey-muted flex-center"
+                    data-testid="add-classification"
+                    icon={
+                      <PlusOutlinedIcon color={DE_ACTIVE_COLOR} width="14px" />
+                    }
+                    size="small"
+                    type="text"
+                    onClick={() => {
+                      onAddGlossaryTerm(record as GlossaryTerm);
+                    }}
+                  />
+                </Tooltip>
+              )}
+
+              <Tooltip
+                title={t('label.edit-entity', {
+                  entity: t('label.glossary-term'),
+                })}>
+                <Button
+                  className="cursor-pointer flex-center"
+                  data-testid="edit-button"
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                  size="small"
+                  type="text"
+                  onClick={() => onEditGlossaryTerm(record as GlossaryTerm)}
+                />
+              </Tooltip>
+            </div>
+          );
+        },
+      });
+    }
 
     return data;
-  }, [filterData]);
+  }, [glossaryTerms, permissions]);
 
   const handleAddGlossaryTermClick = () => {
-    if (glossaryName) {
-      const activeTerm = glossaryName.split(FQN_SEPARATOR_CHAR);
-      const glossary = activeTerm[0];
-      if (activeTerm.length > 1) {
-        history.push(getAddGlossaryTermsPath(glossary, glossaryName));
-      } else {
-        history.push(getAddGlossaryTermsPath(glossary));
-      }
-    } else {
-      history.push(getAddGlossaryTermsPath(selectedGlossaryFqn ?? ''));
-    }
-  };
-
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-    if (value) {
-      setFilterData(getSearchedDataFromGlossaryTree(glossaryTerms, value));
-    } else {
-      setFilterData(glossaryTerms);
-    }
-  };
-
-  const fetchGlossaryTerm = async (
-    params?: ListGlossaryTermsParams,
-    updateChild = false
-  ) => {
-    !updateChild && setIsLoading(true);
-    try {
-      const { data } = await getGlossaryTerms({
-        ...params,
-        limit: API_RES_MAX_SIZE,
-        fields: 'tags,children',
-      });
-
-      const updatedData = getRootLevelGlossaryTerm(data, params);
-
-      if (updateChild) {
-        const updatedGlossaryTermTree = createGlossaryTermTree(
-          glossaryTerms,
-          updatedData,
-          params?.parent
-        );
-
-        // if search term is present, update table only for searched value
-        if (searchTerm) {
-          setFilterData((pre) =>
-            updatedGlossaryTermTree.filter((glossaryTerm) =>
-              pre.find((value) => value.id === glossaryTerm.id)
-            )
-          );
-        } else {
-          setFilterData(updatedGlossaryTermTree);
-        }
-
-        setGlossaryTerms(updatedGlossaryTermTree);
-      } else {
-        setGlossaryTerms(updatedData as ModifiedGlossaryTerm[]);
-        setFilterData(updatedData as ModifiedGlossaryTerm[]);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
+    onAddGlossaryTerm(
+      !isGlossary ? (activeGlossary as GlossaryTerm) : undefined
+    );
   };
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
-      ...getTableExpandableConfig<ModifiedGlossaryTerm>(),
-      onExpand: (isOpen, record) => {
-        if (isOpen) {
-          fetchGlossaryTerm({ parent: record.id }, true);
+      expandIcon: ({ expanded, onExpand, record }) => {
+        const { children, childrenCount } = record;
+
+        return childrenCount ?? children?.length ?? 0 > 0 ? (
+          <>
+            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            <Icon
+              className="m-r-xs vertical-baseline"
+              component={expanded ? IconDown : IconRight}
+              data-testid="expand-icon"
+              style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
+              onClick={(e) => onExpand(record, e)}
+            />
+          </>
+        ) : (
+          <>
+            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            <span className="expand-cell-empty-icon-container" />
+          </>
+        );
+      },
+      expandedRowKeys: expandedRowKeys,
+      onExpand: async (expanded, record) => {
+        if (expanded) {
+          let children = record.children as GlossaryTermWithChildren[];
+          if (!children?.length) {
+            const { data } = await getFirstLevelGlossaryTerms(
+              record.fullyQualifiedName || ''
+            );
+            const terms = cloneDeep(glossaryTerms) ?? [];
+
+            const item = findGlossaryTermByFqn(
+              terms,
+              record.fullyQualifiedName ?? ''
+            );
+
+            (item as ModifiedGlossary).children = data;
+
+            setGlossaryChildTerms(terms as ModifiedGlossary[]);
+
+            children = data;
+          }
+          setExpandedRowKeys([
+            ...expandedRowKeys,
+            record.fullyQualifiedName || '',
+          ]);
+
+          return children;
+        } else {
+          setExpandedRowKeys(
+            expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
+          );
         }
+
+        return <Loader />;
       },
     }),
-    [fetchGlossaryTerm]
+    [glossaryTerms, setGlossaryChildTerms, expandedRowKeys]
   );
 
-  useEffect(() => {
-    fetchGlossaryTerm({ glossary: glossaryId, parent: glossaryTermId });
-  }, [glossaryName]);
+  const handleMoveRow = useCallback(
+    async (dragRecord: GlossaryTerm, dropRecord?: GlossaryTerm) => {
+      const dropRecordFqnPart =
+        Fqn.split(dragRecord.fullyQualifiedName ?? '').length === 2;
 
-  if (isLoading) {
+      if (isUndefined(dropRecord) && dropRecordFqnPart) {
+        return;
+      }
+      if (dragRecord.id === dropRecord?.id) {
+        return;
+      }
+
+      setMovedGlossaryTerm({
+        from: dragRecord,
+        to: dropRecord,
+      });
+      setIsModalOpen(true);
+    },
+    []
+  );
+
+  const handleTableHover = (value: boolean) => setIsTableHovered(value);
+
+  const handleChangeGlossaryTerm = async () => {
+    if (movedGlossaryTerm) {
+      setIsTableLoading(true);
+      const newTermData = {
+        ...movedGlossaryTerm.from,
+        parent: isUndefined(movedGlossaryTerm.to)
+          ? null
+          : {
+              fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
+            },
+      };
+      const jsonPatch = compare(movedGlossaryTerm.from, newTermData);
+
+      try {
+        await patchGlossaryTerm(movedGlossaryTerm.from?.id || '', jsonPatch);
+        refreshGlossaryTerms && refreshGlossaryTerms();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsTableLoading(false);
+        setIsModalOpen(false);
+        setIsTableHovered(false);
+      }
+    }
+  };
+
+  const onTableRow: TableProps<ModifiedGlossaryTerm>['onRow'] = (
+    record,
+    index
+  ) =>
+    ({
+      index,
+      handleMoveRow,
+      handleTableHover,
+      record,
+    } as DraggableBodyRowProps<GlossaryTerm>);
+
+  const onTableHeader: TableProps<ModifiedGlossaryTerm>['onHeaderRow'] = () =>
+    ({
+      handleMoveRow,
+      handleTableHover,
+    } as DraggableBodyRowProps<GlossaryTerm>);
+
+  const onDragConfirmationModalClose = useCallback(() => {
+    setIsModalOpen(false);
+    setIsTableHovered(false);
+  }, []);
+
+  const fetchAllTerms = async () => {
+    setIsTableLoading(true);
+    const key = isGlossary ? 'glossary' : 'parent';
+    const { data } = await getGlossaryTerms({
+      [key]: activeGlossary?.id || '',
+      limit: API_RES_MAX_SIZE,
+      fields: [
+        TabSpecificField.OWNERS,
+        TabSpecificField.PARENT,
+        TabSpecificField.CHILDREN,
+      ],
+    });
+    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
+    const keys = data.reduce((prev, curr) => {
+      if (curr.children?.length) {
+        prev.push(curr.fullyQualifiedName ?? '');
+      }
+
+      return prev;
+    }, [] as string[]);
+
+    setExpandedRowKeys(keys);
+
+    setIsTableLoading(false);
+  };
+
+  const toggleExpandAll = () => {
+    if (expandedRowKeys.length === expandableKeys.length) {
+      setExpandedRowKeys([]);
+    } else {
+      fetchAllTerms();
+    }
+  };
+
+  const isAllExpanded = useMemo(() => {
+    return expandedRowKeys.length === expandableKeys.length;
+  }, [expandedRowKeys, expandableKeys]);
+
+  if (termsLoading) {
     return <Loader />;
   }
 
-  if (glossaryTerms.length === 0) {
+  if (isEmpty(glossaryTerms)) {
     return (
-      <ErrorPlaceHolder>
-        {t('message.no-entity-data-available', {
-          entity: t('label.glossary-term'),
-        })}
-        <Tooltip
-          title={
-            createGlossaryTermPermission
-              ? t('label.add-entity', { entity: t('label.term-lowercase') })
-              : NO_PERMISSION_FOR_ACTION
-          }>
-          <Button
-            ghost
-            className="m-t-xs"
-            data-testid="add-new-tag-button"
-            disabled={!createGlossaryTermPermission}
-            size="small"
-            type="primary"
-            onClick={handleAddGlossaryTermClick}>
-            {t('label.add-entity', { entity: t('label.term-lowercase') })}
-          </Button>
-        </Tooltip>
-      </ErrorPlaceHolder>
+      <ErrorPlaceHolder
+        className="m-t-xlg"
+        doc={GLOSSARIES_DOCS}
+        heading={t('label.glossary-term')}
+        permission={permissions.Create}
+        placeholderText={t('message.no-glossary-term')}
+        type={
+          permissions.Create && glossaryTermStatus === Status.Approved
+            ? ERROR_PLACEHOLDER_TYPE.CREATE
+            : ERROR_PLACEHOLDER_TYPE.NO_DATA
+        }
+        onClick={handleAddGlossaryTermClick}
+      />
     );
   }
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col span={8}>
-        <Searchbar
-          removeMargin
-          showLoadingStatus
-          placeholder={`${t('label.search-for-type', {
-            type: t('label.glossary-term'),
-          })}...`}
-          searchValue={searchTerm}
-          typingInterval={500}
-          onSearch={handleSearch}
-        />
-      </Col>
-      <Col className="flex justify-end" span={16}>
-        <Tooltip
-          title={
-            createGlossaryTermPermission
-              ? t('label.add-entity', { entity: t('label.term-lowercase') })
-              : NO_PERMISSION_FOR_ACTION
-          }>
-          <Button
-            className="tw-h-8 tw-rounded tw-mr-2"
-            data-testid="add-new-tag-button"
-            disabled={!createGlossaryTermPermission}
-            type="primary"
-            onClick={handleAddGlossaryTermClick}>
-            {t('label.add-entity', { entity: t('label.term-lowercase') })}
-          </Button>
-        </Tooltip>
-      </Col>
+    <Row className={className} gutter={[0, 16]}>
       <Col span={24}>
-        {filterData.length > 0 ? (
-          <Table
-            bordered
-            columns={columns}
-            dataSource={filterData}
-            expandable={expandableConfig}
-            pagination={false}
-            rowKey="name"
+        <div className="d-flex justify-end">
+          <Button
+            className="text-primary m-b-sm"
+            data-testid="expand-collapse-all-button"
             size="small"
-          />
+            type="text"
+            onClick={toggleExpandAll}>
+            <Space align="center" size={4}>
+              {isAllExpanded ? (
+                <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+              ) : (
+                <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+              )}
+
+              {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
+            </Space>
+          </Button>
+        </div>
+
+        {glossaryTerms.length > 0 ? (
+          <DndProvider backend={HTML5Backend}>
+            <Table
+              bordered
+              className={classNames('drop-over-background', {
+                'drop-over-table': isTableHovered,
+              })}
+              columns={columns}
+              components={TABLE_CONSTANTS}
+              dataSource={glossaryTerms}
+              expandable={expandableConfig}
+              loading={isTableLoading}
+              pagination={false}
+              rowKey="fullyQualifiedName"
+              size="small"
+              tableLayout="fixed"
+              onHeaderRow={onTableHeader}
+              onRow={onTableRow}
+            />
+          </DndProvider>
         ) : (
-          <ErrorPlaceHolder>
-            {t('message.no-entity-found-for-name', {
-              entity: t('label.glossary-term'),
-              name: searchTerm,
-            })}
-          </ErrorPlaceHolder>
+          <ErrorPlaceHolder />
         )}
+        <Modal
+          centered
+          destroyOnClose
+          closable={false}
+          confirmLoading={isTableLoading}
+          data-testid="confirmation-modal"
+          maskClosable={false}
+          okText={t('label.confirm')}
+          open={isModalOpen}
+          title={t('label.move-the-entity', {
+            entity: t('label.glossary-term'),
+          })}
+          onCancel={onDragConfirmationModalClose}
+          onOk={handleChangeGlossaryTerm}>
+          <Transi18next
+            i18nKey="message.entity-transfer-message"
+            renderElement={<strong />}
+            values={{
+              from: movedGlossaryTerm?.from.name,
+              to:
+                movedGlossaryTerm?.to?.name ??
+                (activeGlossary && getEntityName(activeGlossary)),
+              entity: isUndefined(movedGlossaryTerm?.to)
+                ? ''
+                : t('label.term-lowercase'),
+            }}
+          />
+        </Modal>
       </Col>
     </Row>
   );

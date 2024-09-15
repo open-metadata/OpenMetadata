@@ -21,9 +21,9 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
 )
 
 try:
-    from airflow.operators.python import PythonOperator
+    pass
 except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
+    pass
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -51,7 +51,7 @@ def build_dbt_workflow_config(
             config={},
         ),
         workflowConfig=build_workflow_config_property(ingestion_pipeline),
-        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.__root__,
+        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
     )
 
     return workflow_config

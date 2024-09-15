@@ -12,270 +12,263 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { get, isEmpty, isUndefined } from 'lodash';
+import {
+  default as React,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { ROUTES } from '../../../../constants/constants';
+import { mockTablePermission } from '../../../../constants/mockTourData.constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
-  getLatestTableProfileByFqn,
-  getTableQueryByTableId,
-} from 'rest/tableAPI';
-import { getListTestCase } from 'rest/testAPI';
-import { API_RES_MAX_SIZE } from '../../../../constants/constants';
-import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
+  OperationPermission,
+  ResourceEntity,
+} from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
-import { Table, TableType } from '../../../../generated/entity/data/table';
-import { Include } from '../../../../generated/type/include';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import { Table } from '../../../../generated/entity/data/table';
+import { TestSummary } from '../../../../generated/tests/testCase';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
+import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
+import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import {
-  formatNumberWithComma,
-  formTwoDigitNmber,
-} from '../../../../utils/CommonUtils';
-import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
-import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
-  OverallTableSummeryType,
-  TableTestsType,
-} from '../../../TableProfiler/TableProfiler.interface';
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityOverview,
+} from '../../../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
-import { BasicTableInfo, TableSummaryProps } from './TableSummary.interface';
+import './table-summary.less';
+import {
+  TableProfileDetails,
+  TableSummaryProps,
+} from './TableSummary.interface';
 
-function TableSummary({ entityDetails }: TableSummaryProps) {
+function TableSummary({
+  entityDetails,
+  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
+  tags,
+  isLoading,
+  highlights,
+}: TableSummaryProps) {
   const { t } = useTranslation();
-  const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
-  const [tableTests, setTableTests] = useState<TableTestsType>({
-    tests: [],
-    results: INITIAL_TEST_RESULT_SUMMARY,
-  });
+  const location = useCustomLocation();
+  const isTourPage = location.pathname.includes(ROUTES.TOUR);
+  const { getEntityPermission } = usePermissionProvider();
 
-  const isTableDeleted = useMemo(() => entityDetails.deleted, [entityDetails]);
+  const [profileData, setProfileData] = useState<TableProfileDetails>();
+  const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
+  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const tableDetails: Table = useMemo(
+    () => ({ ...entityDetails, ...profileData }),
+    [entityDetails, profileData]
+  );
+
+  const viewProfilerPermission = useMemo(
+    () => tablePermissions.ViewDataProfile || tablePermissions.ViewAll,
+    [tablePermissions]
+  );
+
+  const isTableDeleted = useMemo(() => tableDetails.deleted, [tableDetails]);
 
   const fetchAllTests = async () => {
-    try {
-      const { data } = await getListTestCase({
-        fields: 'testCaseResult,entityLink,testDefinition,testSuite',
-        entityLink: generateEntityLink(entityDetails?.fullyQualifiedName || ''),
-        includeAllTests: true,
-        limit: API_RES_MAX_SIZE,
-        include: Include.Deleted,
-      });
-      const tableTests: TableTestsType = {
-        tests: [],
-        results: { ...INITIAL_TEST_RESULT_SUMMARY },
-      };
-      data.forEach((test) => {
-        if (test.entityFQN === entityDetails?.fullyQualifiedName) {
-          tableTests.tests.push(test);
+    if (tableDetails?.testSuite?.id) {
+      try {
+        const res = await getTestCaseExecutionSummary(
+          tableDetails.testSuite.id
+        );
 
-          updateTestResults(
-            tableTests.results,
-            test.testCaseResult?.testCaseStatus || ''
-          );
-        }
-      });
-      setTableTests(tableTests);
+        setTestSuiteSummary(res);
+      } catch (error) {
+        // Error
+      }
+    }
+  };
+
+  const fetchProfilerData = useCallback(async () => {
+    try {
+      const { profile, tableConstraints } = await getLatestTableProfileByFqn(
+        tableDetails?.fullyQualifiedName ?? ''
+      );
+      setProfileData({ profile, tableConstraints });
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // Error
     }
-  };
+  }, [tableDetails]);
 
-  const fetchProfilerData = async () => {
-    try {
-      const profileResponse = await getLatestTableProfileByFqn(
-        entityDetails?.fullyQualifiedName || ''
-      );
-
-      const { profile } = profileResponse;
-
-      const queriesResponse = await getTableQueryByTableId(
-        entityDetails.id || ''
-      );
-
-      const { tableQueries } = queriesResponse;
-
-      setTableDetails((prev) => {
-        if (prev) {
-          return { ...prev, profile, tableQueries };
-        } else {
-          return {} as Table;
-        }
-      });
-    } catch {
-      showErrorToast(
-        t('server.entity-details-fetch-error', {
-          entityType: t('label.table-lowercase'),
-          entityName: entityDetails.name,
-        })
+  const profilerSummary = useMemo(() => {
+    if (!viewProfilerPermission) {
+      return (
+        <Typography.Text
+          className="text-grey-body"
+          data-testid="no-permissions-to-view">
+          {t('message.no-permission-to-view')}
+        </Typography.Text>
       );
     }
-  };
 
-  const overallSummary: OverallTableSummeryType[] | undefined = useMemo(() => {
-    if (isUndefined(tableDetails.profile)) {
-      return undefined;
-    }
+    return isUndefined(tableDetails.profile) ? (
+      <Typography.Text
+        className="text-grey-body"
+        data-testid="no-profiler-enabled-message">
+        {t('message.no-profiler-enabled-summary-message')}
+      </Typography.Text>
+    ) : (
+      <div className="d-flex justify-between">
+        <div className="profiler-item green" data-testid="test-passed">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-passed-value">
+            {formTwoDigitNumber(testSuiteSummary?.success ?? 0)}
+          </div>
+          <div className="text-xs text-grey-muted">{`${t(
+            'label.test-plural'
+          )} ${t('label.passed')}`}</div>
+        </div>
+        <div className="profiler-item amber" data-testid="test-aborted">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-aborted-value">
+            {formTwoDigitNumber(testSuiteSummary?.aborted ?? 0)}
+          </div>
+          <div className="text-xs text-grey-muted">{`${t(
+            'label.test-plural'
+          )} ${t('label.aborted')}`}</div>
+        </div>
+        <div className="profiler-item red" data-testid="test-failed">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-failed-value">
+            {formTwoDigitNumber(testSuiteSummary?.failed ?? 0)}
+          </div>
+          <div className="text-xs text-grey-muted">{`${t(
+            'label.test-plural'
+          )} ${t('label.failed')}`}</div>
+        </div>
+      </div>
+    );
+  }, [tableDetails, testSuiteSummary, viewProfilerPermission]);
 
-    return [
-      {
-        title: t('label.row-count'),
-        value: formatNumberWithComma(tableDetails?.profile?.rowCount ?? 0),
-      },
-      {
-        title: t('label.column-entity', {
-          entity: t('label.count'),
-        }),
-        value:
-          tableDetails?.profile?.columnCount ?? entityDetails.columns.length,
-      },
-      {
-        title: `${t('label.table-entity-text', {
-          entityText: t('label.sample'),
-        })} %`,
-        value: `${tableDetails?.profile?.profileSample ?? 100}%`,
-      },
-      {
-        title: `${t('label.test-plural')} ${t('label.passed')}`,
-        value: formTwoDigitNmber(tableTests.results.success),
-        className: 'success',
-      },
-      {
-        title: `${t('label.test-plural')} ${t('label.aborted')}`,
-        value: formTwoDigitNmber(tableTests.results.aborted),
-        className: 'aborted',
-      },
-      {
-        title: `${t('label.test-plural')} ${t('label.failed')}`,
-        value: formTwoDigitNmber(tableTests.results.failed),
-        className: 'failed',
-      },
-    ];
-  }, [tableDetails, tableTests]);
-
-  const { tableType, columns, tableQueries } = tableDetails;
-
-  const basicTableInfo: BasicTableInfo = useMemo(
-    () => ({
-      Type: tableType || TableType.Regular,
-      Queries: tableQueries?.length ? `${tableQueries?.length}` : '-',
-      Columns: columns?.length ? `${columns?.length}` : '-',
-    }),
-    [tableType, columns, tableQueries]
+  const entityInfo = useMemo(
+    () => getEntityOverview(ExplorePageTabs.TABLES, tableDetails),
+    [tableDetails]
   );
 
   const formattedColumnsData: BasicEntityInfo[] = useMemo(
     () =>
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
-        columns,
+        tableDetails.columns,
+        highlights,
         tableDetails.tableConstraints
       ),
-    [columns, tableDetails]
+    [tableDetails]
   );
 
-  useEffect(() => {
-    if (!isEmpty(entityDetails)) {
-      setTableDetails(entityDetails);
-      fetchAllTests();
-      !isTableDeleted && fetchProfilerData();
+  const init = useCallback(async () => {
+    if (tableDetails.id && !isTourPage) {
+      const tablePermission = await getEntityPermission(
+        ResourceEntity.TABLE,
+        tableDetails.id
+      );
+      setTablePermissions(tablePermission);
+      const shouldFetchProfilerData =
+        !isTableDeleted &&
+        tableDetails.service?.type === 'databaseService' &&
+        !isTourPage &&
+        tablePermission;
+
+      if (shouldFetchProfilerData) {
+        fetchProfilerData();
+        fetchAllTests();
+      }
+    } else {
+      setTablePermissions(mockTablePermission as OperationPermission);
     }
-  }, [entityDetails]);
+  }, [
+    tableDetails,
+    isTourPage,
+    isTableDeleted,
+    fetchProfilerData,
+    fetchAllTests,
+    getEntityPermission,
+  ]);
+
+  useEffect(() => {
+    init();
+  }, [tableDetails.id]);
 
   return (
-    <>
-      <Row className={classNames('m-md')} gutter={[0, 4]}>
-        <Col span={24}>
-          <TableDataCardTitle
-            dataTestId="summary-panel-title"
-            searchIndex={SearchIndex.TABLE}
-            source={tableDetails}
-          />
-        </Col>
-        <Col span={24}>
-          <Row>
-            {Object.keys(basicTableInfo).map((fieldName) => (
-              <Col key={fieldName} span={24}>
-                <Row gutter={16}>
-                  <Col
-                    className="text-gray"
-                    data-testid={`${fieldName}-label`}
-                    span={10}>
-                    {fieldName}
-                  </Col>
-                  <Col data-testid={`${fieldName}-value`} span={12}>
-                    {basicTableInfo[fieldName as keyof BasicTableInfo]}
-                  </Col>
-                </Row>
-              </Col>
-            ))}
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-0" />
+    <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
+      <>
+        <Row className="m-md m-t-0" gutter={[0, 4]}>
+          <Col span={24}>
+            <CommonEntitySummaryInfo
+              componentType={componentType}
+              entityInfo={entityInfo}
+            />
+          </Col>
+        </Row>
 
-      <Row className={classNames('m-md')} gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="section-header"
-            data-testid="profiler-header">
-            {t('label.profiler-amp-data-quality')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          {isUndefined(overallSummary) ? (
-            <Typography.Text data-testid="no-profiler-enabled-message">
-              {t('message.no-profiler-enabled-summary-message')}
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 8]}>
+          <Col span={24}>
+            <Typography.Text
+              className="summary-panel-section-title"
+              data-testid="profiler-header">
+              {t('label.profiler-amp-data-quality')}
             </Typography.Text>
-          ) : (
-            <Row gutter={[16, 16]}>
-              {overallSummary.map((field) => (
-                <Col key={field.title} span={10}>
-                  <Row>
-                    <Col span={24}>
-                      <Typography.Text
-                        className="text-gray"
-                        data-testid={`${field.title}-label`}>
-                        {field.title}
-                      </Typography.Text>
-                    </Col>
-                    <Col span={24}>
-                      <Typography.Text
-                        className={classNames(
-                          'summary-panel-statistics-count',
-                          field.className
-                        )}
-                        data-testid={`${field.title}-value`}>
-                        {field.value}
-                      </Typography.Text>
-                    </Col>
-                  </Row>
-                </Col>
-              ))}
-            </Row>
-          )}
-        </Col>
-      </Row>
-      <Divider className="m-0" />
-      <Row className={classNames('m-md')} gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="section-header"
-            data-testid="schema-header">
-            {t('label.schema')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <SummaryList
-            entityType={SummaryEntityType.COLUMN}
-            formattedEntityData={formattedColumnsData}
-          />
-        </Col>
-      </Row>
-    </>
+          </Col>
+          <Col span={24}>{profilerSummary}</Col>
+        </Row>
+
+        <Divider className="m-y-xs" />
+
+        <SummaryTagsDescription
+          entityDetail={tableDetails}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight(
+              tableDetails.tags,
+              get(highlights, 'tag.name')
+            )
+          }
+        />
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 8]}>
+          <Col span={24}>
+            <Typography.Text
+              className="summary-panel-section-title"
+              data-testid="schema-header">
+              {t('label.schema')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList
+              entityType={SummaryEntityType.COLUMN}
+              formattedEntityData={formattedColumnsData}
+            />
+          </Col>
+        </Row>
+      </>
+    </SummaryPanelSkeleton>
   );
 }
 

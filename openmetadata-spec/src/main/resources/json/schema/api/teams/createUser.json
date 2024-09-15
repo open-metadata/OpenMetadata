@@ -8,7 +8,7 @@
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
   "properties": {
     "name": {
-      "$ref": "../../entity/teams/user.json#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Used for user biography.",
@@ -28,7 +28,8 @@
     },
     "isBot": {
       "description": "When true indicates user is a bot with appropriate privileges",
-      "type": "boolean"
+      "type": "boolean",
+      "default": false
     },
     "botName": {
       "description": "User bot name if we want to associate this bot with an specific bot",
@@ -40,6 +41,7 @@
       "default": false
     },
     "profile": {
+      "description": "Profile of the user.",
       "$ref": "../../type/profile.json",
       "default": null
     },
@@ -59,6 +61,14 @@
       },
       "default": null
     },
+    "personas": {
+      "description": "Persona that the user belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "defaultPersona": {
+      "description": "Default Persona from User's Personas.",
+      "$ref": "../../type/entityReference.json"
+    },
     "authenticationMechanism": {
       "description": "Authentication mechanism specified ",
       "$ref": "../../entity/teams/user.json#/definitions/authenticationMechanism",
@@ -77,6 +87,14 @@
     "confirmPassword": {
       "description": "Confirm Password for User",
       "type": "string"
+    },
+    "domains" : {
+      "description": "Domains the User belongs to.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/entityName"
+      },
+      "default": null
     }
   },
   "required": ["name", "email"],

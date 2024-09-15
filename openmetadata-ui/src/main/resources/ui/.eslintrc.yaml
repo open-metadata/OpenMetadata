@@ -22,11 +22,10 @@ extends:
   - plugin:jest/recommended
   - plugin:jest/style
   - plugin:jest-formatting/recommended
-  - plugin:cypress/recommended
   - plugin:@typescript-eslint/recommended
   - plugin:prettier/recommended
   - prettier
-  - 'plugin:cypress/recommended'
+  - plugin:i18next/recommended
 
 parser: '@typescript-eslint/parser'
 
@@ -43,7 +42,7 @@ plugins:
   - jest
   - jest-formatting
   - '@typescript-eslint'
-  - 'cypress'
+  - i18next
 
 rules:
   # ESLint rules
@@ -52,6 +51,8 @@ rules:
   eqeqeq:
     - error
     - smart
+
+  no-console: 2
 
   # Require a whitespace at the beginning of a comment
   spaced-comment:
@@ -128,6 +129,9 @@ rules:
   react/jsx-pascal-case:
     - error
 
+  react/prop-types:
+    - off
+
   # Disallow unnecessary curly braces in JSX
   react/jsx-curly-brace-presence:
     - error
@@ -173,6 +177,8 @@ rules:
   '@typescript-eslint/explicit-module-boundary-types':
     - off
 
+  '@typescript-eslint/no-use-before-define': warn
+
   # React rules
 
   react/display-name:
@@ -180,17 +186,20 @@ rules:
 
   # React rules
 
-  # Cypress rules
+  # i18next rules
 
-  cypress/no-unnecessary-waiting: warn
+  i18next/no-literal-string: error
 
-  # Cypress rules
+  # i18next rules
 
 overrides:
   # eslint-plugin-jsonc requires its own parser
   - files:
       - '*.json'
     parser: jsonc-eslint-parser
+    rules:
+      eol-last:
+        - off
 
   # disable rules on generated files
   - files:
@@ -213,9 +222,9 @@ overrides:
       jsonc/sort-keys:
         - error
 
-  # Explicit assertions not required in most Cypress tests
+  # Explicit assertions not required in most Playwright tests
   - files:
-      - cypress/**
+      - playwright/**
     rules:
       jest/expect-expect:
         - off
@@ -223,9 +232,34 @@ overrides:
         - off
       jest/valid-expect:
         - off
+      jest/valid-describe:
+        - off
+      jest/consistent-test-it:
+        - off
+      jest/no-done-callback:
+        - off
+      jest/no-standalone-expect:
+        - off
+      jest/no-conditional-expect:
+        - off
 
-globals:
-  cypress: true
+  # i18next rule is not required for js, jsx, json and test file
+  - files:
+      - src/**/*.{js,jsx,json}
+      - src/**/*.test.{tsx,ts}
+      - src/**/*.mock.{tsx,ts}
+    rules:
+      i18next/no-literal-string:
+        - off
+
+  # i18next rule is not required for js, jsx, json and test file
+  - files:
+      - src/**/*.{js,jsx,json}
+      - src/**/*.test.{tsx,ts}
+      - src/**/*.mock.{tsx,ts}
+    rules:
+      i18next/no-literal-string:
+        - off
 
 settings:
   import/resolver:

@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { Change } from 'diff';
 import { uniqueId } from 'lodash';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 export const DiffView = ({
   diffArr,
@@ -23,6 +24,7 @@ export const DiffView = ({
   diffArr: Change[];
   className?: string;
 }) => {
+  const { t } = useTranslation();
   const elements = diffArr.map((diff) => {
     if (diff.added) {
       return (
@@ -50,19 +52,13 @@ export const DiffView = ({
   });
 
   return (
-    <div
-      className={classNames(
-        'tw-w-full tw-max-h-52 tw-overflow-y-auto',
-        className
-      )}>
-      <pre
-        className="tw-whitespace-pre-wrap tw-mb-0"
-        data-testid="diff-container">
+    <div className={classNames('w-full h-max-56 overflow-y-auto', className)}>
+      <pre className="whitespace-pre-wrap m-b-0" data-testid="diff-container">
         {diffArr.length ? (
           elements
         ) : (
-          <span className="tw-text-grey-muted" data-testid="noDiff-placeholder">
-            No diff available
+          <span className="text-grey-muted" data-testid="noDiff-placeholder">
+            {t('label.no-diff-available')}
           </span>
         )}
       </pre>

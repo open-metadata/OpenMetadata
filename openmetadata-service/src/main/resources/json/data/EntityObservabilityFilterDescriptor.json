@@ -1,0 +1,400 @@
+[
+  {
+    "name" : "table",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Table Name",
+        "description" : "Event Filtering By Table Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetTableSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.GetTableSchemaChanges",
+        "displayName": "Get Schema Changes",
+        "description" : "Get Updates for Schema Changes",
+        "effect" : "include",
+        "condition": "matchAnyFieldChange({'columns','dataModel','joins'})",
+        "inputType": "none"
+      },
+      {
+        "name": "GetTableMetricsUpdates",
+        "fullyQualifiedName": "eventSubscription.GetTableMetricsUpdates",
+        "displayName": "Get Table Metrics Updates",
+        "description" : "Get Updates About Table Metrics",
+        "effect" : "include",
+        "condition": "matchAnyFieldChange({'customMetrics', 'profile'})",
+        "inputType": "none"
+      }
+    ]
+  },
+  {
+    "name" : "topic",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Topic Name",
+        "description" : "Event Filtering By Topic Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetTopicSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.GetTopicSchemaChanges",
+        "displayName": "Get Schema Changes",
+        "description" : "Get Updates for Schema Changes",
+        "effect" : "include",
+        "condition": "matchAnyFieldChange({'messageSchema'})",
+        "inputType": "none"
+      }
+    ]
+  },
+  {
+    "name" : "container",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Container Name",
+        "description" : "Event Filtering By Container Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetContainerSchemaChanges",
+        "fullyQualifiedName": "eventSubscription.GetContainerSchemaChanges",
+        "displayName": "Get Schema Changes",
+        "description" : "Get Updates for Schema Changes",
+        "effect" : "include",
+        "condition": "matchAnyFieldChange({'parent','children'})",
+        "inputType": "none"
+      }
+    ]
+  },
+  {
+    "name" : "pipeline",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Pipeline Name",
+        "description" : "Event Filtering By Pipeline Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetPipelineStatusUpdates",
+        "fullyQualifiedName": "eventSubscription.GetPipelineStatusUpdates",
+        "displayName": "Get Pipeline Status Updates",
+        "description" : "Get Updates for Pipeline Status Changes",
+        "effect" : "include",
+        "condition": "matchPipelineState(${pipelineStateList})",
+        "arguments": [
+          "pipelineStateList"
+        ],
+        "inputType": "runtime"
+      }
+    ]
+  },
+  {
+    "name" : "ingestionPipeline",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Ingestion Pipeline Name",
+        "description" : "Event Filtering By Ingestion Pipeline Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetIngestionPipelineStatusUpdates",
+        "fullyQualifiedName": "eventSubscription.GetIngestionPipelineStatusUpdates",
+        "displayName": "Get Ingestion Pipeline Status Updates",
+        "description" : "Get Updates for Ingestion Pipeline Status Changes",
+        "effect" : "include",
+        "condition": "matchIngestionPipelineState(${ingestionPipelineStateList})",
+        "arguments": [
+          "ingestionPipelineStateList"
+        ],
+        "inputType": "runtime"
+      }
+    ]
+  },
+  {
+    "name" : "testCase",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Test Case Name",
+        "description" : "Event By Test Case Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByTableNameTestCaseBelongsTo",
+        "fullyQualifiedName": "eventSubscription.filterByTableNameTestCaseBelongsTo",
+        "displayName": "Table Name A Test Case Belongs To",
+        "description" : "Event Filtering By Table Name A Test Case Belongs To",
+        "effect" : "include",
+        "condition": "filterByTableNameTestCaseBelongsTo(${tableNameList})",
+        "arguments": [
+          "tableNameList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetTestCaseStatusUpdates",
+        "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdates",
+        "displayName": "Get Test Case Status Updates",
+        "description" : "Get Status Updates Test Cases",
+        "effect" : "include",
+        "condition": "matchTestResult(${testResultList})",
+        "arguments": [
+          "testResultList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "GetTestCaseStatusUpdatesUnderSuite",
+        "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdatesUnderSuite",
+        "displayName": "Get Test Case Status Updates belonging to a Test Suite",
+        "description" : "Get Status Updates Test Cases belonging to a Test Suite",
+        "effect" : "include",
+        "condition": "getTestCaseStatusIfInTestSuite(${testStatusList}, ${testSuiteList})",
+        "arguments": [
+          "testStatusList",
+          "testSuiteList"
+        ],
+        "inputType": "runtime"
+      }
+    ]
+  },
+  {
+    "name" : "testSuite",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Test Suite Name",
+        "description" : "Event Filtering By Test Suite Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+    ]
+  }
+]

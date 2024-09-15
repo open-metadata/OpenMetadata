@@ -9,7 +9,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this test case.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/testCaseEntityName"
     },
     "description": {
       "description": "Description of the testcase.",
@@ -20,13 +20,15 @@
       "type": "string"
     },
     "testDefinition": {
-      "$ref": "../../type/entityReference.json"
+      "description": "Fully qualified name of the test definition.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "entityLink": {
       "$ref": "../../type/basic.json#/definitions/entityLink"
     },
     "testSuite": {
-      "$ref": "../../type/entityReference.json"
+      "description": "Fully qualified name of the testSuite",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "parameterValues": {
       "type": "array",
@@ -34,9 +36,19 @@
         "$ref": "../../tests/testCase.json#/definitions/testCaseParameterValue"
       }
     },
-    "owner": {
-      "description": "Owner of this test",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this test",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "computePassedFailedRowCount": {
+      "description": "Compute the passed and failed row count for the test case.",
+      "type": "boolean",
+      "default": false
+    },
+    "useDynamicAssertion": {
+      "description": "If the test definition supports it, use dynamic assertion to evaluate the test case.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],

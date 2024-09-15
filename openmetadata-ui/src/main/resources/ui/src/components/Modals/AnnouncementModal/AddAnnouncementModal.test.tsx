@@ -15,18 +15,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import AddAnnouncementModal from './AddAnnouncementModal';
 
-jest.mock('../../../AppState', () => ({
-  userDetails: {
-    name: '',
-  },
-  nonSecureUserDetails: {
-    name: '',
-  },
-  users: [{ name: '' }],
-  getCurrentUserDetails: jest.fn(),
-}));
-
-jest.mock('rest/feedsAPI', () => ({
+jest.mock('../../../rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -40,27 +29,28 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
 }));
 
-jest.mock('../../../utils/TimeUtils', () => ({
-  getUTCDateTime: jest.fn(),
-  getTimeZone: jest.fn(),
-}));
-
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditor</div>);
 });
 
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: 'pathname' }));
+});
+
 const onCancel = jest.fn();
+const onSave = jest.fn();
 
 const mockProps = {
   open: true,
   entityType: '',
   entityFQN: '',
   onCancel,
+  onSave,
 };
 
 describe('Test Add Announcement modal', () => {

@@ -12,7 +12,7 @@
       "javaType": "org.openmetadata.schema.type.StatusType",
       "description": "Enum defining the possible Status.",
       "type": "string",
-      "enum": ["Successful", "Failed", "Pending"],
+      "enum": ["Successful", "Failed", "Pending", "Skipped"],
       "javaEnums": [
         {
           "name": "Successful"
@@ -22,6 +22,9 @@
         },
         {
           "name": "Pending"
+        },
+        {
+          "name": "Skipped"
         }
       ]
     },
@@ -75,9 +78,9 @@
           "description": "Description of this Task.",
           "$ref": "../../type/basic.json#/definitions/markdown"
         },
-        "taskUrl": {
+        "sourceUrl": {
           "description": "Task URL to visit/manage. This URL points to respective pipeline service UI.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/sourceUrl"
         },
         "downstreamTasks": {
           "description": "All the tasks that are downstream of this task.",
@@ -110,6 +113,10 @@
             "$ref": "../../type/tagLabel.json"
           },
           "default": null
+        },
+        "owners": {
+          "description": "Owners of this task.",
+          "$ref": "../../type/entityReferenceList.json"
         }
       },
       "required": ["name"],
@@ -136,7 +143,8 @@
           "default": null
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": ["timestamp", "executionStatus"]
     }
   },
   "properties": {
@@ -160,6 +168,10 @@
       "description": "Description of this Pipeline.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -172,9 +184,9 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "pipelineUrl": {
+    "sourceUrl": {
       "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "concurrency": {
       "description": "Concurrency of the Pipeline.",
@@ -203,7 +215,7 @@
     },
     "followers": {
       "description": "Followers of this Pipeline.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags for this Pipeline.",
@@ -217,9 +229,9 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this pipeline.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this pipeline.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to service where this pipeline is hosted in.",
@@ -241,6 +253,29 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "scheduleInterval": {
+      "description": "Scheduler Interval for the pipeline in cron format.",
+      "type": "string",
+      "default": null
+    },
+    "domain" : {
+      "description": "Domain the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "description": "Votes on the entity.",
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
     }
   },
   "required": ["id", "name", "service"],

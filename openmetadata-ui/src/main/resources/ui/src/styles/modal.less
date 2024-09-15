@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import url('./variables.less');
+
 .ant-modal-content {
   border-radius: 8px;
   box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.2);
@@ -29,7 +31,7 @@
 
 .ant-modal-footer .ant-btn-default {
   border: none;
-  color: #7147e8;
+  color: @primary-color;
   margin-right: 5px;
 }
 
@@ -39,4 +41,9 @@
 
 .ant-modal-footer .ant-btn .ant-btn-loading-icon {
   display: inline-flex;
+}
+
+.ant-modal-body {
+  max-height: calc(100vh - 120px);
+  overflow-y: scroll;
 }

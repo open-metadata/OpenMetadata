@@ -14,15 +14,12 @@
 package org.openmetadata.service.socket;
 
 import com.auth0.jwt.interfaces.Claim;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import io.socket.engineio.server.utils.ParseQS;
 import java.io.IOException;
 import java.util.Map;
-import java.util.TreeMap;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
-import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
@@ -30,15 +27,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public class SocketAddressFilter implements Filter {
   private JwtFilter jwtFilter;
-
   private final boolean enableSecureSocketConnection;
 
   public SocketAddressFilter(
-      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConf) {
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConf) {
     enableSecureSocketConnection = authorizerConf.getEnableSecureSocketConnection();
     if (enableSecureSocketConnection) {
       jwtFilter = new JwtFilter(authenticationConfiguration, authorizerConf);
@@ -54,29 +52,39 @@ public class SocketAddressFilter implements Filter {
 
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-      throws IOException, ServletException {
-    HttpServletRequest httpServletRequest = (HttpServletRequest) request;
-    Map<String, String> query = ParseQS.decode(httpServletRequest.getQueryString());
+      throws IOException {
+    try {
+      HttpServletRequest httpServletRequest = (HttpServletRequest) request;
+      Map<String, String> query = ParseQS.decode(httpServletRequest.getQueryString());
 
-    HeaderRequestWrapper requestWrapper = new HeaderRequestWrapper(httpServletRequest);
-    requestWrapper.addHeader("RemoteAddress", httpServletRequest.getRemoteAddr());
-    requestWrapper.addHeader("UserId", query.get("userId"));
+      HeaderRequestWrapper requestWrapper = new HeaderRequestWrapper(httpServletRequest);
+      requestWrapper.addHeader("RemoteAddress", httpServletRequest.getRemoteAddr());
+      requestWrapper.addHeader("UserId", query.get("userId"));
 
-    if (enableSecureSocketConnection) {
-      String tokenWithType = httpServletRequest.getHeader("Authorization");
-      requestWrapper.addHeader("Authorization", tokenWithType);
-      String token = JwtFilter.extractToken(tokenWithType);
-      // validate token
-      DecodedJWT jwt = jwtFilter.validateAndReturnDecodedJwtToken(token);
-      // validate Domain and Username
-      Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-      claims.putAll(jwt.getClaims());
-      jwtFilter.validateAndReturnUsername(claims);
+      if (enableSecureSocketConnection) {
+        String tokenWithType = httpServletRequest.getHeader("Authorization");
+        requestWrapper.addHeader("Authorization", tokenWithType);
+        validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+      }
+      // Goes to default servlet.
+      chain.doFilter(requestWrapper, response);
+    } catch (Exception ex) {
+      LOG.error("[SAFilter] Failed in filtering request: {}", ex.getMessage());
+      response
+          .getWriter()
+          .println(String.format("[SAFilter] Failed in filtering request: %s", ex.getMessage()));
     }
-    // Goes to default servlet.
-    chain.doFilter(requestWrapper, response);
   }
 
   @Override
   public void init(FilterConfig filterConfig) {}
+
+  public static void validatePrefixedTokenRequest(JwtFilter jwtFilter, String prefixedToken) {
+    String token = JwtFilter.extractToken(prefixedToken);
+    Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
+    String userName =
+        SecurityUtil.findUserNameFromClaims(
+            jwtFilter.getJwtPrincipalClaimsMapping(), jwtFilter.getJwtPrincipalClaims(), claims);
+    jwtFilter.checkValidationsForToken(claims, token, userName);
+  }
 }

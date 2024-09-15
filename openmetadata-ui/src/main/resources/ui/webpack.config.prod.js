@@ -20,7 +20,7 @@ const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const BundleAnalyzerPlugin =
   require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
+const Dotenv = require('dotenv-webpack');
 
 const outputPath = path.join(__dirname, 'dist/assets');
 
@@ -34,9 +34,9 @@ module.exports = {
   // Output configuration
   output: {
     path: outputPath,
-    filename: 'openmetadata.bundle.js',
-    chunkFilename: '[name].[contenthash].js',
-    publicPath: '/', // Ensures bundle is served from absolute path as opposed to relative
+    filename: 'openmetadata.[fullhash].js',
+    chunkFilename: '[name].[fullhash].js',
+    publicPath: `${process.env.APP_SUB_PATH ?? ''}/`, // Ensures bundle is served from absolute path as opposed to relative
   },
 
   // Loaders
@@ -90,12 +90,16 @@ module.exports = {
         ],
         include: [
           path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/tailwindcss'),
+          path.resolve(__dirname, 'node_modules/@fontsource/poppins'),
+          path.resolve(__dirname, 'node_modules/@fontsource/source-code-pro'),
           path.resolve(__dirname, 'node_modules/reactflow'),
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/react-toastify'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
           path.resolve(__dirname, 'node_modules/react-awesome-query-builder'),
+          path.resolve(__dirname, 'node_modules/katex'),
+          path.resolve(__dirname, 'node_modules/react-resizable'),
+          path.resolve(__dirname, 'node_modules/react-antd-column-resize'),
         ],
         // May need to handle files outside the source code
         // (from node_modules)
@@ -110,6 +114,7 @@ module.exports = {
           {
             loader: 'css-loader', // translates CSS into CommonJS
           },
+          'postcss-loader',
           {
             loader: 'less-loader', // compiles Less to CSS
             options: {
@@ -128,7 +133,7 @@ module.exports = {
       },
       // different urls to be handled by url-loader
       {
-        test: /\.(png|jpg|jpeg|gif|svg|ico|eot|woff|woff2)$/i,
+        test: /\.(png|jpg|jpeg|gif|svg|ico)$/i,
         use: [
           {
             loader: 'url-loader',
@@ -140,25 +145,20 @@ module.exports = {
         ],
         include: [
           path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/slick-carousel'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
         ], // Just the source code
       },
-      // Font files to be handled by file-loader
+      // Font files to be handled by asset-modules, see https://webpack.js.org/guides/asset-modules/
       {
-        test: /\.ttf$/,
-        use: [
-          {
-            loader: 'file-loader',
-            options: {
-              name: '[name].[ext]',
-              outputPath: 'fonts/',
-            },
-          },
-        ],
+        test: /\.(ttf|eot|woff|woff2)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: 'fonts/[name][ext]',
+        },
         include: [
           path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/slick-carousel'),
+          path.resolve(__dirname, 'node_modules/@fontsource/poppins'),
+          path.resolve(__dirname, 'node_modules/@fontsource/source-code-pro'),
         ], // Just the source code
       },
     ],
@@ -167,15 +167,16 @@ module.exports = {
   // Module resolution
   resolve: {
     // File types to be handled
-    extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.scss', '.svg', '.ttf'],
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.scss', '.svg'],
     fallback: {
-      http: require.resolve('stream-http'),
       https: require.resolve('https-browserify'),
       path: require.resolve('path-browserify'),
       fs: false,
-      url: require.resolve('url/'),
+      'process/browser': require.resolve('process/browser'),
     },
-    plugins: [new TsconfigPathsPlugin()],
+    alias: {
+      process: 'process/browser',
+    },
   },
 
   plugins: [
@@ -211,7 +212,7 @@ module.exports = {
           to: outputPath,
         },
         {
-          from: path.join(__dirname, 'public/robots.txt'),
+          from: path.join(__dirname, 'public/locales'),
           to: outputPath,
         },
       ],
@@ -238,5 +239,6 @@ module.exports = {
       ),
       openAnalyzer: false,
     }),
+    new Dotenv(),
   ],
 };

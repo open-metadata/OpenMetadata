@@ -13,6 +13,13 @@
       "resources" : ["bot", "webhook"],
       "operations": ["Create", "Delete"],
       "effect": "deny"
+    },
+    {
+      "name": "BotRule-IngestionPipeline",
+      "description" : "A bot can Edit ingestion pipelines to pass the status",
+      "resources" : ["ingestionPipeline"],
+      "operations": ["ViewAll","EditIngestionPipelineStatus"],
+      "effect": "allow"
     }
   ]
 }

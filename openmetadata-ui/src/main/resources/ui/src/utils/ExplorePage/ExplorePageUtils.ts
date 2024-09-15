@@ -11,56 +11,123 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isUndefined } from 'lodash';
-import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
+import {
+  isArray,
+  isEmpty,
+  isEqual,
+  isString,
+  isUndefined,
+  uniqWith,
+} from 'lodash';
 import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
+import {
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from '../../pages/ExplorePage/ExplorePage.interface';
 
 export const getQueryFiltersArray = (
-  queryFilters: QueryFilterInterface[] | undefined
-) => (isUndefined(queryFilters) ? [] : queryFilters);
-
-export const getCombinedFields = (
   field: QueryFilterFieldsEnum,
-  elasticsearchQueryFilter?: QueryFilterInterface,
-  advancesSearchQueryFilter?: QueryFilterInterface
-): QueryFilterInterface[] => {
+  queryFiltersObj: QueryFilterInterface
+) => {
   switch (field) {
     case QueryFilterFieldsEnum.SHOULD: {
-      return [
-        ...getQueryFiltersArray(elasticsearchQueryFilter?.query?.bool?.should),
-        ...getQueryFiltersArray(advancesSearchQueryFilter?.query?.bool?.should),
-      ];
+      return queryFiltersObj?.query?.bool?.should ?? [];
     }
     case QueryFilterFieldsEnum.MUST: {
-      return [
-        ...getQueryFiltersArray(elasticsearchQueryFilter?.query?.bool?.must),
-        ...getQueryFiltersArray(advancesSearchQueryFilter?.query?.bool?.must),
-      ];
+      return queryFiltersObj?.query?.bool?.must ?? [];
+    }
+    case QueryFilterFieldsEnum.MUST_NOT: {
+      return queryFiltersObj?.query?.bool?.must_not ?? [];
     }
   }
 };
 
+export const getCombinedFields = (
+  field: QueryFilterFieldsEnum,
+  filtersArray: Array<QueryFilterInterface | undefined>
+): QueryFieldInterface[] => {
+  const combinedFiltersArray: QueryFieldInterface[] = [];
+
+  filtersArray.forEach((filtersObj) => {
+    if (!isUndefined(filtersObj)) {
+      const data = getQueryFiltersArray(field, filtersObj);
+      combinedFiltersArray.push(...(isArray(data) ? data : [data]));
+    }
+  });
+
+  return uniqWith(combinedFiltersArray, isEqual);
+};
+
 export const getCombinedQueryFilterObject = (
   elasticsearchQueryFilter?: QueryFilterInterface,
-  advancesSearchQueryFilter?: QueryFilterInterface
+  advancesSearchQueryFilter?: QueryFilterInterface,
+  advancesSearchFilter?: QueryFilterInterface
 ) => {
-  const mustField = getCombinedFields(
-    QueryFilterFieldsEnum.MUST,
+  const mustField = getCombinedFields(QueryFilterFieldsEnum.MUST, [
     elasticsearchQueryFilter,
-    advancesSearchQueryFilter
-  );
-  const shouldField = getCombinedFields(
-    QueryFilterFieldsEnum.SHOULD,
+    advancesSearchQueryFilter,
+    advancesSearchFilter,
+  ]);
+
+  const mustNotField = getCombinedFields(QueryFilterFieldsEnum.MUST_NOT, [
     elasticsearchQueryFilter,
-    advancesSearchQueryFilter
-  );
+    advancesSearchQueryFilter,
+    advancesSearchFilter,
+  ]);
+
+  const shouldField = getCombinedFields(QueryFilterFieldsEnum.SHOULD, [
+    elasticsearchQueryFilter,
+    advancesSearchQueryFilter,
+    advancesSearchFilter,
+  ]);
 
   return {
     query: {
       bool: {
         ...(isEmpty(mustField) ? {} : { must: mustField }),
+        ...(isEmpty(mustNotField) ? {} : { must_not: mustNotField }),
         ...(isEmpty(shouldField) ? {} : { should: shouldField }),
       },
     },
   };
+};
+
+export const getQuickFilterWithDeletedFlag = (
+  quickFilter: string,
+  showDeleted: boolean
+) => {
+  const defaultQuery = {
+    query: {
+      bool: {
+        must: [
+          {
+            match: {
+              deleted: showDeleted,
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  if (!isString(quickFilter)) {
+    return defaultQuery;
+  }
+
+  try {
+    const parsedQueryFilter = JSON.parse(quickFilter);
+    const mustArray = parsedQueryFilter.query.bool.must || [];
+    parsedQueryFilter.query.bool.must = [
+      ...mustArray,
+      {
+        match: {
+          deleted: showDeleted,
+        },
+      },
+    ];
+
+    return parsedQueryFilter;
+  } catch {
+    return defaultQuery;
+  }
 };

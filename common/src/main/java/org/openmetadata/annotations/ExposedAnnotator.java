@@ -20,6 +20,7 @@ import com.sun.codemodel.JDefinedClass;
 import com.sun.codemodel.JFieldVar;
 import com.sun.codemodel.JMethod;
 import java.lang.reflect.Field;
+import java.util.TreeMap;
 import org.jsonschema2pojo.AbstractAnnotator;
 
 /** Add {@link ExposedField} annotation to generated Java classes */
@@ -27,7 +28,8 @@ public class ExposedAnnotator extends AbstractAnnotator {
 
   /** Add {@link ExposedField} annotation property fields */
   @Override
-  public void propertyField(JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
+  public void propertyField(
+      JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
     super.propertyField(field, clazz, propertyName, propertyNode);
     if (propertyNode.get("expose") != null && propertyNode.get("expose").asBoolean()) {
       field.annotate(ExposedField.class);
@@ -49,18 +51,25 @@ public class ExposedAnnotator extends AbstractAnnotator {
   }
 
   /**
-   * Use reflection methods to access the {@link JDefinedClass} of the {@link JMethod} object. If the {@link JMethod} is
-   * pointing to a field annotated with {@link ExposedField} then annotates the {@link JMethod} object with {@link
-   * ExposedField}
+   * Use reflection methods to access the {@link JDefinedClass} of the {@link JMethod} object. If
+   * the {@link JMethod} is pointing to a field annotated with {@link ExposedField} then annotates
+   * the {@link JMethod} object with {@link ExposedField}
    */
   private void addMaskedFieldAnnotationIfApplies(JMethod jMethod, String propertyName) {
     try {
       Field outerClassField = JMethod.class.getDeclaredField("outer");
       outerClassField.setAccessible(true);
       JDefinedClass outerClass = (JDefinedClass) outerClassField.get(jMethod);
-      if (outerClass.fields().containsKey(propertyName)
-          && outerClass.fields().get(propertyName).annotations().stream()
-              .anyMatch(annotation -> ExposedField.class.getName().equals(getAnnotationClassName(annotation)))) {
+
+      TreeMap<String, JFieldVar> insensitiveFieldsMap =
+          new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+      insensitiveFieldsMap.putAll(outerClass.fields());
+
+      if (insensitiveFieldsMap.containsKey(propertyName)
+          && insensitiveFieldsMap.get(propertyName).annotations().stream()
+              .anyMatch(
+                  annotation ->
+                      ExposedField.class.getName().equals(getAnnotationClassName(annotation)))) {
         jMethod.annotate(ExposedField.class);
       }
     } catch (NoSuchFieldException | IllegalAccessException e) {

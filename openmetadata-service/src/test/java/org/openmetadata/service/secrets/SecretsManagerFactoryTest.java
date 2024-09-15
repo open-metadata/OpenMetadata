@@ -14,9 +14,11 @@ package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.HashMap;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.security.secrets.Parameters;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public class SecretsManagerFactoryTest {
@@ -28,54 +30,85 @@ public class SecretsManagerFactoryTest {
   @BeforeEach
   void setUp() {
     config = new SecretsManagerConfiguration();
-    config.setParameters(new HashMap<>());
     SecretsManagerFactory.setSecretsManager(null);
   }
 
   @Test
   void testDefaultIsCreatedIfNullConfig() {
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testDefaultIsCreatedIfMissingSecretManager() {
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testIsCreatedIfLocalSecretsManager() {
-    config.setSecretsManager(SecretsManagerProvider.NOOP);
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+    config.setSecretsManager(SecretsManagerProvider.DB);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testIsCreatedIfAWSSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS);
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testIsCreatedIfManagedAWSSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.MANAGED_AWS);
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof AWSSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof AWSSecretsManager);
   }
 
   @Test
   void testIsCreatedIfAWSSSMSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS_SSM);
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof DBSecretsManager);
   }
 
   @Test
   void testIsCreatedIfManagedAWSSSMSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.MANAGED_AWS_SSM);
-    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof AWSSSMSecretsManager);
+    assertTrue(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
+            instanceof AWSSSMSecretsManager);
+  }
+
+  @Test
+  void testIsCreatedIfGCPSecretsManager() {
+    initConfigForAGCPSecretManager(SecretsManagerProvider.GCP);
+    config.setSecretsManager(SecretsManagerProvider.GCP);
+    Assertions.assertSame(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME).getClass(),
+        GCPSecretsManager.class);
   }
 
   private void initConfigForAWSBasedSecretManager(SecretsManagerProvider secretManagerProvider) {
     config.setSecretsManager(secretManagerProvider);
-    config.getParameters().put("region", "eu-west-1");
-    config.getParameters().put("accessKeyId", "123456");
-    config.getParameters().put("secretAccessKey", "654321");
+    Parameters parameters = new Parameters();
+    config.setParameters(parameters);
+    config.getParameters().setAdditionalProperty("region", "eu-west-1");
+    config.getParameters().setAdditionalProperty("accessKeyId", "123456");
+    config.getParameters().setAdditionalProperty("secretAccessKey", "654321");
+  }
+
+  private void initConfigForAGCPSecretManager(SecretsManagerProvider secretManagerProvider) {
+    config.setSecretsManager(secretManagerProvider);
+    Parameters parameters = new Parameters();
+    config.setParameters(parameters);
+    config.getParameters().setAdditionalProperty("projectId", "123456");
   }
 }

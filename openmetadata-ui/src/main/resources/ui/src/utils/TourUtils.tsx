@@ -13,242 +13,279 @@
 
 import i18next from 'i18next';
 import React from 'react';
-import AppState from '../AppState';
+import { EntityTabs } from '../enums/entity.enum';
 import { CurrentTourPageType } from '../enums/tour.enum';
 import { Transi18next } from './CommonUtils';
-import { getCurrentDatasetTab } from './DatasetDetailsUtils';
 
-export const getSteps = (value: string, clearSearchTerm: () => void) => {
-  return [
-    {
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-discover-all-assets-at-one-place"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.open-metadata'),
-            }}
-          />
-        </p>
-      ),
-      stepInteraction: false,
-      selector: '#assetStatsCount',
+interface ArgObject {
+  searchTerm: string;
+  updateTourPage: (value: CurrentTourPageType) => void;
+  updateActiveTab: (value: EntityTabs) => void;
+  clearSearchTerm: () => void;
+}
+
+export const getTourSteps = ({
+  searchTerm,
+  clearSearchTerm,
+  updateActiveTab,
+  updateTourPage,
+}: ArgObject) => [
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-activity-feed"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.activity-feed-plural'),
+          }}
+        />
+      </p>
+    ),
+    selector: '#feedData',
+    stepInteraction: false,
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-search-for-matching-dataset"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.search'),
+          }}
+        />
+      </p>
+    ),
+    selector: '#searchBox',
+    stepInteraction: false,
+    beforeNext: clearSearchTerm,
+  },
+  {
+    beforePrev: clearSearchTerm,
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-type-search-term"
+          renderElement={<strong />}
+          values={{
+            text: searchTerm,
+            enterText: i18next.t('label.enter'),
+          }}
+        />
+      </p>
+    ),
+    actionType: 'enter',
+    userTypeText: searchTerm,
+    selector: '#searchBox',
+    beforeNext: () => {
+      clearSearchTerm();
+      updateTourPage(CurrentTourPageType.EXPLORE_PAGE);
     },
-    {
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-activity-feed"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.activity-feed-plural'),
-            }}
-          />
-        </p>
-      ),
-      selector: '#feedData',
-      stepInteraction: false,
+  },
+  {
+    beforePrev: () => {
+      updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
     },
-    {
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-search-for-matching-dataset"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.search'),
-            }}
-          />
-        </p>
-      ),
-      selector: '#searchBox',
-      stepInteraction: false,
-      beforeNext: clearSearchTerm,
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-explore-summary-asset"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.explore'),
+          }}
+        />
+      </p>
+    ),
+    selector: '#tabledatacard0',
+    stepInteraction: false,
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-click-on-link-to-view-more"
+          renderElement={<strong />}
+        />
+      </p>
+    ),
+    actionType: 'click',
+    selector: '[data-testid="sample_data.ecommerce_db.shopify.dim_address"]',
+    beforeNext: () => {
+      updateTourPage(CurrentTourPageType.DATASET_PAGE);
     },
-    {
-      beforePrev: clearSearchTerm,
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-type-search-term"
-            renderElement={<strong />}
-            values={{
-              text: value,
-              enterText: i18next.t('label.enter'),
-            }}
-          />
-        </p>
-      ),
-      actionType: 'enter',
-      userTypeText: value,
-      selector: '#searchBox',
-      beforeNext: () => {
-        clearSearchTerm();
-        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
-      },
+  },
+  {
+    beforePrev: () => {
+      updateTourPage(CurrentTourPageType.EXPLORE_PAGE);
     },
-    {
-      beforePrev: () => {
-        AppState.currentTourPage = CurrentTourPageType.MY_DATA_PAGE;
-      },
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-explore-summary-asset"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.explore'),
-            }}
-          />
-        </p>
-      ),
-      selector: '#tabledatacard0',
-      stepInteraction: false,
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-high-level-assets-information-step"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.schema'),
+          }}
+        />
+      </p>
+    ),
+    stepInteraction: false,
+    selector: '[data-testid="entity-page-header"]',
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-owner-step"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.schema'),
+          }}
+        />
+      </p>
+    ),
+    stepInteraction: false,
+    selector: '[data-testid="owner-label"]',
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-follow-step"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.schema'),
+          }}
+        />
+      </p>
+    ),
+    stepInteraction: false,
+    selector: '[data-testid="entity-follow-button"]',
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-get-to-know-table-schema"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.schema'),
+          }}
+        />
+      </p>
+    ),
+    stepInteraction: false,
+    selector: '#schemaDetails',
+  },
+  {
+    beforePrev: () => {
+      updateActiveTab(EntityTabs.SCHEMA);
     },
-    {
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-click-on-link-to-view-more"
-            renderElement={<strong />}
-          />
-        </p>
-      ),
-      actionType: 'click',
-      selector: '#tabledatacard0-title',
-      beforeNext: () => {
-        AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
-      },
+    actionType: 'click',
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-click-on-entity-tab"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.sample-data'),
+          }}
+        />
+      </p>
+    ),
+    selector: `[data-testid="${EntityTabs.SAMPLE_DATA}"]`,
+    beforeNext: () => {
+      updateActiveTab(EntityTabs.SAMPLE_DATA);
     },
-    {
-      beforePrev: () => {
-        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
-      },
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-get-to-know-table-schema"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.schema'),
-            }}
-          />
-        </p>
-      ),
-      stepInteraction: false,
-      selector: '#schemaDetails',
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-look-at-sample-data"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.sample-data'),
+          }}
+        />
+      </p>
+    ),
+    selector: '[data-testid="sample-data-table"]',
+  },
+  {
+    beforePrev: () => {
+      updateActiveTab(EntityTabs.SAMPLE_DATA);
     },
-    {
-      beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('schema');
-      },
-      actionType: 'click',
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-click-on-entity-tab"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.sample-data'),
-            }}
-          />
-        </p>
-      ),
-      selector: '#sampleData',
-      beforeNext: () => {
-        AppState.activeTabforTourDatasetPage =
-          getCurrentDatasetTab('sample_data');
-      },
+    beforeNext: () => {
+      updateActiveTab(EntityTabs.PROFILER);
     },
-    {
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-look-at-sample-data"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.sample-data'),
-            }}
-          />
-        </p>
-      ),
-      selector: '#sampleDataDetails',
+    actionType: 'click',
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-click-on-entity-tab"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.profiler'),
+          }}
+        />
+      </p>
+    ),
+    selector: `[data-testid="${EntityTabs.PROFILER}"]`,
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-discover-data-assets-with-data-profile"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.data-entity', {
+              entity: i18next.t('label.profiler'),
+            }),
+          }}
+        />
+      </p>
+    ),
+    stepInteraction: false,
+    selector: '#profilerDetails',
+  },
+  {
+    beforePrev: () => {
+      updateActiveTab(EntityTabs.PROFILER);
     },
-    {
-      beforePrev: () => {
-        AppState.activeTabforTourDatasetPage =
-          getCurrentDatasetTab('sample_data');
-      },
-      beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('profiler');
-      },
-      actionType: 'click',
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-click-on-entity-tab"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.profiler'),
-            }}
-          />
-        </p>
-      ),
-      selector: '#profilerDataQuality',
+    beforeNext: () => {
+      updateActiveTab(EntityTabs.LINEAGE);
     },
-    {
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-discover-data-assets-with-data-profile"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.data-entity', {
-                entity: i18next.t('label.profiler'),
-              }),
-            }}
-          />
-        </p>
-      ),
-      stepInteraction: false,
-      selector: '#profilerDetails',
-    },
-    {
-      beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('profiler');
-      },
-      beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('lineage');
-      },
-      actionType: 'click',
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-click-on-entity-tab"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.lineage'),
-            }}
-          />
-        </p>
-      ),
-      selector: '#lineage',
-    },
-    {
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-trace-path-across-tables"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.lineage'),
-            }}
-          />
-        </p>
-      ),
-      stepInteraction: false,
-      selector: '#lineageDetails',
-    },
-  ];
-};
+    actionType: 'click',
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-click-on-entity-tab"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.lineage'),
+          }}
+        />
+      </p>
+    ),
+    selector: `[data-testid="${EntityTabs.LINEAGE}"]`,
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-step-trace-path-across-tables"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.lineage'),
+          }}
+        />
+      </p>
+    ),
+    stepInteraction: false,
+    selector: `[data-testid="lineage-details"]`,
+  },
+];

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../variables.less');
+@import (reference) url('../variables.less');
 
 .form-container {
   background-color: @white;
@@ -20,4 +20,27 @@
   border-radius: 8px;
   box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.04);
   width: 700px;
+}
+
+.form-item-horizontal {
+  .ant-form-item-row {
+    flex-direction: row;
+    .ant-form-item-label {
+      display: block;
+      flex: 0 0 40%;
+      max-width: 40%;
+      padding: 0px;
+      align-self: center;
+    }
+    .ant-form-item-control {
+      display: block;
+      flex: 0 0 60%;
+      max-width: 60%;
+    }
+  }
+}
+.form-item-vertical {
+  .ant-form-item-row {
+    flex-direction: column;
+  }
 }

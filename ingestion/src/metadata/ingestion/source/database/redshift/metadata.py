@@ -14,120 +14,103 @@ Redshift source ingestion
 
 import re
 import traceback
-from collections import defaultdict
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
-import sqlalchemy as sa
-from packaging.version import Version
-from sqlalchemy import inspect, sql, util
-from sqlalchemy.dialects.postgresql.base import ENUM, PGDialect
-from sqlalchemy.dialects.postgresql.base import ischema_names as pg_ischema_names
-from sqlalchemy.engine import reflection
+from sqlalchemy import sql
+from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql import sqltypes
-from sqlalchemy_redshift.dialect import (
-    RedshiftDialect,
-    RedshiftDialectMixin,
-    RelationKey,
-)
+from sqlalchemy_redshift.dialect import RedshiftDialect, RedshiftDialectMixin
 
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import (
+    Language,
+    StoredProcedureCode,
+)
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
+    ConstraintType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    Table,
+    TableConstraint,
     TablePartition,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.generated.schema.type.basic import EntityName
+from metadata.ingestion.api.delete import delete_entity_by_name
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
+    IncrementalConfig,
+)
+from metadata.ingestion.source.database.life_cycle_query_mixin import (
+    LifeCycleQueryMixin,
+)
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.redshift.incremental_table_processor import (
+    RedshiftIncrementalTableProcessor,
+)
+from metadata.ingestion.source.database.redshift.models import RedshiftStoredProcedure
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
-    REDSHIFT_GET_SCHEMA_COLUMN_INFO,
+    REDSHIFT_GET_DATABASE_NAMES,
+    REDSHIFT_GET_STORED_PROCEDURE_QUERIES,
+    REDSHIFT_GET_STORED_PROCEDURES,
+    REDSHIFT_LIFE_CYCLE_QUERY,
     REDSHIFT_PARTITION_DETAILS,
-    REDSHIFT_TABLE_COMMENTS,
+)
+from metadata.ingestion.source.database.redshift.utils import (
+    _get_all_relation_info,
+    _get_column_info,
+    _get_pg_column_info,
+    _get_schema_column_info,
+    get_columns,
+    get_table_comment,
+    get_view_definition,
+)
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureMixin,
 )
 from metadata.utils import fqn
+from metadata.utils.execution_time_tracker import (
+    calculate_execution_time,
+    calculate_execution_time_generator,
+)
 from metadata.utils.filters import filter_by_database
+from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
-    get_table_comment_wrapper,
+    get_all_table_ddls,
+    get_table_ddl,
 )
-
-sa_version = Version(sa.__version__)
 
 logger = ingestion_logger()
 
-ischema_names = pg_ischema_names
-ischema_names.update({"binary varying": sqltypes.VARBINARY})
 
-
-def _get_column_info(self, *args, **kwargs):
-    """
-    Get column info
-
-    Args:
-        *args:
-        **kwargs:
-    Returns
-    """
-    kwdrs = kwargs.copy()
-    encode = kwdrs.pop("encode", None)
-    if sa_version >= Version("1.3.16"):
-        kwdrs["generated"] = ""
-    if sa_version < Version("1.4.0") and "identity" in kwdrs:
-        del kwdrs["identity"]
-    elif sa_version >= Version("1.4.0") and "identity" not in kwdrs:
-        kwdrs["identity"] = None
-    column_info = super(  # pylint: disable=protected-access
-        RedshiftDialectMixin, self
-    )._get_column_info(*args, **kwdrs)
-
-    # raw_data_type is not included in column_info as
-    # redhift doesn't suport compex data types directly
-    # https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
-
-    if "info" not in column_info:
-        column_info["info"] = {}
-    if encode and encode != "none":
-        column_info["info"]["encode"] = encode
-    return column_info
-
-
-@reflection.cache
-def _get_schema_column_info(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
-    """
-    Get schema column info
-
-    Args:
-        connection:
-        schema:
-        **kw:
-    Returns:
-    """
-    schema_clause = f"AND schema = '{schema if schema else ''}'"
-    all_columns = defaultdict(list)
-    with connection.connect() as cnct:
-        result = cnct.execute(
-            REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)
-        )
-        for col in result:
-            key = RelationKey(col.table_name, col.schema, connection)
-            all_columns[key].append(col)
-    return dict(all_columns)
+STANDARD_TABLE_TYPES = {
+    "r": TableType.Regular,
+    "e": TableType.External,
+    "v": TableType.View,
+}
 
 
 RedshiftDialectMixin._get_column_info = (  # pylint: disable=protected-access
@@ -136,272 +119,75 @@ RedshiftDialectMixin._get_column_info = (  # pylint: disable=protected-access
 RedshiftDialectMixin._get_schema_column_info = (  # pylint: disable=protected-access
     _get_schema_column_info
 )
-
-
-def _handle_array_type(attype):
-    return (
-        # strip '[]' from integer[], etc.
-        re.sub(r"\[\]$", "", attype),
-        attype.endswith("[]"),
-    )
-
-
-def _init_args(format_type):
-    args = re.search(r"\((.*)\)", format_type)
-    if args and args.group(1):
-        args = tuple(re.split(r"\s*,\s*", args.group(1)))
-    else:
-        args = ()
-    return args
-
-
-def _get_kwargs_for_time_type(kwargs, charlen, attype):
-    if charlen:
-        kwargs["precision"] = int(charlen)
-    if attype in {"timestamp with time zone", "time with time zone"}:
-        kwargs["timezone"] = True
-    else:
-        kwargs["timezone"] = False
-    return kwargs
-
-
-def _get_args_and_kwargs(charlen, attype, format_type):
-    kwargs = {}
-    args = _init_args(format_type)
-    if attype == "numeric" and charlen:
-        prec, scale = charlen.split(",")
-        args = (int(prec), int(scale))
-
-    elif attype == "double precision":
-        args = (53,)
-
-    elif attype in {
-        "timestamp with time zone",
-        "time with time zone",
-        "timestamp without time zone",
-        "time without time zone",
-        "time",
-    }:
-        kwargs = _get_kwargs_for_time_type(kwargs, charlen, attype)
-
-    elif attype == "bit varying":
-        kwargs["varying"] = True
-        if charlen:
-            args = (int(charlen),)
-
-    elif attype.startswith("interval"):
-        field_match = re.match(r"interval (.+)", attype, re.I)
-        if charlen:
-            kwargs["precision"] = int(charlen)
-        if field_match:
-            kwargs["fields"] = field_match.group(1)
-    elif charlen:
-        args = (int(charlen),)
-    return args, kwargs
-
-
-def _update_column_info(  # pylint: disable=too-many-arguments
-    default, schema, coltype, autoincrement, name, nullable, identity, comment, computed
-):
-    if default is not None:
-        match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
-        if match is not None:
-            if issubclass(
-                coltype._type_affinity,  # pylint: disable=protected-access
-                sqltypes.Integer,
-            ):
-                autoincrement = True
-            # the default is related to a Sequence
-            sch = schema
-            if "." not in match.group(2) and sch is not None:
-                # unconditionally quote the schema name.  this could
-                # later be enhanced to obey quoting rules /
-                # "quote schema"
-                default = (
-                    match.group(1)
-                    + (f'"{sch}"')
-                    + "."
-                    + match.group(2)
-                    + match.group(3)
-                )
-    column_info = dict(
-        name=name,
-        type=coltype,
-        nullable=nullable,
-        default=default,
-        autoincrement=autoincrement or identity is not None,
-        comment=comment,
-    )
-    if computed is not None:
-        column_info["computed"] = computed
-    if identity is not None:
-        column_info["identity"] = identity
-    return column_info
-
-
-def _update_coltype(coltype, args, kwargs, attype, name, is_array):
-    if coltype:
-        coltype = coltype(*args, **kwargs)
-        if is_array:
-            coltype = ischema_names["_array"](coltype)
-    else:
-        util.warn(f"Did not recognize type '{attype}' of column '{name}'")
-        coltype = sqltypes.NULLTYPE
-    return coltype
-
-
-def _update_computed_and_default(generated, default):
-    computed = None
-    if generated not in (None, "", b"\x00"):
-        computed = dict(sqltext=default, persisted=generated in ("s", b"s"))
-        default = None
-    return computed, default
-
-
-def _get_charlen(format_type):
-    charlen = re.search(r"\(([\d,]+)\)", format_type)
-    if charlen:
-        charlen = charlen.group(1)
-    return charlen
-
-
-@reflection.cache
-def _get_column_info(  # pylint: disable=too-many-locals,too-many-arguments, unused-argument
-    self,
-    name,
-    format_type,
-    default,
-    notnull,
-    domains,
-    enums,
-    schema,
-    comment,
-    generated,
-    identity,
-):
-    # strip (*) from character varying(5), timestamp(5)
-    # with time zone, geometry(POLYGON), etc.
-    attype = re.sub(r"\(.*\)", "", format_type)
-
-    # strip '[]' from integer[], etc. and check if an array
-    attype, is_array = _handle_array_type(attype)
-
-    # strip quotes from case sensitive enum or domain names
-    enum_or_domain_key = tuple(util.quoted_token_parser(attype))
-
-    nullable = not notnull
-    charlen = _get_charlen(format_type)
-    args, kwargs = _get_args_and_kwargs(charlen, attype, format_type)
-    if attype.startswith("interval"):
-        attype = "interval"
-    while True:
-        # looping here to suit nested domains
-        if attype in ischema_names:
-            coltype = ischema_names[attype]
-            break
-        if enum_or_domain_key in enums:
-            enum = enums[enum_or_domain_key]
-            coltype = ENUM
-            kwargs["name"] = enum["name"]
-            if not enum["visible"]:
-                kwargs["schema"] = enum["schema"]
-            args = tuple(enum["labels"])
-            break
-        if enum_or_domain_key in domains:
-            domain = domains[enum_or_domain_key]
-            attype = domain["attype"]
-            attype, is_array = _handle_array_type(attype)
-            # strip quotes from case sensitive enum or domain names
-            enum_or_domain_key = tuple(util.quoted_token_parser(attype))
-            # A table can't override a not null on the domain,
-            # but can override nullable
-            nullable = nullable and domain["nullable"]
-            if domain["default"] and not default:
-                # It can, however, override the default
-                # value, but can't set it to null.
-                default = domain["default"]
-        else:
-            coltype = None
-            break
-
-    coltype = _update_coltype(coltype, args, kwargs, attype, name, is_array)
-
-    # If a zero byte or blank string depending on driver (is also absent
-    # for older PG versions), then not a generated column. Otherwise, s =
-    # stored. (Other values might be added in the future.)
-    computed, default = _update_computed_and_default(generated, default)
-
-    # adjust the default value
-    autoincrement = False
-    column_info = _update_column_info(
-        default,
-        schema,
-        coltype,
-        autoincrement,
-        name,
-        nullable,
-        identity,
-        comment,
-        computed,
-    )
-
-    return column_info
-
-
-PGDialect._get_column_info = _get_column_info  # pylint: disable=protected-access
-
-STANDARD_TABLE_TYPES = {
-    "r": TableType.Local,
-    "e": TableType.External,
-    "v": TableType.View,
-}
-
-
-@reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
-):
-    return get_table_comment_wrapper(
-        self,
-        connection,
-        table_name=table_name,
-        schema=schema,
-        query=REDSHIFT_TABLE_COMMENTS,
-    )
-
-
+RedshiftDialectMixin.get_columns = get_columns
+PGDialect._get_column_info = _get_pg_column_info  # pylint: disable=protected-access
 RedshiftDialect.get_all_table_comments = get_all_table_comments
 RedshiftDialect.get_table_comment = get_table_comment
+RedshiftDialect.get_view_definition = get_view_definition
+RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
+    _get_all_relation_info
+)
+
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
 
-class RedshiftSource(CommonDbSourceService):
+class RedshiftSource(
+    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
+):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
     """
 
-    def __init__(self, config, metadata_config):
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata,
+        incremental_configuration: IncrementalConfig,
+    ):
+        super().__init__(config, metadata)
         self.partition_details = {}
-        super().__init__(config, metadata_config)
+        self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
+        self.context.get_global().deleted_tables = []
+        self.incremental = incremental_configuration
+        self.incremental_table_processor: Optional[
+            RedshiftIncrementalTableProcessor
+        ] = None
+
+        if self.incremental.enabled:
+            logger.info(
+                "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
+                self.incremental.start_datetime_utc,
+            )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: RedshiftConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: RedshiftConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedshiftConnection):
             raise InvalidSourceException(
                 f"Expected RedshiftConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        incremental_config = IncrementalConfig.create(
+            config.sourceConfig.config.incremental, pipeline_name, metadata
+        )
+        return cls(config, metadata, incremental_config)
 
     def get_partition_details(self) -> None:
         """
         Populate partition details
         """
-        self.partition_details.clear()
-        results = self.engine.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
-        for row in results:
-            self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
+        try:
+            self.partition_details.clear()
+            results = self.connection.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
+            for row in results:
+                self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
+        except Exception as exe:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch partition details due: {exe}")
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -412,8 +198,18 @@ class RedshiftSource(CommonDbSourceService):
 
         result = self.connection.execute(
             sql.text(REDSHIFT_GET_ALL_RELATION_INFO),
-            dict(schema=schema_name),
+            {"schema": schema_name},
         )
+
+        if self.incremental.enabled:
+            result = [
+                (name, relkind)
+                for name, relkind in result
+                if name
+                in self.incremental_table_processor.get_not_deleted(
+                    schema_name=schema_name
+                )
+            ]
 
         return [
             TableNameAndType(
@@ -422,28 +218,96 @@ class RedshiftSource(CommonDbSourceService):
             for name, relkind in result
         ]
 
+    def query_view_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the view
+        name and type. By default, use the inspector method
+        to get the names and pass the View type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., material views,...
+        """
+
+        result = self.inspector.get_view_names(schema_name) or []
+
+        if self.incremental.enabled:
+            result = [
+                name
+                for name in result
+                if name
+                in self.incremental_table_processor.get_not_deleted(
+                    schema_name=schema_name
+                )
+            ]
+
+        return [
+            TableNameAndType(name=table_name, type_=TableType.View)
+            for table_name in result
+        ]
+
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
+
+    def _set_incremental_table_processor(self, database: str):
+        """Prepares the needed data for doing incremental metadata extration for a given database.
+
+        1. Queries Redshift to get the changes done after the `self.incremental.start_datetime_utc`
+        2. Sets the table map with the changes within the RedshiftIncrementalTableProcessor
+        3. Sets the deleted tables in the context
+        """
+        if self.incremental.enabled:
+            self.incremental_table_processor = RedshiftIncrementalTableProcessor.create(
+                self.connection, self.inspector.default_schema_name
+            )
+
+            self.incremental_table_processor.set_table_map(
+                database=database, start_date=self.incremental.start_datetime_utc
+            )
+
+            self.context.get_global().deleted_tables.extend(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=database,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                )
+                for schema_name, table_name in self.incremental_table_processor.get_deleted()
+            )
+
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
-            self.inspector = inspect(self.engine)
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:
             self.get_partition_details()
-            yield self.config.serviceConnection.__root__.config.database
+
+            self._set_incremental_table_processor(
+                self.config.serviceConnection.root.config.database
+            )
+
+            yield self.config.serviceConnection.root.config.database
         else:
-            results = self.connection.execute("SELECT datname FROM pg_database")
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -451,6 +315,9 @@ class RedshiftSource(CommonDbSourceService):
                 try:
                     self.set_inspector(database_name=new_database)
                     self.get_partition_details()
+
+                    self._set_incremental_table_processor(new_database)
+
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -458,24 +325,141 @@ class RedshiftSource(CommonDbSourceService):
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
 
-    def _get_partition_key(self, diststyle: str) -> Optional[List[str]]:
+    def _get_partition_key(self, diststyle: str) -> Optional[str]:
         try:
             regex = re.match(r"KEY\((\w+)\)", diststyle)
             if regex:
-                return [regex.group(1)]
+                return regex.group(1)
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(err)
         return None
 
+    @calculate_execution_time()
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, TablePartition]:
+    ) -> Tuple[bool, Optional[TablePartition]]:
         diststyle = self.partition_details.get(f"{schema_name}.{table_name}")
         if diststyle:
-            partition_details = TablePartition(
-                columns=self._get_partition_key(diststyle),
-                intervalType=IntervalType.COLUMN_VALUE,
-            )
-            return True, partition_details
+            distkey = self._get_partition_key(diststyle)
+            if distkey is not None:
+                partition_details = TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=distkey,
+                            intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                            interval=None,
+                        )
+                    ]
+                )
+                return True, partition_details
         return False, None
+
+    def process_additional_table_constraints(
+        self, column: dict, table_constraints: List[TableConstraint]
+    ) -> None:
+        """
+        Process DIST_KEY & SORT_KEY column properties
+        """
+
+        if column.get("distkey"):
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.DIST_KEY,
+                    columns=[column.get("name")],
+                )
+            )
+
+        if column.get("sortkey"):
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.SORT_KEY,
+                    columns=[column.get("name")],
+                )
+            )
+
+    def get_stored_procedures(self) -> Iterable[RedshiftStoredProcedure]:
+        """List Snowflake stored procedures"""
+        if self.source_config.includeStoredProcedures:
+            results = self.connection.execute(
+                REDSHIFT_GET_STORED_PROCEDURES.format(
+                    schema_name=self.context.get().database_schema,
+                )
+            ).all()
+            for row in results:
+                stored_procedure = RedshiftStoredProcedure.model_validate(dict(row))
+                yield stored_procedure
+
+    @calculate_execution_time_generator()
+    def yield_stored_procedure(
+        self, stored_procedure: RedshiftStoredProcedure
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Prepare the stored procedure payload"""
+
+        try:
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(stored_procedure.name),
+                storedProcedureCode=StoredProcedureCode(
+                    language=Language.SQL,
+                    code=stored_procedure.definition,
+                ),
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                ),
+            )
+            yield Either(right=stored_procedure_request)
+
+            self.register_record_stored_proc_request(stored_procedure_request)
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=stored_procedure.name,
+                    error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+        """
+        Return the dictionary associating stored procedures to the
+        queries they triggered
+        """
+        start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(
+            start_date=start,
+            database_name=self.context.get().database,
+        )
+
+        queries_dict = self.procedure_queries_dict(
+            query=query,
+        )
+
+        return queries_dict
+
+    def mark_tables_as_deleted(self):
+        """
+        Use the current inspector to mark tables as deleted
+        """
+        if self.incremental.enabled:
+            if not self.context.get().__dict__.get("database"):
+                raise ValueError(
+                    "No Database found in the context. We cannot run the table deletion."
+                )
+
+            if self.source_config.markDeletedTables:
+                logger.info(
+                    f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
+                )
+                yield from delete_entity_by_name(
+                    self.metadata,
+                    entity_type=Table,
+                    entity_names=self.context.get_global().deleted_tables,
+                    mark_deleted_entity=self.source_config.markDeletedTables,
+                )
+        else:
+            yield from super().mark_tables_as_deleted()

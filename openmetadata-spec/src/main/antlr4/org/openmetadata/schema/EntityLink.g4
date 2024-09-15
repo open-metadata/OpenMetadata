@@ -1,53 +1,142 @@
 grammar EntityLink;
 
 entitylink
-    : '<#E' (RESERVED entity)+ '>' EOF
+    : RESERVED_START (separator entity_type separator name_or_fqn)+
+      (separator entity_field (separator name_or_fqn)*)* '>' EOF
     ;
 
-entity
+
+entity_type
     : ENTITY_TYPE # entityType
-    | ENTITY_ATTRIBUTE # entityAttribute
-    | ENTITY_FQN # entityFqn
-    | ENTITY_FIELD # entityField
+    ;
+
+name_or_fqn
+    : NAME_OR_FQN # nameOrFQN
+    ;
+
+entity_field
+    : ENTITY_FIELD # entityField
+    ;
+
+
+separator
+    : '::'
+    ;
+
+RESERVED_START
+    : '<#E'
     ;
 
 ENTITY_TYPE
     : 'table'
-    | 'database'
-    | 'databaseSchema'
-    | 'metrics'
+    | 'topic'
+    | 'classification'
     | 'dashboard'
     | 'pipeline'
-    | 'chart'
-    | 'report'
-    | 'topic'
-    | 'mlmodel'
-    | 'bot'
-    | 'THREAD'
-    | 'location'
+    | 'database'
+    | 'databaseSchema'
     | 'glossary'
     | 'glossaryTerm'
-    | 'tag'
-    | 'classification'
-    | 'type'
-    | 'testDefinition'
+    | 'databaseService'
+    | 'messagingService'
+    | 'metadataService'
+    | 'dashboardService'
+    | 'pipelineService'
+    | 'mlmodelService'
+    | 'storageService'
+    | 'searchService'
+    | 'webhook'
+    | 'mlmodel'
+    | 'team'
+    | 'user'
+    | 'bot'
+    | 'role'
+    | 'policy'
     | 'testSuite'
     | 'testCase'
+    | 'dataInsightChart'
+    | 'kpi'
+    | 'alert'
+    | 'container'
+    | 'tag'
+    | 'dashboardDataModel'
+    | 'subscription'
+    | 'chart'
+    | 'domain'
+    | 'dataProduct'
+    | 'sampleData'
+    | 'storedProcedure'
+    | 'searchIndex'
+    | 'appMarketPlaceDefinition'
+    | 'app'
+    | 'persona'
+    | 'docStore'
+    | 'page'
+    | 'KnowLedgePanels'
+    | 'govern'
+    | 'all'
+    | 'customMetric'
+    | 'eventsubscription'
+    | 'ingestionPipeline'
+    | 'apiCollection'
+    | 'apiEndpoint'
+    | 'apiService'
     ;
+
 ENTITY_FIELD
-    : 'columns'
-    | 'description' 
-    | 'tags' 
+    : 'description'
+    | 'columns'
+    | 'schemaFields'
+    | 'tags'
     | 'tasks'
-    ;
-RESERVED
-    : '::'
+    | 'mlFeatures'
+    | 'schemaText'
+    | 'owner'
+    | 'reviewers'
+    | 'synonyms'
+    | 'relatedTerms'
+    | 'references'
+    | 'extension'
+    | 'displayName'
+    | 'name'
+    | 'messageSchema'
+    | 'charts'
+    | 'dataModel'
+    | 'constraint'
+    | 'tableConstraints'
+    | 'partitions'
+    | 'replicationFactor'
+    | 'sourceUrl'
+    | 'mutuallyExclusive'
+    | 'experts'
+    | 'fields'
+    | 'followers'
+    | 'appConfiguration'
+    | 'appSchedule'
+    | 'votes'
+    | 'profile'
+    | 'roles'
+    | 'deleted'
+    | 'lifeCycle'
+    | 'api_client_id'
+    | 'sourceHash'
+    | 'testCaseResult'
+    | 'tests'
+    | 'pipelineStatus'
+    | 'dataProducts'
+    | 'parameterValues'
+    | 'retentionPeriod'
+    | 'parent'
+    | 'teams'
+    | 'personas'
+    | 'ingestionPipeline'
+    | 'apiCollection'
+    | 'apiEndpoint'
+    | 'apiService'
     ;
 
-ENTITY_ATTRIBUTE
-    : [a-z]+
-    ;
+    
 
-ENTITY_FQN
-    : [a-zA-Z0-9,._"']+
+NAME_OR_FQN
+    : ~(':')* ~(':'|'>')+
     ;

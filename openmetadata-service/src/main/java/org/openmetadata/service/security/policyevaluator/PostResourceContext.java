@@ -1,27 +1,25 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
 /** Posts that are part of conversation threads require special handling */
-public class PostResourceContext implements ResourceContextInterface {
-  private final EntityReference owner;
-
-  public PostResourceContext(EntityReference owner) {
-    this.owner = owner;
-  }
-
+public record PostResourceContext(String postedBy) implements ResourceContextInterface {
   @Override
   public String getResource() {
     return Entity.THREAD;
   }
 
   @Override
-  public EntityReference getOwner() {
-    return owner;
+  public List<EntityReference> getOwners() {
+    List<EntityReference> owners = new ArrayList<>();
+    owners.add(Entity.getEntityReferenceByName(Entity.USER, postedBy, Include.NON_DELETED));
+    return owners;
   }
 
   @Override
@@ -31,6 +29,11 @@ public class PostResourceContext implements ResourceContextInterface {
 
   @Override
   public EntityInterface getEntity() {
+    return null;
+  }
+
+  @Override
+  public EntityReference getDomain() {
     return null;
   }
 }

@@ -14,7 +14,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
-import { TestIndicatorProps } from '../../TableProfiler/TableProfiler.interface';
+import { TestIndicatorProps } from '../../Database/Profiler/TableProfiler/TableProfiler.interface';
 import TestIndicator from './TestIndicator';
 
 const mockProps: TestIndicatorProps = {
@@ -30,11 +30,9 @@ describe('Test TestIndicator component', () => {
   it('should render without crashing', async () => {
     render(<TestIndicator {...mockProps} />);
 
-    const container = await screen.findByTestId('indicator-container');
     const testStatus = await screen.findByTestId('test-status');
     const testValue = await screen.findByTestId('test-value');
 
-    expect(container).toBeInTheDocument();
     expect(testStatus).toBeInTheDocument();
     expect(testValue).toBeInTheDocument();
   });

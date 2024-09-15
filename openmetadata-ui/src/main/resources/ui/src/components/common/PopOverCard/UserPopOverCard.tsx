@@ -11,169 +11,274 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
-import { isEmpty } from 'lodash';
+import { Button, Popover, Space } from 'antd';
+import classNames from 'classnames';
+import { t } from 'i18next';
+import { get, isEmpty } from 'lodash';
 import React, {
   FC,
   Fragment,
   HTMLAttributes,
+  ReactNode,
+  useCallback,
   useEffect,
   useState,
 } from 'react';
-import { useHistory } from 'react-router-dom';
-import { getUserByName } from 'rest/userAPI';
-import AppState from '../../../AppState';
-import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
-import { User } from '../../../generated/entity/teams/user';
+import { Link, useHistory } from 'react-router-dom';
+import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
+import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+  TERM_ADMIN,
+} from '../../../constants/constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName, getNonDeletedTeams } from '../../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import Loader from '../../Loader/Loader';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { getUserByName } from '../../../rest/userAPI';
+import { getNonDeletedTeams } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getUserWithImage } from '../../../utils/UserDataUtils';
+import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
-interface Props extends HTMLAttributes<HTMLDivElement> {
-  userName: string;
-  type?: string;
-}
+const UserTeams = React.memo(({ userName }: { userName: string }) => {
+  const { userProfilePics } = useApplicationStore();
+  const userData = userProfilePics[userName];
+  const teams = getNonDeletedTeams(userData?.teams ?? []);
 
-const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
-  const history = useHistory();
-  const [userData, setUserData] = useState<User>({} as User);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  return teams?.length ? (
+    <div className="m-t-xs">
+      <p className="d-flex items-center">
+        <IconTeams height={16} width={16} />
+        <span className="m-r-xs m-l-xss align-middle font-medium">
+          {t('label.team-plural')}
+        </span>
+      </p>
 
-  const getData = () => {
-    const userdetails = AppState.userDataProfiles[userName];
-    if (userdetails) {
-      setUserData(userdetails);
-      setIsLoading(false);
-    } else {
-      if (type === 'user') {
-        setIsLoading(true);
-        getUserByName(userName, 'profile,roles,teams,follows,owns')
-          .then((res) => {
-            AppState.userDataProfiles[userName] = res;
-          })
-          .finally(() => setIsLoading(false));
+      <p className="d-flex flex-wrap m-t-xss">
+        {teams.map((team) => (
+          <span
+            className="bg-grey rounded-4 p-x-xs text-grey-body text-xs m-b-xss"
+            key={team.id}>
+            {getEntityName(team)}
+          </span>
+        ))}
+      </p>
+    </div>
+  ) : null;
+});
+
+const UserRoles = React.memo(({ userName }: { userName: string }) => {
+  const { userProfilePics } = useApplicationStore();
+  const userData = userProfilePics[userName];
+  const roles = userData?.roles;
+  const isAdmin = userData?.isAdmin;
+
+  return roles?.length ? (
+    <div className="m-t-xs">
+      <p className="d-flex items-center">
+        <IconUsers height={16} width={16} />
+        <span className="m-r-xs m-l-xss align-middle font-medium">
+          {t('label.role-plural')}
+        </span>
+      </p>
+
+      <span className="d-flex flex-wrap m-t-xss">
+        {isAdmin && (
+          <span className="bg-grey rounded-4 p-x-xs text-xs m-b-xss">
+            {TERM_ADMIN}
+          </span>
+        )}
+        {roles.map((role) => (
+          <span
+            className="bg-grey rounded-4 p-x-xs text-xs m-b-xss"
+            key={role.id}>
+            {getEntityName(role)}
+          </span>
+        ))}
+      </span>
+    </div>
+  ) : null;
+});
+
+const PopoverContent = React.memo(
+  ({
+    userName,
+    type = OwnerType.USER,
+  }: {
+    userName: string;
+    type: OwnerType;
+  }) => {
+    const isTeam = type === OwnerType.TEAM;
+    const [, , user = {}] = useUserProfile({
+      permission: true,
+      name: userName,
+      isTeam,
+    });
+    const { updateUserProfilePics } = useApplicationStore();
+    const [loading, setLoading] = useState(false);
+
+    const teamDetails = get(user, 'teams', null);
+
+    const getUserWithAdditionalDetails = useCallback(async () => {
+      try {
+        setLoading(true);
+        let user = await getUserByName(userName, {
+          fields: [TabSpecificField.TEAMS, TabSpecificField.ROLES],
+        });
+        user = getUserWithImage(user);
+
+        updateUserProfilePics({
+          id: userName,
+          user,
+        });
+      } catch (error) {
+        // Error
+      } finally {
+        setLoading(false);
       }
-    }
-  };
+    }, [userName]);
 
-  const onTitleClickHandler = (path: string) => {
-    history.push(path);
-  };
-
-  const UserTeams = () => {
-    const teams = getNonDeletedTeams(userData.teams ?? []);
-
-    return teams?.length ? (
-      <p className="tw-mt-2">
-        <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
-        <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
-          Teams
-        </span>
-        <span className="tw-flex tw-flex-wrap tw-mt-1">
-          {teams.map((team, i) => (
-            <span
-              className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
-              key={i}>
-              {team?.displayName ?? team?.name}
-            </span>
-          ))}
-        </span>
-      </p>
-    ) : null;
-  };
-
-  const UserRoles = () => {
-    const roles = userData.roles;
-    const isAdmin = userData?.isAdmin;
-
-    return roles?.length ? (
-      <p className="tw-mt-2">
-        <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-        <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
-          Roles
-        </span>
-        <span className="tw-flex tw-flex-wrap tw-mt-1">
-          {isAdmin && (
-            <span className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs">
-              {TERM_ADMIN}
-            </span>
-          )}
-          {roles.map((role, i) => (
-            <span
-              className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
-              key={i}>
-              {role?.displayName ?? role?.name}
-            </span>
-          ))}
-        </span>
-      </p>
-    ) : null;
-  };
-
-  const PopoverTitle = () => {
-    const name = userData.name ?? '';
-    const displayName = getEntityName(userData as unknown as EntityReference);
-
-    return (
-      <div className="tw-flex">
-        <div className="tw-mr-2">
-          <ProfilePicture id="" name={userName} width="24" />
-        </div>
-        <div className="tw-self-center">
-          <button
-            className="tw-text-info"
-            onClick={(e) => {
-              e.stopPropagation();
-              onTitleClickHandler(getUserPath(name));
-            }}>
-            <span className="tw-font-medium tw-mr-2">{displayName}</span>
-          </button>
-          {displayName !== name ? (
-            <span className="tw-text-grey-muted">{name}</span>
-          ) : null}
-          {isEmpty(userData) && <span>{userName}</span>}
-        </div>
-      </div>
-    );
-  };
-
-  const PopoverContent = () => {
     useEffect(() => {
-      getData();
-    }, []);
+      if (!teamDetails && !isTeam) {
+        getUserWithAdditionalDetails();
+      } else {
+        setLoading(false);
+      }
+    }, [teamDetails, isTeam]);
 
     return (
       <Fragment>
-        {isLoading ? (
+        {loading ? (
           <Loader size="small" />
         ) : (
-          <div className="tw-w-80">
-            {isEmpty(userData) ? (
-              <span>No data available</span>
+          <div className="w-40">
+            {isEmpty(user) ? (
+              <span>{t('message.no-data-available')}</span>
             ) : (
               <Fragment>
-                <UserTeams />
-                <UserRoles />
+                <UserTeams userName={userName} />
+                <UserRoles userName={userName} />
               </Fragment>
             )}
           </div>
         )}
       </Fragment>
     );
-  };
+  }
+);
+
+const PopoverTitle = React.memo(
+  ({
+    userName,
+    profilePicture,
+    type = OwnerType.USER,
+  }: {
+    userName: string;
+    profilePicture: JSX.Element;
+    type: OwnerType;
+  }) => {
+    const history = useHistory();
+
+    const [, , userData] = useUserProfile({
+      permission: true,
+      name: userName,
+      isTeam: type === OwnerType.TEAM,
+    });
+
+    const onTitleClickHandler = (path: string) => {
+      history.push(path);
+    };
+    const name = userData?.name ?? '';
+    const displayName = getEntityName(userData as unknown as EntityReference);
+
+    return (
+      <Space align="center">
+        {profilePicture}
+        <div className="self-center">
+          <Button
+            className="text-info p-0"
+            type="link"
+            onClick={(e) => {
+              e.stopPropagation();
+              onTitleClickHandler(getUserPath(name));
+            }}>
+            <span className="font-medium m-r-xs">{displayName}</span>
+          </Button>
+          {displayName !== name ? (
+            <span className="text-grey-muted">{name}</span>
+          ) : null}
+          {isEmpty(userData) && <span>{userName}</span>}
+        </div>
+      </Space>
+    );
+  }
+);
+
+interface Props extends HTMLAttributes<HTMLDivElement> {
+  userName: string;
+  displayName?: ReactNode;
+  type?: OwnerType;
+  showUserName?: boolean;
+  showUserProfile?: boolean;
+  profileWidth?: number;
+  className?: string;
+}
+
+const UserPopOverCard: FC<Props> = ({
+  userName,
+  displayName,
+  type = OwnerType.USER,
+  showUserName = false,
+  showUserProfile = true,
+  children,
+  className,
+  profileWidth = 24,
+}) => {
+  const profilePicture = (
+    <ProfilePicture
+      avatarType="outlined"
+      isTeam={type === OwnerType.TEAM}
+      name={userName}
+      width={`${profileWidth}`}
+    />
+  );
 
   return (
     <Popover
-      destroyTooltipOnHide
       align={{ targetOffset: [0, -10] }}
-      content={<PopoverContent />}
+      content={<PopoverContent type={type} userName={userName} />}
       overlayClassName="ant-popover-card"
-      title={<PopoverTitle />}
-      trigger="hover"
-      zIndex={9999}>
-      {children}
+      title={
+        <PopoverTitle
+          profilePicture={profilePicture}
+          type={type}
+          userName={userName}
+        />
+      }
+      trigger="hover">
+      {children ?? (
+        <Link
+          className={classNames(
+            'assignee-item d-flex gap-1 cursor-pointer items-center',
+            {
+              'm-r-xs': !showUserName && showUserProfile,
+            },
+            className
+          )}
+          data-testid={userName}
+          to={
+            type === OwnerType.TEAM
+              ? getTeamAndUserDetailsPath(userName)
+              : getUserPath(userName ?? '')
+          }>
+          {showUserProfile ? profilePicture : null}
+          {showUserName ? <span>{displayName ?? userName}</span> : null}
+        </Link>
+      )}
     </Popover>
   );
 };

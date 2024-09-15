@@ -11,65 +11,71 @@
  *  limitations under the License.
  */
 
+import { Avatar } from 'antd';
 import classNames from 'classnames';
-import { observer } from 'mobx-react';
+import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
 import React, { useMemo } from 'react';
-import AppState from '../../../AppState';
-import { EntityReference, User } from '../../../generated/entity/teams/user';
-import { getEntityName } from '../../../utils/CommonUtils';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { User } from '../../../generated/entity/teams/user';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { getRandomColor } from '../../../utils/CommonUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
-import { getUserProfilePic } from '../../../utils/UserDataUtils';
-import Loader from '../../Loader/Loader';
-import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
-import Avatar from '../avatar/Avatar';
+import Loader from '../Loader/Loader';
 
-type UserData = Pick<User, 'id' | 'name' | 'displayName'>;
+type UserData = Pick<User, 'name' | 'displayName'>;
 
 interface Props extends UserData {
   width?: string;
   type?: ImageShape;
-  textClass?: string;
   className?: string;
   height?: string;
-  profileImgClasses?: string;
+  isTeam?: boolean;
+  size?: number | 'small' | 'default' | 'large';
+  avatarType?: 'solid' | 'outlined';
 }
 
 const ProfilePicture = ({
-  id,
   name,
   displayName,
   className = '',
-  textClass = '',
-  type = 'square',
+  type = 'circle',
   width = '36',
   height,
-  profileImgClasses,
+  isTeam = false,
+  size,
+  avatarType = 'solid',
 }: Props) => {
   const { permissions } = usePermissionProvider();
+  const { color, character, backgroundColor } = getRandomColor(
+    displayName ?? name
+  );
 
   const viewUserPermission = useMemo(() => {
     return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
   }, [permissions]);
 
-  const profilePic = useMemo(() => {
-    return getUserProfilePic(viewUserPermission, id, name);
-  }, [id, name, AppState.userProfilePics]);
-
-  const isPicLoading = useMemo(() => {
-    return AppState.isProfilePicLoading(id, name);
-  }, [id, name, AppState.userProfilePicsLoading]);
+  const [profileURL, isPicLoading] = useUserProfile({
+    permission: viewUserPermission,
+    name,
+    isTeam,
+  });
 
   const getAvatarByName = () => {
     return (
       <Avatar
-        className={className}
-        height={height}
-        name={getEntityName({ name, displayName } as EntityReference)}
-        textClass={textClass}
-        type={type}
-        width={width}
+        className={classNames('flex-center', className)}
+        data-testid="profile-avatar"
+        icon={character}
+        shape={type}
+        size={size ?? parseInt(width)}
+        style={{
+          color: avatarType === 'solid' ? 'default' : color,
+          backgroundColor: avatarType === 'solid' ? color : backgroundColor,
+          fontWeight: avatarType === 'solid' ? 400 : 500,
+          border: `0.5px solid ${avatarType === 'solid' ? 'default' : color}`,
+        }}
       />
     );
   };
@@ -77,17 +83,17 @@ const ProfilePicture = ({
   const getAvatarElement = () => {
     return isPicLoading ? (
       <div
-        className="tw-inline-block tw-relative"
+        className="d-inline-block relative"
         style={{
           height: `${height || width}px`,
           width: `${width}px`,
         }}>
         {getAvatarByName()}
         <div
-          className="tw-absolute tw-inset-0 tw-opacity-60 tw-bg-grey-backdrop tw-rounded"
+          className="absolute inset-0 opacity-60 bg-grey-4 rounded-full"
           data-testid="loader-cntnr">
           <Loader
-            className="tw-absolute tw-inset-0"
+            className="absolute inset-0"
             size="small"
             style={{ height: `${+width - 2}px`, width: `${+width - 2}px` }}
             type="white"
@@ -99,21 +105,17 @@ const ProfilePicture = ({
     );
   };
 
-  return profilePic ? (
-    <div
-      className={classNames('profile-image', type, className)}
-      style={{ height: `${height || width}px`, width: `${width}px` }}>
-      <img
-        alt="user"
-        className={profileImgClasses}
-        data-testid="profile-image"
-        referrerPolicy="no-referrer"
-        src={profilePic}
-      />
-    </div>
+  return profileURL ? (
+    <Avatar
+      className={className}
+      data-testid="profile-image"
+      shape={type}
+      size={size ?? parseInt(width)}
+      src={profileURL}
+    />
   ) : (
     getAvatarElement()
   );
 };
 
-export default observer(ProfilePicture);
+export default ProfilePicture;

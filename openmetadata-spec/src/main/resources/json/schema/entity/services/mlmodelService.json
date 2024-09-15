@@ -14,7 +14,7 @@
       "description": "Type of MlModel service",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
-      "enum": ["Mlflow", "Sklearn", "CustomMlModel", "SageMaker"],
+      "enum": ["Mlflow", "Sklearn", "CustomMlModel", "SageMaker", "VertexAI"],
       "javaEnums": [
         {
           "name": "Mlflow"
@@ -27,6 +27,9 @@
         },
         {
           "name": "SageMaker"
+        },
+        {
+          "name": "VertexAI"
         }
       ]
     },
@@ -52,6 +55,9 @@
             },
             {
               "$ref": "./connections/mlmodel/sageMakerConnection.json"
+            },
+            {
+              "$ref": "./connections/mlmodel/vertexaiConnection.json"
             }
           ]
         }
@@ -98,10 +104,14 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this pipeline service to extract metadata",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "connection": {
       "$ref": "#/definitions/mlModelConnection"
+    },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
     },
     "tags": {
       "description": "Tags for this MlModel Service.",
@@ -111,9 +121,9 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this pipeline service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this pipeline service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this pipeline service.",
@@ -127,6 +137,14 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "domain" : {
+      "description": "Domain the MLModel service belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "serviceType"],

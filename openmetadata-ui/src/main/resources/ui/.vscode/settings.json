@@ -10,5 +10,11 @@
   },
 
   // Indentations purely based on linters and file formatters, not based on existing occurrences
-  "editor.detectIndentation": false
+  "editor.detectIndentation": false,
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
 }

@@ -34,7 +34,7 @@ def test_get_table_entity(input, expected, mocked_ometa, mocked_ge_data_context)
     ometa_validation = OpenMetadataValidationAction(
         data_context=mocked_ge_data_context,
         config_file_path="my/config/path",
-        ometa_service_name=input,
+        database_service_name=input,
     )
 
     res = ometa_validation._get_table_entity("database", "schema", "table")

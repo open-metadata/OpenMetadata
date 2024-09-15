@@ -11,32 +11,36 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import RightPanel from 'components/AddDataQualityTest/components/RightPanel';
-import { INGESTION_DATA } from 'components/AddDataQualityTest/rightPanelData';
-import TestSuiteIngestion from 'components/AddDataQualityTest/TestSuiteIngestion';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
-import PageLayout from 'components/containers/PageLayout';
-import Loader from 'components/Loader/Loader';
-import { isUndefined, startCase } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
-import { getIngestionPipelineByFqn } from 'rest/ingestionPipelineAPI';
-import { getTestSuiteByName } from 'rest/testAPI';
-import { ROUTES } from '../../constants/constants';
-import { PageLayoutType } from '../../enums/layout.enum';
+import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
+import { TEST_SUITE_INGESTION_PAGE_DATA } from '../../components/DataQuality/AddDataQualityTest/rightPanelData';
+import TestSuiteIngestion from '../../components/DataQuality/AddDataQualityTest/TestSuiteIngestion';
+import { getEntityDetailsPath } from '../../constants/constants';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
-import jsonData from '../../jsons/en';
-import { getTestSuitePath } from '../../utils/RouterUtils';
+import { useFqn } from '../../hooks/useFqn';
+import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
+import { getTestSuiteByName } from '../../rest/testAPI';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
-  const { testSuiteFQN, ingestionFQN } = useParams<Record<string, string>>();
+  const { fqn: testSuiteFQN, ingestionFQN } = useFqn();
+  const { t } = useTranslation();
 
-  const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [ingestionPipeline, setIngestionPipeline] =
@@ -49,12 +53,13 @@ const TestSuiteIngestionPage = () => {
     setIsLoading(true);
     try {
       const response = await getIngestionPipelineByFqn(ingestionFQN);
-
       setIngestionPipeline(response);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-ingestion-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
+        })
       );
     } finally {
       setIsLoading(false);
@@ -65,19 +70,25 @@ const TestSuiteIngestionPage = () => {
     setIsLoading(true);
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
       });
       setSlashedBreadCrumb([
         {
-          name: 'Test Suites',
-          url: ROUTES.TEST_SUITES,
+          name: t('label.test-suite-plural'),
+          url: getDataQualityPagePath(),
         },
         {
-          name: startCase(response.displayName || response.name),
-          url: getTestSuitePath(response.fullyQualifiedName || ''),
+          name: getEntityName(response.executableEntityReference),
+          url: getEntityDetailsPath(
+            EntityType.TABLE,
+            response.executableEntityReference?.fullyQualifiedName ?? '',
+            EntityTabs.PROFILER
+          ),
         },
         {
-          name: `${ingestionFQN ? 'Edit' : 'Add'} Ingestion`,
+          name: `${ingestionFQN ? t('label.edit') : t('label.add')} ${t(
+            'label.ingestion'
+          )}`,
           url: '',
         },
       ]);
@@ -90,15 +101,13 @@ const TestSuiteIngestionPage = () => {
       setTestSuite(undefined);
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-test-suite-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.test-suite'),
+        })
       );
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleCancelBtn = () => {
-    history.push(getTestSuitePath(testSuiteFQN || ''));
   };
 
   useEffect(() => {
@@ -110,29 +119,38 @@ const TestSuiteIngestionPage = () => {
   }
 
   if (isUndefined(testSuite)) {
-    return (
-      <ErrorPlaceHolder>
-        <p>No Data found</p>
-      </ErrorPlaceHolder>
-    );
+    return <ErrorPlaceHolder />;
   }
 
   return (
-    <PageContainerV1>
-      <div className="tw-self-center">
-        <PageLayout
-          classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-          header={<TitleBreadcrumb titleLinks={slashedBreadCrumb} />}
-          layout={PageLayoutType['2ColRTL']}
-          rightPanel={<RightPanel data={INGESTION_DATA} />}>
-          <TestSuiteIngestion
-            ingestionPipeline={ingestionPipeline}
-            testSuite={testSuite}
-            onCancel={handleCancelBtn}
-          />
-        </PageLayout>
-      </div>
-    </PageContainerV1>
+    <ResizablePanels
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        className: 'content-resizable-panel-container',
+        children: (
+          <div className="max-width-md w-9/10 service-form-container">
+            <TitleBreadcrumb titleLinks={slashedBreadCrumb} />
+            <div className="m-t-md">
+              <TestSuiteIngestion
+                ingestionPipeline={ingestionPipeline}
+                testSuite={testSuite}
+              />
+            </div>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.test-suite'),
+      })}
+      secondPanel={{
+        children: <RightPanel data={TEST_SUITE_INGESTION_PAGE_DATA} />,
+        className: 'p-md p-t-xl content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
+      }}
+    />
   );
 };
 

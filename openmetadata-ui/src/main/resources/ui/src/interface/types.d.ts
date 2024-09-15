@@ -12,15 +12,18 @@
  */
 
 declare module 'Models' {
+  import { EntityType } from '../enums/entity.enum';
   import { CreateDashboardService } from '../generated/api/services/createDashboardService';
   import { CreateDatabaseService } from '../generated/api/services/createDatabaseService';
   import { CreateMessagingService } from '../generated/api/services/createMessagingService';
   import { CreateMlModelService } from '../generated/api/services/createMlModelService';
   import { CreatePipelineService } from '../generated/api/services/createPipelineService';
+  import { CreateSearchService } from '../generated/api/services/createSearchService';
   import { CreateStorageService } from '../generated/api/services/createStorageService';
   import { ChangeDescription } from '../generated/entity/data/dashboard';
   import { EntityReference } from '../generated/type/entityReference';
   import { TagLabel } from '../generated/type/tagLabel';
+  import { SearchEntityHits } from '../utils/APIUtils';
   import { Paging } from './../generated/type/paging';
 
   export interface RestoreRequestType {
@@ -33,7 +36,8 @@ declare module 'Models' {
     | CreateDashboardService
     | CreateDatabaseService
     | CreateMessagingService
-    | CreateStorageService;
+    | CreateStorageService
+    | CreateSearchService;
 
   export type EntityTags = {
     isRemovable?: boolean;
@@ -89,6 +93,7 @@ declare module 'Models' {
     deleted?: boolean;
     entityType?: string;
     changeDescription?: ChangeDescription;
+    columns?: TableColumn[];
   };
 
   export type SearchedUsersAndTeams = {
@@ -105,7 +110,7 @@ declare module 'Models' {
 
   export interface AssetsDataType {
     isLoading?: boolean;
-    data: FormattedTableData[];
+    data: SearchEntityHits;
     total: number;
     currPage: number;
   }
@@ -139,7 +144,10 @@ declare module 'Models' {
     | 'dashboardServices'
     | 'pipelineServices'
     | 'mlmodelServices'
-    | 'metadataServices';
+    | 'metadataServices'
+    | 'storageServices'
+    | 'searchServices'
+    | 'apiServices';
 
   export type SearchDataFunctionType = {
     queryString: string;
@@ -153,7 +161,7 @@ declare module 'Models' {
 
   interface RecentlyViewedData {
     displayName?: string;
-    entityType: 'table' | 'topic' | 'dashboard' | 'pipeline';
+    entityType: EntityType;
     fqn: string;
     serviceType?: string;
     timestamp: number;
@@ -221,7 +229,7 @@ declare module 'Models' {
     };
     brokers?: Array<string>;
     schemaRegistry?: string;
-    dashboardUrl?: string;
+    sourceUrl?: string;
     username?: string;
     password?: string;
     url?: string;
@@ -230,7 +238,7 @@ declare module 'Models' {
     api_version?: string;
     server?: string;
     env?: string;
-    pipelineUrl?: string;
+    sourceUrl?: string;
   };
 
   export type ImageShape = 'circle' | 'square';
@@ -243,5 +251,36 @@ declare module 'Models' {
   export interface CurrentState {
     id: string;
     state: string;
+  }
+
+  export type PagingWithoutTotal = Omit<Paging, 'total'>;
+
+  type EntityDetailUnion =
+    | Table
+    | Pipeline
+    | Dashboard
+    | Topic
+    | Mlmodel
+    | Container;
+
+  export type DateFilterType = Record<string, { days: number; title: string }>;
+
+  export type TagFilterOptions = {
+    text: string;
+    value: string;
+    source: TagSource;
+  };
+
+  export type TagsData = {
+    tags?: TagLabel[];
+    fullyQualifiedName?: string;
+    children?: TagsData[];
+  };
+
+  export interface DateRangeObject {
+    startTs: number;
+    endTs: number;
+    key?: string;
+    title?: string;
   }
 }

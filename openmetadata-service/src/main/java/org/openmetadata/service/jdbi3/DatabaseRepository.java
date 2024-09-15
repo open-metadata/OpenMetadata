@@ -13,121 +13,287 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.LOCATION;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
+import static org.openmetadata.csv.CsvUtil.addOwners;
+import static org.openmetadata.csv.CsvUtil.addTagLabels;
+import static org.openmetadata.csv.CsvUtil.addTagTiers;
+import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 
+@Slf4j
 public class DatabaseRepository extends EntityRepository<Database> {
-  private static final String DATABASE_UPDATE_FIELDS = "owner,tags";
-  private static final String DATABASE_PATCH_FIELDS = DATABASE_UPDATE_FIELDS;
 
-  public DatabaseRepository(CollectionDAO dao) {
+  public static final String DATABASE_PROFILER_CONFIG_EXTENSION = "database.databaseProfilerConfig";
+
+  public static final String DATABASE_PROFILER_CONFIG = "databaseProfilerConfig";
+
+  public DatabaseRepository() {
     super(
         DatabaseResource.COLLECTION_PATH,
         Entity.DATABASE,
         Database.class,
-        dao.databaseDAO(),
-        dao,
-        DATABASE_PATCH_FIELDS,
-        DATABASE_UPDATE_FIELDS);
+        Entity.getCollectionDAO().databaseDAO(),
+        "",
+        "");
+    supportsSearch = true;
   }
 
   @Override
   public void setFullyQualifiedName(Database database) {
-    database.setFullyQualifiedName(FullyQualifiedName.build(database.getService().getName(), database.getName()));
-  }
-
-  @Transaction
-  public void deleteLocation(UUID databaseId) {
-    deleteFrom(databaseId, Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
+    database.setFullyQualifiedName(
+        FullyQualifiedName.build(database.getService().getName(), database.getName()));
   }
 
   @Override
-  public void prepare(Database database) throws IOException {
+  public void prepare(Database database, boolean update) {
     populateService(database);
   }
 
   @Override
-  public void storeEntity(Database database, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = database.getOwner();
+  public void storeEntity(Database database, boolean update) {
+    // Relationships and fields such as service are not stored as part of json
     EntityReference service = database.getService();
-    List<TagLabel> tags = database.getTags();
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    database.withOwner(null).withService(null).withHref(null).withTags(null);
-
+    database.withService(null);
     store(database, update);
-
-    // Restore the relationships
-    database.withOwner(owner).withService(service).withTags(tags);
+    database.withService(service);
   }
 
   @Override
   public void storeRelationships(Database database) {
-    EntityReference service = database.getService();
-    addRelationship(service.getId(), database.getId(), service.getType(), Entity.DATABASE, Relationship.CONTAINS);
-    storeOwner(database, database.getOwner());
-    // Add tag to database relationship
-    applyTags(database);
+    addServiceRelationship(database, database.getService());
   }
 
-  private List<EntityReference> getSchemas(Database database) throws IOException {
-    if (database == null) {
-      return null;
-    }
-    List<EntityRelationshipRecord> schemaIds =
-        findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
-    return EntityUtil.populateEntityReferences(schemaIds, Entity.DATABASE_SCHEMA);
+  private List<EntityReference> getSchemas(Database database) {
+    return database == null
+        ? null
+        : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
   }
 
-  public Database setFields(Database database, Fields fields) throws IOException {
+  @Override
+  public EntityInterface getParentEntity(Database entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
+  }
+
+  @Override
+  public String exportToCsv(String name, String user) throws IOException {
+    Database database = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database name
+    DatabaseSchemaRepository repository =
+        (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
+    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("database", name);
+    List<DatabaseSchema> schemas =
+        repository.listAll(repository.getFields("owners,tags,domain"), filter);
+    schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    return new DatabaseCsv(database, user).exportCsv(schemas);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
+      throws IOException {
+    Database database =
+        getByName(
+            null,
+            name,
+            getFields(
+                "service")); // Validate glossary name, and get service needed in case of create
+    DatabaseCsv databaseCsv = new DatabaseCsv(database, user);
+    return databaseCsv.importCsv(csv, dryRun);
+  }
+
+  public void setFields(Database database, Fields fields) {
     database.setService(getContainer(database.getId()));
-    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
-    database.setUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
-    return database.withLocation(fields.contains("location") ? getLocation(database) : null);
+    database.setDatabaseSchemas(
+        fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());
+    database.setDatabaseProfilerConfig(
+        fields.contains(DATABASE_PROFILER_CONFIG)
+            ? getDatabaseProfilerConfig(database)
+            : database.getDatabaseProfilerConfig());
+    if (database.getUsageSummary() == null) {
+      database.setUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId())
+              : null);
+    }
+  }
+
+  public void clearFields(Database database, Fields fields) {
+    database.setDatabaseSchemas(
+        fields.contains("databaseSchemas") ? database.getDatabaseSchemas() : null);
+    database.setDatabaseProfilerConfig(
+        fields.contains(DATABASE_PROFILER_CONFIG) ? database.getDatabaseProfilerConfig() : null);
+    database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);
   }
 
   @Override
   public void restorePatchAttributes(Database original, Database updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withService(original.getService())
-        .withId(original.getId());
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService());
   }
 
-  private EntityReference getLocation(Database database) throws IOException {
-    return database == null ? null : getToEntityRef(database.getId(), Relationship.HAS, LOCATION, false);
+  @Override
+  public EntityRepository<Database>.EntityUpdater getUpdater(
+      Database original, Database updated, Operation operation) {
+    return new DatabaseUpdater(original, updated, operation);
   }
 
-  private void populateService(Database database) throws IOException {
-    DatabaseService service = getService(database.getService().getId(), database.getService().getType());
+  private void populateService(Database database) {
+    DatabaseService service = Entity.getEntity(database.getService(), "", Include.NON_DELETED);
     database.setService(service.getEntityReference());
     database.setServiceType(service.getServiceType());
   }
 
-  private DatabaseService getService(UUID serviceId, String entityType) throws IOException {
-    if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return daoCollection.dbServiceDAO().findEntityById(serviceId);
+  public Database addDatabaseProfilerConfig(
+      UUID databaseId, DatabaseProfilerConfig databaseProfilerConfig) {
+    // Validate the request content
+    Database database = find(databaseId, Include.NON_DELETED);
+    if (databaseProfilerConfig.getProfileSampleType() != null
+        && databaseProfilerConfig.getProfileSample() != null) {
+      EntityUtil.validateProfileSample(
+          databaseProfilerConfig.getProfileSampleType().toString(),
+          databaseProfilerConfig.getProfileSample());
     }
-    throw new IllegalArgumentException(
-        CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DATABASE, Entity.DATABASE_SERVICE));
+
+    daoCollection
+        .entityExtensionDAO()
+        .insert(
+            databaseId,
+            DATABASE_PROFILER_CONFIG_EXTENSION,
+            DATABASE_PROFILER_CONFIG,
+            JsonUtils.pojoToJson(databaseProfilerConfig));
+    clearFields(database, Fields.EMPTY_FIELDS);
+    return database.withDatabaseProfilerConfig(databaseProfilerConfig);
+  }
+
+  public DatabaseProfilerConfig getDatabaseProfilerConfig(Database database) {
+    return JsonUtils.readValue(
+        daoCollection
+            .entityExtensionDAO()
+            .getExtension(database.getId(), DATABASE_PROFILER_CONFIG_EXTENSION),
+        DatabaseProfilerConfig.class);
+  }
+
+  public Database deleteDatabaseProfilerConfig(UUID databaseId) {
+    // Validate the request content
+    Database database = find(databaseId, Include.NON_DELETED);
+    daoCollection.entityExtensionDAO().delete(databaseId, DATABASE_PROFILER_CONFIG_EXTENSION);
+    clearFieldsInternal(database, Fields.EMPTY_FIELDS);
+    return database;
+  }
+
+  public class DatabaseUpdater extends EntityUpdater {
+    public DatabaseUpdater(Database original, Database updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Transaction
+    @Override
+    public void entitySpecificUpdate() {
+      recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+    }
+  }
+
+  public static class DatabaseCsv extends EntityCsv<DatabaseSchema> {
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(Entity.DATABASE);
+    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+    private final Database database;
+
+    DatabaseCsv(Database database, String user) {
+      super(DATABASE_SCHEMA, DOCUMENTATION.getHeaders(), user);
+      this.database = database;
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), csvRecord.get(0));
+      DatabaseSchema schema;
+      try {
+        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+      } catch (Exception ex) {
+        LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
+        schema =
+            new DatabaseSchema()
+                .withDatabase(database.getEntityReference())
+                .withService(database.getService());
+      }
+
+      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+      // sourceUrl, domain
+      // Field 1,2,3,6,7 - database schema name, displayName, description
+      List<TagLabel> tagLabels =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                  Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+      schema
+          .withName(csvRecord.get(0))
+          .withDisplayName(csvRecord.get(1))
+          .withDescription(csvRecord.get(2))
+          .withOwners(getOwners(printer, csvRecord, 3))
+          .withTags(tagLabels)
+          .withRetentionPeriod(csvRecord.get(7))
+          .withSourceUrl(csvRecord.get(8))
+          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
+      if (processRecord) {
+        createEntity(printer, csvRecord, schema);
+      }
+    }
+
+    @Override
+    protected void addRecord(CsvFile csvFile, DatabaseSchema entity) {
+      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+      List<String> recordList = new ArrayList<>();
+      addField(recordList, entity.getName());
+      addField(recordList, entity.getDisplayName());
+      addField(recordList, entity.getDescription());
+      addOwners(recordList, entity.getOwners());
+      addTagLabels(recordList, entity.getTags());
+      addGlossaryTerms(recordList, entity.getTags());
+      addTagTiers(recordList, entity.getTags());
+      addField(recordList, entity.getRetentionPeriod());
+      addField(recordList, entity.getSourceUrl());
+      String domain =
+          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
+              ? ""
+              : entity.getDomain().getFullyQualifiedName();
+      addField(recordList, domain);
+      addRecord(csvFile, recordList);
+    }
   }
 }

@@ -19,15 +19,16 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 /**
- * Custom {@link JacksonAnnotationIntrospector} to serialize/deserialize only fields containing {@link ExposedField}
- * annotation.
+ * Custom {@link JacksonAnnotationIntrospector} to serialize/deserialize only fields containing
+ * {@link ExposedField} annotation.
  */
 public class OnlyExposedFieldAnnotationIntrospector extends JacksonAnnotationIntrospector {
 
   @Override
   public boolean hasIgnoreMarker(AnnotatedMember m) {
     // only ignore fields and methods
-    if (m.getAnnotated().getClass().equals(Field.class) || m.getAnnotated().getClass().equals(Method.class)) {
+    if (m.getAnnotated().getClass().equals(Field.class)
+        || m.getAnnotated().getClass().equals(Method.class)) {
       return (super.hasIgnoreMarker(m) || _findAnnotation(m, ExposedField.class) == null);
     }
     return false;

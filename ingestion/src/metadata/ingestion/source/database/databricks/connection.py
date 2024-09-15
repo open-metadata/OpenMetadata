@@ -12,8 +12,16 @@
 """
 Source connection handler
 """
-from sqlalchemy.engine import Engine
+from functools import partial
+from typing import Optional
 
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import DatabaseError
+from sqlalchemy.inspection import inspect
+
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
@@ -22,7 +30,18 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     init_empty_connection_arguments,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    test_connection_engine_step,
+    test_connection_steps,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
+from metadata.ingestion.source.database.databricks.queries import (
+    DATABRICKS_GET_CATALOGS,
+)
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 def get_connection_url(connection: DatabricksConnection) -> str:
@@ -34,10 +53,11 @@ def get_connection(connection: DatabricksConnection) -> Engine:
     """
     Create connection
     """
+
     if connection.httpPath:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["http_path"] = connection.httpPath
+        connection.connectionArguments.root["http_path"] = connection.httpPath
 
     return create_generic_db_connection(
         connection=connection,
@@ -46,8 +66,48 @@ def get_connection(connection: DatabricksConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    connection: Engine,
+    service_connection: DatabricksConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    test_connection_db_common(engine)
+    client = DatabricksClient(service_connection)
+
+    def test_database_query(engine: Engine, statement: str):
+        """
+        Method used to execute the given query and fetch a result
+        to test if user has access to the tables specified
+        in the sql statement
+        """
+        try:
+            connection = engine.connect()
+            connection.execute(statement).fetchone()
+        except DatabaseError as soe:
+            logger.debug(f"Failed to fetch catalogs due to: {soe}")
+
+    inspector = inspect(connection)
+    test_fn = {
+        "CheckAccess": partial(test_connection_engine_step, connection),
+        "GetSchemas": inspector.get_schema_names,
+        "GetTables": inspector.get_table_names,
+        "GetViews": inspector.get_view_names,
+        "GetDatabases": partial(
+            test_database_query,
+            engine=connection,
+            statement=DATABRICKS_GET_CATALOGS,
+        ),
+        "GetQueries": client.test_query_api_access,
+    }
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
+        automation_workflow=automation_workflow,
+        timeout_seconds=service_connection.connectionTimeout,
+    )

@@ -12,14 +12,17 @@
  */
 
 import { t } from 'i18next';
-import { cloneDeep, isNil, isUndefined, omit } from 'lodash';
-import { CreateTeam } from '../generated/api/teams/createTeam';
+import { isNil } from 'lodash';
+import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
+import { ReactComponent as MsTeamsIcon } from '../assets/svg/ms-teams.svg';
+import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
+import { SUBSCRIPTION_WEBHOOK } from '../constants/Teams.constants';
 import {
   EntityReference,
   Team,
   TeamType,
 } from '../generated/entity/teams/team';
-import { getEntityIdArray } from './CommonUtils';
+import { getEntityName } from './EntityUtils';
 
 /**
  * To get filtered list of non-deleted(active) users
@@ -33,7 +36,14 @@ export const getActiveUsers = (users?: Array<EntityReference>) => {
 export const filterChildTeams = (
   teamsList: Team[],
   showDeletedTeams: boolean
-) => teamsList.filter((d) => d.deleted === showDeletedTeams);
+) =>
+  teamsList
+    .filter((d) => d.deleted === showDeletedTeams)
+    .sort((a, b) =>
+      getEntityName(a)
+        .toLowerCase()
+        .localeCompare(getEntityName(b).toLowerCase())
+    );
 
 export const getDeleteMessagePostFix = (
   teamName: string,
@@ -45,43 +55,57 @@ export const getDeleteMessagePostFix = (
   });
 };
 
-const getEntityValue = (value: EntityReference[] | undefined) => {
-  if (!isUndefined(value)) {
-    return getEntityIdArray(value);
+/**
+ * To get webhook svg icon
+ * @param item webhook key
+ * @returns SvgComponent
+ */
+export const getWebhookIcon = (item: SUBSCRIPTION_WEBHOOK): SvgComponent => {
+  switch (item) {
+    case SUBSCRIPTION_WEBHOOK.SLACK:
+      return SlackIcon;
+
+    case SUBSCRIPTION_WEBHOOK.G_CHAT:
+      return GChatIcon;
+
+    default:
+      return MsTeamsIcon;
   }
-
-  return undefined;
+};
+export const getTeamOptionsFromType = (parentType: TeamType) => {
+  switch (parentType) {
+    case TeamType.Organization:
+      return [
+        TeamType.BusinessUnit,
+        TeamType.Division,
+        TeamType.Department,
+        TeamType.Group,
+      ];
+    case TeamType.BusinessUnit:
+      return [TeamType.Division, TeamType.Department, TeamType.Group];
+    case TeamType.Division:
+      return [TeamType.Division, TeamType.Department, TeamType.Group];
+    case TeamType.Department:
+      return [TeamType.Department, TeamType.Group];
+    case TeamType.Group:
+      return [TeamType.Group];
+  }
 };
 
-export const getMovedTeamData = (team: Team, parents: string[]): CreateTeam => {
-  const userDetails = omit(cloneDeep(team), [
-    'id',
-    'fullyQualifiedName',
-    'href',
-    'version',
-    'updatedAt',
-    'updatedBy',
-    'userCount',
-    'childrenCount',
-    'owns',
-    'changeDescription',
-    'deleted',
-    'inheritedRoles',
-    'key',
-  ]) as Team;
+/**
+ * Restricting the drop of team based on the team type
+ * Group: Can't have any child team
+ * Division: Can have only Department and Group
+ * Department: Can have only Group
+ */
 
-  const { policies, users, defaultRoles, children } = userDetails;
-
-  return {
-    ...userDetails,
-    teamType: userDetails.teamType as TeamType,
-    defaultRoles: getEntityValue(defaultRoles),
-    children:
-      userDetails.teamType === TeamType.Group
-        ? undefined
-        : getEntityValue(children),
-    parents: parents,
-    policies: getEntityValue(policies),
-    users: getEntityValue(users),
-  };
-};
+export const isDropRestricted = (
+  dragTeamType?: TeamType,
+  dropTeamType?: TeamType
+) =>
+  dropTeamType === TeamType.Group ||
+  (dropTeamType === TeamType.Division &&
+    dragTeamType === TeamType.BusinessUnit) ||
+  (dropTeamType === TeamType.Department &&
+    dragTeamType === TeamType.BusinessUnit) ||
+  (dropTeamType === TeamType.Department && dragTeamType === TeamType.Division);

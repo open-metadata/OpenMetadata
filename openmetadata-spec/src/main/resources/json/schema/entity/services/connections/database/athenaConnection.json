@@ -71,6 +71,24 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "supportsUsageExtraction": {
+      "description": "Supports Usage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsLineageExtraction": {
+      "description": "Supports Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

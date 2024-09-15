@@ -9,12 +9,14 @@ source:
       hostPort: $E2E_VERTICA_HOST_PORT
       database: VMart
   sourceConfig:
-    config: {}
+    config:
+      type: DatabaseMetadata
+      includeDDL: true
 sink:
   type: metadata-rest
   config: {}
 workflowConfig:
-  loggerLevel: INFO
+  loggerLevel: DEBUG
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

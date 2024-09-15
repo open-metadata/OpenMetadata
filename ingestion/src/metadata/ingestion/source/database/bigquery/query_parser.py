@@ -12,20 +12,25 @@
 Handle big query usage extraction
 """
 from abc import ABC
+from copy import deepcopy
 from datetime import datetime
+from typing import Optional
 
 from google import auth
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
+    MultipleProjectId,
+)
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.bigquery.helper import get_inspector_details
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 
 
@@ -34,21 +39,22 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
     BigQuery base for Usage and Lineage
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.project_id = self.set_project_id()
         self.database = self.project_id
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: BigQueryConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: BigQueryConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
         """
@@ -58,7 +64,7 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
             start_time=start_time,
             end_time=end_time,
             region=self.service_connection.usageLocation,
-            filters=self.filters,  # pylint: disable=no-member
+            filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,
         )
 
@@ -66,3 +72,32 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
     def set_project_id():
         _, project_id = auth.default()
         return project_id
+
+    def get_engine(self):
+        if isinstance(
+            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
+        ) and isinstance(
+            self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
+        ):
+            project_ids = deepcopy(
+                self.service_connection.credentials.gcpConfig.projectId
+            )
+            for project_id in project_ids.root:
+                inspector_details = get_inspector_details(
+                    project_id, self.service_connection
+                )
+                yield inspector_details.engine
+        else:
+            yield self.engine
+
+    def check_life_cycle_query(
+        self, query_type: Optional[str], query_text: Optional[str]
+    ) -> bool:
+        """
+        returns true if query is to be used for life cycle processing.
+
+        Override if we have specific parameters
+        """
+        if query_type != "SELECT":
+            return True
+        return False

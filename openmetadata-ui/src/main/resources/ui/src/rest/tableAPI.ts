@@ -14,6 +14,8 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfile,
@@ -23,23 +25,27 @@ import {
 } from '../generated/entity/data/table';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
-export const getTableDetails = async (
-  id: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(`/tables/${id}`, arrQueryFields);
-
-  const response = await APIClient.get<Table>(url);
-
-  return response.data;
+export type TableListParams = {
+  fields?: string;
+  database?: string;
+  databaseSchema?: string;
+  before?: string;
+  after?: string;
+  include?: Include;
+  limit?: number;
+  includeEmptyTestSuite?: boolean;
 };
 
+const BASE_URL = '/tables';
+
 export const getTableVersions = async (id: string) => {
-  const url = `/tables/${id}/versions`;
+  const url = `${BASE_URL}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
@@ -47,7 +53,7 @@ export const getTableVersions = async (id: string) => {
 };
 
 export const getTableVersion = async (id: string, version: string) => {
-  const url = `/tables/${id}/versions/${version}`;
+  const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get(url);
 
@@ -56,42 +62,22 @@ export const getTableVersion = async (id: string, version: string) => {
 
 export const getTableDetailsByFQN = async (
   fqn: string,
-  arrQueryFields: string | string[],
-  include = 'all'
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
-    `/tables/name/${fqn}`,
-    arrQueryFields,
-    `include=${include}`
+  const response = await APIClient.get<Table>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
   );
-
-  const response = await APIClient.get<Table>(url);
 
   return response.data;
 };
 
-export const getDatabaseTables = (
-  databaseName: string,
-  paging: string,
-  arrQueryFields?: string
-): Promise<AxiosResponse> => {
-  const url = `${getURLWithQueryFields(
-    `/tables`,
-    arrQueryFields
-  )}&database=${databaseName}${paging ? paging : ''}`;
-
-  return APIClient.get(url);
-};
-
 export const patchTableDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Table>>(
-    `/tables/${id}`,
-    data,
-    configOptions
+    `${BASE_URL}/${id}`,
+    data
   );
 
   return response.data;
@@ -101,44 +87,43 @@ export const restoreTable = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<Table>
-  >('/tables/restore', { id });
+  >(`${BASE_URL}/restore`, { id });
 
   return response.data;
 };
 
 export const addFollower = async (tableId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/tables/${tableId}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${tableId}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const removeFollower = async (tableId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`/tables/${tableId}/followers/${userId}`, configOptions);
+  >(
+    `${BASE_URL}/${tableId}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const getTableProfilerConfig = async (tableId: string) => {
   const response = await APIClient.get<Table>(
-    `/tables/${tableId}/tableProfilerConfig`
+    `${BASE_URL}/${tableId}/tableProfilerConfig`
   );
 
   return response.data;
@@ -148,14 +133,14 @@ export const putTableProfileConfig = async (
   tableId: string,
   data: TableProfilerConfig
 ) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     TableProfilerConfig,
     AxiosResponse<Table>
-  >(`/tables/${tableId}/tableProfilerConfig`, data, configOptions);
+  >(
+    `${BASE_URL}/${tableId}/tableProfilerConfig`,
+    data,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
@@ -167,7 +152,7 @@ export const getTableProfilesList = async (
     endTs?: number;
   }
 ) => {
-  const url = `/tables/${tableFqn}/tableProfile`;
+  const url = `${BASE_URL}/${getEncodedFqn(tableFqn)}/tableProfile`;
 
   const response = await APIClient.get<PagingResponse<TableProfile[]>>(url, {
     params,
@@ -183,7 +168,7 @@ export const getSystemProfileList = async (
     endTs?: number;
   }
 ) => {
-  const url = `/tables/${tableFqn}/systemProfile`;
+  const url = `${BASE_URL}/${getEncodedFqn(tableFqn)}/systemProfile`;
 
   const response = await APIClient.get<PagingResponse<SystemProfile[]>>(url, {
     params,
@@ -202,7 +187,7 @@ export const getColumnProfilerList = async (
     after?: string;
   }
 ) => {
-  const url = `/tables/${columnFqn}/columnProfile`;
+  const url = `${BASE_URL}/${getEncodedFqn(columnFqn)}/columnProfile`;
 
   const response = await APIClient.get<{
     data: ColumnProfile[];
@@ -213,21 +198,36 @@ export const getColumnProfilerList = async (
 };
 
 export const getSampleDataByTableId = async (id: string) => {
-  const response = await APIClient.get<Table>(`/tables/${id}/sampleData`);
-
-  return response.data;
-};
-
-export const getTableQueryByTableId = async (id: string) => {
-  const response = await APIClient.get<Table>(`/tables/${id}/tableQuery`);
+  const response = await APIClient.get<Table>(`${BASE_URL}/${id}/sampleData`);
 
   return response.data;
 };
 
 export const getLatestTableProfileByFqn = async (fqn: string) => {
-  const encodedFQN = encodeURIComponent(fqn);
+  const encodedFQN = getEncodedFqn(fqn);
   const response = await APIClient.get<Table>(
-    `/tables/${encodedFQN}/tableProfile/latest`
+    `${BASE_URL}/${encodedFQN}/tableProfile/latest`
+  );
+
+  return response.data;
+};
+
+export const getTableList = async (params?: TableListParams) => {
+  const response = await APIClient.get<PagingResponse<Table[]>>(BASE_URL, {
+    params,
+  });
+
+  return response.data;
+};
+
+export const deleteSampleDataByTableId = async (id: string) => {
+  return await APIClient.delete<Table>(`${BASE_URL}/${id}/sampleData`);
+};
+
+export const updateTablesVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Table>>(
+    `${BASE_URL}/${id}/vote`,
+    data
   );
 
   return response.data;

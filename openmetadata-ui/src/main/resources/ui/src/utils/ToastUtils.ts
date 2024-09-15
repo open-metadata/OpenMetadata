@@ -15,7 +15,8 @@ import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
 import { toast } from 'react-toastify';
-import jsonData from '../jsons/en';
+import { ClientErrors } from '../enums/Axios.enum';
+import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 
 export const hashCode = (str: string) => {
@@ -50,17 +51,20 @@ export const showErrorToast = (
   if (isString(error)) {
     errorMessage = error.toString();
   } else {
+    const method = error.config?.method?.toUpperCase();
     const fallback =
       fallbackText && fallbackText.length > 0
         ? fallbackText
-        : jsonData['api-error-messages']['unexpected-error'];
+        : i18n.t('server.unexpected-error');
     errorMessage = getErrorText(error, fallback);
     // do not show error toasts for 401
     // since they will be intercepted and the user will be redirected to the signin page
     // except for principal domain mismatch errors
     if (
       error &&
-      error.response?.status === 401 &&
+      (error.response?.status === ClientErrors.UNAUTHORIZED ||
+        (error.response?.status === ClientErrors.FORBIDDEN &&
+          method === 'GET')) &&
       !errorMessage.includes('principal domain')
     ) {
       return;

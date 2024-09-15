@@ -54,8 +54,8 @@
       "type": "string"
     },
     "databaseSchema": {
-      "title": "databaseSchema",
-      "description": "databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.",
+      "title": "Database Schema",
+      "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
       "type": "string"
     },
     "connectionOptions": {
@@ -80,6 +80,10 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 3,
+          "max_gram": 10,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -33,11 +41,17 @@
         "type": "text"
       },
       "name": {
-        "type": "keyword",
+        "type": "text",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -45,17 +59,27 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
       "description": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "index_options": "docs"
       },
       "version": {
         "type": "float"
@@ -73,6 +97,98 @@
       "deleted": {
         "type": "text"
       },
+      "disabled": {
+        "type": "text"
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "classification": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
       "suggest": {
         "type": "completion",
         "contexts": [
@@ -82,6 +198,16 @@
             "path": "deleted"
           }
         ]
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

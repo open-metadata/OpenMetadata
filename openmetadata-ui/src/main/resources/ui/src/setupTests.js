@@ -55,6 +55,13 @@ window.DOMMatrixReadOnly = jest.fn().mockImplementation(() => ({
   isIdentity: true,
 }));
 
+window.BroadcastChannel = jest.fn().mockImplementation(() => ({
+  postMessage: jest.fn(),
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  close: jest.fn(),
+}));
+
 /**
  * mock implementation of ResizeObserver
  */
@@ -89,6 +96,7 @@ jest.mock('utils/i18next/LocalUtil', () => ({
     t: (key) => key,
   }),
   t: (key) => key,
+  dir: jest.fn().mockReturnValue('ltr'),
 }));
 /**
  * mock react-i18next
@@ -97,5 +105,10 @@ jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
   useTranslation: jest.fn().mockReturnValue({
     t: (key) => key,
+    i18n: { language: 'en-US', dir: jest.fn().mockReturnValue('ltr') },
   }),
+}));
+
+jest.mock('./utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));

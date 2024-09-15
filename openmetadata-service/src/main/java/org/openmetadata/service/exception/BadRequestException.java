@@ -14,15 +14,25 @@
 package org.openmetadata.service.exception;
 
 import javax.ws.rs.core.Response;
+import org.openmetadata.sdk.exception.WebServiceException;
 
 public final class BadRequestException extends WebServiceException {
   private static final String DEFAULT_MESSAGE = "Bad request.";
+  private static final String ERROR_TYPE = "BAD_REQUEST";
 
   private BadRequestException() {
-    super(Response.Status.BAD_REQUEST, DEFAULT_MESSAGE);
+    super(Response.Status.BAD_REQUEST, ERROR_TYPE, DEFAULT_MESSAGE);
+  }
+
+  private BadRequestException(String message) {
+    super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
   }
 
   public static BadRequestException of() {
     return new BadRequestException();
+  }
+
+  public static BadRequestException of(String message) {
+    return new BadRequestException(message);
   }
 }

@@ -17,15 +17,16 @@ import traceback
 from typing import Optional
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.processor import Processor, ProcessorStatus
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
 
@@ -40,11 +41,12 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
     :return: QueryParserData
     """
 
-    start_date = record.analysisDate
-    if isinstance(record.analysisDate, str):
-        start_date = datetime.datetime.strptime(
-            str(record.analysisDate), "%Y-%m-%d %H:%M:%S"
-        ).date()
+    start_time = record.analysisDate
+    if isinstance(start_time, DateTime):
+        start_date = start_time.root.date()
+        start_time = datetime.datetime.strptime(str(start_date.isoformat()), "%Y-%m-%d")
+
+    start_time = datetime_to_timestamp(start_time, milliseconds=True)
 
     lineage_parser = LineageParser(record.query, dialect=dialect)
 
@@ -57,73 +59,77 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
         databaseName=record.databaseName,
         databaseSchema=record.databaseSchema,
         sql=record.query,
+        query_type=record.query_type,
+        exclude_usage=record.exclude_usage,
         userName=record.userName,
-        date=start_date.__root__.strftime("%Y-%m-%d"),
+        date=str(start_time),
         serviceName=record.serviceName,
         duration=record.duration,
     )
 
 
 class QueryParserProcessor(Processor):
-    """
-    Extension of the `Processor` class
-
-    Args:
-        config (QueryParserProcessorConfig):
-        metadata_config (MetadataServerConfig):
-        connection_type (str):
-
-    Attributes:
-        config (QueryParserProcessorConfig):
-        metadata_config (MetadataServerConfig):
-        status (ProcessorStatus):
-    """
+    """Extension of the `Processor` class"""
 
     config: ConfigModel
-    status: ProcessorStatus
 
     def __init__(
         self,
         config: ConfigModel,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
         connection_type: str,
     ):
-
+        super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.status = ProcessorStatus()
+        self.metadata = metadata
         self.connection_type = connection_type
+
+    @property
+    def name(self) -> str:
+        return "Query Parser"
 
     @classmethod
     def create(
-        cls, config_dict: dict, metadata_config: OpenMetadataConnection, **kwargs
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+        **kwargs,
     ):
-        config = ConfigModel.parse_obj(config_dict)
+        config = ConfigModel.model_validate(config_dict)
         connection_type = kwargs.pop("connection_type", "")
-        return cls(config, metadata_config, connection_type)
+        return cls(config, metadata, connection_type)
 
-    def process(  # pylint: disable=arguments-differ
-        self, queries: TableQueries
-    ) -> Optional[QueryParserData]:
-        if queries and queries.queries:
-            data = []
-            for record in queries.queries:
-                try:
-                    parsed_sql = parse_sql_statement(
-                        record,
-                        ConnectionTypeDialectMapper.dialect_of(self.connection_type),
-                    )
-                    if parsed_sql:
-                        data.append(parsed_sql)
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Error processing query [{record.query}]: {exc}")
-            return QueryParserData(parsedData=data)
+    def _run(self, record: TableQueries) -> Optional[Either[QueryParserData]]:
+        if record is None or record.queries is None:
+            return None
 
-        return None
+        data = []
+        success_cnt = 0
+        failed_cnt = 0
+        total_cnt = len(record.queries)
+
+        for table_query in record.queries:
+            try:
+                parsed_sql = parse_sql_statement(
+                    table_query,
+                    ConnectionTypeDialectMapper.dialect_of(self.connection_type),
+                )
+                if parsed_sql:
+                    data.append(parsed_sql)
+                success_cnt += 1
+            except Exception as exc:
+                failed_cnt += 1
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error processing query [{table_query.query}]: {exc}")
+            cur_total_cnt = success_cnt + failed_cnt
+            if cur_total_cnt % 1000 == 0 or cur_total_cnt == total_cnt:
+                logger.info(
+                    f"Total query count:{cur_total_cnt} / {total_cnt}."
+                    f" Current success count: {success_cnt}."
+                    f" Current failed count: {failed_cnt}."
+                )
+        return Either(right=QueryParserData(parsedData=data))
 
     def close(self):
-        pass
-
-    def get_status(self) -> ProcessorStatus:
-        return self.status
+        """Nothing to close"""

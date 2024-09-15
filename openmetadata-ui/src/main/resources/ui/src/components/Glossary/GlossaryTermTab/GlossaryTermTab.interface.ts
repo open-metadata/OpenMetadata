@@ -11,14 +11,27 @@
  *  limitations under the License.
  */
 
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { TagLabel } from '../../../generated/type/tagLabel';
 
 export interface GlossaryTermTabProps {
-  glossaryId?: string;
-  glossaryTermId?: string;
-  selectedGlossaryFqn?: string;
+  isGlossary: boolean;
+  termsLoading: boolean;
+  refreshGlossaryTerms: () => void;
+  permissions: OperationPermission;
+  onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
+  onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
+  className?: string;
 }
 
 export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {
   children?: GlossaryTerm[];
+  value?: string;
+  data?: TagLabel;
+};
+
+export type MoveGlossaryTermType = {
+  from: GlossaryTerm;
+  to?: GlossaryTerm;
 };

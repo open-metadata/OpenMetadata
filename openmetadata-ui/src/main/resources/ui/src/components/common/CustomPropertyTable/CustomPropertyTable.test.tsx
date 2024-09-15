@@ -18,13 +18,9 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import React from 'react';
-import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
-import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { Mlmodel } from '../../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Table } from '../../../generated/entity/data/table';
-import { Topic } from '../../../generated/entity/data/topic';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
 const mockCustomProperties = [
@@ -43,10 +39,6 @@ const mockCustomProperties = [
   },
 ];
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  isEven: jest.fn(),
-}));
-
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -55,15 +47,15 @@ jest.mock('./PropertyValue', () => ({
   PropertyValue: jest.fn().mockReturnValue(<div>PropertyValue</div>),
 }));
 
-jest.mock('../error-with-placeholder/ErrorPlaceHolder', () => {
+jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
-jest.mock('rest/metadataTypeAPI', () => ({
+jest.mock('../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
       customProperties: mockCustomProperties,
@@ -71,27 +63,102 @@ jest.mock('rest/metadataTypeAPI', () => ({
   ),
 }));
 
-const mockTableDetails = {} as Table & Topic & Dashboard & Pipeline & Mlmodel;
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
+}));
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Skeleton: jest.fn().mockImplementation(() => <div>Skeleton.loader</div>),
+}));
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockImplementation(() => ({
+    fqn: 'fqn',
+  })),
+}));
+
+jest.mock('../../../utils/CustomProperties/CustomProperty.utils', () => ({
+  getEntityExtentionDetailsFromEntityType: jest.fn(),
+}));
+
 const handleExtensionUpdate = jest.fn();
 
 const mockProp = {
-  entityDetails: mockTableDetails,
   handleExtensionUpdate,
   entityType: EntityType.TABLE,
   hasEditAccess: true,
+  hasPermission: true,
+  entityDetails: {
+    id: '0e84330a',
+    name: 'cypr081639',
+    fullyQualifiedName: 'cy-da-1705598081639',
+    tags: [],
+    version: 0.1,
+    updatedAt: 1705,
+    updatedBy: 'admin',
+    href: 'http://localhost:8585/api/v1/databases/',
+    service: {
+      id: '420df68ba',
+      type: 'databaseService',
+      name: 'cy-da348',
+      fullyQualifiedName: 'cy3348',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/services/dat83b567868ba',
+    },
+    serviceType: 'Mysql',
+    default: false,
+    deleted: false,
+    columns: [],
+    votes: {
+      upVotes: 0,
+      downVotes: 0,
+      upVoters: [],
+      downVoters: [],
+    },
+  } as Table,
 };
 
 describe('Test CustomProperty Table Component', () => {
+  it("Should render permission placeholder if doesn't have permission", async () => {
+    await act(async () => {
+      render(
+        <CustomPropertyTable
+          {...mockProp}
+          entityType={EntityType.TABLE}
+          hasPermission={false}
+        />
+      );
+    });
+    const permissionPlaceholder = await screen.findByText(
+      'ErrorPlaceHolder.component'
+    );
+
+    expect(permissionPlaceholder).toBeInTheDocument();
+  });
+
   it('Should render table component', async () => {
     await act(async () => {
-      render(<CustomPropertyTable {...mockProp} />);
+      render(
+        <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
+      );
     });
     const table = await screen.findByTestId('custom-properties-table');
 
     expect(table).toBeInTheDocument();
 
-    const propertyName = await screen.findByText('Name');
-    const propertyValue = await screen.findByText('Value');
+    const propertyName = await screen.findByText('label.name');
+    const propertyValue = await screen.findByText('label.value');
     const rows = await screen.findAllByRole('row');
 
     expect(propertyName).toBeInTheDocument();
@@ -104,7 +171,9 @@ describe('Test CustomProperty Table Component', () => {
       Promise.resolve({ customProperties: [] })
     );
     await act(async () => {
-      render(<CustomPropertyTable {...mockProp} />);
+      render(
+        <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
+      );
     });
     const noDataPlaceHolder = await screen.findByText(
       'ErrorPlaceHolder.component'
@@ -113,17 +182,50 @@ describe('Test CustomProperty Table Component', () => {
     expect(noDataPlaceHolder).toBeInTheDocument();
   });
 
+  it('Should not render no data placeholder if custom properties list is empty and isRenderedInRightPanel', async () => {
+    (getTypeByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ customProperties: [] })
+    );
+    await act(async () => {
+      render(
+        <CustomPropertyTable
+          {...mockProp}
+          isRenderedInRightPanel
+          entityType={EntityType.TABLE}
+        />
+      );
+    });
+
+    expect(screen.queryByText('ErrorPlaceHolder.component')).toBeNull();
+  });
+
   it('Loader should be shown while loading the custom properties', async () => {
     (getTypeByFQN as jest.Mock).mockResolvedValueOnce(Promise.resolve({}));
-    render(<CustomPropertyTable {...mockProp} />);
+    render(<CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />);
 
     // To check if loader was rendered when the loading state was true and then removed after loading is false
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+    await waitForElementToBeRemoved(() => screen.getByText('Skeleton.loader'));
 
     const noDataPlaceHolder = await screen.findByText(
       'ErrorPlaceHolder.component'
     );
 
     expect(noDataPlaceHolder).toBeInTheDocument();
+  });
+
+  it('Should render custom property data if custom properties list is not empty', async () => {
+    (getTypeByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ customProperties: mockCustomProperties })
+    );
+    await act(async () => {
+      render(
+        <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
+      );
+    });
+    const tableRowTitle = await screen.findByText('xName');
+    const tableRowValue = await screen.findByText('PropertyValue');
+
+    expect(tableRowTitle).toBeInTheDocument();
+    expect(tableRowValue).toBeInTheDocument();
   });
 });

@@ -5,7 +5,8 @@ source:
     config:
       type: Mysql
       username: openmetadata_user
-      password: openmetadata_password
+      authType:
+        password: openmetadata_password
       hostPort: localhost:3306
       databaseSchema: openmetadata_db
       connectionOptions: {}
@@ -16,10 +17,12 @@ source:
       includeTables: true
       includeViews: true
       type: DatabaseMetadata
+      includeDDL: true
 sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  loggerLevel: DEBUG
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

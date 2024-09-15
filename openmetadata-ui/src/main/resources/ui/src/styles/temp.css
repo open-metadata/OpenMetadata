@@ -11,30 +11,21 @@
  *  limitations under the License.
  */
 
+@import '/node_modules/react-grid-layout/css/styles.css';
+@import '/node_modules/react-resizable/css/styles.css';
+
+.react-grid-item {
+  transition: all 500ms ease;
+  transition-property: left, top, width, height;
+}
+.react-grid-layout {
+  position: relative;
+  transition: height 500ms ease;
+}
+
 .main-container {
   display: flex;
   height: 100vh;
-}
-
-.profile-image {
-  display: inline-block;
-  height: 24px;
-  width: 24px;
-}
-
-.profile-image svg,
-.profile-image img {
-  display: inline-block;
-}
-
-.profile-image.circle svg,
-.profile-image.circle img {
-  border-radius: 50%;
-}
-
-.profile-image.square svg,
-.profile-image.square img {
-  border-radius: 4px;
 }
 
 .teams-dropdown {
@@ -72,7 +63,7 @@
   display: flex;
 }
 
-.svg-icon:not(.tw-hidden) {
+.svg-icon:not(.hidden) {
   display: inline-block;
 }
 
@@ -271,11 +262,9 @@
 }
 
 /* Editor CSS */
-.editor-wrapper:not(.tw-max-h-none) {
+
+.editor-wrapper:not(.max-h-none) {
   max-height: calc(100vh - 10rem);
-  /* border: 1px #8e8e8e solid;
-  border-radius: 4px;
-  padding: 10px; */
 }
 
 .editor-wrapper code,
@@ -705,37 +694,6 @@ body .list-option.rdw-option-active {
   box-shadow: none;
 }
 
-/* Diff style */
-
-.diff-added {
-  background: rgba(0, 131, 118, 0.2);
-  color: #008376;
-  width: fit-content;
-}
-.diff-removed {
-  color: #008376;
-  color: grey;
-  text-decoration: line-through;
-  width: fit-content;
-}
-.diff-description {
-  color: #008376;
-}
-
-/* status style */
-.tw-bg-status-success {
-  background-color: #07a35a;
-}
-.tw-bg-status-failed {
-  background-color: #e54937;
-}
-.tw-bg-status-running {
-  background-color: #276ef1;
-}
-.tw-bg-status-queued {
-  background-color: #777777;
-}
-
 /* react-slick */
 
 .slick-dots {
@@ -749,7 +707,7 @@ body .list-option.rdw-option-active {
 }
 
 .slick-dots li.slick-active button:before {
-  color: #7147e8 !important;
+  color: var(--ant-primary-color) !important;
   opacity: 1 !important;
 }
 
@@ -842,28 +800,6 @@ body .list-option.rdw-option-active {
 
 /* EntityLineage Sidebar CSS */
 
-.entity-lineage.sidebar {
-  height: 110%;
-  background: white;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100px;
-  z-index: 200;
-  overflow-y: auto;
-  padding: 8px;
-  transform: translateX(100%);
-  display: none;
-  border-right: 1px solid #d9ceee;
-  transition: transform 0.3s ease-out;
-  margin-left: -16px;
-}
-
-.entity-lineage.sidebar.open {
-  transform: translateX(0);
-  display: block;
-}
-
 /* login slider */
 
 .login-slider.slick-dots li.slick-active button:before {
@@ -874,4 +810,12 @@ body .list-option.rdw-option-active {
 .login-slider.slick-dots li button:before {
   color: #fff !important;
   opacity: 0.5 !important;
+}
+
+:root {
+  --ant-navbar-height: 64px;
+}
+
+:root .extra-banner {
+  --ant-navbar-height: 128px;
 }

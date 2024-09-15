@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { EllipsisOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Card,
@@ -26,46 +27,43 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import Description from 'components/common/description/Description';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/GlobalSettings.constants';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { Rule } from '../../../generated/api/policies/createPolicy';
+import { Policy } from '../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../generated/type/entityReference';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   getPolicyByName,
   getRoleByName,
   patchPolicy,
   patchRole,
-} from 'rest/rolesAPIV1';
-import { getTeamByName, patchTeamDetail } from 'rest/teamsAPI';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../../constants/GlobalSettings.constants';
-import { EntityType } from '../../../enums/entity.enum';
-import { Rule } from '../../../generated/api/policies/createPolicy';
-import { Policy } from '../../../generated/entity/policies/policy';
-import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/CommonUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+} from '../../../rest/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getAddPolicyRulePath,
   getEditPolicyRulePath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './PoliciesDetail.less';
+import './policies-detail.less';
 import PoliciesDetailsList from './PoliciesDetailsList.component';
 
 const { TabPane } = Tabs;
@@ -75,8 +73,7 @@ type Attribute = 'roles' | 'teams';
 const PoliciesDetailPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string }>();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { fqn } = useFqn();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -85,14 +82,12 @@ const PoliciesDetailPage = () => {
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
 
-  const [policyPermission, setPolicyPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
-
   const policiesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
     GlobalSettingOptions.POLICIES
   );
+
+  const policyName = useMemo(() => getEntityName(policy), [policy]);
 
   const breadcrumb = useMemo(
     () => [
@@ -101,32 +96,25 @@ const PoliciesDetailPage = () => {
         url: policiesPath,
       },
       {
-        name: fqn,
+        name: policyName,
         url: '',
       },
     ],
-    [fqn]
+    [policyName, policiesPath]
   );
-
-  const fetchPolicyPermission = async () => {
-    setLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.POLICY,
-        fqn
-      );
-      setPolicyPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchPolicy = async () => {
     setLoading(true);
     try {
-      const data = await getPolicyByName(fqn, 'owner,location,teams,roles');
+      const data = await getPolicyByName(
+        fqn,
+        `${
+          (TabSpecificField.OWNERS,
+          TabSpecificField.LOCATION,
+          TabSpecificField.TEAMS,
+          TabSpecificField.ROLES)
+        }`
+      );
       setPolicy(data ?? ({} as Policy));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -179,10 +167,9 @@ const PoliciesDetailPage = () => {
 
   const handleTeamsUpdate = async (data: EntityReference) => {
     try {
-      const team = await getTeamByName(
-        data.fullyQualifiedName || '',
-        'policies'
-      );
+      const team = await getTeamByName(data.fullyQualifiedName || '', {
+        fields: TabSpecificField.POLICIES,
+      });
       const updatedAttributeData = (team.policies ?? []).filter(
         (attrData) => attrData.id !== policy.id
       );
@@ -254,7 +241,6 @@ const PoliciesDetailPage = () => {
     (rule: Rule) => {
       return (
         <Dropdown
-          disabled={!policyPermission.EditAll}
           overlay={
             <Menu
               items={[
@@ -271,11 +257,7 @@ const PoliciesDetailPage = () => {
                         );
                       }}>
                       <Space align="center">
-                        <SVGIcons
-                          alt={t('label.edit')}
-                          icon={Icons.EDIT}
-                          width="16px"
-                        />
+                        <EditIcon width="16px" />
                         {t('label.edit')}
                       </Space>
                     </Button>
@@ -293,11 +275,12 @@ const PoliciesDetailPage = () => {
                         handleRuleDelete(rule);
                       }}>
                       <Space align="center">
-                        <SVGIcons
-                          alt={t('label.delete')}
-                          icon={Icons.DELETE}
-                          width="16px"
+                        <Icon
+                          className="align-middle"
+                          component={IconDelete}
+                          style={{ fontSize: '16px' }}
                         />
+
                         {t('label.delete')}
                       </Space>
                     </Button>
@@ -310,49 +293,39 @@ const PoliciesDetailPage = () => {
           placement="bottomRight"
           trigger={['click']}>
           <Tooltip
-            title={
-              policyPermission.EditAll
-                ? t('label.manage-rule')
-                : t('message.no-permission-for-action')
-            }>
+            placement="topRight"
+            title={t('label.manage-entity', {
+              entity: t('label.rule'),
+            })}>
             <Button
               data-testid={`manage-button-${rule.name}`}
-              disabled={!policyPermission.EditAll}
+              icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
               size="small"
               type="text"
               onClick={(e) => {
                 e.stopPropagation();
-              }}>
-              <FontAwesomeIcon
-                className="text-grey-body"
-                icon="ellipsis-vertical"
-              />
-            </Button>
+              }}
+            />
           </Tooltip>
         </Dropdown>
       );
     },
-    [policy, policyPermission]
+    [policy]
   );
 
   useEffect(() => {
-    fetchPolicyPermission();
+    fetchPolicy();
   }, [fqn]);
-
-  useEffect(() => {
-    if (policyPermission.ViewAll || policyPermission.ViewBasic) {
-      fetchPolicy();
-    }
-  }, [policyPermission, fqn]);
 
   if (isLoading) {
     return <Loader />;
   }
 
   return (
-    <div data-testid="policy-details-container">
-      <TitleBreadcrumb titleLinks={breadcrumb} />
-      {policyPermission.ViewAll || policyPermission.ViewBasic ? (
+    <PageLayoutV1 pageTitle={t('label.policy-plural')}>
+      <div className="page-container" data-testid="policy-details-container">
+        <TitleBreadcrumb titleLinks={breadcrumb} />
+
         <>
           {isEmpty(policy) ? (
             <ErrorPlaceHolder>
@@ -373,50 +346,42 @@ const PoliciesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
-              <Description
+              <Typography.Title
+                className="m-b-0 m-t-xs"
+                data-testid="heading"
+                level={5}>
+                {policyName}
+              </Typography.Title>
+              <DescriptionV1
+                hasEditAccess
+                className="m-y-md"
                 description={policy.description || ''}
                 entityFqn={policy.fullyQualifiedName}
-                entityName={getEntityName(policy)}
+                entityName={policyName}
                 entityType={EntityType.POLICY}
-                hasEditAccess={
-                  policyPermission.EditAll || policyPermission.EditDescription
-                }
                 isEdit={editDescription}
+                showCommentsIcon={false}
                 onCancel={() => setEditDescription(false)}
                 onDescriptionEdit={() => setEditDescription(true)}
                 onDescriptionUpdate={handleDescriptionUpdate}
               />
 
               <Tabs defaultActiveKey="rules">
-                <TabPane key="rules" tab={t('label.rules')}>
+                <TabPane key="rules" tab={t('label.rule-plural')}>
                   {isEmpty(policy.rules) ? (
-                    <ErrorPlaceHolder>
-                      <p>{t('message.no-rule-found')}</p>
-                    </ErrorPlaceHolder>
+                    <ErrorPlaceHolder />
                   ) : (
                     <Space
                       className="w-full tabpane-space"
                       direction="vertical">
-                      <Tooltip
-                        title={
-                          policyPermission.EditAll
-                            ? t('label.add-entity', {
-                                entity: t('label.rule'),
-                              })
-                            : t('message.no-permission-for-action')
-                        }>
-                        <Button
-                          data-testid="add-rule"
-                          disabled={!policyPermission.EditAll}
-                          type="primary"
-                          onClick={() =>
-                            history.push(getAddPolicyRulePath(fqn))
-                          }>
-                          {t('label.add-entity', {
-                            entity: t('label.rule'),
-                          })}
-                        </Button>
-                      </Tooltip>
+                      <Button
+                        data-testid="add-rule"
+                        type="primary"
+                        onClick={() => history.push(getAddPolicyRulePath(fqn))}>
+                        {t('label.add-entity', {
+                          entity: t('label.rule'),
+                        })}
+                      </Button>
 
                       <Space className="w-full" direction="vertical" size={20}>
                         {policy.rules.map((rule) => (
@@ -443,7 +408,7 @@ const PoliciesDetailPage = () => {
                                 <Row data-testid="description">
                                   <Col span={2}>
                                     <Typography.Text className="text-grey-muted">
-                                      {t('label.description')} :
+                                      {`${t('label.description')}:`}
                                     </Typography.Text>
                                   </Col>
                                   <Col span={22}>
@@ -457,7 +422,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="resources">
                                 <Col span={2}>
                                   <Typography.Text className="text-grey-muted m-b-0">
-                                    {t('label.resource-plural')} :
+                                    {`${t('label.resource-plural')}:`}
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -472,7 +437,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="operations">
                                 <Col span={2}>
                                   <Typography.Text className="text-grey-muted">
-                                    {t('label.operation-plural')} :
+                                    {`${t('label.operation-plural')}:`}
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -484,7 +449,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="effect">
                                 <Col span={2}>
                                   <Typography.Text className="text-grey-muted">
-                                    {t('label.effect')} :
+                                    {`${t('label.effect')}:`}
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -497,7 +462,7 @@ const PoliciesDetailPage = () => {
                                 <Row data-testid="condition">
                                   <Col span={2}>
                                     <Typography.Text className="text-grey-muted">
-                                      {t('label.condition')} :
+                                      {`${t('label.condition')}:`}
                                     </Typography.Text>
                                   </Col>
                                   <Col span={22}>
@@ -514,7 +479,7 @@ const PoliciesDetailPage = () => {
                 </TabPane>
                 <TabPane key="roles" tab={t('label.role-plural')}>
                   <PoliciesDetailsList
-                    hasAccess={policyPermission.EditAll}
+                    hasAccess
                     list={policy.roles ?? []}
                     type="role"
                     onDelete={(record) =>
@@ -524,7 +489,7 @@ const PoliciesDetailPage = () => {
                 </TabPane>
                 <TabPane key="teams" tab={t('label.team-plural')}>
                   <PoliciesDetailsList
-                    hasAccess={policyPermission.EditAll}
+                    hasAccess
                     list={policy.teams ?? []}
                     type="team"
                     onDelete={(record) =>
@@ -536,35 +501,36 @@ const PoliciesDetailPage = () => {
             </div>
           )}
         </>
-      ) : (
-        <ErrorPlaceHolder>
-          {t('message.no-permission-to-view')}
-        </ErrorPlaceHolder>
-      )}
-      {selectedEntity && (
-        <Modal
-          centered
-          closable={false}
-          confirmLoading={isloadingOnSave}
-          okText={t('label.confirm')}
-          open={!isUndefined(selectedEntity.record)}
-          title={`${t('label.remove-entity', {
-            entity: getEntityName(selectedEntity.record),
-          })} ${t('label.from-lowercase')} ${getEntityName(policy)}`}
-          onCancel={() => setEntity(undefined)}
-          onOk={async () => {
-            await handleDelete(selectedEntity.record, selectedEntity.attribute);
-            setEntity(undefined);
-          }}>
-          <Typography.Text>
-            {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
-              child: getEntityName(selectedEntity.record),
-              parent: getEntityName(policy),
-            })}
-          </Typography.Text>
-        </Modal>
-      )}
-    </div>
+
+        {selectedEntity && (
+          <Modal
+            centered
+            closable={false}
+            confirmLoading={isloadingOnSave}
+            maskClosable={false}
+            okText={t('label.confirm')}
+            open={!isUndefined(selectedEntity.record)}
+            title={`${t('label.remove-entity', {
+              entity: getEntityName(selectedEntity.record),
+            })} ${t('label.from-lowercase')} ${policyName}`}
+            onCancel={() => setEntity(undefined)}
+            onOk={async () => {
+              await handleDelete(
+                selectedEntity.record,
+                selectedEntity.attribute
+              );
+              setEntity(undefined);
+            }}>
+            <Typography.Text>
+              {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
+                child: getEntityName(selectedEntity.record),
+                parent: policyName,
+              })}
+            </Typography.Text>
+          </Modal>
+        )}
+      </div>
+    </PageLayoutV1>
   );
 };
 

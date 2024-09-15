@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import types
 import unittest
 from typing import Optional
 from unittest import TestCase
@@ -18,9 +17,13 @@ from unittest.mock import Mock, patch
 from google.cloud.bigquery import PartitionRange, RangePartitioning, TimePartitioning
 from google.cloud.bigquery.table import Table
 from pydantic import BaseModel
+from sqlalchemy import Integer, String
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import IntervalType
+from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -36,7 +39,7 @@ mock_bigquery_config = {
         "type": "bigquery",
         "serviceName": "local_bigquery7",
         "serviceConnection": {
-            "config": {"type": "BigQuery", "credentials": {"gcsConfig": {}}}
+            "config": {"type": "BigQuery", "credentials": {"gcpConfig": {}}}
         },
         "sourceConfig": {
             "config": {
@@ -72,8 +75,8 @@ MOCK_DATABASE = Database(
 
 
 class MockTable(BaseModel):
-    time_partitioning: Optional[TimePartitioning]
-    range_partitioning: Optional[RangePartitioning]
+    time_partitioning: Optional[TimePartitioning] = None
+    range_partitioning: Optional[RangePartitioning] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -89,6 +92,61 @@ MOCK_RANGE_PARTITIONING = RangePartitioning(
     field="test_column", range_=PartitionRange(end=100, interval=10, start=0)
 )
 
+MOCK_COLUMN_DATA = [
+    {
+        "name": "customer_id",
+        "type": Integer(),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "system_data_type": "INTEGER",
+        "is_complex": False,
+        "policy_tags": None,
+    },
+    {
+        "name": "first_name",
+        "type": String(),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "system_data_type": "VARCHAR",
+        "is_complex": False,
+        "policy_tags": None,
+    },
+    {
+        "name": "last_name",
+        "type": String(),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "system_data_type": "VARCHAR",
+        "is_complex": False,
+        "policy_tags": None,
+    },
+    {
+        "name": "test_column",
+        "type": String(),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "system_data_type": "VARCHAR",
+        "is_complex": False,
+        "policy_tags": None,
+    },
+]
+
 
 class BigqueryUnitTest(TestCase):
     @patch("google.cloud.bigquery.Client")
@@ -97,29 +155,36 @@ class BigqueryUnitTest(TestCase):
         "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
     )
     @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"
     )
+    @patch("metadata.ingestion.source.database.common_db_source.get_connection")
     def __init__(
         self,
         methodName,
+        get_connection_common,
         test_connection,
         set_project_id,
         create_generic_connection,
         client,
     ) -> None:
         super().__init__(methodName)
+        get_connection_common.return_value = Mock()
         client.return_value = Mock()
         create_generic_connection.return_value = Mock()
         set_project_id.return_value = Mock()
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bigquery_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_bigquery_config)
         self.bigquery_source = BigquerySource.create(
             mock_bigquery_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.bigquery_source.context.__dict__["database"] = MOCK_DATABASE
+        self.bigquery_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.fullyQualifiedName.root
         self.bigquery_source.client = client
-        self.inspector = types.SimpleNamespace()
+        self.bigquery_source.inspector.get_columns = (
+            lambda table_name, schema, db_name: MOCK_COLUMN_DATA
+        )
 
         unittest.mock.patch.object(Table, "object")
 
@@ -130,12 +195,21 @@ class BigqueryUnitTest(TestCase):
         bool_resp, partition = self.bigquery_source.get_table_partition_details(
             schema_name=TEST_PARTITION.get("schema_name"),
             table_name=TEST_PARTITION.get("table_name"),
-            inspector=self.inspector,
+            inspector=self.bigquery_source.inspector,
         )
 
-        assert partition.columns == ["test_column"]
-        assert partition.intervalType.value == IntervalType.TIME_UNIT.value
-        assert partition.interval == "DAY"
+        assert partition.columns == [
+            PartitionColumnDetails(
+                columnName="test_column",
+                intervalType=PartitionIntervalTypes.TIME_UNIT,
+                interval="DAY",
+            )
+        ]
+        assert (
+            partition.columns[0].intervalType.value
+            == PartitionIntervalTypes.TIME_UNIT.value
+        )
+        assert partition.columns[0].interval == "DAY"
         assert bool_resp
 
     def test_ingestion_time_partition(self):
@@ -145,26 +219,33 @@ class BigqueryUnitTest(TestCase):
         bool_resp, partition = self.bigquery_source.get_table_partition_details(
             schema_name=TEST_PARTITION.get("schema_name"),
             table_name=TEST_PARTITION.get("table_name"),
-            inspector=self.inspector,
+            inspector=self.bigquery_source.inspector,
         )
 
-        assert partition.intervalType.value == IntervalType.INGESTION_TIME.value
-        assert partition.interval == "HOUR"
+        self.assertIsInstance(partition.columns, list)
+        assert (
+            partition.columns[0].intervalType.value
+            == PartitionIntervalTypes.INGESTION_TIME.value
+        )
+        assert partition.columns[0].interval == "HOUR"
         assert bool_resp
 
     def test_range_partition(self):
         self.bigquery_source.client.get_table = lambda fqn: MockTable(
             time_partitioning=None, range_partitioning=MOCK_RANGE_PARTITIONING
         )
-
         bool_resp, partition = self.bigquery_source.get_table_partition_details(
             schema_name=TEST_PARTITION.get("schema_name"),
             table_name=TEST_PARTITION.get("table_name"),
-            inspector=self.inspector,
+            inspector=self.bigquery_source.inspector,
         )
 
-        assert partition.intervalType.value == IntervalType.INTEGER_RANGE.value
-        assert partition.interval == 10
+        self.assertIsInstance(partition.columns, list)
+        assert (
+            partition.columns[0].intervalType.value
+            == PartitionIntervalTypes.INTEGER_RANGE.value
+        )
+        assert partition.columns[0].interval == 10
         assert bool_resp
 
     def test_no_partition(self):
@@ -175,7 +256,7 @@ class BigqueryUnitTest(TestCase):
         bool_resp, partition = self.bigquery_source.get_table_partition_details(
             schema_name=TEST_PARTITION.get("schema_name"),
             table_name=TEST_PARTITION.get("table_name"),
-            inspector=self.inspector,
+            inspector=self.bigquery_source.inspector,
         )
 
         assert not bool_resp

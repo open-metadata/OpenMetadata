@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.util;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
@@ -21,8 +34,8 @@ public class PasswordUtil {
 
   static {
     List<Rule> rules = new ArrayList<>();
-    // 8 and 16 characters
-    rules.add(new LengthRule(8, 16));
+    // 8 and 56 characters
+    rules.add(new LengthRule(8, 56));
     // No whitespace allowed
     rules.add(new WhitespaceRule());
     // At least one Upper-case character
@@ -42,7 +55,7 @@ public class PasswordUtil {
     PasswordData password = new PasswordData(pwd);
     RuleResult result = VALIDATOR.validate(password);
     if (!result.isValid()) {
-      throw new RuntimeException(PASSWORD_INVALID_FORMAT);
+      throw new IllegalArgumentException(PASSWORD_INVALID_FORMAT);
     }
   }
 

@@ -12,21 +12,15 @@
  */
 
 import { render } from '@testing-library/react';
-import { AuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import React from 'react';
 import App from './App';
+import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
 
-const authContext = jest.fn();
-
-jest.mock('components/router/AppRouter', () => {
+jest.mock('./components/AppRouter/AppRouter', () => {
   return jest.fn().mockReturnValue(<p>AppRouter</p>);
 });
 
-jest.mock('components/app-bar/Appbar', () => {
-  return jest.fn().mockReturnValue(<p>AppBar</p>);
-});
-
-jest.mock('components/authentication/auth-provider/AuthProvider', () => {
+jest.mock('./components/Auth/AuthProviders/AuthProvider', () => {
   return {
     AuthProvider: jest
       .fn()
@@ -39,9 +33,9 @@ jest.mock('components/authentication/auth-provider/AuthProvider', () => {
 
 it('renders learn react link', () => {
   const { getAllByTestId } = render(
-    <AuthContext.Provider value={{ authContext }}>
+    <AuthProvider childComponentType={App}>
       <App />
-    </AuthContext.Provider>
+    </AuthProvider>
   );
   const linkElement = getAllByTestId(/content-wrapper/i);
   linkElement.map((elm) => expect(elm).toBeInTheDocument());

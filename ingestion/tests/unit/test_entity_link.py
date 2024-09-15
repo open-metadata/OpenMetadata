@@ -13,7 +13,10 @@ Test Entity Link build behavior
 """
 from unittest import TestCase
 
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.table import Table
 from metadata.utils import entity_link
+from metadata.utils.entity_link import get_entity_link
 
 
 class TestEntityLink(TestCase):
@@ -56,6 +59,13 @@ class TestEntityLink(TestCase):
                 ],
             ),
             EntityLinkTest(
+                "<#E::ingestionPipeline::fivetran_gcp.shopify.raw_product_catalog3>",
+                [
+                    "ingestionPipeline",
+                    "fivetran_gcp.shopify.raw_product_catalog3",
+                ],
+            ),
+            EntityLinkTest(
                 "<#E::table::bigquery_gcp.shopify.raw_product_catalog4::columns::comment::description>",
                 [
                     "table",
@@ -73,6 +83,53 @@ class TestEntityLink(TestCase):
                 "<#E::database::bigquery_gcp.shopify::tags>",
                 ["database", "bigquery_gcp.shopify", "tags"],
             ),
+            EntityLinkTest(
+                "<#E::table::bigquery_gcp.shopify.raw-product-catalog5>",
+                ["table", "bigquery_gcp.shopify.raw-product-catalog5"],
+            ),
+            EntityLinkTest(
+                '<#E::table::bigquery_gcp.shopify."raw-product-catalog6"::description>',
+                [
+                    "table",
+                    'bigquery_gcp.shopify."raw-product-catalog6"',
+                    "description",
+                ],
+            ),
+            EntityLinkTest(
+                "<#E::table::bigquery_gcp.shopify.raw-product-catalog5::description>",
+                ["table", "bigquery_gcp.shopify.raw-product-catalog5", "description"],
+            ),
+            EntityLinkTest(
+                '<#E::table::bigquery_gcp."shop-ify"."raw-product-catalog6">',
+                ["table", 'bigquery_gcp."shop-ify"."raw-product-catalog6"'],
+            ),
+            EntityLinkTest(
+                "<#E::table::随机的>",
+                ["table", "随机的"],
+            ),
+            EntityLinkTest(
+                '<#E::table::ExampleWithFolder.withfolder.examplewithfolder."folderpath/username.csv">',
+                [
+                    "table",
+                    'ExampleWithFolder.withfolder.examplewithfolder."folderpath/username.csv"',
+                ],
+            ),
         ]
         for x in xs:
             x.validate(entity_link.split(x.entitylink), x.split_list)
+
+    def test_get_entity_link(self):
+        """We can get entity link for different entities"""
+
+        table_link = get_entity_link(Table, fqn="service.db.schema.table")
+        self.assertEqual(table_link, "<#E::table::service.db.schema.table>")
+
+        dashboard_link = get_entity_link(Dashboard, fqn="service.dashboard")
+        self.assertEqual(dashboard_link, "<#E::dashboard::service.dashboard>")
+
+        column_link = get_entity_link(
+            Table, fqn="service.db.schema.table", column_name="col"
+        )
+        self.assertEqual(
+            column_link, "<#E::table::service.db.schema.table::columns::col>"
+        )

@@ -34,6 +34,14 @@
           "description": "SQL query",
           "type": "string"
         },
+        "query_type": {
+          "description": "SQL query type",
+          "type": "string"
+        },
+        "exclude_usage": {
+          "description": "Flag to check if query is to be excluded while processing usage",
+          "type": "boolean"
+        },
         "serviceName": {
           "description": "Name that identifies this database service.",
           "type": "string"
@@ -51,7 +59,7 @@
           "type": "string"
         },
         "duration": {
-          "description": "How long did the query took to run in seconds.",
+          "description": "How long did the query took to run in milliseconds.",
           "type": "number"
         }
       },

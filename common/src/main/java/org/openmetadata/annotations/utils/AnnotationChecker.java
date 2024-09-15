@@ -16,7 +16,9 @@ public class AnnotationChecker {
   }
 
   private static boolean checkIfAnyClassFieldsHasAnnotation(
-      Class<?> objectClass, Class<? extends Annotation> annotationClass, Set<Class<?>> visitedClasses) {
+      Class<?> objectClass,
+      Class<? extends Annotation> annotationClass,
+      Set<Class<?>> visitedClasses) {
     for (Field field : objectClass.getDeclaredFields()) {
       if (field.isAnnotationPresent(annotationClass)) {
         return true;
@@ -28,9 +30,11 @@ public class AnnotationChecker {
         }
       }
     }
-    if (objectClass.getSuperclass() != null && !visitedClasses.contains(objectClass.getSuperclass())) {
+    if (objectClass.getSuperclass() != null
+        && !visitedClasses.contains(objectClass.getSuperclass())) {
       visitedClasses.add(objectClass.getSuperclass());
-      return checkIfAnyClassFieldsHasAnnotation(objectClass.getSuperclass(), annotationClass, visitedClasses);
+      return checkIfAnyClassFieldsHasAnnotation(
+          objectClass.getSuperclass(), annotationClass, visitedClasses);
     }
     return false;
   }

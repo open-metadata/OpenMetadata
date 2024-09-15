@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Dropdown } from 'antd';
+import { Dropdown, Space, Typography } from 'antd';
 import React from 'react';
-import { normalLink } from '../../utils/styleconstant';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
 
 export interface SortingField {
   name: string;
@@ -43,16 +42,20 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
 
   return (
     <Dropdown
-      className="tw-self-end tw-mr-2 tw-cursor-pointer"
+      className="self-end m-r-xs cursor-pointer"
       data-testid="dropdown"
       menu={{
         items,
       }}
       trigger={['click']}>
-      <div className="tw-text-primary" data-testid="dropdown-label">
-        <span className="tw-mr-2">{label}</span>
-        <DropDownIcon style={{ color: normalLink, margin: '0px' }} />
-      </div>
+      <Space align="baseline" data-testid="sorting-dropdown-label" size={4}>
+        <Typography.Text className="text-grey-muted">{label}</Typography.Text>
+        <DropDownIcon
+          className="text-grey-muted align-middle"
+          height={16}
+          width={16}
+        />
+      </Space>
     </Dropdown>
   );
 };

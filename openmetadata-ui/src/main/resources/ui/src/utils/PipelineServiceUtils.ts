@@ -13,18 +13,21 @@
 
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
-import { Pipeline } from '../generated/entity/data/pipeline';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
-import { EntityReference } from '../generated/type/entityReference';
 import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
 import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
 import customPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/customPipelineConnection.json';
 import dagsterConnection from '../jsons/connectionSchemas/connections/pipeline/dagsterConnection.json';
 import databricksPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/databricksPipelineConnection.json';
+import dbtCloudConnection from '../jsons/connectionSchemas/connections/pipeline/dbtCloudConnection.json';
 import domoPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/domoPipelineConnection.json';
 import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
+import flinkConnection from '../jsons/connectionSchemas/connections/pipeline/flinkConnection.json';
 import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
+import KafkaConnectConnection from '../jsons/connectionSchemas/connections/pipeline/kafkaConnectConnection.json';
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
+import openLineageConnection from '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json';
+import splineConnection from '../jsons/connectionSchemas/connections/pipeline/splineConnection.json';
 
 export const getPipelineConfig = (type: PipelineServiceType) => {
   let schema = {};
@@ -46,6 +49,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
 
       break;
     }
+    case PipelineServiceType.KafkaConnect: {
+      schema = KafkaConnectConnection;
+
+      break;
+    }
     case PipelineServiceType.Fivetran: {
       schema = fivetranConnection;
 
@@ -53,6 +61,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.Dagster: {
       schema = dagsterConnection;
+
+      break;
+    }
+    case PipelineServiceType.DBTCloud: {
+      schema = dbtCloudConnection;
 
       break;
     }
@@ -76,25 +89,24 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
 
       break;
     }
+    case PipelineServiceType.Spline: {
+      schema = splineConnection;
 
+      break;
+    }
+    case PipelineServiceType.OpenLineage: {
+      schema = openLineageConnection;
+
+      break;
+    }
+    case PipelineServiceType.Flink: {
+      schema = flinkConnection;
+
+      break;
+    }
     default:
       break;
   }
 
   return cloneDeep({ schema, uiSchema });
-};
-
-export const getEntityReferenceFromPipeline = (
-  pipeline: Pipeline
-): EntityReference => {
-  return {
-    deleted: pipeline.deleted,
-    href: pipeline.href ?? '',
-    fullyQualifiedName: pipeline.fullyQualifiedName,
-    id: pipeline.id,
-    description: pipeline.description,
-    displayName: pipeline.displayName,
-    name: pipeline.name ?? '',
-    type: 'pipeline',
-  };
 };

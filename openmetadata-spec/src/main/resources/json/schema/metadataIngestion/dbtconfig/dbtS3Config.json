@@ -4,14 +4,37 @@
   "title": "DBT S3 Config",
   "description": "DBT Catalog, Manifest and Run Results files in S3 bucket. We will search for catalog.json, manifest.json and run_results.json.",
   "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config",
+  "type": "object",
   "properties": {
+    "dbtConfigType": {
+      "description": "dbt Configuration type",
+      "type": "string",
+      "enum": ["s3"],
+      "default": "s3"
+    },
     "dbtSecurityConfig": {
       "title": "DBT S3 Security Config",
       "$ref": "../../security/credentials/awsCredentials.json"
     },
     "dbtPrefixConfig": {
       "title": "DBT Prefix Config",
-      "$ref": "./dbtBucketDetails.json"
+      "description": "Details of the bucket where the dbt files are stored",
+      "type": "object",
+      "properties": {
+        "dbtBucketName": {
+          "title": "DBT Bucket Name",
+          "description": "Name of the bucket where the dbt files are stored",
+          "type": "string"
+        },
+        "dbtObjectPrefix": {
+          "title": "DBT Object Prefix",
+          "description": "Path of the folder where the dbt files are stored",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
-  }
+  },
+  "additionalProperties": false,
+  "required": ["dbtSecurityConfig", "dbtConfigType"]
 }

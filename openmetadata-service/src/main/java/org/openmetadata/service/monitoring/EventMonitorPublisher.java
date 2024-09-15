@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.AbstractEventPublisher;
-import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.resources.events.EventResource;
 
 @Slf4j
@@ -30,7 +29,7 @@ public class EventMonitorPublisher extends AbstractEventPublisher {
   }
 
   @Override
-  public void publish(EventResource.ChangeEventList events) throws EventPublisherException {
+  public void publish(EventResource.EventList events) {
     for (ChangeEvent event : events.getData()) {
       String entityType = event.getEntityType();
       if (Entity.INGESTION_PIPELINE.equals(entityType)) {

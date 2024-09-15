@@ -12,12 +12,25 @@
 """
 Abstract class for third party secrets' manager implementations
 """
-from abc import ABC
+from abc import ABC, abstractmethod
+from typing import Any
 
+from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
+    SecretsManagerClientLoader,
+)
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.utils.secrets.secrets_manager import SecretsManager
+
+SECRET_MANAGER_AIRFLOW_CONF = "openmetadata_secrets_manager"
+
+
+class SecretsManagerConfigException(Exception):
+    """
+    Invalid config that does not allow us to create
+    the SecretsManagerFactory
+    """
 
 
 class ExternalSecretsManager(SecretsManager, ABC):
@@ -25,5 +38,14 @@ class ExternalSecretsManager(SecretsManager, ABC):
     Abstract class for third party secrets' manager implementations
     """
 
-    def __init__(self, provider: SecretsManagerProvider):
-        self.provider = provider.name
+    def __init__(
+        self, provider: SecretsManagerProvider, loader: SecretsManagerClientLoader
+    ):
+        self.provider = provider
+        self.loader = loader
+
+        self.credentials = self.load_credentials()
+
+    @abstractmethod
+    def load_credentials(self) -> Any:
+        """Load the provider credentials based on the loader type"""

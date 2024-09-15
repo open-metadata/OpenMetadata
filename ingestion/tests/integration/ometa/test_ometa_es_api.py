@@ -13,17 +13,27 @@ OMeta ES Mixin integration tests. The API needs to be up
 """
 import logging
 import time
+import uuid
 from unittest import TestCase
+from unittest.mock import patch
+
+import pytest
+from requests.utils import quote
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -38,9 +48,11 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.basic import EntityName, SqlQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+
+from ..integration_base import get_create_entity
 
 
 class OMetaESTest(TestCase):
@@ -66,7 +78,22 @@ class OMetaESTest(TestCase):
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
+                hostPort="http://localhost:1234",
+            )
+        ),
+    )
+    another_service = CreateDatabaseServiceRequest(
+        name="another-test-service-es",
+        serviceType=DatabaseServiceType.Mysql,
+        connection=DatabaseConnection(
+            config=MysqlConnection(
+                username="username",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:1234",
             )
         ),
@@ -81,14 +108,23 @@ class OMetaESTest(TestCase):
         logging.info("Checking ES index status...")
         tries = 0
 
-        res = None
-        while not res and tries <= 5:  # Kill in 5 seconds
-
-            res = cls.metadata.es_search_from_fqn(
+        table_res = None
+        query_res = None
+        while not table_res and not query_res and tries <= 5:  # Kill in 5 seconds
+            table_res = cls.metadata.es_search_from_fqn(
                 entity_type=Table,
                 fqn_search_string="test-service-es.test-db-es.test-schema-es.test-es",
             )
-            if not res:
+            query_res = cls.metadata.es_search_from_fqn(
+                entity_type=Query,
+                fqn_search_string=fqn.build(
+                    metadata=None,
+                    entity_type=Query,
+                    service_name="test-service-es",
+                    query_checksum=cls.checksum,
+                ),
+            )
+            if not table_res or query_res:
                 tries += 1
                 time.sleep(1)
 
@@ -102,32 +138,53 @@ class OMetaESTest(TestCase):
 
         create_db = CreateDatabaseRequest(
             name="test-db-es",
-            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
-        create_db_entity = cls.metadata.create_or_update(data=create_db)
-
-        cls.db_reference = EntityReference(
-            id=create_db_entity.id, name="test-db-es", type="database"
-        )
+        cls.create_db_entity = cls.metadata.create_or_update(data=create_db)
 
         create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema-es", database=cls.db_reference
+            name="test-schema-es",
+            database=cls.create_db_entity.fullyQualifiedName,
         )
 
-        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
-
-        cls.schema_reference = EntityReference(
-            id=create_schema_entity.id, name="test-schema-es", type="databaseSchema"
-        )
+        cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
         create = CreateTableRequest(
             name="test-es",
-            databaseSchema=cls.schema_reference,
+            databaseSchema=cls.create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
         cls.entity = cls.metadata.create_or_update(create)
+
+        query_str = str(uuid.uuid4())
+        cls.checksum = fqn.get_query_checksum(query_str)
+        # Create queries for the given service
+        query = CreateQueryRequest(
+            query=SqlQuery(query_str),
+            service=cls.service_entity.fullyQualifiedName,
+            processedLineage=True,  # Only 1 with processed lineage
+        )
+        cls.metadata.create_or_update(query)
+
+        query2 = CreateQueryRequest(
+            query=SqlQuery(str(uuid.uuid4())),
+            service=cls.service_entity.fullyQualifiedName,
+        )
+        cls.metadata.create_or_update(query2)
+
+        # Create queries for another service
+        cls.another_service_entity = cls.metadata.create_or_update(
+            data=cls.another_service
+        )
+
+        another_query = CreateQueryRequest(
+            query=SqlQuery(str(uuid.uuid4())),
+            service=cls.another_service_entity.fullyQualifiedName,
+            processedLineage=True,
+        )
+        cls.metadata.create_or_update(another_query)
 
         # Leave some time for indexes to get updated, otherwise this happens too fast
         cls.check_es_index()
@@ -140,13 +197,26 @@ class OMetaESTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqn=cls.service.name.__root__
-            ).id.__root__
+                entity=DatabaseService, fqn=cls.service.name.root
+            ).id.root
         )
 
         cls.metadata.delete(
             entity=DatabaseService,
             entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
+        )
+
+        another_service_id = str(
+            cls.metadata.get_by_name(
+                entity=DatabaseService, fqn=cls.another_service.name.root
+            ).id.root
+        )
+
+        cls.metadata.delete(
+            entity=DatabaseService,
+            entity_id=another_service_id,
             recursive=True,
             hard_delete=True,
         )
@@ -157,13 +227,14 @@ class OMetaESTest(TestCase):
         """
 
         fqn_search_string = fqn._build(
-            self.service.name.__root__, "*", "*", self.entity.name.__root__
+            self.service.name.root, "*", "*", self.entity.name.root
         )
 
         res = self.metadata.es_search_from_fqn(
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
+            fields="owners",
         )
 
         # We get the created table back
@@ -171,32 +242,34 @@ class OMetaESTest(TestCase):
         self.assertIn(self.entity, res)
 
         fqn_search_string = fqn._build(
-            self.service.name.__root__,
-            self.db_reference.name,
+            self.service.name.root,
+            self.create_db_entity.name.root,
             "*",
-            self.entity.name.__root__,
+            self.entity.name.root,
         )
 
         res = self.metadata.es_search_from_fqn(
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
+            fields="owners",
         )
 
         self.assertIsNotNone(res)
         self.assertIn(self.entity, res)
 
         fqn_search_string = fqn._build(
-            self.service.name.__root__,
-            self.db_reference.name,
-            self.schema_reference.name,
-            self.entity.name.__root__,
+            self.service.name.root,
+            self.create_db_entity.name.root,
+            self.create_schema_entity.name.root,
+            self.entity.name.root,
         )
 
         res = self.metadata.es_search_from_fqn(
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
+            fields="owners",
         )
 
         self.assertIsNotNone(res)
@@ -212,3 +285,81 @@ class OMetaESTest(TestCase):
         )
 
         self.assertIsNone(res)
+
+    def test_get_query_with_lineage_filter(self):
+        """Check we are building the proper filter"""
+        res = self.metadata.get_query_with_lineage_filter("my_service")
+        expected = (
+            '{"query": {"bool": {"must": [{"term": {"processedLineage": true}},'
+            ' {"term": {"service.name.keyword": "my_service"}}]}}}'
+        )
+        self.assertEqual(res, quote(expected))
+
+    def test_get_queries_with_lineage(self):
+        """Check the payload from ES"""
+        res = self.metadata.es_get_queries_with_lineage(self.service.name.root)
+        self.assertIn(self.checksum, res)
+
+    def test_paginate_no_filter(self):
+        """We can paginate all the data"""
+        # Since the test can run in parallel with other tables being there, we just
+        # want to check we are actually getting some results
+        for asset in self.metadata.paginate_es(entity=Table, size=2):
+            assert asset
+            break
+
+    def test_paginate_with_errors(self):
+        """We don't want to stop the ES yields just because a single Entity has an error"""
+        # 1. First, prepare some tables
+        for name in [f"table_{i}" for i in range(10)]:
+            self.metadata.create_or_update(
+                data=get_create_entity(
+                    entity=Table,
+                    name=EntityName(name),
+                    reference=self.create_schema_entity.fullyQualifiedName,
+                )
+            )
+
+        # 2. We'll fetch the entities, but we need to force a failure to ensure we can recover
+        error_name = fqn._build(
+            self.service_entity.name.root,
+            self.create_db_entity.name.root,
+            self.create_schema_entity.name.root,
+            "table_5",
+        )
+        ok_name = fqn._build(
+            self.service_entity.name.root,
+            self.create_db_entity.name.root,
+            self.create_schema_entity.name.root,
+            "table_6",
+        )
+
+        rest_client = self.metadata.client
+        original_get = rest_client.get
+        with patch.object(rest_client, "get", wraps=rest_client.get) as mock_get:
+
+            def side_effect(path: str, data=None):
+                # In case we pass filters as well, use `in path` rather than ==
+                if f"/tables/name/{error_name}" in path:
+                    raise RuntimeError("Error")
+                return original_get(path, data)
+
+            mock_get.side_effect = side_effect
+
+            # Validate we are raising the error
+            with pytest.raises(RuntimeError):
+                self.metadata.get_by_name(entity=Table, fqn=error_name)
+
+            # This works
+            self.metadata.get_by_name(entity=Table, fqn=ok_name)
+
+            query_filter = (
+                '{"query":{"bool":{"must":[{"bool":{"should":[{"term":'
+                f'{{"service.displayName.keyword":"{self.service_entity.name.root}"}}}}]}}}}]}}}}}}'
+            )
+            assets = list(
+                self.metadata.paginate_es(
+                    entity=Table, query_filter=query_filter, size=2
+                )
+            )
+            assert len(assets) == 10

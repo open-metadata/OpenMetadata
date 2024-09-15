@@ -11,100 +11,113 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
+import Icon, { SearchOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { upperCase } from 'lodash';
-import { EntityTags } from 'Models';
-import React from 'react';
-import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as DragIcon } from '../assets/svg/drag.svg';
-import { ReactComponent as DropDownIcon } from '../assets/svg/DropDown.svg';
-import { ReactComponent as RightArrowIcon } from '../assets/svg/ic-right-arrow.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
-import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getDashboardDetailsPath,
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getEditWebhookPath,
-  getMlModelPath,
-  getPipelineDetailsPath,
-  getServiceDetailsPath,
-  getTableDetailsPath,
-  getTopicDetailsPath,
-} from '../constants/constants';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+  isUndefined,
+  lowerCase,
+  omit,
+  reduce,
+  toString,
+  uniqBy,
+  uniqueId,
+  upperCase,
+} from 'lodash';
+import { EntityTags } from 'Models';
+import React, { CSSProperties } from 'react';
+import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
+import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
+import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
+import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.svg';
+import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
+import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
+import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
+import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
+import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
+import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
+import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
+import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
+import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
+import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection-default.svg';
+import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint-default.svg';
+import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
+import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
+import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
+import { ReactComponent as IconTestSuite } from '../assets/svg/ic-checklist.svg';
+import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
+import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
+import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
+import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
+import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
+import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
+import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
+import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
+import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
+import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
+import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
+import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
+import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
+import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
+import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
+import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
+import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
+import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
+import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
+import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
+import { ReactComponent as TeamIcon } from '../assets/svg/teams.svg';
+import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
+
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
   Column,
   DataType,
   TableConstraint,
 } from '../generated/entity/data/table';
-import { TestCaseStatus } from '../generated/tests/testCase';
-import { TagLabel } from '../generated/type/tagLabel';
+import { Field } from '../generated/type/schema';
+import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
-import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import EntityLink from './EntityLink';
+import searchClassBase from './SearchClassBase';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
-import SVGIcons, { Icons } from './SvgUtils';
-
-export const getBadgeName = (tableType?: string) => {
-  switch (tableType) {
-    case 'QUERY':
-      return t('label.query-lowercase');
-    default:
-      return t('label.table-lowercase');
-  }
-};
-
-export const usageSeverity = (value: number): string => {
-  if (value > 75) {
-    return 'High';
-  } else if (value >= 25 && value <= 75) {
-    return 'Medium';
-  } else {
-    return 'Low';
-  }
-};
+import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
   const ordinalPercentile = ordinalize(percentile);
   const usagePercentile = `${
     isLiteral ? t('label.usage') : ''
-  } - ${ordinalPercentile} ${t('label.pctile-lowercase')}`;
+  } ${ordinalPercentile} ${t('label.pctile-lowercase')}`;
 
   return usagePercentile;
 };
 
-export const getTierFromTableTags = (
-  tags: Array<EntityTags>
-): EntityTags['tagFQN'] => {
-  const tierTag = tags.find(
-    (item) =>
-      item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
-      !isNaN(parseInt(item.tagFQN.substring(9).trim()))
-  );
-
-  return tierTag?.tagFQN || '';
-};
-
 export const getTierTags = (tags: Array<TagLabel>) => {
-  const tierTag = tags.find(
-    (item) =>
-      item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
-      !isNaN(parseInt(item.tagFQN.substring(9).trim()))
+  const tierTag = tags.find((item) =>
+    item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
   );
 
   return tierTag;
@@ -114,67 +127,53 @@ export const getTagsWithoutTier = (
   tags: Array<EntityTags>
 ): Array<EntityTags> => {
   return tags.filter(
-    (item) =>
-      !item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
-      isNaN(parseInt(item.tagFQN.substring(9).trim()))
+    (item) => !item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
   );
 };
 
-export const getTierFromSearchTableTags = (tags: Array<string>): string => {
-  const tierTag = tags.find(
-    (item) =>
-      item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
-      !isNaN(parseInt(item.substring(9).trim()))
-  );
-
-  return tierTag || '';
-};
-
-export const getSearchTableTagsWithoutTier = (
-  tags: Array<string>
-): Array<string> => {
-  return tags.filter(
-    (item) =>
-      !item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
-      isNaN(parseInt(item.substring(9).trim()))
-  );
-};
-
-export const getConstraintIcon = (
+export const getConstraintIcon = ({
   constraint = '',
   className = '',
-  width = '16px'
-) => {
-  let title: string, icon: string;
+  width = '16px',
+  isConstraintAdded,
+  isConstraintDeleted,
+}: {
+  constraint?: string;
+  className?: string;
+  width?: string;
+  isConstraintAdded?: boolean;
+  isConstraintDeleted?: boolean;
+}) => {
+  let title: string, icon: SvgComponent, dataTestId: string;
   switch (constraint) {
-    case ConstraintTypes.PRIMARY_KEY:
-      {
-        title = t('label.primary-key');
-        icon = Icons.KEY;
-      }
+    case ConstraintTypes.PRIMARY_KEY: {
+      title = t('label.primary-key');
+      icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
+      dataTestId = 'primary-key';
 
       break;
-    case ConstraintTypes.UNIQUE:
-      {
-        title = t('label.unique');
-        icon = Icons.UNIQUE;
-      }
+    }
+    case ConstraintTypes.UNIQUE: {
+      title = t('label.unique');
+      icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
+      dataTestId = 'unique';
 
       break;
-    case ConstraintTypes.NOT_NULL:
-      {
-        title = t('label.not-null');
-        icon = Icons.NOT_NULL;
-      }
+    }
+    case ConstraintTypes.NOT_NULL: {
+      title = t('label.not-null');
+      icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
+      dataTestId = 'not-null';
 
       break;
-    case ConstraintTypes.FOREIGN_KEY:
-      {
-        title = t('label.foreign-key');
-        icon = Icons.FOREGIN_KEY;
-      }
+    }
+    case ConstraintTypes.FOREIGN_KEY: {
+      title = t('label.foreign-key');
+      icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
+      dataTestId = 'foreign-key';
 
       break;
+    }
     default:
       return null;
   }
@@ -185,109 +184,170 @@ export const getConstraintIcon = (
       placement="bottom"
       title={title}
       trigger="hover">
-      <SVGIcons alt={title} icon={icon} width={width} />
+      <Icon
+        alt={title}
+        className={classNames({
+          'diff-added': isConstraintAdded,
+          'diff-removed': isConstraintDeleted,
+        })}
+        component={icon}
+        data-testid={`constraint-icon-${dataTestId}`}
+        style={{ fontSize: width }}
+      />
     </Tooltip>
   );
 };
 
-export const getEntityLink = (
+export const getEntityIcon = (
   indexType: string,
-  fullyQualifiedName: string
+  iconClass = '',
+  iconStyle = {}
 ) => {
-  // encode the FQN for entities that can have "/" in their names
-  fullyQualifiedName = encodeURIComponent(fullyQualifiedName);
+  let Icon;
+  let className = iconClass;
+  const style: CSSProperties = iconStyle;
+  const entityIconMapping: Record<string, SvgComponent> = {
+    [SearchIndex.DATABASE]: DatabaseIcon,
+    [EntityType.DATABASE]: DatabaseIcon,
+    [SearchIndex.DATABASE_SERVICE]: DatabaseIcon,
+    [EntityType.DATABASE_SERVICE]: DatabaseIcon,
+    [SearchIndex.DATABASE_SCHEMA]: SchemaIcon,
+    [EntityType.DATABASE_SCHEMA]: SchemaIcon,
+    [SearchIndex.TOPIC]: TopicIcon,
+    [EntityType.TOPIC]: TopicIcon,
+    [EntityType.MESSAGING_SERVICE]: TopicIcon,
+    [SearchIndex.MESSAGING_SERVICE]: TopicIcon,
+    [SearchIndex.DASHBOARD]: DashboardIcon,
+    [EntityType.DASHBOARD]: DashboardIcon,
+    [EntityType.DASHBOARD_SERVICE]: DashboardIcon,
+    [SearchIndex.DASHBOARD_SERVICE]: DashboardIcon,
+    [SearchIndex.MLMODEL]: MlModelIcon,
+    [EntityType.MLMODEL]: MlModelIcon,
+    [EntityType.MLMODEL_SERVICE]: MlModelIcon,
+    [SearchIndex.ML_MODEL_SERVICE]: MlModelIcon,
+    [SearchIndex.PIPELINE]: PipelineIcon,
+    [EntityType.PIPELINE]: PipelineIcon,
+    [EntityType.PIPELINE_SERVICE]: PipelineIcon,
+    [SearchIndex.PIPELINE_SERVICE]: PipelineIcon,
+    [SearchIndex.CONTAINER]: ContainerIcon,
+    [EntityType.CONTAINER]: ContainerIcon,
+    [EntityType.STORAGE_SERVICE]: ContainerIcon,
+    [SearchIndex.STORAGE_SERVICE]: ContainerIcon,
+    [SearchIndex.DASHBOARD_DATA_MODEL]: IconDataModel,
+    [EntityType.DASHBOARD_DATA_MODEL]: IconDataModel,
+    [SearchIndex.STORED_PROCEDURE]: IconStoredProcedure,
+    [EntityType.STORED_PROCEDURE]: IconStoredProcedure,
+    [EntityType.CLASSIFICATION]: ClassificationIcon,
+    [SearchIndex.TAG]: TagIcon,
+    [EntityType.TAG]: TagIcon,
+    [SearchIndex.GLOSSARY]: GlossaryIcon,
+    [EntityType.GLOSSARY]: GlossaryIcon,
+    [SearchIndex.GLOSSARY_TERM]: GlossaryTermIcon,
+    [EntityType.GLOSSARY_TERM]: GlossaryTermIcon,
+    [SearchIndex.DOMAIN]: DomainIcon,
+    [EntityType.DOMAIN]: DomainIcon,
+    [SearchIndex.CHART]: ChartIcon,
+    [EntityType.CHART]: ChartIcon,
+    [SearchIndex.TABLE]: TableIcon,
+    [EntityType.TABLE]: TableIcon,
+    [EntityType.METADATA_SERVICE]: MetadataServiceIcon,
+    [SearchIndex.DATA_PRODUCT]: DataProductIcon,
+    [EntityType.DATA_PRODUCT]: DataProductIcon,
+    [EntityType.TEST_CASE]: IconTestSuite,
+    [EntityType.TEST_SUITE]: IconTestSuite,
+    [EntityType.BOT]: BotIcon,
+    [EntityType.TEAM]: TeamIcon,
+    [EntityType.APPLICATION]: ApplicationIcon,
+    [EntityType.PERSONA]: PersonaIcon,
+    [EntityType.ROLE]: RoleIcon,
+    [EntityType.POLICY]: PolicyIcon,
+    [EntityType.EVENT_SUBSCRIPTION]: AlertIcon,
+    [EntityType.USER]: UserIcon,
+    [SearchIndex.USER]: UserIcon,
+    [EntityType.INGESTION_PIPELINE]: PipelineIcon,
+    [SearchIndex.INGESTION_PIPELINE]: PipelineIcon,
+    [EntityType.ALERT]: AlertIcon,
+    [EntityType.KPI]: KPIIcon,
+    ['tagCategory']: ClassificationIcon,
+    ['announcement']: AnnouncementIcon,
+    ['conversation']: ConversationIcon,
+    ['task']: TaskIcon,
+    ['dataQuality']: DataQualityIcon,
+    ['services']: ServicesIcon,
+    ['automator']: AutomatorBotIcon,
+    ['notification']: NotificationIcon,
+    [EntityType.API_ENDPOINT]: APIEndpointIcon,
+    [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointIcon,
+    [EntityType.API_SERVICE]: APIServiceIcon,
+    [SearchIndex.API_SERVICE_INDEX]: APIServiceIcon,
+    [EntityType.API_COLLECTION]: APICollectionIcon,
+    [SearchIndex.API_COLLECTION_INDEX]: APICollectionIcon,
+    ['location']: LocationIcon,
+  };
+
   switch (indexType) {
-    case SearchIndex.TOPIC:
-    case EntityType.TOPIC:
-      return getTopicDetailsPath(fullyQualifiedName);
+    case EntityType.SEARCH_INDEX:
+    case SearchIndex.SEARCH_INDEX:
+    case EntityType.SEARCH_SERVICE:
+    case SearchIndex.SEARCH_SERVICE:
+      Icon = SearchOutlined;
+      className = 'text-sm text-inherit';
 
-    case SearchIndex.DASHBOARD:
-    case EntityType.DASHBOARD:
-      return getDashboardDetailsPath(fullyQualifiedName);
+      break;
 
-    case SearchIndex.PIPELINE:
-    case EntityType.PIPELINE:
-      return getPipelineDetailsPath(fullyQualifiedName);
-
-    case EntityType.DATABASE:
-      return getDatabaseDetailsPath(fullyQualifiedName);
-
-    case EntityType.DATABASE_SCHEMA:
-      return getDatabaseSchemaDetailsPath(fullyQualifiedName);
-
-    case EntityType.GLOSSARY:
-    case EntityType.GLOSSARY_TERM:
-      return getGlossaryPath(fullyQualifiedName);
-
-    case EntityType.DATABASE_SERVICE:
-    case EntityType.DASHBOARD_SERVICE:
-    case EntityType.MESSAGING_SERVICE:
-    case EntityType.PIPELINE_SERVICE:
-      return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
-
-    case EntityType.WEBHOOK:
-      return getEditWebhookPath(fullyQualifiedName);
-
-    case EntityType.TYPE:
-      return getSettingPath(
-        GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES,
-        `${fullyQualifiedName}s`
-      );
-
-    case EntityType.MLMODEL:
-    case SearchIndex.MLMODEL:
-      return getMlModelPath(fullyQualifiedName);
-
-    case SearchIndex.TABLE:
-    case EntityType.TABLE:
     default:
-      return getTableDetailsPath(fullyQualifiedName);
+      Icon = entityIconMapping[indexType];
+
+      break;
+  }
+
+  // If icon is not found, return null
+  return Icon ? <Icon className={className} style={style} /> : null;
+};
+
+export const getServiceIcon = (source: SourceType) => {
+  const isDataAsset = NON_SERVICE_TYPE_ASSETS.includes(
+    source.entityType as EntityType
+  );
+
+  if (isDataAsset) {
+    return searchClassBase.getEntityIcon(
+      source.entityType ?? '',
+      'service-icon w-7 h-7',
+      {
+        color: DE_ACTIVE_COLOR,
+      }
+    );
+  } else {
+    return (
+      <img
+        alt="service-icon"
+        className="inline service-icon h-7"
+        src={serviceUtilClassBase.getServiceTypeLogo(source)}
+      />
+    );
   }
 };
 
-export const getEntityIcon = (indexType: string) => {
-  switch (indexType) {
-    case SearchIndex.TOPIC:
-    case EntityType.TOPIC:
-      return <TopicIcon />;
-
-    case SearchIndex.DASHBOARD:
-    case EntityType.DASHBOARD:
-      return <DashboardIcon />;
-
-    case SearchIndex.MLMODEL:
-    case EntityType.MLMODEL:
-      return <MlModelIcon />;
-
-    case SearchIndex.PIPELINE:
-    case EntityType.PIPELINE:
-      return <PipelineIcon />;
-
-    case SearchIndex.TABLE:
-    case EntityType.TABLE:
-    default:
-      return <TableIcon />;
-  }
-};
-
-export const makeRow = (column: Column) => {
+export const makeRow = <T extends Column | SearchIndexField>(column: T) => {
   return {
-    description: column.description || '',
+    description: column.description ?? '',
     // Sorting tags as the response of PATCH request does not return the sorted order
     // of tags, but is stored in sorted manner in the database
     // which leads to wrong PATCH payload sent after further tags removal
-    tags: sortTagsCaseInsensitive(column.tags || []),
+    tags: sortTagsCaseInsensitive(column.tags ?? []),
     key: column?.name,
     ...column,
   };
 };
 
-export const makeData = (
-  columns: Column[] = []
-): Array<Column & { subRows: Column[] | undefined }> => {
+export const makeData = <T extends Column | SearchIndexField>(
+  columns: T[] = []
+): Array<T & { id: string }> => {
   return columns.map((column) => ({
     ...makeRow(column),
-    subRows: column.children ? makeData(column.children) : undefined,
+    id: uniqueId(column.name),
+    children: column.children ? makeData<T>(column.children as T[]) : undefined,
   }));
 };
 
@@ -323,49 +383,13 @@ export const getDataTypeString = (dataType: string): string => {
 };
 
 export const generateEntityLink = (fqn: string, includeColumn = false) => {
-  const columnLink = '<#E::table::ENTITY_FQN::columns::COLUMN>';
-  const tableLink = '<#E::table::ENTITY_FQN>';
-
   if (includeColumn) {
     const tableFqn = getTableFQNFromColumnFQN(fqn);
     const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
 
-    return columnLink
-      .replace('ENTITY_FQN', tableFqn)
-      .replace('COLUMN', columnName);
+    return EntityLink.getTableEntityLink(tableFqn, columnName);
   } else {
-    return tableLink.replace('ENTITY_FQN', fqn);
-  }
-};
-
-export const getEntityFqnFromEntityLink = (
-  entityLink: string,
-  includeColumn = false
-) => {
-  const link = entityLink.split('>')[0];
-  const entityLinkData = link.split('::');
-  const tableFqn = entityLinkData[2];
-
-  if (includeColumn) {
-    return `${tableFqn}.${entityLinkData[entityLinkData.length - 1]}`;
-  }
-
-  return tableFqn;
-};
-
-export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
-  switch (status) {
-    case TestCaseStatus.Success:
-      return Icons.SUCCESS_BADGE;
-
-    case TestCaseStatus.Failed:
-      return Icons.FAIL_BADGE;
-
-    case TestCaseStatus.Aborted:
-      return Icons.PENDING_BADGE;
-
-    default:
-      return '';
+    return EntityLink.getTableEntityLink(fqn);
   }
 };
 
@@ -376,20 +400,22 @@ export function getTableExpandableConfig<T>(
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
         <>
-          {isDraggable && <Icon className="drag-icon" component={DragIcon} />}
+          {isDraggable && (
+            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+          )}
           <Icon
-            className="mr-1"
-            component={expanded ? DropDownIcon : RightArrowIcon}
+            className="m-r-xs vertical-baseline"
+            component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
-            size={16}
+            style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
             onClick={(e) => onExpand(record, e)}
           />
         </>
       ) : (
         isDraggable && (
           <>
-            <Icon className="drag-icon" component={DragIcon} />
-            <div className="expand-cell-empty-icon-container" />
+            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            <span className="expand-cell-empty-icon-container" />
           </>
         )
       ),
@@ -398,29 +424,56 @@ export function getTableExpandableConfig<T>(
   return expandableConfig;
 }
 
-export const prepareConstraintIcon = (
-  columnName: string,
-  columnConstraint?: string,
-  tableConstraints?: TableConstraint[],
-  iconClassName?: string,
-  iconWidth?: string
-) => {
-  // get the table constraint for column
-  const tableConstraint = tableConstraints?.find((constraint) =>
-    constraint.columns?.includes(columnName)
+export const prepareConstraintIcon = ({
+  columnName,
+  columnConstraint,
+  tableConstraints,
+  iconClassName,
+  iconWidth,
+  isColumnConstraintAdded,
+  isColumnConstraintDeleted,
+  isTableConstraintAdded,
+  isTableConstraintDeleted,
+}: {
+  columnName: string;
+  columnConstraint?: string;
+  tableConstraints?: TableConstraint[];
+  iconClassName?: string;
+  iconWidth?: string;
+  isColumnConstraintAdded?: boolean;
+  isColumnConstraintDeleted?: boolean;
+  isTableConstraintAdded?: boolean;
+  isTableConstraintDeleted?: boolean;
+}) => {
+  // get the table constraints for column
+  const filteredTableConstraints = uniqBy(
+    tableConstraints?.filter((constraint) =>
+      constraint.columns?.includes(columnName)
+    ),
+    'constraintType'
   );
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
-    ? getConstraintIcon(columnConstraint, iconClassName || 'tw-mr-2', iconWidth)
+    ? getConstraintIcon({
+        constraint: columnConstraint,
+        className: iconClassName ?? 'm-r-xs',
+        width: iconWidth,
+        isConstraintAdded: isColumnConstraintAdded,
+        isConstraintDeleted: isColumnConstraintDeleted,
+      })
     : null;
 
   // prepare table constraint element
-  const tableConstraintEl = tableConstraint
-    ? getConstraintIcon(
-        tableConstraint.constraintType,
-        iconClassName || 'tw-mr-2',
-        iconWidth
+  const tableConstraintEl = filteredTableConstraints
+    ? filteredTableConstraints.map((tableConstraint) =>
+        getConstraintIcon({
+          constraint: tableConstraint.constraintType,
+          className: iconClassName ?? 'm-r-xs',
+          width: iconWidth,
+          isConstraintAdded: isTableConstraintAdded,
+          isConstraintDeleted: isTableConstraintDeleted,
+        })
       )
     : null;
 
@@ -429,4 +482,126 @@ export const prepareConstraintIcon = (
       {columnConstraintEl} {tableConstraintEl}
     </span>
   );
+};
+
+export const getAllRowKeysByKeyName = <
+  T extends Column | Field | SearchIndexField
+>(
+  data: T[],
+  keyName: keyof T
+) => {
+  let keys: string[] = [];
+
+  data.forEach((item) => {
+    if (item.children && item.children.length > 0) {
+      keys.push(toString(item[keyName]));
+      keys = [
+        ...keys,
+        ...getAllRowKeysByKeyName(item.children as T[], keyName),
+      ];
+    }
+  });
+
+  return keys;
+};
+
+export const searchInFields = <T extends SearchIndexField | Column>(
+  searchIndex: Array<T>,
+  searchText: string
+): Array<T> => {
+  const searchedValue: Array<T> = searchIndex.reduce(
+    (searchedFields, field) => {
+      const isContainData =
+        lowerCase(field.name).includes(searchText) ||
+        lowerCase(field.description).includes(searchText) ||
+        lowerCase(getDataTypeString(field.dataType)).includes(searchText);
+
+      if (isContainData) {
+        return [...searchedFields, field];
+      } else if (!isUndefined(field.children)) {
+        const searchedChildren = searchInFields(
+          field.children as T[],
+          searchText
+        );
+        if (searchedChildren.length > 0) {
+          return [
+            ...searchedFields,
+            {
+              ...field,
+              children: searchedChildren,
+            },
+          ];
+        }
+      }
+
+      return searchedFields;
+    },
+    [] as Array<T>
+  );
+
+  return searchedValue;
+};
+
+export const getUpdatedTags = <T extends TableFieldsInfoCommonEntities>(
+  newFieldTags: Array<EntityTags>,
+  field?: T
+): TagLabel[] => {
+  const prevTagsFqn = field?.tags?.map((tag) => tag.tagFQN);
+
+  return reduce(
+    newFieldTags,
+    (acc: Array<EntityTags>, cv: EntityTags) => {
+      if (prevTagsFqn?.includes(cv.tagFQN)) {
+        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.tagFQN);
+
+        return [...acc, prev];
+      } else {
+        return [
+          ...acc,
+          {
+            ...omit(cv, 'isRemovable'),
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ];
+      }
+    },
+    []
+  );
+};
+
+export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  description: string,
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      field.description = description;
+    } else {
+      updateFieldDescription(
+        changedFieldFQN,
+        description,
+        field?.children as Array<T>
+      );
+    }
+  });
+};
+
+export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  newFieldTags: EntityTags[],
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      field.tags = getUpdatedTags<T>(newFieldTags, field);
+    } else {
+      updateFieldTags(
+        changedFieldFQN,
+        newFieldTags,
+        field?.children as Array<T>
+      );
+    }
+  });
 };

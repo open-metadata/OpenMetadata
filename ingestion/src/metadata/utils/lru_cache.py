@@ -15,6 +15,8 @@ LRU cache
 
 from collections import OrderedDict
 
+LRU_CACHE_SIZE = 4096
+
 
 class LRUCache:
     """Least Recently Used cache"""
@@ -22,6 +24,9 @@ class LRUCache:
     def __init__(self, capacity: int) -> None:
         self._cache = OrderedDict()
         self.capacity = capacity
+
+    def clear(self):
+        self._cache = OrderedDict()
 
     def get(self, key):
         """

@@ -15,6 +15,8 @@ import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 
 export interface FilterPatternProps {
   checked: boolean;
+  isDisabled?: boolean;
+  includePatternExtraInfo?: string;
   showSeparator?: boolean;
   handleChecked: (e: boolean) => void;
   includePattern: Array<string> | undefined;

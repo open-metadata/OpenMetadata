@@ -14,51 +14,62 @@
 import {
   BrowserCacheLocation,
   Configuration,
-  IPublicClientApplication,
   PopupRequest,
-  PublicClientApplication,
 } from '@azure/msal-browser';
-import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
+import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
-import { first, isNil } from 'lodash';
+import { first, get, isEmpty, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
-import { oidcTokenKey, ROUTES } from '../constants/constants';
-import { validEmailRegEx } from '../constants/regex.constants';
-import { AuthTypes } from '../enums/signin.enum';
-import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import {
+  AuthenticationConfigurationWithScope,
+  OidcUser,
+  UserProfile,
+} from '../components/Auth/AuthProviders/AuthProvider.interface';
+import { REDIRECT_PATHNAME, ROUTES } from '../constants/constants';
+import { EMAIL_REG_EX } from '../constants/regex.constants';
+import {
+  AuthenticationConfiguration,
+  ClientType,
+} from '../generated/configuration/authenticationConfiguration';
+import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
 
-export let msalInstance: IPublicClientApplication;
+const cookieStorage = new CookieStorage();
 
-export const EXPIRY_THRESHOLD_MILLES = 2 * 60 * 1000;
+// 1 minutes for client auth approach
+export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
 
-export const getOidcExpiry = () => {
-  return new Date(Date.now() + 60 * 60 * 24 * 1000);
-};
+const subPath = process.env.APP_SUB_PATH ?? '';
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
-    ? 'http://localhost:3000/callback'
+    ? `http://localhost:3000${subPath}/callback`
     : !isNil(callbackUrl)
     ? callbackUrl
-    : `${window.location.origin}/callback`;
+    : `${window.location.origin}${subPath}/callback`;
 };
 
 export const getSilentRedirectUri = () => {
   return isDev()
-    ? 'http://localhost:3000/silent-callback'
-    : `${window.location.origin}/silent-callback`;
+    ? `http://localhost:3000${subPath}/silent-callback`
+    : `${window.location.origin}${subPath}/silent-callback`;
 };
 
 export const getUserManagerConfig = (
-  authClient: Record<string, string> = {}
+  authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority, clientId, callbackUrl, responseType, scope } = authClient;
+  const {
+    authority,
+    clientId,
+    callbackUrl,
+    responseType = 'id_token',
+    scope,
+  } = authClient;
 
   return {
     authority,
     client_id: clientId,
-    response_type: responseType,
+    response_type: responseType ?? '',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
@@ -68,7 +79,7 @@ export const getUserManagerConfig = (
 
 export const getAuthConfig = (
   authClient: AuthenticationConfiguration
-): Record<string, string | boolean> => {
+): AuthenticationConfigurationWithScope => {
   const {
     authority,
     clientId,
@@ -76,11 +87,14 @@ export const getAuthConfig = (
     provider,
     providerName,
     enableSelfSignup,
+    samlConfiguration,
+    responseType = 'id_token',
+    clientType = 'public',
   } = authClient;
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
-    case AuthTypes.OKTA:
+    case AuthProvider.Okta:
       {
         config = {
           clientId,
@@ -89,11 +103,13 @@ export const getAuthConfig = (
           scopes: ['openid', 'profile', 'email', 'offline_access'],
           pkce: true,
           provider,
+          clientType,
+          enableSelfSignup,
         };
       }
 
       break;
-    case AuthTypes.CUSTOM_OIDC:
+    case AuthProvider.CustomOidc:
       {
         config = {
           authority,
@@ -102,12 +118,14 @@ export const getAuthConfig = (
           provider,
           providerName,
           scope: 'openid email profile',
-          responseType: 'id_token',
+          responseType,
+          clientType,
+          enableSelfSignup,
         };
       }
 
       break;
-    case AuthTypes.GOOGLE:
+    case AuthProvider.Google:
       {
         config = {
           authority,
@@ -115,12 +133,25 @@ export const getAuthConfig = (
           callbackUrl: redirectUri,
           provider,
           scope: 'openid email profile',
-          responseType: 'id_token',
+          responseType,
+          clientType,
+          enableSelfSignup,
         };
       }
 
       break;
-    case AuthTypes.AWS_COGNITO:
+    case AuthProvider.Saml:
+      {
+        config = {
+          samlConfiguration,
+          provider,
+          clientType,
+          enableSelfSignup,
+        };
+      }
+
+      break;
+    case AuthProvider.AwsCognito:
       {
         config = {
           authority,
@@ -129,22 +160,26 @@ export const getAuthConfig = (
           provider,
           scope: 'openid email profile',
           responseType: 'code',
+          clientType,
+          enableSelfSignup,
         };
       }
 
       break;
-    case AuthTypes.AUTH0: {
+    case AuthProvider.Auth0: {
       config = {
         authority,
         clientId,
         callbackUrl: redirectUri,
         provider,
+        clientType,
+        enableSelfSignup,
       };
 
       break;
     }
-    case AuthTypes.LDAP:
-    case AuthTypes.BASIC: {
+    case AuthProvider.LDAP:
+    case AuthProvider.Basic: {
       config = {
         auth: {
           authority,
@@ -156,12 +191,13 @@ export const getAuthConfig = (
           cacheLocation: BrowserCacheLocation.LocalStorage,
         },
         provider,
-        enableSelfSignUp: enableSelfSignup,
-      } as Configuration;
+        enableSelfSignup,
+        clientType,
+      };
 
       break;
     }
-    case AuthTypes.AZURE:
+    case AuthProvider.Azure:
       {
         config = {
           auth: {
@@ -174,30 +210,24 @@ export const getAuthConfig = (
             cacheLocation: BrowserCacheLocation.LocalStorage,
           },
           provider,
+          clientType,
+          enableSelfSignup,
         } as Configuration;
       }
 
       break;
   }
 
-  return config;
-};
-
-export const setMsalInstance = (configs: Configuration) => {
-  msalInstance = new PublicClientApplication(configs);
+  return config as AuthenticationConfigurationWithScope;
 };
 
 // Add here scopes for id token to be used at MS Identity Platform endpoints.
 export const msalLoginRequest: PopupRequest = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
 };
-// Add here the endpoints for MS Graph API services you would like to use.
-export const msalGraphConfig = {
-  graphMeEndpoint: 'https://graph.microsoft.com',
-};
 
 export const getNameFromEmail = (email: string) => {
-  if (email?.match(validEmailRegEx)) {
+  if (email?.match(EMAIL_REG_EX)) {
     return email.split('@')[0];
   } else {
     // if the string does not conform to email format return the string
@@ -207,34 +237,60 @@ export const getNameFromEmail = (email: string) => {
 
 export const getNameFromUserData = (
   user: UserProfile,
-  jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = []
+  jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = [],
+  principleDomain = '',
+  jwtPrincipalClaimsMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping'] = []
 ) => {
-  // filter and extract the present claims in user profile
-  const jwtClaims = jwtPrincipalClaims.reduce(
-    (prev: string[], curr: string) => {
-      const currentClaim = user[curr as keyof UserProfile];
-      if (currentClaim) {
-        return [...prev, currentClaim];
-      } else {
-        return prev;
-      }
-    },
-    []
-  );
-
-  // get the first claim from claims list
-  const firstClaim = first(jwtClaims);
-
   let userName = '';
+  let domain = principleDomain;
+  let email = '';
+  if (isEmpty(jwtPrincipalClaimsMapping)) {
+    // filter and extract the present claims in user profile
+    const jwtClaims = jwtPrincipalClaims.reduce(
+      (prev: string[], curr: string) => {
+        const currentClaim = user[curr as keyof UserProfile];
+        if (currentClaim) {
+          return [...prev, currentClaim];
+        } else {
+          return prev;
+        }
+      },
+      []
+    );
 
-  // if claims contains the "@" then split it out otherwise assign it to username as it is
-  if (firstClaim?.includes('@')) {
-    userName = getNameFromEmail(firstClaim);
+    // get the first claim from claims list
+    const firstClaim = first(jwtClaims);
+
+    // if claims contains the "@" then split it out otherwise assign it to username as it is
+    if (firstClaim?.includes('@')) {
+      userName = firstClaim.split('@')[0];
+      domain = firstClaim.split('@')[1];
+    } else {
+      userName = firstClaim ?? '';
+    }
+
+    email = userName + '@' + domain;
   } else {
-    userName = firstClaim ?? '';
+    const mappingObj: Record<string, string> = {};
+    jwtPrincipalClaimsMapping.reduce((acc, value) => {
+      const [key, claim] = value.split(':');
+      acc[key] = claim;
+
+      return acc;
+    }, mappingObj);
+
+    if (mappingObj['username'] && mappingObj['email']) {
+      userName = get(user, mappingObj['username'], '');
+      email = get(user, mappingObj['email']);
+    } else {
+      // eslint-disable-next-line no-console
+      console.error(
+        'username or email is not present in jwtPrincipalClaimsMapping'
+      );
+    }
   }
 
-  return userName;
+  return { name: userName, email: email };
 };
 
 export const isProtectedRoute = (pathname: string) => {
@@ -245,9 +301,13 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.FORGOT_PASSWORD,
       ROUTES.CALLBACK,
       ROUTES.SILENT_CALLBACK,
+      ROUTES.SAML_CALLBACK,
       ROUTES.REGISTER,
       ROUTES.RESET_PASSWORD,
       ROUTES.ACCOUNT_ACTIVATION,
+      ROUTES.HOME,
+      ROUTES.AUTH_CALLBACK,
+      ROUTES.NOT_FOUND,
     ].indexOf(pathname) === -1
   );
 };
@@ -260,31 +320,34 @@ export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
 };
 
-export const getUrlPathnameExpiryAfterRoute = () => {
-  return new Date(Date.now() + 1000);
-};
-
 /**
  * @exp expiry of token
- * @isExpired wether token is already expired or not
+ * @isExpired Whether token is already expired or not
  * @diff Difference between token expiry & current time in ms
  * @timeoutExpiry time in ms for try to silent sign-in
  * @returns exp, isExpired, diff, timeoutExpiry
  */
-export const extractDetailsFromToken = () => {
-  const token = localStorage.getItem(oidcTokenKey) || '';
+export const extractDetailsFromToken = (token: string) => {
   if (token) {
     try {
       const { exp } = jwtDecode<JwtPayload>(token);
       const dateNow = Date.now();
 
+      if (isNil(exp)) {
+        return {
+          exp,
+          isExpired: false,
+        };
+      }
+      const threshouldMillis = EXPIRY_THRESHOLD_MILLES;
+
       const diff = exp && exp * 1000 - dateNow;
-      const timeoutExpiry = diff && diff - EXPIRY_THRESHOLD_MILLES;
+      const timeoutExpiry =
+        diff && diff > threshouldMillis ? diff - threshouldMillis : 0;
 
       return {
         exp,
         isExpired: exp && dateNow >= exp * 1000,
-        diff,
         timeoutExpiry,
       };
     } catch (error) {
@@ -296,7 +359,58 @@ export const extractDetailsFromToken = () => {
   return {
     exp: 0,
     isExpired: true,
-    diff: 0,
+
     timeoutExpiry: 0,
   };
+};
+
+export const setUrlPathnameExpiryAfterRoute = (pathname: string) => {
+  cookieStorage.setItem(REDIRECT_PATHNAME, pathname, {
+    // 1 second expiry
+    expires: new Date(Date.now() + 1000),
+    path: '/',
+  });
+};
+
+/**
+ * We support Principle claim as: email,preferred_username,sub in any order
+ * When Users are created from the initialAdmin we want to pick correct user details based on the principle claim
+ * This method will ensure that name & email are correctly picked from the principle claim
+ * @param user - User details extracted from Token
+ * @param jwtPrincipalClaims - List of principle claims coming from auth API response
+ * @param principalDomain - Principle Domain value coming from
+ * @param jwtPrincipalClaimsMapping - Mapping of principle claims to user profile
+ * @param clientType - Client Type Public or Confidential
+ * @returns OidcUser with Profile info plucked based on the principle claim
+ */
+export const prepareUserProfileFromClaims = ({
+  user,
+  jwtPrincipalClaims,
+  principalDomain,
+  jwtPrincipalClaimsMapping,
+  clientType,
+}: {
+  user: OidcUser;
+  jwtPrincipalClaims: string[];
+  principalDomain: string;
+  jwtPrincipalClaimsMapping: string[];
+  clientType: ClientType;
+}): OidcUser => {
+  const newUser = {
+    ...user,
+    profile:
+      clientType === ClientType.Public
+        ? getNameFromUserData(
+            user.profile,
+            jwtPrincipalClaims,
+            principalDomain,
+            jwtPrincipalClaimsMapping
+          )
+        : {
+            name: user.profile?.name ?? '',
+            email: user.profile?.email ?? '',
+          },
+  } as OidcUser;
+
+  return newUser;
 };

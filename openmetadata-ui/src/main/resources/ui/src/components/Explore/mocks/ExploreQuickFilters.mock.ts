@@ -11,6 +11,25 @@
  *  limitations under the License.
  */
 
+export const mockAggregations = {
+  'database.name': {
+    buckets: [
+      {
+        key: 'ecommerce_db',
+        doc_count: 1,
+      },
+      {
+        key: 'modified-leaf-330420',
+        doc_count: 1,
+      },
+      {
+        key: 'modified-leaf-330421',
+        doc_count: 1,
+      },
+    ],
+  },
+};
+
 export const mockAdvancedFieldDefaultOptions = {
   data: {
     took: 3,
@@ -32,12 +51,15 @@ export const mockAdvancedFieldDefaultOptions = {
         buckets: [
           {
             key: 'ecommerce_db',
+            doc_count: 1,
           },
           {
             key: 'modified-leaf-330420',
+            doc_count: 1,
           },
           {
             key: 'modified-leaf-330421',
+            doc_count: 1,
           },
         ],
       },

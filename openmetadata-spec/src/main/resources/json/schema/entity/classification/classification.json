@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/classification/classification.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Classification",
-  "description": "This schema defines the Classification entity. A Classification contains hierarchical terms called tags used for categorizing and classifying data.",
+  "description": "A `Classification` entity contains hierarchical terms called tags used for categorizing and classifying data assets and other entities.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.classification.Classification",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -12,7 +12,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "$ref": "tag.json#/definitions/tagName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",
@@ -71,6 +71,10 @@
       "description" : "Tags under this classification are mutually exclusive. When mutually exclusive is `true` the tags from this classification are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this classification are used to **categorize** an entity. An entity have multiple tags simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",
       "type" : "boolean",
       "default" : "false"
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "description"],

@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { ROUTES } from '../../../constants/constants';
 import { POLICY_LIST_WITH_PAGING } from '../../RolesPage/Roles.mock';
 import PoliciesListPage from './PoliciesListPage';
 
@@ -22,31 +23,39 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
+  Link: jest.fn().mockImplementation(({ children, to, ...res }) => (
+    <a href={to} {...res}>
+      {children}
+    </a>
+  )),
 }));
+jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
+  jest.fn().mockReturnValue(<div>Delete Widget</div>)
+);
+jest.mock(
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
+);
 
-jest.mock('rest/rolesAPIV1', () => ({
+jest.mock('../../../rest/rolesAPIV1', () => ({
   getPolicies: jest
     .fn()
     .mockImplementation(() => Promise.resolve(POLICY_LIST_WITH_PAGING)),
 }));
 
-jest.mock('components/common/next-previous/NextPrevious', () =>
+jest.mock('../../../components/common/NextPrevious/NextPrevious', () =>
   jest.fn().mockReturnValue(<div>NextPrevious</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
-);
-
-jest.mock('./PoliciesList', () =>
-  jest.fn().mockReturnValue(<div data-testid="policies-list">PoliciesList</div>)
 );
 
 jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       policy: {
@@ -58,9 +67,45 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
         EditDisplayName: true,
         EditCustomFields: true,
       },
+      role: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
     },
   }),
 }));
+jest.mock('../../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+  LIST_CAP: 1,
+  userPermissions: {
+    hasViewPermissions: jest.fn(),
+  },
+}));
+
+jest.mock('../../../utils/GlobalSettingsUtils', () => ({
+  getSettingPageEntityBreadCrumb: jest.fn().mockImplementation(() => [
+    {
+      name: 'setting',
+      url: ROUTES.SETTINGS,
+    },
+  ]),
+}));
+
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
+jest.mock(
+  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => {
+    return jest.fn().mockImplementation(() => <p>TitleBreadcrumb</p>);
+  }
+);
 
 describe('Test Policies List Page', () => {
   it('Should render the list component', async () => {
@@ -69,7 +114,7 @@ describe('Test Policies List Page', () => {
     const container = await screen.findByTestId('policies-list-container');
     const addPolicyButton = await screen.findByTestId('add-policy');
 
-    const policyList = await screen.findByTestId('policies-list');
+    const policyList = await screen.findByTestId('policies-list-table');
 
     expect(container).toBeInTheDocument();
     expect(addPolicyButton).toBeInTheDocument();
@@ -90,5 +135,22 @@ describe('Test Policies List Page', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/settings/access/policies/add-policy'
     );
+  });
+
+  it('Should render all table columns', async () => {
+    render(<PoliciesListPage />);
+
+    const container = await screen.findByTestId('policies-list-table');
+
+    const nameCol = await screen.findByText('label.name');
+    const descriptionCol = await screen.findByText('label.description');
+    const rolesCol = await screen.findByText('label.role-plural');
+    const actionsCol = await screen.findByText('label.action-plural');
+
+    expect(container).toBeInTheDocument();
+    expect(nameCol).toBeInTheDocument();
+    expect(descriptionCol).toBeInTheDocument();
+    expect(rolesCol).toBeInTheDocument();
+    expect(actionsCol).toBeInTheDocument();
   });
 });

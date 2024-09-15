@@ -11,35 +11,28 @@
  *  limitations under the License.
  */
 
-import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { RightOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
-import { isEqual } from 'lodash';
-import {
-  deletePostById,
-  deleteThread,
-  getFeedById,
-  updatePost,
-  updateThread,
-} from 'rest/feedsAPI';
-import {
-  getSearchedUsers,
-  getSuggestions,
-  getUserSuggestions,
-  searchData,
-} from 'rest/miscAPI';
-
-import React from 'react';
+import { isEqual, isUndefined, lowerCase } from 'lodash';
+import React, { ReactNode } from 'react';
+import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
+import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
+import { ReactComponent as UpdatedIcon } from '../assets/svg/updated-icon.svg';
+import { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  EntityField,
   entityLinkRegEx,
   EntityRegEx,
   entityRegex,
-  entityUrlMap,
+  EntityUrlMapType,
+  ENTITY_URL_MAP,
   hashtagRegEx,
   linkRegEx,
   mentionRegEx,
@@ -47,33 +40,56 @@ import {
 } from '../constants/Feeds.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Thread, ThreadType } from '../generated/entity/feed/thread';
+import { OwnerType } from '../enums/user.enum';
 import {
-  EntityFieldThreadCount,
-  EntityFieldThreads,
-  EntityThreadField,
-} from '../interface/feed.interface';
-import jsonData from '../jsons/en';
+  CardStyle,
+  EntityTestResultSummaryObject,
+  FieldOperation,
+  TestCaseStatus,
+  Thread,
+  ThreadType,
+} from '../generated/entity/feed/thread';
+import { User } from '../generated/entity/teams/user';
 import {
+  deletePostById,
+  deleteThread,
+  getFeedById,
+  updatePost,
+  updateThread,
+} from '../rest/feedsAPI';
+import { searchData } from '../rest/miscAPI';
+import {
+  formTwoDigitNumber,
   getEntityPlaceHolder,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
+  getRandomColor,
+  Transi18next,
 } from './CommonUtils';
-import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
-import { getEncodedFqn } from './StringsUtils';
-import { getEntityLink } from './TableUtils';
-import { getRelativeDateByTimeStamp } from './TimeUtils';
+import { getRelativeCalendar } from './date-time/DateTimeUtils';
+import EntityLink from './EntityLink';
+import entityUtilClassBase from './EntityUtilClassBase';
+import {
+  ENTITY_LINK_SEPARATOR,
+  getEntityBreadcrumbs,
+  getEntityName,
+} from './EntityUtils';
+import Fqn from './Fqn';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from './ProfilerUtils';
+import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getEntityType = (entityLink: string) => {
-  const match = EntityRegEx.exec(entityLink);
-
-  return match?.[1];
+  return EntityLink.getEntityType(entityLink);
 };
 export const getEntityFQN = (entityLink: string) => {
-  const match = EntityRegEx.exec(entityLink);
-
-  return match?.[2];
+  return EntityLink.getEntityFqn(entityLink);
+};
+export const getEntityColumnFQN = (entityLink: string) => {
+  return EntityLink.getEntityColumnFqn(entityLink);
 };
 export const getEntityField = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
@@ -84,7 +100,7 @@ export const getEntityField = (entityLink: string) => {
 export const getFeedListWithRelativeDays = (feedList: Thread[]) => {
   const updatedFeedList = feedList.map((feed) => ({
     ...feed,
-    relativeDay: getRelativeDateByTimeStamp(feed.updatedAt || 0),
+    relativeDay: getRelativeCalendar(feed.updatedAt || 0),
   }));
   const relativeDays = [...new Set(updatedFeedList.map((f) => f.relativeDay))];
 
@@ -128,26 +144,6 @@ export const getReplyText = (
   }`;
 };
 
-export const getEntityFieldThreadCounts = (
-  field: EntityThreadField,
-  entityFieldThreadCount: EntityFieldThreadCount[]
-) => {
-  const entityFieldThreads: EntityFieldThreads[] = [];
-
-  entityFieldThreadCount.map((fieldCount) => {
-    const entityField = getEntityField(fieldCount.entityLink);
-    if (entityField?.startsWith(field)) {
-      entityFieldThreads.push({
-        entityLink: fieldCount.entityLink,
-        count: fieldCount.count,
-        entityField,
-      });
-    }
-  });
-
-  return entityFieldThreads;
-};
-
 export const getThreadField = (
   value: string,
   separator = ENTITY_LINK_SEPARATOR
@@ -155,120 +151,149 @@ export const getThreadField = (
   return value.split(separator).slice(-2);
 };
 
-export const getThreadValue = (
-  columnName: string,
-  columnField: string,
-  entityFieldThreads: EntityFieldThreads[]
-) => {
-  let threadValue;
-
-  entityFieldThreads?.forEach((thread) => {
-    const threadField = getThreadField(thread.entityField);
-    if (threadField[0] === columnName && threadField[1] === columnField) {
-      threadValue = thread;
-    }
-  });
-
-  return threadValue;
-};
-
 export const buildMentionLink = (entityType: string, entityFqn: string) => {
-  return `${document.location.protocol}//${document.location.host}/${entityType}/${entityFqn}`;
+  if (entityType === EntityType.GLOSSARY_TERM) {
+    return `${document.location.protocol}//${
+      document.location.host
+    }/glossary/${getEncodedFqn(entityFqn)}`;
+  } else if (entityType === EntityType.TAG) {
+    const classificationFqn = Fqn.split(entityFqn);
+
+    return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
+  }
+
+  return `${document.location.protocol}//${
+    document.location.host
+  }/${entityType}/${getEncodedFqn(entityFqn)}`;
 };
 
-export async function suggestions(searchTerm: string, mentionChar: string) {
+export async function suggestions(
+  searchTerm: string,
+  mentionChar: string
+): Promise<MentionSuggestionsItem[]> {
   if (mentionChar === '@') {
     let atValues = [];
-    if (!searchTerm) {
-      const data = await getSearchedUsers('*', 0, 5);
-      const hits = data.data.hits.hits;
 
-      atValues = hits.map((hit) => {
+    const data = await searchData(
+      searchTerm ?? '',
+      1,
+      5,
+      'isBot:false',
+      'displayName.keyword',
+      'asc',
+      [SearchIndex.USER, SearchIndex.TEAM]
+    );
+    const hits = data.data.hits.hits;
+
+    atValues = await Promise.all(
+      hits.map(async (hit) => {
         const entityType = hit._source.entityType;
+        const name = getEntityPlaceHolder(
+          `@${hit._source.name ?? hit._source.displayName}`,
+          hit._source.deleted
+        );
 
         return {
           id: hit._id,
-          value: getEntityPlaceHolder(
-            `@${hit._source.name ?? hit._source.displayName}`,
-            hit._source.deleted
-          ),
+          value: name,
           link: buildMentionLink(
-            entityUrlMap[entityType as keyof typeof entityUrlMap],
+            ENTITY_URL_MAP[entityType as EntityUrlMapType],
             hit._source.name
           ),
+          type:
+            hit._index === SearchIndex.USER ? OwnerType.USER : OwnerType.TEAM,
+          name: hit._source.name,
+          displayName: hit._source.displayName,
         };
-      });
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = await getUserSuggestions(searchTerm);
-      const hits = data.data.suggest['metadata-suggest'][0]['options'];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      atValues = hits.map((hit: any) => {
-        const entityType = hit._source.entityType;
+      })
+    );
 
-        return {
-          id: hit._id,
-          value: getEntityPlaceHolder(
-            `@${hit._source.name ?? hit._source.display_name}`,
-            hit._source.deleted
-          ),
-          link: buildMentionLink(
-            entityUrlMap[entityType as keyof typeof entityUrlMap],
-            hit._source.name
-          ),
-        };
-      });
-    }
-
-    return atValues;
+    return atValues as MentionSuggestionsItem[];
   } else {
     let hashValues = [];
-    if (!searchTerm) {
-      const data = await searchData('*', 0, 5, '', '', '', SearchIndex.TABLE);
-      const hits = data.data.hits.hits;
+    const data = await searchData(
+      searchTerm ?? '',
+      1,
+      5,
+      '',
+      'displayName.keyword',
+      'asc',
+      SearchIndex.DATA_ASSET
+    );
+    const hits = data.data.hits.hits;
 
-      hashValues = hits.map((hit) => {
-        const entityType = hit._source.entityType;
+    hashValues = hits.map((hit) => {
+      const entityType = hit._source.entityType;
+      const breadcrumbs = getEntityBreadcrumbs(
+        hit._source,
+        entityType as EntityType,
+        false
+      );
 
-        return {
-          id: hit._id,
-          value: `#${entityType}/${hit._source.name}`,
-          link: buildMentionLink(
-            entityType,
-            getEncodedFqn(hit._source.fullyQualifiedName ?? '')
-          ),
-        };
-      });
-    } else {
-      const data = await getSuggestions(searchTerm);
-      const hits = data.data.suggest['metadata-suggest'][0]['options'];
-
-      hashValues = hits.map((hit) => {
-        const entityType = hit._source.entityType;
-
-        return {
-          id: hit._id,
-          value: `#${entityType}/${hit._source.name}`,
-          link: buildMentionLink(
-            entityType,
-            getEncodedFqn(hit._source.fullyQualifiedName ?? '')
-          ),
-        };
-      });
-    }
+      return {
+        id: hit._id,
+        value: `#${entityType}/${hit._source.name}`,
+        link: buildMentionLink(
+          entityType,
+          hit._source.fullyQualifiedName ?? ''
+        ),
+        type: entityType,
+        name: hit._source.displayName || hit._source.name,
+        breadcrumbs,
+      };
+    });
 
     return hashValues;
   }
 }
 
-export async function matcher(
-  searchTerm: string,
-  renderList: (matches: string[], search: string) => void,
-  mentionChar: string
-) {
-  const matches = await suggestions(searchTerm, mentionChar);
-  renderList(matches, searchTerm);
-}
+/**
+ *
+ * @param item  - MentionSuggestionsItem
+ * @param user - User
+ * @returns HTMLDIVELEMENT
+ */
+export const userMentionItemWithAvatar = (
+  item: MentionSuggestionsItem,
+  user?: User
+) => {
+  const wrapper = document.createElement('div');
+  const profileUrl =
+    getImageWithResolutionAndFallback(
+      ImageQuality['6x'],
+      user?.profile?.images
+    ) ?? '';
+
+  const { color, character } = getRandomColor(item.name);
+
+  ReactDOM.render(
+    <div className="d-flex gap-2">
+      <div className="mention-profile-image">
+        {profileUrl ? (
+          <img
+            alt={item.name}
+            data-testid="profile-image"
+            referrerPolicy="no-referrer"
+            src={profileUrl}
+          />
+        ) : (
+          <div
+            className="flex-center flex-shrink align-middle mention-avatar"
+            data-testid="avatar"
+            style={{ backgroundColor: color }}>
+            <span>{character}</span>
+          </div>
+        )}
+      </div>
+      <span className="d-flex items-center truncate w-56">
+        {getEntityName(item)}
+      </span>
+    </div>,
+    wrapper
+  );
+
+  return wrapper;
+};
 
 const getMentionList = (message: string) => {
   return message.match(mentionRegEx);
@@ -300,12 +325,14 @@ export const getBackendFormat = (message: string) => {
   const hashtagList = [...new Set(getHashTagList(message) ?? [])];
   const mentionDetails = mentionList.map((m) => getEntityDetail(m) ?? []);
   const hashtagDetails = hashtagList.map((h) => getEntityDetail(h) ?? []);
-  const urlEntries = Object.entries(entityUrlMap);
+  const urlEntries = Object.entries(ENTITY_URL_MAP);
 
   mentionList.forEach((m, i) => {
     const updatedDetails = mentionDetails[i].slice(-2);
     const entityType = urlEntries.find((e) => e[1] === updatedDetails[0])?.[0];
-    const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${updatedDetails[1]}|${m}>`;
+    const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${getDecodedFqn(
+      updatedDetails[1]
+    )}|${m}>`;
     updatedMessage = updatedMessage.replaceAll(m, entityLink);
   });
   hashtagList.forEach((h, i) => {
@@ -373,9 +400,9 @@ export const deletePost = async (
     }
   } else {
     try {
-      const deletResponse = await deletePostById(threadId, postId);
+      const deleteResponse = await deletePostById(threadId, postId);
       // get updated thread only if delete response and callback is present
-      if (deletResponse && callback) {
+      if (deleteResponse && callback) {
         const data = await getUpdatedThread(threadId);
         callback((pre) => {
           return pre.map((thread) => {
@@ -391,9 +418,7 @@ export const deletePost = async (
           });
         });
       } else {
-        throw jsonData['api-error-messages'][
-          'fetch-updated-conversation-error'
-        ];
+        throw i18next.t('server.fetch-updated-conversation-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -409,17 +434,14 @@ export const getEntityFieldDisplay = (entityField: string) => {
   if (entityField && entityField.length) {
     const entityFields = entityField.split(ENTITY_LINK_SEPARATOR);
     const separator = (
-      <span className="tw-px-1">
-        <FontAwesomeIcon
-          className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
-          icon={faAngleRight}
-        />
+      <span className="p-x-xss">
+        <RightOutlined className="text-xs m-t-xss cursor-default text-grey-muted align-middle " />
       </span>
     );
 
     return entityFields.map((field, i) => {
       return (
-        <span className="tw-font-bold" key={`field-${i}`}>
+        <span key={`field-${i}`}>
           {field}
           {i < entityFields.length - 1 ? separator : null}
         </span>
@@ -430,71 +452,61 @@ export const getEntityFieldDisplay = (entityField: string) => {
   return null;
 };
 
-export const updateThreadData = (
+export const updateThreadData = async (
   threadId: string,
   postId: string,
   isThread: boolean,
   data: Operation[],
   callback: (value: React.SetStateAction<Thread[]>) => void
-) => {
+): Promise<void> => {
   if (isThread) {
-    updateThread(threadId, data)
-      .then((res) => {
-        callback((prevData) => {
-          return prevData.map((thread) => {
-            if (isEqual(threadId, thread.id)) {
-              return {
-                ...thread,
-                reactions: res.reactions,
-                message: res.message,
-                announcement: res?.announcement,
-              };
-            } else {
-              return thread;
-            }
-          });
+    try {
+      const res = await updateThread(threadId, data);
+      callback((prevData) => {
+        return prevData.map((thread) => {
+          if (isEqual(threadId, thread.id)) {
+            return {
+              ...thread,
+              reactions: res.reactions,
+              message: res.message,
+              announcement: res?.announcement,
+            };
+          } else {
+            return thread;
+          }
         });
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
       });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   } else {
-    updatePost(threadId, postId, data)
-      .then((res) => {
-        callback((prevData) => {
-          return prevData.map((thread) => {
-            if (isEqual(threadId, thread.id)) {
-              const updatedPosts = (thread.posts || []).map((post) => {
-                if (isEqual(postId, post.id)) {
-                  return {
-                    ...post,
-                    reactions: res.reactions,
-                    message: res.message,
-                  };
-                } else {
-                  return post;
-                }
-              });
+    try {
+      const res = await updatePost(threadId, postId, data);
+      callback((prevData) => {
+        return prevData.map((thread) => {
+          if (isEqual(threadId, thread.id)) {
+            const updatedPosts = (thread.posts || []).map((post) => {
+              if (isEqual(postId, post.id)) {
+                return {
+                  ...post,
+                  reactions: res.reactions,
+                  message: res.message,
+                };
+              } else {
+                return post;
+              }
+            });
 
-              return { ...thread, posts: updatedPosts };
-            } else {
-              return thread;
-            }
-          });
+            return { ...thread, posts: updatedPosts };
+          } else {
+            return thread;
+          }
         });
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
       });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   }
-};
-
-export const getFeedAction = (type: ThreadType) => {
-  if (type === ThreadType.Task) {
-    return i18next.t('label.created-a-task-lowercase');
-  }
-
-  return i18next.t('label.posted-on-lowercase');
 };
 
 export const prepareFeedLink = (entityType: string, entityFQN: string) => {
@@ -503,10 +515,9 @@ export const prepareFeedLink = (entityType: string, entityFQN: string) => {
     EntityType.GLOSSARY,
     EntityType.GLOSSARY_TERM,
     EntityType.TYPE,
-    EntityType.MLMODEL,
   ];
 
-  const entityLink = getEntityLink(entityType, entityFQN);
+  const entityLink = entityUtilClassBase.getEntityLink(entityType, entityFQN);
 
   if (!withoutFeedEntities.includes(entityType as EntityType)) {
     return `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
@@ -517,33 +528,56 @@ export const prepareFeedLink = (entityType: string, entityFQN: string) => {
 
 export const entityDisplayName = (entityType: string, entityFQN: string) => {
   let displayName;
-  if (entityType === EntityType.TABLE) {
-    displayName = getPartialNameFromTableFQN(
-      entityFQN,
-      [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-      '.'
-    );
-  } else if (entityType === EntityType.DATABASE_SCHEMA) {
-    displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]);
-  } else if (
-    [
-      EntityType.DATABASE_SERVICE,
-      EntityType.DASHBOARD_SERVICE,
-      EntityType.MESSAGING_SERVICE,
-      EntityType.PIPELINE_SERVICE,
-      EntityType.TYPE,
-      EntityType.MLMODEL,
-    ].includes(entityType as EntityType)
-  ) {
-    displayName = getPartialNameFromFQN(entityFQN, ['service']);
-  } else if (
-    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(
-      entityType as EntityType
-    )
-  ) {
-    displayName = entityFQN.split(FQN_SEPARATOR_CHAR).pop();
-  } else {
-    displayName = getPartialNameFromFQN(entityFQN, ['database']);
+
+  switch (entityType) {
+    case EntityType.TABLE:
+      displayName = getPartialNameFromTableFQN(
+        entityFQN,
+        [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
+      );
+
+      break;
+
+    case EntityType.TEST_CASE:
+    case EntityType.TEST_SUITE:
+      displayName = getPartialNameFromTableFQN(
+        entityFQN,
+        [FqnPart.TestCase],
+        FQN_SEPARATOR_CHAR
+      );
+
+      break;
+
+    case EntityType.DATABASE_SCHEMA:
+      displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]);
+
+      break;
+
+    case EntityType.DATABASE_SERVICE:
+    case EntityType.DASHBOARD_SERVICE:
+    case EntityType.MESSAGING_SERVICE:
+    case EntityType.PIPELINE_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.METADATA_SERVICE:
+    case EntityType.STORAGE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
+    case EntityType.API_SERVICE:
+    case EntityType.TYPE:
+      displayName = getPartialNameFromFQN(entityFQN, ['service']);
+
+      break;
+
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+    case EntityType.DOMAIN:
+      displayName = entityFQN.split(FQN_SEPARATOR_CHAR).pop();
+
+      break;
+    default:
+      displayName = getPartialNameFromFQN(entityFQN, ['database']) || entityFQN;
+
+      break;
   }
 
   // Remove quotes if the name is wrapped in quotes
@@ -556,6 +590,9 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
 
 export const MarkdownToHTMLConverter = new Showdown.Converter({
   strikethrough: true,
+  tables: true,
+  tasklists: true,
+  simpleLineBreaks: true,
 });
 
 export const getFeedPanelHeaderText = (
@@ -569,5 +606,225 @@ export const getFeedPanelHeaderText = (
     case ThreadType.Conversation:
     default:
       return i18next.t('label.conversation');
+  }
+};
+
+export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
+  const fieldNameLabelMapping = {
+    [EntityField.DESCRIPTION]: i18next.t('label.description'),
+    [EntityField.COLUMNS]: i18next.t('label.column-plural'),
+    [EntityField.SCHEMA_FIELDS]: i18next.t('label.schema-field-plural'),
+    [EntityField.TAGS]: i18next.t('label.tag-plural'),
+    [EntityField.TASKS]: i18next.t('label.task-plural'),
+    [EntityField.ML_FEATURES]: i18next.t('label.ml-feature-plural'),
+    [EntityField.SCHEMA_TEXT]: i18next.t('label.schema-text'),
+    [EntityField.OWNER]: i18next.t('label.owner'),
+    [EntityField.REVIEWERS]: i18next.t('label.reviewer-plural'),
+    [EntityField.SYNONYMS]: i18next.t('label.synonym-plural'),
+    [EntityField.RELATEDTERMS]: i18next.t('label.related-term-plural'),
+    [EntityField.REFERENCES]: i18next.t('label.reference-plural'),
+    [EntityField.EXTENSION]: i18next.t('label.extension'),
+    [EntityField.DISPLAYNAME]: i18next.t('label.display-name'),
+    [EntityField.NAME]: i18next.t('label.name'),
+    [EntityField.MESSAGE_SCHEMA]: i18next.t('label.message-schema'),
+    [EntityField.CHARTS]: i18next.t('label.chart-plural'),
+    [EntityField.DATA_MODEL]: i18next.t('label.data-model'),
+    [EntityField.CONSTRAINT]: i18next.t('label.constraint'),
+    [EntityField.TABLE_CONSTRAINTS]: i18next.t('label.table-constraint-plural'),
+    [EntityField.PARTITIONS]: i18next.t('label.partition-plural'),
+    [EntityField.REPLICATION_FACTOR]: i18next.t('label.replication-factor'),
+    [EntityField.SOURCE_URL]: i18next.t('label.source-url'),
+    [EntityField.MUTUALLY_EXCLUSIVE]: i18next.t('label.mutually-exclusive'),
+    [EntityField.EXPERTS]: i18next.t('label.expert-plural'),
+    [EntityField.FIELDS]: i18next.t('label.field-plural'),
+  };
+
+  return isUndefined(fieldName) ? '' : fieldNameLabelMapping[fieldName];
+};
+
+export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
+  let icon;
+
+  switch (fieldOperation) {
+    case FieldOperation.Added:
+      icon = AddIcon;
+
+      break;
+    case FieldOperation.Deleted:
+      icon = UpdatedIcon;
+
+      break;
+  }
+
+  return (
+    icon && (
+      <Icon component={icon} height={16} name={fieldOperation} width={16} />
+    )
+  );
+};
+
+export const getTestCaseNameListForResult = (
+  testResultSummary: Array<EntityTestResultSummaryObject>,
+  status: TestCaseStatus
+) =>
+  testResultSummary.reduce((acc, curr) => {
+    if (curr.status === status) {
+      acc.push(curr.testCaseName ?? '');
+    }
+
+    return acc;
+  }, [] as Array<string>);
+
+export const getTestCaseResultCount = (
+  count: number,
+  status: TestCaseStatus
+) => (
+  <div
+    className={`test-result-container ${lowerCase(status)}`}
+    data-testid={`test-${status}`}>
+    <Typography.Text
+      className="font-medium text-md"
+      data-testid={`test-${status}-value`}>
+      {formTwoDigitNumber(count)}
+    </Typography.Text>
+  </div>
+);
+
+export const getTestStatusLabel = (status: TestCaseStatus) => {
+  const statusLabelMapping = {
+    [TestCaseStatus.Success]: i18next.t('label.passed'),
+    [TestCaseStatus.Failed]: i18next.t('label.failed'),
+    [TestCaseStatus.Aborted]: i18next.t('label.aborted'),
+    [TestCaseStatus.Queued]: i18next.t('label.queued'),
+  };
+
+  return statusLabelMapping[status];
+};
+
+export const formatTestStatusData = (
+  testResultSummary: Array<EntityTestResultSummaryObject>
+) => {
+  const successCases = getTestCaseNameListForResult(
+    testResultSummary,
+    TestCaseStatus.Success
+  );
+  const failedCases = getTestCaseNameListForResult(
+    testResultSummary,
+    TestCaseStatus.Failed
+  );
+  const abortedCases = getTestCaseNameListForResult(
+    testResultSummary,
+    TestCaseStatus.Aborted
+  );
+
+  return {
+    success: {
+      status: TestCaseStatus.Success,
+      count: successCases.length,
+      testCases: successCases,
+    },
+    failed: {
+      status: TestCaseStatus.Failed,
+      count: failedCases.length,
+      testCases: failedCases,
+    },
+    aborted: {
+      status: TestCaseStatus.Aborted,
+      count: abortedCases.length,
+      testCases: abortedCases,
+    },
+  };
+};
+
+const getActionLabelFromCardStyle = (
+  cardStyle?: CardStyle,
+  isApplication?: boolean
+) => {
+  let action: ReactNode = isApplication
+    ? i18next.t('label.installed-lowercase')
+    : i18next.t('label.added-lowercase');
+
+  if (cardStyle === CardStyle.EntityDeleted) {
+    action = (
+      <Typography.Text className="text-danger">
+        {isApplication
+          ? i18next.t('label.uninstalled-lowercase')
+          : i18next.t('label.deleted-lowercase')}
+      </Typography.Text>
+    );
+  } else if (cardStyle === CardStyle.EntitySoftDeleted) {
+    action = i18next.t('label.soft-deleted-lowercase');
+  }
+
+  return action;
+};
+
+export const getFeedHeaderTextFromCardStyle = (
+  fieldOperation?: FieldOperation,
+  cardStyle?: CardStyle,
+  fieldName?: string,
+  entityType?: EntityType
+) => {
+  if (fieldName === 'assets') {
+    return (
+      <Transi18next
+        i18nKey="message.feed-asset-action-header"
+        renderElement={<Typography.Text className="font-bold" />}
+        values={{
+          action: getActionLabelFromCardStyle(cardStyle),
+        }}
+      />
+    );
+  }
+  switch (cardStyle) {
+    case CardStyle.CustomProperties:
+      return (
+        <Transi18next
+          i18nKey="message.feed-custom-property-header"
+          renderElement={<Typography.Text className="font-bold" />}
+        />
+      );
+    case CardStyle.TestCaseResult:
+      return (
+        <Transi18next
+          i18nKey="message.feed-test-case-header"
+          renderElement={<Typography.Text className="font-bold" />}
+        />
+      );
+    case CardStyle.Description:
+    case CardStyle.Tags:
+    case CardStyle.Owner:
+      return (
+        <Transi18next
+          i18nKey="message.feed-field-action-entity-header"
+          renderElement={<Typography.Text className="font-bold" />}
+          values={{
+            field: i18next.t(
+              `label.${cardStyle === CardStyle.Tags ? 'tag-plural' : cardStyle}`
+            ),
+            action: i18next.t(
+              `label.${fieldOperation ?? FieldOperation.Updated}-lowercase`
+            ),
+          }}
+        />
+      );
+
+    case CardStyle.EntityCreated:
+    case CardStyle.EntityDeleted:
+    case CardStyle.EntitySoftDeleted:
+      if (entityType === EntityType.APPLICATION) {
+        return (
+          <Typography.Text>
+            {getActionLabelFromCardStyle(cardStyle, true)}{' '}
+            {i18next.t('label.app-lowercase')}
+          </Typography.Text>
+        );
+      }
+
+      return getActionLabelFromCardStyle(cardStyle);
+
+    case CardStyle.Default:
+    default:
+      return i18next.t('label.posted-on-lowercase');
   }
 };

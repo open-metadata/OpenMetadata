@@ -12,71 +12,30 @@
  */
 
 import { isArray, isObject, transform } from 'lodash';
-import { FormattedTableData } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Domain } from '../generated/entity/domains/domain';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { SearchResponse } from '../interface/search.interface';
 
 export type SearchEntityHits = SearchResponse<
+  | SearchIndex.DATA_PRODUCT
   | SearchIndex.PIPELINE
   | SearchIndex.DASHBOARD
   | SearchIndex.TABLE
   | SearchIndex.MLMODEL
+  | SearchIndex.DATABASE
+  | SearchIndex.DATABASE_SCHEMA
   | SearchIndex.TOPIC
+  | SearchIndex.CONTAINER
+  | SearchIndex.STORED_PROCEDURE
+  | SearchIndex.DASHBOARD_DATA_MODEL
+  | SearchIndex.GLOSSARY_TERM
+  | SearchIndex.TAG
+  | SearchIndex.SEARCH_INDEX
 >['hits']['hits'];
-
-// if more value is added, also update its interface file at -> interface/types.d.ts
-export const formatDataResponse = (
-  hits: SearchEntityHits
-): FormattedTableData[] => {
-  const formattedData = hits.map((hit) => {
-    const newData = {} as FormattedTableData;
-    const source = hit._source;
-    newData.index = hit._index;
-    newData.id = hit._source.id;
-    newData.name = hit._source.name;
-    newData.displayName = hit._source.displayName ?? '';
-    newData.description = hit._source.description ?? '';
-    newData.fullyQualifiedName = hit._source.fullyQualifiedName ?? '';
-    newData.tags = hit._source.tags ?? [];
-    newData.service = hit._source.service?.name;
-    newData.serviceType = hit._source.serviceType;
-    newData.tier = hit._source.tier;
-    newData.owner = hit._source.owner;
-    newData.highlight = hit.highlight;
-    newData.entityType = hit._source.entityType;
-    newData.deleted = hit._source.deleted;
-
-    if ('tableType' in source) {
-      newData.tableType = source.tableType ?? '';
-    }
-
-    if ('usageSummary' in source) {
-      newData.dailyStats = source.usageSummary?.dailyStats?.count;
-      newData.dailyPercentileRank =
-        source.usageSummary?.dailyStats?.percentileRank;
-      newData.weeklyStats = source.usageSummary?.weeklyStats?.count;
-      newData.weeklyPercentileRank =
-        source.usageSummary?.weeklyStats?.percentileRank;
-    }
-
-    if ('database' in source) {
-      newData.database = source.database?.name;
-    }
-
-    if ('databaseSchema' in source) {
-      newData.databaseSchema = source.databaseSchema?.name;
-    }
-
-    newData.changeDescription = source.changeDescription;
-
-    return newData;
-  });
-
-  return formattedData;
-};
 
 export const formatUsersResponse = (
   hits: SearchResponse<SearchIndex.USER>['hits']['hits']
@@ -85,6 +44,7 @@ export const formatUsersResponse = (
     return {
       name: d._source.name,
       displayName: d._source.displayName,
+      fullyQualifiedName: d._source.fullyQualifiedName,
       email: d._source.email,
       type: d._source.entityType,
       id: d._source.id,
@@ -111,8 +71,47 @@ export const formatTeamsResponse = (
   });
 };
 
+export const formatDomainsResponse = (
+  hits: SearchResponse<SearchIndex.DOMAIN>['hits']['hits']
+): Domain[] => {
+  return hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.displayName,
+      description: d._source.description,
+      fullyQualifiedName: d._source.fullyQualifiedName,
+      type: d._source.entityType,
+      id: d._source.id,
+      href: d._source.href,
+      domainType: d._source.domainType,
+      experts: d._source.experts,
+      parent: d._source.parent,
+      owners: d._source.owners,
+    };
+  });
+};
+
+export const formatDataProductResponse = (
+  hits: SearchResponse<SearchIndex.DATA_PRODUCT>['hits']['hits']
+): DataProduct[] => {
+  return hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.displayName ?? '',
+      description: d._source.description ?? '',
+      fullyQualifiedName: d._source.fullyQualifiedName,
+      type: d._source.entityType,
+      id: d._source.id,
+      href: d._source.href,
+      domain: d._source.domain,
+      experts: d._source.experts,
+      owners: d._source.owners,
+    };
+  });
+};
+
 export const formatSearchGlossaryTermResponse = (
-  hits: SearchResponse<SearchIndex.GLOSSARY>['hits']['hits']
+  hits: SearchResponse<SearchIndex.GLOSSARY_TERM>['hits']['hits']
 ): GlossaryTerm[] => {
   return hits.map((d) => ({
     name: d._source.name,
@@ -124,29 +123,6 @@ export const formatSearchGlossaryTermResponse = (
     fullyQualifiedName: d._source.fullyQualifiedName,
     type: d._source.entityType || 'glossaryTerm',
   }));
-};
-
-export const getURLWithQueryFields = (
-  url: string,
-  lstQueryFields?: string | string[],
-  qParams?: string
-) => {
-  let strQuery = lstQueryFields
-    ? typeof lstQueryFields === 'string'
-      ? lstQueryFields
-      : lstQueryFields.length
-      ? lstQueryFields.join()
-      : ''
-    : '';
-  strQuery = strQuery.replace(/ /g, '');
-
-  let queryParam = strQuery ? `?fields=${strQuery}` : '';
-
-  if (qParams) {
-    queryParam += queryParam ? `&${qParams}` : `?${qParams}`;
-  }
-
-  return url + queryParam;
 };
 
 export const omitDeep = <T>(

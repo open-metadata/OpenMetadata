@@ -13,6 +13,16 @@
       "description": "An Array of values.",
       "dataType": "ARRAY",
       "required": true
+    },
+    {
+      "name": "matchEnum",
+      "displayName": "Match enum",
+      "description": "If enabled, validate that each value independently matches the enum.",
+      "dataType": "BOOLEAN",
+      "required": false
     }
-  ]
+  ],
+  "supportsRowLevelPassedFailed": true,
+  "provider": "system",
+  "dataQualityDimension": "Validity"
 }

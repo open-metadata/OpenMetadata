@@ -20,6 +20,14 @@
             "kuromoji_number",
             "kuromoji_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -40,7 +48,8 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           }
         }
       },
@@ -48,9 +57,22 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer_jp"
+        "analyzer": "om_analyzer_jp",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          },
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "description": {
         "type": "text",
@@ -58,6 +80,53 @@
       },
       "version": {
         "type": "float"
+      },
+      "dataProducts": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "updatedAt": {
         "type": "date",
@@ -69,8 +138,48 @@
       "href": {
         "type": "text"
       },
-      "pipelineUrl": {
+      "sourceUrl": {
         "type": "text"
+      },
+      "lineage": {
+        "type" : "object"
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "tasks": {
         "properties": {
@@ -85,13 +194,19 @@
           },
           "displayName": {
             "type": "text",
-            "analyzer": "om_analyzer_jp"
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text",
             "analyzer": "om_analyzer_jp"
           },
-          "taskUrl": {
+          "sourceUrl": {
             "type": "text"
           },
           "taskType": {
@@ -99,7 +214,7 @@
           }
         }
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -226,8 +341,12 @@
           }
         }
       },
+      "lifeCycle": {
+        "type": "object"
+      },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "entityType": {
         "type": "keyword"
@@ -247,6 +366,16 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

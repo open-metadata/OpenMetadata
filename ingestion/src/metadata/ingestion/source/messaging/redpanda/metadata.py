@@ -11,26 +11,28 @@
 """
 RedPanda source ingestion
 """
+from typing import Optional
+
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.common_broker_source import CommonBrokerSource
 
 
 class RedpandaSource(CommonBrokerSource):
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: RedpandaConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: RedpandaConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedpandaConnection):
             raise InvalidSourceException(
                 f"Expected RedpandaConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)

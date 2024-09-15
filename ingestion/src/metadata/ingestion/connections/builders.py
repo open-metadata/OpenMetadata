@@ -22,11 +22,20 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.event import listen
 from sqlalchemy.pool import QueuePool
 
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
+    ConnectionOptions,
+)
+from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
+    IamAuthConfigurationSource,
 )
 from metadata.ingestion.connections.headers import inject_query_header_by_conn
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
+from metadata.utils.constants import BUILDER_PASSWORD_ATTR
+from metadata.utils.logger import cli_logger
+
+logger = cli_logger()
 
 
 @connection_with_options_secrets
@@ -39,8 +48,8 @@ def get_connection_args_common(connection) -> Dict[str, Any]:
     """
 
     return (
-        connection.connectionArguments.__root__
-        if connection.connectionArguments and connection.connectionArguments.__root__
+        connection.connectionArguments.root
+        if connection.connectionArguments and connection.connectionArguments.root
         else {}
     )
 
@@ -84,8 +93,8 @@ def get_connection_options_dict(connection) -> Optional[Dict[str, Any]]:
     dictionary if exists
     """
     return (
-        connection.connectionOptions.__root__
-        if connection.connectionOptions and connection.connectionOptions.__root__
+        connection.connectionOptions.root
+        if connection.connectionOptions and connection.connectionOptions.root
         else None
     )
 
@@ -95,15 +104,65 @@ def init_empty_connection_arguments() -> ConnectionArguments:
     Initialize a ConnectionArguments model with an empty dictionary.
     This helps set keys without further validations.
 
-    Running `ConnectionArguments()` returns `ConnectionArguments(__root__=None)`.
+    Running `ConnectionArguments()` returns `ConnectionArguments(root=None)`.
 
-    Instead, we want `ConnectionArguments(__root__={}})` so that
-    we can pass new keys easily as `connectionArguments.__root__["key"] = "value"`
+    Instead, we want `ConnectionArguments(root={}})` so that
+    we can pass new keys easily as `connectionArguments.root["key"] = "value"`
     """
-    return ConnectionArguments(__root__={})
+    return ConnectionArguments(root={})
 
 
-def get_connection_url_common(connection):
+def init_empty_connection_options() -> ConnectionOptions:
+    """
+    Initialize a ConnectionOptions model with an empty dictionary.
+    This helps set keys without further validations.
+
+    Running `ConnectionOptions()` returns `ConnectionOptions(root=None)`.
+
+    Instead, we want `ConnectionOptions(root={}})` so that
+    we can pass new keys easily as `ConnectionOptions.root["key"] = "value"`
+    """
+    return ConnectionOptions(root={})
+
+
+def _add_password(url: str, connection) -> str:
+    """
+    A helper function that adds the password to the url if it exists.
+    Distinguishing between BasicAuth (Password) and IamAuth (AWSConfig)
+    and adding to url.
+    """
+    password = getattr(connection, BUILDER_PASSWORD_ATTR, None)
+
+    if not password:
+        password = SecretStr("")
+
+        # Check if IamAuth exists - specific to Mysql and Postgres connection.
+        if hasattr(connection, "authType"):
+            password = getattr(
+                connection.authType, BUILDER_PASSWORD_ATTR, SecretStr("")
+            )
+            if isinstance(connection.authType, IamAuthConfigurationSource):
+                # if IAM based, fetch rds client and generate db auth token.
+                aws_client = AWSClient(
+                    config=connection.authType.awsConfig
+                ).get_rds_client()
+                host, port = connection.hostPort.split(":")
+                password = SecretStr(
+                    aws_client.generate_db_auth_token(
+                        DBHostname=host,
+                        Port=port,
+                        DBUsername=connection.username,
+                        Region=connection.authType.awsConfig.awsRegion,
+                    )
+                )
+    if not password:
+        logger.warning("No password has been provided in connection")
+        password = SecretStr("")
+    url += f":{quote_plus(password.get_secret_value())}"
+    return url
+
+
+def get_connection_url_common(connection) -> str:
     """
     Common method for building the source connection urls
     """
@@ -112,9 +171,7 @@ def get_connection_url_common(connection):
 
     if connection.username:
         url += f"{quote_plus(connection.username)}"
-        if not connection.password:
-            connection.password = SecretStr("")
-        url += f":{quote_plus(connection.password.get_secret_value())}"
+        url = _add_password(url, connection)
         url += "@"
 
     url += connection.hostPort

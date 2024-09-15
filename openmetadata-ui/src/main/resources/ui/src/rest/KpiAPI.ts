@@ -16,16 +16,11 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { CreateKpiRequest } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
-import { Include } from '../generated/type/include';
-import APIClient from './index';
 
-export type ListParams = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-};
+import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
+import { DataInsightCustomChartResult } from './DataInsightAPI';
+import APIClient from './index';
 
 export type KpiResultParam = {
   startTs: number;
@@ -47,31 +42,18 @@ export const postKPI = async (data: CreateKpiRequest) => {
 
   return response.data;
 };
-export const putKPI = async (data: CreateKpiRequest) => {
-  const response = await APIClient.put<CreateKpiRequest, AxiosResponse<Kpi>>(
-    '/kpi',
+
+export const patchKPI = async (id: string, data: Operation[]) => {
+  const response = await APIClient.patch<Operation[], AxiosResponse<Kpi>>(
+    `/kpi/${id}`,
     data
   );
 
   return response.data;
 };
 
-export const patchKPI = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
-  const response = await APIClient.patch<Operation[], AxiosResponse<Kpi>>(
-    `/kpi/${id}`,
-    data,
-    configOptions
-  );
-
-  return response.data;
-};
-
-export const getKPIByName = async (kpiName: string, params?: ListParams) => {
-  const response = await APIClient.get<Kpi>(`/kpi/name/${kpiName}`, {
+export const getKPIByName = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Kpi>(`/kpi/name/${getEncodedFqn(fqn)}`, {
     params,
   });
 
@@ -83,8 +65,8 @@ export const getListKpiResult = async (
   params: KpiResultParam,
   orderBy = 'ASC'
 ) => {
-  const response = await APIClient.get<PagingResponse<KpiResult[]>>(
-    `/kpi/${fqn}/kpiResult`,
+  const response = await APIClient.get<DataInsightCustomChartResult>(
+    `/kpi/${getEncodedFqn(fqn)}/kpiResult`,
     { params: { ...params, orderBy } }
   );
 
@@ -92,7 +74,7 @@ export const getListKpiResult = async (
 };
 export const getLatestKpiResult = async (fqn: string) => {
   const response = await APIClient.get<KpiResult>(
-    `/kpi/${fqn}/latestKpiResult`
+    `/kpi/${getEncodedFqn(fqn)}/latestKpiResult`
   );
 
   return response.data;

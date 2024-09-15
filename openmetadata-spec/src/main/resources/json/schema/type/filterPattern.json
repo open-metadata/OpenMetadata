@@ -16,7 +16,7 @@
           "items": {
             "type": "string"
           },
-          "default": null
+          "default": []
         },
         "excludes": {
           "description": "List of strings/regex patterns to match and exclude only database entities that match.",
@@ -24,7 +24,7 @@
           "items": {
             "type": "string"
           },
-          "default": null
+          "default": []
         }
       },
       "additionalProperties": false

@@ -18,4 +18,5 @@ export interface TeamTypeSelectProps {
   teamType: TeamType;
   showGroupOption: boolean;
   updateTeamType?: (type: TeamType) => void;
+  parentTeamType: TeamType;
 }

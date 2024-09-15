@@ -13,41 +13,36 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import {
-  getDayCron,
-  getHourCron,
-} from 'components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import {
   capitalize,
+  get,
   isEmpty,
-  isNil,
   isNull,
   isString,
   isUndefined,
+  toLower,
   toNumber,
 } from 'lodash';
 import {
   CurrentState,
   ExtraInfo,
-  FormattedTableData,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import { getFeedCount } from 'rest/feedsAPI';
-import AppState from '../AppState';
-import { AddIngestionState } from '../components/AddIngestion/addIngestion.interface';
+import {
+  getDayCron,
+  getHourCron,
+} from '../components/common/CronEditor/CronEditor.constant';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,
@@ -56,39 +51,20 @@ import {
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
-import {
-  UrlEntityCharRegEx,
-  validEmailRegEx,
-} from '../constants/regex.constants';
+import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
+import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
-import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
-import { FilterPatternEnum } from '../enums/filterPattern.enum';
-import { Field } from '../generated/api/data/createTopic';
-import { Kpi } from '../generated/dataInsight/kpi/kpi';
-import { Bot } from '../generated/entity/bot';
-import { Classification } from '../generated/entity/classification/classification';
-import { Dashboard } from '../generated/entity/data/dashboard';
-import { Database } from '../generated/entity/data/database';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { Pipeline } from '../generated/entity/data/pipeline';
-import { Table } from '../generated/entity/data/table';
-import { Topic } from '../generated/entity/data/topic';
-import { Webhook } from '../generated/entity/events/webhook';
-import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
-import { Policy } from '../generated/entity/policies/policy';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Role } from '../generated/entity/teams/role';
-import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
-import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
-import { EntityFieldThreadCount } from '../interface/feed.interface';
-import { ServicesType } from '../interface/service.interface';
-import jsonData from '../jsons/en';
-import { getEntityFeedLink, getTitleCase } from './EntityUtils';
+import { FeedCounts } from '../interface/feed.interface';
+import { SearchSourceAlias } from '../interface/search.interface';
+import { getFeedCount } from '../rest/feedsAPI';
+import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
-import { serviceTypeLogo } from './ServiceUtils';
-import { getTierFromSearchTableTags } from './TableUtils';
+import { history } from './HistoryUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -109,16 +85,13 @@ export const arraySorterByKey = <T extends object>(
   };
 };
 
-export const isEven = (value: number): boolean => {
-  return value % 2 === 0;
-};
-
 export const getPartialNameFromFQN = (
   fqn: string,
   arrTypes: Array<'service' | 'database' | 'table' | 'column'> = [],
-  joinSeperator = '/'
+  joinSeparator = '/'
 ): string => {
   const arrFqn = Fqn.split(fqn);
+
   const arrPartialName = [];
   for (const type of arrTypes) {
     if (type === 'service' && arrFqn.length > 0) {
@@ -132,8 +105,17 @@ export const getPartialNameFromFQN = (
     }
   }
 
-  return arrPartialName.join(joinSeperator);
+  return arrPartialName.join(joinSeparator);
 };
+
+/**
+ * Retrieves a partial name from a fully qualified name (FQN) for tables.
+ *
+ * @param {string} fqn - The fully qualified name. It should be a decoded string.
+ * @param {Array<FqnPart>} fqnParts - The parts of the FQN to include in the partial name. Defaults to an empty array.
+ * @param {string} joinSeparator - The separator used to join the parts of the partial name. Defaults to '/'.
+ * @return {string} The partial name derived from the FQN.
+ */
 
 export const getPartialNameFromTableFQN = (
   fqn: string,
@@ -151,6 +133,27 @@ export const getPartialNameFromTableFQN = (
 
     return splitFqn.slice(4).join(FQN_SEPARATOR_CHAR);
   }
+
+  if (fqnParts.includes(FqnPart.Topic)) {
+    // Remove the first 2 parts ( service, database)
+    return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
+  }
+
+  if (fqnParts.includes(FqnPart.ApiEndpoint)) {
+    // Remove the first 3 parts ( service, database, schema)
+    return splitFqn.slice(3).join(FQN_SEPARATOR_CHAR);
+  }
+
+  if (fqnParts.includes(FqnPart.SearchIndexField)) {
+    // Remove the first 2 parts ( service, searchIndex)
+    return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
+  }
+
+  if (fqnParts.includes(FqnPart.TestCase)) {
+    // Get the last Part of the Fqn
+    return splitFqn.splice(-1).join(FQN_SEPARATOR_CHAR);
+  }
+
   const arrPartialName = [];
   if (splitFqn.length > 0) {
     if (fqnParts.includes(FqnPart.Service)) {
@@ -181,12 +184,6 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
   );
 };
 
-export const getCurrentUserId = (): string => {
-  const currentUser = AppState.getCurrentUserDetails();
-
-  return currentUser?.id || '';
-};
-
 export const pluralize = (count: number, noun: string, suffix = 's') => {
   const countString = count.toLocaleString();
   if (count !== 1 && count !== 0 && !noun.endsWith(suffix)) {
@@ -202,23 +199,17 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const hasEditAccess = (type: string, id: string) => {
-  const loggedInUser = AppState.getCurrentUserDetails();
-  if (type === 'user') {
-    return id === loggedInUser?.id;
-  } else {
-    return Boolean(
-      loggedInUser?.teams?.length &&
-        loggedInUser?.teams?.some((team) => team.id === id)
-    );
-  }
-};
-
-export const getTabClasses = (
-  tab: number | string,
-  activeTab: number | string
-) => {
-  return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
+export const hasEditAccess = (owners: EntityReference[], currentUser: User) => {
+  return owners.some((owner) => {
+    if (owner.type === 'user') {
+      return owner.id === currentUser.id;
+    } else {
+      return Boolean(
+        currentUser.teams?.length &&
+          currentUser.teams.some((team) => team.id === owner.id)
+      );
+    }
+  });
 };
 
 export const getCountBadge = (
@@ -229,17 +220,20 @@ export const getCountBadge = (
   const clsBG = isUndefined(isActive)
     ? ''
     : isActive
-    ? 'tw-bg-primary tw-text-white tw-border-none'
-    : 'tw-bg-badge';
+    ? 'bg-primary text-white no-border'
+    : 'ant-tag';
 
   return (
     <span
       className={classNames(
-        'tw-py-px tw-px-1 tw-mx-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
+        'p-x-xss m-x-xss global-border rounded-4 text-center',
         clsBG,
         className
       )}>
-      <span data-testid="filter-count" title={count.toString()}>
+      <span
+        className="text-xs"
+        data-testid="filter-count"
+        title={count.toString()}>
         {count}
       </span>
     </span>
@@ -333,7 +327,7 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
       .sort(arraySorterByKey<RecentlyViewedData>('timestamp', true));
     arrData.unshift(entityData);
 
-    if (arrData.length > 5) {
+    if (arrData.length > 8) {
       arrData.pop();
     }
     recentlyViewed.data = arrData;
@@ -345,15 +339,11 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   setRecentlyViewedData(recentlyViewed.data);
 };
 
-export const getActiveCatClass = (name: string, activeName = '') => {
-  return activeName === name ? 'activeCategory' : '';
-};
-
 export const errorMsg = (value: string) => {
   return (
-    <div className="tw-mt-1">
+    <div>
       <strong
-        className="tw-text-red-500 tw-text-xs tw-italic"
+        className="text-xs font-italic text-failure"
         data-testid="error-message">
         {value}
       </strong>
@@ -364,22 +354,9 @@ export const errorMsg = (value: string) => {
 export const requiredField = (label: string, excludeSpace = false) => (
   <>
     {label}{' '}
-    <span className="tw-text-red-500">{!excludeSpace && <>&nbsp;</>}*</span>
+    <span className="text-failure">{!excludeSpace && <>&nbsp;</>}*</span>
   </>
 );
-
-export const getSeparator = (
-  title: string | JSX.Element,
-  hrMarginTop = 'tw-mt-2.5'
-) => {
-  return (
-    <span className="tw-flex tw-py-2 tw-text-grey-muted">
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
-      {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
-    </span>
-  );
-};
 
 export const getImages = (imageUri: string) => {
   const imagesObj: typeof imageTypes = imageTypes;
@@ -397,7 +374,9 @@ export const getServiceLogo = (
   serviceType: string,
   className = ''
 ): JSX.Element | null => {
-  const logo = serviceTypeLogo(serviceType);
+  const logo = serviceUtilClassBase.getServiceTypeLogo({
+    serviceType,
+  } as SearchSourceAlias);
 
   if (!isNull(logo)) {
     return <img alt="" className={className} src={logo} />;
@@ -419,41 +398,12 @@ export const isValidUrl = (href?: string) => {
   }
 };
 
-/**
- *
- * @param email - email address string
- * @returns - True|False
- */
-export const isValidEmail = (email?: string) => {
-  let isValid = false;
-  if (email && email.match(validEmailRegEx)) {
-    isValid = true;
-  }
-
-  return isValid;
-};
-
-export const getFields = (defaultFields: string, tabSpecificField: string) => {
-  if (!tabSpecificField) {
-    return defaultFields;
-  }
-  if (!defaultFields) {
-    return tabSpecificField;
-  }
-  if (
-    tabSpecificField === TabSpecificField.LINEAGE ||
-    tabSpecificField === TabSpecificField.ACTIVITY_FEED
-  ) {
-    return defaultFields;
-  }
-
-  return `${defaultFields}, ${tabSpecificField}`;
-};
-
 export const getEntityMissingError = (entityType: string, fqn: string) => {
   return (
     <p>
-      {capitalize(entityType)} instance for <strong>{fqn}</strong> not found
+      {capitalize(entityType)} {t('label.instance-lowercase')}{' '}
+      {t('label.for-lowercase')} <strong>{fqn}</strong>{' '}
+      {t('label.not-found-lowercase')}
     </p>
   );
 };
@@ -482,17 +432,18 @@ export const getNameFromFQN = (fqn: string): string => {
 
 export const getRandomColor = (name: string) => {
   const firstAlphabet = name.charAt(0).toLowerCase();
-  const asciiCode = firstAlphabet.charCodeAt(0);
-  const colorNum =
-    asciiCode.toString() + asciiCode.toString() + asciiCode.toString();
+  // Convert the user's name to a numeric value
+  let nameValue = 0;
+  for (let i = 0; i < name.length; i++) {
+    nameValue += name.charCodeAt(i) * 8;
+  }
 
-  const num = Math.round(0xffffff * parseInt(colorNum));
-  const r = (num >> 16) & 255;
-  const g = (num >> 8) & 255;
-  const b = num & 255;
+  // Generate a random hue based on the name value
+  const hue = nameValue % 360;
 
   return {
-    color: 'rgb(' + r + ', ' + g + ', ' + b + ', 0.6)',
+    color: `hsl(${hue}, 70%, 40%)`,
+    backgroundColor: `hsl(${hue}, 100%, 92%)`,
     character: firstAlphabet.toUpperCase(),
   };
 };
@@ -546,62 +497,6 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
   }
 };
 
-/**
- * Take entity reference as input and return name for entity
- * @param entity - entity reference
- * @returns - entity name
- */
-export const getEntityName = (
-  entity?:
-    | EntityReference
-    | ServicesType
-    | User
-    | Topic
-    | Database
-    | Dashboard
-    | Table
-    | Pipeline
-    | Team
-    | Policy
-    | Role
-    | GlossaryTerm
-    | Webhook
-    | Bot
-    | Kpi
-    | Classification
-    | Field
-) => {
-  return entity?.displayName || entity?.name || '';
-};
-
-export const getEntityId = (
-  entity?:
-    | EntityReference
-    | ServicesType
-    | User
-    | Topic
-    | Database
-    | Dashboard
-    | Table
-    | Pipeline
-    | Team
-    | Policy
-    | Role
-) => entity?.id || '';
-
-export const getEntityDeleteMessage = (entity: string, dependents: string) => {
-  if (dependents) {
-    return t('message.permanently-delete-metadata-and-dependents', {
-      entityName: getTitleCase(entity),
-      dependents,
-    });
-  } else {
-    return t('message.permanently-delete-metadata', {
-      entityName: getTitleCase(entity),
-    });
-  }
-};
-
 export const replaceSpaceWith_ = (text: string) => {
   return text.replace(/\s/g, '_');
 };
@@ -610,68 +505,58 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
   return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
 };
 
+/**
+ * Get feed counts for given entity type and fqn
+ * @param entityType - entity type
+ * @param entityFQN - entity fqn
+ * @param onDataFetched - callback function which return FeedCounts object
+ */
+
 export const getFeedCounts = (
   entityType: string,
   entityFQN: string,
-  conversationCallback: (
-    value: React.SetStateAction<EntityFieldThreadCount[]>
-  ) => void,
-  taskCallback: (value: React.SetStateAction<EntityFieldThreadCount[]>) => void,
-  entityCallback: (value: React.SetStateAction<number>) => void
+  feedCountCallback: (countValue: FeedCounts) => void
 ) => {
-  // To get conversation count
-  getFeedCount(
-    getEntityFeedLink(entityType, entityFQN),
-    ThreadType.Conversation
-  )
-    .then((res) => {
-      if (res) {
-        conversationCallback(res.counts);
-      } else {
-        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['fetch-entity-feed-count-error']
-      );
-    });
-
-  // To get open tasks count
-  getFeedCount(
-    getEntityFeedLink(entityType, entityFQN),
-    ThreadType.Task,
-    ThreadTaskStatus.Open
-  )
-    .then((res) => {
-      if (res) {
-        taskCallback(res.counts);
-      } else {
-        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['fetch-entity-feed-count-error']
-      );
-    });
-
-  // To get all thread count (task + conversation)
   getFeedCount(getEntityFeedLink(entityType, entityFQN))
     .then((res) => {
       if (res) {
-        entityCallback(res.totalCount);
+        const {
+          conversationCount,
+          openTaskCount,
+          closedTaskCount,
+          totalTasksCount,
+          totalCount,
+          mentionCount,
+        } = res.reduce((acc, item) => {
+          const conversationCount =
+            acc.conversationCount + (item.conversationCount || 0);
+          const totalTasksCount =
+            acc.totalTasksCount + (item.totalTaskCount || 0);
+
+          return {
+            conversationCount,
+            totalTasksCount,
+            openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
+            closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
+            totalCount: conversationCount + totalTasksCount,
+            mentionCount: acc.mentionCount + (item.mentionCount || 0),
+          };
+        }, FEED_COUNT_INITIAL_DATA);
+
+        feedCountCallback({
+          conversationCount,
+          totalTasksCount,
+          openTaskCount,
+          closedTaskCount,
+          totalCount,
+          mentionCount,
+        });
       } else {
-        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        throw t('server.entity-feed-fetch-error');
       }
     })
     .catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['fetch-entity-feed-count-error']
-      );
+      showErrorToast(err, t('server.entity-feed-fetch-error'));
     });
 };
 
@@ -682,15 +567,6 @@ export const getFeedCounts = (
  */
 export const isTaskSupported = (entityType: EntityType) =>
   TASK_ENTITIES.includes(entityType);
-
-/**
- * Utility function to show pagination
- * @param paging paging object
- * @returns boolean
- */
-export const showPagination = (paging: Paging) => {
-  return !isNil(paging.after) || !isNil(paging.before);
-};
 
 export const formatNumberWithComma = (number: number) => {
   return new Intl.NumberFormat('en-US').format(number);
@@ -713,18 +589,26 @@ export const getStatisticsDisplayValue = (
   return formatNumberWithComma(displayValue);
 };
 
-export const formTwoDigitNmber = (number: number) => {
+export const formTwoDigitNumber = (number: number) => {
   return number.toLocaleString('en-US', {
     minimumIntegerDigits: 2,
     useGrouping: false,
   });
 };
 
+export const digitFormatter = (value: number) => {
+  // convert 1000 to 1k
+  return Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
 export const getTeamsUser = (
-  data?: ExtraInfo
+  data: ExtraInfo,
+  currentUser: User
 ): Record<string, string | undefined> | undefined => {
   if (!isUndefined(data) && !isEmpty(data?.placeholderText || data?.id)) {
-    const currentUser = AppState.getCurrentUserDetails();
     const teams = currentUser?.teams;
 
     const dataFound = teams?.find((team) => {
@@ -752,7 +636,7 @@ export const getHostNameFromURL = (url: string) => {
   }
 };
 
-export const getOwnerValue = (owner: EntityReference) => {
+export const getOwnerValue = (owner?: EntityReference) => {
   switch (owner?.type) {
     case 'team':
       return getTeamAndUserDetailsPath(owner?.name || '');
@@ -772,6 +656,7 @@ export const getIngestionFrequency = (pipelineType: PipelineType) => {
   switch (pipelineType) {
     case PipelineType.TestSuite:
     case PipelineType.Metadata:
+    case PipelineType.Application:
       return getHourCron(value);
 
     default:
@@ -780,53 +665,43 @@ export const getIngestionFrequency = (pipelineType: PipelineType) => {
 };
 
 export const getEmptyPlaceholder = () => {
-  return (
-    <ErrorPlaceHolder size={SIZE.MEDIUM}>
-      <Typography.Paragraph>
-        {t('message.no-data-available')}
-      </Typography.Paragraph>
-    </ErrorPlaceHolder>
-  );
+  return <ErrorPlaceHolder size={SIZE.MEDIUM} />;
 };
 
 //  return the status like loading and success
 export const getLoadingStatus = (
   current: CurrentState,
   id: string | undefined,
-  displayText: string
+  children: ReactNode
 ) => {
-  return current.id === id ? (
-    current.state === 'success' ? (
-      <FontAwesomeIcon icon="check" />
-    ) : (
-      <Loader size="small" type="default" />
-    )
-  ) : (
-    displayText
-  );
+  if (current.id === id) {
+    return (
+      <div>
+        {/* Wrapping with div to apply spacing  */}
+        <Loader size="x-small" type="default" />
+      </div>
+    );
+  }
+
+  return children;
 };
 
-export const refreshPage = () => window.location.reload();
+export const refreshPage = () => {
+  history.go(0);
+};
 // return array of id as  strings
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
 
-export const getTierFromEntityInfo = (entity: FormattedTableData) => {
-  return (
-    entity.tier?.tagFQN ||
-    getTierFromSearchTableTags((entity.tags || []).map((tag) => tag.tagFQN))
-  )?.split(FQN_SEPARATOR_CHAR)[1];
-};
-
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
   if (isString(tag)) {
-    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
       ? tag.split(FQN_SEPARATOR_CHAR)[1]
       : tag;
   } else {
     return {
       ...tag,
-      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
         ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
         : tag.tagFQN,
     };
@@ -858,9 +733,7 @@ export const getTrimmedContent = (content: string, limit: number) => {
 };
 
 export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
-  return tags.sort((tag1, tag2) =>
-    tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
-  );
+  return tags;
 };
 
 export const Transi18next = ({
@@ -878,64 +751,26 @@ export const Transi18next = ({
   </Trans>
 );
 
-/**
- * It returns a link to the documentation for the given filter pattern type
- * @param {FilterPatternEnum} type - The type of filter pattern.
- * @returns A string
- */
-export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
-  switch (type) {
-    case FilterPatternEnum.DATABASE:
-    case FilterPatternEnum.SCHEMA:
-    case FilterPatternEnum.TABLE:
-      return `https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/${FilterPatternEnum.DATABASE}#${type}-filter-pattern`;
-
-    case FilterPatternEnum.DASHBOARD:
-    case FilterPatternEnum.CHART:
-      return 'https://docs.open-metadata.org/connectors/dashboard/metabase#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.TOPIC:
-      return 'https://docs.open-metadata.org/connectors/messaging/kafka#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.PIPELINE:
-      return 'https://docs.open-metadata.org/connectors/pipeline/airflow#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.MLMODEL:
-      return 'https://docs.open-metadata.org/connectors/ml-model/mlflow';
-
-    default:
-      return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
+export const getEntityDeleteMessage = (entity: string, dependents: string) => {
+  if (dependents) {
+    return t('message.permanently-delete-metadata-and-dependents', {
+      entityName: entity,
+      dependents,
+    });
+  } else {
+    return (
+      <Transi18next
+        i18nKey="message.permanently-delete-metadata"
+        renderElement={
+          <span className="font-medium" data-testid="entityName" />
+        }
+        values={{
+          entityName: entity,
+        }}
+      />
+    );
   }
 };
-
-/**
- * It takes a string and returns a string
- * @param {FilterPatternEnum} type - FilterPatternEnum
- * @returns A function that takes in a type and returns a keyof AddIngestionState
- */
-export const getFilterTypes = (
-  type: FilterPatternEnum
-): keyof AddIngestionState => {
-  switch (type) {
-    case FilterPatternEnum.CHART:
-      return 'chartFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.DASHBOARD:
-      return 'dashboardFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.DATABASE:
-      return 'databaseFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.MLMODEL:
-      return 'mlModelFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.PIPELINE:
-      return 'pipelineFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.SCHEMA:
-      return 'schemaFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.TABLE:
-      return 'tableFilterPattern' as keyof AddIngestionState;
-    default:
-      return 'topicFilterPattern' as keyof AddIngestionState;
-  }
-};
-
 /**
  * It takes a state and an action, and returns a new state with the action merged into it
  * @param {S} state - S - The current state of the reducer.
@@ -954,3 +789,92 @@ export const reducerWithoutAction = <S, A>(state: S, action: A) => {
  * @returns base64 encoded text
  */
 export const getBase64EncodedString = (text: string): string => btoa(text);
+
+export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
+  let errorMessage = '';
+
+  if (error) {
+    errorMessage = get(error, 'response.data.message', '');
+    if (!errorMessage) {
+      // if error text is undefined or null or empty, try responseMessage in data
+      errorMessage = get(error, 'response.data.responseMessage', '');
+    }
+    if (!errorMessage) {
+      errorMessage = get(error, 'response.data', '');
+      errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
+    }
+  }
+
+  return errorMessage.includes(key);
+};
+
+/**
+ * @param color hex have color code
+ * @param opacity take opacity how much to reduce it
+ * @returns hex color string
+ */
+export const reduceColorOpacity = (hex: string, opacity: number): string => {
+  hex = hex.replace(/^#/, ''); // Remove the "#" if it's there
+  hex = hex.length === 3 ? hex.replace(/./g, '$&$&') : hex; // Expand short hex to full hex format
+  const [red, green, blue] = [0, 2, 4].map((i) =>
+    parseInt(hex.slice(i, i + 2), 16)
+  ); // Parse hex values
+
+  return `rgba(${red}, ${green}, ${blue}, ${opacity})`; // Create RGBA color
+};
+
+export const getUniqueArray = (count: number) =>
+  [...Array(count)].map((_, index) => ({
+    key: `key${index}`,
+  }));
+
+/**
+ * @param searchValue search input
+ * @param option select options list
+ * @returns boolean
+ */
+export const handleSearchFilterOption = (
+  searchValue: string,
+  option?: {
+    label: string;
+    value: string;
+  }
+) => toLower(option?.label).includes(toLower(searchValue));
+// Check label while searching anything and filter that options out if found matching
+
+/**
+ * @param serviceType key for quick filter
+ * @returns json filter query string
+ */
+
+export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    serviceType,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+};
+
+export const filterSelectOptions = (
+  input: string,
+  option?: { label: string; value: string }
+) => {
+  return (
+    toLower(option?.label).includes(toLower(input)) ||
+    toLower(option?.value).includes(toLower(input))
+  );
+};

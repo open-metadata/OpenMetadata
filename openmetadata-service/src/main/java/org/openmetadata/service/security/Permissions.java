@@ -28,7 +28,8 @@ public class Permissions {
 
   public Permissions() {
     // By default, set all permissions as false.
-    metadataOperations = Stream.of(MetadataOperation.values()).collect(Collectors.toMap(o -> o, o -> Boolean.FALSE));
+    metadataOperations =
+        Stream.of(MetadataOperation.values()).collect(Collectors.toMap(o -> o, o -> Boolean.FALSE));
   }
 
   public Permissions(List<MetadataOperation> allowedOperations) {

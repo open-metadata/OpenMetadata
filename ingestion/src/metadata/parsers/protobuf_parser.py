@@ -20,12 +20,13 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Type, Union
 
 import grpc_tools.protoc
 from pydantic import BaseModel
 
-from metadata.generated.schema.type.schema import FieldModel
+from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
 from metadata.utils.helpers import snake_to_camel
 from metadata.utils.logger import ingestion_logger
 
@@ -37,12 +38,12 @@ class ProtobufDataTypes(Enum):
     Enum for Protobuf Datatypes
     """
 
-    ERROR = 0
+    UNKNOWN = 0
     DOUBLE = 1
     FLOAT = 2
     INT = 3, 4, 5, 13, 17, 18
     FIXED = 6, 7, 15, 16
-    TYPE_BOOL = 8
+    BOOLEAN = 8
     STRING = 9
     UNION = 10
     RECORD = 11
@@ -165,7 +166,9 @@ class ProtobufParser:
             )
         return None
 
-    def parse_protobuf_schema(self) -> Optional[List[FieldModel]]:
+    def parse_protobuf_schema(
+        self, cls: Type[BaseModel] = FieldModel
+    ) -> Optional[List[Union[FieldModel, Column]]]:
         """
         Method to parse the protobuf schema
         """
@@ -177,10 +180,12 @@ class ProtobufParser:
             )
 
             field_models = [
-                FieldModel(
+                cls(
                     name=instance.DESCRIPTOR.name,
                     dataType="RECORD",
-                    children=self.get_protobuf_fields(instance.DESCRIPTOR.fields),
+                    children=self.get_protobuf_fields(
+                        instance.DESCRIPTOR.fields, cls=cls
+                    ),
                 )
             ]
 
@@ -196,7 +201,17 @@ class ProtobufParser:
             )
         return None
 
-    def get_protobuf_fields(self, fields) -> Optional[List[FieldModel]]:
+    def _get_field_type(self, type_: int, cls: Type[BaseModel] = FieldModel) -> str:
+        if type_ > 18:
+            return DataType.UNKNOWN.value
+        data_type = ProtobufDataTypes(type_).name
+        if cls == Column and data_type == DataTypeTopic.FIXED.value:
+            return DataType.INT.value
+        return data_type
+
+    def get_protobuf_fields(
+        self, fields, cls: Type[BaseModel] = FieldModel
+    ) -> Optional[List[Union[FieldModel, Column]]]:
         """
         Recursively convert the parsed schema into required models
         """
@@ -205,10 +220,12 @@ class ProtobufParser:
         for field in fields:
             try:
                 field_models.append(
-                    FieldModel(
+                    cls(
                         name=field.name,
-                        dataType=ProtobufDataTypes(field.type).name,
-                        children=self.get_protobuf_fields(field.message_type.fields)
+                        dataType=self._get_field_type(field.type, cls=cls),
+                        children=self.get_protobuf_fields(
+                            field.message_type.fields, cls=cls
+                        )
                         if field.type == 11
                         else None,
                     )

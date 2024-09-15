@@ -15,4 +15,3 @@ tabWidth: 2
 jsxBracketSameLine: true
 htmlWhitespaceSensitivity: 'strict'
 singleQuote: true
-endOfLine: 'auto'

@@ -13,21 +13,21 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
-import json
 import traceback
 from typing import List, Optional, Type, TypeVar
 
-from pydantic import BaseModel
-from requests.utils import quote
+from pydantic import BaseModel, validate_call
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
-from metadata.generated.schema.entity.data.location import Location
+from metadata.generated.schema.api.tests.createCustomMetric import (
+    CreateCustomMetricRequest,
+)
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DataModel,
-    SqlQuery,
+    SystemProfile,
     Table,
     TableData,
     TableJoins,
@@ -38,10 +38,8 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
-from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.ometa.utils import model_str, quote
 from metadata.utils.logger import ometa_logger
-from metadata.utils.lru_cache import LRUCache
-from metadata.utils.uuid_encoder import UUIDEncoder
 
 logger = ometa_logger()
 
@@ -58,18 +56,6 @@ class OMetaTableMixin:
 
     client: REST
 
-    def add_location(self, table: Table, location: Location) -> None:
-        """
-        PUT location for a table
-
-        :param table: Table Entity to update
-        :param location: Location Entity to add
-        """
-        self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/location",
-            data=json.dumps(location.id.__root__, cls=UUIDEncoder),
-        )
-
     def ingest_table_sample_data(
         self, table: Table, sample_data: TableData
     ) -> Optional[TableData]:
@@ -82,13 +68,13 @@ class OMetaTableMixin:
         resp = None
         try:
             resp = self.client.put(
-                f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
-                data=sample_data.json(),
+                f"{self.get_suffix(Table)}/{table.id.root}/sampleData",
+                data=sample_data.model_dump_json(),
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error trying to PUT sample data for {table.fullyQualifiedName.__root__}: {exc}"
+                f"Error trying to PUT sample data for {table.fullyQualifiedName.root}: {exc}"
             )
 
         if resp:
@@ -97,12 +83,12 @@ class OMetaTableMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__}: {err}"
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.root}: {err}"
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__}: {exc}"
+                    f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}"
                 )
 
         return None
@@ -116,12 +102,12 @@ class OMetaTableMixin:
         resp = None
         try:
             resp = self.client.get(
-                f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
+                f"{self.get_suffix(Table)}/{table.id.root}/sampleData",
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error trying to GET sample data for {table.fullyQualifiedName.__root__}: {exc}"
+                f"Error trying to GET sample data for {table.fullyQualifiedName.root}: {exc}"
             )
 
         if resp:
@@ -130,12 +116,12 @@ class OMetaTableMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__}: {err}"
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.root}: {err}"
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__}: {exc}"
+                    f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}"
                 )
 
         return None
@@ -150,8 +136,8 @@ class OMetaTableMixin:
         :param table_profile: Profile data to add
         """
         resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/tableProfile",
-            data=profile_request.json(),
+            f"{self.get_suffix(Table)}/{table.id.root}/tableProfile",
+            data=profile_request.model_dump_json(),
         )
         return Table(**resp)
 
@@ -163,28 +149,10 @@ class OMetaTableMixin:
         :param data_model: Model to add
         """
         resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/dataModel",
-            data=data_model.json(),
+            f"{self.get_suffix(Table)}/{table.id.root}/dataModel",
+            data=data_model.model_dump_json(),
         )
         return Table(**resp)
-
-    def ingest_table_queries_data(
-        self, table: Table, table_queries: List[SqlQuery]
-    ) -> None:
-        """
-        PUT table queries for a table
-
-        :param table: Table Entity to update
-        :param table_queries: SqlQuery to add
-        """
-        seen_queries = LRUCache(LRU_CACHE_SIZE)
-        for query in table_queries:
-            if query.query not in seen_queries:
-                self.client.put(
-                    f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
-                    data=query.json(),
-                )
-                seen_queries.put(query.query, None)
 
     def publish_table_usage(
         self, table: Table, table_usage_request: UsageRequest
@@ -196,7 +164,7 @@ class OMetaTableMixin:
         :param table_usage_request: Usage data to add
         """
         resp = self.client.post(
-            f"/usage/table/{table.id.__root__}", data=table_usage_request.json()
+            f"/usage/table/{table.id.root}", data=table_usage_request.model_dump_json()
         )
         logger.debug("published table usage %s", resp)
 
@@ -210,10 +178,10 @@ class OMetaTableMixin:
         :param table_join_request: Join data to add
         """
 
-        logger.info("table join request %s", table_join_request.json())
+        logger.info("table join request %s", table_join_request.model_dump_json())
         resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/joins",
-            data=table_join_request.json(),
+            f"{self.get_suffix(Table)}/{table.id.root}/joins",
+            data=table_join_request.model_dump_json(),
         )
         logger.debug("published frequently joined with %s", resp)
 
@@ -234,7 +202,7 @@ class OMetaTableMixin:
         """
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{model_str(table_id)}/tableProfilerConfig",
-            data=table_profiler_config.json(),
+            data=table_profiler_config.model_dump_json(),
         )
         return Table(**resp)
 
@@ -258,6 +226,7 @@ class OMetaTableMixin:
 
         return None
 
+    @validate_call
     def get_profile_data(
         self,
         fqn: str,
@@ -284,16 +253,16 @@ class OMetaTableMixin:
         Returns:
             EntityList: EntityList list object
         """
-
         url_after = f"&after={after}" if after else ""
         profile_type_url = profile_type.__name__[0].lower() + profile_type.__name__[1:]
+
         resp = self.client.get(
             f"{self.get_suffix(Table)}/{fqn}/{profile_type_url}?limit={limit}{url_after}",
-            data={"startTs": start_ts // 1000, "endTs": end_ts // 1000},
+            data={"startTs": start_ts, "endTs": end_ts},
         )
 
-        if profile_type is TableProfile:
-            data: List[T] = [TableProfile(**datum) for datum in resp["data"]]  # type: ignore
+        if profile_type in (TableProfile, SystemProfile):
+            data: List[T] = [profile_type(**datum) for datum in resp["data"]]  # type: ignore
         elif profile_type is ColumnProfile:
             split_fqn = fqn.split(".")
             if len(split_fqn) < 5:
@@ -320,15 +289,19 @@ class OMetaTableMixin:
         Returns:
             Optional[Table]: OM table object
         """
-        return self._get(Table, f"{quote(model_str(fqn))}/tableProfile/latest")
+        return self._get(Table, f"{quote(fqn)}/tableProfile/latest")
 
-    def get_table_queries(self, table_id: Uuid) -> Optional[Table]:
-        """Get the queries attached to a table
+    def create_or_update_custom_metric(
+        self, custom_metric: CreateCustomMetricRequest, table_id: str
+    ) -> Table:
+        """Create or update custom metric. If custom metric name matches an existing
+        one then it will be updated.
 
         Args:
-            id (str): table fully qualified name
-
-        Returns:
-            Optional[Table]: OM table object
+            custom_metric (CreateCustomMetricRequest): custom metric to be create or updated
         """
-        return self._get(Table, f"{model_str(table_id)}/tableQuery")
+        resp = self.client.put(
+            f"{self.get_suffix(Table)}/{table_id}/customMetric",
+            data=custom_metric.model_dump_json(),
+        )
+        return Table(**resp)

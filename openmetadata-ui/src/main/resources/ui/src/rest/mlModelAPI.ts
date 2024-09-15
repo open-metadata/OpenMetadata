@@ -13,18 +13,23 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
+import { PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
+import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
+const BASE_URL = '/mlmodels';
+
 export const getMlModelVersions = async (id: string) => {
-  const url = `/mlmodels/${id}/versions`;
+  const url = `${BASE_URL}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
@@ -32,87 +37,79 @@ export const getMlModelVersions = async (id: string) => {
 };
 
 export const getMlModelVersion = async (id: string, version: string) => {
-  const url = `/mlmodels/${id}/versions/${version}`;
+  const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Mlmodel>(url);
 
   return response.data;
 };
 
-export const getMlModelByFQN = async (
-  fqn: string,
-  arrQueryFields: string,
-  include = Include.All
-) => {
-  const url = getURLWithQueryFields(
-    `mlmodels/name/${fqn}`,
-    arrQueryFields,
-    `include=${include}`
+export const getMlModelByFQN = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Mlmodel>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
   );
 
-  const response = await APIClient.get<Mlmodel>(url);
-
   return response.data;
 };
 
-export const getMlmodels = async (
-  serviceName: string,
-  paging: string,
-  arrQueryFields: string[]
+export const getMlModels = async (
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
-  const url = `${getURLWithQueryFields(
-    `/mlmodels`,
-    arrQueryFields
-  )}&service=${serviceName}${paging ? paging : ''}`;
-
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(url);
+  }>(`${BASE_URL}`, {
+    params: {
+      service,
+      fields,
+      ...paging,
+      include,
+    },
+  });
 
   return response.data;
 };
 
 export const patchMlModelDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Mlmodel>>(
-    `/mlmodels/${id}`,
-    data,
-    configOptions
+    `${BASE_URL}/${id}`,
+    data
   );
 
   return response.data;
 };
 
 export const addFollower = async (mlModelId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/mlmodels/${mlModelId}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${mlModelId}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const removeFollower = async (mlModelId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`/mlmodels/${mlModelId}/followers/${userId}`, configOptions);
+  >(
+    `${BASE_URL}/${mlModelId}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
@@ -121,7 +118,16 @@ export const restoreMlmodel = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<Mlmodel>
-  >('/mlmodels/restore', { id });
+  >(`${BASE_URL}/restore`, { id });
+
+  return response.data;
+};
+
+export const updateMlModelVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Mlmodel>>(
+    `${BASE_URL}/${id}/vote`,
+    data
+  );
 
   return response.data;
 };

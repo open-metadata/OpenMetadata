@@ -15,7 +15,7 @@
         },
         "assignees": {
           "description": "List of users or teams the task is assigned to",
-          "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+          "$ref": "../../type/entityReferenceList.json"
         },
         "oldValue": {
           "description": "The value of old object for which the task is created.",
@@ -55,6 +55,10 @@
     },
     "announcementDetails": {
       "$ref": "../../entity/feed/thread.json#/definitions/announcementDetails"
+    },
+    "chatbotDetails": {
+      "description": "Details about the Chatbot conversation. This is only applicable if thread is of type Chatbot.",
+      "$ref": "../../entity/feed/thread.json#/definitions/chatbotDetails"
     }
   },
   "required": ["message", "from", "about"],

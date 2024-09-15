@@ -26,13 +26,12 @@ class AtlasClient:
     """
 
     def __init__(self, config: AtlasConnection, raw_data: bool = False):
-
         self.config = config
         self.auth_token = generate_http_basic_token(
             config.username, config.password.get_secret_value()
         )
         client_config: ClientConfig = ClientConfig(
-            base_url=config.hostPort,
+            base_url=str(config.hostPort),
             auth_header="Authorization",
             api_version="api",
             auth_token=self.get_auth_token,

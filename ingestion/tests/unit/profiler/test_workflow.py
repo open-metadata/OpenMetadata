@@ -18,7 +18,6 @@ from unittest.mock import patch
 
 import sqlalchemy as sqa
 from pytest import raises
-from sqlalchemy import MetaData
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import (
@@ -30,19 +29,27 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
-from metadata.orm_profiler.api.models import ProfilerProcessorConfig
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.orm_profiler.profiler.default import DefaultProfiler
+from metadata.profiler.api.models import ProfilerProcessorConfig
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
+    SQAProfilerInterface,
+)
+from metadata.profiler.processor.default import DefaultProfiler
+from metadata.profiler.source.base.profiler_source import ProfilerSource
+from metadata.profiler.source.metadata import OpenMetadataSource
+from metadata.workflow.profiler import ProfilerWorkflow
 
 TABLE = Table(
     id=uuid.uuid4(),
     name="users",
-    fullyQualifiedName="service.db.users",
+    fullyQualifiedName="my_service.db.users",
     columns=[
         Column(name="id", dataType=DataType.INT),
         Column(name="name", dataType=DataType.STRING),
@@ -52,9 +59,9 @@ TABLE = Table(
     ],
     database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
     tableProfilerConfig=TableProfilerConfig(
-        profilerCo=80.0,
-    ),
-)
+        profileSample=80.0,
+    ),  # type: ignore
+)  # type: ignore
 
 config = {
     "source": {
@@ -70,7 +77,16 @@ config = {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
             "securityConfig": {
-                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+                "jwtToken": (
+                    "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1"
+                    "QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib"
+                    "3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blb"
+                    "m1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREk"
+                    "qVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq"
+                    "91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMe"
+                    "QaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133i"
+                    "ikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+                )
             },
         }
     },
@@ -94,27 +110,29 @@ class User(Base):
     return_value=User,
 )
 @patch.object(
-    ProfilerWorkflow,
+    OpenMetadataSource,
     "_validate_service_name",
     return_value=True,
 )
-def test_init_workflow(mocked_method, mocked_orm):
+def test_init_workflow(mocked_method, mocked_orm):  # pylint: disable=unused-argument
     """
     We can initialise the workflow from a config
     """
     workflow = ProfilerWorkflow.create(config)
     mocked_method.assert_called()
 
-    assert isinstance(workflow.source_config, DatabaseServiceProfilerPipeline)
+    assert isinstance(workflow.source.source_config, DatabaseServiceProfilerPipeline)
     assert isinstance(workflow.metadata_config, OpenMetadataConnection)
-    assert isinstance(workflow.profiler_config, ProfilerProcessorConfig)
 
-    assert workflow.profiler_config.profiler is None
-    assert workflow.profiler_config.tableConfig is None
+    profiler_processor_step = workflow.steps[0]
+    assert isinstance(profiler_processor_step.profiler_config, ProfilerProcessorConfig)
+
+    assert profiler_processor_step.profiler_config.profiler is None
+    assert profiler_processor_step.profiler_config.tableConfig is None
 
 
 @patch.object(
-    ProfilerWorkflow,
+    OpenMetadataSource,
     "_validate_service_name",
     return_value=True,
 )
@@ -123,10 +141,10 @@ def test_filter_entities(mocked_method):
     We can properly filter entities depending on the
     workflow configuration
     """
+    service_name = "my_service"
     workflow = ProfilerWorkflow.create(config)
     mocked_method.assert_called()
 
-    service_name = "service"
     schema_reference1 = EntityReference(
         id=uuid.uuid4(), name="one_schema", type="databaseSchema"
     )
@@ -141,6 +159,7 @@ def test_filter_entities(mocked_method):
             databaseSchema=schema_reference1,
             fullyQualifiedName=f"{service_name}.db.{schema_reference1.name}.table1",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
+            database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
         ),
         Table(
             id=uuid.uuid4(),
@@ -148,6 +167,7 @@ def test_filter_entities(mocked_method):
             databaseSchema=schema_reference1,
             fullyQualifiedName=f"{service_name}.db.{schema_reference1.name}.table2",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
+            database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
         ),
         Table(
             id=uuid.uuid4(),
@@ -155,12 +175,52 @@ def test_filter_entities(mocked_method):
             databaseSchema=schema_reference2,
             fullyQualifiedName=f"{service_name}.db.{schema_reference2.name}.table3",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
+            database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
         ),
     ]
 
     # Simple workflow does not filter
-    assert len(list(workflow.filter_entities(all_tables))) == 3
+    assert len(list(workflow.source.filter_entities(all_tables))) == 3
 
+    fqn_filter_config = deepcopy(config)
+    fqn_filter_config["source"]["sourceConfig"]["config"]["useFqnForFiltering"] = True
+    fqn_filter_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+        "excludes": ["my_service.db.another_schema"]
+    }
+    fqn_filter_workflow = ProfilerWorkflow.create(fqn_filter_config)
+    mocked_method.assert_called()
+
+    assert len(list(fqn_filter_workflow.source.filter_entities(all_tables))) == 2
+
+    fqn_filter_config_2 = deepcopy(config)
+    fqn_filter_config_2["source"]["sourceConfig"]["config"]["useFqnForFiltering"] = True
+    fqn_filter_config_2["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+        "includes": ["my_service.db.one_schema"]
+    }
+    fqn_filter_workflow_2 = ProfilerWorkflow.create(fqn_filter_config_2)
+    mocked_method.assert_called()
+
+    assert len(list(fqn_filter_workflow_2.source.filter_entities(all_tables))) == 2
+
+    fqn_filter_config_3 = deepcopy(config)
+    fqn_filter_config_3["source"]["sourceConfig"]["config"]["useFqnForFiltering"] = True
+    fqn_filter_config_3["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {
+        "includes": ["my_service.db.one_schema.table1"]
+    }
+    fqn_filter_workflow_3 = ProfilerWorkflow.create(fqn_filter_config_3)
+    mocked_method.assert_called()
+
+    assert len(list(fqn_filter_workflow_3.source.filter_entities(all_tables))) == 1
+
+    fqn_filter_config_4 = deepcopy(config)
+    fqn_filter_config_4["source"]["sourceConfig"]["config"]["useFqnForFiltering"] = True
+    fqn_filter_config_4["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {
+        "excludes": ["my_service.db.one_schema.table1"]
+    }
+    fqn_filter_workflow_4 = ProfilerWorkflow.create(fqn_filter_config_4)
+    mocked_method.assert_called()
+
+    assert len(list(fqn_filter_workflow_4.source.filter_entities(all_tables))) == 2
     # We can exclude based on the schema name
     exclude_config = deepcopy(config)
     exclude_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
@@ -169,7 +229,7 @@ def test_filter_entities(mocked_method):
 
     exclude_workflow = ProfilerWorkflow.create(exclude_config)
     mocked_method.assert_called()
-    assert len(list(exclude_workflow.filter_entities(all_tables))) == 2
+    assert len(list(exclude_workflow.source.filter_entities(all_tables))) == 2
 
     exclude_config = deepcopy(config)
     exclude_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
@@ -178,7 +238,7 @@ def test_filter_entities(mocked_method):
 
     exclude_workflow = ProfilerWorkflow.create(exclude_config)
     mocked_method.assert_called()
-    assert len(list(exclude_workflow.filter_entities(all_tables))) == 2
+    assert len(list(exclude_workflow.source.filter_entities(all_tables))) == 2
 
     include_config = deepcopy(config)
     include_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {
@@ -187,7 +247,7 @@ def test_filter_entities(mocked_method):
 
     include_workflow = ProfilerWorkflow.create(include_config)
     mocked_method.assert_called()
-    assert len(list(include_workflow.filter_entities(all_tables))) == 3
+    assert len(list(include_workflow.source.filter_entities(all_tables))) == 3
 
 
 @patch.object(
@@ -196,11 +256,11 @@ def test_filter_entities(mocked_method):
     return_value=User,
 )
 @patch.object(
-    ProfilerWorkflow,
+    OpenMetadataSource,
     "_validate_service_name",
     return_value=True,
 )
-def test_profile_def(mocked_method, mocked_orm):
+def test_profile_def(mocked_method, mocked_orm):  # pylint: disable=unused-argument
     """
     Validate the definitions of the profile in the JSON
     """
@@ -214,17 +274,27 @@ def test_profile_def(mocked_method, mocked_orm):
 
     profile_workflow = ProfilerWorkflow.create(profile_config)
     mocked_method.assert_called()
-    profiler_interface = profile_workflow.create_profiler_interface(
-        service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
-        table_entity=TABLE,
-        sqa_metadata_obj=MetaData(),
-    )
-    profile_workflow.create_profiler_obj(TABLE, profiler_interface)
-    profiler_obj_metrics = [
-        metric.name() for metric in profile_workflow.profiler_obj.metrics
-    ]
 
-    assert profile_workflow.profiler_config.profiler
+    profiler_processor_step = profile_workflow.steps[0]
+
+    profiler_source = ProfilerSource(
+        profile_workflow.config,
+        DatabaseService(
+            id=uuid.uuid4(),
+            name="myDataBaseService",
+            serviceType=DatabaseServiceType.SQLite,
+        ),  # type: ignore
+        profile_workflow.metadata,
+        None,
+    )
+    profiler_runner = profiler_source.get_profiler_runner(
+        TABLE, profiler_processor_step.profiler_config
+    )
+
+    # profile_workflow.create_profiler(TABLE, profiler_interface)
+    profiler_obj_metrics = [metric.name() for metric in profiler_runner.metrics]
+
+    assert profiler_processor_step.profiler_config.profiler
     assert config_metrics_label == profiler_obj_metrics
 
 
@@ -234,11 +304,13 @@ def test_profile_def(mocked_method, mocked_orm):
     return_value=User,
 )
 @patch.object(
-    ProfilerWorkflow,
+    OpenMetadataSource,
     "_validate_service_name",
     return_value=True,
 )
-def test_default_profile_def(mocked_method, mocked_orm):
+def test_default_profile_def(
+    mocked_method, mocked_orm  # pylint: disable=unused-argument
+):
     """
     If no information is specified for the profiler, let's
     use the SimpleTableProfiler and SimpleProfiler
@@ -247,15 +319,24 @@ def test_default_profile_def(mocked_method, mocked_orm):
     profile_workflow = ProfilerWorkflow.create(config)
     mocked_method.assert_called()
 
-    profiler_interface = profile_workflow.create_profiler_interface(
-        service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
-        table_entity=TABLE,
-        sqa_metadata_obj=MetaData(),
+    profiler_processor_step = profile_workflow.steps[0]
+
+    profiler_source = ProfilerSource(
+        profile_workflow.config,
+        DatabaseService(
+            id=uuid.uuid4(),
+            name="myDataBaseService",
+            serviceType=DatabaseServiceType.SQLite,
+        ),  # type: ignore
+        profile_workflow.metadata,
+        None,
     )
-    profile_workflow.create_profiler_obj(TABLE, profiler_interface)
+    profiler_runner = profiler_source.get_profiler_runner(
+        TABLE, profiler_processor_step.profiler_config
+    )
 
     assert isinstance(
-        profile_workflow.profiler_obj,
+        profiler_runner,
         DefaultProfiler,
     )
 

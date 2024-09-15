@@ -41,7 +41,7 @@ class OMetaDashboardMixin:
         :param dashboard_usage_request: Usage data to add
         """
         resp = self.client.put(
-            f"/usage/dashboard/{dashboard.id.__root__}",
-            data=dashboard_usage_request.json(),
+            f"/usage/dashboard/{dashboard.id.root}",
+            data=dashboard_usage_request.model_dump_json(),
         )
         logger.debug("Published dashboard usage %s", resp)

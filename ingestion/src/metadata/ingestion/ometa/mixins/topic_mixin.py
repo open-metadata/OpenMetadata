@@ -40,7 +40,7 @@ class OMetaTopicMixin:
         :param sample_data: Data to add
         """
         resp = self.client.put(
-            f"{self.get_suffix(Topic)}/{topic.id.__root__}/sampleData",
-            data=sample_data.json(),
+            f"{self.get_suffix(Topic)}/{topic.id.root}/sampleData",
+            data=sample_data.model_dump_json(),
         )
         return TopicSampleData(**resp["sampleData"])

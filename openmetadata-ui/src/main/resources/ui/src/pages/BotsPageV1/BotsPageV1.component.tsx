@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-import BotListV1 from 'components/BotListV1/BotListV1.component';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import BotListV1 from '../../components/Settings/Bot/BotListV1/BotListV1.component';
 import { getCreateUserPath } from '../../constants/constants';
 
 export const BotsPageV1 = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [showDeleted, setShowDeleted] = useState(false);
 
@@ -29,11 +32,17 @@ export const BotsPageV1 = () => {
   };
 
   return (
-    <BotListV1
-      handleAddBotClick={handleAddBotClick}
-      handleShowDeleted={handleShowDeleted}
-      showDeleted={showDeleted}
-    />
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.table'),
+      })}
+      title="Table details">
+      <BotListV1
+        handleAddBotClick={handleAddBotClick}
+        handleShowDeleted={handleShowDeleted}
+        showDeleted={showDeleted}
+      />
+    </PageLayoutV1>
   );
 };
 

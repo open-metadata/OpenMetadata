@@ -34,11 +34,32 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this pipeline service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this pipeline service.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "scheduleInterval": {
+      "description": "Scheduler Interval for the pipeline in cron format.",
+      "type": "string",
+      "default": null
+    },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Pipeline Service belongs to.",
+      "type": "string"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
-  "required": ["name", "serviceType", "connection"],
+  "required": ["name", "serviceType"],
   "additionalProperties": false
 }

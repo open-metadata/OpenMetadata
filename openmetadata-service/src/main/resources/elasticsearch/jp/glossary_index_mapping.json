@@ -20,6 +20,14 @@
             "kuromoji_number",
             "kuromoji_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -40,7 +48,12 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -48,17 +61,110 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
       "description": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "om_analyzer_jp"
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "owners": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "version": {
         "type": "float"
@@ -72,120 +178,6 @@
       },
       "href": {
         "type": "text"
-      },
-      "synonyms": {
-        "type": "text"
-      },
-      "glossary": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
-      },
-      "children": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
-      },
-      "relatedTerms": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
       },
       "reviewers": {
         "properties": {
@@ -255,11 +247,17 @@
           }
         }
       },
+      "termCount": {
+        "type": "integer"
+      },
       "deleted": {
         "type": "text"
       },
       "status": {
         "type": "text"
+      },
+      "entityType": {
+        "type": "keyword"
       },
       "suggest": {
         "type": "completion",
@@ -270,6 +268,16 @@
             "path": "deleted"
           }
         ]
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

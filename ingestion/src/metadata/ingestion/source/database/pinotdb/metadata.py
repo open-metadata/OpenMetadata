@@ -9,17 +9,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """PinotDb source module"""
+from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
@@ -30,11 +29,13 @@ class PinotdbSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: PinotDBConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: PinotDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, PinotDBConnection):
             raise InvalidSourceException(
                 f"Expected PinotdbConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)

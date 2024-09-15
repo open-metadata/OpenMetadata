@@ -13,7 +13,7 @@ Common definitions for configuration management
 """
 from typing import Any, Optional, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from metadata.utils.logger import ingestion_logger
 
@@ -22,17 +22,17 @@ T = TypeVar("T")
 logger = ingestion_logger()
 
 # Allow types from the generated pydantic models
+# TODO: deprecate me. This is never really used a TypeVar.
 Entity = TypeVar("Entity", bound=BaseModel)
 
 
 class ConfigModel(BaseModel):
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class DynamicTypedConfig(ConfigModel):
     type: str
-    config: Optional[Any]
+    config: Optional[Any] = None
 
 
 class WorkflowExecutionError(Exception):

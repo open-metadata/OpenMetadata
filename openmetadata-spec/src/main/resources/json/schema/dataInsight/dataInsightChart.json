@@ -51,7 +51,9 @@
       "enum": [
         "entity_report_data_index",
         "web_analytic_entity_view_report_data_index",
-        "web_analytic_user_activity_report_data_index"
+        "web_analytic_user_activity_report_data_index",
+        "raw_cost_analysis_report_data_index",
+        "aggregated_cost_analysis_report_data_index"
       ]
     }
   },
@@ -95,9 +97,9 @@
       "description": "Metadata version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/entityVersion"
     },
-    "owner": {
-      "description": "Owner of this Pipeline.",
-      "$ref": "../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Pipeline.",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "updatedAt": {
@@ -120,6 +122,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["name"],

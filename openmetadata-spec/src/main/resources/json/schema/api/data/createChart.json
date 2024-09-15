@@ -22,13 +22,9 @@
     "chartType": {
       "$ref": "../../entity/data/chart.json#/definitions/chartType"
     },
-    "chartUrl": {
+    "sourceUrl": {
       "description": "Chart URL suffix from its service.",
-      "type": "string"
-    },
-    "tables": {
-      "description": "Link to tables used in this chart.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "tags": {
       "description": "Tags for this chart",
@@ -38,13 +34,43 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this chart",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this chart",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "service": {
       "description": "Link to the chart service where this chart is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Chart belongs to.",
+      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "dashboards": {
+      "description": "List of fully qualified name of dashboards containing this Chart.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      },
+      "default": null
     }
   },
   "required": ["name", "service"],

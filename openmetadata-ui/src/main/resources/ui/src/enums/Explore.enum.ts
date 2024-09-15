@@ -14,6 +14,7 @@
 export enum QueryFilterFieldsEnum {
   MUST = 'must',
   SHOULD = 'should',
+  MUST_NOT = 'must_not',
 }
 
 export enum ExplorePageTabs {
@@ -22,4 +23,24 @@ export enum ExplorePageTabs {
   DASHBOARDS = 'dashboards',
   PIPELINES = 'pipelines',
   MLMODELS = 'mlmodels',
+  CONTAINERS = 'containers',
+  CHARTS = 'charts',
+  GLOSSARY = 'glossaries',
+  TAG = 'tags',
+  DATA_PRODUCT = 'dataProducts',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
+  STORED_PROCEDURE = 'storedProcedure',
+  SEARCH_INDEX = 'searchIndexes',
+  DATABASE = 'database',
+  DATABASE_SCHEMA = 'databaseSchema',
+  DATABASE_SERVICE = 'databaseService',
+  MESSAGING_SERVICE = 'messagingService',
+  DASHBOARD_SERVICE = 'dashboardService',
+  PIPELINE_SERVICE = 'pipelineService',
+  ML_MODEL_SERVICE = 'mlmodelService',
+  STORAGE_SERVICE = 'storageService',
+  SEARCH_INDEX_SERVICE = 'searchIndexService',
+  API_SERVICE = 'apiService',
+  API_COLLECTION = 'apiCollection',
+  API_ENDPOINT = 'apiEndpoint',
 }

@@ -13,36 +13,38 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import BotDetails from 'components/BotDetails/BotDetails.component';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageContainerV1 from 'components/containers/PageContainerV1';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { UserDetails } from 'components/Users/Users.interface';
 import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
+import BotDetails from '../../components/Settings/Bot/BotDetails/BotDetails.component';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
+import { Bot } from '../../generated/entity/bot';
+import { User } from '../../generated/entity/teams/user';
+import { Include } from '../../generated/type/include';
+import { useAuth } from '../../hooks/authHooks';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getBotByName,
   getUserByName,
   revokeUserToken,
   updateBotDetail,
   updateUserDetail,
-} from 'rest/userAPI';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
-import { Bot } from '../../generated/entity/bot';
-import { User } from '../../generated/entity/teams/user';
+} from '../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const BotDetailsPage = () => {
   const { t } = useTranslation();
-  const { botsName } = useParams<{ [key: string]: string }>();
+  const { fqn: botsName } = useFqn();
+  const { isAdminUser } = useAuth();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [botUserData, setBotUserData] = useState<User>({} as User);
   const [botData, setBotData] = useState<Bot>({} as Bot);
@@ -70,11 +72,16 @@ const BotDetailsPage = () => {
   const fetchBotsData = async () => {
     try {
       setIsLoading(true);
-      const botResponse = await getBotByName(botsName);
+      const botResponse = await getBotByName(botsName, {
+        include: Include.All,
+      });
 
       const botUserResponse = await getUserByName(
         botResponse.botUser.fullyQualifiedName || '',
-        'roles,profile'
+        {
+          fields: [TabSpecificField.ROLES, TabSpecificField.PROFILE],
+          include: Include.All,
+        }
       );
       setBotUserData(botUserResponse);
       setBotData(botResponse);
@@ -86,7 +93,7 @@ const BotDetailsPage = () => {
     }
   };
 
-  const updateBotsDetails = async (data: UserDetails) => {
+  const updateBotsDetails = async (data: Partial<User>) => {
     const updatedDetails = { ...botData, ...data };
     const jsonPatch = compare(botData, updatedDetails);
 
@@ -105,7 +112,7 @@ const BotDetailsPage = () => {
     }
   };
 
-  const updateUserDetails = async (data: UserDetails) => {
+  const updateUserDetails = async (data: Partial<User>) => {
     const updatedDetails = { ...botUserData, ...data };
     const jsonPatch = compare(botUserData, updatedDetails);
 
@@ -121,45 +128,12 @@ const BotDetailsPage = () => {
     }
   };
 
-  const revokeBotsToken = () => {
-    revokeUserToken(botUserData.id)
-      .then((res) => {
-        const data = res;
-        setBotUserData(data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
-  };
-
-  const getBotsDetailComponent = () => {
-    if (isError) {
-      return (
-        <ErrorPlaceHolder>
-          <Typography.Paragraph
-            className="text-base"
-            data-testid="error-message">
-            {t('message.no-entity-available-with-name', {
-              entity: t('label.bot-plural'),
-            })}{' '}
-            <span className="font-medium" data-testid="username">
-              {botsName}
-            </span>{' '}
-          </Typography.Paragraph>
-        </ErrorPlaceHolder>
-      );
-    } else {
-      return (
-        <BotDetails
-          botData={botData}
-          botPermission={botPermission}
-          botUserData={botUserData}
-          revokeTokenHandler={revokeBotsToken}
-          updateBotsDetails={updateBotsDetails}
-          updateUserDetails={updateUserDetails}
-          onEmailChange={fetchBotsData}
-        />
-      );
+  const revokeBotsToken = async () => {
+    try {
+      const response = await revokeUserToken(botUserData.id);
+      setBotUserData(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -173,20 +147,38 @@ const BotDetailsPage = () => {
     fetchBotPermission(botsName);
   }, [botsName]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        <Typography.Paragraph className="text-base" data-testid="error-message">
+          {t('message.no-entity-available-with-name', {
+            entity: t('label.bot-plural'),
+          })}{' '}
+          <span className="font-medium" data-testid="username">
+            {botsName}
+          </span>{' '}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
+  }
+
+  if (!isAdminUser) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <PageContainerV1 className="p-y-md">
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <>
-          {botPermission.ViewAll || botPermission.ViewBasic ? (
-            getBotsDetailComponent()
-          ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
-          )}
-        </>
-      )}
-    </PageContainerV1>
+    <BotDetails
+      botData={botData}
+      botPermission={botPermission}
+      botUserData={botUserData}
+      revokeTokenHandler={revokeBotsToken}
+      updateBotsDetails={updateBotsDetails}
+      updateUserDetails={updateUserDetails}
+    />
   );
 };
 

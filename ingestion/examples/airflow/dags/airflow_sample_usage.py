@@ -21,7 +21,7 @@ except ModuleNotFoundError:
 
 from airflow.utils.dates import days_ago
 
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.usage import UsageWorkflow
 
 default_args = {
     "owner": "user_name",
@@ -42,7 +42,7 @@ config = """
         "type": "CustomDatabase",
         "sourcePythonClass": "metadata.ingestion.source.database.sample_usage.SampleUsageSource",
         "connectionOptions": {
-          "sampleDataFolder": "./examples/sample_data"
+          "sampleDataFolder": "/home/airflow/ingestion/examples/sample_data"
         }
       }
     },
@@ -83,7 +83,7 @@ config = """
 
 def metadata_ingestion_workflow():
     workflow_config = json.loads(config)
-    workflow = Workflow.create(workflow_config)
+    workflow = UsageWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
     workflow.print_status()

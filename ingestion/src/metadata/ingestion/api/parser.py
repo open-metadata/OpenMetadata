@@ -11,12 +11,16 @@
 """
 Helper to parse workflow configurations
 """
-from typing import Optional, Type, TypeVar, Union
+from typing import Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
 
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
-    TestServiceConnectionRequest,
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.apiService import (
+    ApiServiceConnection,
+    APIServiceType,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
@@ -25,6 +29,9 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
 )
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
@@ -42,6 +49,18 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineServiceType,
 )
+from metadata.generated.schema.entity.services.searchService import (
+    SearchConnection,
+    SearchServiceType,
+)
+from metadata.generated.schema.entity.services.storageService import (
+    StorageConnection,
+    StorageServiceType,
+)
+from metadata.generated.schema.metadataIngestion.apiServiceMetadataPipeline import (
+    ApiMetadataConfigType,
+    ApiServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardMetadataConfigType,
     DashboardServiceMetadataPipeline,
@@ -58,6 +77,28 @@ from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeli
     DatabaseServiceQueryUsagePipeline,
     DatabaseUsageConfigType,
 )
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
+    DbtAzureConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtCloudConfig import (
+    DbtCloudConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtGCSConfig import (
+    DbtGcsConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtHttpConfig import (
+    DbtHttpConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import (
+    DbtLocalConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
+    DbtS3Config,
+)
+from metadata.generated.schema.metadataIngestion.dbtPipeline import (
+    DbtConfigType,
+    DbtPipeline,
+)
 from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipeline import (
     MessagingMetadataConfigType,
     MessagingServiceMetadataPipeline,
@@ -70,11 +111,18 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
     PipelineMetadataConfigType,
     PipelineServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.searchServiceMetadataPipeline import (
+    SearchMetadataConfigType,
+    SearchServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
+    StorageMetadataConfigType,
+    StorageServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     WorkflowConfig,
 )
-from metadata.ingestion.ometa.provider_registry import PROVIDER_CLASS_MAP
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -87,15 +135,19 @@ HAS_INNER_CONNECTION = {"Airflow"}
 # Build a service type map dynamically from JSON Schema covered types
 SERVICE_TYPE_MAP = {
     "Backend": PipelineConnection,  # For Airflow backend
+    **{service: ApiServiceConnection for service in APIServiceType.__members__},
     **{service: DatabaseConnection for service in DatabaseServiceType.__members__},
     **{service: DashboardConnection for service in DashboardServiceType.__members__},
     **{service: MessagingConnection for service in MessagingServiceType.__members__},
     **{service: MetadataConnection for service in MetadataServiceType.__members__},
     **{service: PipelineConnection for service in PipelineServiceType.__members__},
     **{service: MlModelConnection for service in MlModelServiceType.__members__},
+    **{service: StorageConnection for service in StorageServiceType.__members__},
+    **{service: SearchConnection for service in SearchServiceType.__members__},
 }
 
 SOURCE_CONFIG_CLASS_MAP = {
+    ApiMetadataConfigType.ApiMetadata.value: ApiServiceMetadataPipeline,
     DashboardMetadataConfigType.DashboardMetadata.value: DashboardServiceMetadataPipeline,
     ProfilerConfigType.Profiler.value: DatabaseServiceProfilerPipeline,
     DatabaseUsageConfigType.DatabaseUsage.value: DatabaseServiceQueryUsagePipeline,
@@ -103,6 +155,18 @@ SOURCE_CONFIG_CLASS_MAP = {
     PipelineMetadataConfigType.PipelineMetadata.value: PipelineServiceMetadataPipeline,
     MlModelMetadataConfigType.MlModelMetadata.value: MlModelServiceMetadataPipeline,
     DatabaseMetadataConfigType.DatabaseMetadata.value: DatabaseServiceMetadataPipeline,
+    StorageMetadataConfigType.StorageMetadata.value: StorageServiceMetadataPipeline,
+    SearchMetadataConfigType.SearchMetadata.value: SearchServiceMetadataPipeline,
+    DbtConfigType.DBT.value: DbtPipeline,
+}
+
+DBT_CONFIG_TYPE_MAP = {
+    "cloud": DbtCloudConfig,
+    "local": DbtLocalConfig,
+    "http": DbtHttpConfig,
+    "s3": DbtS3Config,
+    "gcs": DbtGcsConfig,
+    "azure": DbtAzureConfig,
 }
 
 
@@ -119,6 +183,7 @@ class InvalidWorkflowException(Exception):
 def get_service_type(
     source_type: str,
 ) -> Union[
+    Type[ApiServiceConnection],
     Type[DashboardConnection],
     Type[DatabaseConnection],
     Type[MessagingConnection],
@@ -142,6 +207,7 @@ def get_service_type(
 def get_source_config_class(
     source_config_type: str,
 ) -> Union[
+    Type[ApiServiceMetadataPipeline],
     Type[DashboardServiceMetadataPipeline],
     Type[DatabaseServiceProfilerPipeline],
     Type[DatabaseServiceQueryUsagePipeline],
@@ -149,6 +215,7 @@ def get_source_config_class(
     Type[PipelineServiceMetadataPipeline],
     Type[MlModelServiceMetadataPipeline],
     Type[DatabaseServiceMetadataPipeline],
+    Type[DbtPipeline],
 ]:
     """
     Return the source config type for a source string
@@ -157,7 +224,7 @@ def get_source_config_class(
     """
     source_config_class = SOURCE_CONFIG_CLASS_MAP.get(source_config_type)
 
-    if source_config_type:
+    if source_config_class:
         return source_config_class
 
     raise ValueError(f"Cannot find the service type of {source_config_type}")
@@ -166,6 +233,7 @@ def get_source_config_class(
 def get_connection_class(
     source_type: str,
     service_type: Union[
+        Type[ApiServiceConnection],
         Type[DashboardConnection],
         Type[DatabaseConnection],
         Type[MessagingConnection],
@@ -173,7 +241,7 @@ def get_connection_class(
         Type[PipelineConnection],
         Type[MlModelConnection],
     ],
-) -> T:
+) -> Type[T]:
     """
     Build the connection class path, import and return it
     :param source_type: e.g., Glue
@@ -206,7 +274,7 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
         if len(err.get("loc")) == 1
         else f"Extra parameter in {err.get('loc')}"
         for err in validation_error.errors()
-        if err.get("type") == "value_error.extra"
+        if err.get("type") == "extra_forbidden"
     ]
 
     extra_fields = [
@@ -214,7 +282,7 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
         if len(err.get("loc")) == 1
         else f"Missing parameter in {err.get('loc')}"
         for err in validation_error.errors()
-        if err.get("type") == "value_error.missing"
+        if err.get("type") == "missing"
     ]
 
     invalid_fields = [
@@ -222,13 +290,13 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
         if len(err.get("loc")) == 1
         else f"Invalid parameter value for {err.get('loc')}"
         for err in validation_error.errors()
-        if err.get("type") not in ("value_error.missing", "value_error.extra")
+        if err.get("type") not in ("missing", "extra")
     ]
 
     return "\t - " + "\n\t - ".join(missing_fields + extra_fields + invalid_fields)
 
 
-def _unsafe_parse_config(config: dict, cls: T, message: str) -> None:
+def _unsafe_parse_config(config: dict, cls: Type[T], message: str) -> None:
     """
     Given a config dictionary and the class it should match,
     try to parse it or log the given message
@@ -236,10 +304,31 @@ def _unsafe_parse_config(config: dict, cls: T, message: str) -> None:
     logger.debug(f"Parsing message: [{message}]")
     # Parse the service connection dictionary with the scoped class
     try:
-        cls.parse_obj(config)
+        cls.model_validate(config)
     except ValidationError as err:
         logger.debug(
-            f"The supported properties for {cls.__name__} are {list(cls.__fields__.keys())}"
+            f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}"
+        )
+        raise err
+
+
+def _unsafe_parse_dbt_config(config: dict, cls: Type[T], message: str) -> None:
+    """
+    Given a config dictionary and the class it should match,
+    try to parse it or log the given message
+    """
+    logger.debug(f"Parsing message: [{message}]")
+    try:
+        # Parse the oneOf config types of dbt to check
+        dbt_config_type = config["dbtConfigSource"]["dbtConfigType"]
+        dbt_config_class = DBT_CONFIG_TYPE_MAP.get(dbt_config_type)
+        dbt_config_class.model_validate(config["dbtConfigSource"])
+
+        # Parse the entire dbtPipeline object
+        cls.model_validate(config)
+    except ValidationError as err:
+        logger.debug(
+            f"The supported properties for {cls.__name__} are {list(cls.model_fields.keys())}"
         )
         raise err
 
@@ -251,13 +340,11 @@ def _parse_inner_connection(config_dict: dict, source_type: str) -> None:
     :param config_dict: JSON configuration
     :param source_type: source type name, e.g., Airflow.
     """
-    inner_source_type = config_dict["source"]["serviceConnection"]["config"][
-        "connection"
-    ]["type"]
+    inner_source_type = config_dict["type"]
     inner_service_type = get_service_type(inner_source_type)
     inner_connection_class = get_connection_class(inner_source_type, inner_service_type)
     _unsafe_parse_config(
-        config=config_dict["source"]["serviceConnection"]["config"]["connection"],
+        config=config_dict,
         cls=inner_connection_class,
         message=f"Error parsing the inner service connection for {source_type}",
     )
@@ -271,27 +358,35 @@ def parse_service_connection(config_dict: dict) -> None:
     :param config_dict: JSON configuration
     """
     # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
-    source_type = config_dict["source"]["serviceConnection"]["config"].get("type")
-    if source_type is None:
-        raise InvalidWorkflowException("Missing type in the serviceConnection config")
+    if config_dict["source"].get("serviceConnection"):
+        source_type = config_dict["source"]["serviceConnection"]["config"].get("type")
+        if source_type is None:
+            raise InvalidWorkflowException(
+                "Missing type in the serviceConnection config"
+            )
 
-    logger.debug(
-        f"Error parsing the Workflow Configuration for {source_type} ingestion"
-    )
+        logger.debug(
+            f"Error parsing the Workflow Configuration for {source_type} ingestion"
+        )
 
-    service_type = get_service_type(source_type)
-    connection_class = get_connection_class(source_type, service_type)
+        service_type = get_service_type(source_type)
+        connection_class = get_connection_class(source_type, service_type)
 
-    if source_type in HAS_INNER_CONNECTION:
-        # We will first parse the inner `connection` configuration
-        _parse_inner_connection(config_dict, source_type)
+        if source_type in HAS_INNER_CONNECTION:
+            # We will first parse the inner `connection` configuration
+            _parse_inner_connection(
+                config_dict["source"]["serviceConnection"]["config"]["connection"][
+                    "config"
+                ]["connection"],
+                source_type,
+            )
 
-    # Parse the service connection dictionary with the scoped class
-    _unsafe_parse_config(
-        config=config_dict["source"]["serviceConnection"]["config"],
-        cls=connection_class,
-        message="Error parsing the service connection",
-    )
+        # Parse the service connection dictionary with the scoped class
+        _unsafe_parse_config(
+            config=config_dict["source"]["serviceConnection"]["config"],
+            cls=connection_class,
+            message="Error parsing the service connection",
+        )
 
 
 def parse_source_config(config_dict: dict) -> None:
@@ -308,6 +403,13 @@ def parse_source_config(config_dict: dict) -> None:
         raise InvalidWorkflowException("Missing type in the sourceConfig config")
 
     source_config_class = get_source_config_class(source_config_type)
+
+    if source_config_class == DbtPipeline:
+        _unsafe_parse_dbt_config(
+            config=config_dict["source"]["sourceConfig"]["config"],
+            cls=source_config_class,
+            message="Error parsing the dbt source config",
+        )
 
     _unsafe_parse_config(
         config=config_dict["source"]["sourceConfig"]["config"],
@@ -328,42 +430,9 @@ def parse_workflow_source(config_dict: dict) -> None:
     parse_source_config(config_dict)
 
 
-def parse_server_config(config_dict: dict) -> None:
-    """
-    Validate the parsing of openMetadataServerConfig.
-    This is valuable to make sure there are no issues
-    when setting up auth providers.
-
-    :param config_dict: JSON configuration
-    """
-    # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
-    auth_provider = config_dict["workflowConfig"]["openMetadataServerConfig"][
-        "authProvider"
-    ]
-    logger.debug(
-        f"Error parsing the Workflow Server Configuration with {auth_provider} auth provider"
-    )
-
-    # If the error comes from the security config:
-    auth_class = PROVIDER_CLASS_MAP.get(auth_provider)
-    # throw an error if the keys are not present
-    security_config = config_dict["workflowConfig"]["openMetadataServerConfig"][
-        "securityConfig"
-    ]
-
-    _unsafe_parse_config(
-        config=security_config,
-        cls=auth_class,
-        message="Error parsing the workflow security config",
-    )
-
-    # If the security config is properly configured, let's raise the ValidationError of the whole WorkflowConfig
-    WorkflowConfig.parse_obj(config_dict["workflowConfig"])
-
-
 def parse_workflow_config_gracefully(
     config_dict: dict,
-) -> Optional[OpenMetadataWorkflowConfig]:
+) -> OpenMetadataWorkflowConfig:
     """
     This function either correctly parses the pydantic class, or
     throws a scoped error while fetching the required source connection
@@ -381,28 +450,26 @@ def parse_workflow_config_gracefully(
     """
 
     try:
-        workflow_config = OpenMetadataWorkflowConfig.parse_obj(config_dict)
+        workflow_config = OpenMetadataWorkflowConfig.model_validate(config_dict)
         return workflow_config
 
     except ValidationError as original_error:
         try:
             parse_workflow_source(config_dict)
-            parse_server_config(config_dict)
+            WorkflowConfig.model_validate(config_dict["workflowConfig"])
         except (ValidationError, InvalidWorkflowException) as scoped_error:
             if isinstance(scoped_error, ValidationError):
                 # Let's catch validations of internal Workflow models, not the Workflow itself
-                object_error = (
-                    scoped_error.model.__name__
-                    if scoped_error.model is not None
-                    else "workflow"
-                )
+                object_error = scoped_error.title or "workflow"
                 raise ParsingConfigurationError(
                     f"We encountered an error parsing the configuration of your {object_error}.\n"
                     "You might need to review your config based on the original cause of this failure:\n"
                     f"{_parse_validation_err(scoped_error)}"
                 )
             raise scoped_error
-        except Exception:  # Let's just raise the original error if any internal logic fails
+        except (
+            Exception
+        ):  # Let's just raise the original error if any internal logic fails
             raise ParsingConfigurationError(
                 f"We encountered an error parsing the configuration of your workflow.\n"
                 "You might need to review your config based on the original cause of this failure:\n"
@@ -412,37 +479,84 @@ def parse_workflow_config_gracefully(
     raise ParsingConfigurationError("Uncaught error when parsing the workflow!")
 
 
-def parse_test_connection_request_gracefully(
+def parse_ingestion_pipeline_config_gracefully(
     config_dict: dict,
-) -> Optional[TestServiceConnectionRequest]:
+) -> IngestionPipeline:
     """
-    This function either correctly parses the pydantic class,
-    or throws a scoped error while fetching the required source
-    connection class
+    This function either correctly parses the pydantic class, or
+    throws a scoped error while fetching the required source connection
+    class.
 
-    :param config_dict: JSON workflow config
-    :return: TestServiceConnectionRequest or scoped error
+    :param config_dict: JSON ingestion pipeline config
+    :return:Ingestion Pipeline config or scoped error
     """
 
     try:
-        test_service_connection = TestServiceConnectionRequest.parse_obj(config_dict)
-        return test_service_connection
+        ingestion_pipeline = IngestionPipeline.model_validate(config_dict)
+        return ingestion_pipeline
 
-    except ValidationError as err:
-        # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
-        source_type = config_dict["connection"]["config"]["type"]
-        logger.warning(
-            f"Error parsing the Workflow Configuration for {source_type} ingestion: {err}"
+    except ValidationError:
+        source_config_type = config_dict["sourceConfig"]["config"].get("type")
+
+        if source_config_type is None:
+            raise InvalidWorkflowException("Missing type in the sourceConfig config")
+
+        source_config_class = get_source_config_class(source_config_type)
+
+        _unsafe_parse_config(
+            config=config_dict["sourceConfig"]["config"],
+            cls=source_config_class,
+            message="Error parsing the source config",
+        )
+
+    raise ParsingConfigurationError(
+        "Uncaught error when parsing the Ingestion Pipeline!"
+    )
+
+
+def parse_automation_workflow_gracefully(
+    config_dict: dict,
+) -> AutomationWorkflow:
+    """
+    This function either correctly parses the pydantic class, or
+    throws a scoped error while fetching the required source connection
+    class.
+
+    :param config_dict: JSON AutomationWorkflow config
+    :return: AutomationWorkflow config or scoped error
+    """
+
+    try:
+        automation_workflow = AutomationWorkflow.model_validate(config_dict)
+        return automation_workflow
+
+    except ValidationError:
+        source_type = config_dict["request"]["connection"]["config"].get("type")
+
+        if source_type is None:
+            raise InvalidWorkflowException("Missing type in the connection config")
+
+        logger.debug(
+            f"Error parsing the Workflow Configuration for {source_type} ingestion"
         )
 
         service_type = get_service_type(source_type)
         connection_class = get_connection_class(source_type, service_type)
 
-        # Parse the dictionary with the scoped class
+        if source_type in HAS_INNER_CONNECTION:
+            # We will first parse the inner `connection` configuration
+            _parse_inner_connection(
+                config_dict["request"]["connection"]["config"]["connection"],
+                source_type,
+            )
+
+        # Parse the service connection dictionary with the scoped class
         _unsafe_parse_config(
-            config=config_dict["connection"]["config"],
+            config=config_dict["request"]["connection"]["config"],
             cls=connection_class,
-            message="Error parsing the connection config",
+            message="Error parsing the service connection",
         )
 
-    raise ParsingConfigurationError("Uncaught error when parsing the workflow!")
+    raise ParsingConfigurationError(
+        "Uncaught error when parsing the Ingestion Pipeline!"
+    )

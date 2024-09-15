@@ -9,6 +9,9 @@
       "description": "Supported services",
       "oneOf": [
         {
+          "$ref": "../apiService.json#/definitions/apiServiceConnection"
+        },
+        {
           "$ref": "../dashboardService.json#/definitions/dashboardConnection"
         },
         {
@@ -25,6 +28,12 @@
         },
         {
           "$ref": "../mlmodelService.json#/definitions/mlModelConnection"
+        },
+        {
+          "$ref": "../storageService.json#/definitions/storageConnection"
+        },
+        {
+          "$ref": "../searchService.json#/definitions/searchConnection"
         }
       ]
     }
@@ -34,6 +43,5 @@
       "description": "Service Connection.",
       "$ref": "#/definitions/serviceConnection"
     }
-  },
-  "additionalProperties": false
+  }
 }

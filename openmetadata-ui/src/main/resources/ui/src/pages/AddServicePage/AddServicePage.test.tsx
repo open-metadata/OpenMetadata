@@ -11,28 +11,41 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
-import React, { ReactNode } from 'react';
+import { findByText, render } from '@testing-library/react';
+import React from 'react';
 import AddServicePage from './AddServicePage.component';
 
 const mockParam = {
   serviceCategory: 'databaseServices',
 };
 
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div data-testid="PageContainerV1">{children}</div>
-    ));
-});
-
-jest.mock('components/AddService/AddService.component', () => {
-  return jest.fn().mockImplementation(() => <div>AddService.component</div>);
-});
+jest.mock(
+  '../../components/Settings/Services/AddService/AddService.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>AddService.component</div>);
+  }
+);
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParam),
+}));
+
+jest.mock('../../constants/constants', () => ({
+  DEPLOYED_PROGRESS_VAL: 0,
+  INGESTION_PROGRESS_END_VAL: 0,
+  INGESTION_PROGRESS_START_VAL: 0,
+}));
+
+jest.mock('../../rest/serviceAPI', () => ({
+  postService: jest.fn(),
+}));
+
+jest.mock('../../utils/RouterUtils', () => ({
+  getSettingPath: jest.fn(),
+}));
+
+jest.mock('../../utils/ServiceUtils', () => ({
+  getServiceRouteFromServiceType: jest.fn(),
 }));
 
 describe('Test AddServicePage component', () => {
@@ -43,9 +56,7 @@ describe('Test AddServicePage component', () => {
       container,
       /AddService.component/i
     );
-    const pageContainerV1 = await findByTestId(container, 'PageContainerV1');
 
     expect(addServiceComponent).toBeInTheDocument();
-    expect(pageContainerV1).toBeInTheDocument();
   });
 });

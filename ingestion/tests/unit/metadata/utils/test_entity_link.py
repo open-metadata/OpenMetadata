@@ -14,8 +14,9 @@ test entity link utils
 """
 
 import pytest
+from antlr4.error.Errors import ParseCancellationException
 
-from metadata.utils.entity_link import get_decoded_column
+from metadata.utils.entity_link import get_decoded_column, get_table_or_column_fqn
 
 
 @pytest.mark.parametrize(
@@ -29,8 +30,118 @@ from metadata.utils.entity_link import get_decoded_column
             "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::last_name>",
             "last_name",
         ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::随机的>",
+            "随机的",
+        ),
     ],
 )
 def test_get_decoded_column(entity_link, expected):
     """test get_decoded_column return expected values"""
     assert get_decoded_column(entity_link) == expected
+
+
+@pytest.mark.parametrize(
+    "entity_link,fqn",
+    [
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::number_of_orders>",
+            "rds.dev.dbt_jaffle.customers.number_of_orders",
+            id="valid_entity_link1",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::a>",
+            "rds.dev.dbt_jaffle.customers.a",
+            id="valid_entity_link2",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::阿比西]/>",
+            "rds.dev.dbt_jaffle.customers.阿比西]/",
+            id="valid_entity_link3",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::阿>",
+            "rds.dev.dbt_jaffle.customers.阿",
+            id="valid_entity_link4",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::14532>",
+            "rds.dev.dbt_jaffle.customers.14532",
+            id="valid_entity_link5",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::1>",
+            "rds.dev.dbt_jaffle.customers.1",
+            id="valid_entity_link6",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::абц%>",
+            "rds.dev.dbt_jaffle.customers.абц%",
+            id="valid_entity_link7",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::б>",
+            "rds.dev.dbt_jaffle.customers.б",
+            id="valid_entity_link8",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers>",
+            "rds.dev.dbt_jaffle.customers",
+            id="valid_entity_link9",
+        ),
+        pytest.param(
+            "<#E::dashboard::rds.dev.dbt_jaffle>.customers>",
+            "rds.dev.dbt_jaffle>.customers",
+            id="valid_entity_link10",
+        ),
+    ],
+)
+def test_valid_get_table_or_column_fqn(entity_link, fqn):
+    """test get_table_or_column_fqn return expected values
+
+    Args:
+        entity_link (str): pytest param input
+        fqn (str): pytest param input
+    """
+    assert get_table_or_column_fqn(entity_link) == fqn
+
+
+@pytest.mark.parametrize(
+    "entity_link,error",
+    [
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::foo::number_of_orders>",
+            ParseCancellationException,
+            id="invalid_entity_link1",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::grea:>hdfwsd>",
+            ParseCancellationException,
+            id="invalid_entity_link2",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.:dbt_jaffle.customers::columns::阿>",
+            ParseCancellationException,
+            id="invalid_entity_link3",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns>",
+            ValueError,
+            id="invalid_entity_link4",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::>",
+            ParseCancellationException,
+            id="invalid_entity_link5",
+        ),
+    ],
+)
+def test_invalid_get_table_or_column_fqn(entity_link, error):
+    """test get_table_or_column_fqn return expected values
+
+    Args:
+        entity_link (str): pytest param input
+        fqn (str): pytest param input
+    """
+    with pytest.raises(error):
+        get_table_or_column_fqn(entity_link)

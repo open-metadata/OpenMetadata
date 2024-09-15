@@ -6,6 +6,18 @@
                 {
                     "columnCount": 12.0,
                     "rowCount": 14567.0,
+                    "sizeInByte": 16890,
+                    "createDateTime": "2023-07-24T07:00:48.000750Z",
+                    "customMetrics": [
+                        {
+                            "name": "CountOfUSAddress",
+                            "value": 15467
+                        },
+                        {
+                            "name": "CountOfFRAddress",
+                            "value": 1467
+                        }
+                      ],
                     "columnProfile": [
                         {
                             "name": "shop_id",
@@ -21,7 +33,15 @@
                             "nullCount": 0.0,
                             "nullProportion": 0.0,
                             "distinctCount": 14509.0,
-                            "distinctProportion": 1.0
+                            "distinctProportion": 1.0,
+                            "firstQuartile": 7.4,
+                            "thirdQuartile": 8766.5,
+                            "interQuartileRange": 8002.1,
+                            "nonParametricSkew": -0.567,
+                            "histogram": {
+                                "boundaries": ["5.00 to 100.00", "100.00 to 200.00", "200.00 to 300.00", "300.00 and up"],
+                                "frequencies": [101, 235, 123, 98]
+                            }
                         },
                         {
                             "name": "address_id",
@@ -141,7 +161,17 @@
                             "distinctProportion": 0.10,
                             "minLength": 6.0,
                             "maxLength": 156.0,
-                            "mean": 98.0
+                            "mean": 98.0,
+                            "customMetrics": [
+                                {
+                                    "name": "CountOfLAZipCode",
+                                    "value": 3041
+                                },
+                                {
+                                    "name": "CountOfOrangeCountyZipCode",
+                                    "value": 2076
+                                }
+                            ]
                         },
                         {
                             "name": "country",
@@ -196,6 +226,18 @@
                 {
                     "columnCount": 12.0,
                     "rowCount": 13256.0,
+                    "sizeInByte": 163290,
+                    "createDateTime": "2023-07-24T07:00:48.000750Z",
+                    "customMetrics": [
+                        {
+                            "name": "CountOfUSAddress",
+                            "value": 15098
+                        },
+                        {
+                            "name": "CountOfFRAddress",
+                            "value": 1402
+                        }
+                      ],
                     "columnProfile": [
                         {
                             "name": "shop_id",
@@ -211,7 +253,15 @@
                             "nullCount": 0.0,
                             "nullProportion": 0.0,
                             "distinctCount": 13256.0,
-                            "distinctProportion": 1.0
+                            "distinctProportion": 1.0,
+                            "firstQuartile": 7.4,
+                            "thirdQuartile": 8439.5,
+                            "interQuartileRange": 8001.1,
+                            "nonParametricSkew": -0.567,
+                            "histogram": {
+                                "boundaries": ["5.00 to 100.00", "100.00 to 200.00", "200.00 to 300.00", "300.00 and up"],
+                                "frequencies": [78, 165, 176, 63]
+                            }
                         },
                         {
                             "name": "address_id",
@@ -331,7 +381,17 @@
                             "distinctProportion": 0.10,
                             "minLength": 6.0,
                             "maxLength": 156.0,
-                            "mean": 98.0
+                            "mean": 98.0,
+                            "customMetrics": [
+                                {
+                                    "name": "CountOfLAZipCode",
+                                    "value": 2987
+                                },
+                                {
+                                    "name": "CountOfOrangeCountyZipCode",
+                                    "value": 2005
+                                }
+                            ]
                         },
                         {
                             "name": "country",
@@ -386,6 +446,18 @@
                 {
                     "columnCount": 12.0,
                     "rowCount": 10256.0,
+                    "sizeInByte": 16890,
+                    "createDateTime": "2023-07-24T07:00:48.000750Z",
+                    "customMetrics": [
+                        {
+                            "name": "CountOfUSAddress",
+                            "value": 14998
+                        },
+                        {
+                            "name": "CountOfFRAddress",
+                            "value": 1387
+                        }
+                      ],
                     "columnProfile": [
                         {
                             "name": "shop_id",
@@ -401,7 +473,15 @@
                             "nullCount": 0.0,
                             "nullProportion": 0.0,
                             "distinctCount": 10256.0,
-                            "distinctProportion": 1.0
+                            "distinctProportion": 1.0,
+                            "firstQuartile": 7.4,
+                            "thirdQuartile": 8005.5,
+                            "interQuartileRange": 8069.1,
+                            "nonParametricSkew": -0.567,
+                            "histogram": {
+                                "boundaries": ["5.00 to 100.00", "100.00 to 200.00", "200.00 to 300.00", "300.00 and up"],
+                                "frequencies": [56, 62, 66, 99]
+                            }
                         },
                         {
                             "name": "address_id",
@@ -521,7 +601,17 @@
                             "distinctProportion": 0.10,
                             "minLength": 6.0,
                             "maxLength": 156.0,
-                            "mean": 98.0
+                            "mean": 98.0,
+                            "customMetrics": [
+                                {
+                                    "name": "CountOfLAZipCode",
+                                    "value": 3109
+                                },
+                                {
+                                    "name": "CountOfOrangeCountyZipCode",
+                                    "value": 2178
+                                }
+                            ]
                         },
                         {
                             "name": "country",
@@ -568,6 +658,18 @@
                 {
                     "columnCount": 12.0,
                     "rowCount": 8945.0,
+                    "sizeInByte": 16890521,
+                    "createDateTime": "2023-07-24T07:00:48.000750Z",
+                    "customMetrics": [
+                        {
+                            "name": "CountOfUSAddress",
+                            "value": 13458
+                        },
+                        {
+                            "name": "CountOfFRAddress",
+                            "value": 1278
+                        }
+                      ],
                     "columnProfile": [
                         {
                             "name": "shop_id",
@@ -583,7 +685,15 @@
                             "nullCount": 0.0,
                             "nullProportion": 0.0,
                             "distinctCount": 8945.0,
-                            "distinctProportion": 1.0
+                            "distinctProportion": 1.0,
+                            "firstQuartile": 7.4,
+                            "thirdQuartile": 7998.5,
+                            "interQuartileRange": 8004.1,
+                            "nonParametricSkew": -0.567,
+                            "histogram": {
+                                "boundaries": ["5.00 to 100.00", "100.00 to 200.00", "200.00 to 300.00", "300.00 and up"],
+                                "frequencies": [99, 198, 113, 85]
+                            }
                         },
                         {
                             "name": "address_id",
@@ -703,7 +813,17 @@
                             "distinctProportion": 0.10,
                             "minLength": 6.0,
                             "maxLength": 156.0,
-                            "mean": 98.0
+                            "mean": 98.0,
+                            "customMetrics": [
+                                {
+                                    "name": "CountOfLAZipCode",
+                                    "value": 3389
+                                },
+                                {
+                                    "name": "CountOfOrangeCountyZipCode",
+                                    "value": 2165
+                                }
+                            ]
                         },
                         {
                             "name": "country",
@@ -746,6 +866,18 @@
                 {
                     "columnCount": 12.0,
                     "rowCount": 5461.0,
+                    "sizeInByte": 1572301627719.68,
+                    "createDateTime": "2023-07-24T07:00:48.000750Z",
+                    "customMetrics": [
+                        {
+                            "name": "CountOfUSAddress",
+                            "value": 13092
+                        },
+                        {
+                            "name": "CountOfFRAddress",
+                            "value": 1293
+                        }
+                      ],
                     "columnProfile": [
                         {
                             "name": "shop_id",
@@ -761,7 +893,15 @@
                             "nullCount": 0.0,
                             "nullProportion": 0.0,
                             "distinctCount": 5461.0,
-                            "distinctProportion": 1.0
+                            "distinctProportion": 1.0,
+                            "firstQuartile": 7.4,
+                            "thirdQuartile": 8007.5,
+                            "interQuartileRange": 8001.1,
+                            "nonParametricSkew": -0.567,
+                            "histogram": {
+                                "boundaries": ["5.00 to 100.00", "100.00 to 200.00", "200.00 to 300.00", "300.00 and up"],
+                                "frequencies": [99, 89, 91, 99]
+                            }
                         },
                         {
                             "name": "address_id",
@@ -881,7 +1021,17 @@
                             "distinctProportion": 0.10,
                             "minLength": 6.0,
                             "maxLength": 156.0,
-                            "mean": 98.0
+                            "mean": 98.0,
+                            "customMetrics": [
+                                {
+                                    "name": "CountOfLAZipCode",
+                                    "value": 3456
+                                },
+                                {
+                                    "name": "CountOfOrangeCountyZipCode",
+                                    "value": 2345
+                                }
+                            ]
                         },
                         {
                             "name": "country",

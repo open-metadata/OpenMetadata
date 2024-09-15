@@ -1,0 +1,97 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import url('../../../styles/variables.less');
+
+.select-owner-tabs {
+  .ant-tabs-nav-list {
+    margin-top: 8px;
+  }
+
+  .page-search-bar {
+    padding-top: 0px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+.user-team-select-popover {
+  background: @white;
+  border: @global-border;
+  box-shadow: @box-shadow-base;
+  border-radius: 6px;
+  padding: 0 !important;
+  width: 350px;
+
+  .user-team-popover-header {
+    background-color: @grey-6;
+    .user-team-popover-header-content {
+      display: flex;
+      flex-wrap: wrap;
+      max-height: 100px;
+      overflow-y: auto;
+      gap: 4px;
+    }
+  }
+
+  .ant-popover-inner {
+    box-shadow: none;
+    background-color: transparent;
+    border-radius: 0;
+  }
+
+  .ant-tabs-tab-btn {
+    padding: 0 16px;
+  }
+
+  .ant-list-split {
+    .ant-list-header {
+      padding-top: 0;
+      border-bottom: 0;
+      padding-bottom: 6px;
+    }
+    .ant-list-footer {
+      padding: 12px;
+    }
+  }
+
+  .ant-list-item-main {
+    display: flex;
+    align-items: center;
+  }
+
+  .selectable-list-virtual-list {
+    padding: 0 8px 8px;
+  }
+
+  .ant-popover-inner-content {
+    padding: 0;
+  }
+
+  .ant-list-vertical {
+    .selectable-list-item {
+      margin-bottom: 4px;
+      border-bottom: 0;
+      border-radius: 4px;
+      padding: 8px;
+      &.active {
+        background-color: @blue-5;
+      }
+    }
+  }
+
+  .user-team-pills {
+    border: 1px solid @primary-color;
+    border-radius: 12px;
+    padding: 2px 6px;
+  }
+}

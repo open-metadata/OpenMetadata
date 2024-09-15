@@ -2,7 +2,6 @@ package org.openmetadata.csv;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.LINE_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.recordToString;
@@ -14,17 +13,17 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.type.csv.CsvImportResult.Status;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.TableDAO;
 import org.openmetadata.service.jdbi3.TableRepository;
 
 public class EntityCsvTest {
@@ -42,7 +41,7 @@ public class EntityCsvTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableDAO.class), Mockito.mock(TableRepository.class));
+    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableRepository.class));
   }
 
   @Test
@@ -58,42 +57,30 @@ public class EntityCsvTest {
     String csv = ",h2,h3" + LINE_SEPARATOR; // Header h1 is missing in the CSV file
     TestCsv testCsv = new TestCsv();
     CsvImportResult importResult = testCsv.importCsv(csv, true);
-    assertSummary(importResult, Status.ABORTED, 1, 0, 1);
+    assertSummary(importResult, ApiStatus.ABORTED, 1, 0, 1);
     assertNull(importResult.getImportResultsCsv());
     assertEquals(TestCsv.invalidHeader("h1*,h2,h3", ",h2,h3"), importResult.getAbortReason());
   }
 
-  @Test
-  void test_validateCsvInvalidRecords() throws IOException {
-    // Invalid record 2 - Missing required value in h1
-    // Invalid record 3 - Record with only two fields instead of 3
-    List<String> records = listOf(",2,3", "1,2", "1,2,3");
-    String csv = createCsv(CSV_HEADERS, records);
-
-    TestCsv testCsv = new TestCsv();
-    CsvImportResult importResult = testCsv.importCsv(csv, true);
-    assertSummary(importResult, Status.PARTIAL_SUCCESS, 4, 2, 2);
-
-    String[] expectedRecords = {
-      CsvUtil.recordToString(EntityCsv.getResultHeaders(CSV_HEADERS)),
-      getFailedRecord(",2,3", TestCsv.fieldRequired(0)),
-      getFailedRecord("1,2", TestCsv.invalidFieldCount(3, 2)),
-      getSuccessRecord("1,2,3", ENTITY_CREATED)
-    };
-
-    assertRows(importResult, expectedRecords);
-  }
-
   public static void assertSummary(
       CsvImportResult importResult,
-      Status expectedStatus,
+      ApiStatus expectedStatus,
       int expectedRowsProcessed,
       int expectedRowsPassed,
       int expectedRowsFailed) {
-    assertEquals(expectedStatus, importResult.getStatus(), importResult.getImportResultsCsv());
-    assertEquals(expectedRowsProcessed, importResult.getNumberOfRowsProcessed());
-    assertEquals(expectedRowsPassed, importResult.getNumberOfRowsPassed());
-    assertEquals(expectedRowsFailed, importResult.getNumberOfRowsFailed());
+    assertEquals(expectedStatus, importResult.getStatus(), importResult.toString());
+    assertEquals(
+        expectedRowsProcessed,
+        importResult.getNumberOfRowsProcessed(),
+        importResult.getImportResultsCsv());
+    assertEquals(
+        expectedRowsPassed,
+        importResult.getNumberOfRowsPassed(),
+        importResult.getImportResultsCsv());
+    assertEquals(
+        expectedRowsFailed,
+        importResult.getNumberOfRowsFailed(),
+        importResult.getImportResultsCsv());
   }
 
   public static void assertRows(CsvImportResult importResult, String... expectedRows) {
@@ -105,17 +92,20 @@ public class EntityCsvTest {
   }
 
   public static String getSuccessRecord(String record, String successDetails) {
-    return String.format("%s,%s,%s", EntityCsv.IMPORT_STATUS_SUCCESS, successDetails, record);
+    return String.format("%s,%s,%s", EntityCsv.IMPORT_SUCCESS, successDetails, record);
   }
 
   public static String getFailedRecord(String record, String errorDetails) {
-    return String.format("%s,\"%s\",%s", EntityCsv.IMPORT_STATUS_FAILED, errorDetails, record);
+    errorDetails = StringEscapeUtils.escapeCsv(errorDetails);
+    String format = errorDetails.startsWith("\"") ? "%s,%s,%s" : "%s,\"%s\",%s";
+    return String.format(format, EntityCsv.IMPORT_FAILED, errorDetails, record);
   }
 
   private static List<CsvHeader> getHeaders(Object[][] headers) {
     List<CsvHeader> csvHeaders = new ArrayList<>();
     for (Object[] header : headers) {
-      csvHeaders.add(new CsvHeader().withName((String) header[0]).withRequired((Boolean) header[1]));
+      csvHeaders.add(
+          new CsvHeader().withName((String) header[0]).withRequired((Boolean) header[1]));
     }
     return csvHeaders;
   }
@@ -125,7 +115,8 @@ public class EntityCsvTest {
     return String.join(LINE_SEPARATOR, records) + LINE_SEPARATOR;
   }
 
-  public static String createCsv(List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords) {
+  public static String createCsv(
+      List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords) {
     // Create CSV
     List<String> csvRecords = new ArrayList<>();
     if (!nullOrEmpty(createRecords)) {
@@ -161,13 +152,14 @@ public class EntityCsvTest {
     }
 
     @Override
-    protected EntityInterface toEntity(CSVPrinter resultsPrinter, CSVRecord record) {
-      return new Table(); // Return a random entity to mark successfully processing a record
+    protected void createEntity(CSVPrinter resultsPrinter, List<CSVRecord> records)
+        throws IOException {
+      CSVRecord csvRecord = getNextRecord(resultsPrinter, records);
+      Table entity = new Table();
+      createEntity(resultsPrinter, csvRecord, entity);
     }
 
     @Override
-    protected List<String> toRecord(EntityInterface entity) {
-      return null;
-    }
+    protected void addRecord(CsvFile csvFile, EntityInterface entity) {}
   }
 }

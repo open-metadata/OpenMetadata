@@ -11,30 +11,41 @@
 """QuickSight source module"""
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Iterable, List, Optional
 
 from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
     QuickSightConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.quicksight.models import DataSourceResp
+from metadata.ingestion.source.dashboard.quicksight.models import (
+    DashboardDetail,
+    DashboardResp,
+    DataSourceResp,
+    DescribeDataSourceResponse,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.logger import ingestion_logger
@@ -42,7 +53,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 # BoundLimit for MaxResults = MaxResults >= 0 and MaxResults <= 100
-QUICKSIGHT_MAXRESULTS = 100
+QUICKSIGHT_MAX_RESULTS = 100
 
 
 class QuicksightSource(DashboardServiceSource):
@@ -52,26 +63,28 @@ class QuicksightSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata: OpenMetadata
-    status: SourceStatus
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.aws_account_id = self.service_connection.awsAccountId
         self.dashboard_url = None
+        self.aws_region = self.config.serviceConnection.root.config.awsConfig.awsRegion
         self.default_args = {
             "AwsAccountId": self.aws_account_id,
-            "MaxResults": QUICKSIGHT_MAXRESULTS,
+            "MaxResults": QUICKSIGHT_MAX_RESULTS,
         }
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: QuickSightConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config = WorkflowSource.model_validate(config_dict)
+        connection: QuickSightConnection = config.serviceConnection.root.config
         if not isinstance(connection, QuickSightConnection):
             raise InvalidSourceException(
                 f"Expected QuickSightConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def _check_pagination(self, listing_method, entity_key) -> Optional[List]:
         entity_summary_list = []
@@ -105,95 +118,100 @@ class QuicksightSource(DashboardServiceSource):
             dashboard["DashboardId"] for dashboard in dashboard_summary_list
         }
         dashboards = [
-            self.client.describe_dashboard(
-                AwsAccountId=self.aws_account_id, DashboardId=dashboard_id
-            )["Dashboard"]
+            DashboardResp(
+                **self.client.describe_dashboard(
+                    AwsAccountId=self.aws_account_id, DashboardId=dashboard_id
+                )
+            ).Dashboard
             for dashboard_id in dashboard_set
         ]
         return dashboards
 
-    def get_dashboard_name(self, dashboard: dict) -> str:
+    def get_dashboard_name(self, dashboard: DashboardDetail) -> str:
         """
         Get Dashboard Name
         """
-        return dashboard["Name"]
+        return dashboard.Name
 
-    def get_dashboard_details(self, dashboard: dict) -> dict:
+    def get_dashboard_details(self, dashboard: DashboardDetail) -> DashboardDetail:
         """
         Get Dashboard Details
         """
         return dashboard
 
     def yield_dashboard(
-        self, dashboard_details: dict
-    ) -> Iterable[CreateDashboardRequest]:
+        self, dashboard_details: DashboardDetail
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
-        self.dashboard_url = self.client.get_dashboard_embed_url(
-            AwsAccountId=self.aws_account_id,
-            DashboardId=dashboard_details["DashboardId"],
-            IdentityType=self.config.serviceConnection.__root__.config.identityType.value,
-            Namespace=self.config.serviceConnection.__root__.config.namespace
-            or "default",
-        )["EmbedUrl"]
-
-        yield CreateDashboardRequest(
-            name=dashboard_details["DashboardId"],
-            dashboardUrl=self.dashboard_url,
-            displayName=dashboard_details["Name"],
-            description=dashboard_details["Version"].get("Description", ""),
+        dashboard_request = CreateDashboardRequest(
+            name=EntityName(dashboard_details.DashboardId),
+            sourceUrl=SourceUrl(self.dashboard_url),
+            displayName=dashboard_details.Name,
+            description=Markdown(dashboard_details.Version.Description)
+            if dashboard_details.Version and dashboard_details.Version.Description
+            else None,
             charts=[
-                EntityReference(id=chart.id.__root__, type="chart")
-                for chart in self.context.charts
+                FullyQualifiedEntityName(
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.get().dashboard_service,
+                        chart_name=chart,
+                    )
+                )
+                for chart in self.context.get().charts or []
             ],
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            service=self.context.get().dashboard_service,
+            owners=self.get_owner_ref(dashboard_details=dashboard_details),
         )
+        yield Either(right=dashboard_request)
+        self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_chart(
-        self, dashboard_details: Any
-    ) -> Optional[Iterable[CreateChartRequest]]:
-        """Get chart method
-
-        Args:
-            dashboard_details:
-        Returns:
-            Iterable[CreateChartRequest]
-        """
+        self, dashboard_details: DashboardDetail
+    ) -> Iterable[Either[CreateChartRequest]]:
+        """Get chart method"""
         # Each dashboard is guaranteed to have at least one sheet, which represents
         # a chart in the context of QuickSight
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/quicksight.html#QuickSight.Client.describe_dashboard
-        charts = dashboard_details["Version"]["Sheets"]
-        for chart in charts:
-            try:
-                if filter_by_chart(
-                    self.source_config.chartFilterPattern, chart["Name"]
-                ):
-                    self.status.filter(chart["Name"], "Chart Pattern not allowed")
-                    continue
+        if dashboard_details.Version:
+            for chart in dashboard_details.Version.Charts or []:
+                try:
+                    if filter_by_chart(
+                        self.source_config.chartFilterPattern, chart.Name
+                    ):
+                        self.status.filter(chart.Name, "Chart Pattern not allowed")
+                        continue
 
-                yield CreateChartRequest(
-                    name=chart["SheetId"],
-                    displayName=chart["Name"],
-                    description="",
-                    chartType=ChartType.Other.value,
-                    chartUrl=f"{self.dashboard_url}/sheets/{chart['SheetId']}",
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
-                )
-                self.status.scanned(chart["Name"])
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating chart [{chart}]: {exc}")
-                continue
+                    self.dashboard_url = (
+                        f"https://{self.aws_region}.quicksight.aws.amazon.com/sn/dashboards"
+                        f"/{dashboard_details.DashboardId}"
+                    )
+                    yield Either(
+                        right=CreateChartRequest(
+                            name=EntityName(chart.ChartId),
+                            displayName=chart.Name,
+                            chartType=ChartType.Other.value,
+                            sourceUrl=SourceUrl(self.dashboard_url),
+                            service=FullyQualifiedEntityName(
+                                self.context.get().dashboard_service
+                            ),
+                        )
+                    )
+                except Exception as exc:
+                    yield Either(
+                        left=StackTraceError(
+                            name="Chart",
+                            error=f"Error creating chart [{chart}]: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
 
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
-        self, dashboard_details: dict, db_service_name: str
-    ) -> Optional[Iterable[AddLineageRequest]]:
+        self, dashboard_details: DashboardDetail, db_service_name: str
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
@@ -207,38 +225,38 @@ class QuicksightSource(DashboardServiceSource):
             )
             dataset_ids = {
                 dataset["DataSetId"]
-                for dataset in data_set_summary_list
-                if dataset.get("Arn") in dashboard_details["Version"]["DataSetArns"]
+                for dataset in data_set_summary_list or []
+                if dataset.get("Arn") in dashboard_details.Version.DataSetArns
             }
 
-            for dataset_id in dataset_ids:
-                for data_source in list(
-                    self.client.describe_data_set(
-                        AwsAccountId=self.aws_account_id, DataSetId=dataset_id
-                    )["DataSet"]["PhysicalTableMap"].values()
+            for dataset_id in dataset_ids or []:
+                for data_source in (
+                    list(
+                        self.client.describe_data_set(
+                            AwsAccountId=self.aws_account_id, DataSetId=dataset_id
+                        )["DataSet"]["PhysicalTableMap"].values()
+                    )
+                    or []
                 ):
                     try:
                         if not data_source.get("RelationalTable"):
                             raise KeyError(
                                 f"We currently don't support lineage to {list(data_source.keys())}"
                             )
-                        data_source_relational_table = data_source["RelationalTable"]
                         data_source_resp = DataSourceResp(
-                            datasource_arn=data_source_relational_table[
-                                "DataSourceArn"
-                            ],
-                            schema_name=data_source_relational_table["Schema"],
-                            table_name=data_source_relational_table["Name"],
+                            **data_source["RelationalTable"]
                         )
-                    except KeyError as err:
-                        logger.error(err)
-                        continue
-                    except ValidationError as err:
-                        logger.error(
-                            f"{err} - error while trying to fetch lineage data source"
+                    except (KeyError, ValidationError) as err:
+                        yield Either(
+                            left=StackTraceError(
+                                name="Lineage",
+                                error=(
+                                    "Error to yield dashboard lineage details for DB service"
+                                    f" name [{db_service_name}]: {err}"
+                                ),
+                                stackTrace=traceback.format_exc(),
+                            )
                         )
-                        logger.debug(traceback.format_exc())
-                        continue
 
                     schema_name = data_source_resp.schema_name
                     table_name = data_source_resp.table_name
@@ -254,44 +272,52 @@ class QuicksightSource(DashboardServiceSource):
 
                     data_source_ids = [
                         data_source_arn["DataSourceId"]
-                        for data_source_arn in data_source_summary_list
+                        for data_source_arn in data_source_summary_list or []
                         if data_source_arn["Arn"] in data_source_resp.datasource_arn
                     ]
 
-                    for data_source_id in data_source_ids:
-                        data_source_dict = self.client.describe_data_source(
-                            AwsAccountId=self.aws_account_id,
-                            DataSourceId=data_source_id,
-                        )["DataSource"]["DataSourceParameters"]
-                        for db in data_source_dict.keys():
-                            from_fqn = fqn.build(
-                                self.metadata,
-                                entity_type=Table,
-                                service_name=db_service_name,
-                                database_name=data_source_dict[db]["Database"],
-                                schema_name=schema_name,
-                                table_name=table_name,
-                                skip_es_search=True,
+                    for data_source_id in data_source_ids or []:
+                        data_source_resp = DescribeDataSourceResponse(
+                            **self.client.describe_data_source(
+                                AwsAccountId=self.aws_account_id,
+                                DataSourceId=data_source_id,
                             )
-                            from_entity = self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=from_fqn,
-                            )
-                            to_fqn = fqn.build(
-                                self.metadata,
-                                entity_type=Dashboard,
-                                service_name=self.config.serviceName,
-                                dashboard_name=dashboard_details["DashboardId"],
-                            )
-                            to_entity = self.metadata.get_by_name(
-                                entity=Dashboard,
-                                fqn=to_fqn,
-                            )
-                            yield self._get_add_lineage_request(
-                                to_entity=to_entity, from_entity=from_entity
-                            )
+                        ).DataSource
+                        if data_source_resp and data_source_resp.DataSourceParameters:
+                            data_source_dict = data_source_resp.DataSourceParameters
+                            for db in data_source_dict.keys() or []:
+                                from_fqn = fqn.build(
+                                    self.metadata,
+                                    entity_type=Table,
+                                    service_name=db_service_name,
+                                    database_name=data_source_dict[db].get("Database"),
+                                    schema_name=schema_name,
+                                    table_name=table_name,
+                                    skip_es_search=True,
+                                )
+                                from_entity = self.metadata.get_by_name(
+                                    entity=Table,
+                                    fqn=from_fqn,
+                                )
+                                to_fqn = fqn.build(
+                                    self.metadata,
+                                    entity_type=Dashboard,
+                                    service_name=self.config.serviceName,
+                                    dashboard_name=dashboard_details.DashboardId,
+                                )
+                                to_entity = self.metadata.get_by_name(
+                                    entity=Dashboard,
+                                    fqn=to_fqn,
+                                )
+                                if from_entity is not None and to_entity is not None:
+                                    yield self._get_add_lineage_request(
+                                        to_entity=to_entity, from_entity=from_entity
+                                    )
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name="Lineage",
+                    error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
             )

@@ -18,23 +18,26 @@ import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import java.util.LinkedHashMap;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.openmetadata.schema.api.configuration.LoginConfiguration;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
+import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
+import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
-import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
+import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
-import org.openmetadata.service.secrets.SecretsManagerConfiguration;
 
 @Getter
 @Setter
@@ -62,10 +65,22 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
 
-  @NotNull
-  @Valid
-  @JsonProperty("airflowConfiguration")
-  private AirflowConfiguration airflowConfiguration;
+  @JsonProperty("pipelineServiceClientConfiguration")
+  private PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
+
+  private static final String CERTIFICATE_PATH = "certificatePath";
+
+  public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
+
+    LinkedHashMap<String, String> temporarySSLConfig =
+        (LinkedHashMap<String, String>) pipelineServiceClientConfiguration.getSslConfig();
+    if (temporarySSLConfig != null && temporarySSLConfig.containsKey(CERTIFICATE_PATH)) {
+      temporarySSLConfig.put("caCertificate", temporarySSLConfig.get(CERTIFICATE_PATH));
+      temporarySSLConfig.remove(CERTIFICATE_PATH);
+    }
+    pipelineServiceClientConfiguration.setSslConfig(temporarySSLConfig);
+    return pipelineServiceClientConfiguration;
+  }
 
   @JsonProperty("migrationConfiguration")
   @NotNull
@@ -79,12 +94,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @Valid
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
 
-  @JsonProperty("sandboxModeEnabled")
-  private boolean sandboxModeEnabled;
-
-  @JsonProperty("slackChat")
-  private SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
-
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
 
@@ -97,8 +106,19 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("email")
   private SmtpSettings smtpSettings;
 
-  @JsonProperty("login")
-  private LoginConfiguration loginSettings;
+  @Valid
+  @NotNull
+  @JsonProperty("web")
+  private OMWebConfiguration webConfiguration = new OMWebConfiguration();
+
+  @JsonProperty("dataQualityConfiguration")
+  private DataQualityConfiguration dataQualityConfiguration;
+
+  @JsonProperty("applications")
+  private AppsPrivateConfiguration appsPrivateConfiguration;
+
+  @JsonProperty("limits")
+  private LimitsConfiguration limitsConfiguration;
 
   @Override
   public String toString() {

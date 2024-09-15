@@ -1,0 +1,57 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: docker-openmetadata-ingestion-base-slim docker
+on:
+  workflow_dispatch:
+    inputs:
+      docker_release_tag:
+        description: "Ingestion Base Slim Docker Image Tag (3 digit docker image tag)"
+        required: true
+      pypi_release_version:
+        description: "Provide the Release Version (4 digit docker image tag)"
+        required: true
+      push_latest_tag_to_release:
+        description: "Do you want to update docker image latest tag as well ?"
+        type: boolean
+
+jobs:
+  push_to_docker_hub:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare for Docker Build&Push
+        id: prepare
+        uses: ./.github/actions/prepare-for-docker-build-and-push
+        with:
+          image: openmetadata/ingestion-base-slim
+          tag: ${{ inputs.docker_release_tag }}
+          push_latest: ${{ inputs.push_latest_tag_to_release }}
+          is_ingestion: true
+          release_version: ${{ inputs.pypi_release_version }}
+          dockerhub_username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
+
+      - name: Build and push if event is workflow_dispatch and input is checked
+        uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_NO_SUMMARY: true
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.prepare.outputs.tags }}
+          file: ./ingestion/operators/docker/Dockerfile
+          build-args: |
+            INGESTION_DEPENDENCY=slim

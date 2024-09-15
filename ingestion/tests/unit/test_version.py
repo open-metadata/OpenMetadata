@@ -11,23 +11,38 @@
 """
 Validate Server Mixin version methods
 """
+from metadata.__version__ import (
+    get_client_version_from_string,
+    get_server_version_from_string,
+    match_versions,
+)
 
-from unittest import TestCase
 
-from metadata.__version__ import get_version_from_string
-
-
-class OMetaVersionTest(TestCase):
+def test_get_version_from_string():
     """
-    Check version methods
+    We should be able to parse regular version responses
     """
+    assert "0.11.0" == get_server_version_from_string("0.11.0.dev0")
+    assert "0.11.0" == get_server_version_from_string("0.11.0")
+    assert "1111.11.111" == get_server_version_from_string("1111.11.111")
+    assert "1111.11.111" == get_server_version_from_string("1111.11.111-SNAPSHOT")
+    assert "0.11.1" == get_server_version_from_string("0.11.1.0.0.1.patch")
 
-    def test_get_version_from_string(self):
-        """
-        We should be able to parse regular version responses
-        """
-        self.assertEqual("0.11.0", get_version_from_string("0.11.0.dev0"))
-        self.assertEqual("0.11.0", get_version_from_string("0.11.0"))
-        self.assertEqual("1111.11.111", get_version_from_string("1111.11.111"))
-        self.assertEqual("1111.11.111", get_version_from_string("1111.11.111-SNAPSHOT"))
-        self.assertEqual("0.11.1", get_version_from_string("0.11.1.0.0.1.patch"))
+
+def test_get_client_version_from_string():
+    """
+    We should be able to parse regular version responses
+    """
+    assert "0.13.2.5" == get_client_version_from_string("0.13.2.5.dev0")
+    assert "0.11.0.1" == get_client_version_from_string("0.11.0.1")
+    assert "1111.11.111.1" == get_client_version_from_string("1111.11.111.1")
+    assert "1111.11.111.2" == get_client_version_from_string("1111.11.111.2-SNAPSHOT")
+    assert "0.11.1.0" == get_client_version_from_string("0.11.1.0.0.1.patch")
+
+
+def test_match_version():
+    """We only match major and minor versions"""
+    assert match_versions("0.11.0", "0.11.0")
+    assert match_versions("0.11.0", "0.11.1")
+    assert not match_versions("1.3.0", "1.4.0")
+    assert not match_versions("1.3.0", "2.3.0")

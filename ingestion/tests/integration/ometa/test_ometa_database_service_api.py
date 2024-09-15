@@ -19,6 +19,9 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -55,7 +58,11 @@ class OMetaDatabaseServiceTest(TestCase):
 
     connection = DatabaseConnection(
         config=MysqlConnection(
-            username="username", password="password", hostPort="http://localhost:1234"
+            username="username",
+            authType=BasicAuth(
+                password="password",
+            ),
+            hostPort="http://localhost:1234",
         )
     )
 
@@ -86,7 +93,7 @@ class OMetaDatabaseServiceTest(TestCase):
         service_db_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test-db-service"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -119,7 +126,9 @@ class OMetaDatabaseServiceTest(TestCase):
         new_connection = DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:2000",
             )
         )
@@ -190,12 +199,12 @@ class OMetaDatabaseServiceTest(TestCase):
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
-            entity=DatabaseService, entity_id=str(res_name.id.__root__)
+            entity=DatabaseService, entity_id=str(res_name.id.root)
         )
 
         # Delete
         self.metadata.delete(
-            entity=DatabaseService, entity_id=str(res_id.id.__root__), recursive=True
+            entity=DatabaseService, entity_id=str(res_id.id.root), recursive=True
         )
 
         # Then we should not find it
@@ -215,6 +224,6 @@ class OMetaDatabaseServiceTest(TestCase):
         )
 
         res = self.metadata.get_list_entity_versions(
-            entity=DatabaseService, entity_id=res_name.id.__root__
+            entity=DatabaseService, entity_id=res_name.id.root
         )
         assert res

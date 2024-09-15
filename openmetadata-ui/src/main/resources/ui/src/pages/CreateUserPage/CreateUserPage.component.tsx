@@ -12,44 +12,47 @@
  */
 
 import { AxiosError } from 'axios';
-import PageContainerV1 from 'components/containers/PageContainerV1';
-import CreateUserComponent from 'components/CreateUser/CreateUser.component';
-import { observer } from 'mobx-react';
-import { LoadingState } from 'Models';
-import React, { useEffect, useState } from 'react';
+import _ from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { createBotWithPut } from 'rest/botsAPI';
-import { getRoles } from 'rest/rolesAPIV1';
-import { createUser, createUserWithPut, getBotByName } from 'rest/userAPI';
-import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
-import { EntityType } from '../../enums/entity.enum';
+  getBotsPagePath,
+  getUsersPagePath,
+  PAGE_SIZE_LARGE,
+} from '../../constants/constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateUser } from '../../generated/api/teams/createUser';
-import { Bot } from '../../generated/entity/bot';
 import { Role } from '../../generated/entity/teams/role';
-import jsonData from '../../jsons/en';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { createBot } from '../../rest/botsAPI';
+import { getRoles } from '../../rest/rolesAPIV1';
+import {
+  createUser,
+  createUserWithPut,
+  getBotByName,
+} from '../../rest/userAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { getUserCreationErrorMessage } from '../../utils/Users.util';
 
 const CreateUserPage = () => {
   const history = useHistory();
-
+  const { t } = useTranslation();
+  const { setInlineAlertDetails } = useApplicationStore();
+  const { getResourceLimit } = useLimitStore();
   const [roles, setRoles] = useState<Array<Role>>([]);
-  const [status, setStatus] = useState<LoadingState>('initial');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { bot } = useParams<{ bot: string }>();
 
   const goToUserListPage = () => {
     if (bot) {
-      history.push(
-        getSettingPath(
-          GlobalSettingsMenuCategory.INTEGRATIONS,
-          GlobalSettingOptions.BOTS
-        )
-      );
+      history.push(getSettingPath(GlobalSettingOptions.BOTS));
     } else {
       history.goBack();
     }
@@ -57,19 +60,6 @@ const CreateUserPage = () => {
 
   const handleCancel = () => {
     goToUserListPage();
-  };
-
-  /**
-   * Handles error if any, while creating new user.
-   * @param error AxiosError or error message
-   * @param fallbackText fallback error message
-   */
-  const handleSaveFailure = (
-    error: AxiosError | string,
-    fallbackText?: string
-  ) => {
-    showErrorToast(error, fallbackText);
-    setStatus('initial');
   };
 
   const checkBotInUse = async (name: string) => {
@@ -87,13 +77,18 @@ const CreateUserPage = () => {
    * @param userData Data for creating new user
    */
   const handleAddUserSave = async (userData: CreateUser) => {
+    setIsLoading(true);
     if (bot) {
       const isBotExists = await checkBotInUse(userData.name);
       if (isBotExists) {
-        showErrorToast(`${userData.name} bot already exists.`);
+        showErrorToast(
+          t('server.email-already-exist', {
+            entity: t('label.bot-lowercase'),
+            name: userData.name,
+          })
+        );
       } else {
         try {
-          setStatus('waiting');
           // Create a user with isBot:true
           const userResponse = await createUserWithPut({
             ...userData,
@@ -101,57 +96,54 @@ const CreateUserPage = () => {
           });
 
           // Create a bot entity with botUser data
-          const botResponse = await createBotWithPut({
-            botUser: { id: userResponse.id, type: EntityType.USER },
+          await createBot({
+            botUser: _.toString(userResponse.fullyQualifiedName),
             name: userResponse.name,
             displayName: userResponse.displayName,
             description: userResponse.description,
-          } as Bot);
+          });
 
-          if (botResponse) {
-            setStatus('success');
-            showSuccessToast(`Bot created successfully`);
-            setTimeout(() => {
-              setStatus('initial');
-
-              goToUserListPage();
-            }, 500);
-          } else {
-            handleSaveFailure(
-              jsonData['api-error-messages']['create-bot-error']
-            );
-          }
-        } catch (error) {
-          handleSaveFailure(
-            error as AxiosError,
-            jsonData['api-error-messages']['create-bot-error']
+          // Update current count when Create / Delete operation performed
+          await getResourceLimit('bot', true, true);
+          showSuccessToast(
+            t('server.create-entity-success', { entity: t('label.bot') })
           );
+          goToUserListPage();
+        } catch (error) {
+          setInlineAlertDetails({
+            type: 'error',
+            heading: t('label.error'),
+            description: getUserCreationErrorMessage({
+              error: error as AxiosError,
+              entity: t('label.bot'),
+              entityLowercase: t('label.bot-lowercase'),
+              entityName: userData.name,
+            }),
+            onClose: () => setInlineAlertDetails(undefined),
+          });
         }
       }
     } else {
       try {
-        setStatus('waiting');
-
-        const response = await createUser(userData);
-
-        if (response) {
-          setStatus('success');
-          setTimeout(() => {
-            setStatus('initial');
-            goToUserListPage();
-          }, 500);
-        } else {
-          handleSaveFailure(
-            jsonData['api-error-messages']['create-user-error']
-          );
-        }
+        await createUser(userData);
+        // Update current count when Create / Delete operation performed
+        await getResourceLimit('user', true, true);
+        goToUserListPage();
       } catch (error) {
-        handleSaveFailure(
-          error as AxiosError,
-          jsonData['api-error-messages']['create-user-error']
-        );
+        setInlineAlertDetails({
+          type: 'error',
+          heading: t('label.error'),
+          description: getUserCreationErrorMessage({
+            error: error as AxiosError,
+            entity: t('label.user'),
+            entityLowercase: t('label.user-lowercase'),
+            entityName: userData.name,
+          }),
+          onClose: () => setInlineAlertDetails(undefined),
+        });
       }
     }
+    setIsLoading(false);
   };
 
   const fetchRoles = async () => {
@@ -168,7 +160,7 @@ const CreateUserPage = () => {
       setRoles([]);
       showErrorToast(
         err as AxiosError,
-        jsonData['api-error-messages']['fetch-roles-error']
+        t('server.entity-fetch-error', { entity: t('label.role-plural') })
       );
     }
   };
@@ -177,19 +169,38 @@ const CreateUserPage = () => {
     fetchRoles();
   }, []);
 
+  const slashedBreadcrumbList = useMemo(
+    () => [
+      {
+        name: bot ? t('label.bot-plural') : t('label.user-plural'),
+        url: bot ? getBotsPagePath() : getUsersPagePath(),
+      },
+      {
+        name: `${t('label.create')} ${bot ? t('label.bot') : t('label.user')}`,
+        url: '',
+        activeTitle: true,
+      },
+    ],
+    [bot]
+  );
+
   return (
-    <PageContainerV1>
-      <div className="self-center">
-        <CreateUserComponent
-          forceBot={Boolean(bot)}
-          roles={roles}
-          saveState={status}
-          onCancel={handleCancel}
-          onSave={handleAddUserSave}
-        />
+    <PageLayoutV1
+      pageTitle={t('label.create-entity', { entity: t('label.user') })}>
+      <div className="max-width-md w-9/10 service-form-container">
+        <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
+        <div className="m-t-md">
+          <CreateUserComponent
+            forceBot={Boolean(bot)}
+            isLoading={isLoading}
+            roles={roles}
+            onCancel={handleCancel}
+            onSave={handleAddUserSave}
+          />
+        </div>
       </div>
-    </PageContainerV1>
+    </PageLayoutV1>
   );
 };
 
-export default observer(CreateUserPage);
+export default CreateUserPage;

@@ -1,4 +1,37 @@
 {
+  "settings": {
+   "analysis": {
+    "normalizer": {
+      "lowercase_normalizer": {
+        "type": "custom",
+        "char_filter": [],
+        "filter": [
+          "lowercase"
+        ]
+      }
+    },
+    "analyzer": {
+      "om_analyzer": {
+        "tokenizer": "letter",
+        "filter": [
+          "lowercase",
+          "om_stemmer"
+        ]
+      },
+      "om_ngram": {
+        "tokenizer": "ngram",
+        "min_gram": 3,
+        "max_gram": 10
+      }
+    },
+    "filter": {
+      "om_stemmer": {
+        "type": "stemmer",
+        "name": "english"
+      }
+    }
+  }
+},
   "mappings": {
     "properties": {
       "id": {
@@ -6,29 +39,38 @@
       },
       "name": {
         "type": "text",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           }
         }
       },
       "fullyQualifiedName": {
         "type": "text"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           }
         }
       },
       "description": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "index_options": "docs"
       },
-      "teamType": { 
+      "teamType": {
         "type": "text"
       },
       "version": {
@@ -43,6 +85,52 @@
       },
       "href": {
         "type": "text"
+      },
+      "email": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "users": {
         "properties": {
@@ -161,6 +249,9 @@
       "deleted": {
         "type": "text"
       },
+      "isBot": {
+        "type": "boolean"
+      },
       "entityType": {
         "type": "keyword"
       },
@@ -173,8 +264,17 @@
             "path": "deleted"
           }
         ]
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
 }
-

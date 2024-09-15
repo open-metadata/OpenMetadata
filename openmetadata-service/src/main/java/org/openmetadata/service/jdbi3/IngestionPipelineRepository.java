@@ -13,125 +13,171 @@
 
 package org.openmetadata.service.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
+import lombok.Setter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.PipelineServiceClient;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
-  private static final String UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
-  private static final String PATCH_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
+  private static final String UPDATE_FIELDS =
+      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
+  private static final String PATCH_FIELDS =
+      "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
 
-  private static final String PIPELINE_STATUS_JSON_SCHEMA = "pipelineStatus";
-  private static PipelineServiceClient pipelineServiceClient;
+  private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
+  private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
+  private static final String RUN_ID_EXTENSION_KEY = "runId";
+  @Setter private PipelineServiceClientInterface pipelineServiceClient;
 
-  public IngestionPipelineRepository(CollectionDAO dao) {
+  @Getter private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
+
+  public IngestionPipelineRepository(OpenMetadataApplicationConfig config) {
     super(
         IngestionPipelineResource.COLLECTION_PATH,
         Entity.INGESTION_PIPELINE,
         IngestionPipeline.class,
-        dao.ingestionPipelineDAO(),
-        dao,
+        Entity.getCollectionDAO().ingestionPipelineDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    this.supportsSearch = true;
+    this.openMetadataApplicationConfig = config;
   }
 
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
     ingestionPipeline.setFullyQualifiedName(
-        FullyQualifiedName.add(ingestionPipeline.getService().getName(), ingestionPipeline.getName()));
+        FullyQualifiedName.add(
+            ingestionPipeline.getService().getFullyQualifiedName(), ingestionPipeline.getName()));
   }
 
   @Override
-  public IngestionPipeline setFields(IngestionPipeline ingestionPipeline, Fields fields) throws IOException {
-    return ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
+  public void setFields(IngestionPipeline ingestionPipeline, Fields fields) {
+    if (ingestionPipeline.getService() == null) {
+      ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
+    }
+    ingestionPipeline.setPipelineStatuses(
+        fields.contains("pipelineStatuses")
+            ? getLatestPipelineStatus(ingestionPipeline)
+            : ingestionPipeline.getPipelineStatuses());
+
+    JSONObject sourceConfigJson =
+        new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+    Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
+        .map(appConfig -> appConfig.optString("type", null))
+        .ifPresent(ingestionPipeline::setApplicationType);
   }
 
   @Override
-  public void prepare(IngestionPipeline ingestionPipeline) throws IOException {
-    EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService());
+  public void clearFields(IngestionPipeline ingestionPipeline, Fields fields) {
+    /* Nothing to do */
+  }
+
+  @Override
+  public void prepare(IngestionPipeline ingestionPipeline, boolean update) {
+    EntityReference entityReference =
+        Entity.getEntityReference(ingestionPipeline.getService(), Include.NON_DELETED);
     ingestionPipeline.setService(entityReference);
   }
 
+  @Transaction
+  public IngestionPipeline deletePipelineStatus(UUID ingestionPipelineId) {
+    // Validate the request content
+    IngestionPipeline ingestionPipeline = find(ingestionPipelineId, Include.NON_DELETED);
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .delete(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
+    setFieldsInternal(ingestionPipeline, Fields.EMPTY_FIELDS);
+    return ingestionPipeline;
+  }
+
   @Override
-  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = ingestionPipeline.getOwner();
+  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = ingestionPipeline.getService();
+    OpenMetadataConnection openmetadataConnection =
+        ingestionPipeline.getOpenMetadataServerConnection();
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+
     if (secretsManager != null) {
-      ingestionPipeline = secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, true);
+      secretsManager.encryptIngestionPipeline(ingestionPipeline);
+      // We store the OM sensitive values in SM separately
+      openmetadataConnection =
+          secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
     }
 
-    // Don't store owner. Build it on the fly based on relationships
-    ingestionPipeline.withOwner(null).withService(null).withHref(null);
-
+    ingestionPipeline.withService(null).withOpenMetadataServerConnection(null);
     store(ingestionPipeline, update);
-
-    // Restore the relationships
-    ingestionPipeline.withOwner(owner).withService(service);
+    ingestionPipeline.withService(service).withOpenMetadataServerConnection(openmetadataConnection);
   }
 
   @Override
   public void storeRelationships(IngestionPipeline ingestionPipeline) {
-    EntityReference service = ingestionPipeline.getService();
-    addRelationship(
-        service.getId(),
-        ingestionPipeline.getId(),
-        service.getType(),
-        Entity.INGESTION_PIPELINE,
-        Relationship.CONTAINS);
-    storeOwner(ingestionPipeline, ingestionPipeline.getOwner());
-    applyTags(ingestionPipeline);
+    addServiceRelationship(ingestionPipeline, ingestionPipeline.getService());
   }
 
   @Override
-  public EntityUpdater getUpdater(IngestionPipeline original, IngestionPipeline updated, Operation operation) {
+  public EntityUpdater getUpdater(
+      IngestionPipeline original, IngestionPipeline updated, Operation operation) {
     return new IngestionPipelineUpdater(original, updated, operation);
   }
 
   @Override
   protected void postDelete(IngestionPipeline entity) {
-    pipelineServiceClient.deletePipeline(entity.getName());
+    // Delete deployed pipeline in the Pipeline Service Client
+    pipelineServiceClient.deletePipeline(entity);
+    // Clean pipeline status
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .delete(entity.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
   }
 
-  public void setPipelineServiceClient(PipelineServiceClient client) {
-    pipelineServiceClient = client;
+  @Override
+  public EntityInterface getParentEntity(IngestionPipeline entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   private ChangeEvent getChangeEvent(
       EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
+        .withId(UUID.randomUUID())
         .withEntity(updated)
         .withChangeDescription(change)
-        .withEventType(EventType.ENTITY_UPDATED)
+        .withEventType(ENTITY_UPDATED)
         .withEntityType(entityType)
         .withEntityId(updated.getId())
         .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
@@ -141,7 +187,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         .withPreviousVersion(prevVersion);
   }
 
-  private ChangeDescription addPipelineStatusChangeDescription(Double version, Object newValue, Object oldValue) {
+  private ChangeDescription addPipelineStatusChangeDescription(
+      Double version, Object newValue, Object oldValue) {
     FieldChange fieldChange =
         new FieldChange().withName("pipelineStatus").withNewValue(newValue).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
@@ -149,134 +196,146 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return change;
   }
 
-  @Transaction
-  public RestUtil.PutResponse<?> addPipelineStatus(UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus)
-      throws IOException {
+  public RestUtil.PutResponse<?> addPipelineStatus(
+      UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
-    IngestionPipeline ingestionPipeline = dao.findEntityByName(fqn);
-
+    IngestionPipeline ingestionPipeline = getByName(uriInfo, fqn, getFields("service"));
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getLatestExtension(ingestionPipeline.getFullyQualifiedName(), pipelineStatus.getRunId()),
+                .getLatestExtensionByKey(
+                    RUN_ID_EXTENSION_KEY,
+                    pipelineStatus.getRunId(),
+                    ingestionPipeline.getFullyQualifiedName(),
+                    PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
     if (storedPipelineStatus != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
-          .update(
-              ingestionPipeline.getFullyQualifiedName(),
+          .updateExtensionByKey(
+              RUN_ID_EXTENSION_KEY,
               pipelineStatus.getRunId(),
-              JsonUtils.pojoToJson(pipelineStatus),
-              pipelineStatus.getTimestamp());
+              ingestionPipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              JsonUtils.pojoToJson(pipelineStatus));
     } else {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .insert(
               ingestionPipeline.getFullyQualifiedName(),
-              pipelineStatus.getRunId(),
-              "pipelineStatus",
+              PIPELINE_STATUS_EXTENSION,
+              PIPELINE_STATUS_JSON_SCHEMA,
               JsonUtils.pojoToJson(pipelineStatus));
     }
     ChangeDescription change =
-        addPipelineStatusChangeDescription(ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
-    ChangeEvent changeEvent =
-        getChangeEvent(withHref(uriInfo, ingestionPipeline), change, entityType, ingestionPipeline.getVersion());
+        addPipelineStatusChangeDescription(
+            ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
+    ingestionPipeline.setPipelineStatuses(pipelineStatus);
 
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    // Update ES Indexes
+    searchRepository.updateEntity(ingestionPipeline);
+
+    ChangeEvent changeEvent =
+        getChangeEvent(
+            withHref(uriInfo, ingestionPipeline),
+            change,
+            entityType,
+            ingestionPipeline.getVersion());
+
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
-  public ResultList<PipelineStatus> listPipelineStatus(String ingestionPipelineFQN, Long startTs, Long endTs)
-      throws IOException {
-    IngestionPipeline ingestionPipeline = dao.findEntityByName(ingestionPipelineFQN);
+  public ResultList<PipelineStatus> listPipelineStatus(
+      String ingestionPipelineFQN, Long startTs, Long endTs) {
+    IngestionPipeline ingestionPipeline =
+        getByName(null, ingestionPipelineFQN, getFields("service"));
     List<PipelineStatus> pipelineStatusList =
         JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestampsByFQN(
-                    ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA, startTs, endTs),
+            getResultsFromAndToTimestamps(
+                ingestionPipeline.getFullyQualifiedName(),
+                PIPELINE_STATUS_EXTENSION,
+                startTs,
+                endTs),
             PipelineStatus.class);
-    List<PipelineStatus> allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+    List<PipelineStatus> allPipelineStatusList =
+        pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
     allPipelineStatusList.addAll(pipelineStatusList);
     return new ResultList<>(
-        allPipelineStatusList, String.valueOf(startTs), String.valueOf(endTs), allPipelineStatusList.size());
+        allPipelineStatusList,
+        String.valueOf(startTs),
+        String.valueOf(endTs),
+        allPipelineStatusList.size());
   }
 
-  public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) throws IOException {
+  public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) {
     return JsonUtils.readValue(
-        daoCollection
-            .entityExtensionTimeSeriesDao()
-            .getLatestExtensionByFQN(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA),
+        getLatestExtensionFromTimeSeries(
+            ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
 
-  public PipelineStatus getPipelineStatus(String ingestionPipelineFQN, UUID pipelineStatusRunId) throws IOException {
-    IngestionPipeline ingestionPipeline = dao.findEntityByName(ingestionPipelineFQN);
+  public PipelineStatus getPipelineStatus(String ingestionPipelineFQN, UUID pipelineStatusRunId) {
+    IngestionPipeline ingestionPipeline = findByName(ingestionPipelineFQN, Include.NON_DELETED);
     return JsonUtils.readValue(
         daoCollection
             .entityExtensionTimeSeriesDao()
-            .getExtension(ingestionPipeline.getFullyQualifiedName(), pipelineStatusRunId.toString()),
+            .getExtensionByKey(
+                RUN_ID_EXTENSION_KEY,
+                pipelineStatusRunId.toString(),
+                ingestionPipeline.getFullyQualifiedName(),
+                PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
 
   /** Handles entity updated from PUT and POST operation. */
   public class IngestionPipelineUpdater extends EntityUpdater {
-    public IngestionPipelineUpdater(IngestionPipeline original, IngestionPipeline updated, Operation operation) {
+    public IngestionPipelineUpdater(
+        IngestionPipeline original, IngestionPipeline updated, Operation operation) {
       super(buildIngestionPipelineDecrypted(original), updated, operation);
     }
 
+    @Transaction
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateSourceConfig();
       updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig());
-      updateOpenMetadataServerConnection(
-          original.getOpenMetadataServerConnection(), updated.getOpenMetadataServerConnection());
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
     }
 
-    private void updateSourceConfig() throws JsonProcessingException {
-
-      JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(original.getSourceConfig().getConfig()));
-      JSONObject updatedSourceConfig = new JSONObject(JsonUtils.pojoToJson(updated.getSourceConfig().getConfig()));
+    private void updateSourceConfig() {
+      JSONObject origSourceConfig =
+          new JSONObject(JsonUtils.pojoToJson(original.getSourceConfig().getConfig()));
+      JSONObject updatedSourceConfig =
+          new JSONObject(JsonUtils.pojoToJson(updated.getSourceConfig().getConfig()));
 
       if (!origSourceConfig.similar(updatedSourceConfig)) {
         recordChange("sourceConfig", "old-encrypted-value", "new-encrypted-value", true);
       }
     }
 
-    private void updateAirflowConfig(AirflowConfig origAirflowConfig, AirflowConfig updatedAirflowConfig)
-        throws JsonProcessingException {
+    private void updateAirflowConfig(
+        AirflowConfig origAirflowConfig, AirflowConfig updatedAirflowConfig) {
       if (!origAirflowConfig.equals(updatedAirflowConfig)) {
         recordChange("airflowConfig", origAirflowConfig, updatedAirflowConfig);
       }
     }
 
-    private void updateOpenMetadataServerConnection(
-        OpenMetadataConnection origConfig, OpenMetadataConnection updatedConfig) throws JsonProcessingException {
-
-      JSONObject origConfigJson = new JSONObject(JsonUtils.pojoToJson(origConfig));
-      JSONObject updatedConfigJson = new JSONObject(JsonUtils.pojoToJson(updatedConfig));
-
-      if (!origConfigJson.similar(updatedConfigJson)) {
-        recordChange("openMetadataServerConnection", origConfig, updatedConfig);
-      }
-    }
-
-    private void updateLogLevel(LogLevels origLevel, LogLevels updatedLevel) throws JsonProcessingException {
+    private void updateLogLevel(LogLevels origLevel, LogLevels updatedLevel) {
       if (updatedLevel != null && !origLevel.equals(updatedLevel)) {
         recordChange("loggerLevel", origLevel, updatedLevel);
       }
     }
 
-    private void updateDeployed(Boolean origDeployed, Boolean updatedDeployed) throws JsonProcessingException {
+    private void updateDeployed(Boolean origDeployed, Boolean updatedDeployed) {
       if (updatedDeployed != null && !origDeployed.equals(updatedDeployed)) {
         recordChange("deployed", origDeployed, updatedDeployed);
       }
     }
 
-    private void updateEnabled(Boolean origEnabled, Boolean updatedEnabled) throws JsonProcessingException {
+    private void updateEnabled(Boolean origEnabled, Boolean updatedEnabled) {
       if (updatedEnabled != null && !origEnabled.equals(updatedEnabled)) {
         recordChange("enabled", origEnabled, updatedEnabled);
       }
@@ -284,8 +343,35 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   private static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
-    IngestionPipeline decrypted = JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
-    decrypted = SecretsManagerFactory.getSecretsManager().encryptOrDecryptIngestionPipeline(decrypted, false);
+    IngestionPipeline decrypted =
+        JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
+    SecretsManagerFactory.getSecretsManager().decryptIngestionPipeline(decrypted);
     return decrypted;
+  }
+
+  public static void validateProfileSample(IngestionPipeline ingestionPipeline) {
+
+    JSONObject sourceConfigJson =
+        new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+    String profileSampleType = sourceConfigJson.optString("profileSampleType");
+    double profileSample = sourceConfigJson.optDouble("profileSample");
+
+    EntityUtil.validateProfileSample(profileSampleType, profileSample);
+  }
+
+  /**
+   * Get either the pipelineType or the application Type.
+   */
+  public static String getPipelineWorkflowType(IngestionPipeline ingestionPipeline) {
+    if (PipelineType.APPLICATION.equals(ingestionPipeline.getPipelineType())) {
+      ApplicationPipeline applicationPipeline =
+          JsonUtils.convertValue(
+              ingestionPipeline.getSourceConfig().getConfig(), ApplicationPipeline.class);
+      ApplicationConfig appConfig =
+          JsonUtils.convertValue(applicationPipeline.getAppConfig(), ApplicationConfig.class);
+      return (String) appConfig.getAdditionalProperties().get("type");
+    } else {
+      return ingestionPipeline.getPipelineType().value();
+    }
   }
 }

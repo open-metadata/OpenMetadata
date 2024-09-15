@@ -11,26 +11,25 @@
  *  limitations under the License.
  */
 
+import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import {
-  EntityDetailsType,
-  ExploreQuickFilterField,
-} from './explore.interface';
+import { Aggregations } from '../../interface/search.interface';
+import { ExploreQuickFilterField } from './ExplorePage.interface';
 
 export interface ExploreQuickFiltersProps {
   index: SearchIndex;
   fields: Array<ExploreQuickFilterField>;
+  aggregations?: Aggregations;
   onFieldValueSelect: (field: ExploreQuickFilterField) => void;
-  onAdvanceSearch: () => void;
+  onAdvanceSearch?: () => void;
+  showDeleted?: boolean;
+  onChangeShowDeleted?: (showDeleted: boolean) => void;
+  independent?: boolean; // flag to indicate if the filters are independent of aggregations
+  fieldsWithNullValues?: EntityFields[];
 }
 
 export interface FilterFieldsMenuItem {
   key: string;
   label: string;
   defaultField: boolean;
-}
-
-export interface FormattedSuggestResponseObject {
-  text: string;
-  source: EntityDetailsType;
 }

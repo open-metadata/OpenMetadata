@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SourceUrl
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.pipeline.fivetran.metadata import (
     FivetranPipelineDetails,
@@ -68,29 +69,32 @@ EXPECTED_FIVETRAN_DETAILS = FivetranPipelineDetails(
     source=mock_data.get("source"),
     destination=mock_data.get("destination"),
     group=mock_data.get("group"),
+    connector_id=mock_data.get("source").get("id"),
 )
 
 
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name="wackiness_remote_aiding_pointless",
     displayName="test <> postgres_rds",
-    description="",
-    pipelineUrl="",
     tasks=[
         Task(
             name="wackiness_remote_aiding_pointless",
             displayName="test <> postgres_rds",
-            description="",
+            sourceUrl=SourceUrl(
+                "https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
+            ),
         )
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
+    service=FullyQualifiedEntityName("fivetran_source"),
+    sourceUrl=SourceUrl(
+        "https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
     ),
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="fivetran_source",
+    fullyQualifiedName=FullyQualifiedEntityName("fivetran_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Fivetran,
 )
@@ -100,14 +104,10 @@ MOCK_PIPELINE = Pipeline(
     name="wackiness_remote_aiding_pointless",
     fullyQualifiedName="fivetran_source.wackiness_remote_aiding_pointless",
     displayName="test <> postgres_rds",
-    description="",
-    pipelineUrl="",
     tasks=[
         Task(
             name="wackiness_remote_aiding_pointless",
             displayName="test <> postgres_rds",
-            description="",
-            taskUrl="",
         )
     ],
     service=EntityReference(
@@ -120,17 +120,19 @@ class FivetranUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
     )
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranClient")
+    @patch("metadata.ingestion.source.pipeline.fivetran.connection.get_connection")
     def __init__(self, methodName, fivetran_client, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_fivetran_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_fivetran_config)
         self.fivetran = FivetranSource.create(
             mock_fivetran_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.fivetran.context.__dict__["pipeline"] = MOCK_PIPELINE
-        self.fivetran.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
+        self.fivetran.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+        self.fivetran.context.get().__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.root
         self.client = fivetran_client.return_value
         self.client.list_groups.return_value = [mock_data.get("group")]
         self.client.list_group_connectors.return_value = [mock_data.get("source")]
@@ -147,5 +149,5 @@ class FivetranUnitTest(TestCase):
         )
 
     def test_pipelines(self):
-        pipline = list(self.fivetran.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[0]
+        pipline = list(self.fivetran.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[0].right
         assert pipline == EXPECTED_CREATED_PIPELINES

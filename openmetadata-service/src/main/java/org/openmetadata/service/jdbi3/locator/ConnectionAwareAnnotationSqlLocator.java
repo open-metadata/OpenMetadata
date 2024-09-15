@@ -32,7 +32,8 @@ public class ConnectionAwareAnnotationSqlLocator implements SqlLocator {
   private final ConcurrentMap<Method, String> located = new ConcurrentHashMap<>();
 
   public ConnectionAwareAnnotationSqlLocator(String jdbcDriverClass) {
-    this.connectionType = ConnectionType.from(requireNonNull(jdbcDriverClass, "Connection type is null"));
+    this.connectionType =
+        ConnectionType.from(requireNonNull(jdbcDriverClass, "Connection type is null"));
   }
 
   @Override
@@ -55,14 +56,22 @@ public class ConnectionAwareAnnotationSqlLocator implements SqlLocator {
             Optional.ofNullable(method.getAnnotation(ConnectionAwareSqlUpdateContainer.class))
                 .map(ConnectionAwareSqlUpdateContainer::value)
                 .map(Arrays::asList)
-                .map(l -> l.stream().filter(a -> a.connectionType().equals(connectionType)).findFirst())
+                .map(
+                    l ->
+                        l.stream()
+                            .filter(a -> a.connectionType().equals(connectionType))
+                            .findFirst())
                 .flatMap(identity()) // Unwrap Option<Optional<?>> to Optional<?>
                 .map(ConnectionAwareSqlUpdate::value),
         () ->
             Optional.ofNullable(method.getAnnotation(ConnectionAwareSqlQueryContainer.class))
                 .map(ConnectionAwareSqlQueryContainer::value)
                 .map(Arrays::asList)
-                .map(l -> l.stream().filter(a -> a.connectionType().equals(connectionType)).findFirst())
+                .map(
+                    l ->
+                        l.stream()
+                            .filter(a -> a.connectionType().equals(connectionType))
+                            .findFirst())
                 .flatMap(identity()) // Unwrap Option<Optional<?>> to Optional<?>
                 .map(ConnectionAwareSqlQuery::value),
         () -> SqlAnnotations.getAnnotationValue(method));

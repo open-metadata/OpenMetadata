@@ -11,91 +11,59 @@
  *  limitations under the License.
  */
 
-import { Button as AntdButton, Dropdown, Space } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
-import { isString, isUndefined, toLower } from 'lodash';
+import { isEmpty, isString, isUndefined, lowerCase, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { ReactComponent as IconInfoSecondary } from '../../../assets/svg/icon-info.svg';
+import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
+import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { Table } from '../../../generated/entity/data/table';
-import { TeamType } from '../../../generated/entity/teams/team';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
-import OwnerWidgetWrapper from '../OwnerWidget/OwnerWidgetWrapper.component';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import TeamTypeSelect from '../TeamTypeSelect/TeamTypeSelect.component';
-import TierCard from '../TierCard/TierCard';
-import './EntitySummaryDetails.style.less';
+import './entity-summary-details.style.less';
 
 export interface GetInfoElementsProps {
   data: ExtraInfo;
-  updateOwner?: (value: Table['owner']) => void;
-  removeOwner?: () => void;
   tier?: TagLabel;
   currentTier?: string;
-  teamType?: TeamType;
-  showGroupOption?: boolean;
-  isGroupType?: boolean;
-  updateTier?: (value: string) => void;
-  updateTeamType?: (type: TeamType) => void;
-  currentOwner?: Dashboard['owner'];
-  removeTier?: () => void;
+  currentOwner?: Dashboard['owners'];
   deleted?: boolean;
   allowTeamOwner?: boolean;
 }
-
-const EditIcon = ({ iconClasses }: { iconClasses?: string }): JSX.Element => (
-  <SVGIcons
-    alt="edit"
-    className={classNames('tw-cursor-pointer tw-align-text-top', iconClasses)}
-    icon={Icons.EDIT}
-    title="Edit"
-    width="16px"
-  />
-);
 
 const InfoIcon = ({
   content,
 }: {
   content: React.ReactNode | RenderFunction;
 }): JSX.Element => (
-  <Tooltip className="tw-ml-2" title={content}>
-    <SVGIcons alt="info-secondary" icon="info-secondary" width="12px" />
+  <Tooltip title={content}>
+    <Icon
+      alt="info-secondary"
+      component={IconInfoSecondary}
+      style={{ fontSize: '12px' }}
+    />
   </Tooltip>
 );
 
-const EntitySummaryDetails = ({
-  data,
-  isGroupType,
-  tier,
-  teamType,
-  showGroupOption,
-  removeOwner,
-  updateOwner,
-  updateTier,
-  updateTeamType,
-  removeTier,
-  currentOwner,
-  deleted = false,
-  allowTeamOwner = true,
-}: GetInfoElementsProps) => {
+const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
   const displayVal = data.placeholderText || data.value;
-  const [show, setShow] = useState(false);
-  const [showTypeSelector, setShowTypeSelector] = useState(false);
 
-  const handleShowTypeSelector = useCallback((value: boolean) => {
-    setShowTypeSelector(value);
-  }, []);
-
-  const { isEntityDetails, userDetails, isTier, isOwner, isTeamType } =
+  const { isEntityDetails, userDetails, isTier, isOwner, isTeamOwner } =
     useMemo(() => {
-      const userDetails = getTeamsUser(data);
+      const userDetails = currentUser ? getTeamsUser(data, currentUser) : {};
 
       return {
         isEntityCard: data?.isEntityCard,
@@ -103,7 +71,9 @@ const EntitySummaryDetails = ({
         userDetails,
         isTier: data.key === 'Tier',
         isOwner: data.key === 'Owner',
-        isTeamType: data.key === 'TeamType',
+        isTeamOwner: isString(data.value)
+          ? data.value.includes('teams/')
+          : false,
       };
     }, [data]);
 
@@ -118,35 +88,40 @@ const EntitySummaryDetails = ({
                   <>
                     <ProfilePicture
                       displayName={userDetails.ownerName}
-                      id={userDetails.id as string}
-                      name={userDetails.ownerName || ''}
-                      width="20"
+                      name={userDetails.ownerName ?? ''}
+                      width="24"
                     />
-                    <span>{userDetails.ownerName}</span>
-                    <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
-                      |
+                    <span data-testid="owner-link">
+                      {userDetails.ownerName}
+                    </span>
+                    <span className="m-r-xss d-inline-block text-grey-muted">
+                      {t('label.pipe-symbol')}
                     </span>
                   </>
                 )}
-                <ProfilePicture
-                  displayName={displayVal}
-                  id=""
-                  name={data.profileName || ''}
-                  width={data.avatarWidth || '20'}
-                />
+                {isTeamOwner ? (
+                  <IconTeamsGrey
+                    className="align-middle"
+                    height={18}
+                    width={18}
+                  />
+                ) : (
+                  <ProfilePicture
+                    displayName={displayVal}
+                    name={data.profileName ?? ''}
+                    width={data.avatarWidth ?? '24'}
+                  />
+                )}
               </>
             ) : (
               <></>
             )
           ) : (
-            <>
+            <span
+              className="d-flex gap-1 items-center"
+              data-testid="owner-link">
               {t('label.no-entity', { entity: t('label.owner') })}
-              <span
-                data-testid={`edit-${data.key}-icon`}
-                onClick={() => setShow(!show)}>
-                {updateOwner && !deleted ? <EditIcon /> : null}
-              </span>
-            </>
+            </span>
           );
       }
 
@@ -156,22 +131,7 @@ const EntitySummaryDetails = ({
       {
         retVal =
           !displayVal || displayVal === '--' ? (
-            <>
-              {t('label.no-entity', { entity: t('label.tier') })}
-              <Dropdown
-                dropdownRender={() => (
-                  <TierCard
-                    currentTier={tier?.tagFQN}
-                    removeTier={removeTier}
-                    updateTier={updateTier}
-                  />
-                )}
-                trigger={['click']}>
-                <span data-testid={`edit-${data.key}-icon`}>
-                  {updateTier && !deleted ? <EditIcon /> : null}
-                </span>
-              </Dropdown>
-            </>
+            <>{t('label.no-entity', { entity: t('label.tier') })}</>
           ) : (
             <></>
           );
@@ -179,20 +139,31 @@ const EntitySummaryDetails = ({
 
       break;
 
-    case 'TeamType':
-      {
-        retVal = displayVal ? <>{t('label.type')} - </> : <></>;
-      }
-
-      break;
-
     case 'Usage':
       {
-        retVal = <>{t('label.usage')} - </>;
+        retVal = <>{`${t('label.usage')} - `}</>;
       }
 
       break;
 
+    case 'Domain':
+      {
+        retVal = !isEmpty(displayVal) ? (
+          <DomainIcon
+            className="d-flex"
+            color={DE_ACTIVE_COLOR}
+            height={16}
+            name="folder"
+            width={16}
+          />
+        ) : (
+          <span className="d-flex gap-1 items-center" data-testid="owner-link">
+            {t('label.no-entity', { entity: t('label.domain') })}
+          </span>
+        );
+      }
+
+      break;
     default:
       {
         retVal = (
@@ -229,12 +200,12 @@ const EntitySummaryDetails = ({
             <>
               <a
                 className={classNames(
-                  'tw-inline-block tw-truncate link-text tw-align-middle',
+                  'd-inline-block truncate link-text align-middle',
                   {
-                    'tw-w-52': (displayVal as string).length > 32,
+                    'w-52': (displayVal as string).length > 32,
                   }
                 )}
-                data-testid="owner-link"
+                data-testid={`${lowerCase(data.key)}-link`}
                 href={data.value as string}
                 rel="noopener noreferrer"
                 target={data.openInNewTab ? '_blank' : '_self'}
@@ -245,12 +216,7 @@ const EntitySummaryDetails = ({
                 {data.openInNewTab && (
                   <>
                     &nbsp;
-                    <SVGIcons
-                      alt="external-link"
-                      className="tw-align-middle"
-                      icon="external-link"
-                      width="16px"
-                    />
+                    <Icon component={IconExternalLink} style={ICON_DIMENSION} />
                   </>
                 )}
               </a>
@@ -272,107 +238,29 @@ const EntitySummaryDetails = ({
                   }
                 />
               ) : null}
-
-              {(isOwner || isTier) && (
-                <span
-                  data-testid={`edit-${data.key}-icon`}
-                  onClick={() => setShow(true)}>
-                  {updateOwner ? <EditIcon /> : null}
-                </span>
-              )}
             </>
           ) : isOwner ? (
-            <span
-              className={classNames(
-                'tw-inline-block tw-truncate tw-align-middle',
-                {
-                  'tw-w-52': (displayVal as string).length > 32,
-                }
-              )}
-              data-testid="owner-name"
-              title={displayVal as string}>
-              <Button
-                data-testid="owner-dropdown"
-                size="custom"
-                theme="primary"
-                variant="text">
-                {displayVal}
-              </Button>
-
-              <span
-                className="tw-ml-2"
-                data-testid={`edit-${data.key}-icon`}
-                onClick={() => setShow(true)}>
-                {updateOwner ? <EditIcon /> : null}
-              </span>
-            </span>
+            <div className="d-flex" data-testid="owner-link">
+              {displayVal}
+            </div>
           ) : isTier ? (
             <Space
-              className={classNames('tw-mr-1  tw-truncate tw-align-middle', {
-                'tw-w-52': (displayVal as string).length > 32,
-              })}
+              className={classNames(
+                'd-inline-block truncate link-text align-middle',
+                {
+                  'w-52': (displayVal as string).length > 32,
+                }
+              )}
               data-testid="tier-name"
               direction="horizontal"
               title={displayVal as string}>
-              <span data-testid="tier-dropdown">{displayVal}</span>
-              <Dropdown
-                overlay={
-                  <TierCard
-                    currentTier={tier?.tagFQN}
-                    removeTier={removeTier}
-                    updateTier={updateTier}
-                  />
-                }
-                placement="bottomRight"
-                trigger={['click']}>
-                <span
-                  className="tw-flex tw--mt-0.5"
-                  data-testid={`edit-${data.key}-icon`}>
-                  {updateTier ? <EditIcon /> : null}
-                </span>
-              </Dropdown>
+              <span data-testid="Tier">{displayVal}</span>
             </Space>
-          ) : isTeamType ? (
-            showTypeSelector ? (
-              <TeamTypeSelect
-                handleShowTypeSelector={handleShowTypeSelector}
-                showGroupOption={showGroupOption ?? false}
-                teamType={teamType ?? TeamType.Department}
-                updateTeamType={updateTeamType}
-              />
-            ) : (
-              <>
-                {displayVal}
-                <Tooltip
-                  placement="bottom"
-                  title={
-                    isGroupType
-                      ? t('message.group-team-type-change-message')
-                      : t('label.edit-team-type')
-                  }>
-                  <AntdButton
-                    className={isGroupType ? 'tw-opacity-50' : ''}
-                    data-testid={`edit-${data.key}-icon`}
-                    disabled={isGroupType}
-                    onClick={() => setShowTypeSelector(true)}>
-                    {updateTeamType ? <EditIcon /> : null}
-                  </AntdButton>
-                </Tooltip>
-              </>
-            )
           ) : (
             <span>{displayVal}</span>
           )}
         </>
       )}
-      <OwnerWidgetWrapper
-        allowTeamOwner={allowTeamOwner}
-        currentUser={currentOwner}
-        hideWidget={() => setShow(false)}
-        removeOwner={removeOwner}
-        updateUser={updateOwner}
-        visible={show}
-      />
     </Space>
   );
 };

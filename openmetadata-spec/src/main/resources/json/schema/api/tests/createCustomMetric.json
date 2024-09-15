@@ -21,9 +21,9 @@
       "description": "SQL expression to compute the Metric. It should return a single numerical value.",
       "type": "string"
     },
-    "owner": {
-      "description": "Owner of this Pipeline.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Pipeline.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "updatedAt": {
@@ -35,6 +35,6 @@
       "type": "string"
     }
   },
-  "required": ["name", "columnName", "expression"],
+  "required": ["name", "expression"],
   "additionalProperties": false
 }

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { UserProfile } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { getNameFromUserData } from './AuthProvider.util';
 
 const userProfile = {
@@ -21,74 +22,147 @@ const userProfile = {
 };
 
 describe('Test Auth Provider utils', () => {
-  it('getNameFromUserData should return the userName for first claim', () => {
-    // should return the preferred username
-    const userName1 = getNameFromUserData(userProfile, [
-      'preferred_username',
-      'email',
-      'sub',
-    ]);
-
-    expect(userName1).toEqual('i_am_preferred_username');
-
-    // should return the name from email
-    const userName2 = getNameFromUserData(userProfile, [
-      'email',
-      'preferred_username',
-      'sub',
-    ]);
-
-    expect(userName2).toEqual('testUser');
-
-    // should return the sub
-    const userName3 = getNameFromUserData(userProfile, [
-      'sub',
-      'email',
+  it('getNameFromUserData should return name and email from claim: preferred_username', () => {
+    const { name, email } = getNameFromUserData(userProfile, [
       'preferred_username',
     ]);
 
-    expect(userName3).toEqual('i_am_sub');
+    expect(name).toEqual('i_am_preferred_username');
+    expect(email).toEqual('i_am_preferred_username@');
   });
 
-  it('getNameFromUserData should fallback to next claim if first claim is not present', () => {
-    // should return the name from email as fallback
-    const userName1 = getNameFromUserData(
-      { ...userProfile, preferred_username: '' },
-      ['preferred_username', 'email', 'sub']
+  it('getNameFromUserData should return name and email from claim: email', () => {
+    const { name, email } = getNameFromUserData(userProfile, ['email']);
+
+    expect(name).toEqual('testUser');
+    expect(email).toEqual('testUser@gmail.com');
+  });
+
+  it('getNameFromUserData should return name and email from claim: sub', () => {
+    const { name, email } = getNameFromUserData(userProfile, ['sub']);
+
+    expect(name).toEqual('i_am_sub');
+    expect(email).toEqual('i_am_sub@');
+  });
+
+  it('getNameFromUserData should return email with principle domain from claim: sub', () => {
+    const { name, email } = getNameFromUserData(
+      userProfile,
+      ['sub'],
+      'test.com'
     );
 
-    expect(userName1).toEqual('testUser');
+    expect(name).toEqual('i_am_sub');
+    expect(email).toEqual('i_am_sub@test.com');
+  });
 
-    // should return the sub as fallback
-    const userName2 = getNameFromUserData(
-      { ...userProfile, preferred_username: '' },
-      ['preferred_username', 'sub', 'email']
+  it('getNameFromUserData should fallback to next claim if first is not present', () => {
+    const { email } = userProfile;
+    const { name, email: generatedEmail } = getNameFromUserData(
+      { email } as UserProfile,
+      ['sub', 'preferred_username', 'email'],
+      'test.com'
     );
 
-    expect(userName2).toEqual('i_am_sub');
+    expect(name).toEqual('testUser');
+    expect(generatedEmail).toEqual('testUser@gmail.com');
+  });
 
-    // should return the name from email as fallback if both 'preferred_username' and 'sub' are not present
-    const userName3 = getNameFromUserData(
-      { ...userProfile, preferred_username: '', sub: '' },
-      ['preferred_username', 'sub', 'email']
+  it('getNameFromUserData should respect domain present in claim over principleClaim', () => {
+    const { name, email: generatedEmail } = getNameFromUserData(
+      userProfile,
+      ['email', 'preferred_username', 'sub'],
+      'test.com'
     );
 
-    expect(userName3).toEqual('testUser');
+    expect(name).toEqual('testUser');
+    expect(generatedEmail).toEqual('testUser@gmail.com');
   });
 
   it('getNameFromUserData should handle the claim if it contains @', () => {
-    const userName1 = getNameFromUserData(
+    const { name, email } = getNameFromUserData(
       { ...userProfile, preferred_username: 'test@gmail.com' },
       ['preferred_username', 'email', 'sub']
     );
 
-    expect(userName1).toEqual('test');
+    expect(name).toEqual('test');
+    expect(email).toEqual('test@gmail.com');
+  });
 
-    const userName2 = getNameFromUserData(
-      { ...userProfile, sub: 'test-1@gmail.com' },
-      ['sub', 'preferred_username', 'email']
+  it('getNameFromUserData should add principle domain if domain is missing', () => {
+    const { name, email } = getNameFromUserData(
+      userProfile,
+      ['preferred_username', 'email', 'sub'],
+      'test.com'
     );
 
-    expect(userName2).toEqual('test-1');
+    expect(name).toEqual('i_am_preferred_username');
+    expect(email).toEqual('i_am_preferred_username@test.com');
+  });
+});
+
+import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
+import { ClientType } from '../generated/configuration/authenticationConfiguration';
+import { prepareUserProfileFromClaims } from './AuthProvider.util';
+
+describe('prepareUserProfileFromClaims', () => {
+  const mockUser: OidcUser = {
+    profile: {
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+    },
+  } as OidcUser;
+
+  const mockJwtPrincipalClaims = ['email'];
+  const mockPrincipalDomain = 'example.com';
+  const mockJwtPrincipalClaimsMapping = ['username:name', 'email:email'];
+
+  it('should prepare user profile for public client type', () => {
+    const result = prepareUserProfileFromClaims({
+      user: mockUser,
+      jwtPrincipalClaims: mockJwtPrincipalClaims,
+      principalDomain: mockPrincipalDomain,
+      jwtPrincipalClaimsMapping: mockJwtPrincipalClaimsMapping,
+      clientType: ClientType.Public,
+    });
+
+    expect(result.profile).toEqual({
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+    });
+  });
+
+  it('should prepare user profile for non-public client type', () => {
+    const result = prepareUserProfileFromClaims({
+      user: mockUser,
+      jwtPrincipalClaims: mockJwtPrincipalClaims,
+      principalDomain: mockPrincipalDomain,
+      jwtPrincipalClaimsMapping: mockJwtPrincipalClaimsMapping,
+      clientType: ClientType.Confidential,
+    });
+
+    expect(result.profile).toEqual({
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+    });
+  });
+
+  it('should handle missing profile fields for non-public client type', () => {
+    const mockUserWithMissingFields: OidcUser = {
+      profile: {},
+    } as OidcUser;
+
+    const result = prepareUserProfileFromClaims({
+      user: mockUserWithMissingFields,
+      jwtPrincipalClaims: mockJwtPrincipalClaims,
+      principalDomain: mockPrincipalDomain,
+      jwtPrincipalClaimsMapping: mockJwtPrincipalClaimsMapping,
+      clientType: ClientType.Confidential,
+    });
+
+    expect(result.profile).toEqual({
+      name: '',
+      email: '',
+    });
   });
 });

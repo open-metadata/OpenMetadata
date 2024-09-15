@@ -26,6 +26,7 @@ import static org.openmetadata.service.util.TestUtils.AIRFLOW_CONNECTION;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.MYSQL_DATABASE_CONNECTION;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
@@ -34,15 +35,18 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
-import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.PipelineServiceMetadataPipeline;
@@ -51,24 +55,23 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService, CreatePipelineService> {
+public class PipelineServiceResourceTest
+    extends ServiceResourceTest<PipelineService, CreatePipelineService> {
   public PipelineServiceResourceTest() {
     super(
         Entity.PIPELINE_SERVICE,
         PipelineService.class,
         PipelineServiceList.class,
         "services/pipelineServices",
-        "owner");
+        "owners");
     this.supportsPatch = false;
   }
 
@@ -79,7 +82,8 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
             .createRequest(test, 1)
             .withServiceType(PipelineServiceType.Airflow)
             .withConnection(TestUtils.AIRFLOW_CONNECTION);
-    PipelineService pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
+    PipelineService pipelineService =
+        pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
     AIRFLOW_REFERENCE = pipelineService.getEntityReference();
 
     createPipeline =
@@ -99,12 +103,6 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[serviceType must not be null]");
-
-    // Create pipeline with mandatory `connection` field empty
-    assertResponse(
-        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[connection must not be null]");
   }
 
   @Test
@@ -113,25 +111,30 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
+
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test
-  void put_updatePipelineService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
-    PipelineService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
+  void put_updatePipelineService_as_admin_2xx(TestInfo test)
+      throws IOException, URISyntaxException {
+    PipelineService service =
+        createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
-    // Update pipeline description and ingestino service that are null
+    // Update pipeline description and ingestion service that are null
     CreatePipelineService update = createRequest(test).withDescription("description1");
 
-    ChangeDescription change = getChangeDescription(service.getVersion());
+    ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     PipelineConnection updatedConnection =
         new PipelineConnection()
             .withConfig(
                 new AirflowConnection()
                     .withHostPort(new URI("http://my-server:1234"))
-                    .withConnection(MYSQL_DATABASE_CONNECTION));
+                    .withConnection(MYSQL_DATABASE_CONNECTION.getConfig()));
 
     update.withConnection(updatedConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
@@ -140,10 +143,12 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     service = getEntity(service.getId(), TEST_AUTH_HEADERS);
     assertNotNull(service.getConnection());
     assertNotNull(
-        JsonUtils.readValue(JsonUtils.pojoToJson(service.getConnection().getConfig()), AirflowConnection.class)
+        JsonUtils.readValue(
+                JsonUtils.pojoToJson(service.getConnection().getConfig()), AirflowConnection.class)
             .getHostPort());
-    assertNull(
-        JsonUtils.readValue(JsonUtils.pojoToJson(service.getConnection().getConfig()), AirflowConnection.class)
+    assertNotNull(
+        JsonUtils.readValue(
+                JsonUtils.pojoToJson(service.getConnection().getConfig()), AirflowConnection.class)
             .getConnection());
   }
 
@@ -154,9 +159,12 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     assertResponseContains(
         () ->
             createEntity(
-                createRequest(test).withDescription(null).withConnection(pipelineConnection), ADMIN_AUTH_HEADERS),
+                createRequest(test).withDescription(null).withConnection(pipelineConnection),
+                ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Airflow] due to [Failed to encrypt connection instance of Airflow]");
+        String.format(
+            "Failed to convert [%s] to type [Airflow]. Review the connection.",
+            getEntityName(test)));
   }
 
   @Test
@@ -164,12 +172,12 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     // Create Pipeline Service
     CreatePipelineService create = createRequest(test);
     PipelineService service = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    EntityReference serviceRef = service.getEntityReference();
 
     // Add an IngestionPipeline to the service
-    IngestionPipelineResourceTest ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
+    IngestionPipelineResourceTest ingestionPipelineResourceTest =
+        new IngestionPipelineResourceTest();
     CreateIngestionPipeline createIngestionPipeline =
-        ingestionPipelineResourceTest.createRequest(test).withService(serviceRef);
+        ingestionPipelineResourceTest.createRequest(test).withService(service.getEntityReference());
 
     PipelineServiceMetadataPipeline pipelineServiceMetadataPipeline =
         new PipelineServiceMetadataPipeline()
@@ -190,6 +198,34 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     ingestionPipelineResourceTest.assertEntityDeleted(ingestionPipeline.getId(), true);
   }
 
+  @Test
+  void put_testConnectionResult_200(TestInfo test) throws IOException {
+    PipelineService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    // By default, we have no result logged in
+    assertNull(service.getTestConnectionResult());
+    PipelineService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    // Validate that the data got properly stored
+    assertNotNull(updatedService.getTestConnectionResult());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL,
+        updatedService.getTestConnectionResult().getStatus());
+    assertEquals(updatedService.getConnection(), service.getConnection());
+    // Check that the stored data is also correct
+    PipelineService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(stored.getTestConnectionResult());
+    assertEquals(
+        TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
+    assertEquals(stored.getConnection(), service.getConnection());
+  }
+
+  public PipelineService putTestConnectionResult(
+      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(serviceId).path("/testConnectionResult");
+    return TestUtils.put(target, testConnectionResult, PipelineService.class, OK, authHeaders);
+  }
+
   @Override
   public CreatePipelineService createRequest(String name) {
     return new CreatePipelineService()
@@ -200,14 +236,20 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
 
   @Override
   public void validateCreatedEntity(
-      PipelineService service, CreatePipelineService createRequest, Map<String, String> authHeaders) {
+      PipelineService service,
+      CreatePipelineService createRequest,
+      Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
     validatePipelineConnection(
-        createRequest.getConnection(), service.getConnection(), service.getServiceType(), authHeaders);
+        createRequest.getConnection(),
+        service.getConnection(),
+        service.getServiceType(),
+        authHeaders);
   }
 
   @Override
-  public void compareEntities(PipelineService expected, PipelineService updated, Map<String, String> authHeaders) {
+  public void compareEntities(
+      PipelineService expected, PipelineService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 
@@ -219,9 +261,9 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNull(service.getOwner());
+    TestUtils.assertListNull(service.getOwners());
 
-    fields = "owner,tags";
+    fields = "owners,tags";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -237,7 +279,8 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
       Map<String, String> authHeaders) {
     if (expectedPipelineConnection != null && actualPipelineConnection != null) {
       if (pipelineServiceType == PipelineServiceType.Airflow) {
-        AirflowConnection expectedAirflowConnection = (AirflowConnection) expectedPipelineConnection.getConfig();
+        AirflowConnection expectedAirflowConnection =
+            (AirflowConnection) expectedPipelineConnection.getConfig();
         AirflowConnection actualAirflowConnection;
         if (actualPipelineConnection.getConfig() instanceof AirflowConnection) {
           actualAirflowConnection = (AirflowConnection) actualPipelineConnection.getConfig();
@@ -251,35 +294,39 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 
-  public static void validateAirflowConnection(
+  public void validateAirflowConnection(
       AirflowConnection expectedAirflowConnection,
       AirflowConnection actualAirflowConnection,
       Map<String, String> authHeaders) {
     assertEquals(expectedAirflowConnection.getHostPort(), actualAirflowConnection.getHostPort());
     // Currently, just checking for MySQL as metadata db for Airflow
     // We need to get inside the general DatabaseConnection and fetch the MysqlConnection
-    DatabaseConnection expectedDatabaseConnection = (DatabaseConnection) expectedAirflowConnection.getConnection();
-    MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
+    MysqlConnection expectedMysqlConnection =
+        (MysqlConnection) expectedAirflowConnection.getConnection();
     // Use the database service tests utilities for the comparison
-    // only admin can see all connection parameters
-    if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
-      DatabaseConnection actualDatabaseConnection =
-          JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
+    // only bot can see all connection parameters unmasked. Non bot users can see the connection
+    // but passwords will be masked
+    if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
       MysqlConnection actualMysqlConnection =
-          JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
-      validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
+          JsonUtils.convertValue(actualAirflowConnection.getConnection(), MysqlConnection.class);
+      validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection, false);
     } else {
       assertNotNull(actualAirflowConnection);
       assertNotNull(actualAirflowConnection.getHostPort());
-      assertNull(actualAirflowConnection.getConnection());
+      MysqlConnection actualMysqlConnection =
+          JsonUtils.convertValue(actualAirflowConnection.getConnection(), MysqlConnection.class);
+      validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection, true);
     }
   }
 }

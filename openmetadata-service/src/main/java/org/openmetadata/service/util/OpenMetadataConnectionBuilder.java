@@ -1,95 +1,172 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.util;
 
-import java.io.IOException;
-import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.api.configuration.airflow.SSLConfig;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.security.secrets.SecretsManagerClientLoader;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.security.ssl.VerifySSL;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class OpenMetadataConnectionBuilder {
 
-  OpenMetadataConnection.AuthProvider authProvider;
-  String bot;
-  Object securityConfig;
-  private final VerifySSL verifySSL;
-  private final String openMetadataURL;
-  private final String clusterName;
-  private final SecretsManagerProvider secretsManagerProvider;
-  private final Object airflowSSLConfig;
+  AuthProvider authProvider;
+  OpenMetadataJWTClientConfig securityConfig;
+  private VerifySSL verifySSL;
+  private String openMetadataURL;
+  private String clusterName;
+  private SecretsManagerProvider secretsManagerProvider;
+  private SecretsManagerClientLoader secretsManagerLoader;
+  private Object openMetadataSSLConfig;
   BotRepository botRepository;
   UserRepository userRepository;
+  SecretsManager secretsManager;
 
-  public OpenMetadataConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
-    authProvider =
-        "basic".equals(openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider())
-            ? OpenMetadataConnection.AuthProvider.OPENMETADATA
-            : OpenMetadataConnection.AuthProvider.fromValue(
-                openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());
+  public OpenMetadataConnectionBuilder(
+      OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+    initializeOpenMetadataConnectionBuilder(openMetadataApplicationConfig);
+    initializeBotUser(Entity.INGESTION_BOT_NAME);
+  }
 
-    if (!OpenMetadataConnection.AuthProvider.NO_AUTH.equals(authProvider)) {
-      botRepository = BotRepository.class.cast(Entity.getEntityRepository(Entity.BOT));
-      userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
-      User botUser = retrieveBotUser();
-      securityConfig = extractSecurityConfig(botUser);
-      authProvider = extractAuthProvider(botUser);
+  public OpenMetadataConnectionBuilder(
+      OpenMetadataApplicationConfig openMetadataApplicationConfig, String botName) {
+    initializeOpenMetadataConnectionBuilder(openMetadataApplicationConfig);
+    initializeBotUser(botName);
+  }
+
+  public OpenMetadataConnectionBuilder(
+      OpenMetadataApplicationConfig openMetadataApplicationConfig,
+      IngestionPipeline ingestionPipeline) {
+    initializeOpenMetadataConnectionBuilder(openMetadataApplicationConfig);
+    // Try to load the pipeline bot or default to using the ingestion bot
+    try {
+      initializeBotUser(getBotFromPipeline(ingestionPipeline));
+    } catch (Exception e) {
+      LOG.warn(
+          String.format(
+              "Could not initialize bot for pipeline [%s] due to [%s]",
+              ingestionPipeline.getPipelineType(), e));
+      initializeBotUser(Entity.INGESTION_BOT_NAME);
     }
+  }
 
-    AirflowConfiguration airflowConfiguration = openMetadataApplicationConfig.getAirflowConfiguration();
-    openMetadataURL = airflowConfiguration.getMetadataApiEndpoint();
+  private String getBotFromPipeline(IngestionPipeline ingestionPipeline) {
+    String botName;
+    switch (ingestionPipeline.getPipelineType()) {
+      case METADATA, DBT -> botName = Entity.INGESTION_BOT_NAME;
+      case APPLICATION -> {
+        String type = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
+        botName = String.format("%sApplicationBot", type);
+      }
+        // TODO: Remove this once we internalize the DataInsights app
+        // For now we need it since DataInsights has its own pipelineType inherited from when it was
+        // a standalone workflow
+      case DATA_INSIGHT -> botName = "DataInsightsApplicationBot";
+      default -> botName =
+          String.format("%s-bot", ingestionPipeline.getPipelineType().toString().toLowerCase());
+    }
+    return botName;
+  }
+
+  private void initializeOpenMetadataConnectionBuilder(
+      OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+    botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+    userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
+        openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
+    openMetadataURL = pipelineServiceClientConfiguration.getMetadataApiEndpoint();
+    verifySSL = pipelineServiceClientConfiguration.getVerifySSL();
+
+    /*
+     How this information flows:
+     - The OM Server has SSL configured
+     - We need to provide a way to tell the pipelineServiceClient to use / not use it when connecting
+       to the server.
+
+     Then, we pick up this information from the pipelineServiceClient configuration and will pass it
+     inside the OpenMetadataServerConnection property of the IngestionPipeline.
+
+     Based on that, the Ingestion Framework will instantiate the client. This means,
+     that the SSL configs we add here are to go from pipelineServiceClient -> OpenMetadata Server.
+    */
+    openMetadataSSLConfig =
+        getOMSSLConfigFromPipelineServiceClient(
+            pipelineServiceClientConfiguration.getVerifySSL(),
+            pipelineServiceClientConfiguration.getSslConfig());
+
     clusterName = openMetadataApplicationConfig.getClusterName();
-    secretsManagerProvider = SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider();
-    verifySSL = VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
-    airflowSSLConfig =
-        getAirflowSSLConfig(
-            VerifySSL.fromValue(airflowConfiguration.getVerifySSL()), airflowConfiguration.getSslConfig());
+    secretsManagerLoader = pipelineServiceClientConfiguration.getSecretsManagerLoader();
+    secretsManager = SecretsManagerFactory.getSecretsManager();
+    secretsManagerProvider = secretsManager.getSecretsManagerProvider();
   }
 
-  private OpenMetadataConnection.AuthProvider extractAuthProvider(User botUser) {
+  private void initializeBotUser(String botName) {
+    User botUser = retrieveBotUser(botName);
+    securityConfig = extractSecurityConfig(botUser);
+    authProvider = extractAuthProvider(botUser);
+  }
+
+  private AuthProvider extractAuthProvider(User botUser) {
     AuthenticationMechanism.AuthType authType = botUser.getAuthenticationMechanism().getAuthType();
-    switch (authType) {
-      case SSO:
-        return OpenMetadataConnection.AuthProvider.fromValue(
-            JsonUtils.convertValue(botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
-                .getSsoServiceType()
-                .value());
-      case JWT:
-        return OpenMetadataConnection.AuthProvider.OPENMETADATA;
-      default:
-        throw new IllegalArgumentException(
-            String.format("Not supported authentication mechanism type: [%s]", authType.value()));
-    }
+    return switch (authType) {
+      case SSO -> AuthProvider.fromValue(
+          JsonUtils.convertValue(
+                  botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
+              .getSsoServiceType()
+              .value());
+      case JWT -> AuthProvider.OPENMETADATA;
+      default -> throw new IllegalArgumentException(
+          String.format("Not supported authentication mechanism type: [%s]", authType.value()));
+    };
   }
 
-  private Object extractSecurityConfig(User botUser) {
+  private OpenMetadataJWTClientConfig extractSecurityConfig(User botUser) {
     AuthenticationMechanism authMechanism = botUser.getAuthenticationMechanism();
-    switch (botUser.getAuthenticationMechanism().getAuthType()) {
-      case SSO:
-        return JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class).getAuthConfig();
-      case JWT:
-        JWTAuthMechanism jwtAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
-        return new OpenMetadataJWTClientConfig().withJwtToken(jwtAuthMechanism.getJWTToken());
-      default:
-        throw new IllegalArgumentException(
-            String.format("Not supported authentication mechanism type: [%s]", authMechanism.getAuthType().value()));
+    if (Objects.requireNonNull(botUser.getAuthenticationMechanism().getAuthType())
+        == AuthenticationMechanism.AuthType.JWT) {
+      JWTAuthMechanism jwtAuthMechanism =
+          JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
+      secretsManager.decryptJWTAuthMechanism(jwtAuthMechanism);
+      return new OpenMetadataJWTClientConfig().withJwtToken(jwtAuthMechanism.getJWTToken());
     }
+    throw new IllegalArgumentException(
+        String.format(
+            "Not supported authentication mechanism type: [%s]",
+            authMechanism.getAuthType().value()));
   }
 
   public OpenMetadataConnection build() {
@@ -99,12 +176,21 @@ public class OpenMetadataConnectionBuilder {
         .withSecurityConfig(securityConfig)
         .withVerifySSL(verifySSL)
         .withClusterName(clusterName)
+        // What is the SM configuration, i.e., tool used to manage secrets: AWS SM, Parameter
+        // Store,...
         .withSecretsManagerProvider(secretsManagerProvider)
-        .withSslConfig(airflowSSLConfig);
+        // How the Ingestion Framework will know how to load the SM creds in the client side, e.g.,
+        // airflow.cfg
+        .withSecretsManagerLoader(secretsManagerLoader)
+        /*
+        This is not about the pipeline service client SSL, but the OM server SSL.
+        The Ingestion Framework will use this value to load the certificates when connecting to the server.
+        */
+        .withSslConfig(openMetadataSSLConfig);
   }
 
-  private User retrieveBotUser() {
-    User botUser = retrieveIngestionBotUser(Entity.INGESTION_BOT_NAME);
+  private User retrieveBotUser(String botName) {
+    User botUser = retrieveIngestionBotUser(botName);
     if (botUser == null) {
       throw new IllegalArgumentException("Please, verify that the ingestion-bot is present.");
     }
@@ -113,34 +199,29 @@ public class OpenMetadataConnectionBuilder {
 
   private User retrieveIngestionBotUser(String botName) {
     try {
-      Bot bot1 = botRepository.getByName(null, botName, Fields.EMPTY_FIELDS);
-      if (bot1.getBotUser() == null) {
+      Bot bot = botRepository.getByName(null, botName, Fields.EMPTY_FIELDS);
+      if (bot.getBotUser() == null) {
         return null;
       }
       User user =
           userRepository.getByName(
               null,
-              bot1.getBotUser().getFullyQualifiedName(),
-              new EntityUtil.Fields(List.of("authenticationMechanism")));
+              bot.getBotUser().getFullyQualifiedName(),
+              new EntityUtil.Fields(Set.of("authenticationMechanism")));
       if (user.getAuthenticationMechanism() != null) {
         user.getAuthenticationMechanism().setConfig(user.getAuthenticationMechanism().getConfig());
       }
       return user;
-    } catch (IOException | EntityNotFoundException ex) {
-      LOG.debug((bot == null ? "Bot" : String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
+    } catch (EntityNotFoundException ex) {
+      LOG.debug((String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
       return null;
     }
   }
 
-  protected Object getAirflowSSLConfig(VerifySSL verifySSL, SSLConfig sslConfig) {
-    switch (verifySSL) {
-      case NO_SSL:
-      case IGNORE:
-        return null;
-      case VALIDATE:
-        return sslConfig.getValidate();
-      default:
-        throw new IllegalArgumentException("OpenMetadata doesn't support SSL verification type " + verifySSL.value());
-    }
+  protected Object getOMSSLConfigFromPipelineServiceClient(VerifySSL verifySSL, Object sslConfig) {
+    return switch (verifySSL) {
+      case NO_SSL, IGNORE -> null;
+      case VALIDATE -> JsonUtils.convertValue(sslConfig, ValidateSSLClientConfig.class);
+    };
   }
 }

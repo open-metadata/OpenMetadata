@@ -15,8 +15,7 @@ import {
   OperationPermission,
   ResourceEntity,
   UIPermission,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import AppState from '../AppState';
+} from '../context/PermissionProvider/PermissionProvider.interface';
 import {
   Access,
   Permission,
@@ -36,10 +35,9 @@ export const checkPermission = (
   resourceType: ResourceEntity,
   permissions: UIPermission
 ) => {
-  const isAuthDisabled = AppState.authDisabled;
   const allResource = permissions?.all;
   const entityResource = permissions?.[resourceType];
-  let hasPermission = isAuthDisabled;
+  let hasPermission = false;
 
   /**
    * If allResource is present then check for permission and return it
@@ -108,7 +106,7 @@ export const DEFAULT_ENTITY_PERMISSION = {
   EditDescription: false,
   EditDisplayName: false,
   EditLineage: false,
-  EditOwner: false,
+  EditOwners: false,
   EditQueries: false,
   EditSampleData: false,
   EditTags: false,
@@ -124,3 +122,5 @@ export const DEFAULT_ENTITY_PERMISSION = {
 } as OperationPermission;
 
 export const LIST_CAP = 1;
+
+export const ALL_TYPE_RESOURCE_LIST = ['all', 'All'];

@@ -29,7 +29,10 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
     sql_stmt = CLICKHOUSE_SQL_STATEMENT
 
     filters = """
-        and query_kind in ('Create', 'Insert')
+        and (
+            query_kind='Create' 
+            or (query_kind='Insert' and query ilike '%%insert%%into%%select%%')
+        )
     """
 
     database_field = ""

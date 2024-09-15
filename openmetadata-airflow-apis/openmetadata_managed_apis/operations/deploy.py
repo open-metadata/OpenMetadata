@@ -8,15 +8,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import json
 import pkgutil
 import traceback
 from pathlib import Path
 from typing import Dict
 
 from airflow import DAG, settings
-from airflow.jobs.scheduler_job import SchedulerJob
 from airflow.models import DagModel
+from flask import escape
 from jinja2 import Template
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
@@ -31,14 +31,10 @@ from openmetadata_managed_apis.api.utils import (
     scan_dags_job_background,
 )
 from openmetadata_managed_apis.utils.logger import operations_logger
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = operations_logger()
@@ -50,6 +46,32 @@ class DeployDagException(Exception):
     """
 
 
+def dump_with_safe_jwt(ingestion_pipeline: IngestionPipeline) -> str:
+    """
+    Get the dump of the IngestionPipeline but keeping the JWT token masked.
+
+    Since Pydantic V2, we had to handle the serialization of secrets when dumping
+    the data at model level, since we don't have anymore fine-grained control of
+    it at runtime as we did with V1.
+
+    This means that even if the JWT token is a secret, a model_dump or model_json_dump
+    will automatically show the secret value - picking it from the Secrets Manager if enabled.
+
+    With this workaround, we're dumping the model to JSON and then replacing the JWT token
+    with the secret, so that if we are using a Secret Manager, the resulting file
+    will have the secret ID `secret:/super/secret` instead of the actual value.
+
+    Then, the client will pick up the right secret when the workflow is triggered.
+    """
+    pipeline_json = ingestion_pipeline.model_dump(mode="json", exclude_defaults=False)
+    pipeline_json["openMetadataServerConnection"]["securityConfig"][
+        "jwtToken"
+    ] = ingestion_pipeline.openMetadataServerConnection.securityConfig.jwtToken.get_secret_value(
+        skip_secret_manager=True
+    )
+    return json.dumps(pipeline_json, ensure_ascii=True)
+
+
 class DagDeployer:
     """
     Helper class to store DAG config
@@ -57,19 +79,16 @@ class DagDeployer:
     """
 
     def __init__(self, ingestion_pipeline: IngestionPipeline):
-
         logger.info(
             f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}"
         )
         # we need to instantiate the secret manager in case secrets are passed
         SecretsManagerFactory(
             ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider,
-            build_secrets_manager_credentials(
-                ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider
-            ),
+            ingestion_pipeline.openMetadataServerConnection.secretsManagerLoader,
         )
         self.ingestion_pipeline = ingestion_pipeline
-        self.dag_id = clean_dag_id(self.ingestion_pipeline.name.__root__)
+        self.dag_id = clean_dag_id(self.ingestion_pipeline.name.root)
 
     def store_airflow_pipeline_config(
         self, dag_config_file_path: Path
@@ -81,7 +100,7 @@ class DagDeployer:
 
         logger.info(f"Saving file to {dag_config_file_path}")
         with open(dag_config_file_path, "w") as outfile:
-            outfile.write(self.ingestion_pipeline.json(encoder=show_secrets_encoder))
+            outfile.write(dump_with_safe_jwt(self.ingestion_pipeline))
 
         return {"workflow_config_file": str(dag_config_file_path)}
 
@@ -95,7 +114,7 @@ class DagDeployer:
 
         # Open the template and render
         raw_template = pkgutil.get_data(PLUGIN_NAME, "resources/dag_runner.j2").decode()
-        template = Template(raw_template)
+        template = Template(raw_template, autoescape=True)
 
         rendered_dag = template.render(dag_runner_config)
 
@@ -152,7 +171,7 @@ class DagDeployer:
         scan_dags_job_background()
 
         return ApiResponse.success(
-            {"message": f"Workflow [{self.dag_id}] has been created"}
+            {"message": f"Workflow [{escape(self.dag_id)}] has been created"}
         )
 
     def deploy(self):

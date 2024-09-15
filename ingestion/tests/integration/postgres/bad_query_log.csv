@@ -1,0 +1,6 @@
+query_text,database_name,schema_name
+"select * from sales",dvdrental,public
+"select * from marketing",dvdrental,public
+"insert into marketing select * from sales",default,public
+"insert into dvdrental.public.staff as (select id from non_existent union select * from dvdrental.public.customer)",dvdrental,public
+"insert into dvdrental.public.actor as (select * from dvdrental.public.customer)",dvdrental,public

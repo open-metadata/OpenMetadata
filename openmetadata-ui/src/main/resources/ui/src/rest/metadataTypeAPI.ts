@@ -13,14 +13,17 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { Category, CustomProperty, Type } from '../generated/entity/type';
+import { TabSpecificField } from '../enums/entity.enum';
+import { Category, Type } from '../generated/entity/type';
+import { CustomProperty } from '../generated/type/customProperty';
 import { Paging } from '../generated/type/paging';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const getTypeListByCategory = async (category: Category) => {
   const path = `/metadata/types`;
 
-  const params = { category, limit: '12' };
+  const params = { category, limit: '20' };
 
   const response = await APIClient.get<{ data: Type[]; paging: Paging }>(path, {
     params,
@@ -30,9 +33,9 @@ export const getTypeListByCategory = async (category: Category) => {
 };
 
 export const getTypeByFQN = async (typeFQN: string) => {
-  const path = `/metadata/types/name/${typeFQN}`;
+  const path = `/metadata/types/name/${getEncodedFqn(typeFQN)}`;
 
-  const params = { fields: 'customProperties' };
+  const params = { fields: TabSpecificField.CUSTOM_PROPERTIES };
 
   const response = await APIClient.get<Type>(path, { params });
 
@@ -54,15 +57,11 @@ export const addPropertyToEntity = async (
 };
 
 export const updateType = async (entityTypeId: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
   const path = `/metadata/types/${entityTypeId}`;
 
   const response = await APIClient.patch<Operation[], AxiosResponse<Type>>(
     path,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

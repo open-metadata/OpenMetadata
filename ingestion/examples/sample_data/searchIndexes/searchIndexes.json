@@ -1,0 +1,76 @@
+{
+	"searchIndexes": [
+		{
+			"id": "e093dd27-390e-4360-8efd-e4d63ec167a9",
+			"name": "table_search_index",
+			"displayName": "TableSearchIndex",
+			"fullyQualifiedName": "elasticsearch_sample.table_search_index",
+			"description": "Table Search Index",
+			"version": 0.1,
+			"updatedAt": 1638354087591,
+			"serviceType": "ElasticSearch",
+			"fields": [
+				{
+					"name": "name",
+					"dataType": "TEXT",
+					"dataTypeDisplay": "text",
+					"description": "Table Entity Name.",
+					"tags": []
+				},
+				{
+					"name": "displayName",
+					"dataType": "TEXT",
+					"dataTypeDisplay": "text",
+					"description": "Table Entity DisplayName.",
+					"tags": []
+				},
+				{
+					"name": "description",
+					"dataType": "TEXT",
+					"dataTypeDisplay": "text",
+					"description": "Table Entity Description.",
+					"tags": []
+				},
+				{
+					"name": "columns",
+					"dataType": "NESTED",
+					"dataTypeDisplay": "nested",
+					"description": "Table Columns.",
+					"tags": [],
+					"children": [
+						{
+							"name": "name",
+							"dataType": "TEXT",
+							"dataTypeDisplay": "text",
+							"description": "Column Name.",
+							"tags": []
+						},
+						{
+							"name": "displayName",
+							"dataType": "TEXT",
+							"dataTypeDisplay": "text",
+							"description": "Column DisplayName.",
+							"tags": []
+						},
+						{
+							"name": "description",
+							"dataType": "TEXT",
+							"dataTypeDisplay": "text",
+							"description": "Column Description.",
+							"tags": []
+						}
+					]
+				},
+				{
+					"name": "databaseSchema",
+					"dataType": "TEXT",
+					"dataTypeDisplay": "text",
+					"description": "Database Schema that this table belongs to.",
+					"tags": []
+				}
+			],
+			"tags": [],
+			"followers": []
+		}
+	]
+}

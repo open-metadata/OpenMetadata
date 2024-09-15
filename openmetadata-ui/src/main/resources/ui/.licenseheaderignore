@@ -23,6 +23,7 @@
 /docker
 
 # Assets
+*.gif
 *.svg
 *.png
 *.ico
@@ -44,11 +45,11 @@
 /src/test/unit/coverage
 "text-report.xml"
 
-# Cypress
-/cypress/downloads
-/cypress/screenshots
-/cypress/videos
-/cypress/plugins
+# Playwright
+/playwright/output/
+/playwright/e2e/.cache/
+/playwright/.env
+/playwright/.auth
 
 # webpack
 /webpack
@@ -76,3 +77,6 @@ Thumbs.db
 
 # Generated
 src/generated
+
+# Snapshots
+*.snap

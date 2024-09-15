@@ -12,24 +12,25 @@
 Helpers to import python classes and modules dynamically
 """
 import importlib
+import sys
 import traceback
 from enum import Enum
-from typing import Callable, Optional, Type, TypeVar
+from typing import Any, Callable, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
-from metadata.ingestion.api.bulk_sink import BulkSink
-from metadata.ingestion.api.processor import Processor
-from metadata.ingestion.api.sink import Sink
-from metadata.ingestion.api.source import Source
-from metadata.ingestion.api.stage import Stage
+from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.utils.class_helper import get_service_type_from_source_type
+from metadata.utils.client_version import get_client_version
+from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.logger import utils_logger
+from metadata.utils.singleton import Singleton
 
 logger = utils_logger()
 
@@ -43,6 +44,38 @@ class DynamicImportException(Exception):
     """
     Raise it when having issues dynamically importing objects
     """
+
+    def __init__(self, module: str, key: str = None, cause: Exception = None):
+        self.module = module
+        self.key = key
+        self.cause = cause
+
+    def __str__(self):
+        import_path = self.module
+        if self.key:
+            import_path += f".{self.key}"
+        return f"Cannot import {import_path} due to {self.cause}"
+
+
+class MissingPluginException(Exception):
+    """
+    An excpetion that captures a missing openmetadata-ingestion plugin for a specific connector.
+    """
+
+    def __init__(self, plugin: str):
+        self.plugin = plugin
+
+    def __str__(self):
+        try:
+            version = "==" + get_client_version()
+        except Exception:
+            logger.warning("unable to get client version")
+            logger.debug(traceback.format_exc())
+            version = ""
+        return (
+            f"You might be missing the plugin [{self.plugin}]. Try:\n"
+            f'pip install "openmetadata-ingestion[{self.plugin}]{version}"'
+        )
 
 
 def get_module_dir(type_: str) -> str:
@@ -89,18 +122,18 @@ def get_class_name_root(type_: str) -> str:
     )
 
 
-def import_from_module(key: str) -> Type[T]:
+def import_from_module(key: str) -> Type[Any]:
     """
     Dynamically import an object from a module path
     """
 
+    module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
     try:
-        module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
         obj = getattr(importlib.import_module(module_name), obj_name)
         return obj
     except Exception as err:
         logger.debug(traceback.format_exc())
-        raise DynamicImportException(f"Cannot load object from {key} due to {err}")
+        raise DynamicImportException(module=module_name, key=obj_name, cause=err)
 
 
 # module building strings read better with .format instead of f-strings
@@ -174,7 +207,7 @@ def get_sink(
     from the given configs
     """
     sink_class = import_sink_class(sink_type=sink_type, from_=from_)
-    sink_config = sink_config.dict().get("config", {})
+    sink_config = sink_config.model_dump().get("config", {})
     sink: Sink = sink_class.create(sink_config, metadata_config)
     logger.debug(f"Sink type:{sink_type}, {sink_class} configured")
 
@@ -200,12 +233,72 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
 
     # module building strings read better with .format instead of f-strings
     # pylint: disable=consider-using-f-string
-    _connection_fn = import_from_module(
-        "metadata.ingestion.source.{}.{}.connection.{}".format(
-            service_type.name.lower(),
-            connection_type.value.lower(),
-            function_name,
+
+    if connection.type.value.lower().startswith(CUSTOM_CONNECTOR_PREFIX):
+        python_class_parts = connection.sourcePythonClass.rsplit(".", 1)
+        python_module_path = ".".join(python_class_parts[:-1])
+
+        _connection_fn = import_from_module(
+            "{}.{}".format(python_module_path, function_name)
+        )
+    else:
+        _connection_fn = import_from_module(
+            "metadata.ingestion.source.{}.{}.connection.{}".format(
+                service_type.name.lower(),
+                connection_type.value.lower(),
+                function_name,
+            )
+        )
+
+    return _connection_fn
+
+
+def import_test_case_class(
+    test_type: str,
+    runner_type: str,
+    test_definition: str,
+) -> Type[BaseTestValidator]:
+    """_summary_
+
+    Args:
+        test_type (str): column or table
+        runner_type (str): sqlalchemy or pandas
+        test_definition (str): test definition name
+        test_definition_class (str): test definition class name (same as test_definition)
+
+    Returns:
+        Callable: test validator object
+    """
+    test_definition_class = (
+        test_definition[0].upper() + test_definition[1:]
+    )  # change test names to camel case
+    return import_from_module(
+        "metadata.data_quality.validations.{}.{}.{}.{}Validator".format(
+            test_type.lower(),
+            runner_type,
+            test_definition,
+            test_definition_class,
         )
     )
 
-    return _connection_fn
+
+class SideEffectsLoader(metaclass=Singleton):
+    modules = set(sys.modules.keys())
+
+    def import_side_effects(self, *modules):
+        """Handles loading of side effects and caches modules that have already been imported.
+        Requires full module name."""
+        for module in modules:
+            if module not in self.modules:
+                try:
+                    module = importlib.import_module(module)
+                    SideEffectsLoader.modules.add(module.__name__)
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    raise DynamicImportException(module=module, cause=err)
+            else:
+                logger.debug(f"Module {module} already imported")
+
+
+def import_side_effects(*modules):
+    SideEffectsLoader().import_side_effects(*modules)

@@ -11,18 +11,16 @@
 """
 Health endpoint. Globally accessible
 """
-import traceback
 from typing import Callable
 
 from flask import Blueprint
+from openmetadata_managed_apis.operations.health import health_response
 from openmetadata_managed_apis.utils.logger import routes_logger
 
 try:
-    from importlib.metadata import version
+    pass
 except ImportError:
-    from importlib_metadata import version
-
-from openmetadata_managed_apis.api.response import ApiResponse
+    pass
 
 logger = routes_logger()
 
@@ -45,17 +43,6 @@ def get_fn(blueprint: Blueprint) -> Callable:
         /health endpoint to check Airflow REST status without auth
         """
 
-        try:
-            return ApiResponse.success(
-                {"status": "healthy", "version": version("openmetadata-ingestion")}
-            )
-        except Exception as exc:
-            msg = f"Error obtaining Airflow REST status due to [{exc}] "
-            logger.debug(traceback.format_exc())
-            logger.error(msg)
-            return ApiResponse.error(
-                status=ApiResponse.STATUS_BAD_REQUEST,
-                error=msg,
-            )
+        return health_response()
 
     return health

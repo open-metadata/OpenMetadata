@@ -1,0 +1,82 @@
+{
+  "$id": "https://open-metadata.org/schema/events/api/createEventSubscription.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateEventSubscription",
+  "description": "This defines schema for sending alerts for OpenMetadata",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.CreateEventSubscription",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that uniquely identifies this Alert.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name for this Alert.",
+      "type": "string"
+    },
+    "description": {
+      "description": "A short description of the Alert, comprehensible to regular users.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owners": {
+      "description": "Owners of this Alert.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "enabled": {
+      "description": "Is the alert enabled.",
+      "type": "boolean",
+      "default": true
+    },
+    "batchSize": {
+      "description": "Maximum number of events sent in a batch (Default 10).",
+      "type": "integer",
+      "default": 10
+    },
+    "alertType": {
+      "description": "Type of Alert",
+      "$ref": "../eventSubscription.json#/definitions/alertType"
+    },
+    "trigger": {
+      "$ref": "../eventSubscription.json#/definitions/trigger"
+    },
+    "resources": {
+      "description": "Defines a list of resources that triggers the Event Subscription, Eg All, User, Teams etc.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "destinations": {
+      "description": "Subscription Config.",
+      "type": "array",
+      "items": {
+        "$ref": "../../events/eventSubscription.json#/definitions/destination"
+      }
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "retries": {
+      "description": "Number of times to retry callback on failure. (Default 3).",
+      "type": "integer",
+      "default": 3
+    },
+    "pollInterval": {
+      "description": "Poll Interval in seconds.",
+      "type": "integer",
+      "default": 10
+    },
+    "input": {
+      "description": "Input for the Filters.",
+      "$ref": "../eventSubscription.json#/definitions/alertFilteringInput"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
+    }
+  },
+  "required": ["name", "alertType"],
+  "additionalProperties": false
+}

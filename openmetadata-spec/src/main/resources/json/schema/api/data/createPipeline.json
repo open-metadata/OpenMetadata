@@ -20,9 +20,16 @@
       "description": "Description of the pipeline instance. What it has and how to use it.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "pipelineUrl": {
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "sourceUrl": {
       "description": "Pipeline URL suffix to visit/manage. This URL points to respective pipeline service UI",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "concurrency": {
       "description": "Concurrency of the Pipeline",
@@ -52,17 +59,37 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this pipeline",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this pipeline",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "service": {
-      "description": "Link to the pipeline service where this pipeline is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "description": "Link to the pipeline service fqn where this pipeline is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "scheduleInterval": {
+      "description": "Scheduler Interval for the pipeline in cron format.",
+      "type": "string",
+      "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Pipeline belongs to.",
+      "type": "string"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
     }
   },
   "required": ["name", "service"],

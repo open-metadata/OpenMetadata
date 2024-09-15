@@ -24,7 +24,6 @@ from airflow import DAG
 
 # Operators; we need this to operate!
 from airflow.operators.bash import BashOperator
-from airflow.operators.python import PythonOperator
 
 from airflow_provider_openmetadata.hooks.openmetadata import OpenMetadataHook
 
@@ -78,7 +77,6 @@ with DAG(
     catchup=False,
     tags=["example"],
 ) as dag:
-
     # t1, t2 and t3 are examples of tasks created by instantiating operators
     t1 = BashOperator(
         task_id="print_date",
@@ -97,7 +95,8 @@ with DAG(
         retries=3,
         inlets={
             "tables": [
-                "test-service-table-lineage.test-db.test-schema.lineage-test-inlet"
+                "test-service-table-lineage.test-db.test-schema.lineage-test-inlet",
+                "test-service-table-lineage.test-db.test-schema.lineage-test-inlet2",
             ]
         },
     )

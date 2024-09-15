@@ -16,8 +16,8 @@ import { isEmpty, isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import './summary-list.less';
 import { SummaryListProps } from './SummaryList.interface';
-import './SummaryList.style.less';
 import SummaryListItems from './SummaryListItems/SummaryListItems.component';
 
 const { Text } = Typography;
@@ -25,14 +25,17 @@ const { Text } = Typography;
 export default function SummaryList({
   formattedEntityData,
   entityType,
+  emptyPlaceholderText,
 }: SummaryListProps) {
   const { t } = useTranslation();
 
   return (
-    <Row>
+    <Row align="middle" data-testid="summary-list">
       {isEmpty(formattedEntityData) ? (
-        <div className="m-y-md">
-          <Text className="text-gray">{t('message.no-data-available')}</Text>
+        <div>
+          <Text className="text-grey-body">
+            {emptyPlaceholderText ?? t('message.no-data-available')}
+          </Text>
         </div>
       ) : (
         formattedEntityData.map((entity) =>

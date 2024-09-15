@@ -12,15 +12,27 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { isNil } from 'lodash';
-import { ServiceData, ServicesData, ServicesUpdateRequest } from 'Models';
 import {
-  ConfigData,
+  RestoreRequestType,
+  ServiceData,
+  ServicesData,
+  ServicesUpdateRequest,
+} from 'Models';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { PAGE_SIZE } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
+import { ListParams } from '../interface/API.interface';
+import {
+  DomainSupportedServiceTypes,
   ServiceResponse,
   ServicesType,
 } from '../interface/service.interface';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
+import { searchData } from './miscAPI';
 
 export const getServiceDetails = async (): Promise<
   AxiosResponse<ServiceData[]>
@@ -30,20 +42,32 @@ export const getServiceDetails = async (): Promise<
   return response.data;
 };
 
-export const getServices = async (serviceName: string, limit?: number) => {
-  let url = `/services/${serviceName}`;
-  const searchParams = new URLSearchParams();
+interface ServiceRequestParams {
+  limit?: number;
+  serviceName: string;
+  after?: string;
+  before?: string;
+  include?: Include;
+}
 
-  if (!isNil(limit)) {
-    searchParams.append('limit', `${limit}`);
-  }
+export const getServices = async ({
+  serviceName,
+  limit,
+  after,
+  before,
+  include = Include.NonDeleted,
+}: ServiceRequestParams) => {
+  const url = `/services/${serviceName}`;
 
-  const isPaging =
-    serviceName.includes('after') || serviceName.includes('before');
+  const params = {
+    fields: TabSpecificField.OWNERS,
+    limit,
+    after,
+    before,
+    include,
+  };
 
-  url += isPaging ? `&${searchParams}` : `?${searchParams}`;
-
-  const response = await APIClient.get<ServiceResponse>(url);
+  const response = await APIClient.get<ServiceResponse>(url, { params });
 
   return response.data;
 };
@@ -59,14 +83,25 @@ export const getServiceById = async (serviceName: string, id: string) => {
 export const getServiceByFQN = async (
   serviceCat: string,
   fqn: string,
-  arrQueryFields: string | string[] = ''
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
-    `/services/${serviceCat}/name/${fqn}`,
-    arrQueryFields
+  const response = await APIClient.get<ServicesType>(
+    `/services/${serviceCat}/name/${getEncodedFqn(fqn)}`,
+    { params: { ...params, include: params?.include ?? Include.NonDeleted } }
   );
 
-  const response = await APIClient.get<ServicesType>(url);
+  return response.data;
+};
+
+export const getDomainSupportedServiceByFQN = async (
+  serviceCat: string,
+  fqn: string,
+  params?: ListParams
+) => {
+  const response = await APIClient.get<DomainSupportedServiceTypes>(
+    `/services/${serviceCat}/name/${getEncodedFqn(fqn)}`,
+    { params }
+  );
 
   return response.data;
 };
@@ -83,15 +118,28 @@ export const postService = async (
   return response.data;
 };
 
-export const updateService = async (
+export const patchService = async (
   serviceCat: string,
-  _id: string,
+  id: string,
   options: ServicesUpdateRequest
 ) => {
-  const response = await APIClient.put<
+  const response = await APIClient.patch<
     ServicesUpdateRequest,
     AxiosResponse<ServicesType>
-  >(`/services/${serviceCat}`, options);
+  >(`/services/${serviceCat}/${id}`, options);
+
+  return response.data;
+};
+
+export const patchDomainSupportedService = async (
+  serviceCat: string,
+  id: string,
+  options: ServicesUpdateRequest
+) => {
+  const response = await APIClient.patch<
+    ServicesUpdateRequest,
+    AxiosResponse<DomainSupportedServiceTypes>
+  >(`/services/${serviceCat}/${id}`, options);
 
   return response.data;
 };
@@ -103,14 +151,65 @@ export const deleteService = (
   return APIClient.delete(`/services/${serviceCat}/${id}`);
 };
 
-export const TestConnection = (
-  data: ConfigData,
-  type: string
-): Promise<AxiosResponse> => {
-  const payload = {
-    connection: { config: data },
-    connectionType: type,
-  };
+export const getServiceVersions = async (
+  serviceCategory: string,
+  id: string
+) => {
+  const url = `/services/${serviceCategory}/${id}/versions`;
 
-  return APIClient.post(`/services/ingestionPipelines/testConnection`, payload);
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getServiceVersionData = async (
+  serviceCategory: string,
+  id: string,
+  version: string
+) => {
+  const url = `/services/${serviceCategory}/${id}/versions/${version}`;
+
+  const response = await APIClient.get<ServicesType>(url);
+
+  return response.data;
+};
+
+export const searchService = async ({
+  search,
+  searchIndex,
+  currentPage = 1,
+  limit = PAGE_SIZE,
+  filters,
+  deleted = false,
+}: {
+  search?: string;
+  searchIndex: SearchIndex | SearchIndex[];
+  limit?: number;
+  currentPage?: number;
+  filters?: string;
+  deleted?: boolean;
+}) => {
+  const response = await searchData(
+    search ?? WILD_CARD_CHAR,
+    currentPage,
+    limit,
+    filters ?? '',
+    '',
+    '',
+    searchIndex,
+    deleted
+  );
+
+  return response.data;
+};
+
+export const restoreService = async (serviceCategory: string, id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<ServicesType>
+  >(`/services/${serviceCategory}/restore`, {
+    id,
+  });
+
+  return response.data;
 };

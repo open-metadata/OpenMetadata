@@ -15,11 +15,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
+import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
 import KPIList from './KPIList';
 import { KPI_DATA } from './mocks/KPIList';
 
 const mockPush = jest.fn();
-
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
+    currentUser: { ...mockUserData, isAdmin: true },
+  })),
+}));
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
@@ -31,21 +36,22 @@ jest.mock('react-router-dom', () => ({
     )),
 }));
 
-jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
+jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () =>
   jest.fn().mockReturnValue(<div data-testid="delete-modal">Delete Modal</div>)
 );
 
-jest.mock('components/common/next-previous/NextPrevious', () =>
+jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="next-previous">Next Previous</div>)
 );
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
+jest.mock(
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  () => jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
@@ -53,11 +59,7 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../utils/TimeUtils', () => ({
-  formatDateTime: jest.fn().mockReturnValue('7 Dec 2022, 00:00'),
-}));
-
-jest.mock('rest/KpiAPI', () => ({
+jest.mock('../../rest/KpiAPI', () => ({
   getListKPIs: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: KPI_DATA })),

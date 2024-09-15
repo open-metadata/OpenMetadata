@@ -34,7 +34,7 @@
       "type": "string"
     },
     "serverPort": {
-      "description": "Smtp Server Endpoint",
+      "description": "Smtp Server Port",
       "type": "integer"
     },
     "username": {
@@ -47,10 +47,18 @@
     },
     "transportationStrategy": {
       "type": "string",
-      "enum": ["SMTP", "SMPTS", "SMTP_TLS"],
+      "enum": ["SMTP", "SMTPS", "SMTP_TLS"],
       "default": "SMTP"
+    },
+    "templatePath": {
+      "type": "string"
+    },
+    "templates": {
+      "type": "string",
+      "enum": ["openmetadata", "collate"],
+      "default": "openmetadata"
     }
   },
   "additionalProperties": false,
-  "required": ["serverEndpoint", "serverPort", "username", "password", "senderMail", "openMetadataUrl"]
+  "required": ["serverEndpoint", "serverPort", "senderMail", "openMetadataUrl"]
 }

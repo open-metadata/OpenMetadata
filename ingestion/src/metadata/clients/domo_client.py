@@ -14,7 +14,11 @@ DomoClient source to extract data from DOMO
 """
 
 import traceback
-from typing import Union
+from dataclasses import dataclass
+from typing import List, Optional, Union
+
+from pydantic import BaseModel, ConfigDict
+from pydomo import Domo
 
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
@@ -34,6 +38,56 @@ HEADERS = {"Content-Type": "application/json"}
 WORKFLOW_URL = "dataprocessing/v1/dataflows"
 
 
+class DomoBaseModel(BaseModel):
+    """
+    Domo basic configurations
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    name: str
+
+
+class DomoOwner(BaseModel):
+    """
+    Owner Owner Details
+    """
+
+    displayName: str
+    id: str
+
+
+class DomoDashboardDetails(DomoBaseModel):
+    """
+    Response from Domo API
+    """
+
+    cardIds: Optional[List[int]] = None
+    collectionIds: Optional[List[int]] = None
+    description: Optional[str] = None
+    owners: Optional[List[DomoOwner]] = None
+
+
+class DomoChartMetadataDetails(BaseModel):
+    """
+    Metadata Details in chart
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    chartType: Optional[str] = None
+
+
+class DomoChartDetails(DomoBaseModel):
+    """
+    Response from Domo API for chart
+    """
+
+    metadata: DomoChartMetadataDetails
+    description: Optional[str] = None
+
+
 class DomoClient:
     """
     Implements the necessary methods to extract
@@ -49,14 +103,18 @@ class DomoClient:
         self.config = config
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.sandboxDomain,
+            # AnyUrl string ends with / and the domo API does not respond properly if it has 2 // at the end
+            base_url=str(self.config.instanceDomain)[:-1],
             api_version="api/",
             auth_header="Authorization",
             auth_token=lambda: ("no_token", 0),
         )
         self.client = REST(client_config)
 
-    def get_chart_details(self, page_id) -> dict:
+    def get_chart_details(self, page_id) -> Optional[DomoChartDetails]:
+        """
+        Getting chart details for particular page
+        """
         url = (
             f"content/v1/cards?urns={page_id}&parts=datasources,dateInfo,library,masonData,metadata,"
             f"metadataOverrides,owners,problems,properties,slicers,subscriptions&includeFiltered=true"
@@ -65,23 +123,70 @@ class DomoClient:
             response = self.client._request(  # pylint: disable=protected-access
                 method="GET", path=url, headers=HEADERS
             )
-            return response[0] if len(response) > 0 else None
+
+            if isinstance(response, list) and len(response) > 0:
+                return DomoChartDetails(
+                    id=str(response[0]["id"]),
+                    name=response[0]["title"],
+                    metadata=DomoChartMetadataDetails(
+                        chartType=response[0].get("metadata", {}).get("chartType", "")
+                    ),
+                    description=response[0].get("description", ""),
+                )
 
         except Exception as exc:
-            logger.info(f"Error while getting details for Card {page_id} - {exc}")
+            logger.warning(f"Error while getting details for Card {page_id} - {exc}")
             logger.debug(traceback.format_exc())
 
         return None
 
     def get_pipelines(self):
-        response = self.client._request(  # pylint: disable=protected-access
-            method="GET", path=WORKFLOW_URL, headers=HEADERS
-        )
-        return response
+        try:
+            response = self.client._request(  # pylint: disable=protected-access
+                method="GET", path=WORKFLOW_URL, headers=HEADERS
+            )
+            return response
+        except Exception as exc:
+            logger.warning(f"Error while getting pipelines - {exc}")
+            logger.debug(traceback.format_exc())
+        return []
 
     def get_runs(self, workflow_id):
-        url = f"dataprocessing/v1/dataflows/{workflow_id}/executions?limit=100&offset=0"
-        response = self.client._request(  # pylint: disable=protected-access
-            method="GET", path=url, headers=HEADERS
-        )
-        return response
+        try:
+            url = f"dataprocessing/v1/dataflows/{workflow_id}/executions?limit=100&offset=0"
+            response = self.client._request(  # pylint: disable=protected-access
+                method="GET", path=url, headers=HEADERS
+            )
+            return response
+        except Exception as exc:
+            logger.warning(
+                f"Error while getting runs for pipeline {workflow_id} - {exc}"
+            )
+            logger.debug(traceback.format_exc())
+        return []
+
+    def test_list_cards(self) -> None:
+        """
+        Test function to list the cards. Since we are not passing any URNS from the dashboard
+        we expect an empty result. However, the call should not fail with any 401 error.
+        This helps us validate that the provided Access Token is correct for Domo Dashboard.
+        """
+        try:
+            self.client._request(  # pylint: disable=protected-access
+                method="GET", path="content/v1/cards", headers=HEADERS
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error listing cards due to [{exc}]")
+            raise exc
+
+
+@dataclass
+class OMPyDomoClient:
+    """
+    domo_client: official pydomo client https://github.com/domoinc/domo-python-sdk
+    client: custom requests on the instance domain
+    """
+
+    domo: Domo
+    custom: DomoClient

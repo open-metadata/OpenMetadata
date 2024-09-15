@@ -16,13 +16,12 @@ import { AxiosError } from 'axios';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import Loader from '../../Loader/Loader';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import './modal-with-markdown-editor.less';
 import {
   EditorContentRef,
   ModalWithMarkdownEditorProps,
 } from './ModalWithMarkdownEditor.interface';
-import './ModalWithMarkdownEditor.style.less';
 
 export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorProps> =
   ({
@@ -70,16 +69,19 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
           <Button
             data-testid="save"
             key="saveButton"
+            loading={isLoading}
             type="primary"
-            onClick={() => handleSaveData()}>
-            {isLoading ? <Loader size="small" type="white" /> : t('label.save')}
+            onClick={handleSaveData}>
+            {t('label.save')}
           </Button>,
         ]}
+        maskClosable={false}
         open={visible}
         title={<Typography.Text data-testid="header">{header}</Typography.Text>}
         width="90%"
         onCancel={onCancel}>
         <RichTextEditor
+          autofocus
           initialValue={value}
           placeHolder={placeholder}
           ref={markdownRef}

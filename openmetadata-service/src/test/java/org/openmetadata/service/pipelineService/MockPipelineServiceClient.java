@@ -1,63 +1,79 @@
 package org.openmetadata.service.pipelineService;
 
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.core.Response;
-import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
+import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.service.util.PipelineServiceClient;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 
 public class MockPipelineServiceClient extends PipelineServiceClient {
 
   public MockPipelineServiceClient(
-      String userName, String password, String apiEndpoint, String hostIp, int apiTimeout) {
-    super(userName, password, apiEndpoint, hostIp, apiTimeout);
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+    super(pipelineServiceClientConfiguration);
   }
 
   @Override
-  public Response getServiceStatus() {
+  public PipelineServiceClientResponse getServiceStatusInternal() {
     return null;
   }
 
   @Override
-  public HttpResponse<String> testConnection(TestServiceConnection testServiceConnection) {
+  public PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow) {
     return null;
   }
 
   @Override
-  public String deployPipeline(IngestionPipeline ingestionPipeline) {
+  public PipelineServiceClientResponse runApplicationFlow(App application) {
     return null;
   }
 
   @Override
-  public String runPipeline(String pipelineName) {
+  public PipelineServiceClientResponse validateAppRegistration(AppMarketPlaceDefinition app) {
     return null;
   }
 
   @Override
-  public String deletePipeline(String pipelineName) {
+  public PipelineServiceClientResponse deployPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     return null;
   }
 
   @Override
-  public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
+  public PipelineServiceClientResponse runPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     return null;
   }
 
   @Override
-  public IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline) {
+  public PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline) {
     return null;
   }
 
   @Override
-  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after) {
+  public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
     return null;
   }
 
   @Override
-  public HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline) {
+  public PipelineServiceClientResponse toggleIngestion(IngestionPipeline ingestionPipeline) {
+    return null;
+  }
+
+  @Override
+  public Map<String, String> getLastIngestionLogs(
+      IngestionPipeline ingestionPipeline, String after) {
+    return null;
+  }
+
+  @Override
+  public PipelineServiceClientResponse killIngestion(IngestionPipeline ingestionPipeline) {
     return null;
   }
 

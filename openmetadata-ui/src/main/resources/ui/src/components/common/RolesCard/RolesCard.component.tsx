@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Card, Select, Space } from 'antd';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Card, Select, Space, Tooltip } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
-import { getEntityName } from '../../../utils/CommonUtils';
-import SVGIcons from '../../../utils/SvgUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { getEntityName } from '../../../utils/EntityUtils';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
 
@@ -35,7 +34,6 @@ const RolesCard = ({
 
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
 
   const handleRolesChange = () => {
     // filter out the roles , and exclude the admin one
@@ -81,30 +79,29 @@ const RolesCard = ({
     });
   }
 
-  if (isAdminUser && !isAuthDisabled) {
+  if (isAdminUser) {
     return (
       <Card
         className="ant-card-feed relative page-layout-v1-left-panel"
-        key="roles-card"
-        title={
-          <div className="flex items-center justify-between">
-            <h6 className="mb-0">{t('label.role-plural')}</h6>
-            {!isRolesEdit && (
-              <button
-                className="m-l-xs focus:tw-outline-none tw-self-baseline"
+        extra={
+          !isRolesEdit && (
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.role-plural'),
+              })}>
+              {' '}
+              <Button
+                className="m-l-xs"
                 data-testid="edit-roles"
-                onClick={() => setIsRolesEdit(true)}>
-                <SVGIcons
-                  alt="edit"
-                  className="m-b-xss"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="16px"
-                />
-              </button>
-            )}
-          </div>
-        }>
+                icon={<EditIcon width={16} />}
+                type="text"
+                onClick={() => setIsRolesEdit(true)}
+              />
+            </Tooltip>
+          )
+        }
+        key="roles-card"
+        title={t('label.role-plural')}>
         <div className="mb-4">
           {isRolesEdit ? (
             <Space className="w-full" direction="vertical">
@@ -122,9 +119,7 @@ const RolesCard = ({
                 <Button
                   className="text-sm mr-1"
                   data-testid="cancel-roles"
-                  icon={
-                    <FontAwesomeIcon className="w-3.5 h-3.5" icon="times" />
-                  }
+                  icon={<CloseOutlined />}
                   size="small"
                   type="primary"
                   onMouseDown={() => setIsRolesEdit(false)}
@@ -132,9 +127,7 @@ const RolesCard = ({
                 <Button
                   className="text-sm"
                   data-testid="save-roles"
-                  icon={
-                    <FontAwesomeIcon className="w-3.5 h-3.5" icon="check" />
-                  }
+                  icon={<CheckOutlined />}
                   size="small"
                   type="primary"
                   onClick={handleRolesChange}
@@ -152,11 +145,7 @@ const RolesCard = ({
       <Card
         className="relative page-layout-v1-left-panel mt-2.5"
         key="roles-card"
-        title={
-          <div className="flex items-center justify-between">
-            <h6 className="mb-0">{t('label.role-plural')}</h6>
-          </div>
-        }>
+        title={t('label.role-plural')}>
         <div className="flex items-center justify-between mb-4">
           <RolesElement userData={userData} />
         </div>

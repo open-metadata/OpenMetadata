@@ -1,0 +1,119 @@
+[
+  {
+    "name": "filterBySource",
+    "fullyQualifiedName": "eventSubscription.filterBySource",
+    "displayName": "Source of Change Event",
+    "description" : "Event Filtering By Source of Change Event",
+    "effect" : "include",
+    "condition": "matchAnySource(${sourceList})",
+    "arguments": [
+      "sourceList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByOwnerName",
+    "fullyQualifiedName": "eventSubscription.filterByOwnerName",
+    "displayName": "Owner",
+    "description" : "Event Filtering By Owner of the Asset",
+    "effect" : "include",
+    "condition": "matchAnyOwnerName(${ownerNameList})",
+    "arguments": [
+      "ownerNameList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByFqn",
+    "fullyQualifiedName": "eventSubscription.filterByFqn",
+    "displayName": "Entity FQN",
+    "description" : "Event Filtering By Entity FQN",
+    "effect" : "include",
+    "condition": "matchAnyEntityFqn(${fqnList})",
+    "arguments": [
+      "fqnList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByEntityId",
+    "fullyQualifiedName": "eventSubscription.filterByEntityId",
+    "displayName": "Entity Id",
+    "description" : "Event Filtering By Entity Id",
+    "effect" : "include",
+    "condition": "matchAnyEntityId(${entityIdList})",
+    "arguments": [
+      "entityIdList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByEventType",
+    "fullyQualifiedName": "eventSubscription.filterByEventType",
+    "displayName": "Event Type",
+    "description" : "Event Filtering by Event Type like entityCreated, entityUpdated, etc.",
+    "effect" : "include",
+    "condition": "matchAnyEventType(${eventTypeList})",
+    "arguments": [
+      "eventTypeList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByUpdaterName",
+    "fullyQualifiedName": "eventSubscription.filterByUpdaterName",
+    "displayName": "Updater Name",
+    "description" : "Event Filtering by Updaters Name",
+    "effect" : "include",
+    "condition": "matchUpdatedBy(${updateByUserList})",
+    "arguments": [
+      "updateByUserList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByFieldChange",
+    "fullyQualifiedName": "eventSubscription.filterByFieldChange",
+    "displayName": "Field Change",
+    "description" : "Event Filtering By a specific field change",
+    "effect" : "include",
+    "condition": "matchAnyFieldChange(${fieldChangeList})",
+    "arguments": [
+      "fieldChangeList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByDomain",
+    "fullyQualifiedName": "eventSubscription.filterByDomain",
+    "displayName": "Domain",
+    "description" : "Event Filtering By Domain a Entity Belongs To",
+    "effect" : "include",
+    "condition": "matchAnyDomain(${domainList})",
+    "arguments": [
+      "domainList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByMentionedName",
+    "fullyQualifiedName": "eventSubscription.filterByMentionedName",
+    "displayName": "Mentioned Users",
+    "description" : "Event Filtering An Conversation User Mentioned",
+    "effect" : "include",
+    "condition": "matchConversationUser(${userList})",
+    "arguments": [
+      "userList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByGeneralMetadataEvents",
+    "fullyQualifiedName": "eventSubscription.filterByGeneralMetadataEvents",
+    "displayName": "General Metadata Events",
+    "description" : "Event Filtering By General MetadataEvents",
+    "effect" : "include",
+    "condition": "matchAnyFieldChange({'description', 'tags'})",
+    "inputType": "none"
+  }
+]

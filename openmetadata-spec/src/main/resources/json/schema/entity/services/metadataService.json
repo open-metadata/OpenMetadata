@@ -14,7 +14,7 @@
       "description": "Type of database service such as Amundsen, Atlas...",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "type": "string",
-      "enum": ["Amundsen", "MetadataES", "OpenMetadata", "Atlas"],
+      "enum": ["Amundsen", "MetadataES", "OpenMetadata", "Atlas", "Alation", "AlationSink"],
       "javaEnums": [
         {
           "name": "Amundsen"
@@ -27,6 +27,12 @@
         },
         {
           "name": "Atlas"
+        },
+        {
+          "name": "Alation"
+        },
+        {
+          "name": "AlationSink"
         }
       ]
     },
@@ -52,6 +58,12 @@
             },
             {
               "$ref": "./connections/metadata/atlasConnection.json"
+            },
+            {
+              "$ref": "./connections/metadata/alationConnection.json"
+            },
+            {
+              "$ref": "./connections/metadata/alationSinkConnection.json"
             }
           ]
         }
@@ -89,7 +101,7 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -103,6 +115,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
     "tags": {
       "description": "Tags for this Metadata Service.",
       "type": "array",
@@ -111,9 +127,9 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this database service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this database service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this database service.",
@@ -128,10 +144,12 @@
       "type": "boolean",
       "default": false
     },
-    "allowServiceCreation": {
-      "description": "When `true` indicates the metadata service can be created",
-      "type": "boolean",
-      "default": true
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "serviceType"],

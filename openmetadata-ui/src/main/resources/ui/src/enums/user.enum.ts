@@ -31,4 +31,5 @@ export enum UserProfileTab {
   TASKS = 'tasks',
   MY_DATA = 'mydata',
   FOLLOWING = 'following',
+  CONVERSATION = 'conversation',
 }

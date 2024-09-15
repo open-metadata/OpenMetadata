@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
-from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.analytics.webAnalyticEventData import (
     WebAnalyticEventData,
 )
@@ -44,7 +44,9 @@ class DataInsightMixin:
             record (ReportData): report data
         """
 
-        resp = self.client.post("/analytic/reportData", record.json())
+        resp = self.client.post(
+            "/analytics/dataInsights/data", record.model_dump_json()
+        )
 
         return resp
 
@@ -56,7 +58,7 @@ class DataInsightMixin:
             record (ReportData): report data
         """
 
-        resp = self.client.put(f"/kpi/{fqn}/kpiResult", record.json())
+        resp = self.client.put(f"/kpi/{fqn}/kpiResult", record.model_dump_json())
 
         return resp
 
@@ -66,7 +68,9 @@ class DataInsightMixin:
     ) -> List[WebAnalyticEventData]:
         """Get web analytic event"""
 
-        resp = self.client.put("/analytics/webAnalyticEvent/collect", event_data.json())
+        resp = self.client.put(
+            "/analytics/web/events/collect", event_data.model_dump_json()
+        )
 
         return resp
 
@@ -85,7 +89,7 @@ class DataInsightMixin:
         """
 
         resp = self.client.get(
-            "/analytic/reportData",
+            "/analytics/dataInsights/data",
             {"startTs": start_ts, "endTs": end_ts, "reportDataType": report_data_type},
         )
 
@@ -123,11 +127,11 @@ class DataInsightMixin:
             request_params = {**request_params, **params}
 
         resp = self.client.get(
-            "/dataInsight/aggregate",
+            "/analytics/dataInsights/charts/aggregate",
             request_params,
         )
 
-        return DataInsightChartResult.parse_obj(resp)
+        return DataInsightChartResult.model_validate(resp)
 
     def get_kpi_result(self, fqn: str, start_ts, end_ts) -> list[KpiResult]:
         """Given FQN return KPI results
@@ -146,9 +150,9 @@ class DataInsightMixin:
         return [KpiResult(**data) for data in resp["data"]]
 
     def create_kpi(self, create: CreateKpiRequest) -> Kpi:
-        resp = self.client.post("/kpi", create.json())
+        resp = self.client.post("/kpi", create.model_dump_json())
 
-        return Kpi.parse_obj(resp)
+        return Kpi.model_validate(resp)
 
     def get_web_analytic_events(
         self, event_type: WebAnalyticEventType, start_ts: int, end_ts: int
@@ -159,7 +163,7 @@ class DataInsightMixin:
 
         params = {"eventType": event_type_value, "startTs": start_ts, "endTs": end_ts}
 
-        resp = self.client.get("/analytics/webAnalyticEvent/collect", params)
+        resp = self.client.get("/analytics/web/events/collect", params)
 
         return [WebAnalyticEventData(**data) for data in resp["data"]]
 
@@ -173,6 +177,25 @@ class DataInsightMixin:
             tmsp (int): timestamp
         """
         event_type_value = event_type.value
+        self.client.delete(f"/analytics/web/events/{event_type_value}/{tmsp}/collect")
+
+    def delete_report_data_at_date(
+        self, report_data_type: ReportDataType, date: str
+    ) -> None:
+        """Delete report data at a specific date for a specific report data type
+
+        Args:
+            report_data_type (ReportDataType): report date type to delete
+            date (str): date for which to delete the report data
+        """
         self.client.delete(
-            f"/analytics/webAnalyticEvent/{event_type_value}/{tmsp}/collect"
+            f"/analytics/dataInsights/data/{report_data_type.value}/{date}"
         )
+
+    def delete_report_data(self, report_data_type: ReportDataType) -> None:
+        """Delete report data for a specific report data type
+
+        Args:
+            report_data_type (ReportDataType): report date type to delete
+        """
+        self.client.delete(f"/analytics/dataInsights/data/{report_data_type.value}")

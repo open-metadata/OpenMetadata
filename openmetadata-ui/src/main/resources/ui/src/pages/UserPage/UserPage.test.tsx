@@ -11,121 +11,85 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  findByText,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserByName } from 'rest/userAPI';
+import Users from '../../components/Settings/Users/Users.component';
+import { ROUTES } from '../../constants/constants';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { UPDATED_USER_DATA, USER_DATA } from '../../mocks/User.mock';
+import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import UserPage from './UserPage.component';
 
-const mockUserData = {
-  id: 'd6764107-e8b4-4748-b256-c86fecc66064',
-  name: 'xyz',
-  displayName: 'XYZ',
-  version: 0.1,
-  updatedAt: 1648704499857,
-  updatedBy: 'xyz',
-  email: 'xyz@gmail.com',
-  href: 'http://localhost:8585/api/v1/users/d6764107-e8b4-4748-b256-c86fecc66064',
-  isAdmin: false,
-  profile: {
-    images: {
-      image:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s96-c',
-      image24:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s24-c',
-      image32:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s32-c',
-      image48:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s48-c',
-      image72:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s72-c',
-      image192:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s192-c',
-      image512:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s512-c',
-    },
-  },
-  teams: [
-    {
-      id: '3362fe18-05ad-4457-9632-84f22887dda6',
-      type: 'team',
-      name: 'Finance',
-      description: 'This is Finance description.',
-      displayName: 'Finance',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/teams/3362fe18-05ad-4457-9632-84f22887dda6',
-    },
-    {
-      id: '5069ddd4-d47e-4b2c-a4c4-4c849b97b7f9',
-      type: 'team',
-      name: 'Data_Platform',
-      description: 'This is Data_Platform description.',
-      displayName: 'Data_Platform',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/teams/5069ddd4-d47e-4b2c-a4c4-4c849b97b7f9',
-    },
-    {
-      id: '7182cc43-aebc-419d-9452-ddbe2fc4e640',
-      type: 'team',
-      name: 'Customer_Support',
-      description: 'This is Customer_Support description.',
-      displayName: 'Customer_Support',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/teams/7182cc43-aebc-419d-9452-ddbe2fc4e640',
-    },
-  ],
-  owns: [],
-  follows: [],
-  deleted: false,
-  roles: [
-    {
-      id: 'ce4df2a5-aaf5-4580-8556-254f42574aa7',
-      type: 'role',
-      name: 'DataConsumer',
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      displayName: 'Data Consumer',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/roles/ce4df2a5-aaf5-4580-8556-254f42574aa7',
-    },
-  ],
-};
+jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
 
-jest.mock('components/authentication/auth-provider/AuthProvider', () => {
+const mockUpdateCurrentUser = jest.fn();
+const mockPush = jest.fn();
+
+jest.mock('../../hooks/useApplicationStore', () => {
   return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: true,
+    useApplicationStore: jest.fn(() => ({
+      currentUser: USER_DATA,
+      updateCurrentUser: mockUpdateCurrentUser,
     })),
   };
 });
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockImplementation(() => ({ username: 'xyz' })),
-  useLocation: jest.fn().mockImplementation(() => new URLSearchParams()),
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: mockPush,
+  })),
 }));
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockImplementation(() => ({
+    fqn: 'xyz',
+  })),
+}));
+
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<p>Loader</p>);
 });
 
-jest.mock('components/Users/Users.component', () => {
-  return jest.fn().mockReturnValue(<p>User Component</p>);
+jest.mock('../../components/Settings/Users/Users.component', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ updateUserDetails, afterDeleteAction }) => (
+      <div>
+        <p>User Component</p>
+        <button
+          onClick={() =>
+            updateUserDetails({ defaultPersona: undefined }, 'defaultPersona')
+          }>
+          UserComponentSaveButton
+        </button>
+
+        <button onClick={() => afterDeleteAction(false)}>
+          UserComponentAfterDeleteActionButton
+        </button>
+      </div>
+    ));
 });
 
-jest.mock('rest/userAPI', () => ({
-  getUserByName: jest
+jest.mock('../../rest/userAPI', () => ({
+  getUserByName: jest.fn().mockImplementation(() => Promise.resolve(USER_DATA)),
+  updateUserDetail: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockUserData })),
+    .mockImplementation(() =>
+      Promise.resolve({ ...USER_DATA, defaultPersona: undefined })
+    ),
 }));
 
-jest.mock('rest/userAPI', () => ({
-  getUserByName: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockUserData })),
-  updateUserDetail: jest.fn(),
-}));
-
-jest.mock('rest/feedsAPI', () => ({
+jest.mock('../../rest/feedsAPI', () => ({
   getFeedsWithFilter: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
@@ -137,6 +101,22 @@ jest.mock('rest/feedsAPI', () => ({
 }));
 
 describe('Test the User Page', () => {
+  it('Should call getUserByName  API on load', async () => {
+    render(<UserPage />, { wrapper: MemoryRouter });
+
+    expect(getUserByName).toHaveBeenCalledWith('xyz', {
+      fields: [
+        'profile',
+        'roles',
+        'teams',
+        'personas',
+        'defaultPersona',
+        'domains',
+      ],
+      include: 'all',
+    });
+  });
+
   it('Should render the user component', async () => {
     const { container } = render(<UserPage />, { wrapper: MemoryRouter });
 
@@ -160,5 +140,107 @@ describe('Test the User Page', () => {
     const errorPlaceholder = await findByTestId(container, 'error');
 
     expect(errorPlaceholder).toBeInTheDocument();
+  });
+
+  it('Should call and update state data with patch api for defaultPersona', async () => {
+    const userData = { ...USER_DATA };
+    delete userData.defaultPersona;
+
+    await act(async () => {
+      render(<UserPage />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('UserComponentSaveButton'));
+    });
+
+    expect(updateUserDetail).toHaveBeenCalledWith(USER_DATA.id, [
+      {
+        op: 'remove',
+        path: '/defaultPersona',
+      },
+    ]);
+
+    expect(mockUpdateCurrentUser).toHaveBeenCalledWith(userData);
+  });
+
+  it('Should call updateCurrentUser if user is currentUser logged in', async () => {
+    await act(async () => {
+      render(<UserPage />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('UserComponentSaveButton'));
+    });
+
+    expect(mockUpdateCurrentUser).toHaveBeenCalled();
+  });
+
+  it('should update user isAdmin details if changes along with user', async () => {
+    (Users as jest.Mock).mockImplementationOnce(({ updateUserDetails }) => (
+      <div>
+        <button
+          onClick={() =>
+            updateUserDetails(
+              {
+                isAdmin: false,
+                roles: [
+                  {
+                    id: '7f8de4ae-8b08-431c-9911-8a355aa2976e',
+                    name: 'ProfilerBotRole',
+                    type: 'role',
+                  },
+                ],
+              },
+              'roles'
+            )
+          }>
+          UserComponentSaveButton
+        </button>
+      </div>
+    ));
+
+    (updateUserDetail as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(UPDATED_USER_DATA)
+    );
+
+    await act(async () => {
+      render(<UserPage />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('UserComponentSaveButton'));
+    });
+
+    expect(mockUpdateCurrentUser).toHaveBeenCalledWith(UPDATED_USER_DATA);
+  });
+
+  it('Should not call updateCurrentUser if user is not currentUser logged in', async () => {
+    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
+      currentUser: { ...USER_DATA, id: '123' },
+      updateCurrentUser: mockUpdateCurrentUser,
+    }));
+
+    await act(async () => {
+      render(<UserPage />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('UserComponentSaveButton'));
+    });
+
+    expect(mockUpdateCurrentUser).not.toHaveBeenCalled();
+  });
+
+  it('Should trigger routeChange to landingPage on afterDeleteAction if hardDeleted', async () => {
+    await act(async () => {
+      render(<UserPage />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('UserComponentAfterDeleteActionButton'));
+    });
+
+    expect(mockPush).toHaveBeenCalledWith(ROUTES.HOME);
   });
 });

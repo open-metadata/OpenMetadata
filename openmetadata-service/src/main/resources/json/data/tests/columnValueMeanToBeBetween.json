@@ -1,7 +1,7 @@
 {
     "name": "columnValueMeanToBeBetween",
     "fullyQualifiedName": "columnValueMeanToBeBetween",
-    "displayName": "Column Value Mean To BeBetween",
+    "displayName": "Column Value Mean To Be Between",
     "description": "This schema defines the test ColumnValueMeanToBeBetween. Test the mean value in a col is within a range.",
     "entityType": "COLUMN",
     "testPlatforms": ["OpenMetadata"],
@@ -11,14 +11,25 @@
       "name": "minValueForMeanInCol",
       "displayName": "Min",
       "description": "Expected mean value for the column to be greater or equal than",
-      "dataType": "INT"
+      "dataType": "INT",
+      "validationRule": {
+        "parameterField": "maxValueForMeanInCol",
+        "rule": "LESS_THAN_OR_EQUALS"
+      }
     },
     {
       "name": "maxValueForMeanInCol",
       "displayName": "Max",
-      "description": "Expected mean value for the column to be greater or equal than",
-      "dataType": "INT"
+      "description": "Expected mean value for the column to be lower or equal than",
+      "dataType": "INT",
+      "validationRule": {
+            "parameterField": "minValueForMeanInCol",
+            "rule": "GREATER_THAN_OR_EQUALS"
+      }
     }
-  ]
+  ],
+  "supportsDynamicAssertion": true,
+  "provider": "system",
+  "dataQualityDimension": "Accuracy"
 }
   

@@ -26,10 +26,4 @@ class BigqueryUsageSource(BigqueryQueryParserSource, UsageSource):
 
     sql_stmt = BIGQUERY_STATEMENT
 
-    filters = """
-        AND statement_type = "SELECT"
-    """
-
-    database_field = "project_id"
-
-    schema_field = ""  # schema filtering not available
+    filters = ""

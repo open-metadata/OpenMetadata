@@ -13,28 +13,31 @@
 
 package org.openmetadata.service.security.auth;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.security.Principal;
+import java.util.HashSet;
+import java.util.Set;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 
 /** Holds authenticated principal and security context which is passed to the JAX-RS request methods */
 @Slf4j
-public class CatalogSecurityContext implements SecurityContext {
-  private final Principal principal;
-  private final String scheme;
-  private final String authenticationScheme;
-
+public record CatalogSecurityContext(
+    Principal principal, String scheme, String authenticationScheme, Set<String> userRoles)
+    implements SecurityContext {
   public static final String OPENID_AUTH = "openid";
-
-  public CatalogSecurityContext(Principal principal, String scheme, String authenticationScheme) {
-    this.principal = principal;
-    this.scheme = scheme;
-    this.authenticationScheme = authenticationScheme;
-  }
 
   @Override
   public Principal getUserPrincipal() {
     return principal;
+  }
+
+  public Set<String> getUserRoles() {
+    if (nullOrEmpty(userRoles)) {
+      return new HashSet<>();
+    }
+    return userRoles;
   }
 
   @Override
@@ -55,17 +58,8 @@ public class CatalogSecurityContext implements SecurityContext {
 
   @Override
   public String toString() {
-    return "catalogSecurityContext{"
-        + "principal="
-        + principal
-        + ", scheme='"
-        + scheme
-        + '\''
-        + ", authenticationScheme='"
-        + authenticationScheme
-        + '\''
-        + ", isSecure="
-        + isSecure()
-        + '}';
+    return String.format(
+        "catalogSecurityContext{principal=%s, scheme='%s', authenticationSchema='%s', isSecure=%s}",
+        principal, scheme, authenticationScheme, isSecure());
   }
 }

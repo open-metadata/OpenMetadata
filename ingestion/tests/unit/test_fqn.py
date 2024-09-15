@@ -17,6 +17,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.ingestion.ometa.utils import quote
 from metadata.utils import fqn
 
 
@@ -131,7 +133,7 @@ class TestFqn(TestCase):
 
         assert split_fqn.service == "local_redshift"
         assert split_fqn.database == "dev"
-        assert split_fqn.schema == "dbt_jaffle"
+        assert split_fqn.schema_ == "dbt_jaffle"
         assert split_fqn.table == "customers"
         assert split_fqn.column == "customer_id"
         assert split_fqn.test_case == "expect_column_max_to_be_between"
@@ -145,3 +147,11 @@ class TestFqn(TestCase):
 
         with pytest.raises(ValueError):
             fqn.split_test_case_fqn("local_redshift.dev.dbt_jaffle.customers")
+
+    def test_quote_fqns(self):
+        """We can properly quote FQNs for URL usage"""
+        assert quote(FullyQualifiedEntityName("a.b.c")) == "a.b.c"
+        # Works with strings directly
+        assert quote("a.b.c") == "a.b.c"
+        assert quote(FullyQualifiedEntityName('"foo.bar".baz')) == "%22foo.bar%22.baz"
+        assert quote('"foo.bar/baz".hello') == "%22foo.bar%2Fbaz%22.hello"

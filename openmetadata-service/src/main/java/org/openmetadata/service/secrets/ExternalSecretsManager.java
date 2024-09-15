@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,26 +14,30 @@
 package org.openmetadata.service.secrets;
 
 import java.util.Locale;
+import java.util.Objects;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 public abstract class ExternalSecretsManager extends SecretsManager {
   public static final String NULL_SECRET_STRING = "null";
-  public static final String SECRET_FIELD_PREFIX = "secret:";
-
-  private final long WAIT_TIME_BETWEEN_STORE_CALLS;
+  private final long waitTimeBetweenStoreCalls;
 
   protected ExternalSecretsManager(
-      SecretsManagerProvider secretsManagerProvider, String clusterPrefix, long waitTimeBetweenCalls) {
-    super(secretsManagerProvider, clusterPrefix);
-    WAIT_TIME_BETWEEN_STORE_CALLS = waitTimeBetweenCalls;
+      SecretsManagerProvider secretsManagerProvider,
+      SecretsConfig secretsConfig,
+      long waitTimeBetweenCalls) {
+    super(secretsManagerProvider, secretsConfig);
+    waitTimeBetweenStoreCalls = waitTimeBetweenCalls;
   }
 
   @Override
-  protected String storeValue(String fieldName, String value, String secretId) {
+  protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
     // check if value does not start with 'config:' only String can have password annotation
-    if (!value.startsWith(SECRET_FIELD_PREFIX)) {
-      upsertSecret(fieldSecretId, value);
+    if (Boolean.FALSE.equals(isSecret(value))) {
+      if (store) {
+        upsertSecret(fieldSecretId, value);
+      }
       return SECRET_FIELD_PREFIX + fieldSecretId;
     } else {
       return value;
@@ -64,16 +68,19 @@ public abstract class ExternalSecretsManager extends SecretsManager {
 
   abstract void updateSecret(String secretName, String secretValue);
 
-  abstract String getSecret(String secretName);
-
   private void sleep() {
     // delay reaching secrets manager quotas
-    if (WAIT_TIME_BETWEEN_STORE_CALLS > 0) {
+    if (waitTimeBetweenStoreCalls > 0) {
       try {
-        Thread.sleep(WAIT_TIME_BETWEEN_STORE_CALLS);
+        Thread.sleep(waitTimeBetweenStoreCalls);
       } catch (InterruptedException e) {
-        throw new RuntimeException(e);
+        Thread.currentThread().interrupt();
+        throw new UnhandledServerException("Exception encountered", e);
       }
     }
+  }
+
+  public String cleanNullOrEmpty(String secretValue) {
+    return Objects.isNull(secretValue) || secretValue.isEmpty() ? NULL_SECRET_STRING : secretValue;
   }
 }

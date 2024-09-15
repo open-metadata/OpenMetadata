@@ -11,13 +11,6 @@
         }
       },
       "analyzer": {
-        "om_analyzer": {
-          "tokenizer": "letter",
-          "filter": [
-            "lowercase",
-            "om_stemmer"
-          ]
-        },
         "om_analyzer_jp" : {
           "tokenizer" : "kuromoji_tokenizer",
           "type" : "custom",
@@ -26,6 +19,14 @@
             "kuromoji_part_of_speech",
             "kuromoji_number",
             "kuromoji_stemmer"
+          ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
           ]
         }
       },
@@ -47,7 +48,8 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           }
         }
       },
@@ -55,9 +57,22 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer_jp"
+        "analyzer": "om_analyzer_jp",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          },
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "description": {
         "type": "text",
@@ -76,8 +91,98 @@
       "href": {
         "type": "text"
       },
-      "dashboardUrl": {
-        "type": "text"
+      "sourceUrl": {
+        "type": "keyword"
+      },
+      "lineage": {
+        "type" : "object"
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "extension": {
+        "type": "object"
+      },
+      "dataProducts": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "charts": {
         "properties": {
@@ -117,7 +222,69 @@
           }
         }
       },
-      "owner": {
+      "project": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
+      },
+      "dataModels": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "text"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -278,8 +445,12 @@
           }
         }
       },
+      "lifeCycle": {
+        "type": "object"
+      },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "entityType": {
         "type": "keyword"
@@ -297,8 +468,21 @@
       "chart_suggest": {
         "type": "completion"
       },
+      "data_model_suggest": {
+        "type": "completion"
+      },
       "service_suggest": {
         "type": "completion"
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

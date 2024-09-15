@@ -30,7 +30,9 @@ class LambdaExceptionUtilTest {
   void testThrowingConsumer() {
     assertThrows(
         ClassNotFoundException.class,
-        () -> Stream.of("java.lang.String", "java.bad.Class").forEach(rethrowConsumer(Class::forName)));
+        () ->
+            Stream.of("java.lang.String", "java.bad.Class")
+                .forEach(rethrowConsumer(Class::forName)));
   }
 
   @Test
@@ -51,7 +53,9 @@ class LambdaExceptionUtilTest {
             Stream.of("java.lang.String", "java.lang.Integer", "java.bad.Class")
                 .sorted(
                     rethrowComparator(
-                        (c1, c2) -> Class.forName(c1).getFields().length - Class.forName(c2).getFields().length))
+                        (c1, c2) ->
+                            Class.forName(c1).getFields().length
+                                - Class.forName(c2).getFields().length))
                 .collect(Collectors.toList()));
   }
 }

@@ -15,109 +15,349 @@ package org.openmetadata.service;
 
 import static java.lang.String.format;
 
+import es.org.elasticsearch.client.RestClient;
+import es.org.elasticsearch.client.RestClientBuilder;
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import java.net.URI;
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.Set;
 import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.flywaydb.core.Flyway;
+import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
-import org.glassfish.jersey.client.HttpUrlConnectorProvider;
-import org.glassfish.jersey.client.JerseyClientBuilder;
+import org.glassfish.jersey.jetty.connector.JettyClientProperties;
+import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
+import org.jdbi.v3.sqlobject.SqlObjects;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.openmetadata.service.fernet.Fernet;
+import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.events.MSTeamsCallbackResource;
+import org.openmetadata.service.resources.events.SlackCallbackResource;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
-import org.openmetadata.service.security.policyevaluator.PolicyCache;
-import org.openmetadata.service.security.policyevaluator.RoleCache;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.search.SearchRepository;
 import org.testcontainers.containers.JdbcDatabaseContainer;
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
 @Slf4j
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class OpenMetadataApplicationTest {
-  protected static final String CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
+  protected static final String CONFIG_PATH =
+      ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
+  public static final String ELASTIC_USER = "elastic";
+  public static final String ELASTIC_PASSWORD = "password";
+  public static final String ELASTIC_SCHEME = "http";
+  public static final Integer ELASTIC_CONNECT_TIMEOUT = 5;
+  public static final Integer ELASTIC_SOCKET_TIMEOUT = 60;
+  public static final Integer ELASTIC_KEEP_ALIVE_TIMEOUT = 600;
+  public static final Integer ELASTIC_BATCH_SIZE = 10;
+  public static final IndexMappingLanguage ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE =
+      IndexMappingLanguage.EN;
+  public static final String ELASTIC_SEARCH_CLUSTER_ALIAS = "openmetadata";
+  public static final ElasticSearchConfiguration.SearchType ELASTIC_SEARCH_TYPE =
+      ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
-  protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
-  public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
+
+  protected static final WebhookCallbackResource webhookCallbackResource =
+      new WebhookCallbackResource();
+  protected static final SlackCallbackResource slackCallbackResource = new SlackCallbackResource();
+  protected static final MSTeamsCallbackResource teamsCallbackResource =
+      new MSTeamsCallbackResource();
+
+  public static Jdbi jdbi;
+  private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
+
+  protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
+
+  private static final String JDBC_CONTAINER_CLASS_NAME =
+      "org.testcontainers.containers.MySQLContainer";
+  private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
+  private static final String ELASTIC_SEARCH_CONTAINER_IMAGE =
+      "docker.elastic.co/elasticsearch/elasticsearch:8.10.2";
+
+  private static String HOST;
+  private static String PORT;
+  private static Client client;
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
-    Fernet.getInstance().setFernetKey(FERNET_KEY_1);
+    CollectionRegistry.addTestResource(slackCallbackResource);
+    CollectionRegistry.addTestResource(teamsCallbackResource);
   }
 
   @BeforeAll
-  public static void createApplication() throws Exception {
+  public void createApplication() throws Exception {
+    String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
+    String jdbcContainerImage = System.getProperty("jdbcContainerImage");
+    String elasticSearchContainerImage = System.getProperty("elasticSearchContainerClassName");
+    if (CommonUtil.nullOrEmpty(jdbcContainerClassName)) {
+      jdbcContainerClassName = JDBC_CONTAINER_CLASS_NAME;
+    }
+    if (CommonUtil.nullOrEmpty(jdbcContainerImage)) {
+      jdbcContainerImage = JDBC_CONTAINER_IMAGE;
+    }
+    if (CommonUtil.nullOrEmpty(elasticSearchContainerImage)) {
+      elasticSearchContainerImage = ELASTIC_SEARCH_CONTAINER_IMAGE;
+    }
+    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
     // The system properties are provided by maven-surefire for testing with mysql and postgres
-    final String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
-    final String jdbcContainerImage = System.getProperty("jdbcContainerImage");
-    LOG.info("Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
+    LOG.info(
+        "Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
     JdbcDatabaseContainer<?> sqlContainer =
         (JdbcDatabaseContainer<?>)
-            Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
+            Class.forName(jdbcContainerClassName)
+                .getConstructor(String.class)
+                .newInstance(jdbcContainerImage);
     sqlContainer.withReuse(false);
     sqlContainer.withStartupTimeoutSeconds(240);
     sqlContainer.withConnectTimeoutSeconds(240);
     sqlContainer.start();
 
-    final String migrationScripsLocation =
-        ResourceHelpers.resourceFilePath("db/sql/" + sqlContainer.getDriverClassName());
+    final String flyWayMigrationScriptsLocation =
+        ResourceHelpers.resourceFilePath(
+            "db/sql/migrations/flyway/" + sqlContainer.getDriverClassName());
+    final String nativeMigrationScriptsLocation =
+        ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
+
+    // Extension Config
+    String extensionMigrationScripsLocation = "";
+    try {
+      extensionMigrationScripsLocation =
+          ResourceHelpers.resourceFilePath("extension/sql/migrations/");
+      configOverrides.add(
+          ConfigOverride.config(
+              "migrationConfiguration.extensionPath", extensionMigrationScripsLocation));
+    } catch (Exception ex) {
+      LOG.info("Extension migrations not found");
+    }
     Flyway flyway =
         Flyway.configure()
-            .dataSource(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
+            .dataSource(
+                sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
             .table("DATABASE_CHANGE_LOG")
-            .locations("filesystem:" + migrationScripsLocation)
+            .locations("filesystem:" + flyWayMigrationScriptsLocation)
             .sqlMigrationPrefix("v")
             .cleanDisabled(false)
             .load();
     flyway.clean();
     flyway.migrate();
 
-    APP =
-        new DropwizardAppExtension<>(
-            OpenMetadataApplication.class,
-            CONFIG_PATH,
-            // Database overrides
-            ConfigOverride.config("database.driverClass", sqlContainer.getDriverClassName()),
-            ConfigOverride.config("database.url", sqlContainer.getJdbcUrl()),
-            ConfigOverride.config("database.user", sqlContainer.getUsername()),
-            ConfigOverride.config("database.password", sqlContainer.getPassword()),
-            // Migration overrides
-            ConfigOverride.config("migrationConfiguration.path", migrationScripsLocation));
+    ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
+    ELASTIC_SEARCH_CONTAINER.withPassword("password");
+    ELASTIC_SEARCH_CONTAINER.withEnv("discovery.type", "single-node");
+    ELASTIC_SEARCH_CONTAINER.withEnv("xpack.security.enabled", "false");
+    ELASTIC_SEARCH_CONTAINER.withEnv("ES_JAVA_OPTS", "-Xms1g -Xmx1g");
+    ELASTIC_SEARCH_CONTAINER.withReuse(false);
+    ELASTIC_SEARCH_CONTAINER.withStartupAttempts(3);
+    ELASTIC_SEARCH_CONTAINER.setWaitStrategy(
+        new LogMessageWaitStrategy()
+            .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")
+            .withStartupTimeout(Duration.ofMinutes(5)));
+    ELASTIC_SEARCH_CONTAINER.start();
+    String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
+    HOST = parts[0];
+    PORT = parts[1];
+    overrideElasticSearchConfig();
+    overrideDatabaseConfig(sqlContainer);
 
+    // Migration overrides
+    configOverrides.add(
+        ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScriptsLocation));
+    configOverrides.add(
+        ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScriptsLocation));
+
+    ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
+    APP = getApp(configOverridesArray);
+    // Run System Migrations
+    jdbi =
+        Jdbi.create(
+            sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword());
+    jdbi.installPlugin(new SqlObjectPlugin());
+    jdbi.getConfig(SqlObjects.class)
+        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
+    validateAndRunSystemDataMigrations(
+        jdbi,
+        config,
+        ConnectionType.from(sqlContainer.getDriverClassName()),
+        nativeMigrationScriptsLocation,
+        extensionMigrationScripsLocation,
+        null,
+        false);
+    createIndices();
     APP.before();
+    createClient();
+  }
+
+  public static void validateAndRunSystemDataMigrations(
+      Jdbi jdbi,
+      OpenMetadataApplicationConfig config,
+      ConnectionType connType,
+      String nativeMigrationSQLPath,
+      String extensionSQLScriptRootPath,
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
+      boolean forceMigrations) {
+    DatasourceConfig.initialize(connType.label);
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi,
+            nativeMigrationSQLPath,
+            connType,
+            extensionSQLScriptRootPath,
+            pipelineServiceClientConfiguration,
+            forceMigrations);
+    // Initialize search repository
+    SearchRepository searchRepository =
+        new SearchRepository(config.getElasticSearchConfiguration());
+    Entity.setSearchRepository(searchRepository);
+    Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+    Entity.initializeRepositories(config, jdbi);
+    workflow.loadMigrations();
+    workflow.runMigrationWorkflows();
+    Entity.cleanup();
+  }
+
+  @NotNull
+  protected DropwizardAppExtension<OpenMetadataApplicationConfig> getApp(
+      ConfigOverride[] configOverridesArray) {
+    return new DropwizardAppExtension<>(
+        OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
+  }
+
+  private static void createClient() {
+    ClientConfig config = new ClientConfig();
+    config.connectorProvider(new JettyConnectorProvider());
+    config.register(new JacksonFeature(APP.getObjectMapper()));
+    config.property(ClientProperties.CONNECT_TIMEOUT, 0);
+    config.property(ClientProperties.READ_TIMEOUT, 0);
+    config.property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
+    config.property(JettyClientProperties.SYNC_LISTENER_RESPONSE_MAX_SIZE, 10 * 1024 * 1024);
+    client = ClientBuilder.newClient(config);
   }
 
   @AfterAll
-  public static void stopApplication() throws Exception {
+  public void stopApplication() throws Exception {
     // If BeforeAll causes and exception AfterAll still gets called before that exception is thrown.
     // If a NullPointerException is thrown during the cleanup of above it will eat the initial error
     if (APP != null) {
       APP.after();
       APP.getEnvironment().getApplicationContext().getServer().stop();
     }
-    SubjectCache.cleanUp();
-    PolicyCache.cleanUp();
-    RoleCache.cleanUp();
+    ELASTIC_SEARCH_CONTAINER.stop();
+
+    if (client != null) {
+      client.close();
+    }
   }
 
-  public static Client getClient() {
-    return new JerseyClientBuilder()
-        .register(new JacksonFeature(APP.getObjectMapper()))
-        .property(ClientProperties.CONNECT_TIMEOUT, 0)
-        .property(ClientProperties.READ_TIMEOUT, 0)
-        .property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true)
-        .build();
+  private void createIndices() {
+    ElasticSearchConfiguration esConfig = new ElasticSearchConfiguration();
+    esConfig
+        .withHost(HOST)
+        .withPort(ELASTIC_SEARCH_CONTAINER.getMappedPort(9200))
+        .withUsername(ELASTIC_USER)
+        .withPassword(ELASTIC_PASSWORD)
+        .withScheme(ELASTIC_SCHEME)
+        .withConnectionTimeoutSecs(ELASTIC_CONNECT_TIMEOUT)
+        .withSocketTimeoutSecs(ELASTIC_SOCKET_TIMEOUT)
+        .withKeepAliveTimeoutSecs(ELASTIC_KEEP_ALIVE_TIMEOUT)
+        .withBatchSize(ELASTIC_BATCH_SIZE)
+        .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
+        .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
+        .withSearchType(ELASTIC_SEARCH_TYPE);
+    SearchRepository searchRepository = new SearchRepository(esConfig);
+    LOG.info("creating indexes.");
+    searchRepository.createIndexes();
+  }
+
+  public static RestClient getSearchClient() {
+    CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+    credentialsProvider.setCredentials(
+        AuthScope.ANY, new UsernamePasswordCredentials(ELASTIC_USER, "password"));
+
+    RestClientBuilder builder =
+        RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress()))
+            .setHttpClientConfigCallback(
+                httpClientBuilder ->
+                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
+    return builder.build();
   }
 
   public static WebTarget getResource(String collection) {
-    return getClient().target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
+    return client.target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
+  }
+
+  public static WebTarget getResourceAsURI(String collection) {
+    return client.target(
+        URI.create((format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection))));
   }
 
   public static WebTarget getConfigResource(String resource) {
-    return getClient().target(format("http://localhost:%s/api/v1/config/%s", APP.getLocalPort(), resource));
+    return client.target(
+        format("http://localhost:%s/api/v1/system/config/%s", APP.getLocalPort(), resource));
+  }
+
+  private static void overrideElasticSearchConfig() {
+    // elastic search overrides
+    configOverrides.add(ConfigOverride.config("elasticsearch.host", HOST));
+    configOverrides.add(ConfigOverride.config("elasticsearch.port", PORT));
+    configOverrides.add(ConfigOverride.config("elasticsearch.scheme", ELASTIC_SCHEME));
+    configOverrides.add(ConfigOverride.config("elasticsearch.username", ELASTIC_USER));
+    configOverrides.add(ConfigOverride.config("elasticsearch.password", ELASTIC_PASSWORD));
+    configOverrides.add(ConfigOverride.config("elasticsearch.truststorePath", ""));
+    configOverrides.add(ConfigOverride.config("elasticsearch.truststorePassword", ""));
+    configOverrides.add(
+        ConfigOverride.config(
+            "elasticsearch.connectionTimeoutSecs", ELASTIC_CONNECT_TIMEOUT.toString()));
+    configOverrides.add(
+        ConfigOverride.config(
+            "elasticsearch.socketTimeoutSecs", ELASTIC_SOCKET_TIMEOUT.toString()));
+    configOverrides.add(
+        ConfigOverride.config(
+            "elasticsearch.keepAliveTimeoutSecs", ELASTIC_KEEP_ALIVE_TIMEOUT.toString()));
+    configOverrides.add(
+        ConfigOverride.config("elasticsearch.batchSize", ELASTIC_BATCH_SIZE.toString()));
+    configOverrides.add(
+        ConfigOverride.config(
+            "elasticsearch.searchIndexMappingLanguage",
+            ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE.value()));
+    configOverrides.add(
+        ConfigOverride.config("elasticsearch.clusterAlias", ELASTIC_SEARCH_CLUSTER_ALIAS));
+    configOverrides.add(
+        ConfigOverride.config("elasticsearch.searchType", ELASTIC_SEARCH_TYPE.value()));
+  }
+
+  private static void overrideDatabaseConfig(JdbcDatabaseContainer<?> sqlContainer) {
+    // Database overrides
+    configOverrides.add(
+        ConfigOverride.config("database.driverClass", sqlContainer.getDriverClassName()));
+    configOverrides.add(ConfigOverride.config("database.url", sqlContainer.getJdbcUrl()));
+    configOverrides.add(ConfigOverride.config("database.user", sqlContainer.getUsername()));
+    configOverrides.add(ConfigOverride.config("database.password", sqlContainer.getPassword()));
   }
 }

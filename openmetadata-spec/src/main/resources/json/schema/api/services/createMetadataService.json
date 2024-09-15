@@ -25,11 +25,24 @@
     "connection": {
       "$ref": "../../entity/services/metadataService.json#/definitions/metadataConnection"
     },
-    "owner": {
-      "description": "Owner of this Metadata service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this Metadata service.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this Metadata Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
-  "required": ["name", "serviceType", "connection"],
+  "required": ["name", "serviceType"],
   "additionalProperties": false
 }

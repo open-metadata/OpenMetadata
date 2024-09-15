@@ -13,6 +13,12 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
+import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
+
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
@@ -22,6 +28,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.UUID;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.Response.Status;
@@ -29,21 +36,11 @@ import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 
 public final class RestUtil {
   public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
-  public static final String ENTITY_CREATED = "entityCreated";
-  public static final String ENTITY_UPDATED = "entityUpdated";
-  public static final String ENTITY_FIELDS_CHANGED = "entityFieldsChanged";
-  public static final String ENTITY_NO_CHANGE = "entityNoChange";
-  public static final String ENTITY_SOFT_DELETED = "entitySoftDeleted";
-  public static final String ENTITY_DELETED = "entityDeleted";
-  public static final String DELETED_USER_NAME = "DeletedUser";
-  public static final String DELETED_USER_DISPLAY = "User was deleted";
-  public static final String DELETED_TEAM_NAME = "DeletedTeam";
-  public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
-
   public static final DateFormat DATE_TIME_FORMAT;
   public static final DateFormat DATE_FORMAT;
 
@@ -109,7 +106,9 @@ public final class RestUtil {
   }
 
   public static String encodeCursor(String cursor) {
-    return cursor == null ? null : Base64.getUrlEncoder().encodeToString(cursor.getBytes(StandardCharsets.UTF_8));
+    return cursor == null
+        ? null
+        : Base64.getUrlEncoder().encodeToString(cursor.getBytes(StandardCharsets.UTF_8));
   }
 
   public static String decodeCursor(String cursor) {
@@ -120,30 +119,33 @@ public final class RestUtil {
     @Getter private T entity;
     private ChangeEvent changeEvent;
     @Getter private final Response.Status status;
-    private final String changeType;
+    private final EventType changeType;
 
     /**
      * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
      * a new entity
      */
-    public PutResponse(Response.Status status, T entity, String changeType) {
+    public PutResponse(Response.Status status, T entity, EventType changeType) {
       this.entity = entity;
       this.status = status;
       this.changeType = changeType;
     }
 
     /** When PUT response updates an entity */
-    public PutResponse(Response.Status status, ChangeEvent changeEvent, String changeType) {
+    public PutResponse(Response.Status status, ChangeEvent changeEvent, EventType changeType) {
       this.changeEvent = changeEvent;
       this.status = status;
       this.changeType = changeType;
     }
 
     public Response toResponse() {
-      ResponseBuilder responseBuilder = Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
-      if (changeType.equals(RestUtil.ENTITY_CREATED)
-          || changeType.equals(RestUtil.ENTITY_UPDATED)
-          || changeType.equals(RestUtil.ENTITY_NO_CHANGE)) {
+      ResponseBuilder responseBuilder =
+          Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
+      if (changeType.equals(ENTITY_CREATED)
+          || changeType.equals(ENTITY_UPDATED)
+          || changeType.equals(ENTITY_NO_CHANGE)
+          || changeType.equals(ENTITY_RESTORED)
+          || changeType.equals(LOGICAL_TEST_CASE_ADDED)) {
         return responseBuilder.entity(entity).build();
       } else {
         return responseBuilder.entity(changeEvent).build();
@@ -151,38 +153,35 @@ public final class RestUtil {
     }
   }
 
-  public static class PatchResponse<T> {
-    @Getter private final T entity;
-    private final Response.Status status;
-    private final String changeType;
-
-    /**
-     * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
-     * a new entity
-     */
-    public PatchResponse(Response.Status status, T entity, String changeType) {
-      this.entity = entity;
-      this.status = status;
-      this.changeType = changeType;
-    }
-
+  public record PatchResponse<T>(Status status, T entity, EventType changeType) {
     public Response toResponse() {
-      return Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType).entity(entity).build();
+      return Response.status(status)
+          .header(CHANGE_CUSTOM_HEADER, changeType.value())
+          .entity(entity)
+          .build();
     }
   }
 
-  public static class DeleteResponse<T> {
-    @Getter private final T entity;
-    private final String changeType;
-
-    public DeleteResponse(T entity, String changeType) {
-      this.entity = entity;
-      this.changeType = changeType;
-    }
-
+  public record DeleteResponse<T>(T entity, EventType changeType) {
     public Response toResponse() {
-      ResponseBuilder responseBuilder = Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType);
+      ResponseBuilder responseBuilder =
+          Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType.value());
       return responseBuilder.entity(entity).build();
+    }
+  }
+
+  public static void validateTimestampMilliseconds(Long timestamp) {
+    if (timestamp == null) {
+      throw new IllegalArgumentException("Timestamp is required");
+    }
+    // check if timestamp has 12 or more digits
+    // timestamp ms between 2001-09-09 and 2286-11-20 will have 13 digits
+    // timestamp ms between 1973-03-03 and 2001-09-09 will have 12 digits
+    boolean isMilliseconds = String.valueOf(timestamp).length() >= 12;
+    if (!isMilliseconds) {
+      throw new BadRequestException(
+          String.format(
+              "Timestamp %s is not valid, it should be in milliseconds since epoch", timestamp));
     }
   }
 }

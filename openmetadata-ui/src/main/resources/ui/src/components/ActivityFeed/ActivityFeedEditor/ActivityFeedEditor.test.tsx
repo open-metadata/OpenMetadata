@@ -27,7 +27,7 @@ jest.mock('../../../utils/FeedUtils', () => ({
   HTMLToMarkdown: jest.fn().mockReturnValue({ turndown: jest.fn() }),
 }));
 
-jest.mock('../../FeedEditor/FeedEditor', () => ({
+jest.mock('../FeedEditor/FeedEditor', () => ({
   __esModule: true,
   FeedEditor: forwardRef(
     jest.fn().mockImplementation(({ onChangeHandler, onSave }, ref) => {
@@ -75,22 +75,5 @@ describe('Test Activity Feed Editor Component', () => {
 
     expect(editor).toBeInTheDocument();
     expect(sendButton).toBeInTheDocument();
-  });
-
-  it('should have passed button classes', async () => {
-    const { container } = render(
-      <ActivityFeedEditor {...mockProp} buttonClass="xyz" />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const editor = await findByTestId(container, 'feed-editor');
-    const sendButton = await findByTestId(container, 'send-button');
-
-    expect(editor).toBeInTheDocument();
-    expect(sendButton).toBeInTheDocument();
-
-    expect(sendButton).toHaveClass('xyz');
   });
 });

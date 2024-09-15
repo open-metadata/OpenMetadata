@@ -15,20 +15,18 @@ import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { FC, useEffect, useRef, useState } from 'react';
-import AppState from '../../../AppState';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { AnnouncementDetails } from '../../../generated/api/feed/createThread';
 import { Post } from '../../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getEntityField,
   getEntityFQN,
   getEntityType,
 } from '../../../utils/FeedUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
 import FeedCardBody from './FeedCardBody/FeedCardBody';
@@ -52,14 +50,15 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   onConfirmation,
   updateThreadHandler,
   onReply,
-  taskDetails,
+  task,
   announcementDetails,
+  editAnnouncementPermission,
+  showUserAvatar = true,
 }) => {
-  const entityType = getEntityType(entityLink as string);
-  const entityFQN = getEntityFQN(entityLink as string);
-  const entityField = getEntityField(entityLink as string);
-
-  const currentUser = AppState.getCurrentUserDetails();
+  const entityType = getEntityType(entityLink ?? '');
+  const entityFQN = getEntityFQN(entityLink ?? '');
+  const entityField = getEntityField(entityLink ?? '');
+  const { currentUser } = useApplicationStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const [feedDetail, setFeedDetail] = useState<Post>(feed);
 
@@ -164,9 +163,9 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
       <div
         className={classNames(
           className,
-          'hover:tw-bg-gray-100 tw--mx-2.5 tw-px-2.5 tw--mt-1 tw-py-2 tw-mb-1 tw-rounded',
+          'bg-grey-1-hover m--x-sm p-x-sm m--t-xss py-2 m-b-xss rounded-4',
           {
-            'tw-bg-gray-100': visible,
+            'bg-grey-1-hover': visible,
           }
         )}
         ref={containerRef}>
@@ -174,6 +173,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           align={{ targetOffset: [0, -16] }}
           content={
             <PopoverContent
+              editAnnouncementPermission={editAnnouncementPermission}
               isAnnouncement={!isUndefined(announcementDetails)}
               isAuthor={isAuthor}
               isThread={isThread}
@@ -194,29 +194,22 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           overlayClassName="ant-popover-feed"
           placement="topRight"
           trigger="hover"
-          zIndex={100}
           onOpenChange={handleVisibleChange}>
-          <Space align="start" className="w-full">
-            <UserPopOverCard userName={feedDetail.from}>
-              <span className="tw-cursor-pointer" data-testid="authorAvatar">
-                <ProfilePicture id="" name={feedDetail.from} width="32" />
-              </span>
-            </UserPopOverCard>
-            <div className="tw-flex tw-flex-col tw-flex-1">
+          <Space align="start" className="w-full" size={0}>
+            {showUserAvatar && <UserPopOverCard userName={feedDetail.from} />}
+            <div>
               <FeedCardHeader
-                className="tw-pl-2"
                 createdBy={feedDetail.from}
-                entityFQN={entityFQN as string}
-                entityField={entityField as string}
-                entityType={entityType as string}
+                entityFQN={entityFQN}
+                entityField={entityField ?? ''}
+                entityType={entityType}
                 feedType={feedType}
                 isEntityFeed={isEntityFeed}
-                taskDetails={taskDetails}
+                task={task}
                 timeStamp={feedDetail.postTs}
               />
               <FeedCardBody
                 announcementDetails={announcementDetails}
-                className="tw-pl-2 tw-break-all"
                 isEditPost={isEditPost}
                 isThread={isThread}
                 message={feedDetail.message}
@@ -229,7 +222,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           </Space>
           {isFooterVisible && (
             <FeedCardFooter
-              className="tw-mt-2"
               isFooterVisible={isFooterVisible}
               lastReplyTimeStamp={lastReplyTimeStamp}
               repliedUsers={repliedUsers}
@@ -253,4 +245,4 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   );
 };
 
-export default observer(ActivityFeedCard);
+export default ActivityFeedCard;

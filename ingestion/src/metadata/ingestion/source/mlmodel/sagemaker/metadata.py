@@ -13,7 +13,7 @@
 import traceback
 from typing import Iterable, List, Optional
 
-from pydantic import BaseModel, Extra, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
@@ -21,18 +21,30 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlHyperParameter,
     MlStore,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.mlmodel.sageMakerConnection import (
     SageMakerConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagFQN,
+    TagLabel,
+    TagSource,
+)
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
 from metadata.utils.filters import filter_by_mlmodel
 from metadata.utils.logger import ingestion_logger
@@ -41,8 +53,9 @@ logger = ingestion_logger()
 
 
 class SageMakerModel(BaseModel):
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     name: str = Field(..., description="Model name", title="Model Name")
     arn: str = Field(..., description="Model ARN in AWS account", title="Model ARN")
@@ -61,31 +74,31 @@ class SagemakerSource(MlModelServiceSource):
     and prepare an iterator of CreateMlModelRequest
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-        self.sagemaker = self.connection.client
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
+        self.sagemaker = self.client
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SageMakerConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: SageMakerConnection = config.serviceConnection.root.config
         if not isinstance(connection, SageMakerConnection):
             raise InvalidSourceException(
                 f"Expected SageMakerConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_mlmodels(  # pylint: disable=arguments-differ
         self,
     ) -> Iterable[SageMakerModel]:
-        """
-        List and filters models
-        """
+        """List and filters models"""
         args, has_more_models, models = {"MaxResults": 100}, True, []
         try:
             while has_more_models:
                 response = self.sagemaker.list_models(**args)
-                models.append(response["Models"])
+                models.extend(response["Models"])
                 has_more_models = response.get("NextToken")
                 args["NextToken"] = response.get("NextToken")
         except Exception as err:
@@ -128,20 +141,27 @@ class SagemakerSource(MlModelServiceSource):
 
     def yield_mlmodel(  # pylint: disable=arguments-differ
         self, model: SageMakerModel
-    ) -> Iterable[CreateMlModelRequest]:
+    ) -> Iterable[Either[CreateMlModelRequest]]:
         """
         Prepare the Request model
         """
-        self.status.scanned(model.name)
-
-        yield CreateMlModelRequest(
-            name=model.name,
-            algorithm=self._get_algorithm(),  # Setting this to a constant
-            mlStore=self._get_ml_store(model.name),
-            service=EntityReference(
-                id=self.context.mlmodel_service.id, type="mlmodelService"
-            ),
-        )
+        try:
+            mlmodel_request = CreateMlModelRequest(
+                name=EntityName(model.name),
+                algorithm=self._get_algorithm(),  # Setting this to a constant
+                mlStore=self._get_ml_store(model.name),
+                service=FullyQualifiedEntityName(self.context.get().mlmodel_service),
+            )
+            yield Either(right=mlmodel_request)
+            self.register_record(mlmodel_request=mlmodel_request)
+        except Exception as exc:  # pylint: disable=broad-except
+            yield Either(
+                left=StackTraceError(
+                    name=model.name,
+                    error=f"Error creating mlmodel: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def _get_ml_store(  # pylint: disable=arguments-differ
         self,
@@ -152,7 +172,10 @@ class SagemakerSource(MlModelServiceSource):
         """
         try:
             model_info = self.sagemaker.describe_model(ModelName=model_name)
-            return MlStore(imageRepository=model_info["PrimaryContainer"]["Image"])
+            storage = model_info.get("PrimaryContainer", {}).get("ModelDataUrl")
+            image_repository = model_info.get("PrimaryContainer", {}).get("Image")
+            if image_repository or storage:
+                return MlStore(storage=storage, imageRepository=image_repository)
         except ValidationError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -167,17 +190,18 @@ class SagemakerSource(MlModelServiceSource):
 
     def _get_tags(self, model_arn: str) -> Optional[List[TagLabel]]:
         try:
-            tags = self.sagemaker.list_tags(ResourceArn=model_arn)["Tags"]
-            return [
-                TagLabel(
-                    tagFQN=tag["Key"],
-                    description=tag["Value"],
-                    source="Tag",
-                    labelType="Propagated",
-                    state="Confirmed",
-                )
-                for tag in tags
-            ]
+            tags = self.sagemaker.list_tags(ResourceArn=model_arn).get("Tags")
+            if tags:
+                return [
+                    TagLabel(
+                        tagFQN=TagFQN(tag["Key"]),
+                        description=Markdown(tag["Value"]),
+                        source=TagSource.Classification,
+                        labelType=LabelType.Automated,
+                        state=State.Confirmed,
+                    )
+                    for tag in tags
+                ]
         except ValidationError as err:
             logger.debug(traceback.format_exc())
             logger.warning(

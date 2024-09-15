@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Space, Typography } from 'antd';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import './AppliedFilterText.less';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
+import './applied-filter-text.less';
 
 interface AppliedFilterTextProps {
   filterText: string;
@@ -29,7 +31,10 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Space className="w-full" direction="vertical">
+    <Space
+      className="p-x-xs w-full"
+      data-testid="advance-search-filter-container"
+      direction="vertical">
       <Typography.Text className="text-grey-muted">
         {t('label.applied-advanced-search')}
       </Typography.Text>
@@ -37,18 +42,20 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
         align="center"
         className="w-full advanced-filter-text justify-between">
         <Space className="w-full">
-          <SVGIcons
+          <Icon
             alt="success-badge"
-            icon={Icons.SUCCESS_BADGE}
-            width="16px"
+            className="align-middle m-l-xs"
+            component={IconSuccessBadge}
+            style={{ fontSize: '16px' }}
           />
-          <Typography>{filterText}</Typography>
+          <Typography data-testid="advance-search-filter-text">
+            {filterText}
+          </Typography>
         </Space>
         <Button
-          className="p-0"
-          icon={
-            <SVGIcons alt="edit" icon={Icons.IC_EDIT_PRIMARY} width="16px" />
-          }
+          className="flex-center"
+          data-testid="advance-search-filter-btn"
+          icon={<EditIcon width={16} />}
           type="text"
           onClick={onEdit}
         />

@@ -24,8 +24,10 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
      WHERE userid > 1
           {filters}
           -- Filter out all automated & cursor queries
+          AND label NOT IN ('maintenance', 'metrics', 'health')
           AND querytxt NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
           AND querytxt NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND userid <> 1
           AND aborted = 0
           AND starttime >= '{start_time}'
           AND starttime < '{end_time}'
@@ -70,17 +72,15 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
         s.schema_name,
         q.starttime AS start_time,
         q.endtime AS end_time,
-        datediff(second,q.starttime,q.endtime) AS duration,
+        datediff(millisecond,q.starttime,q.endtime) AS duration,
         q.aborted AS aborted
-    FROM scans AS s
-        INNER JOIN queries AS q
+    FROM queries AS q
+        LEFT JOIN scans AS s
           ON s.query = q.query
         INNER JOIN full_queries AS fq
-          ON s.query = fq.query
+          ON q.query = fq.query
         INNER JOIN pg_catalog.pg_user AS u
           ON q.userid = u.usesysid
-    WHERE
-        {db_filters}
     ORDER BY q.endtime DESC
 """
 )
@@ -215,4 +215,163 @@ REDSHIFT_TABLE_COMMENTS = """
       AND pgd.description IS NOT NULL
       AND n.nspname <> 'pg_catalog'
     ORDER BY "schema", "table_name";
+"""
+
+REDSHIFT_GET_DATABASE_NAMES = """
+SELECT datname FROM pg_database
+"""
+
+REDSHIFT_TEST_GET_QUERIES = """
+SELECT 
+    has_table_privilege('svv_table_info', 'SELECT') as can_access_svv_table_info,
+    has_table_privilege('stl_querytext', 'SELECT') as can_access_stl_querytext,
+    has_table_privilege('stl_query', 'SELECT') as can_access_stl_query;
+"""
+
+
+REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"
+
+
+# Redshift views definitions only contains the select query
+# hence we are appending "create view <schema>.<table> as " to select query
+# to generate the column level lineage
+REDSHIFT_GET_ALL_RELATIONS = """
+    (SELECT
+        c.relkind,
+        n.oid as "schema_oid",
+        n.nspname as "schema",
+        c.oid as "rel_oid",
+        c.relname,
+        CASE c.reldiststyle
+        WHEN 0 THEN 'EVEN' WHEN 1 THEN 'KEY' WHEN 8 THEN 'ALL' END
+        AS "diststyle",
+        c.relowner AS "owner_id",
+        u.usename AS "owner_name",
+        CAST(pg_catalog.pg_get_viewdef(c.oid, true) AS TEXT)
+        AS "view_definition",
+        pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
+    FROM pg_catalog.pg_class c
+            LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
+    WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
+        AND n.nspname !~ '^pg_' {schema_clause} {table_clause}
+        {limit_clause})
+    UNION
+    (SELECT
+        'r' AS "relkind",
+        s.esoid AS "schema_oid",
+        s.schemaname AS "schema",
+        null AS "rel_oid",
+        t.tablename AS "relname",
+        null AS "diststyle",
+        s.esowner AS "owner_id",
+        u.usename AS "owner_name",
+        null AS "view_definition",
+        null AS "privileges"
+    FROM
+        svv_external_tables t
+        JOIN svv_external_schemas s ON s.schemaname = t.schemaname
+        JOIN pg_catalog.pg_user u ON u.usesysid = s.esowner
+    where 1 {schema_clause} {table_clause}
+    ORDER BY "relkind", "schema_oid", "schema"
+    {limit_clause});
+    """
+
+
+REDSHIFT_GET_STORED_PROCEDURES = textwrap.dedent(
+    """
+SELECT
+    p.proname as name,
+    b.usename as owner,
+    p.prosrc as definition
+FROM
+    pg_catalog.pg_namespace n
+JOIN pg_catalog.pg_proc_info p ON
+    pronamespace = n.oid
+join pg_catalog.pg_user b on
+    b.usesysid = p.proowner
+where nspname = '{schema_name}'
+    and p.proowner <> 1;
+    """
+)
+
+
+REDSHIFT_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
+    """
+with SP_HISTORY as (
+    select
+        querytxt as procedure_text,
+        starttime as procedure_start_time,
+        endtime as procedure_end_time,
+        pid as procedure_session_id
+    from SVL_STORED_PROC_CALL
+    where aborted = 0
+      and starttime >= '{start_date}'
+),
+Q_HISTORY as (
+    select
+        querytxt as query_text,
+        case
+            when querytxt ilike '%%MERGE%%' then 'MERGE'
+            when querytxt ilike '%%UPDATE%%' then 'UPDATE'
+            when querytxt ilike '%%CREATE%%AS%%' then 'CREATE_TABLE_AS_SELECT'
+            when querytxt ilike '%%INSERT%%' then 'INSERT'
+        else 'UNKNOWN' end query_type,
+        database as query_database_name,
+        pid as query_session_id,
+        starttime as query_start_time,
+        endtime as query_end_time,
+        userid as query_user_name
+    from STL_QUERY q
+    join pg_catalog.pg_user b
+      on b.usesysid = q.userid
+    where label not in ('maintenance', 'metrics', 'health')
+      and querytxt not like '/* {{"app": "OpenMetadata", %%}} */%%'
+      and querytxt not like '/* {{"app": "dbt", %%}} */%%'
+      and starttime >= '{start_date}'
+      and userid <> 1
+)
+select
+    sp.procedure_text,
+    sp.procedure_start_time,
+    sp.procedure_end_time,
+    q.query_text,
+    q.query_type,
+    q.query_database_name,
+    null as query_schema_name,
+    q.query_start_time,
+    q.query_end_time,
+    q.query_user_name
+from SP_HISTORY sp
+  join Q_HISTORY q
+    on sp.procedure_session_id = q.query_session_id
+   and q.query_start_time between sp.procedure_start_time and sp.procedure_end_time
+   and q.query_end_time between sp.procedure_start_time and sp.procedure_end_time
+order by procedure_start_time DESC
+    """
+)
+
+REDSHIFT_LIFE_CYCLE_QUERY = textwrap.dedent(
+    """
+select "table" as table_name,
+create_time as created_at
+from pg_catalog.svv_table_info o
+where o.schema = '{schema_name}'
+and o.database = '{database_name}'
+"""
+)
+
+REDSHIFT_TABLE_CHANGES_QUERY = """
+SELECT
+    query_text
+FROM SYS_QUERY_HISTORY
+WHERE status = 'success'
+  AND (
+    query_type = 'DDL' OR
+    (query_type = 'UTILITY' AND query_text ilike '%%COMMENT ON%%') OR
+    (query_type = 'CTAS' AND query_text ilike '%%CREATE TABLE%%')
+  )
+  and database_name = '{database}'
+  and end_time >= '{start_date}'
+ORDER BY end_time DESC
 """

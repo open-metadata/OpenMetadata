@@ -16,6 +16,8 @@ import os
 import re
 import sys
 
+from packaging.version import parse
+
 try:
     from importlib.metadata import version
 except ImportError:
@@ -28,7 +30,22 @@ class VersionParsingException(Exception):
     """
 
 
-def get_version_from_string(raw_version: str) -> str:
+def get_client_version_from_string(raw_version: str) -> str:
+    """
+    Given a raw version string, such as `0.10.1.dev0` or
+    `0.11.0-SNAPSHOT`, we should extract the major.minor.patch
+    :param raw_version: raw string with version info
+    :return: Clean version string
+    """
+    try:
+        return re.match(r"\d+.\d+.\d+.\d+", raw_version).group(0)
+    except AttributeError as err:
+        raise VersionParsingException(
+            f"Can't extract client version from {raw_version}: {err}"
+        )
+
+
+def get_server_version_from_string(raw_version: str) -> str:
     """
     Given a raw version string, such as `0.10.1.dev0` or
     `0.11.0-SNAPSHOT`, we should extract the major.minor.patch
@@ -39,7 +56,7 @@ def get_version_from_string(raw_version: str) -> str:
         return re.match(r"\d+.\d+.\d+", raw_version).group(0)
     except AttributeError as err:
         raise VersionParsingException(
-            f"Can't extract version from {raw_version}: {err}"
+            f"Can't extract server version from {raw_version}: {err}"
         )
 
 
@@ -49,7 +66,7 @@ def get_client_version() -> str:
     :return: client version
     """
     raw_version = version("openmetadata-ingestion")
-    return get_version_from_string(raw_version)
+    return get_client_version_from_string(raw_version)
 
 
 def get_metadata_version() -> str:
@@ -70,3 +87,14 @@ def get_major_minor_version() -> str:
     """
     major, minor, *_ = sys.version_info
     return f"{major}.{minor}"
+
+
+def match_versions(version1: str, version2: str) -> bool:
+    """Check if both versions match in minor and major"""
+    server_semver = parse(version1)
+    client_semver = parse(version2)
+
+    return (
+        server_semver.major == client_semver.major
+        and server_semver.minor == client_semver.minor
+    )

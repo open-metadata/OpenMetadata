@@ -13,65 +13,68 @@
 
 import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { t } from 'i18next';
 import {
   first,
-  groupBy,
+  get,
   isEmpty,
   isInteger,
   isString,
   isUndefined,
   last,
-  omit,
   round,
-  sortBy,
+  startCase,
+  sumBy,
   toNumber,
 } from 'lodash';
 import moment from 'moment';
 import React from 'react';
-import { ListItem } from 'react-awesome-query-builder';
-import { LegendProps, Surface } from 'recharts';
 import {
+  CartesianGrid,
+  LegendProps,
+  Line,
+  LineChart,
+  Surface,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
+  DEFAULT_CHART_OPACITY,
+  GRAPH_BACKGROUND_COLOR,
   GRAYED_OUT_COLOR,
+  HOVER_CHART_OPACITY,
   PLACEHOLDER_ROUTE_TAB,
   ROUTES,
 } from '../constants/constants';
 import {
+  BAR_CHART_MARGIN,
   ENTITIES_SUMMARY_LIST,
-  KPI_DATE_PICKER_FORMAT,
-  TIER_DATA,
+  TOTAL_ENTITY_CHART_COLOR,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
-import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../generated/dataInsight/dataInsightChartResult';
-import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 import { DailyActiveUsers } from '../generated/dataInsight/type/dailyActiveUsers';
-import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntitiesByTier';
 import {
   ChartValue,
   DataInsightChartTooltipProps,
-  KpiDates,
+  DataInsightTabs,
 } from '../interface/data-insight.interface';
-import { pluralize } from './CommonUtils';
 import {
-  getDateByTimeStamp,
-  getFormattedDateFromMilliSeconds,
-} from './TimeUtils';
-
-const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
-  [
-    DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
-    DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
-  ].includes(dataInsightChartType);
+  DataInsightCustomChartResult,
+  SystemChartType,
+} from '../rest/DataInsightAPI';
+import { axisTickFormatter } from './ChartUtils';
+import { pluralize } from './CommonUtils';
+import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
 
 export const renderLegend = (
   legendData: LegendProps,
   activeKeys = [] as string[],
-  isTier = false
+  valueFormatter?: (value: string) => string
 ) => {
   const { payload = [] } = legendData;
 
@@ -86,15 +89,15 @@ export const renderLegend = (
             className="recharts-legend-item custom-data-insight-legend-item"
             key={`item-${index}`}
             onClick={(e) =>
-              legendData.onClick && legendData.onClick({ ...entry, ...e })
+              legendData.onClick && legendData.onClick(entry, index, e)
             }
             onMouseEnter={(e) =>
               legendData.onMouseEnter &&
-              legendData.onMouseEnter({ ...entry, ...e })
+              legendData.onMouseEnter(entry, index, e)
             }
             onMouseLeave={(e) =>
               legendData.onMouseLeave &&
-              legendData.onMouseLeave({ ...entry, ...e })
+              legendData.onMouseLeave(entry, index, e)
             }>
             <Surface className="m-r-xss" height={14} version="1.1" width={14}>
               <rect
@@ -105,9 +108,7 @@ export const renderLegend = (
               />
             </Surface>
             <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
-              {isTier
-                ? TIER_DATA[entry.value as keyof typeof TIER_DATA]
-                : entry.value}
+              {valueFormatter ? valueFormatter(entry.value) : entry.value}
             </span>
           </li>
         );
@@ -116,26 +117,13 @@ export const renderLegend = (
   );
 };
 
-const getEntryFormattedValue = (
+export const getEntryFormattedValue = (
   value: number | string | undefined,
-  dataKey: number | string | undefined,
-  kpiTooltipRecord: DataInsightChartTooltipProps['kpiTooltipRecord'],
   isPercentage?: boolean
 ) => {
   let suffix = '';
   if (isPercentage) {
     suffix = '%';
-  }
-
-  // handle kpi metric type check for entry value suffix
-
-  if (
-    !isUndefined(kpiTooltipRecord) &&
-    !isEmpty(kpiTooltipRecord) &&
-    !isUndefined(dataKey)
-  ) {
-    const metricType = kpiTooltipRecord[dataKey];
-    suffix = metricType === KpiTargetType.Percentage ? '%' : suffix;
   }
 
   if (!isUndefined(value)) {
@@ -144,7 +132,7 @@ const getEntryFormattedValue = (
     } else if (isInteger(value)) {
       return `${value}${suffix}`;
     } else {
-      return `${value.toFixed(2)}${suffix}`;
+      return `${round(value, 2)}${suffix}`;
     }
   } else {
     return '';
@@ -155,43 +143,37 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
   const {
     active,
     payload = [],
+    valueFormatter,
     isPercentage,
-    kpiTooltipRecord,
-    isTier,
+    timeStampKey = 'timestampValue',
   } = props;
 
   if (active && payload && payload.length) {
-    const timestamp = getDateByTimeStamp(
-      payload[0].payload.timestampValue || 0,
-      'MMM dd, yyyy'
-    );
+    const timestamp = formatDate(payload[0].payload[timeStampKey] || 0);
 
     return (
       <Card
         className="custom-data-insight-tooltip"
         title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
-        {payload.map((entry, index) => (
-          <li
-            className="d-flex items-center justify-between tw-gap-6 tw-pb-1.5 text-sm"
-            key={`item-${index}`}>
-            <span className="flex items-center text-grey-muted">
-              <Surface className="mr-2" height={12} version="1.1" width={12}>
-                <rect fill={entry.color} height="14" rx="2" width="14" />
-              </Surface>
-              {isTier
-                ? TIER_DATA[entry.dataKey as keyof typeof TIER_DATA]
-                : entry.dataKey}
-            </span>
-            <span className="font-medium">
-              {getEntryFormattedValue(
-                entry.value,
-                entry.dataKey,
-                kpiTooltipRecord,
-                isPercentage
-              )}
-            </span>
-          </li>
-        ))}
+        <ul className="custom-data-insight-tooltip-container">
+          {payload.map((entry, index) => (
+            <li
+              className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
+              key={`item-${index}`}>
+              <span className="flex items-center text-grey-muted">
+                <Surface className="mr-2" height={12} version="1.1" width={12}>
+                  <rect fill={entry.color} height="14" rx="2" width="14" />
+                </Surface>
+                {startCase(entry.name ?? (entry.dataKey as string))}
+              </span>
+              <span className="font-medium">
+                {valueFormatter
+                  ? valueFormatter(entry.value, entry.name ?? entry.dataKey)
+                  : getEntryFormattedValue(entry.value, isPercentage)}
+              </span>
+            </li>
+          ))}
+        </ul>
       </Card>
     );
   }
@@ -251,118 +233,6 @@ const getLatestCount = (latestData = {}) => {
  *
  * @param rawData raw chart data
  * @param dataInsightChartType chart type
- * @returns latest percentage for the chart
- */
-const getLatestPercentage = (
-  rawData: DataInsightChartResult['data'] = [],
-  dataInsightChartType: DataInsightChartType
-) => {
-  let totalEntityCount = 0;
-  let totalEntityWithDescription = 0;
-  let totalEntityWithOwner = 0;
-
-  const modifiedData = rawData
-    .map((raw) => {
-      const timestamp = raw.timestamp;
-      if (timestamp) {
-        return {
-          ...raw,
-          timestamp,
-        };
-      }
-
-      return;
-    })
-    .filter(Boolean);
-
-  const sortedData = sortBy(modifiedData, 'timestamp');
-  const groupDataByTimeStamp = groupBy(sortedData, 'timestamp');
-  const latestData = last(sortedData);
-  if (latestData) {
-    const latestChartRecords = groupDataByTimeStamp[latestData.timestamp];
-
-    latestChartRecords.forEach((record) => {
-      totalEntityCount += record?.entityCount ?? 0;
-      totalEntityWithDescription += record?.completedDescription ?? 0;
-      totalEntityWithOwner += record?.hasOwner ?? 0;
-    });
-    switch (dataInsightChartType) {
-      case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
-        return ((totalEntityWithDescription / totalEntityCount) * 100).toFixed(
-          2
-        );
-
-      case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
-        return ((totalEntityWithOwner / totalEntityCount) * 100).toFixed(2);
-
-      default:
-        return 0;
-    }
-  }
-
-  return 0;
-};
-
-/**
- *
- * @param rawData raw chart data
- * @param dataInsightChartType chart type
- * @returns old percentage for the chart
- */
-const getOldestPercentage = (
-  rawData: DataInsightChartResult['data'] = [],
-  dataInsightChartType: DataInsightChartType
-) => {
-  let totalEntityCount = 0;
-  let totalEntityWithDescription = 0;
-  let totalEntityWithOwner = 0;
-
-  const modifiedData = rawData
-    .map((raw) => {
-      const timestamp = raw.timestamp;
-      if (timestamp) {
-        return {
-          ...raw,
-          timestamp,
-        };
-      }
-
-      return;
-    })
-    .filter(Boolean);
-
-  const sortedData = sortBy(modifiedData, 'timestamp');
-  const groupDataByTimeStamp = groupBy(sortedData, 'timestamp');
-  const oldestData = first(sortedData);
-  if (oldestData) {
-    const oldestChartRecords = groupDataByTimeStamp[oldestData.timestamp];
-
-    oldestChartRecords.forEach((record) => {
-      totalEntityCount += record?.entityCount ?? 0;
-      totalEntityWithDescription += record?.completedDescription ?? 0;
-      totalEntityWithOwner += record?.hasOwner ?? 0;
-    });
-    switch (dataInsightChartType) {
-      case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
-        return ((totalEntityWithDescription / totalEntityCount) * 100).toFixed(
-          2
-        );
-
-      case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
-        return ((totalEntityWithOwner / totalEntityCount) * 100).toFixed(2);
-
-      default:
-        return 0;
-    }
-  }
-
-  return 0;
-};
-
-/**
- *
- * @param rawData raw chart data
- * @param dataInsightChartType chart type
  * @returns formatted chart for graph
  */
 const getGraphFilteredData = (
@@ -376,7 +246,7 @@ const getGraphFilteredData = (
     .map((data) => {
       if (data.timestamp && data.entityType) {
         let value;
-        const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+        const timestamp = customFormatDateTime(data.timestamp, 'MMM dd');
         if (!entities.includes(data.entityType ?? '')) {
           entities.push(data.entityType ?? '');
         }
@@ -386,19 +256,6 @@ const getGraphFilteredData = (
         }
 
         switch (dataInsightChartType) {
-          case DataInsightChartType.TotalEntitiesByType:
-            value = data.entityCount;
-
-            break;
-          case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
-            value = (data.completedDescriptionFraction ?? 0) * 100;
-
-            break;
-          case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
-            value = (data.hasOwnerFraction ?? 0) * 100;
-
-            break;
-
           case DataInsightChartType.PageViewsByEntities:
             value = data.pageViews;
 
@@ -411,7 +268,7 @@ const getGraphFilteredData = (
         return {
           timestamp: timestamp,
           timestampValue: data.timestamp,
-          [data.entityType]: value,
+          [data.entityType ?? '']: value,
         };
       }
 
@@ -432,8 +289,6 @@ export const getGraphDataByEntityType = (
   rawData: DataInsightChartResult['data'] = [],
   dataInsightChartType: DataInsightChartType
 ) => {
-  const isPercentageGraph = checkIsPercentageGraph(dataInsightChartType);
-
   const { filteredData, entities, timestamps } = getGraphFilteredData(
     rawData,
     dataInsightChartType
@@ -442,85 +297,18 @@ export const getGraphDataByEntityType = (
   const graphData = prepareGraphData(timestamps, filteredData);
   const latestData = last(graphData) as Record<string, number>;
   const oldData = first(graphData);
-  const latestPercentage = toNumber(
-    isPercentageGraph
-      ? getLatestPercentage(rawData, dataInsightChartType)
-      : getLatestCount(latestData)
-  );
-  const oldestPercentage = toNumber(
-    isPercentageGraph
-      ? getOldestPercentage(rawData, dataInsightChartType)
-      : getLatestCount(oldData)
-  );
+  const latestPercentage = toNumber(getLatestCount(latestData));
+  const oldestPercentage = toNumber(getLatestCount(oldData));
 
   const relativePercentage = latestPercentage - oldestPercentage;
 
   return {
     data: graphData,
     entities,
-    total: isPercentageGraph
-      ? getLatestPercentage(rawData, dataInsightChartType)
-      : getLatestCount(latestData),
-    relativePercentage: isPercentageGraph
-      ? relativePercentage
-      : (relativePercentage / oldestPercentage) * 100,
+    total: getLatestCount(latestData),
+    relativePercentage: (relativePercentage / oldestPercentage) * 100,
     latestData,
-    isPercentageGraph,
   };
-};
-
-/**
- *
- * @param rawData raw chart data
- * @returns required graph data by tier type
- */
-export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
-  const tiers: string[] = [];
-  const timestamps: string[] = [];
-
-  const filteredData = rawData.map((data) => {
-    if (data.timestamp && data.entityTier) {
-      const tiering = data.entityTier;
-      const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
-      if (!tiers.includes(tiering)) {
-        tiers.push(tiering);
-      }
-
-      if (!timestamps.includes(timestamp)) {
-        timestamps.push(timestamp);
-      }
-
-      return {
-        timestampValue: data.timestamp,
-        timestamp: timestamp,
-        [tiering]: ((data?.entityCountFraction || 0) * 100).toFixed(2),
-      };
-    }
-
-    return;
-  });
-
-  const graphData = prepareGraphData(timestamps, filteredData);
-  const latestData = getLatestCount(omit(last(graphData), 'NoTier'));
-  const oldestData = getLatestCount(omit(first(graphData), 'NoTier'));
-  const relativePercentage = latestData - oldestData;
-
-  return {
-    data: graphData,
-    tiers,
-    total: round(latestData, 2),
-    relativePercentage,
-    latestData: last(graphData) as Record<string, number>,
-  };
-};
-
-export const getTeamFilter = (
-  suggestionValues: ListItem[]
-): SearchDropdownOption[] => {
-  return suggestionValues.map((suggestion) => ({
-    key: suggestion.value,
-    label: suggestion.value,
-  }));
 };
 
 export const getFormattedActiveUsersData = (
@@ -529,9 +317,7 @@ export const getFormattedActiveUsersData = (
   const formattedData = activeUsers.map((user) => ({
     ...user,
     timestampValue: user.timestamp,
-    timestamp: user.timestamp
-      ? getFormattedDateFromMilliSeconds(user.timestamp)
-      : '',
+    timestamp: customFormatDateTime(user.timestamp, 'MMM dd'),
   }));
 
   const latestCount = Number(last(formattedData)?.activeUsers);
@@ -547,31 +333,19 @@ export const getFormattedActiveUsersData = (
 };
 
 export const getEntitiesChartSummary = (
-  chartResults: (DataInsightChartResult | undefined)[]
+  chartResults?: Record<SystemChartType, DataInsightCustomChartResult>
 ) => {
   const updatedSummaryList = ENTITIES_SUMMARY_LIST.map((summary) => {
-    // grab the current chart type
-    const chartData = chartResults.find(
-      (chart) => chart?.chartType === summary.id
-    );
+    const chartData = get(chartResults, summary.type);
 
-    // return default summary if chart data is undefined else calculate the latest count for chartType
-    if (isUndefined(chartData)) {
-      return summary;
-    } else {
-      if (chartData.chartType === DataInsightChartType.TotalEntitiesByTier) {
-        const { total } = getGraphDataByTierType(chartData.data ?? []);
+    const count = round(first(chartData?.results)?.count ?? 0, 2);
 
-        return { ...summary, latest: total };
-      } else {
-        const { total } = getGraphDataByEntityType(
-          chartData.data ?? [],
-          chartData.chartType
-        );
-
-        return { ...summary, latest: total };
-      }
-    }
+    return chartData
+      ? {
+          ...summary,
+          latest: count,
+        }
+      : summary;
   });
 
   return updatedSummaryList;
@@ -580,61 +354,34 @@ export const getEntitiesChartSummary = (
 export const getWebChartSummary = (
   chartResults: (DataInsightChartResult | undefined)[]
 ) => {
-  const updatedSummary = WEB_SUMMARY_LIST.map((summary) => {
+  const updatedSummary = [];
+
+  for (const summary of WEB_SUMMARY_LIST) {
     // grab the current chart type
     const chartData = chartResults.find(
       (chart) => chart?.chartType === summary.id
     );
     // return default summary if chart data is undefined else calculate the latest count for chartType
     if (isUndefined(chartData)) {
-      return summary;
-    } else {
-      if (chartData.chartType === DataInsightChartType.DailyActiveUsers) {
-        const latestData = last(chartData.data);
+      updatedSummary.push(summary);
 
-        return { ...summary, latest: latestData?.activeUsers ?? 0 };
-      } else {
-        const { total } = getGraphDataByEntityType(
-          chartData.data ?? [],
-          chartData.chartType
-        );
-
-        return { ...summary, latest: total };
-      }
+      continue;
     }
-  });
+
+    const { chartType, data } = chartData;
+
+    updatedSummary.push({
+      ...summary,
+      latest: sumBy(
+        data,
+        chartType === DataInsightChartType.DailyActiveUsers
+          ? 'activeUsers'
+          : 'pageViews'
+      ),
+    });
+  }
 
   return updatedSummary;
-};
-
-export const getKpiGraphData = (kpiResults: KpiResult[], kpiList: Kpi[]) => {
-  const kpis: string[] = [];
-  const timeStamps: string[] = [];
-
-  const formattedData = kpiResults.map((kpiResult) => {
-    const timestamp = getFormattedDateFromMilliSeconds(kpiResult.timestamp);
-    const kpiFqn = kpiResult.kpiFqn ?? '';
-    const currentKpi = kpiList.find((kpi) => kpi.fullyQualifiedName === kpiFqn);
-    const kpiTarget = kpiResult.targetResult[0];
-    const kpiValue = toNumber(kpiTarget.value);
-    if (!timeStamps.includes(timestamp)) {
-      timeStamps.push(timestamp);
-    }
-    if (!kpis.includes(kpiFqn)) {
-      kpis.push(kpiFqn);
-    }
-
-    return {
-      timestampValue: kpiResult.timestamp,
-      timestamp,
-      [kpiFqn]:
-        currentKpi?.metricType === KpiTargetType.Percentage
-          ? kpiValue * 100
-          : kpiValue,
-    };
-  });
-
-  return { graphData: prepareGraphData(timeStamps, formattedData), kpis };
 };
 
 export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
@@ -643,25 +390,13 @@ export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
   return current && current.isBefore(moment().subtract(1, 'day'));
 };
 
-export const getKpiDateFormatByTimeStamp = (timestamp: number) =>
-  moment(timestamp).format(KPI_DATE_PICKER_FORMAT);
-
-export const getKpiTargetValueByMetricType = (
-  metricType: KpiTargetType,
-  metricValue: number
-) => {
-  if (metricType === KpiTargetType.Percentage) {
-    return metricValue / 100;
-  }
-
-  return metricValue;
-};
-
 export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   if (day > 0 && isTargetMet) {
     return t('message.kpi-target-achieved-before-time');
   } else if (day <= 0 && !isTargetMet) {
-    return t('message.kpi-target-overdue');
+    return t('message.kpi-target-overdue', {
+      count: day,
+    });
   } else if (isTargetMet) {
     return t('message.kpi-target-achieved');
   } else {
@@ -669,12 +404,129 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   }
 };
 
-export const getDataInsightPathWithFqn = (fqn: string) =>
-  ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, fqn);
+export const getDataInsightPathWithFqn = (tab = DataInsightTabs.DATA_ASSETS) =>
+  ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, tab);
 
-export const getKPIFormattedDates = (kpiDates: KpiDates): KpiDates => {
+export const getOptionalDataInsightTabFlag = (tab: DataInsightTabs) => {
   return {
-    startDate: `${kpiDates.startDate} 00:00`,
-    endDate: `${kpiDates.endDate} 23:59`,
+    showDataInsightSummary:
+      tab === DataInsightTabs.APP_ANALYTICS ||
+      tab === DataInsightTabs.DATA_ASSETS,
+    showKpiChart:
+      tab === DataInsightTabs.KPIS || tab === DataInsightTabs.DATA_ASSETS,
   };
+};
+
+export const sortEntityByValue = (
+  entities: string[],
+  latestData: Record<string, number>
+) => {
+  const entityValues = entities.map((entity) => ({
+    entity,
+    value: latestData[entity] ?? 0,
+  }));
+
+  // Sort the entities based on their values in descending order
+  entityValues.sort((a, b) => b.value - a.value);
+
+  // Extract the sorted entities without their values
+  return entityValues.map((entity) => entity.entity);
+};
+
+export const getRandomHexColor = () => {
+  const randomColor = Math.floor(Math.random() * 16777215).toString(16);
+
+  return `#${randomColor}`;
+};
+
+export const isPercentageSystemGraph = (graph: SystemChartType) => {
+  return [
+    SystemChartType.PercentageOfDataAssetWithDescription,
+    SystemChartType.PercentageOfDataAssetWithOwner,
+    SystemChartType.PercentageOfServiceWithDescription,
+    SystemChartType.PercentageOfServiceWithOwner,
+  ].includes(graph);
+};
+
+export const renderDataInsightLineChart = (
+  graphData: Array<Record<string, number>>,
+  labels: string[],
+  activeKeys: string[],
+  activeMouseHoverKey: string,
+  isPercentage: boolean
+) => {
+  return (
+    <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
+      <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
+      <Tooltip
+        content={
+          <CustomTooltip isPercentage={isPercentage} timeStampKey="day" />
+        }
+        wrapperStyle={{ pointerEvents: 'auto' }}
+      />
+      <XAxis
+        allowDuplicatedCategory={false}
+        dataKey="day"
+        tickFormatter={(value: number) => customFormatDateTime(value, 'MMM dd')}
+        type="category"
+      />
+      <YAxis
+        tickFormatter={
+          isPercentage
+            ? (value: number) => axisTickFormatter(value, '%')
+            : undefined
+        }
+      />
+
+      {labels.map((s, i) => (
+        <Line
+          dataKey={s}
+          hide={
+            activeKeys.length && s !== activeMouseHoverKey
+              ? !activeKeys.includes(s)
+              : false
+          }
+          key={s}
+          name={s}
+          stroke={TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor()}
+          strokeOpacity={
+            isEmpty(activeMouseHoverKey) || s === activeMouseHoverKey
+              ? DEFAULT_CHART_OPACITY
+              : HOVER_CHART_OPACITY
+          }
+          type="monotone"
+        />
+      ))}
+    </LineChart>
+  );
+};
+
+export const getQueryFilterForDataInsightChart = (
+  teamFilter?: string,
+  tierFilter?: string
+) => {
+  if (!tierFilter && !teamFilter) {
+    return undefined;
+  }
+
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              must: [
+                ...(tierFilter
+                  ? [{ term: { 'tier.keyword': tierFilter } }]
+                  : []),
+                ...(teamFilter
+                  ? [{ term: { 'owners.displayName.keyword': teamFilter } }]
+                  : []),
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
 };

@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>0.13.2-SNAPSHOT</version>
+    <version>1.6.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -15,10 +15,15 @@
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.17.6</org.testcontainers.version>
-    <awssdk.version>2.19.7</awssdk.version>
-    <expiring.map.version>0.5.10</expiring.map.version>
+    <org.testcontainers.version>1.20.1</org.testcontainers.version>
+    <awssdk.version>2.27.17</awssdk.version>
+    <azure-identity.version>1.13.2</azure-identity.version>
+    <azure-kv.version>4.8.6</azure-kv.version>
+    <expiring.map.version>0.5.11</expiring.map.version>
+    <java.saml>2.9.0</java.saml>
+    <xmlsec.version>2.3.4</xmlsec.version>
+    <quartz.version>2.5.0-rc1</quartz.version>
+    <pac4j.version>5.7.0</pac4j.version>
   </properties>
 
   <dependencyManagement>
@@ -29,13 +34,67 @@
         <version>${awssdk.version}</version>
         <type>pom</type>
       </dependency>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>libraries-bom</artifactId>
+        <version>26.34.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
   <dependencies>
     <dependency>
+      <groupId>org.pac4j</groupId>
+      <artifactId>pac4j-core</artifactId>
+      <version>${pac4j.version}</version>
+      <exclusions>
+        <exclusion>        
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.nimbusds</groupId>
+          <artifactId>nimbus-jose-jwt</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!--  Upgrading due to CVE in com.nimbusds:nimbus-jose-jwt  -->
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>9.37.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.pac4j</groupId>
+      <artifactId>pac4j-oidc</artifactId>
+      <version>${pac4j.version}</version>
+      <exclusions>
+      <exclusion>
+        <groupId>net.minidev</groupId>
+        <artifactId>json-smart</artifactId>
+      </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>net.minidev</groupId>
+      <artifactId>json-smart</artifactId>
+      <version>2.5.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.open-metadata</groupId>
       <artifactId>common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>elasticsearch-deps</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>opensearch-deps</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -64,8 +123,8 @@
       <artifactId>dropwizard-jdbi3</artifactId>
     </dependency>
     <dependency>
-      <groupId>mysql</groupId>
-      <artifactId>mysql-connector-java</artifactId>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
     </dependency>
     <dependency>
         <groupId>org.postgresql</groupId>
@@ -74,6 +133,11 @@
     <dependency>
       <groupId>io.swagger.core.v3</groupId>
       <artifactId>swagger-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ru.vyarus.guicey</groupId>
+      <artifactId>guicey-jdbi3</artifactId>
+      <version>5.9.2</version>
     </dependency>
     <dependency>
       <groupId>com.smoketurner</groupId>
@@ -115,6 +179,10 @@
       <artifactId>dropwizard-micrometer-jdbi</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-json-logging</artifactId>
+    </dependency>
+    <dependency>
       <groupId>commons-lang</groupId>
       <artifactId>commons-lang</artifactId>
       <version>${commons-lang.version}</version>
@@ -122,48 +190,6 @@
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.elasticsearch.client</groupId>
-      <artifactId>elasticsearch-rest-high-level-client</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-analyzers-common</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-backward-codecs</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-grouping</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-memory</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-spatial</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-spatial-extras</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-spatial3d</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-suggest</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.fasterxml.jackson.dataformat</groupId>
-          <artifactId>jackson-dataformat-cbor</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
@@ -217,7 +243,18 @@
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-mysql</artifactId>
     </dependency>
-
+    <dependency>
+      <groupId>io.github.classgraph</groupId>
+      <artifactId>classgraph</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+    </dependency>
     <!-- Dependencies for secret store manager providers -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -228,6 +265,30 @@
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>ssm</artifactId>
       <version>${awssdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>rds</artifactId>
+      <version>${awssdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>sts</artifactId>
+      <version>${awssdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-security-keyvault-secrets</artifactId>
+      <version>${azure-kv.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-identity</artifactId>
+      <version>${azure-identity.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.dropwizard.modules</groupId>
+      <artifactId>dropwizard-web</artifactId>
     </dependency>
 
     <!-- Dependencies for cloudwatch monitoring -->
@@ -275,7 +336,21 @@
       <artifactId>testcontainers</artifactId>
       <version>${org.testcontainers.version}</version>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.commons</groupId>
+          <artifactId>commons-compress</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-compress -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+      <version>1.26.1</version>
+      <scope>test</scope>
+    </dependency>
+
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>junit-jupiter</artifactId>
@@ -294,6 +369,42 @@
       <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>elasticsearch</artifactId>
+      <version>${org.testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.opensearch</groupId>
+      <artifactId>opensearch-testcontainers</artifactId>
+      <version>2.0.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jersey.connectors</groupId>
+      <artifactId>jersey-jetty-connector</artifactId>
+      <version>2.40</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.26.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.skyscreamer</groupId>
+      <artifactId>jsonassert</artifactId>
+      <version>1.5.1</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.vaadin.external.google</groupId>
+          <artifactId>android-json</artifactId>
+        </exclusion>
+      </exclusions>
+      <scope>test</scope>
+    </dependency>
     <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
     <dependency>
       <groupId>javax.json</groupId>
@@ -305,22 +416,45 @@
       <groupId>org.apache.johnzon</groupId>
       <artifactId>johnzon-core</artifactId>
     </dependency>
+    <!-- Json-Patch since Johnzon JSONPatch.createDiff doesn't work as expected -->
+    <dependency>
+      <groupId>com.github.java-json-tools</groupId>
+      <artifactId>json-patch</artifactId>
+      <version>1.13</version>
+      <scope>compile</scope>
+    </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>
       <artifactId>jackson-datatype-jsr353</artifactId>
     </dependency>
-
+    <dependency>
+      <groupId>com.flipkart.zjsonpatch</groupId>
+      <artifactId>zjsonpatch</artifactId>
+      <version>0.4.16</version>
+    </dependency>
     <!-- https://mvnrepository.com/artifact/org.json/json -->
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>20220924</version>
+      <version>20240303</version>
     </dependency>
-
+    
     <dependency>
       <groupId>com.networknt</groupId>
       <artifactId>json-schema-validator</artifactId>
       <version>${json-schema-validator.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.yaml</groupId>
+          <artifactId>snakeyaml</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <version>${snakeyaml.version}</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt -->
@@ -367,11 +501,16 @@
     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-server</artifactId>
-      <version>9.4.50.v20221201</version>
+      <version>9.4.53.v20231009</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-expression</artifactId>
+      <version>${spring.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-beans</artifactId>
       <version>${spring.version}</version>
     </dependency>
     <dependency>
@@ -413,7 +552,84 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
-      <version>1.9.0</version>
+      <version>1.11.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.onelogin</groupId>
+      <artifactId>java-saml</artifactId>
+      <version>${java.saml}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.fasterxml.woodstox</groupId>
+          <artifactId>woodstox-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.santurario</groupId>
+          <artifactId>xmlsec</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.santuario</groupId>
+      <artifactId>xmlsec</artifactId>
+      <version>${xmlsec.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.quartz-scheduler</groupId>
+      <artifactId>quartz</artifactId>
+      <version>${quartz.version}</version>
+    </dependency>
+    <!-- Needed for Quartz -->
+    <dependency>
+      <groupId>com.mchange</groupId>
+      <artifactId>c3p0</artifactId>
+      <version>0.10.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.woodstox</groupId>
+      <artifactId>woodstox-core</artifactId>
+      <version>${woodstox.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.cronutils</groupId>
+      <artifactId>cron-utils</artifactId>
+      <version>9.2.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>33.0.0-jre</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-commons</artifactId>
+      <version>1.9.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>info.picocli</groupId>
+      <artifactId>picocli</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-secretmanager</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.slack.api</groupId>
+      <artifactId>bolt-servlet</artifactId>
+      <version>1.42.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.slack.api</groupId>
+      <artifactId>slack-api-client</artifactId>
+      <version>1.42.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.sun.activation</groupId>
+      <artifactId>jakarta.activation</artifactId>
+      <version>2.0.1</version>
     </dependency>
   </dependencies>
 
@@ -474,8 +690,84 @@
         </plugins>
       </build>
     </profile>
+      <profile>
+        <id>postgres-tests</id>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx1G</argLine>
+                <systemPropertyVariables>
+                  <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
+                </systemPropertyVariables>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>postgres-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*Test.java</include>
+                      <include>**/*ResourceTest.java</include>
+                    </includes>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
+      <profile>
+        <activation>
+          <activeByDefault>true</activeByDefault>
+        </activation>
+        <id>mysql-tests</id>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx1G</argLine>
+                <systemPropertyVariables>
+                  <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>mysql:8.3.0</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
+                </systemPropertyVariables>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>mysql-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*Test.java</include>
+                      <include>**/*ResourceTest.java</include>
+                    </includes>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
   </profiles>
-
   <build>
     <plugins>
       <plugin>
@@ -498,7 +790,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>buildnumber-maven-plugin</artifactId>
-        <version>1.4</version>
+        <version>3.0.0</version>
         <configuration>
           <doCheck>false</doCheck>
           <doUpdate>false</doUpdate>
@@ -529,10 +821,32 @@
           <swaggerConfig>
             <servers>
               <server>
+                <url>/api</url>
+                <description>Current Host</description>
+              </server>
+              <server>
                 <url>http://localhost:8585/api</url>
                 <description>Endpoint URL</description>
               </server>
             </servers>
+            <securityRequirements>
+              <securityRequirement>
+                <entries>
+                  <entry>
+                    <name>BearerAuth</name>
+                  </entry>
+                </entries>
+              </securityRequirement>
+            </securityRequirements>
+            <components>
+              <securitySchemes>
+                <BearerAuth>
+                  <type>http</type>
+                  <description>Provide Token from Bots settings section in OMD or your Authorization Provider</description>
+                  <scheme>bearer</scheme>
+                </BearerAuth>
+              </securitySchemes>
+            </components>
             <info>
               <title>OpenMetadata Apis</title>
               <version>${project.parent.version}</version>
@@ -546,7 +860,7 @@
                 <name>Apache 2.0</name>
               </license>
             </info>
-            <descriptionFile>../openmetadata-docs/content/main-concepts/metadata-standard/apis.md</descriptionFile>
+            <descriptionFile>../openmetadata-docs/content/v1.4.x/main-concepts/metadata-standard/apis.md</descriptionFile>
           </swaggerConfig>
         </configuration>
         <executions>
@@ -564,7 +878,7 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
+        <artifactId>maven-jar-plugin</artifactId>
         <version>${maven-surefire.version}</version>
         <configuration>
           <trimStackTrace>false</trimStackTrace>
@@ -576,55 +890,9 @@
         </configuration>
         <executions>
           <execution>
-            <id>default-test</id>
-            <configuration>
-              <skip>true</skip>
-            </configuration>
-          </execution>
-          <execution>
             <goals>
-              <goal>test</goal>
+              <goal>test-jar</goal>
             </goals>
-            <id>unit-tests</id>
-            <configuration>
-              <excludes>**/*ResourceTest.java</excludes>
-              <systemPropertyVariables>
-                <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
-                <jdbcContainerImage>mysql:8</jdbcContainerImage>
-              </systemPropertyVariables>
-            </configuration>
-          </execution>
-          <execution>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <id>postgres-integration-tests</id>
-            <phase>test</phase>
-            <configuration>
-              <includes>
-                <include>**/*ResourceTest.java</include>
-              </includes>
-              <systemPropertyVariables>
-                <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
-                <jdbcContainerImage>postgres:12.10</jdbcContainerImage>
-              </systemPropertyVariables>
-            </configuration>
-          </execution>
-          <execution>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <id>mysql-integration-tests</id>
-            <phase>test</phase>
-            <configuration>
-              <includes>
-                <include>**/*ResourceTest.java</include>
-              </includes>
-              <systemPropertyVariables>
-                <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
-                <jdbcContainerImage>mysql:8</jdbcContainerImage>
-              </systemPropertyVariables>
-            </configuration>
           </execution>
         </executions>
       </plugin>

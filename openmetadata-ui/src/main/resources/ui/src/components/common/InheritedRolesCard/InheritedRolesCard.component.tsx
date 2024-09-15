@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Card, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from '../../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
+import { getEntityName } from '../../../utils/EntityUtils';
+import './inherited-roles-card.style.less';
 import { InheritedRolesCardProps } from './InheritedRolesCard.interface';
-import './InheritedRolesCard.style.less';
 
 const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
   const { t } = useTranslation();
@@ -28,11 +29,9 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
       className="relative page-layout-v1-left-panel"
       key="inherited-roles-card-component"
       title={
-        <div className="flex">
-          <h6 className="heading mb-0" data-testid="inherited-roles-heading">
-            {t('label.inherited-role-plural')}
-          </h6>
-        </div>
+        <Typography.Text data-testid="inherited-roles-heading">
+          {t('label.inherited-role-plural')}
+        </Typography.Text>
       }>
       <Fragment>
         {isEmpty(userData.inheritedRoles) ? (
@@ -45,8 +44,7 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
           <div className="d-flex justify-between flex-col">
             {userData.inheritedRoles?.map((inheritedRole, i) => (
               <div className="mb-2 d-flex items-center gap-2" key={i}>
-                <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
-
+                <Icon component={IconUser} style={{ fontSize: '16px' }} />
                 <Typography.Text
                   className="ant-typography-ellipsis-custom w-48"
                   ellipsis={{ tooltip: true }}>

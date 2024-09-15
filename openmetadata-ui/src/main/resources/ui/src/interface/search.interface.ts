@@ -11,17 +11,44 @@
  *  limitations under the License.
  */
 
+import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
+import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import { Chart } from '../generated/entity/data/chart';
+import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { Database } from '../generated/entity/data/database';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
+import { Query } from '../generated/entity/data/query';
+import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../generated/entity/data/storedProcedure';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Domain } from '../generated/entity/domains/domain';
+import { APIService } from '../generated/entity/services/apiService';
+import { DashboardService } from '../generated/entity/services/dashboardService';
+import { DatabaseService } from '../generated/entity/services/databaseService';
+import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { MessagingService } from '../generated/entity/services/messagingService';
+import { MlmodelService } from '../generated/entity/services/mlmodelService';
+import { PipelineService } from '../generated/entity/services/pipelineService';
+import { SearchService } from '../generated/entity/services/searchService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
+import { TestCase } from '../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
+import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
+import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
 
 /**
  * The `keyof` operator, when applied to a union type, expands to the keys are common for
@@ -67,29 +94,161 @@ export interface UserSearchSource extends SearchSourceBase, User {} // extends E
 
 export interface TeamSearchSource extends SearchSourceBase, Team {} // extends EntityInterface
 
+export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
+
+export interface ChartSearchSource extends SearchSourceBase, Chart {} // extends EntityInterface
+export interface DataBaseSchemaSearchSource
+  extends SearchSourceBase,
+    DatabaseSchema {} // extends EntityInterface
+export interface DatabaseSearchSource extends SearchSourceBase, Database {} // extends EntityInterface
+
+export interface DomainSearchSource extends SearchSourceBase, Domain {} // extends EntityInterface
+export interface StoredProcedureSearchSource
+  extends SearchSourceBase,
+    StoredProcedure {} // extends EntityInterface
+
+export interface SearchIndexSearchSource
+  extends SearchSourceBase,
+    SearchIndexEntity {} // extends EntityInterface
+export interface DataProductSearchSource
+  extends SearchSourceBase,
+    DataProduct {} // extends EntityInterface
+
+export interface DashboardDataModelSearchSource
+  extends SearchSourceBase,
+    DashboardDataModel {} // extends EntityInterface
+
 export interface TagClassSearchSource extends SearchSourceBase, Tag {
   id: string; // Tag is generated with the `id` field as optional, which is should not
 } // extends EntityInterface
 
-export interface GlossarySearchSource extends SearchSourceBase, GlossaryTerm {} // extends EntityInterface
+export interface GlossarySearchSource extends SearchSourceBase, Glossary {} // extends EntityInterface
+export interface GlossaryTermSearchSource
+  extends SearchSourceBase,
+    GlossaryTerm {} // extends EntityInterface
+
+export interface QuerySearchSource extends SearchSourceBase, Query {} // extends EntityInterface
+export interface TestCaseSearchSource
+  extends SearchSourceBase,
+    Exclude<TestCase, 'testSuite'> {
+  testSuites: TestSuite[];
+} // extends EntityInterface
+export interface TestSuiteSearchSource extends SearchSourceBase, TestSuite {}
+
+export interface TestCaseResolutionStatusSearchSource
+  extends SearchSourceBase,
+    TestCaseResolutionStatus {
+  name: string;
+  displayName: string;
+  fullyQualifiedName: string;
+  serviceType: string;
+  description: string;
+}
+
+export interface IngestionPipelineSearchSource
+  extends SearchSourceBase,
+    IngestionPipeline {}
+
+export interface DatabaseServiceSearchSource
+  extends SearchSourceBase,
+    DatabaseService {}
+export interface MessagingServiceSearchSource
+  extends SearchSourceBase,
+    MessagingService {}
+export interface DashboardServiceSearchSource
+  extends SearchSourceBase,
+    DashboardService {}
+export interface PipelineServiceSearchSource
+  extends SearchSourceBase,
+    PipelineService {}
+export interface MlModelServiceSearchSource
+  extends SearchSourceBase,
+    MlmodelService {}
+
+export interface SearchServiceSearchSource
+  extends SearchSourceBase,
+    SearchService {}
+
+export interface StorageServiceSearchSource
+  extends SearchSourceBase,
+    SearchService {}
+
+export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
+
+export interface APICollectionSearchSource
+  extends SearchSourceBase,
+    APICollection {}
+
+export interface APIEndpointSearchSource
+  extends SearchSourceBase,
+    APIEndpoint {}
 
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
   | MlmodelSearchSource
   | TopicSearchSource
-  | PipelineSearchSource;
+  | PipelineSearchSource
+  | ContainerSearchSource
+  | GlossarySearchSource
+  | QuerySearchSource
+  | UserSearchSource
+  | TeamSearchSource
+  | TagClassSearchSource
+  | StoredProcedureSearchSource
+  | DashboardDataModelSearchSource
+  | TestCaseSearchSource
+  | DatabaseSearchSource
+  | DataBaseSchemaSearchSource
+  | DatabaseServiceSearchSource
+  | DashboardServiceSearchSource
+  | PipelineServiceSearchSource
+  | MlModelServiceSearchSource
+  | MessagingServiceSearchSource
+  | SearchServiceSearchSource
+  | StorageServiceSearchSource
+  | DomainSearchSource
+  | SearchIndexSearchSource
+  | APIServiceSearchSource
+  | APICollectionSearchSource
+  | APIEndpointSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
+  [SearchIndex.ALL]: TableSearchSource;
+  [SearchIndex.DATA_ASSET]: TableSearchSource;
   [SearchIndex.TABLE]: TableSearchSource;
+  [SearchIndex.CHART]: ChartSearchSource;
   [SearchIndex.MLMODEL]: MlmodelSearchSource;
   [SearchIndex.PIPELINE]: PipelineSearchSource;
   [SearchIndex.DASHBOARD]: DashboardSearchSource;
   [SearchIndex.GLOSSARY]: GlossarySearchSource;
+  [SearchIndex.GLOSSARY_TERM]: GlossaryTermSearchSource;
   [SearchIndex.TEAM]: TeamSearchSource;
   [SearchIndex.USER]: UserSearchSource;
   [SearchIndex.TOPIC]: TopicSearchSource;
   [SearchIndex.TAG]: TagClassSearchSource;
+  [SearchIndex.CONTAINER]: ContainerSearchSource;
+  [SearchIndex.QUERY]: QuerySearchSource;
+  [SearchIndex.TEST_CASE]: TestCaseSearchSource;
+  [SearchIndex.DATABASE_SCHEMA]: DataBaseSchemaSearchSource;
+  [SearchIndex.DATABASE]: DatabaseSearchSource;
+  [SearchIndex.DATABASE_SERVICE]: DatabaseServiceSearchSource;
+  [SearchIndex.DASHBOARD_SERVICE]: DashboardServiceSearchSource;
+  [SearchIndex.PIPELINE_SERVICE]: PipelineServiceSearchSource;
+  [SearchIndex.ML_MODEL_SERVICE]: MlModelServiceSearchSource;
+  [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;
+  [SearchIndex.SEARCH_SERVICE]: SearchServiceSearchSource;
+  [SearchIndex.STORAGE_SERVICE]: StorageServiceSearchSource;
+  [SearchIndex.DOMAIN]: DomainSearchSource;
+  [SearchIndex.SEARCH_INDEX]: SearchIndexSearchSource;
+  [SearchIndex.STORED_PROCEDURE]: StoredProcedureSearchSource;
+  [SearchIndex.DASHBOARD_DATA_MODEL]: DashboardDataModelSearchSource;
+  [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
+  [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
+  [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
+  [SearchIndex.API_SERVICE_INDEX]: APIServiceSearchSource;
+  [SearchIndex.API_COLLECTION_INDEX]: APICollectionSearchSource;
+  [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointSearchSource;
 };
 
 export type SearchRequest<
@@ -114,6 +273,7 @@ export type SearchRequest<
   sortOrder?: string;
   includeDeleted?: boolean;
   trackTotalHits?: boolean;
+  filters?: string;
 } & (
   | {
       fetchSource: true;
@@ -145,7 +305,7 @@ export type SuggestRequest<
     }
 );
 
-export interface SearchHitBody<SI extends SearchIndex, T> {
+export interface SearchHitBody<SI extends SearchIndex | DataInsightIndex, T> {
   _index: SI;
   _type?: string;
   _id?: string;
@@ -188,6 +348,22 @@ export interface SearchResponse<
 }
 
 export type Aggregations = Record<string, { buckets: Bucket[] }>;
+
+export type DataInsightSearchResponse = {
+  took?: number;
+  timed_out?: boolean;
+  hits: {
+    total: {
+      value: number;
+      relation?: string;
+    };
+    hits: SearchHitBody<
+      DataInsightIndex,
+      AggregatedCostAnalysisReportDataSearchSource
+    >[];
+  };
+  aggregations: Aggregations;
+};
 
 /**
  * Because we are using an older version of typescript-eslint, defining
@@ -254,3 +430,5 @@ export type RawSuggestResponse<
     }>;
   };
 };
+
+export type SearchSourceAlias = SearchedDataProps['data'][number]['_source'];

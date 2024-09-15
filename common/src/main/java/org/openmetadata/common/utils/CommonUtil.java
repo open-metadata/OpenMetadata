@@ -17,6 +17,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,6 +27,7 @@ import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collection;
@@ -31,8 +35,10 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -47,23 +53,39 @@ import org.apache.commons.io.IOUtils;
 @Slf4j
 public final class CommonUtil {
 
+  private static final List<String> JAR_NAME_FILTER = List.of("openmetadata", "collate");
+
   private CommonUtil() {}
 
   /** Get resources from jar file or directories in the class path matching pattern */
   public static List<String> getResources(Pattern pattern) throws IOException {
     ArrayList<String> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
-    String[] classPathElements = classPath.split(File.pathSeparator);
+    Set<String> classPathElements =
+        Arrays.stream(classPath.split(File.pathSeparator))
+            .filter(jarName -> JAR_NAME_FILTER.stream().anyMatch(jarName.toLowerCase()::contains))
+            .collect(Collectors.toSet());
 
     for (String element : classPathElements) {
       File file = new File(element);
       resources.addAll(
-          file.isDirectory() ? getResourcesFromDirectory(file, pattern) : getResourcesFromJarFile(file, pattern));
+          file.isDirectory()
+              ? getResourcesFromDirectory(file, pattern)
+              : getResourcesFromJarFile(file, pattern));
     }
     return resources;
   }
 
+  /** Check if any given object falls under OM, or Collate packages */
+  public static Boolean isOpenMetadataObject(Object obj) {
+    return obj != null
+        && JAR_NAME_FILTER.stream()
+            .anyMatch(
+                Arrays.stream(obj.getClass().getPackageName().split("\\.")).toList()::contains);
+  }
+
   private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {
+    LOG.debug("Adding from file {}", file);
     ArrayList<String> retval = new ArrayList<>();
     try (ZipFile zf = new ZipFile(file)) {
       Enumeration<? extends ZipEntry> e = zf.entries();
@@ -71,7 +93,7 @@ public final class CommonUtil {
         String fileName = e.nextElement().getName();
         if (pattern.matcher(fileName).matches()) {
           retval.add(fileName);
-          LOG.info("Adding file from jar {}", fileName);
+          LOG.debug("Adding file from jar {}", fileName);
         }
       }
     } catch (Exception ignored) {
@@ -80,7 +102,8 @@ public final class CommonUtil {
     return retval;
   }
 
-  public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern) throws IOException {
+  public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern)
+      throws IOException {
     final Path root = Path.of(file.getPath());
     try (Stream<Path> paths = Files.walk(Paths.get(file.getPath()))) {
       return paths
@@ -89,7 +112,7 @@ public final class CommonUtil {
           .map(
               path -> {
                 String relativePath = root.relativize(path).toString();
-                LOG.info("Adding directory file {}", relativePath);
+                LOG.debug("Adding directory file {}", relativePath);
                 return relativePath;
               })
           .collect(Collectors.toSet());
@@ -121,7 +144,8 @@ public final class CommonUtil {
   }
 
   /** Check if given date is with in today - pastDays and today + futureDays */
-  public static boolean dateInRange(DateFormat dateFormat, String date, int futureDays, int pastDays) {
+  public static boolean dateInRange(
+      DateFormat dateFormat, String date, int futureDays, int pastDays) {
     Date today = new Date();
     Date startDate = getDateByOffset(today, -pastDays);
     Date endDate = getDateByOffset(today, futureDays);
@@ -154,12 +178,20 @@ public final class CommonUtil {
     return Optional.ofNullable(list).orElse(Collections.emptyList());
   }
 
+  public static <T> List<T> listOrEmptyMutable(List<T> list) {
+    return nullOrEmpty(list) ? new ArrayList<>() : new ArrayList<>(list);
+  }
+
   public static boolean nullOrEmpty(String string) {
     return string == null || string.isEmpty();
   }
 
   public static boolean nullOrEmpty(List<?> list) {
     return list == null || list.isEmpty();
+  }
+
+  public static boolean nullOrEmpty(Map<?, ?> m) {
+    return m == null || m.isEmpty();
   }
 
   public static boolean nullOrEmpty(Object object) {
@@ -170,12 +202,41 @@ public final class CommonUtil {
     return IOUtils.toString(Objects.requireNonNull(loader.getResourceAsStream(file)), UTF_8);
   }
 
-  /** Return list of entiries that are modifiable for performing sort and other operations */
+  /** Return list of entries that are modifiable for performing sort and other operations */
   @SafeVarargs
   public static <T> List<T> listOf(T... entries) {
     if (entries == null) {
       return Collections.emptyList();
     }
-    return new ArrayList<>(List.of(entries));
+    return new ArrayList<>(Arrays.asList(entries));
+  }
+
+  public static URI getUri(String uri) {
+    try {
+      return new URI(uri);
+    } catch (URISyntaxException e) {
+      LOG.error("Error creating URI ", e);
+    }
+    return null;
+  }
+
+  public static <T> boolean findChildren(List<?> list, String methodName, String fqn) {
+    if (list == null || list.isEmpty()) return false;
+    try {
+      Method getChildren = list.get(0).getClass().getMethod(methodName);
+      Method getFQN = list.get(0).getClass().getMethod("getFullyQualifiedName");
+      return list.stream()
+          .anyMatch(
+              o -> {
+                try {
+                  return getFQN.invoke(o).equals(fqn)
+                      || findChildren((List<?>) getChildren.invoke(o), methodName, fqn);
+                } catch (Exception e) {
+                  return false;
+                }
+              });
+    } catch (Exception e) {
+      return false;
+    }
   }
 }

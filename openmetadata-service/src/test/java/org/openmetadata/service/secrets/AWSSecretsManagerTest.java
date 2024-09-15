@@ -14,17 +14,22 @@ package org.openmetadata.service.secrets;
 
 import static org.mockito.Mockito.reset;
 
+import java.util.List;
 import org.mockito.Mock;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
-public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
+public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
 
   @Mock private SecretsManagerClient secretsManagerClient;
 
   @Override
   void setUpSpecific(SecretsManagerConfiguration config) {
-    secretsManager = AWSSecretsManager.getInstance(config, "openmetadata");
+    secretsManager =
+        AWSSecretsManager.getInstance(
+            new SecretsManager.SecretsConfig(
+                "openmetadata", "prefix", List.of("key:value", "key2:value2"), null));
     ((AWSSecretsManager) secretsManager).setSecretsClient(secretsManagerClient);
     reset(secretsManagerClient);
   }

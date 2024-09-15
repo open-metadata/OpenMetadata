@@ -13,25 +13,30 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
-import { TabSpecificField } from '../enums/entity.enum';
+import { PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
+const BASE_URL = '/topics';
+
 export const getTopicVersions = async (id: string) => {
-  const url = `/topics/${id}/versions`;
+  const url = `${BASE_URL}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };
 export const getTopicVersion = async (id: string, version: string) => {
-  const url = `/topics/${id}/versions/${version}`;
+  const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Topic>(url);
 
@@ -39,67 +44,56 @@ export const getTopicVersion = async (id: string, version: string) => {
 };
 
 export const getTopics = async (
-  serviceName: string,
-  arrQueryFields: string | string[],
-  paging?: string
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
-  const url = `${getURLWithQueryFields(
-    `/topics`,
-    arrQueryFields
-  )}&service=${serviceName}${paging ? paging : ''}`;
-
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(url);
+  }>(`${BASE_URL}`, {
+    params: {
+      service,
+      fields,
+      ...paging,
+      include,
+    },
+  });
 
   return response.data;
 };
 
-export const getTopicDetails = (
-  id: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/topics/${id}`, arrQueryFields);
-
-  return APIClient.get(url);
-};
-
-export const getTopicByFqn = async (
-  fqn: string,
-  arrQueryFields: string | TabSpecificField[]
-) => {
-  const url = getURLWithQueryFields(
-    `/topics/name/${fqn}`,
-    arrQueryFields,
-    'include=all'
+export const getTopicByFqn = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Topic>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: {
+        ...params,
+        include: params?.include ?? Include.All,
+      },
+    }
   );
-
-  const response = await APIClient.get<Topic>(url);
 
   return response.data;
 };
 
 export const addFollower = async (topicId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/topics/${topicId}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${topicId}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const removeFollower = async (topicId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
@@ -107,20 +101,18 @@ export const removeFollower = async (topicId: string, userId: string) => {
         fieldsDeleted: { oldValue: EntityReference[] }[];
       };
     }>
-  >(`/topics/${topicId}/followers/${userId}`, configOptions);
+  >(
+    `${BASE_URL}/${topicId}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const patchTopicDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Topic>>(
-    `/topics/${id}`,
-    data,
-    configOptions
+    `${BASE_URL}/${id}`,
+    data
   );
 
   return response.data;
@@ -130,7 +122,22 @@ export const restoreTopic = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<Topic>
-  >('/topics/restore', { id });
+  >(`${BASE_URL}/restore`, { id });
+
+  return response.data;
+};
+
+export const getSampleDataByTopicId = async (id: string) => {
+  const response = await APIClient.get<Topic>(`${BASE_URL}/${id}/sampleData`);
+
+  return response.data;
+};
+
+export const updateTopicVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Topic>>(
+    `${BASE_URL}/${id}/vote`,
+    data
+  );
 
   return response.data;
 };

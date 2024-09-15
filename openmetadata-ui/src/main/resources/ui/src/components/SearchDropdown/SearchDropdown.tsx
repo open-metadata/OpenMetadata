@@ -14,6 +14,8 @@
 import {
   Button,
   Card,
+  Checkbox,
+  Col,
   Divider,
   Dropdown,
   Input,
@@ -25,20 +27,30 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { ChangeEvent, FC, useEffect, useMemo, useState } from 'react';
+import { debounce, isEmpty, isUndefined } from 'lodash';
+import React, {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
+import { ReactComponent as DropDown } from '../../assets/svg/drop-down.svg';
+import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import {
+  generateSearchDropdownLabel,
   getSearchDropdownLabels,
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
-import Loader from '../Loader/Loader';
+import searchClassBase from '../../utils/SearchClassBase';
+import Loader from '../common/Loader/Loader';
+import './search-dropdown.less';
 import {
   SearchDropdownOption,
   SearchDropdownProps,
 } from './SearchDropdown.interface';
-import './SearchDropdown.less';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
   isSuggestionsLoading,
@@ -47,43 +59,79 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   searchKey,
   selectedKeys,
   highlight = false,
+  showProfilePicture = false,
+  fixedOrderOptions = false,
   onChange,
   onGetInitialOptions,
   onSearch,
+  index,
+  independent = false,
+  hideCounts = false,
+  hasNullOption = false,
 }) => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
   const [searchText, setSearchText] = useState('');
-  const [selectedOptions, setSelectedOptions] =
-    useState<SearchDropdownOption[]>(selectedKeys);
+  const [selectedOptions, setSelectedOptions] = useState<
+    SearchDropdownOption[]
+  >([]);
+  const [nullOptionSelected, setNullOptionSelected] = useState<boolean>(false);
+  const nullLabelText = t('label.no-entity', {
+    entity: label,
+  });
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
-    // Separating selected options to show on top
-    const selectedOptionKeys =
-      getSearchDropdownLabels(
-        selectedOptions,
-        true,
-        highlight ? searchText : ''
-      ) || [];
+    // Filtering out selected options
+    const selectedOptionsObj = independent
+      ? selectedOptions
+      : options.filter((option) =>
+          selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
+        );
 
-    // Filtering out unselected options
-    const unselectedOptions = options.filter(
-      (option) =>
-        !selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
-    );
+    if (fixedOrderOptions) {
+      return options.map((item) => ({
+        key: item.key,
+        label: generateSearchDropdownLabel(
+          item,
+          selectedOptionsObj.indexOf(item) !== -1,
+          highlight ? searchText : '',
+          showProfilePicture,
+          hideCounts
+        ),
+      }));
+    } else {
+      // Separating selected options to show on top
+      const selectedOptionKeys =
+        getSearchDropdownLabels(
+          selectedOptionsObj,
+          true,
+          highlight ? searchText : '',
+          showProfilePicture,
+          hideCounts
+        ) || [];
 
-    // Labels for unselected options
-    const otherOptions =
-      getSearchDropdownLabels(
-        unselectedOptions,
-        false,
-        highlight ? searchText : ''
-      ) || [];
+      // Filtering out unselected options
+      const unselectedOptions = options.filter(
+        (option) =>
+          !selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
+      );
 
-    return [...selectedOptionKeys, ...otherOptions];
-  }, [options, selectedOptions]);
+      // Labels for unselected options
+      const otherOptions =
+        getSearchDropdownLabels(
+          unselectedOptions,
+          false,
+          highlight ? searchText : '',
+          showProfilePicture,
+          hideCounts
+        ) || [];
+
+      return [...selectedOptionKeys, ...otherOptions];
+    }
+  }, [options, selectedOptions, fixedOrderOptions, independent]);
 
   // handle menu item click
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
@@ -110,11 +158,12 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   };
 
   // handle search
-  const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
+  const handleSearch = (value: string) => {
     setSearchText(value);
     onSearch(value, searchKey);
   };
+
+  const debouncedOnSearch = debounce(handleSearch, 500);
 
   // Handle dropdown close
   const handleDropdownClose = () => {
@@ -124,7 +173,14 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // Handle update button click
   const handleUpdate = () => {
     // call on change with updated value
-    onChange(selectedOptions, searchKey);
+    if (nullOptionSelected) {
+      onChange(
+        [{ key: NULL_OPTION_KEY, label: nullLabelText }, ...selectedOptions],
+        searchKey
+      );
+    } else {
+      onChange(selectedOptions, searchKey);
+    }
     handleDropdownClose();
   };
 
@@ -134,75 +190,142 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   );
 
   useEffect(() => {
-    setSelectedOptions(selectedKeys);
+    const isNullOptionSelected = selectedKeys.some(
+      (item) => item.key === NULL_OPTION_KEY
+    );
+    setNullOptionSelected(isNullOptionSelected);
+  }, [isDropDownOpen]);
+
+  useEffect(() => {
+    setSelectedOptions(
+      selectedKeys.filter((item) => item.key !== NULL_OPTION_KEY)
+    );
   }, [isDropDownOpen, selectedKeys]);
+
+  const getDropdownBody = useCallback(
+    (menuNode: ReactNode) => {
+      const entityLabel = index && tabsInfo[index]?.label;
+      const isDomainKey = searchKey.startsWith('domain');
+      if (isSuggestionsLoading) {
+        return (
+          <Row align="middle" className="p-y-sm" justify="center">
+            <Col>
+              <Loader size="small" />
+            </Col>
+          </Row>
+        );
+      }
+
+      return options.length > 0 || selectedOptions.length > 0 ? (
+        menuNode
+      ) : (
+        <Row align="middle" className="m-y-sm" justify="center">
+          <Col>
+            <Typography.Text className="m-x-sm">
+              {isDomainKey && entityLabel
+                ? t('message.no-domain-assigned-to-entity', {
+                    entity: entityLabel,
+                  })
+                : t('message.no-data-available')}
+            </Typography.Text>
+          </Col>
+        </Row>
+      );
+    },
+    [isSuggestionsLoading, options, selectedOptions, index, searchKey]
+  );
+
+  const dropdownCardComponent = useCallback(
+    (menuNode: ReactNode) => (
+      <Card
+        bodyStyle={{ padding: 0 }}
+        className="custom-dropdown-render"
+        data-testid="drop-down-menu">
+        <Space direction="vertical" size={0}>
+          <div className="p-t-sm p-x-sm">
+            <Input
+              autoFocus
+              data-testid="search-input"
+              placeholder={`${t('label.search-entity', {
+                entity: label,
+              })}...`}
+              onChange={(e) => {
+                const { value } = e.target;
+                debouncedOnSearch(value);
+              }}
+            />
+          </div>
+          {showClearAllBtn && (
+            <>
+              <Divider className="m-t-xs m-b-0" />
+              <Button
+                className="p-0 m-l-sm"
+                data-testid="clear-button"
+                type="link"
+                onClick={handleClear}>
+                {t('label.clear-entity', {
+                  entity: t('label.all'),
+                })}
+              </Button>
+            </>
+          )}
+          <Divider
+            className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
+          />
+          {hasNullOption && (
+            <>
+              <div className="d-flex items-center m-x-sm m-y-xs gap-2">
+                <Checkbox
+                  checked={nullOptionSelected}
+                  className="d-flex flex-1"
+                  data-testid="no-option-checkbox"
+                  onChange={(e) => setNullOptionSelected(e.target.checked)}>
+                  {nullLabelText}
+                </Checkbox>
+              </div>
+
+              <Divider className="m-y-0" />
+            </>
+          )}
+
+          {getDropdownBody(menuNode)}
+          <Space className="p-sm p-t-xss">
+            <Button
+              className="update-btn"
+              data-testid="update-btn"
+              size="small"
+              onClick={handleUpdate}>
+              {t('label.update')}
+            </Button>
+            <Button
+              data-testid="close-btn"
+              size="small"
+              type="link"
+              onClick={handleDropdownClose}>
+              {t('label.close')}
+            </Button>
+          </Space>
+        </Space>
+      </Card>
+    ),
+    [
+      label,
+      debouncedOnSearch,
+      hasNullOption,
+      showClearAllBtn,
+      nullOptionSelected,
+      handleClear,
+      getDropdownBody,
+      handleUpdate,
+      handleDropdownClose,
+    ]
+  );
 
   return (
     <Dropdown
       destroyPopupOnHide
       data-testid={searchKey}
-      dropdownRender={(menuNode) => (
-        <Card
-          bodyStyle={{ padding: 0 }}
-          className="custom-dropdown-render"
-          data-testid="drop-down-menu">
-          <Space direction="vertical" size={0}>
-            <div className="p-t-sm p-x-sm">
-              <Input
-                data-testid="search-input"
-                placeholder={`${t('label.search-entity', {
-                  entity: label,
-                })}...`}
-                onChange={handleSearch}
-              />
-            </div>
-            {showClearAllBtn && (
-              <>
-                <Divider className="m-t-xs m-b-0" />
-                <Button
-                  className="p-0 m-l-sm"
-                  data-testid="clear-button"
-                  type="link"
-                  onClick={handleClear}>
-                  {t('label.clear-all')}
-                </Button>
-              </>
-            )}
-            <Divider
-              className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
-            />
-            {isSuggestionsLoading ? (
-              <Row align="middle" className="p-y-sm" justify="center">
-                <Loader size="small" />
-              </Row>
-            ) : options.length > 0 || selectedOptions.length > 0 ? (
-              menuNode
-            ) : (
-              <Row className="m-y-sm" justify="center">
-                <Typography.Text>
-                  {t('message.no-data-available')}
-                </Typography.Text>
-              </Row>
-            )}
-            <Space className="p-sm p-t-xss">
-              <Button
-                className="update-btn"
-                data-testid="update-btn"
-                size="small"
-                onClick={handleUpdate}>
-                {t('label.update')}
-              </Button>
-              <Button
-                data-testid="close-btn"
-                size="small"
-                type="link"
-                onClick={handleDropdownClose}>
-                {t('label.close')}
-              </Button>
-            </Space>
-          </Space>
-        </Card>
-      )}
+      dropdownRender={dropdownCardComponent}
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
       open={isDropDownOpen}

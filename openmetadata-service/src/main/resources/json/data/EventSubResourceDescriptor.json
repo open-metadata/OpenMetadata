@@ -1,0 +1,281 @@
+[
+  {
+    "name" : "all",
+    "supportedFilters" : [
+      "filterByEntityId",
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name": "chart",
+    "supportedFilters": [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "dashboard",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "dashboardService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "database",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "databaseSchema",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "databaseService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "glossary",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "glossaryTerm",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "ingestionPipeline",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "location",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "messagingService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "mlmodel",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "mlmodelService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "pipeline",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "pipelineService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "storageService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "table",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "tag",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "tagCategory",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "topic",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "metadataService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "dashboardDataModel",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents"
+    ]
+  },
+  {
+    "name" : "announcement",
+    "supportedFilters" : [
+    ]
+  },
+  {
+    "name" : "task",
+    "supportedFilters" : [
+    ]
+  },
+  {
+    "name" : "conversation",
+    "supportedFilters" : [
+      "filterByMentionedName"
+    ]
+  },
+  {
+    "name": "user",
+    "supportedFilters": [
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain"
+    ]
+  }
+]

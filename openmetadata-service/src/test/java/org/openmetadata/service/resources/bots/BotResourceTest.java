@@ -7,51 +7,72 @@ import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import lombok.SneakyThrows;
+import java.util.Set;
+import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.apps.AppsResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TestUtils;
 
+@Slf4j
 public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static User botUser;
-  public static EntityReference botUserRef;
 
   public BotResourceTest() {
     super(Entity.BOT, Bot.class, BotList.class, "bots", "", INGESTION_BOT);
     supportsFieldsQueryParam = false;
-    supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
+    supportedNameCharacters = "_-.";
   }
 
-  @BeforeAll
-  public void setup(TestInfo test) throws URISyntaxException, IOException {
-    super.setup(test);
+  public void setupBots() {
     createUser();
   }
 
   @BeforeEach
   public void beforeEach() throws HttpResponseException {
     ResultList<Bot> bots = listEntities(null, ADMIN_AUTH_HEADERS);
+
+    // Get App Bots
+    AppsResourceTest appsResourceTest = new AppsResourceTest();
+    ResultList<App> appResultList = appsResourceTest.listEntities(null, ADMIN_AUTH_HEADERS);
+    Set<UUID> applicationBotIds = new HashSet<>();
+    appResultList
+        .getData()
+        .forEach(
+            app -> {
+              if (app.getBot() != null) {
+                applicationBotIds.add(app.getBot().getId());
+              } else {
+                LOG.error("Bot Entry Null for App : {}", app.getName());
+              }
+            });
     for (Bot bot : bots.getData()) {
       try {
-        deleteEntity(bot.getId(), true, true, ADMIN_AUTH_HEADERS);
-        createUser();
+        if (!bot.getProvider().equals(ProviderType.SYSTEM)
+            && !applicationBotIds.contains(bot.getId())) {
+          deleteEntity(bot.getId(), true, true, ADMIN_AUTH_HEADERS);
+          createUser();
+        }
       } catch (Exception ignored) {
       }
     }
@@ -60,7 +81,9 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   @Test
   void testBotInitialization() throws IOException {
     // Ensure all the bots are bootstrapped from the data files
-    List<Bot> bots = EntityRepository.getEntitiesFromSeedData(Entity.BOT, ".*json/data/bot/.*\\.json$", Bot.class);
+    List<Bot> bots =
+        EntityRepository.getEntitiesFromSeedData(
+            Entity.BOT, ".*json/data/bot/.*\\.json$", Bot.class);
     for (Bot bot : bots) {
       assertNotNull(getEntityByName(bot.getName(), "", ADMIN_AUTH_HEADERS));
     }
@@ -69,9 +92,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   @Test
   void delete_ensureBotUserDelete(TestInfo test) throws IOException {
     User testUser = new UserResourceTest().createUser("test-deleter", true);
-    EntityReference testUserRef = testUser.getEntityReference();
-
-    CreateBot create = createRequest(test).withBotUser(testUserRef);
+    CreateBot create = createRequest(test).withBotUser(testUser.getName());
     Bot bot = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     deleteAndCheckEntity(bot, true, true, ADMIN_AUTH_HEADERS);
@@ -84,12 +105,12 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   void put_failIfUserIsAlreadyUsedByAnotherBot(TestInfo test) throws IOException {
     // create a bot user
     User testUser = new UserResourceTest().createUser("bot-test-user", true);
-    EntityReference botUserRef = Objects.requireNonNull(testUser).getEntityReference();
     // create a bot
-    CreateBot create = createRequest(test).withBotUser(botUserRef);
+    CreateBot create = createRequest(test).withBotUser(testUser.getName());
     createEntity(create, ADMIN_AUTH_HEADERS);
     // create another bot with the same bot user
-    CreateBot failCreateRequest = createRequest(test).withName("wrong-bot").withBotUser(botUserRef);
+    CreateBot failCreateRequest =
+        createRequest(test).withName("wrong-bot").withBotUser(testUser.getName());
     assertResponse(
         () -> createEntity(failCreateRequest, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -100,8 +121,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   void put_failIfUserIsNotBot(TestInfo test) {
     // create a non bot user
     User testUser = new UserResourceTest().createUser("bot-test-user", false);
-    EntityReference userRef = Objects.requireNonNull(testUser).getEntityReference();
-    CreateBot failCreateRequest = createRequest(test).withBotUser(userRef);
+    CreateBot failCreateRequest = createRequest(test).withBotUser(testUser.getName());
     // fail because it is not a bot
     assertResponse(
         () -> createEntity(failCreateRequest, ADMIN_AUTH_HEADERS),
@@ -114,15 +134,24 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     if (name != null && name.contains("entityListWithPagination_200")) {
       return new CreateBot()
           .withName(name)
-          .withBotUser(Objects.requireNonNull(new UserResourceTest().createUser(name, true)).getEntityReference());
+          .withBotUser(
+              Objects.requireNonNull(new UserResourceTest().createUser(name, true)).getName());
     }
-    return new CreateBot().withName(name).withBotUser(botUserRef);
+    return new CreateBot().withName(name).withBotUser(botUser.getName());
   }
 
-  @SneakyThrows // TODO remove
   @Override
-  public void validateCreatedEntity(Bot entity, CreateBot request, Map<String, String> authHeaders) {
-    assertReference(request.getBotUser(), entity.getBotUser());
+  public void validateCreatedEntity(
+      Bot entity, CreateBot request, Map<String, String> authHeaders) {
+    if (request.getBotUser() != null) {
+      assertNotNull(entity.getBotUser());
+      TestUtils.validateEntityReference(entity.getBotUser());
+      Assertions.assertEquals(
+          request.getBotUser().toLowerCase(),
+          entity.getBotUser().getFullyQualifiedName().toLowerCase());
+    } else {
+      Assertions.assertNull(entity.getBotUser());
+    }
   }
 
   @Override
@@ -136,12 +165,12 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    assertCommonFieldChange(fieldName, expected, actual);
+  }
 
   private void createUser() {
-    botUser = new UserResourceTest().createUser("botUser", true);
-    if (botUser != null) {
-      botUserRef = botUser.getEntityReference();
-    }
+    User user = new UserResourceTest().createUser("botUser", true);
+    botUser = user != null ? user : botUser;
   }
 }

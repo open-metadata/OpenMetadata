@@ -1,0 +1,77 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Maven Collate Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - '0.[0-9]+.[0-9]+'
+    paths:
+      - "openmetadata-service/**"
+      - "openmetadata-ui/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-dist/**"
+      - "openmetadata-clients/**"
+      - "common/**"
+      - "pom.xml"
+      - "yarn.lock"
+      - "Makefile"
+      - "bootstrap/**"
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency: 
+  group: maven-build-collate-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+jobs:
+  maven-collate-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.3
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Trigger Collate build & wait
+        uses: aurelien-baudet/workflow-dispatch@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
+        with:
+          workflow: OpenMetadata Collate Test
+          ref: main
+          repo: open-metadata/openmetadata-collate
+          token: ${{ secrets.COLLATE_PAT }}
+          wait-for-completion: true
+          inputs: '{ "sha": "${{ env.SHA }}" }'

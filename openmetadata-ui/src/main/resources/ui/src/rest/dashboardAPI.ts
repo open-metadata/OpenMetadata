@@ -13,24 +13,42 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
+import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import {
+  APPLICATION_JSON_CONTENT_TYPE_HEADER,
+  PAGE_SIZE,
+} from '../constants/constants';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
+export type ListDataModelParams = {
+  service?: string;
+  fields?: string;
+  after?: string;
+  before?: string;
+  include?: Include;
+  limit?: number;
+};
+
+const BASE_URL = '/dashboards';
+
 export const getDashboardVersions = async (id: string) => {
-  const url = `/dashboards/${id}/versions`;
+  const url = `${BASE_URL}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };
 export const getDashboardVersion = async (id: string, version: string) => {
-  const url = `/dashboards/${id}/versions/${version}`;
+  const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Dashboard>(url);
 
@@ -38,83 +56,69 @@ export const getDashboardVersion = async (id: string, version: string) => {
 };
 
 export const getDashboards = async (
-  serviceName: string,
-  arrQueryFields: string | string[],
-  paging?: string
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted,
+  limit: number = PAGE_SIZE
 ) => {
-  const url = `${getURLWithQueryFields(
-    `/dashboards`,
-    arrQueryFields
-  )}&service=${serviceName}${paging ? paging : ''}`;
-
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(url);
+  }>(`${BASE_URL}`, {
+    params: {
+      service,
+      fields,
+      ...paging,
+      include,
+      limit,
+    },
+  });
 
   return response.data;
 };
 
-export const getDashboardDetails = (
-  id: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/dashboards/${id}`, arrQueryFields);
-
-  return APIClient.get(url);
-};
-
-export const getDashboardByFqn = async (
-  fqn: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(
-    `/dashboards/name/${fqn}`,
-    arrQueryFields,
-    'include=all'
+export const getDashboardByFqn = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Dashboard>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
   );
-
-  const response = await APIClient.get<Dashboard>(url);
 
   return response.data;
 };
 
 export const addFollower = async (dashboardID: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/dashboards/${dashboardID}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${dashboardID}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const removeFollower = async (dashboardID: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.delete<{
     changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
-  }>(`/dashboards/${dashboardID}/followers/${userId}`, configOptions);
+  }>(
+    `${BASE_URL}/${dashboardID}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const patchDashboardDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Dashboard>>(
-    `/dashboards/${id}`,
-    data,
-    configOptions
+    `${BASE_URL}/${id}`,
+    data
   );
 
   return response.data;
@@ -124,7 +128,27 @@ export const restoreDashboard = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<Dashboard>
-  >('/dashboards/restore', { id });
+  >(`${BASE_URL}/restore`, { id });
+
+  return response.data;
+};
+
+export const getDataModels = async (params?: ListDataModelParams) => {
+  const response = await APIClient.get<PagingResponse<ServicePageData[]>>(
+    `/dashboard/datamodels`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const updateDashboardVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Dashboard>>(
+    `${BASE_URL}/${id}/vote`,
+    data
+  );
 
   return response.data;
 };

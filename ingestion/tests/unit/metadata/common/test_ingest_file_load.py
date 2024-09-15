@@ -47,7 +47,7 @@ class TestIngestionFileLoad(TestCase):
         )
         self.assertEqual(
             config_dict["source"]["serviceConnection"]["config"]["credentials"][
-                "gcsConfig"
+                "gcpConfig"
             ],
             "/random/path",
         )

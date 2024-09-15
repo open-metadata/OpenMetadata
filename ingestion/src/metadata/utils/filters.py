@@ -27,12 +27,12 @@ class InvalidPatternException(Exception):
     """
 
 
-def validate_regex(regex_list: List[str]) -> None:
+def validate_regex(regex_list: Optional[List[str]]) -> None:
     """
     Check that the given include/exclude regexes
     are well formatted
     """
-    for regex in regex_list:
+    for regex in regex_list or []:
         try:
             re.compile(regex)
         except re.error as err:
@@ -40,7 +40,7 @@ def validate_regex(regex_list: List[str]) -> None:
             raise InvalidPatternException(msg) from err
 
 
-def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
+def _filter(filter_pattern: Optional[FilterPattern], name: Optional[str]) -> bool:
     """
     Return True if the name needs to be filtered, False otherwise
 
@@ -54,24 +54,36 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
         # No filter pattern, nothing to filter
         return False
 
+    if filter_pattern and not name:
+        # Filter pattern is present but not the name so we'll filter it out
+        return True
+
+    validate_regex(filter_pattern.includes)
+    validate_regex(filter_pattern.excludes)
+
+    if filter_pattern.includes and filter_pattern.excludes:
+        return not any(
+            name
+            for regex in filter_pattern.includes
+            if (re.match(regex, name, re.IGNORECASE))
+        ) or any(
+            name
+            for regex in filter_pattern.excludes
+            if (re.match(regex, name, re.IGNORECASE))
+        )
+
     if filter_pattern.includes:
-        validate_regex(filter_pattern.includes)
-        return not any(  # pylint: disable=use-a-generator
-            [
-                name
-                for regex in filter_pattern.includes
-                if (re.match(regex, name, re.IGNORECASE))
-            ]
+        return not any(
+            name
+            for regex in filter_pattern.includes
+            if (re.match(regex, name, re.IGNORECASE))
         )
 
     if filter_pattern.excludes:
-        validate_regex(filter_pattern.excludes)
-        return any(  # pylint: disable=use-a-generator
-            [
-                name
-                for regex in filter_pattern.excludes
-                if (re.match(regex, name, re.IGNORECASE))
-            ]
+        return any(
+            name
+            for regex in filter_pattern.excludes
+            if (re.match(regex, name, re.IGNORECASE))
         )
 
     return False
@@ -208,3 +220,63 @@ def filter_by_mlmodel(
     :return: True for filtering, False otherwise
     """
     return _filter(mlmodel_filter_pattern, mlmodel_name)
+
+
+def filter_by_container(
+    container_filter_pattern: Optional[FilterPattern], container_name: str
+) -> bool:
+    """
+    Return True if the container needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param container_filter_pattern: Container defining the container filtering logic
+    :param container_name: container name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(container_filter_pattern, container_name)
+
+
+def filter_by_datamodel(
+    datamodel_filter_pattern: Optional[FilterPattern], datamodel_name: str
+) -> bool:
+    """
+    Return True if the models needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param datamodel_filter_pattern: Model defining data model filtering logic
+    :param datamodel_name: data model name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(datamodel_filter_pattern, datamodel_name)
+
+
+def filter_by_project(
+    project_filter_pattern: Optional[FilterPattern], project_name: str
+) -> bool:
+    """
+    Return True if the project needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param project_filter_pattern: Model defining project filtering logic
+    :param project_name: project name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(project_filter_pattern, project_name)
+
+
+def filter_by_search_index(
+    search_index_filter_pattern: Optional[FilterPattern], search_index_name: str
+) -> bool:
+    """
+    Return True if the models needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param search_index_filter_pattern: Model defining search index filtering logic
+    :param search_index_name: search index name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(search_index_filter_pattern, search_index_name)

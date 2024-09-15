@@ -12,43 +12,50 @@
  */
 
 import { AxiosError } from 'axios';
-import AddDataQualityTestV1 from 'components/AddDataQualityTest/AddDataQualityTestV1';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { ProfilerDashboardType } from '../../enums/table.enum';
+import Loader from '../../components/common/Loader/Loader';
+import AddDataQualityTestV1 from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTestV1';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
-import { getTableFQNFromColumnFQN } from '../../utils/CommonUtils';
+import { useFqn } from '../../hooks/useFqn';
+import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddDataQualityTestPage = () => {
-  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
-  const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
+  const { fqn } = useFqn();
   const [table, setTable] = useState({} as Table);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchTableData = async () => {
+    setIsLoading(true);
     try {
-      const fqn = isColumnFqn
-        ? getTableFQNFromColumnFQN(entityTypeFQN)
-        : entityTypeFQN;
-      const table = await getTableDetailsByFQN(fqn, '');
+      const table = await getTableDetailsByFQN(fqn, {
+        fields: [
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.CUSTOM_METRICS,
+          TabSpecificField.COLUMNS,
+        ],
+      });
       setTable(table);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchTableData();
-  }, [entityTypeFQN]);
+  }, [fqn]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
-    <PageContainerV1>
-      <div className="self-center">
-        <AddDataQualityTestV1 table={table} />
-      </div>
-    </PageContainerV1>
+    <div className="self-center" data-testid="add-data-quality-test-page">
+      <AddDataQualityTestV1 table={table} />
+    </div>
   );
 };
 

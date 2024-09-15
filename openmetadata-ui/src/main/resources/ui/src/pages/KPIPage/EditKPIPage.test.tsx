@@ -26,25 +26,27 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ useParams: 'description-kpi' }),
 }));
 
-jest.mock('rest/DataInsightAPI', () => ({
+jest.mock('../../rest/DataInsightAPI', () => ({
   getChartById: jest
     .fn()
     .mockImplementation(() => Promise.resolve(DESCRIPTION_CHART)),
 }));
 
-jest.mock('components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('../../components/common/RichTextEditor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
-jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
-  jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
+jest.mock(
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () =>
+    jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
-jest.mock('rest/KpiAPI', () => ({
+jest.mock('../../rest/KpiAPI', () => ({
   getKPIByName: jest.fn().mockImplementation(() => Promise.resolve(KPI_DATA)),
   patchKPI: jest.fn().mockImplementation(() => Promise.resolve(KPI_DATA)),
 }));
@@ -54,13 +56,22 @@ jest.mock('../../hooks/authHooks', () => ({
 }));
 
 jest.mock('../../utils/DataInsightUtils', () => ({
+  ...jest.requireActual('../../utils/DataInsightUtils'),
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
-  getKPIFormattedDates: jest.fn().mockReturnValue({
-    startDate: `2022-12-08 00:00`,
-    endDate: `2022-12-28 23:59`,
-  }),
   getDisabledDates: jest.fn().mockReturnValue(true),
-  getKpiDateFormatByTimeStamp: jest.fn().mockReturnValue('2022-12-08'),
+}));
+
+jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
+
+jest.mock('../../constants/DataInsight.constants', () => ({
+  KPI_DATE_PICKER_FORMAT: 'YYY-MM-DD',
 }));
 
 describe('Edit KPI page', () => {
@@ -92,7 +103,7 @@ describe('Edit KPI page', () => {
 
     const formContainer = await screen.findByTestId('kpi-form');
 
-    const chart = await screen.findByTestId('dataInsightChart');
+    const chart = await screen.findByTestId('chartType');
     const displayName = await screen.findByTestId('displayName');
     const metricType = await screen.findByTestId('metricType');
     const startDate = await screen.findByTestId('start-date');
@@ -115,12 +126,12 @@ describe('Edit KPI page', () => {
   it('Chart input and Metric type input should be disable for edit form', async () => {
     render(<EditKPIPage />, { wrapper: MemoryRouter });
 
-    const chart = await screen.findByTestId('dataInsightChart');
+    const chart = await screen.findByTestId('chartType');
 
     const metricType = await screen.findByTestId('metricType');
 
-    expect(chart).toHaveClass('ant-input-disabled');
+    expect(chart).toHaveClass('ant-select-disabled');
 
-    expect(metricType).toHaveClass('ant-input-disabled');
+    expect(metricType).toHaveClass('ant-select-disabled');
   });
 });

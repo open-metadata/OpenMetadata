@@ -1,0 +1,77 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/mongoDBConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MongoDBConnection",
+    "description": "MongoDB Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.MongoDBConnection",
+    "definitions": {
+        "mongoDBType": {
+            "description": "Service type.",
+            "type": "string",
+            "enum": [
+                "MongoDB"
+            ],
+            "default": "MongoDB"
+        },
+        "mongoDBScheme": {
+            "description": "Mongo connection scheme options.",
+            "type": "string",
+            "enum": [
+                "mongodb",
+                "mongodb+srv"
+            ],
+            "default": "mongodb"
+        }
+
+    },
+    "properties": {
+        "type": {
+            "title": "Service Type",
+            "description": "Service Type",
+            "$ref": "#/definitions/mongoDBType",
+            "default": "MongoDB"
+        },
+        "scheme": {
+            "title": "Connection Scheme",
+            "description": "Mongo connection scheme options.",
+            "$ref": "#/definitions/mongoDBScheme",
+            "default": "mongodb"
+        },
+        "username": {
+            "title": "Username",
+            "description": "Username to connect to MongoDB. This user should have privileges to read all the metadata in MongoDB.",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Password to connect to MongoDB.",
+            "type": "string",
+            "format": "password"
+        },
+        "hostPort": {
+            "title": "Host and Port",
+            "description": "Host and port of the MongoDB service.",
+            "type": "string"
+        },
+        "connectionOptions": {
+            "title": "Connection Options",
+            "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+        },
+        "databaseName": {
+            "title": "Database Name",
+            "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+            "type": "string"
+        },
+        "supportsMetadataExtraction": {
+            "title": "Supports Metadata Extraction",
+            "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+        },
+        "supportsProfiler": {
+            "title": "Supports Profiler",
+            "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+        }
+    },
+    "required": ["hostPort"],
+    "additionalProperties": false
+}

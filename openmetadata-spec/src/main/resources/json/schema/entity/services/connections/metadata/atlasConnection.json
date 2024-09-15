@@ -51,7 +51,7 @@
     },
     "entity_type": {
       "title": "Entity Type",
-      "description": "Name of the Entity Type availabe in Atlas",
+      "description": "Name of the Entity Type available in Atlas.",
       "type": "string"
     },
     "connectionOptions": {

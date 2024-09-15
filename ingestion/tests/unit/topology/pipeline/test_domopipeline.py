@@ -3,7 +3,7 @@ Test Domo Dashboard using the topology
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
@@ -43,15 +43,12 @@ MOCK_PIPELINE_SERVICE = PipelineService(
 MOCK_PIPELINE = Pipeline(
     id="a58b1856-729c-493b-bc87-6d2269b43ec0",
     name="do_it_all_with_default_config",
-    fullyQualifiedName="local_domo_pipeline.1",
+    fullyQualifiedName="domopipeline_source_test.do_it_all_with_default_config",
     displayName="do_it_all_with_default_config",
-    description="",
     tasks=[
         Task(
             name="a58b1856-729c-493b-bc87-6d2269b43ec0",
             displayName="do_it_all_with_default_config",
-            description="",
-            taskUrl="",
         )
     ],
     service=EntityReference(
@@ -70,7 +67,7 @@ mock_domopipeline_config = {
                 "secretToken": "abcdefg",
                 "accessToken": "accessTpokem",
                 "apiHost": "api.domo.com",
-                "sandboxDomain": "https://domain.domo.com",
+                "instanceDomain": "https://domain.domo.com",
             }
         },
         "sourceConfig": {
@@ -97,48 +94,48 @@ mock_domopipeline_config = {
 
 EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
-        pipeline_fqn="local_domo_pipeline.1",
+        pipeline_fqn="domopipeline_source_test.do_it_all_with_default_config",
         pipeline_status=PipelineStatus(
-            timestamp=1665476792,
+            timestamp=1665476792000,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
                     name="1",
                     executionStatus="Successful",
-                    startTime=1665476783,
-                    endTime=1665476792,
+                    startTime=1665476783000,
+                    endTime=1665476792000,
                     logLink=None,
                 )
             ],
         ),
     ),
     OMetaPipelineStatus(
-        pipeline_fqn="local_domo_pipeline.1",
+        pipeline_fqn="domopipeline_source_test.do_it_all_with_default_config",
         pipeline_status=PipelineStatus(
-            timestamp=1665470252,
+            timestamp=1665470252000,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
                     name="1",
                     executionStatus="Successful",
-                    startTime=1665470244,
-                    endTime=1665470252,
+                    startTime=1665470244000,
+                    endTime=1665470252000,
                     logLink=None,
                 )
             ],
         ),
     ),
     OMetaPipelineStatus(
-        pipeline_fqn="local_domo_pipeline.1",
+        pipeline_fqn="domopipeline_source_test.do_it_all_with_default_config",
         pipeline_status=PipelineStatus(
-            timestamp=1665148827,
+            timestamp=1665148827000,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
                     name="1",
                     executionStatus="Successful",
-                    startTime=1665148818,
-                    endTime=1665148827,
+                    startTime=1665148818000,
+                    endTime=1665148827000,
                     logLink=None,
                 )
             ],
@@ -151,17 +148,17 @@ EXPECTED_PIPELINE = [
         name="1",
         displayName="Nihar Dataflows",
         description="THis is description for Nihar dataflow",
-        pipelineUrl=None,
+        sourceUrl=None,
         concurrency=None,
         pipelineLocation=None,
-        startDate=datetime(2022, 10, 7, 13, 20, 16, tzinfo=timezone.utc),
+        startDate=datetime(2022, 10, 7, 13, 20, 16),
         tasks=[
             Task(
                 name="1",
                 displayName="Nihar Dataflows",
                 fullyQualifiedName=None,
                 description="THis is description for Nihar dataflow",
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=None,
                 taskType=None,
                 taskSQL=None,
@@ -171,17 +168,8 @@ EXPECTED_PIPELINE = [
             )
         ],
         tags=None,
-        owner=None,
-        service=EntityReference(
-            id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
-            type="pipelineService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        owners=None,
+        service="domopipeline_source_test",
         extension=None,
     )
 ]
@@ -259,13 +247,17 @@ class DomoPipelineUnitTest(TestCase):
         super().__init__(methodName)
         test_connection.return_value = False
         domo_client.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_domopipeline_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_domopipeline_config
+        )
         self.domopipeline = DomopipelineSource.create(
             mock_domopipeline_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.domopipeline.context.__dict__["pipeline"] = MOCK_PIPELINE
-        self.domopipeline.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
+        self.domopipeline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+        self.domopipeline.context.get().__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.root
 
     @patch("metadata.clients.domo_client.DomoClient.get_runs")
     def test_pipeline(self, get_runs):
@@ -284,8 +276,8 @@ class DomoPipelineUnitTest(TestCase):
         pipeline_status_list = []
         results = self.domopipeline.yield_pipeline_status(MOCK_PIPELINE_DETAILS)
         for result in results:
-            if isinstance(result, OMetaPipelineStatus):
-                pipeline_status_list.append(result)
+            if isinstance(result.right, OMetaPipelineStatus):
+                pipeline_status_list.append(result.right)
 
         for _, (expected, original) in enumerate(
             zip(EXPECTED_PIPELINE_STATUS, pipeline_status_list)

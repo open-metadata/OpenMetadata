@@ -9,13 +9,18 @@
     "postgresType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Postgres"],
+      "enum": [
+        "Postgres"
+      ],
       "default": "Postgres"
     },
     "postgresScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["postgresql+psycopg2"],
+      "enum": [
+        "postgresql+psycopg2",
+        "pgspider+psycopg2"
+      ],
       "default": "postgresql+psycopg2"
     }
   },
@@ -37,21 +42,42 @@
       "description": "Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.",
       "type": "string"
     },
-    "password": {
-      "title": "Password",
-      "description": "Password to connect to Postgres.",
-      "type": "string",
-      "format": "password"
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "./common/basicAuth.json"
+        },
+        {
+          "$ref": "./common/iamAuthConfig.json"
+        },
+        {
+          "$ref": "./common/azureConfig.json"
+        }
+      ]
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the Postgres service.",
+      "description": "Host and port of the source service.",
       "type": "string"
     },
     "database": {
       "title": "Database",
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
       "type": "string"
+    },
+    "ingestAllDatabases": {
+      "title": "Ingest All Databases",
+      "description": "Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": false
+    },
+    "sslMode": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "classificationName": {
       "title": "Classification Name",
@@ -91,8 +117,16 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": [
+    "hostPort",
+    "username",
+    "database"
+  ]
 }

@@ -14,12 +14,12 @@ Helper functions to handle OpenMetadata Entities' properties
 
 import re
 import string
-from functools import singledispatch
-from typing import Type, TypeVar, Union
+from typing import Any, Type, TypeVar, Union
 
 from pydantic import BaseModel
+from requests.utils import quote as url_quote
 
-from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -34,6 +34,7 @@ def format_name(name: str) -> str:
     return re.sub(r"[" + subs + "]", "_", name)
 
 
+# pylint: disable=too-many-return-statements
 def get_entity_type(
     entity: Union[Type[T], str],
 ) -> str:
@@ -57,23 +58,30 @@ def get_entity_type(
         return class_name.replace("testsuite", "testSuite")
     if "databaseschema" in class_name:
         return class_name.replace("databaseschema", "databaseSchema")
+    if "searchindex" in class_name:
+        return class_name.replace("searchindex", "searchIndex")
+    if "dashboarddatamodel" in class_name:
+        return class_name.replace("dashboarddatamodel", "dashboardDataModel")
 
     return class_name
 
 
-@singledispatch
-def model_str(arg) -> str:
+def model_str(arg: Any) -> str:
     """
-    Default model stringifying method
+    Default model stringifying method.
+
+    Some elements such as FQN, EntityName, UUID
+    have the actual value under the pydantic base root
     """
+    if hasattr(arg, "root"):
+        return str(arg.root)
+
     return str(arg)
 
 
-@model_str.register(basic.Uuid)
-@model_str.register(basic.FullyQualifiedEntityName)
-@model_str.register(basic.EntityName)
-def _(arg) -> str:
+def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:
     """
-    Models with __root__
+    Quote the FQN so that it's safe to pass to the API.
+    E.g., `"foo.bar/baz"` -> `%22foo.bar%2Fbaz%22`
     """
-    return str(arg.__root__)
+    return url_quote(model_str(fqn), safe="")

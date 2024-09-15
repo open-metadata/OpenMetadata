@@ -11,7 +11,9 @@ SERVICE_TYPE_MAPPER = {
         "service_name": "DeltaLake",
         "connection": {
             "config": {
-                "metastoreConnection": {"metastoreHostPort": "http://localhost:9083"}
+                "configSource": {
+                    "connection": {"metastoreHostPort": "http://localhost:9083"}
+                }
             }
         },
     },
@@ -78,12 +80,7 @@ SERVICE_TYPE_MAPPER = {
     },
     "glue": {
         "service_name": "Glue",
-        "connection": {
-            "config": {
-                "awsConfig": "aws_config",
-                "storageServiceName": "glue_stroage_name",
-            }
-        },
+        "connection": {"config": {"awsConfig": "aws_config"}},
     },
     "snowflake": {
         "service_nmae": "Snowflake",

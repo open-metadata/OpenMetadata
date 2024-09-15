@@ -125,13 +125,8 @@ EXPTECTED_TABLE = Table(
     updatedAt=1673413042524,
     updatedBy="admin",
     href=Href(
-        __root__=AnyUrl(
+        root=AnyUrl(
             "http://localhost:8585/api/v1/tables/124d078d-dcf2-43a8-b59e-33bc7953f680",
-            scheme="http",
-            host="localhost",
-            host_type="int_domain",
-            port="8585",
-            path="/api/v1/tables/124d078d-dcf2-43a8-b59e-33bc7953f680",
         )
     ),
     tableType="Regular",
@@ -216,7 +211,7 @@ EXPTECTED_TABLE = Table(
     ],
     tableConstraints=None,
     tablePartition=None,
-    owner=None,
+    owners=None,
     databaseSchema=EntityReference(
         id="4cf6ee7e-9d24-4153-9318-82aa1167259b",
         type="databaseSchema",
@@ -226,13 +221,8 @@ EXPTECTED_TABLE = Table(
         displayName=None,
         deleted=False,
         href=Href(
-            __root__=AnyUrl(
+            AnyUrl(
                 "http://localhost:8585/api/v1/databaseSchemas/4cf6ee7e-9d24-4153-9318-82aa1167259b",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/databaseSchemas/4cf6ee7e-9d24-4153-9318-82aa1167259b",
             )
         ),
     ),
@@ -245,13 +235,8 @@ EXPTECTED_TABLE = Table(
         displayName=None,
         deleted=False,
         href=Href(
-            __root__=AnyUrl(
+            AnyUrl(
                 "http://localhost:8585/api/v1/databases/367f53b5-d6c2-44be-bf5d-a0a1dc98a9dd",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/databases/367f53b5-d6c2-44be-bf5d-a0a1dc98a9dd",
             )
         ),
     ),
@@ -264,26 +249,22 @@ EXPTECTED_TABLE = Table(
         displayName=None,
         deleted=False,
         href=Href(
-            __root__=AnyUrl(
+            AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/f2ab0e7a-5224-4acb-a189-74158851733f",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/services/databaseServices/f2ab0e7a-5224-4acb-a189-74158851733f",
             )
         ),
     ),
     serviceType="Hive",
     location=None,
-    viewDefinition=None,
+    schemaDefinition=None,
     tags=[
         TagLabel(
             tagFQN="AtlasMetadata.atlas_table",
+            name="atlas_table",
             description="test tag",
-            source="Tag",
+            source="Classification",
             labelType="Automated",
-            state="Confirmed",
+            state="Suggested",
             href=None,
         )
     ],
@@ -293,7 +274,6 @@ EXPTECTED_TABLE = Table(
     sampleData=None,
     tableProfilerConfig=None,
     profile=None,
-    tableQueries=None,
     dataModel=None,
     changeDescription=None,
     deleted=False,
@@ -308,18 +288,18 @@ class AtlasUnitTest(TestCase):
     """
 
     @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+        "metadata.ingestion.source.metadata.atlas.metadata.AtlasSource.test_connection"
     )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_atlas_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_atlas_config)
         self.atlas_source = AtlasSource.create(
             mock_atlas_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 mock_atlas_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
@@ -337,6 +317,7 @@ class AtlasUnitTest(TestCase):
                         username=None,
                         password=None,
                         hostPort="http://nohost:6000",
+                        databaseName="Reporting",
                     )
                 ),
             )
@@ -348,17 +329,14 @@ class AtlasUnitTest(TestCase):
                 displayName=None,
                 description=None,
                 tags=None,
-                owner=None,
-                service=EntityReference(
-                    id=mock_database_service_object.id,
-                    type="databaseService",
-                ),
+                owners=None,
+                service=mock_database_service_object.fullyQualifiedName,
             )
         )
         mock_database_schema_object = self.metadata.create_or_update(
             CreateDatabaseSchemaRequest(
                 name="Reporting",
-                database=EntityReference(id=mock_database_object.id, type="database"),
+                database=mock_database_object.fullyQualifiedName,
             )
         )
         _ = self.metadata.create_or_update(
@@ -444,9 +422,7 @@ class AtlasUnitTest(TestCase):
                         profile=None,
                     ),
                 ],
-                databaseSchema=EntityReference(
-                    id=mock_database_schema_object.id, type="databaseSchema"
-                ),
+                databaseSchema=mock_database_schema_object.fullyQualifiedName,
             ),
         )
 
@@ -470,22 +446,22 @@ class AtlasUnitTest(TestCase):
     @patch.object(AtlasClient, "list_entities", mock_list_entities)
     @patch.object(AtlasClient, "get_entity", mock_get_entity)
     @patch.object(AtlasSource, "ingest_lineage", mock_ingest_lineage)
-    @patch.object(AtlasSource, "create_tag", mock_create_tag)
     def test_description(self):
         """
         Testing description updated for database, databaseSchema, table
         """
-        _ = list(self.atlas_source.next_record())
+        self.mock_create_tag()
+        _ = list(self.atlas_source._iter())
         updated_database = self.metadata.get_by_name(
             entity=Database, fqn="hive.Reporting"
         )
-        assert updated_database.description.__root__ == EXPECTED_DATABASE_DESCRIPTION
+        assert updated_database.description.root == EXPECTED_DATABASE_DESCRIPTION
 
         updated_database_schema = self.metadata.get_by_name(
             entity=DatabaseSchema, fqn="hive.Reporting.Reporting"
         )
         assert (
-            updated_database_schema.description.__root__
+            updated_database_schema.description.root
             == EXPTECTED_DATABASE_SCHEMA_DESCRIPTION
         )
 

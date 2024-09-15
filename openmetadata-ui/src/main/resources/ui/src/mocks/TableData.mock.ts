@@ -12,6 +12,7 @@
  */
 
 import { Table } from '../generated/entity/data/table';
+import { LabelType, State, TagSource } from '../generated/tests/testCase';
 
 export const MOCK_TABLE = {
   id: 'cb726d24-774b-4603-8ec8-1975760ac2f8',
@@ -191,14 +192,6 @@ export const MOCK_TABLE = {
     columnCount: 12,
     rowCount: 14567,
   },
-  tableQueries: [
-    {
-      query:
-        'create table shopify.dim_address_clean as select address_id, shop_id, first_name, last_name, address1 as address, company, city, region, zip, country, phone from shopify.dim_address',
-      vote: 1,
-      checksum: 'cd59a9d0d0b8a245f7382264afac8bdc',
-    },
-  ],
   sampleData: {
     columns: ['address_id', 'shop_id', 'first_name', 'last_name'],
     rows: [
@@ -207,6 +200,14 @@ export const MOCK_TABLE = {
       ['address_id3', 'shop_id3', 'first_name3', 'last_name3'],
     ],
   },
+  testSuite: {
+    summary: {
+      success: 0,
+      failed: 0,
+      aborted: 0,
+    },
+  },
+  retentionPeriod: 'P23DT23H',
   deleted: false,
 } as unknown as Table;
 
@@ -227,7 +228,7 @@ export const TEST_CASE = {
           'This schema defines the test ColumnValueMaxToBeBetween. Test the maximum value in a col is within a range.',
         displayName: 'columnValueMaxToBeBetween',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/testDefinition/16b32e12-21c5-491c-919e-88748d9d5d67',
+        href: 'http://localhost:8585/api/v1/testDefinitions/16b32e12-21c5-491c-919e-88748d9d5d67',
       },
       entityLink:
         '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>',
@@ -256,7 +257,7 @@ export const TEST_CASE = {
       version: 0.3,
       updatedAt: 1661425991294,
       updatedBy: 'anonymous',
-      href: 'http://localhost:8585/api/v1/testCase/b9d059d8-b968-42ad-9f89-2b40b92a6659',
+      href: 'http://localhost:8585/api/v1/dataQuality/testCases/b9d059d8-b968-42ad-9f89-2b40b92a6659',
       changeDescription: {
         fieldsAdded: [],
         fieldsUpdated: [
@@ -331,3 +332,27 @@ export const COLUMN_PROFILER_RESULT = [
     median: 7344.0,
   },
 ];
+
+export const MOCK_TABLE_QUERY = [
+  {
+    query:
+      'create table shopify.dim_address_clean as select address_id, shop_id, first_name, last_name, address1 as address, company, city, region, zip, country, phone from shopify.dim_address',
+    vote: 1,
+    checksum: 'cd59a9d0d0b8a245f7382264afac8bdc',
+  },
+];
+
+export const MOCK_TIER_DATA = {
+  description:
+    '**Team level datasets that are typically non-business and general internal system.',
+  labelType: LabelType.Manual,
+  name: 'Tier4',
+  source: TagSource.Classification,
+  state: State.Confirmed,
+  style: {
+    color: '#f83f3f',
+    iconURL:
+      'https://ashishgupta.me/_next/image?url=%2Fimage%2Fa1.png&w=3840&q=75',
+  },
+  tagFQN: 'Tier.Tier4',
+};

@@ -4,8 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.events.errors.RetriableException;
-import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.EventResource.EventList;
 
 @Slf4j
 public abstract class AbstractEventPublisher implements EventPublisher {
@@ -25,7 +24,8 @@ public abstract class AbstractEventPublisher implements EventPublisher {
   }
 
   @Override
-  public void onEvent(EventPubSub.ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch)
+  public void onEvent(
+      EventPubSub.ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch)
       throws Exception {
     // Ignore events that don't match the webhook event filters
     ChangeEvent changeEvent = changeEventHolder.getEvent();
@@ -36,17 +36,15 @@ public abstract class AbstractEventPublisher implements EventPublisher {
       return;
     }
 
-    ChangeEventList list = new ChangeEventList(batch, null, null, batch.size());
+    EventList list = new EventList(batch, null, null, batch.size());
     try {
       publish(list);
       batch.clear();
-    } catch (RetriableException ex) {
-      setNextBackOff();
-      LOG.error("Failed to publish event {} due to {}, will try again in {} ms", changeEvent, ex, currentBackoffTime);
-      Thread.sleep(currentBackoffTime);
     } catch (Exception e) {
       LOG.error(
-          "Failed to publish event type {} for entity {}", changeEvent.getEventType(), changeEvent.getEntityType());
+          "Failed to publish event type {} for entity {}",
+          changeEvent.getEventType(),
+          changeEvent.getEntityType());
       LOG.error(e.getMessage(), e);
     }
   }

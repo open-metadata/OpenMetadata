@@ -8,6 +8,14 @@
     "newValue": {
       "description": "The new value object that needs to be updated to resolve the task.",
       "type": "string"
+    },
+    "testCaseFailureReason": {
+      "description": "Reason of Test Case resolution.",
+      "$ref": "../../tests/resolved.json#/definitions/testCaseFailureReasonType"
+    },
+    "testCaseFQN": {
+        "description": "Fully qualified name of the test case.",
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     }
   },
   "required": ["newValue"],

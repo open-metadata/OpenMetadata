@@ -1,0 +1,59 @@
+{
+  "$id": "https://open-metadata.org/schema/system/ui/page.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Team",
+  "description": "This schema defines the Page entity. A Page is a landing page, schema page to customize in OpenMetadata.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.ui.Page",
+  "definitions": {
+    "pageType": {
+      "javaType": "org.openmetadata.schema.system.ui.PageType",
+      "description": "This schema defines the type used for describing different types of pages.",
+      "type": "string",
+      "enum": [
+        "LandingPage",
+        "TableLandingPage",
+        "StoredProcedureLandingPage",
+        "DatabaseLandingPage",
+        "DatabaseSchemaLandingPage",
+        "TopicLandingPage",
+        "PipelineLandingPage",
+        "DashboardLandingPage",
+        "DashboardDataModelLandingPage",
+        "ContainerLandingPage",
+        "SearchIndexLandingPage",
+        "GlossaryLandingPage",
+        "GlossaryTermLandingPage",
+        "DomainLandingPage"
+      ]
+    }
+  },
+  "properties": {
+    "entityType": {
+      "description": "Entity Type.",
+      "enum": ["Page"],
+      "default": "Page"
+    },
+    "pageType": {
+      "$ref": "#/definitions/pageType"
+    },
+    "layout": {
+      "description": "Configuration for the Knowledge Panel.",
+      "type": "object"
+    },
+    "persona": {
+      "description": "Persona this page belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "domain": {
+      "description": "Domain this page belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "knowledgePanels": {
+      "description": "KnowledgePanels that are part of this Page.",
+      "$ref": "../../type/entityReferenceList.json"
+    }
+  },
+  "required": ["entityType", "pageType", "knowledgePanels", "layout"],
+  "additionalProperties": false
+}

@@ -23,7 +23,6 @@ from openmetadata_managed_apis.api.response import ApiResponse
 
 
 def trigger(dag_id: str, run_id: Optional[str]) -> Response:
-
     dag_run = trigger_dag(
         dag_id=dag_id,
         run_id=run_id,

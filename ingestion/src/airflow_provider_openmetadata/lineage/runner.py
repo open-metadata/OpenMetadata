@@ -19,7 +19,6 @@ from airflow.configuration import conf
 from pydantic import BaseModel
 
 from airflow_provider_openmetadata.lineage.status import STATUS_MAP
-from airflow_provider_openmetadata.lineage.xlets import XLets
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createPipelineService import (
@@ -44,10 +43,18 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    RESTRICT_UPDATE_LIST,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.helpers import datetime_to_ts
+from metadata.ingestion.source.pipeline.airflow.lineage_parser import XLets
+from metadata.utils import fqn
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
+from metadata.utils.helpers import clean_uri, datetime_to_ts
+from metadata.utils.source_hash import generate_source_hash
 
 
 class SimpleEdge(BaseModel):
@@ -81,7 +88,7 @@ class AirflowLineageRunner:
         metadata: OpenMetadata,
         service_name: str,
         dag: "DAG",
-        xlets: Optional[XLets] = None,
+        xlets: Optional[List[XLets]] = None,
         only_keep_dag_lineage: bool = False,
         max_status: int = 10,
     ):
@@ -92,6 +99,8 @@ class AirflowLineageRunner:
 
         self.dag = dag
         self.xlets = xlets
+
+        self.host_port = conf.get("webserver", "base_url")
 
     def get_or_create_pipeline_service(self) -> PipelineService:
         """
@@ -111,7 +120,7 @@ class AirflowLineageRunner:
                 serviceType=PipelineServiceType.Airflow,
                 connection=PipelineConnection(
                     config=AirflowConnection(
-                        hostPort=conf.get("webserver", "base_url"),
+                        hostPort=self.host_port,
                         connection=BackendConnection(),
                     ),
                 ),
@@ -124,7 +133,10 @@ class AirflowLineageRunner:
         return pipeline_service
 
     def get_task_url(self, task: "Operator"):
-        return f"/taskinstance/list/?flt1_dag_id_equals={self.dag.dag_id}&_flt_3_task_id={task.task_id}"
+        return (
+            f"{clean_uri(self.host_port)}/taskinstance/list/"
+            f"?flt1_dag_id_equals={self.dag.dag_id}&_flt_3_task_id={task.task_id}"
+        )
 
     def get_om_tasks(self) -> List[Task]:
         """
@@ -134,7 +146,7 @@ class AirflowLineageRunner:
         return [
             Task(
                 name=task.task_id,
-                taskUrl=self.get_task_url(task),
+                sourceUrl=self.get_task_url(task),
                 taskType=task.task_type,
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
@@ -145,26 +157,56 @@ class AirflowLineageRunner:
             for task in self.dag.tasks or []
         ]
 
-    def create_pipeline_entity(self, pipeline_service: PipelineService) -> Pipeline:
+    def create_or_update_pipeline_entity(
+        self, pipeline_service: PipelineService
+    ) -> Pipeline:
         """
-        Create the Pipeline Entity
+        Create the Pipeline Entity if it does not exist, or PATCH it
+        if there have been changes.
         """
-        self.dag.log.info("Creating or updating Pipeline Entity from DAG...")
+        pipeline: Pipeline = self.metadata.get_by_name(
+            entity=Pipeline,
+            fqn=fqn.build(
+                self.metadata,
+                Pipeline,
+                service_name=self.service_name,
+                pipeline_name=self.dag.dag_id,
+            ),
+            fields=["*"],
+        )
+
         pipeline_request = CreatePipelineRequest(
             name=self.dag.dag_id,
             description=self.dag.description,
-            pipelineUrl=f"/tree?dag_id={self.dag.dag_id}",
+            sourceUrl=f"{clean_uri(self.host_port)}/tree?dag_id={self.dag.dag_id}",
             concurrency=self.dag.max_active_tasks,
             pipelineLocation=self.dag.fileloc,
             startDate=self.dag.start_date.isoformat() if self.dag.start_date else None,
             tasks=self.get_om_tasks(),
-            service=EntityReference(
-                id=pipeline_service.id,
-                type="pipelineService",
-            ),
+            service=pipeline_service.fullyQualifiedName,
         )
 
-        return self.metadata.create_or_update(pipeline_request)
+        create_entity_request_hash = generate_source_hash(
+            create_request=pipeline_request
+        )
+        pipeline_request.sourceHash = create_entity_request_hash
+
+        if pipeline is None:
+            self.dag.log.info("Creating Pipeline Entity from DAG...")
+            return self.metadata.create_or_update(pipeline_request)
+
+        if create_entity_request_hash != pipeline.sourceHash:
+            self.dag.log.info("Updating Pipeline Entity from DAG...")
+            return self.metadata.patch(
+                entity=Pipeline,
+                source=pipeline,
+                destination=pipeline.model_copy(update=pipeline_request.__dict__),
+                allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+                restrict_update_fields=RESTRICT_UPDATE_LIST,
+            )
+
+        self.dag.log.info("DAG has not changed since last run")
+        return pipeline
 
     def get_all_pipeline_status(self) -> List[PipelineStatus]:
         """
@@ -240,7 +282,7 @@ class AirflowLineageRunner:
 
         for status in pipeline_status_list:
             self.metadata.add_pipeline_status(
-                fqn=pipeline.fullyQualifiedName.__root__, status=status
+                fqn=pipeline.fullyQualifiedName.root, status=status
             )
 
     def add_lineage(self, pipeline: Pipeline, xlets: XLets) -> None:
@@ -248,36 +290,49 @@ class AirflowLineageRunner:
         Add the lineage from inlets and outlets
         """
 
-        for table_fqn in xlets.inlets or []:
-            table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-            try:
-                lineage = AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=table_entity.id, type="table"),
-                        toEntity=EntityReference(id=pipeline.id, type="pipeline"),
-                    )
-                )
-                self.metadata.add_lineage(lineage)
-            except AttributeError as err:
-                self.dag.log.error(
-                    f"Error trying to access Entity data due to: {err}."
-                    f" Is the table [{table_fqn}] present in OpenMetadata?"
-                )
+        lineage_details = LineageDetails(
+            pipeline=EntityReference(
+                id=pipeline.id, type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__]
+            )
+        )
 
-        for table_fqn in xlets.outlets or []:
-            table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-            try:
-                lineage = AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=pipeline.id, type="pipeline"),
-                        toEntity=EntityReference(id=table_entity.id, type="table"),
+        for from_xlet in xlets.inlets or []:
+            from_entity: Optional[Table] = self.metadata.get_by_name(
+                entity=from_xlet.entity, fqn=from_xlet.fqn
+            )
+            if from_entity:
+                for to_xlet in xlets.outlets or []:
+                    to_entity: Optional[Table] = self.metadata.get_by_name(
+                        entity=to_xlet.entity, fqn=to_xlet.fqn
                     )
-                )
-                self.metadata.add_lineage(lineage)
-            except AttributeError as err:
-                self.dag.log.error(
-                    f"Error trying to access Entity data due to: {err}."
-                    f" Is the table [{table_fqn}] present in OpenMetadata?"
+                    if to_entity:
+                        lineage = AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=from_entity.id,
+                                    type=ENTITY_REFERENCE_TYPE_MAP[
+                                        from_xlet.entity.__name__
+                                    ],
+                                ),
+                                toEntity=EntityReference(
+                                    id=to_entity.id,
+                                    type=ENTITY_REFERENCE_TYPE_MAP[
+                                        to_xlet.entity.__name__
+                                    ],
+                                ),
+                                lineageDetails=lineage_details,
+                            )
+                        )
+                        self.metadata.add_lineage(lineage)
+                    else:
+                        self.dag.log.warning(
+                            f"Could not find [{to_xlet.entity.__name__}] [{to_xlet.fqn}] from "
+                            f"[{pipeline.fullyQualifiedName.root}] outlets"
+                        )
+            else:
+                self.dag.log.warning(
+                    f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
+                    f"[{pipeline.fullyQualifiedName.root}] inlets"
                 )
 
     def clean_lineage(self, pipeline: Pipeline, xlets: XLets):
@@ -288,7 +343,7 @@ class AirflowLineageRunner:
         """
         lineage_data = self.metadata.get_lineage_by_name(
             entity=Pipeline,
-            fqn=pipeline.fullyQualifiedName.__root__,
+            fqn=pipeline.fullyQualifiedName.root,
             up_depth=1,
             down_depth=1,
         )
@@ -300,7 +355,8 @@ class AirflowLineageRunner:
                     for node in lineage_data.get("nodes") or []
                     if node["id"] == upstream_edge["fromEntity"]
                     and node["type"] == "table"
-                )
+                ),
+                None,
             )
             for upstream_edge in lineage_data.get("upstreamEdges") or []
         ]
@@ -311,26 +367,37 @@ class AirflowLineageRunner:
                     for node in lineage_data.get("nodes") or []
                     if node["id"] == downstream_edge["toEntity"]
                     and node["type"] == "table"
-                )
+                ),
+                None,
             )
             for downstream_edge in lineage_data.get("downstreamEdges") or []
         ]
 
-        for edge in upstream_edges:
-            if edge.fqn not in xlets.inlets:
+        for edge in upstream_edges or []:
+            if edge.fqn not in (inlet.fqn for inlet in xlets.inlets):
                 self.dag.log.info(f"Removing upstream edge with {edge.fqn}")
                 edge_to_remove = EntitiesEdge(
-                    fromEntity=EntityReference(id=edge.id, type="table"),
-                    toEntity=EntityReference(id=pipeline.id, type="pipeline"),
+                    fromEntity=EntityReference(
+                        id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]
+                    ),
+                    toEntity=EntityReference(
+                        id=pipeline.id,
+                        type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
+                    ),
                 )
                 self.metadata.delete_lineage_edge(edge=edge_to_remove)
 
-        for edge in downstream_edges:
-            if edge.fqn not in xlets.outlets:
+        for edge in downstream_edges or []:
+            if edge.fqn not in (outlet.fqn for outlet in xlets.outlets):
                 self.dag.log.info(f"Removing downstream edge with {edge.fqn}")
                 edge_to_remove = EntitiesEdge(
-                    fromEntity=EntityReference(id=pipeline.id, type="pipeline"),
-                    toEntity=EntityReference(id=edge.id, type="table"),
+                    fromEntity=EntityReference(
+                        id=pipeline.id,
+                        type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
+                    ),
+                    toEntity=EntityReference(
+                        id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]
+                    ),
                 )
                 self.metadata.delete_lineage_edge(edge=edge_to_remove)
 
@@ -340,14 +407,16 @@ class AirflowLineageRunner:
         """
         self.dag.log.info("Executing Airflow Lineage Runner...")
         pipeline_service = self.get_or_create_pipeline_service()
-        pipeline = self.create_pipeline_entity(pipeline_service)
+        pipeline = self.create_or_update_pipeline_entity(pipeline_service)
         self.add_all_pipeline_status(pipeline)
 
-        if self.xlets:
-            self.dag.log.info("Got some xlet data. Processing lineage...")
-            self.add_lineage(pipeline, self.xlets)
+        self.dag.log.info(f"Processing XLet data {self.xlets}")
+
+        for xlet in self.xlets or []:
+            self.dag.log.info(f"Got some xlet data. Processing lineage for {xlet}")
+            self.add_lineage(pipeline, xlet)
             if self.only_keep_dag_lineage:
                 self.dag.log.info(
                     "`only_keep_dag_lineage` is set to True. Cleaning lineage not in inlets or outlets..."
                 )
-                self.clean_lineage(pipeline, self.xlets)
+                self.clean_lineage(pipeline, xlet)

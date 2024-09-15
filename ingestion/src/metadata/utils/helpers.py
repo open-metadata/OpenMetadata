@@ -15,15 +15,26 @@ Helpers module for ingestion related methods
 
 from __future__ import annotations
 
+import itertools
 import re
-from datetime import datetime, timedelta
-from functools import wraps
-from time import perf_counter
+import shutil
+import sys
+from datetime import datetime, timedelta, timezone
+from math import floor, log
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+
+import sqlparse
+from pydantic_core import Url
+from sqlparse.sql import Statement
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.feed.suggestion import Suggestion, SuggestionType
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -89,47 +100,17 @@ om_chart_type_dict = {
 }
 
 
-def calculate_execution_time(func):
-    """
-    Method to calculate workflow execution time
-    """
-
-    @wraps(func)
-    def calculate_debug_time(*args, **kwargs):
-        start = perf_counter()
-        func(*args, **kwargs)
-        end = perf_counter()
-        logger.debug(
-            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
-        )
-
-    return calculate_debug_time
-
-
-def calculate_execution_time_generator(func):
-    """
-    Generator method to calculate workflow execution time
-    """
-
-    def calculate_debug_time(*args, **kwargs):
-        start = perf_counter()
-        yield from func(*args, **kwargs)
-        end = perf_counter()
-        logger.debug(
-            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
-        )
-
-    return calculate_debug_time
-
-
 def pretty_print_time_duration(duration: Union[int, float]) -> str:
     """
     Method to format and display the time
     """
 
     days = divmod(duration, 86400)[0]
+    duration = duration - days * 86400
     hours = divmod(duration, 3600)[0]
+    duration = duration - hours * 3600
     minutes = divmod(duration, 60)[0]
+    duration = duration - minutes * 60
     seconds = round(divmod(duration, 60)[1], 2)
     if days:
         return f"{days}day(s) {hours}h {minutes}m {seconds}s"
@@ -140,12 +121,12 @@ def pretty_print_time_duration(duration: Union[int, float]) -> str:
     return f"{seconds}s"
 
 
-def get_start_and_end(duration):
+def get_start_and_end(duration: int = 0) -> Tuple[datetime, datetime]:
     """
     Method to return start and end time based on duration
     """
 
-    today = datetime.utcnow()
+    today = datetime.now(timezone.utc).replace(tzinfo=None)
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
@@ -194,13 +175,15 @@ def replace_special_with(raw: str, replacement: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", replacement, raw)
 
 
-def get_standard_chart_type(raw_chart_type: str) -> str:
+def get_standard_chart_type(raw_chart_type: str) -> ChartType.Other:
     """
     Get standard chart type supported by OpenMetadata based on raw chart type input
     :param raw_chart_type: raw chart type to be standardize
     :return: standard chart type
     """
-    return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+    if raw_chart_type is not None:
+        return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+    return ChartType.Other
 
 
 def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
@@ -214,12 +197,38 @@ def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
     return next((elem for elem in container if elem == element), None)
 
 
-def find_column_in_table(column_name: str, table: Table) -> Optional[Column]:
+def find_column_in_table(
+    column_name: str, table: Table, case_sensitive: bool = True
+) -> Optional[Column]:
     """
     If the column exists in the table, return it
     """
+
+    def equals(first: str, second: str) -> bool:
+        if case_sensitive:
+            return first == second
+        return first.lower() == second.lower()
+
     return next(
-        (col for col in table.columns if col.name.__root__ == column_name), None
+        (col for col in table.columns if equals(col.name.root, column_name)), None
+    )
+
+
+def find_suggestion(
+    suggestions: List[Suggestion],
+    suggestion_type: SuggestionType,
+    entity_link: EntityLink,
+) -> Optional[Suggestion]:
+    """Given a list of suggestions, a suggestion type and an entity link, find
+    one suggestion in the list that matches the criteria
+    """
+    return next(
+        (
+            sugg
+            for sugg in suggestions
+            if sugg.root.type == suggestion_type and sugg.root.entityLink == entity_link
+        ),
+        None,
     )
 
 
@@ -239,7 +248,7 @@ def find_column_in_table_with_index(
         (
             (col_index, col)
             for col_index, col in enumerate(table.columns)
-            if str(col.name.__root__).lower() == column_name.lower()
+            if str(col.name.root).lower() == column_name.lower()
         ),
         (None, None),
     )
@@ -291,7 +300,7 @@ def insensitive_replace(raw_str: str, to_replace: str, replace_by: str) -> str:
         A string where the given to_replace is replaced by replace_by in raw_str, ignoring case
     """
 
-    return re.sub(to_replace, replace_by, raw_str, flags=re.IGNORECASE)
+    return re.sub(to_replace, replace_by, raw_str, flags=re.IGNORECASE | re.DOTALL)
 
 
 def insensitive_match(raw_str: str, to_match: str) -> bool:
@@ -305,7 +314,7 @@ def insensitive_match(raw_str: str, to_match: str) -> bool:
         True if `to_match` matches in `raw_str`, ignoring case. Otherwise, false.
     """
 
-    return re.match(to_match, raw_str, flags=re.IGNORECASE) is not None
+    return re.match(to_match, raw_str, flags=re.IGNORECASE | re.DOTALL) is not None
 
 
 def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
@@ -320,10 +329,149 @@ def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
     if not tags:
         return None
     return next(
-        (
-            tag.tagFQN.__root__
-            for tag in tags
-            if tag.tagFQN.__root__.lower().startswith("tier")
-        ),
+        (tag.tagFQN.root for tag in tags if tag.tagFQN.root.lower().startswith("tier")),
         None,
     )
+
+
+def format_large_string_numbers(number: Union[float, int]) -> str:
+    """Format large string number to a human readable format.
+    (e.g. 1,000,000 -> 1M, 1,000,000,000 -> 1B, etc)
+
+    Args:
+        number: number
+    """
+    if number == 0:
+        return "0"
+    units = ["", "K", "M", "B", "T"]
+    constant_k = 1000.0
+    magnitude = int(floor(log(abs(number), constant_k)))
+    if magnitude >= len(units):
+        return f"{int(number / constant_k**magnitude)}e{magnitude*3}"
+    return f"{number / constant_k**magnitude:.3f}{units[magnitude]}"
+
+
+def clean_uri(uri: Union[str, Url]) -> str:
+    """
+    if uri is like http://localhost:9000/
+    then remove the end / and
+    make it http://localhost:9000
+    """
+    # force a string of the given Uri if needed
+    if isinstance(uri, Url):
+        uri = str(uri)
+    return uri[:-1] if uri.endswith("/") else uri
+
+
+def deep_size_of_dict(obj: dict) -> int:
+    """Get deepsize of dict data structure
+
+    Args:
+        obj (dict): dict data structure
+    Returns:
+        int: size of dict data structure
+    """
+    # pylint: disable=unnecessary-lambda-assignment
+    dict_handler = lambda elmt: itertools.chain.from_iterable(elmt.items())
+    handlers = {
+        dict: dict_handler,
+        list: iter,
+    }
+
+    seen = set()
+
+    def sizeof(obj) -> int:
+        if id(obj) in seen:
+            return 0
+
+        seen.add(id(obj))
+        size = sys.getsizeof(obj, 0)
+        for type_, handler in handlers.items():
+            if isinstance(obj, type_):
+                size += sum(map(sizeof, handler(obj)))
+                break
+
+        return size
+
+    return sizeof(obj)
+
+
+def is_safe_sql_query(sql_query: str) -> bool:
+    """Validate SQL query
+    Args:
+        sql_query (str): SQL query
+    Returns:
+        bool
+    """
+
+    forbiden_token = {
+        "CREATE",
+        "ALTER",
+        "DROP",
+        "TRUNCATE",
+        "COMMENT",
+        "RENAME",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "MERGE",
+        "CALL",
+        "EXPLAIN PLAN",
+        "LOCK TABLE",
+        "UNLOCK TABLE",
+        "GRANT",
+        "REVOKE",
+        "COMMIT",
+        "ROLLBACK",
+        "SAVEPOINT",
+        "SET TRANSACTION",
+    }
+
+    if sql_query is None:
+        return True
+
+    parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)
+    for parsed_query in parsed_queries:
+        validation = [
+            token.normalized in forbiden_token for token in parsed_query.tokens
+        ]
+        if any(validation):
+            return False
+    return True
+
+
+def get_database_name_for_lineage(
+    db_service_entity: DatabaseService, default_db_name: Optional[str]
+) -> Optional[str]:
+    # If the database service supports multiple db or
+    # database service connection details are not available
+    # then pick the database name available from api response
+    if db_service_entity.connection is None or hasattr(
+        db_service_entity.connection.config, "supportsDatabase"
+    ):
+        return default_db_name
+
+    # otherwise if it is an single db source then use "databaseName"
+    # and if databaseName field is not available or is empty then use
+    # "default" as database name
+    return (
+        db_service_entity.connection.config.__dict__.get("databaseName")
+        or DEFAULT_DATABASE
+    )
+
+
+def delete_dir_content(directory: str) -> None:
+    location = Path(directory)
+    if location.is_dir():
+        logger.info("Location exists, cleaning it up")
+        shutil.rmtree(directory)
+
+
+def init_staging_dir(directory: str) -> None:
+    """
+    Prepare the the staging directory
+    """
+    delete_dir_content(directory=directory)
+    location = Path(directory)
+    logger.info(f"Creating the directory to store staging data in {location}")
+    location.mkdir(parents=True, exist_ok=True)

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,31 +27,43 @@ public abstract class AWSBasedSecretsManager extends ExternalSecretsManager {
   public static final String REGION = "region";
 
   protected AWSBasedSecretsManager(
-      SecretsManagerProvider awsProvider, SecretsManagerConfiguration config, String clusterPrefix) {
-    super(awsProvider, clusterPrefix, 100);
+      SecretsManagerProvider awsProvider, SecretsConfig secretsConfig) {
+    super(awsProvider, secretsConfig, 100);
     // initialize the secret client depending on the SecretsManagerConfiguration passed
-    if (config != null
-        && config.getParameters() != null
-        && !Strings.isBlank(config.getParameters().getOrDefault(REGION, ""))) {
-      String region = config.getParameters().getOrDefault(REGION, "");
-      String accessKeyId = config.getParameters().getOrDefault(ACCESS_KEY_ID, "");
-      String secretAccessKey = config.getParameters().getOrDefault(SECRET_ACCESS_KEY, "");
+    if (secretsConfig != null
+        && secretsConfig.parameters() != null
+        && !Strings.isBlank(
+            (String)
+                secretsConfig.parameters().getAdditionalProperties().getOrDefault(REGION, ""))) {
+      String region =
+          (String) secretsConfig.parameters().getAdditionalProperties().getOrDefault(REGION, "");
+      String accessKeyId =
+          (String)
+              secretsConfig.parameters().getAdditionalProperties().getOrDefault(ACCESS_KEY_ID, "");
+      String secretAccessKey =
+          (String)
+              secretsConfig
+                  .parameters()
+                  .getAdditionalProperties()
+                  .getOrDefault(SECRET_ACCESS_KEY, "");
       AwsCredentialsProvider credentialsProvider;
       if (Strings.isBlank(accessKeyId) && Strings.isBlank(secretAccessKey)) {
         credentialsProvider = DefaultCredentialsProvider.create();
       } else {
         credentialsProvider =
-            StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey));
+            StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(accessKeyId, secretAccessKey));
       }
       initClientWithCredentials(region, credentialsProvider);
     } else {
-      // initialized with the region loaded from the DefaultAwsRegionProviderChain and credentials loaded from the
-      // DefaultCredentialsProvider
+      // initialized with the region loaded from the DefaultAwsRegionProviderChain and credentials
+      // loaded from the DefaultCredentialsProvider
       initClientWithoutCredentials();
     }
   }
 
   abstract void initClientWithoutCredentials();
 
-  abstract void initClientWithCredentials(String region, AwsCredentialsProvider staticCredentialsProvider);
+  abstract void initClientWithCredentials(
+      String region, AwsCredentialsProvider staticCredentialsProvider);
 }

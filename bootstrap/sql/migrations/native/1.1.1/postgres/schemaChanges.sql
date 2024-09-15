@@ -1,0 +1,1 @@
+ALTER TABLE test_suite RENAME COLUMN nameHash TO fqnHash;

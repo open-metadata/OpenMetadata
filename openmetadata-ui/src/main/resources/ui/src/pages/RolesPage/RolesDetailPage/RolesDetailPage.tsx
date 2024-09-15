@@ -11,38 +11,35 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Space, Tabs, Tooltip, Typography } from 'antd';
+import { Button, Modal, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import Description from 'components/common/description/Description';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { getRoleByName, patchRole } from 'rest/rolesAPIV1';
-import { getTeamByName, patchTeamDetail } from 'rest/teamsAPI';
-import { getUserByName, updateUserDetail } from 'rest/userAPI';
+import { useHistory } from 'react-router-dom';
+import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/CommonUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { useFqn } from '../../../hooks/useFqn';
+import { getRoleByName, patchRole } from '../../../rest/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
+import { getUserByName, updateUserDetail } from '../../../rest/userAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
-import './RolesDetail.less';
+import './roles-detail.less';
 import RolesDetailPageList from './RolesDetailPageList.component';
 
 const { TabPane } = Tabs;
@@ -57,8 +54,7 @@ interface AddAttribute {
 const RolesDetailPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -69,14 +65,12 @@ const RolesDetailPage = () => {
 
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
 
-  const [rolePermission, setRolePermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
-
   const rolesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
     GlobalSettingOptions.ROLES
   );
+
+  const roleName = useMemo(() => getEntityName(role), [role]);
 
   const breadcrumb = useMemo(
     () => [
@@ -85,24 +79,12 @@ const RolesDetailPage = () => {
         url: rolesPath,
       },
       {
-        name: fqn,
+        name: roleName,
         url: '',
       },
     ],
-    [fqn]
+    [rolesPath, roleName]
   );
-
-  const fetchRolePermission = async () => {
-    setLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(ResourceEntity.ROLE, fqn);
-      setRolePermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchRole = async () => {
     setLoading(true);
@@ -130,10 +112,9 @@ const RolesDetailPage = () => {
 
   const handleTeamsUpdate = async (data: EntityReference) => {
     try {
-      const team = await getTeamByName(
-        data.fullyQualifiedName || '',
-        'defaultRoles'
-      );
+      const team = await getTeamByName(data.fullyQualifiedName || '', {
+        fields: TabSpecificField.DEFAULT_ROLES,
+      });
       const updatedAttributeData = (team.defaultRoles ?? []).filter(
         (attrData) => attrData.id !== role.id
       );
@@ -160,7 +141,9 @@ const RolesDetailPage = () => {
 
   const handleUsersUpdate = async (data: EntityReference) => {
     try {
-      const user = await getUserByName(data.fullyQualifiedName || '', 'roles');
+      const user = await getUserByName(data.fullyQualifiedName || '', {
+        fields: TabSpecificField.ROLES,
+      });
       const updatedAttributeData = (user.roles ?? []).filter(
         (attrData) => attrData.id !== role.id
       );
@@ -237,36 +220,31 @@ const RolesDetailPage = () => {
   };
 
   useEffect(() => {
-    fetchRolePermission();
+    fetchRole();
   }, [fqn]);
-
-  useEffect(() => {
-    if (rolePermission.ViewAll || rolePermission.ViewBasic) {
-      fetchRole();
-    }
-  }, [rolePermission, fqn]);
 
   if (isLoading) {
     return <Loader />;
   }
 
   return (
-    <div data-testid="role-details-container">
-      <TitleBreadcrumb titleLinks={breadcrumb} />
-      {rolePermission.ViewAll || rolePermission.ViewBasic ? (
+    <PageLayoutV1 pageTitle={t('label.role-plural')}>
+      <div className="page-container" data-testid="role-details-container">
+        <TitleBreadcrumb titleLinks={breadcrumb} />
+
         <>
           {isEmpty(role) ? (
-            <ErrorPlaceHolder dataTestId="no-data">
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               <div className="text-center">
                 <p>
                   {t('message.no-entity-found-for-name', {
-                    entity: t('label.role-lowercase'),
+                    entity: t('label.role'),
                     name: fqn,
                   })}
                 </p>
                 <Button
+                  ghost
                   className="m-t-sm"
-                  size="small"
                   type="primary"
                   onClick={() => history.push(rolesPath)}>
                   {t('label.go-back')}
@@ -275,15 +253,21 @@ const RolesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="roles-detail" data-testid="role-details">
-              <Description
+              <Typography.Title
+                className="m-b-0 m-t-xs"
+                data-testid="heading"
+                level={5}>
+                {roleName}
+              </Typography.Title>
+              <DescriptionV1
+                hasEditAccess
+                className="m-y-md"
                 description={role.description || ''}
                 entityFqn={role.fullyQualifiedName}
-                entityName={getEntityName(role)}
+                entityName={roleName}
                 entityType={EntityType.ROLE}
-                hasEditAccess={
-                  rolePermission.EditAll || rolePermission.EditDescription
-                }
                 isEdit={editDescription}
+                showCommentsIcon={false}
                 onCancel={() => setEditDescription(false)}
                 onDescriptionEdit={() => setEditDescription(true)}
                 onDescriptionUpdate={handleDescriptionUpdate}
@@ -291,32 +275,25 @@ const RolesDetailPage = () => {
 
               <Tabs data-testid="tabs" defaultActiveKey="policies">
                 <TabPane key="policies" tab={t('label.policy-plural')}>
-                  <Space className="w-full" direction="vertical">
-                    <Tooltip
-                      title={
-                        rolePermission.EditAll
-                          ? t('label.add-entity', {
-                              entity: t('label.policy'),
-                            })
-                          : t('message.no-permission-for-action')
+                  <Space
+                    className="role-detail-tab w-full"
+                    direction="vertical">
+                    <Button
+                      data-testid="add-policy"
+                      type="primary"
+                      onClick={() =>
+                        setAddAttribute({
+                          type: EntityType.POLICY,
+                          selectedData: role.policies || [],
+                        })
                       }>
-                      <Button
-                        data-testid="add-policy"
-                        disabled={!rolePermission.EditAll}
-                        type="primary"
-                        onClick={() =>
-                          setAddAttribute({
-                            type: EntityType.POLICY,
-                            selectedData: role.policies || [],
-                          })
-                        }>
-                        {t('label.add-entity', {
-                          entity: t('label.policy'),
-                        })}
-                      </Button>
-                    </Tooltip>
+                      {t('label.add-entity', {
+                        entity: t('label.policy'),
+                      })}
+                    </Button>
+
                     <RolesDetailPageList
-                      hasAccess={rolePermission.EditAll}
+                      hasAccess
                       list={role.policies ?? []}
                       type="policy"
                       onDelete={(record) =>
@@ -327,7 +304,7 @@ const RolesDetailPage = () => {
                 </TabPane>
                 <TabPane key="teams" tab={t('label.team-plural')}>
                   <RolesDetailPageList
-                    hasAccess={rolePermission.EditAll}
+                    hasAccess
                     list={role.teams ?? []}
                     type="team"
                     onDelete={(record) =>
@@ -335,9 +312,9 @@ const RolesDetailPage = () => {
                     }
                   />
                 </TabPane>
-                <TabPane key="users" tab={t('label.users')}>
+                <TabPane key="users" tab={t('label.user-plural')}>
                   <RolesDetailPageList
-                    hasAccess={rolePermission.EditAll}
+                    hasAccess
                     list={role.users ?? []}
                     type="user"
                     onDelete={(record) =>
@@ -349,46 +326,47 @@ const RolesDetailPage = () => {
             </div>
           )}
         </>
-      ) : (
-        <ErrorPlaceHolder>
-          {t('message.no-permission-to-view')}
-        </ErrorPlaceHolder>
-      )}
-      {selectedEntity && (
-        <Modal
-          centered
-          closable={false}
-          confirmLoading={isLoadingOnSave}
-          okText={t('label.confirm')}
-          open={!isUndefined(selectedEntity.record)}
-          title={`${t('label.remove-entity', {
-            entity: getEntityName(selectedEntity.record),
-          })} ${t('label.from-lowercase')} ${getEntityName(role)}`}
-          onCancel={() => setEntity(undefined)}
-          onOk={async () => {
-            await handleDelete(selectedEntity.record, selectedEntity.attribute);
-            setEntity(undefined);
-          }}>
-          <Typography.Text>
-            {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
-              child: getEntityName(selectedEntity.record),
-              parent: getEntityName(role),
-            })}
-          </Typography.Text>
-        </Modal>
-      )}
-      {addAttribute && (
-        <AddAttributeModal
-          isModalLoading={isLoadingOnSave}
-          isOpen={!isUndefined(addAttribute)}
-          selectedKeys={addAttribute.selectedData.map((data) => data.id)}
-          title={`${t('label.add')} ${addAttribute.type}`}
-          type={addAttribute.type}
-          onCancel={() => setAddAttribute(undefined)}
-          onSave={(data) => handleAddAttribute(data)}
-        />
-      )}
-    </div>
+
+        {selectedEntity && (
+          <Modal
+            centered
+            closable={false}
+            confirmLoading={isLoadingOnSave}
+            maskClosable={false}
+            okText={t('label.confirm')}
+            open={!isUndefined(selectedEntity.record)}
+            title={`${t('label.remove-entity', {
+              entity: getEntityName(selectedEntity.record),
+            })} ${t('label.from-lowercase')} ${roleName}`}
+            onCancel={() => setEntity(undefined)}
+            onOk={async () => {
+              await handleDelete(
+                selectedEntity.record,
+                selectedEntity.attribute
+              );
+              setEntity(undefined);
+            }}>
+            <Typography.Text>
+              {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
+                child: getEntityName(selectedEntity.record),
+                parent: roleName,
+              })}
+            </Typography.Text>
+          </Modal>
+        )}
+        {addAttribute && (
+          <AddAttributeModal
+            isModalLoading={isLoadingOnSave}
+            isOpen={!isUndefined(addAttribute)}
+            selectedKeys={addAttribute.selectedData.map((data) => data.id)}
+            title={`${t('label.add')} ${addAttribute.type}`}
+            type={addAttribute.type}
+            onCancel={() => setAddAttribute(undefined)}
+            onSave={(data) => handleAddAttribute(data)}
+          />
+        )}
+      </div>
+    </PageLayoutV1>
   );
 };
 

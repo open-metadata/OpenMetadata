@@ -13,9 +13,6 @@
 
 package org.openmetadata.service.resources.services.dashboard;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,7 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import java.io.IOException;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -51,60 +48,55 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.services.DashboardService;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
-import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/dashboardServices")
-@Api(value = "Dashboard service collection", tags = "Services -> Dashboard service collection")
+@Tag(name = "Dashboard Services")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboardServices")
 public class DashboardServiceResource
-    extends ServiceEntityResource<DashboardService, DashboardServiceRepository, DashboardConnection> {
+    extends ServiceEntityResource<
+        DashboardService, DashboardServiceRepository, DashboardConnection> {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
-  static final String FIELDS = FIELD_OWNER;
+  static final String FIELDS = "owners,domain";
 
-  @Override
-  public DashboardService addHref(UriInfo uriInfo, DashboardService service) {
-    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
-    Entity.withHref(uriInfo, service.getOwner());
-    return service;
-  }
-
-  public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer) {
-
-    super(DashboardService.class, new DashboardServiceRepository(dao), authorizer, ServiceType.DASHBOARD);
+  public DashboardServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DASHBOARD_SERVICE, authorizer, limits, ServiceType.DASHBOARD);
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public DashboardServiceList() {}
+    /* Required for serde */
   }
 
   @GET
   @Operation(
       operationId = "listDashboardsService",
       summary = "List dashboard services",
-      tags = "dashboardServices",
       description = "Get a list of dashboard services.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "List of dashboard service instances",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardServiceList.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardServiceList.class)))
       })
   public ResultList<DashboardService> list(
       @Context UriInfo uriInfo,
@@ -115,6 +107,11 @@ public class DashboardServiceResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(
               description = "Returns list of dashboard services before this cursor",
@@ -131,33 +128,35 @@ public class DashboardServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    ListFilter filter = new ListFilter(include);
-    ResultList<DashboardService> dashboardServices =
-        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    return addHref(uriInfo, decryptOrNullify(securityContext, dashboardServices));
+          Include include) {
+    return listInternal(
+        uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET
   @Path("/{id}")
   @Operation(
       operationId = "getDashboardServiceByID",
-      summary = "Get a dashboard service",
-      tags = "dashboardServices",
-      description = "Get a dashboard service by `id`.",
+      summary = "Get a dashboard service by Id",
+      description = "Get a dashboard service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Dashboard service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
-        @ApiResponse(responseCode = "404", description = "Dashboard service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Dashboard service for instance {id} is not found")
       })
   public DashboardService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -168,9 +167,9 @@ public class DashboardServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    DashboardService dashboardService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include) {
+    DashboardService dashboardService =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, dashboardService);
   }
 
@@ -179,20 +178,25 @@ public class DashboardServiceResource
   @Operation(
       operationId = "getDashboardServiceByFQN",
       summary = "Get dashboard service by name",
-      tags = "dashboardServices",
       description = "Get a dashboard service by the service `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Dashboard service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
-        @ApiResponse(responseCode = "404", description = "Dashboard service for instance {id} is not found")
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardService.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Dashboard service for instance {name} is not found")
       })
   public DashboardService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the dashboard service", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -203,10 +207,38 @@ public class DashboardServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    DashboardService dashboardService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+          Include include) {
+    DashboardService dashboardService =
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, dashboardService);
+  }
+
+  @PUT
+  @Path("/{id}/testConnectionResult")
+  @Operation(
+      operationId = "addTestConnectionResult",
+      summary = "Add test connection result",
+      description = "Add test connection result to the service.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the service",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DatabaseService.class)))
+      })
+  public DashboardService addTestConnectionResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid TestConnectionResult testConnectionResult) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    DashboardService service = repository.addTestConnectionResult(id, testConnectionResult);
+    return decryptOrNullify(securityContext, service);
   }
 
   @GET
@@ -214,19 +246,22 @@ public class DashboardServiceResource
   @Operation(
       operationId = "listAllDashboardServiceVersion",
       summary = "List dashboard service versions",
-      tags = "dashboardServices",
-      description = "Get a list of all the versions of a dashboard service identified by `id`",
+      description = "Get a list of all the versions of a dashboard service identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "List of dashboard service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "dashboard service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
@@ -234,9 +269,11 @@ public class DashboardServiceResource
             .map(
                 json -> {
                   try {
-                    DashboardService dashboardService = JsonUtils.readValue((String) json, DashboardService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, dashboardService));
-                  } catch (IOException e) {
+                    DashboardService dashboardService =
+                        JsonUtils.readValue((String) json, DashboardService.class);
+                    return JsonUtils.pojoToJson(
+                        decryptOrNullify(securityContext, dashboardService));
+                  } catch (Exception e) {
                     return json;
                   }
                 })
@@ -250,28 +287,30 @@ public class DashboardServiceResource
   @Operation(
       operationId = "getSpecificDashboardServiceVersion",
       summary = "Get a version of the dashboard service",
-      tags = "dashboardServices",
-      description = "Get a version of the dashboard service by given `id`",
+      description = "Get a version of the dashboard service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "dashboard service",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Dashboard service for instance {id} and version " + "{version} is not found")
+            description = "Dashboard service for instance {id} and version {version} is not found")
       })
   public DashboardService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "dashboard service Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @Parameter(
-              description = "dashboard service version number in the form `major`" + ".`minor`",
+              description = "dashboard service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     DashboardService dashboardService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, dashboardService);
   }
@@ -280,19 +319,21 @@ public class DashboardServiceResource
   @Operation(
       operationId = "createDashboardService",
       summary = "Create a dashboard service",
-      tags = "dashboardServices",
       description = "Create a new dashboard service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Dashboard service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDashboardService create) {
     DashboardService service = getService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
@@ -302,22 +343,24 @@ public class DashboardServiceResource
   @PUT
   @Operation(
       operationId = "createOrUpdateDashboardService",
-      summary = "Update a Dashboard service",
-      tags = "dashboardServices",
-      description = "Update an existing dashboard service identified by `id`.",
+      summary = "Update a dashboard service",
+      description = "Update an existing dashboard service identified by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Dashboard service instance",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateDashboardService update) {
     DashboardService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service);
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
   }
@@ -327,43 +370,77 @@ public class DashboardServiceResource
   @Operation(
       operationId = "patchDashboardService",
       summary = "Update a dashboard service",
-      tags = "dashboardServices",
       description = "Update an existing dashboard service using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchDashboardService",
+      summary = "Update a dashboard service using name.",
+      description = "Update an existing dashboard service using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the dashboard service", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteDashboardService",
-      summary = "Delete a Dashboard service",
-      tags = "dashboardServices",
+      summary = "Delete a dashboard service by Id",
       description =
-          "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be " + "deleted.",
+          "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "DashboardService service for instance {id} " + "is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "DashboardService service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
@@ -371,8 +448,9 @@ public class DashboardServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -380,8 +458,7 @@ public class DashboardServiceResource
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteDashboardServiceByName",
-      summary = "Delete a Dashboard service",
-      tags = "dashboardServices",
+      summary = "Delete a dashboard service by name",
       description =
           "Delete a Dashboard services by `name`. If dashboard (and charts) belong to the service, it can't be "
               + "deleted.",
@@ -389,7 +466,7 @@ public class DashboardServiceResource
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(
             responseCode = "404",
-            description = "DashboardService service for instance {name} " + "is not found")
+            description = "DashboardService service for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -398,33 +475,42 @@ public class DashboardServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the table", schema = @Schema(type = "string")) @PathParam("name") String name)
-      throws IOException {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Name of the dashboard service", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted DashboardService.",
-      tags = "dashboardServices",
-      description = "Restore a soft deleted DashboardService.",
+      summary = "Restore a soft deleted dashboard service",
+      description = "Restore a soft deleted dashboard service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Chart ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class)))
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DashboardService.class)))
       })
   public Response restoreDashboardService(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private DashboardService getService(CreateDashboardService create, String user) throws IOException {
-    return copy(new DashboardService(), create, user)
+  private DashboardService getService(CreateDashboardService create, String user) {
+    return repository
+        .copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
   }

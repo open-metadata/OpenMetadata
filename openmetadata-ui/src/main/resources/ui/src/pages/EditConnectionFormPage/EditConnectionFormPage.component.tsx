@@ -11,174 +11,205 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import Loader from 'components/Loader/Loader';
-import ServiceConfig from 'components/ServiceConfig/ServiceConfig';
-import { startCase } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getServiceByFQN, updateService } from 'rest/serviceAPI';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import ServiceConfig from '../../components/Settings/Services/ServiceConfig/ServiceConfig';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { addServiceGuide } from '../../constants/service-guide.constant';
-import { OPENMETADATA } from '../../constants/Services.constant';
+import { OPEN_METADATA } from '../../constants/Services.constant';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { useFqn } from '../../hooks/useFqn';
+import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
-import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
+import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
+import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getServiceRouteFromServiceType,
-  serviceTypeLogo,
+  getServiceType,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 function EditConnectionFormPage() {
-  const { serviceFQN, serviceCategory } = useParams() as Record<string, string>;
-  const [isLoading, setIsloading] = useState(true);
-  const [isError, setIsError] = useState(false);
+  const { t } = useTranslation();
+  const { serviceCategory } = useParams<{
+    serviceCategory: ServiceCategory;
+  }>();
+  const { fqn: serviceFQN } = useFqn();
+
+  const isOpenMetadataService = useMemo(
+    () => serviceFQN === OPEN_METADATA,
+    [serviceFQN]
+  );
+
+  const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
+  const [isError, setIsError] = useState(isOpenMetadataService);
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [activeField, setActiveField] = useState<string>('');
 
-  const fetchRightPanel = () => {
-    const guide = addServiceGuide.find((sGuide) => sGuide.step === 3);
+  const handleConfigUpdate = async (updatedData: ConfigData) => {
+    if (isUndefined(serviceDetails)) {
+      return;
+    }
 
-    return (
-      guide && (
-        <>
-          <Typography.Title level={5}>{guide.title}</Typography.Title>
-          <div className="mb-5">{guide.description}</div>
-        </>
-      )
-    );
-  };
-
-  const handleConfigUpdate = (updatedData: ConfigData) => {
-    const configData = {
-      name: serviceDetails?.name,
-      serviceType: serviceDetails?.serviceType,
-      description: serviceDetails?.description,
-      owner: serviceDetails?.owner,
+    const configData: ServicesUpdateRequest = {
+      ...serviceDetails,
       connection: {
         config: updatedData,
       },
-    } as ServicesUpdateRequest;
+    };
 
-    return new Promise<void>((resolve, reject) => {
-      updateService(serviceCategory, serviceDetails?.id ?? '', configData)
-        .then((res) => {
-          if (res) {
-            setServiceDetails({
-              ...res,
-              owner: res?.owner ?? serviceDetails?.owner,
-            });
-          } else {
-            showErrorToast(
-              `${jsonData['api-error-messages']['update-service-config-error']}`
-            );
-          }
+    const jsonPatch = compare(serviceDetails, configData);
 
-          resolve();
-        })
-        .catch((error: AxiosError) => {
-          reject();
-          showErrorToast(
-            error,
-            `${jsonData['api-error-messages']['update-service-config-error']}`
-          );
-        });
-    });
+    if (isEmpty(jsonPatch)) {
+      return;
+    }
+
+    try {
+      const response = await patchService(
+        serviceCategory,
+        serviceDetails.id,
+        jsonPatch
+      );
+      setServiceDetails({
+        ...response,
+        owners: response?.owners ?? serviceDetails?.owners,
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchServiceDetail = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getServiceByFQN(serviceCategory, serviceFQN, {
+        fields: TabSpecificField.OWNERS,
+      });
+      setServiceDetails(response);
+      setSlashedBreadcrumb([
+        {
+          name: startCase(serviceCategory),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+          ),
+        },
+        {
+          name: getEntityName(response),
+          imgSrc: serviceUtilClassBase.getServiceTypeLogo(
+            response as SearchSourceAlias
+          ),
+          url: getPathByServiceFQN(serviceCategory, serviceFQN),
+        },
+        {
+          name: t('label.edit-entity', { entity: t('label.connection') }),
+          url: '',
+          activeTitle: true,
+        },
+      ]);
+    } catch (err) {
+      const error = err as AxiosError;
+      if (error.response?.status === 404) {
+        setIsError(true);
+      } else {
+        showErrorToast(error);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFieldFocus = (fieldName: string) => {
+    if (isEmpty(fieldName)) {
+      return;
+    }
+    setTimeout(() => {
+      setActiveField(fieldName);
+    }, 50);
   };
 
   useEffect(() => {
-    setIsloading(true);
-    getServiceByFQN(serviceCategory, serviceFQN, ['owner'])
-      .then((resService) => {
-        if (resService) {
-          setServiceDetails(resService);
-          setSlashedBreadcrumb([
-            {
-              name: startCase(serviceCategory),
-              url: getSettingPath(
-                GlobalSettingsMenuCategory.SERVICES,
-                getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
-              ),
-            },
-            {
-              name: getEntityName(resService),
-              imgSrc: serviceTypeLogo(resService.serviceType),
-              url: getPathByServiceFQN(serviceCategory, serviceFQN),
-            },
-            {
-              name: 'Edit Connection',
-              url: '',
-              activeTitle: true,
-            },
-          ]);
-        } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-service-error']);
-        }
-      })
-      .catch((error: AxiosError) => {
-        if (error.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['fetch-service-error']
-          );
-        }
-      })
-      .finally(() => {
-        setIsloading(false);
-      });
+    fetchServiceDetail();
   }, [serviceFQN, serviceCategory]);
 
-  const renderPage = () => {
-    return isError ? (
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isError && !isLoading) {
+    return (
       <ErrorPlaceHolder>
         {getEntityMissingError(serviceCategory, serviceFQN)}
       </ErrorPlaceHolder>
-    ) : (
-      <PageLayoutV1 center>
-        <Space direction="vertical" size="middle">
-          <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-          <div className="form-container">
-            <Typography.Title level={5}>
-              {`Edit ${serviceFQN} Service Connection`}
-            </Typography.Title>
-            <ServiceConfig
-              data={serviceDetails as ServicesData}
-              disableTestConnection={
-                ServiceCategory.METADATA_SERVICES === serviceCategory &&
-                OPENMETADATA === serviceFQN
-              }
-              handleUpdate={handleConfigUpdate}
-              serviceCategory={serviceCategory as ServiceCategory}
-              serviceFQN={serviceFQN}
-              serviceType={serviceDetails?.serviceType || ''}
-            />
-          </div>
-        </Space>
-        <div className="m-t-xlg p-x-lg w-800">{fetchRightPanel()}</div>
-      </PageLayoutV1>
     );
-  };
+  }
+  const firstPanelChildren = (
+    <div className="max-width-md w-9/10 service-form-container">
+      <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+      <Card className="p-lg m-t-md">
+        <Typography.Title level={5}>
+          {t('message.edit-service-entity-connection', {
+            entity: serviceFQN,
+          })}
+        </Typography.Title>
+        <ServiceConfig
+          data={serviceDetails as ServicesData}
+          disableTestConnection={
+            ServiceCategory.METADATA_SERVICES === serviceCategory &&
+            OPEN_METADATA === serviceFQN
+          }
+          handleUpdate={handleConfigUpdate}
+          serviceCategory={serviceCategory}
+          serviceFQN={serviceFQN}
+          serviceType={serviceDetails?.serviceType || ''}
+          onFocus={handleFieldFocus}
+        />
+      </Card>
+    </div>
+  );
 
   return (
-    <PageContainerV1>
-      <div className="self-center">
-        <>{isLoading ? <Loader /> : renderPage()}</>
-      </div>
-    </PageContainerV1>
+    <ResizablePanels
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        children: firstPanelChildren,
+        minWidth: 700,
+        flex: 0.7,
+        className: 'content-resizable-panel-container',
+      }}
+      hideSecondPanel={!serviceDetails?.serviceType ?? ''}
+      pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
+      secondPanel={{
+        children: (
+          <ServiceDocPanel
+            activeField={activeField}
+            serviceName={serviceDetails?.serviceType ?? ''}
+            serviceType={getServiceType(serviceCategory)}
+          />
+        ),
+        className: 'service-doc-panel content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
+      }}
+    />
   );
 }
 

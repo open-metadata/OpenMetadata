@@ -11,21 +11,19 @@
 """
 Redshift usage module
 """
+import re
 from abc import ABC
 from datetime import datetime
-from typing import List
+from typing import Optional
 
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.logger import ingestion_logger
 
@@ -38,43 +36,18 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
     """
 
     filters: str
-    db_filters: str
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: RedshiftConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: RedshiftConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedshiftConnection):
             raise InvalidSourceException(
                 f"Expected RedshiftConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
-
-    def prepare(self):
-        """
-        Fetch queries only from DB that is ingested in OM
-        """
-        databases: List[Database] = self.metadata.list_all_entities(
-            Database, ["databaseSchemas"], params={"service": self.config.serviceName}
-        )
-        database_name_list = []
-        schema_name_list = []
-
-        for database in databases:
-            database_name_list.append(database.name.__root__)
-            if self.schema_field and database.databaseSchemas:
-                for schema in database.databaseSchemas.__root__:
-                    schema_name_list.append(schema.name)
-
-        if self.database_field and database_name_list:
-            self.db_filters += (  # pylint: disable=no-member
-                f"{self.database_field} IN ('" + "','".join(database_name_list) + "')"
-            )
-
-        if self.schema_field and schema_name_list:
-            self.db_filters += (  # pylint: disable=no-member
-                f" AND {self.schema_field} IN ('" + "','".join(schema_name_list) + "')"
-            )
+        return cls(config, metadata)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
         """
@@ -83,7 +56,20 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
-            filters=self.filters,  # pylint: disable=no-member
-            db_filters=self.db_filters,  # pylint: disable=no-member
+            filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,
         )
+
+    def check_life_cycle_query(
+        self, query_type: Optional[str], query_text: Optional[str]
+    ) -> bool:
+        """
+        returns true if query is to be used for life cycle processing.
+
+        Override if we have specific parameters
+        """
+        create_pattern = re.compile(r".*\s*CREATE", re.IGNORECASE)
+        insert_pattern = re.compile(r".*\s*INSERT", re.IGNORECASE)
+        if re.match(create_pattern, query_text) or re.match(insert_pattern, query_text):
+            return True
+        return False

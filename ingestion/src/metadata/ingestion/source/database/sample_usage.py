@@ -19,9 +19,6 @@ from typing import Dict, Iterable, Optional
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
@@ -29,11 +26,10 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.ingestion.source.database.sample_data import SampleDataSourceStatus
 from metadata.ingestion.source.database.usage_source import UsageSource
 
 
@@ -49,19 +45,11 @@ class SampleUsageSource(UsageSource):
 
     schema_field = ""  # filtering not required
 
-    def __init__(
-        self, config: WorkflowSource, metadata_config: OpenMetadataConnection
-    ):  # pylint: disable=super-init-not-called
-        self.status = SampleDataSourceStatus()
-        self.config = config
-        self.service_connection = config.serviceConnection.__root__.config
-        self.source_config = config.sourceConfig.config
-        self.metadata_config = metadata_config
-        self.report = SQLSourceStatus()
-        self.metadata = OpenMetadata(metadata_config)
-        self.analysis_date = datetime.utcnow()
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata, False)
+        self.analysis_date = DateTime(datetime.now())
 
-        sample_data_folder = self.service_connection.connectionOptions.__root__.get(
+        sample_data_folder = self.service_connection.connectionOptions.root.get(
             "sampleDataFolder"
         )
         if not sample_data_folder:
@@ -82,24 +70,23 @@ class SampleUsageSource(UsageSource):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: CustomDatabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CustomDatabaseConnection):
             raise InvalidSourceException(
-                f"Expected SampleDataConnection, but got {connection}"
+                f"Expected CustomDatabaseConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_table_query(self) -> Optional[Iterable[Dict[str, str]]]:
         yield TableQueries(
             queries=[
                 TableQuery(
                     query=row["query"],
-                    userName="",
-                    startTime="",
-                    endTime="",
                     analysisDate=self.analysis_date,
                     aborted=False,
                     databaseName="ecommerce_db",

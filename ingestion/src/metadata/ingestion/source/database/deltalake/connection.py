@@ -12,78 +12,94 @@
 """
 Source connection handler
 """
-import pyspark
-from delta import configure_spark_with_delta_pip
-from pyspark.sql import SparkSession
+from dataclasses import dataclass
+from functools import singledispatch
+from typing import Optional
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
+    S3Config,
+)
+from metadata.generated.schema.entity.services.connections.database.deltalake.metastoreConfig import (
+    MetastoreConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.deltalake.storageConfig import (
+    StorageConfig,
+)
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
-from metadata.ingestion.connections.builders import get_connection_args_common
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-def get_connection(connection: DeltaLakeConnection) -> SparkSession:
-    """
-    Create connection
-    """
+@dataclass
+class DeltalakeClient:
+    def __init__(self, client, config) -> None:
+        self.client = client
+        self.config = config
 
-    builder = (
-        pyspark.sql.SparkSession.builder.appName(connection.appName or "OpenMetadata")
-        .enableHiveSupport()
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-        .config(
-            "spark.sql.catalog.spark_catalog",
-            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-        )
-        # Download delta-core jars when creating the SparkSession
-        .config("spark.jars.packages", "io.delta:delta-core_2.12:2.0.0")
+
+@singledispatch
+def get_deltalake_client(connection, config):
+    """Retrieve Deltalake Client from the config"""
+    msg = None
+    if config:
+        msg = f"Config not implemented for type {type(connection)}: {connection}"
+    raise NotImplementedError(msg)
+
+
+@get_deltalake_client.register
+def _(connection: MetastoreConfig, config: DeltaLakeConnection):
+    from metadata.ingestion.source.database.deltalake.clients.pyspark import (
+        DeltalakePySparkClient,
     )
 
-    # Check that the attribute exists and is properly informed
-    if (
-        hasattr(connection.metastoreConnection, "metastoreHostPort")
-        and connection.metastoreConnection.metastoreHostPort
-    ):
-        builder.config(
-            "hive.metastore.uris",
-            f"thrift://{connection.metastoreConnection.metastoreHostPort}",
-        )
-
-    if (
-        hasattr(connection.metastoreConnection, "metastoreDb")
-        and connection.metastoreConnection.metastoreDb
-    ):
-        builder.config(
-            "spark.hadoop.javax.jdo.option.ConnectionURL",
-            connection.metastoreConnection.metastoreDb,
-        )
-
-    if (
-        hasattr(connection.metastoreConnection, "metastoreFilePath")
-        and connection.metastoreConnection.metastoreFilePath
-    ):
-        # From https://stackoverflow.com/questions/38377188/how-to-get-rid-of-derby-log-metastore-db-from-spark-shell
-        # derby.system.home is the one in charge of the path for `metastore_db` dir and `derby.log`
-        # We can use this option to control testing, as well as to properly point to the right
-        # local database when ingesting data
-        builder.config(
-            "spark.driver.extraJavaOptions",
-            f"-Dderby.system.home={connection.metastoreConnection.metastoreFilePath}",
-        )
-
-    for key, value in get_connection_args_common(connection).items():
-        builder.config(key, value)
-
-    return configure_spark_with_delta_pip(builder).getOrCreate()
+    return DeltalakePySparkClient.from_config(config)
 
 
-def test_connection(spark: SparkSession) -> None:
+@get_deltalake_client.register
+def _(connection: StorageConfig, config: DeltaLakeConnection):
+    from metadata.ingestion.source.database.deltalake.clients.s3 import (
+        DeltalakeS3Client,
+    )
+
+    if isinstance(connection.connection, S3Config):
+        return DeltalakeS3Client.from_config(config)
+
+
+def get_connection(connection: DeltaLakeConnection) -> DeltalakeClient:
+    """Create Deltalake Client"""
+    return DeltalakeClient(
+        client=get_deltalake_client(connection.configSource, connection),
+        config=connection,
+    )
+
+
+def test_connection(
+    metadata: OpenMetadata,
+    connection: DeltalakeClient,
+    service_connection: DeltaLakeConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    try:
-        spark.catalog.listDatabases()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {spark}: {exc}."
-        raise SourceConnectionException(msg) from exc
+    test_fn = {
+        "GetDatabases": connection.client.get_test_get_databases_fn(
+            service_connection.configSource
+        ),
+        "GetTables": connection.client.get_test_get_tables_fn(
+            service_connection.configSource
+        ),
+    }
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

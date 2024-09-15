@@ -18,19 +18,15 @@ regenerated via: `./opt/vertica/examples/VMart_Schema/vmart_gen`
 """
 from typing import List
 
-import pytest
-
+from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
-from .test_cli_db_base import E2EType
-from .test_cli_db_base_common import CliCommonDB
 
 
 class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-
     create_table_query: str = """
-        CREATE TABLE vendor_dimension_new AS 
-            SELECT * 
-            FROM vendor_dimension 
+        CREATE TABLE vendor_dimension_new AS
+            SELECT *
+            FROM vendor_dimension
             WHERE 1=0;
     """
 
@@ -66,6 +62,10 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def expected_tables() -> int:
         return 16
+
+    @staticmethod
+    def _expected_profiled_tables() -> int:
+        return 12
 
     def inserted_rows_count(self) -> int:
         return len(self.insert_data_queries)

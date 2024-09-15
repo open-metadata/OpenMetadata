@@ -36,7 +36,14 @@ const mockProps: SearchDropdownProps = {
   selectedKeys: [{ key: 'User 1', label: 'User 1' }],
   onChange: mockOnChange,
   onSearch: mockOnSearch,
+  index: 'table_search_index' as SearchDropdownProps['index'],
 };
+
+jest.mock('lodash', () => ({
+  ...jest.requireActual('lodash'),
+  // Assign the import a new implementation, in this case it's execute the function given to you
+  debounce: jest.fn().mockImplementation((fn) => fn),
+}));
 
 describe('Search DropDown Component', () => {
   it('Should render Dropdown components', async () => {
@@ -172,13 +179,12 @@ describe('Search DropDown Component', () => {
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
-    const searchInput = await screen.findByTestId('search-input');
-
     await act(async () => {
-      userEvent.type(searchInput, 'user');
+      const searchInput = await screen.findByTestId('search-input');
+      await userEvent.type(searchInput, 'user');
     });
 
-    expect(searchInput).toHaveValue('user');
+    expect(await screen.findByTestId('search-input')).toHaveValue('user');
 
     expect(mockOnSearch).toHaveBeenCalledWith('user', 'owner.displayName');
   });
@@ -346,5 +352,55 @@ describe('Search DropDown Component', () => {
     option1Checkbox = await screen.findByTestId('User 1-checkbox');
 
     expect(option1Checkbox).toBeChecked();
+  });
+
+  it('should render no option checkbox', async () => {
+    render(<SearchDropdown {...mockProps} hasNullOption />);
+
+    const container = await screen.findByTestId('search-dropdown-Owner');
+
+    expect(container).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(container);
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    const noOwnerCheckbox = await screen.findByTestId('no-option-checkbox');
+
+    expect(noOwnerCheckbox).toBeInTheDocument();
+  });
+
+  it('Should send null option in payload if selected', async () => {
+    render(<SearchDropdown {...mockProps} hasNullOption />);
+    const container = await screen.findByTestId('search-dropdown-Owner');
+
+    expect(container).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(container);
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    const noOwnerCheckbox = await screen.findByTestId('no-option-checkbox');
+    await act(async () => {
+      userEvent.click(noOwnerCheckbox);
+    });
+
+    const updateButton = await screen.findByTestId('update-btn');
+    await act(async () => {
+      userEvent.click(updateButton);
+    });
+
+    // onChange should be called with previous selected keys and current selected keys
+    expect(mockOnChange).toHaveBeenCalledWith(
+      [
+        { key: 'OM_NULL_FIELD', label: 'label.no-entity' },
+        { key: 'User 1', label: 'User 1' },
+      ],
+      'owner.displayName'
+    );
   });
 });

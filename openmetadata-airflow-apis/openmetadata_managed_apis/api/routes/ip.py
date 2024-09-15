@@ -15,7 +15,7 @@ import traceback
 from typing import Callable, Optional
 
 import requests
-from flask import Blueprint
+from flask import Blueprint, escape
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
 from requests.exceptions import ConnectionError
@@ -67,11 +67,10 @@ def get_fn(blueprint: Blueprint) -> Callable:
         """
 
         try:
-
             for ip_service in IP_SERVICES:
                 host_ip = _get_ip_safely(ip_service)
                 if host_ip:
-                    return ApiResponse.success({"ip": host_ip})
+                    return ApiResponse.success({"ip": escape(host_ip)})
 
             # If we cannot fetch the IP, still return a 200 but without informing the IP.
             return ApiResponse.success({"ip": "unknown"})

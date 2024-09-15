@@ -13,6 +13,6 @@
   },
   "additionalProperties": false,
   "required": [
-    "username"
+    "email"
   ]
 }

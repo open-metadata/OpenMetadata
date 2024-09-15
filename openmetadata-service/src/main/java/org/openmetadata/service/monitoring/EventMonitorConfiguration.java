@@ -27,4 +27,8 @@ public class EventMonitorConfiguration {
   private int batchSize;
 
   private Map<String, String> parameters;
+
+  private String[] pathPattern;
+
+  private double[] latency;
 }

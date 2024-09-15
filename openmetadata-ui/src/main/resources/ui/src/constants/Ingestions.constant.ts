@@ -13,7 +13,10 @@
 
 import i18next from 'i18next';
 import { StepperStepType } from 'Models';
-import { FilterPattern } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  FilterPattern,
+  PipelineType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
 export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
   {
@@ -22,19 +25,7 @@ export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
     }),
     step: 1,
   },
-  {
-    name: i18next.t('label.configure-entity', {
-      entity: i18next.t('label.dbt-lowercase'),
-    }),
-    step: 2,
-  },
-  {
-    name: i18next.t('label.configure-entity', {
-      entity: i18next.t('label.metadata-to-es-config-optional'),
-    }),
-    step: 3,
-  },
-  { name: i18next.t('label.schedule-interval'), step: 4 },
+  { name: i18next.t('label.schedule-interval'), step: 2 },
 ];
 
 export const INITIAL_FILTER_PATTERN: FilterPattern = {
@@ -42,42 +33,23 @@ export const INITIAL_FILTER_PATTERN: FilterPattern = {
   excludes: [],
 };
 
-// Todo: Move this to service constant once we figure out issue related to localization in services constant
-export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
-  {
-    name: i18next.t('label.select-field', {
-      field: i18next.t('label.service-type'),
-    }),
-    step: 1,
-  },
-  {
-    name: i18next.t('label.configure-entity', {
-      entity: i18next.t('label.service'),
-    }),
-    step: 2,
-  },
-  {
-    name: i18next.t('label.connection-entity', {
-      entity: i18next.t('label.detail-plural'),
-    }),
-    step: 3,
-  },
-];
-
 export const INGESTION_ACTION_TYPE = {
   ADD: 'add',
   EDIT: 'edit',
 };
 
 export const PIPELINE_TYPE_LOCALIZATION = {
-  dataInsight: 'data-insight',
-  dbt: 'dbt',
-  elasticSearchReindex: 'elastic-search-re-index',
-  lineage: 'lineage',
-  metadata: 'metadata',
-  profiler: 'profiler',
-  TestSuite: 'test-suite',
-  usage: 'usage',
+  [PipelineType.DataInsight]: 'data-insight',
+  [PipelineType.Dbt]: 'dbt-lowercase',
+  [PipelineType.ElasticSearchReindex]: 'elastic-search-re-index',
+  [PipelineType.Lineage]: 'lineage',
+  [PipelineType.Metadata]: 'metadata',
+  [PipelineType.Profiler]: 'profiler',
+  [PipelineType.TestSuite]: 'test-suite',
+  [PipelineType.Usage]: 'usage',
+  [PipelineType.Application]: 'application',
 };
 
 export const DBT_CLASSIFICATION_DEFAULT_VALUE = 'dbtTags';
+
+export const DEFAULT_PARSING_TIMEOUT_LIMIT = 300;

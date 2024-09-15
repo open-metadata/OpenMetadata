@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 
-import { SearchIndex } from '../enums/search.enum';
-
-export const myDataSearchIndex =
-  `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}` as SearchIndex;
-
 export const observerOptions = {
   root: null,
   rootMargin: '0px',

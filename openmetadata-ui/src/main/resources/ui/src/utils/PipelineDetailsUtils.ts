@@ -11,127 +11,54 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
+import { isUndefined } from 'lodash';
+import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { TabSpecificField } from '../enums/entity.enum';
 import {
   Pipeline,
   StatusType,
   TaskStatus,
 } from '../generated/entity/data/pipeline';
-import { Icons } from './SvgUtils';
+import { sortTagsCaseInsensitive } from './CommonUtils';
 
-export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS},${TabSpecificField.EXTENSION}`;
-
-export const pipelineDetailsTabs = [
-  {
-    name: t('label.detail-plural'),
-    path: 'details',
-  },
-  {
-    name: t('label.activity-feed-and-task-plural'),
-    path: 'activity_feed',
-    field: TabSpecificField.ACTIVITY_FEED,
-  },
-  {
-    name: t('label.execution-plural'),
-    path: 'executions',
-    field: TabSpecificField.EXECUTIONS,
-  },
-  {
-    name: t('label.lineage'),
-    path: 'lineage',
-    field: TabSpecificField.LINEAGE,
-  },
-  {
-    name: t('label.custom-property-plural'),
-    path: 'custom_properties',
-  },
-];
-
-export const getCurrentPipelineTab = (tab: string) => {
-  let currentTab = 1;
-  switch (tab) {
-    case 'activity_feed':
-      currentTab = 2;
-
-      break;
-
-    case 'executions':
-      currentTab = 3;
-
-      break;
-
-    case 'lineage':
-      currentTab = 4;
-
-      break;
-    case 'custom_properties':
-      currentTab = 5;
-
-      break;
-
-    case 'details':
-    default:
-      currentTab = 1;
-
-      break;
-  }
-
-  return currentTab;
-};
-
-export const getModifiedPipelineStatus = (
-  status: StatusType,
-  pipelineStatus: Pipeline['pipelineStatus'] = {}
-) => {
-  const data =
-    pipelineStatus?.taskStatus?.map((task) => ({
-      executionDate: pipelineStatus.timestamp,
-      executionStatus: task.executionStatus,
-      name: task.name,
-    })) || [];
-
-  if (!status) {
-    return data;
-  } else {
-    return data?.filter((d) => d?.executionStatus === status);
-  }
-};
-
-export const getFilteredPipelineStatus = (
-  status: StatusType,
-  pipelineStatus: Pipeline['pipelineStatus'] = {}
-) => {
-  if (!status) {
-    return pipelineStatus;
-  } else {
-    return pipelineStatus?.executionStatus === status;
-  }
-};
+// eslint-disable-next-line max-len
+export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
 
 export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
   return tasks.find((task) => task.name === taskName)?.executionStatus || '';
 };
 
-export const STATUS_OPTIONS = [
-  { value: StatusType.Successful, label: StatusType.Successful },
-  { value: StatusType.Failed, label: StatusType.Failed },
-  { value: StatusType.Pending, label: StatusType.Pending },
-];
-
 export const getStatusBadgeIcon = (status?: StatusType) => {
   switch (status) {
     case StatusType.Successful:
-      return Icons.SUCCESS_BADGE;
+      return IconSuccessBadge;
 
     case StatusType.Failed:
-      return Icons.FAIL_BADGE;
-
-    case StatusType.Pending:
-      return Icons.PENDING_BADGE;
+      return IconFailBadge;
 
     default:
-      return '';
+      return IconSkippedBadge;
+  }
+};
+
+export const getFormattedPipelineDetails = (
+  pipelineDetails: Pipeline
+): Pipeline => {
+  if (pipelineDetails.tasks) {
+    const updatedTasks = pipelineDetails.tasks.map((task) => ({
+      ...task,
+      // Sorting tags as the response of PATCH request does not return the sorted order
+      // of tags, but is stored in sorted manner in the database
+      // which leads to wrong PATCH payload sent after further tags removal
+      tags: isUndefined(task.tags)
+        ? undefined
+        : sortTagsCaseInsensitive(task.tags),
+    }));
+
+    return { ...pipelineDetails, tasks: updatedTasks };
+  } else {
+    return pipelineDetails;
   }
 };

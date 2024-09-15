@@ -11,11 +11,11 @@
 """
 Databricks lineage module
 """
-import csv
 import traceback
 from datetime import datetime
-from typing import Iterator, Optional
+from typing import Iterator
 
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.databricks.query_parser import (
     DatabricksQueryParserSource,
@@ -28,53 +28,25 @@ logger = ingestion_logger()
 
 class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
     """
-    Databricks Lineage Source
+    Databricks Lineage Legacy Source
     """
 
-    def get_table_query(self) -> Optional[Iterator[TableQuery]]:
-        """
-        If queryLogFilePath available in config iterate through log file
-        otherwise execute the sql query to fetch TableQuery data.
-
-        This is a simplified version of the UsageSource query parsing.
-        """
-        if self.config.sourceConfig.config.queryLogFilePath:
-
-            with open(
-                self.config.sourceConfig.config.queryLogFilePath, "r", encoding="utf-8"
-            ) as file:
-                for row in csv.DictReader(file):
-                    query_dict = dict(row)
-                    yield TableQuery(
-                        query=query_dict["query_text"],
-                        databaseName=self.get_database_name(query_dict),
-                        serviceName=self.config.serviceName,
-                        databaseSchema=self.get_schema_name(query_dict),
-                    )
-
-        else:
-            logger.info(
-                f"Scanning query logs for {self.start.date()} - {self.end.date()}"
-            )
+    def yield_table_query(self) -> Iterator[TableQuery]:
+        data = self.client.list_query_history(
+            start_date=self.start,
+            end_date=self.end,
+        )
+        for row in data or []:
             try:
-                data = self.client.list_query_history(
-                    start_date=self.start,
-                    end_date=self.end,
-                )
-                for row in data:
-                    try:
-                        if self.client.is_query_valid(row):
-                            yield TableQuery(
-                                query=row.get("query_text"),
-                                userName=row.get("user_name"),
-                                startTime=row.get("query_start_time_ms"),
-                                endTime=row.get("execution_end_time_ms"),
-                                analysisDate=datetime.now(),
-                                serviceName=self.config.serviceName,
-                            )
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(f"Error processing query_dict {row}: {exc}")
+                if self.client.is_query_valid(row):
+                    yield TableQuery(
+                        query=row.get("query_text"),
+                        userName=row.get("user_name"),
+                        startTime=str(row.get("query_start_time_ms")),
+                        endTime=str(row.get("execution_end_time_ms")),
+                        analysisDate=DateTime(datetime.now()),
+                        serviceName=self.config.serviceName,
+                    )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Source usage processing error: {exc}")
+                logger.warning(f"Error processing query_dict {row}: {exc}")

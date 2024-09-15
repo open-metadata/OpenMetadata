@@ -39,6 +39,12 @@
       "type": "string",
       "format": "password"
     },
+    "redashVersion": {
+      "title": "Redash Version",
+      "description": "Version of the Redash instance",
+      "type": "string",
+      "default": "10.0.0"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

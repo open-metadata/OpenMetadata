@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore" schemaVersion="2.3" id="CV_CV" applyPrivilegeType="SQL_ANALYTIC_PRIVILEGE" defaultClient="$$client$$" defaultLanguage="$$language$$" hierarchiesSQLEnabled="false" translationRelevant="true" visibility="reportingEnabled" calculationScenarioType="TREE_BASED" dataCategory="CUBE" enforceSqlExecution="false" executionSemantic="UNDEFINED" outputViewType="Projection">
+  <origin/>
+  <descriptions defaultDescription="CV_CV"/>
+  <metadata changedAt="2024-08-28 11:22:50.623"/>
+  <localVariables/>
+  <variableMappings/>
+  <informationModelLayout relativeWidthScenario="27"/>
+  <dataSources>
+    <DataSource id="CV_SFLIGHT_SBOOK" type="CALCULATION_VIEW">
+      <viewAttributes allViewAttributes="true"/>
+      <resourceUri>/SFLIGHT.MODELING/calculationviews/CV_SFLIGHT_SBOOK</resourceUri>
+    </DataSource>
+  </dataSources>
+  <calculationViews/>
+  <logicalModel id="CV_SFLIGHT_SBOOK">
+    <descriptions/>
+    <attributes>
+      <attribute id="MANDT" order="1" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="MANDT"/>
+        <keyMapping columnObjectName="CV_SFLIGHT_SBOOK" columnName="MANDT"/>
+      </attribute>
+      <attribute id="CARRID" order="2" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="CARRID"/>
+        <keyMapping columnObjectName="CV_SFLIGHT_SBOOK" columnName="CARRID"/>
+      </attribute>
+      <attribute id="CARRNAME" order="3" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="CARRNAME"/>
+        <keyMapping columnObjectName="CV_SFLIGHT_SBOOK" columnName="CARRNAME"/>
+      </attribute>
+      <attribute id="RETURN_INDEX" order="5" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="RETURN_INDEX"/>
+        <keyMapping columnObjectName="CV_SFLIGHT_SBOOK" columnName="RETURN_INDEX"/>
+      </attribute>
+    </attributes>
+    <calculatedAttributes/>
+    <privateDataFoundation>
+      <tableProxies/>
+      <joins/>
+      <layout>
+        <shapes/>
+      </layout>
+    </privateDataFoundation>
+    <baseMeasures>
+      <measure id="USAGE_PCT" order="4" aggregationType="sum" measureType="simple">
+        <descriptions defaultDescription="USAGE_PCT"/>
+        <measureMapping columnObjectName="CV_SFLIGHT_SBOOK" columnName="USAGE_PCT"/>
+      </measure>
+    </baseMeasures>
+    <calculatedMeasures/>
+    <restrictedMeasures/>
+    <localDimensions/>
+  </logicalModel>
+  <layout>
+    <shapes>
+      <shape expanded="true" modelObjectName="Output" modelObjectNameSpace="MeasureGroup">
+        <upperLeftCorner x="40" y="85"/>
+        <rectangleSize/>
+      </shape>
+    </shapes>
+  </layout>
+</Calculation:scenario>

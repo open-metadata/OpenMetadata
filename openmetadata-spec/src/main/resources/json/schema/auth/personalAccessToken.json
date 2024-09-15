@@ -1,0 +1,42 @@
+{
+  "$id": "https://open-metadata.org/schema/auth/personalAccessToken.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PersonalAccessToken",
+  "description": "This schema defines Personal Access Token Schema.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.auth.PersonalAccessToken",
+  "javaInterfaces": ["org.openmetadata.schema.TokenInterface"],
+  "properties": {
+    "token": {
+      "description": "Unique Refresh Token for user",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "tokenName": {
+      "description": "Name of the token",
+      "type": "string"
+    },
+    "userId": {
+      "description": "User Id of the User this refresh token is given to",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "tokenType": {
+      "description": "Token Type",
+      "$ref": "./emailVerificationToken.json#/definitions/tokenType",
+      "default": "PERSONAL_ACCESS"
+    },
+    "expiryDate": {
+      "description": "Expiry Date-Time of the token",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "jwtToken": {
+      "description": "JWT Auth Token.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "token",
+    "userId",
+    "expiryDate"
+  ],
+  "additionalProperties": false
+}

@@ -13,9 +13,6 @@
 
 package org.openmetadata.service.security.policyevaluator;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
@@ -26,6 +23,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -40,7 +38,8 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   private final EntityLink entityLink;
   private final UUID id;
   private final String name;
-  private EntityInterface entity; // Will be lazily initialized to the entity that has this test case
+  private EntityInterface
+      entity; // Will be lazily initialized to the entity that has this test case
 
   @Override
   public String getResource() {
@@ -48,23 +47,29 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityReference getOwner() throws IOException {
+  public List<EntityReference> getOwners() {
     resolveEntity();
-    return entity == null ? null : entity.getOwner();
+    return entity == null ? null : entity.getOwners();
   }
 
   @Override
-  public List<TagLabel> getTags() throws IOException {
+  public List<TagLabel> getTags() {
     resolveEntity();
-    return entity == null ? null : listOrEmpty(entity.getTags());
+    return entity == null ? null : Entity.getEntityTags(getResource(), entity);
   }
 
   @Override
-  public EntityInterface getEntity() throws IOException {
+  public EntityInterface getEntity() {
     return resolveEntity();
   }
 
-  private EntityInterface resolveEntity() throws IOException {
+  @Override
+  public EntityReference getDomain() {
+    resolveEntity();
+    return entity == null ? null : entity.getDomain();
+  }
+
+  private EntityInterface resolveEntity() {
     if (entity == null) {
       if (entityLink != null) {
         entity = resolveEntityByEntityLink(entityLink);
@@ -77,29 +82,30 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     return entity;
   }
 
-  private static EntityInterface resolveEntityByEntityLink(EntityLink entityLink) throws IOException {
+  private static EntityInterface resolveEntityByEntityLink(EntityLink entityLink) {
     EntityRepository<? extends EntityInterface> entityRepository =
         Entity.getEntityRepository(entityLink.getEntityType());
     String fields = "";
-    if (entityRepository.isSupportsOwner()) {
-      fields = EntityUtil.addField(fields, Entity.FIELD_OWNER);
+    if (entityRepository.isSupportsOwners()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
     }
     if (entityRepository.isSupportsTags()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
     }
-    return entityRepository.getByName(null, entityLink.getEntityFQN(), entityRepository.getFields(fields));
+    return entityRepository.getByName(
+        null, entityLink.getEntityFQN(), entityRepository.getFields(fields));
   }
 
-  private static EntityInterface resolveEntityById(UUID id) throws IOException {
-    EntityRepository<TestCase> dao = Entity.getEntityRepository(Entity.TEST_CASE);
-    TestCase testCase = dao.get(null, id, dao.getFields("entityLink"), Include.ALL);
+  private static EntityInterface resolveEntityById(UUID id) {
+    TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    TestCase testCase = dao.get(null, id, dao.getFields("entityLink"), Include.ALL, true);
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
   }
 
-  private static EntityInterface resolveEntityByName(String fqn) throws IOException {
+  private static EntityInterface resolveEntityByName(String fqn) {
     if (fqn == null) return null;
-    EntityRepository<TestCase> dao = Entity.getEntityRepository(Entity.TEST_CASE);
-    TestCase testCase = dao.getByName(null, fqn, dao.getFields("entityLink"), Include.ALL);
+    TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    TestCase testCase = dao.getByName(null, fqn, dao.getFields("entityLink"), Include.ALL, true);
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
   }
 }

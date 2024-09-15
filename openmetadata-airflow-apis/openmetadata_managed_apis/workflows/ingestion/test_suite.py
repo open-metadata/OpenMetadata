@@ -27,8 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Sink,
     WorkflowConfig,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
+from metadata.workflow.data_quality import TestSuiteWorkflow
 
 
 def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -43,7 +42,7 @@ def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False))
     workflow = TestSuiteWorkflow.create(config)
 
     workflow.execute()
@@ -73,7 +72,7 @@ def build_test_suite_workflow_config(
             loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
             openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
         ),
-        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.__root__,
+        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
     )
 
     return workflow_config

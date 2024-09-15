@@ -46,6 +46,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import datetime_to_ts
 
@@ -72,7 +73,7 @@ class OMetaPipelineTest(TestCase):
     user = metadata.create_or_update(
         data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
-    owner = EntityReference(id=user.id, type="user")
+    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreatePipelineServiceRequest(
         name="test-service-pipeline",
@@ -96,13 +97,13 @@ class OMetaPipelineTest(TestCase):
         cls.entity = Pipeline(
             id=uuid.uuid4(),
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=EntityReference(id=cls.service_entity.id, type="pipelineService"),
             fullyQualifiedName="test-service-pipeline.test",
         )
 
         cls.create = CreatePipelineRequest(
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
     @classmethod
@@ -114,7 +115,7 @@ class OMetaPipelineTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=PipelineService, fqn="test-service-pipeline"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -133,7 +134,7 @@ class OMetaPipelineTest(TestCase):
 
         self.assertEqual(res.name, self.entity.name)
         self.assertEqual(res.service.id, self.entity.service.id)
-        self.assertEqual(res.owner, None)
+        self.assertEqual(res.owners, EntityReferenceList(root=[]))
 
     def test_update(self):
         """
@@ -142,16 +143,16 @@ class OMetaPipelineTest(TestCase):
 
         res_create = self.metadata.create_or_update(data=self.create)
 
-        updated = self.create.dict(exclude_unset=True)
-        updated["owner"] = self.owner
+        updated = self.create.model_dump(exclude_unset=True)
+        updated["owners"] = self.owners
         updated_entity = CreatePipelineRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
-        self.assertEqual(res.service.id, updated_entity.service.id)
+        self.assertEqual(res.service.fullyQualifiedName, updated_entity.service.root)
         self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owner.id, self.user.id)
+        self.assertEqual(res.owners.root[0].id, self.user.id)
 
     def test_get_name(self):
         """
@@ -209,11 +210,11 @@ class OMetaPipelineTest(TestCase):
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
-            entity=Pipeline, entity_id=str(res_name.id.__root__)
+            entity=Pipeline, entity_id=str(res_name.id.root)
         )
 
         # Delete
-        self.metadata.delete(entity=Pipeline, entity_id=str(res_id.id.__root__))
+        self.metadata.delete(entity=Pipeline, entity_id=str(res_id.id.root))
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=Pipeline)
@@ -233,7 +234,7 @@ class OMetaPipelineTest(TestCase):
 
         create_pipeline = CreatePipelineRequest(
             name="pipeline-test",
-            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            service=self.service_entity.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
@@ -244,7 +245,7 @@ class OMetaPipelineTest(TestCase):
         execution_ts = datetime_to_ts(datetime.strptime("2021-03-07", "%Y-%m-%d"))
 
         updated = self.metadata.add_pipeline_status(
-            fqn=pipeline.fullyQualifiedName.__root__,
+            fqn=pipeline.fullyQualifiedName.root,
             status=PipelineStatus(
                 timestamp=execution_ts,
                 executionStatus=StatusType.Successful,
@@ -255,7 +256,7 @@ class OMetaPipelineTest(TestCase):
         )
 
         # We get a list of status
-        assert updated.pipelineStatus.timestamp.__root__ == execution_ts
+        assert updated.pipelineStatus.timestamp.root == execution_ts
         assert len(updated.pipelineStatus.taskStatus) == 1
 
         # Disabled as throwing an error regarding service key not present
@@ -273,7 +274,7 @@ class OMetaPipelineTest(TestCase):
         #     ),
         # )
 
-        # assert updated.pipelineStatus[0].executionDate.__root__ == execution_ts
+        # assert updated.pipelineStatus[0].executionDate.root == execution_ts
         # assert len(updated.pipelineStatus[0].taskStatus) == 2
 
         # # Cleanup
@@ -286,7 +287,7 @@ class OMetaPipelineTest(TestCase):
 
         create_pipeline = CreatePipelineRequest(
             name="pipeline-test",
-            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            service=self.service_entity.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
@@ -352,7 +353,7 @@ class OMetaPipelineTest(TestCase):
 
         create_pipeline = CreatePipelineRequest(
             name="pipeline-test",
-            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            service=self.service_entity.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
@@ -391,7 +392,7 @@ class OMetaPipelineTest(TestCase):
         )
 
         res = self.metadata.get_list_entity_versions(
-            entity=Pipeline, entity_id=res_name.id.__root__
+            entity=Pipeline, entity_id=res_name.id.root
         )
         assert res
 
@@ -406,11 +407,11 @@ class OMetaPipelineTest(TestCase):
             entity=Pipeline, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
-            entity=Pipeline, entity_id=res_name.id.__root__, version=0.1
+            entity=Pipeline, entity_id=res_name.id.root, version=0.1
         )
 
         # check we get the correct version requested and the correct entity ID
-        assert res.version.__root__ == 0.1
+        assert res.version.root == 0.1
         assert res.id == res_name.id
 
     def test_get_entity_ref(self):

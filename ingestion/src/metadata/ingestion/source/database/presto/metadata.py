@@ -15,25 +15,24 @@ Presto source module
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable
+from typing import Iterable, Optional
 
 from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
-from sqlalchemy import inspect, types, util
+from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
     PrestoConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.presto.queries import PRESTO_SHOW_CREATE_TABLE
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ometa_logger
@@ -85,6 +84,8 @@ def get_columns(
             {
                 "name": row.Column,
                 "type": coltype,
+                "system_data_type": row.Type,
+                "comment": row.Comment,
                 # newer Presto no longer includes this column
                 "nullable": getattr(row, "Null", True),
                 "default": None,
@@ -93,7 +94,22 @@ def get_columns(
     return result
 
 
+@reflection.cache
+# pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):
+    fmt_query = PRESTO_SHOW_CREATE_TABLE.format(
+        schema_table_name=".".join(filter(None, [schema, table_name]))
+    )
+    results = connection.execute(fmt_query)
+    for res in results:
+        matches = re.findall(r"COMMENT '(.*)'", res[0])
+        if matches:
+            return {"text": matches[-1]}
+        return {"text": None}
+
+
 PrestoDialect.get_columns = get_columns
+PrestoDialect.get_table_comment = get_table_comment
 
 
 class PrestoSource(CommonDbSourceService):
@@ -102,14 +118,16 @@ class PrestoSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: PrestoConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config = WorkflowSource.model_validate(config_dict)
+        connection: PrestoConnection = config.serviceConnection.root.config
         if not isinstance(connection, PrestoConnection):
             raise InvalidSourceException(
                 f"Expected PrestoConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def set_inspector(self, database_name: str) -> None:
         """
@@ -122,7 +140,8 @@ class PrestoSource(CommonDbSourceService):
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.catalog = database_name
         self.engine = get_connection(new_service_connection)
-        self.inspector = inspect(self.engine)
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
 
     def get_database_names(self) -> Iterable[str]:
         configured_catalog = self.service_connection.catalog
@@ -137,7 +156,7 @@ class PrestoSource(CommonDbSourceService):
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.context.database_service.name.__root__,
+                        service_name=self.context.get().database_service,
                         database_name=new_catalog,
                     )
                     if filter_by_database(

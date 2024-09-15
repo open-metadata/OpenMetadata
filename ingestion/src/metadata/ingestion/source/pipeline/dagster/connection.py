@@ -12,40 +12,46 @@
 """
 Source connection handler
 """
-from dagster_graphql import DagsterGraphQLClient
-from gql.transport.requests import RequestsHTTPTransport
+from typing import Optional
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.dagster.client import DagsterClient
 from metadata.ingestion.source.pipeline.dagster.queries import TEST_QUERY_GRAPHQL
 
 
-def get_connection(connection: DagsterConnection) -> DagsterGraphQLClient:
+def get_connection(connection: DagsterConnection) -> DagsterClient:
     """
     Create connection
     """
-    url = connection.host
-    dagster_connection = DagsterGraphQLClient(
-        url,
-        transport=RequestsHTTPTransport(
-            url=f"{url}/graphql",
-            headers={"Dagster-Cloud-Api-Token": connection.token.get_secret_value()}
-            if connection.token
-            else None,
-        ),
+    return DagsterClient(connection)
+
+
+def test_connection(
+    metadata: OpenMetadata,
+    client: DagsterClient,
+    service_connection: DagsterConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
+    """
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
+    """
+
+    def custom_executor_for_pipeline():
+        client.client._execute(TEST_QUERY_GRAPHQL)  # pylint: disable=protected-access
+
+    test_fn = {"GetPipelines": custom_executor_for_pipeline}
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
+        automation_workflow=automation_workflow,
     )
-
-    return dagster_connection
-
-
-def test_connection(client: DagsterGraphQLClient) -> None:
-    """
-    Test connection
-    """
-    try:
-        client._execute(TEST_QUERY_GRAPHQL)  # pylint: disable=protected-access
-    except Exception as exc:
-        msg = f"Unknown error connecting with {client}: {exc}."
-        raise SourceConnectionException(msg) from exc

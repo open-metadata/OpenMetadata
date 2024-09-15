@@ -1,21 +1,29 @@
+default_language_version:
+  python: python3
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+      - id: check-json
+        exclude: vscode
+  - repo: https://github.com/hadialqattan/pycln
+    rev: v2.4.0
+    hooks:
+      - id: pycln
+        files: ^(ingestion|openmetadata-airflow-apis)/
+        args: [ "--config", "ingestion/pyproject.toml" ]
+  - repo: https://github.com/timothycrosley/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        files: ^(ingestion|openmetadata-airflow-apis)/
+        args: [ "--settings-file", "ingestion/pyproject.toml" ]
   - repo: https://github.com/ambv/black
     rev: 22.3.0
     hooks:
       - id: black
-        language_version: python3.8
-        exclude: ingestion/src/metadata/generated
-  - repo: https://github.com/timothycrosley/isort
-    rev: 5.10.1
-    hooks:
-      - id: isort
-        args: ["--profile", "black"]
-        exclude: ingestion/src/metadata/generated
-  - repo: https://github.com/hadialqattan/pycln
-    rev: v1.2.4
-    hooks:
-      - id: pycln
-        exclude: ingestion/src/metadata/generated
+        files: ^(ingestion|openmetadata-airflow-apis)/
+        args: [ "--config", "ingestion/pyproject.toml" ]
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v2.5.1
     hooks:

@@ -12,8 +12,17 @@
 """
 Source connection handler
 """
+from typing import Optional
+
 from sqlalchemy.engine import Engine
 
+from metadata.clients.azure_client import AzureClient
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -22,13 +31,26 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    test_connection_db_schema_sources,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: MysqlConnection) -> Engine:
     """
     Create connection
     """
+    if hasattr(connection.authType, "azureConfig"):
+        azure_client = AzureClient(connection.authType.azureConfig).create_client()
+        if not connection.authType.azureConfig.scopes:
+            raise ValueError(
+                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+            )
+        access_token_obj = azure_client.get_token(
+            *connection.authType.azureConfig.scopes.split(",")
+        )
+        connection.authType = BasicAuth(password=access_token_obj.token)
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,
@@ -36,8 +58,19 @@ def get_connection(connection: MysqlConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: MysqlConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    test_connection_db_common(engine)
+    test_connection_db_schema_sources(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+    )

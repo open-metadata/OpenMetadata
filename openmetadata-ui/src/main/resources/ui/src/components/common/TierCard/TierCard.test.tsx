@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, getByTestId, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import TierCard from './TierCard';
 
@@ -31,20 +31,27 @@ const mockTierData = [
   },
 ];
 
-jest.mock('rest/tagAPI', () => ({
-  getTags: jest.fn().mockResolvedValue({ data: mockTierData }),
+const mockGetTags = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve({ data: mockTierData }));
+const mockOnUpdate = jest.fn();
+const mockShowErrorToast = jest.fn();
+const mockProps = {
+  currentTier: 'currentTier',
+  updateTier: mockOnUpdate,
+  children: <div>Child</div>,
+};
+
+jest.mock('../../../rest/tagAPI', () => ({
+  getTags: jest.fn().mockImplementation(() => mockGetTags()),
 }));
 
-jest.mock('../../cardlist/CardListItem/CardWithListItem', () => ({
-  CardListItem: jest.fn().mockReturnValue(<div>CardListItem</div>),
-}));
-
-jest.mock('../../Loader/Loader', () => {
+jest.mock('../Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div>Loader</div>);
 });
 
 jest.mock('../../../utils/ToastUtils', () => {
-  return jest.fn().mockReturnValue(<div>showErrorToast</div>);
+  return jest.fn().mockImplementation(() => mockShowErrorToast());
 });
 
 // Mock Antd components
@@ -53,51 +60,70 @@ jest.mock('antd', () => ({
 
   Popover: jest
     .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="tier-card-container">{children}</div>
-    )),
+    .mockImplementation(({ content, onOpenChange, children }) => {
+      onOpenChange(true);
+
+      return (
+        <>
+          {content}
+          {children}
+        </>
+      );
+    }),
 }));
 
-const MockOnUpdate = jest.fn();
-const MockOnRemove = jest.fn();
+jest.mock('../RichTextEditor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
+});
 
 describe('Test TierCard Component', () => {
-  it('Component should render', () => {
-    const { container } = render(
-      <TierCard
-        hideTier
-        currentTier=""
-        removeTier={MockOnRemove}
-        updateTier={MockOnUpdate}
-      />
-    );
-
-    expect(getByTestId(container, 'tier-card-container')).toBeInTheDocument();
-  });
-
   it('Component should have card', async () => {
-    const { container } = render(
-      <TierCard
-        currentTier=""
-        hideTier={false}
-        removeTier={MockOnRemove}
-        updateTier={MockOnUpdate}
-      />
-    );
+    await act(async () => {
+      render(<TierCard {...mockProps} />);
+    });
 
-    expect(await findByTestId(container, 'cards')).toBeInTheDocument();
+    expect(mockGetTags).toHaveBeenCalled();
+
+    expect(await screen.findByTestId('cards')).toBeInTheDocument();
   });
 
-  it('Card should have Clear button if item selected', async () => {
-    const { container } = render(
-      <TierCard
-        currentTier="Tier.Tier1"
-        hideTier={false}
-        removeTier={MockOnRemove}
-        updateTier={MockOnUpdate}
-      />
-    );
+  it('should call the mockOnUpdate when click on radio button', async () => {
+    await act(async () => {
+      render(<TierCard {...mockProps} />);
+    });
 
-    expect(await findByTestId(container, 'remove-tier')).toBeInTheDocument();
+    const radioButton = await screen.findByTestId('radio-btn-Tier1');
+
+    expect(radioButton).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(radioButton);
+    });
+
+    expect(mockOnUpdate).toHaveBeenCalled();
+  });
+
+  it('should call the mockOnUpdate when click on Clear button', async () => {
+    await act(async () => {
+      render(<TierCard {...mockProps} />);
+    });
+
+    const clearTier = await screen.findByTestId('clear-tier');
+
+    expect(clearTier).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(clearTier);
+    });
+
+    expect(mockOnUpdate).toHaveBeenCalled();
+  });
+
+  it('should call getTags for popoverProps.open = true', async () => {
+    await act(async () => {
+      render(<TierCard {...mockProps} popoverProps={{ open: true }} />);
+    });
+
+    expect(mockGetTags).toHaveBeenCalled();
   });
 });

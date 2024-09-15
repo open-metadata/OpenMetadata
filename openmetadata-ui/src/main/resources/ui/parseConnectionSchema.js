@@ -15,6 +15,7 @@ const $RefParser = require('@apidevtools/json-schema-ref-parser');
 const path = require('path');
 const fs = require('fs');
 const fse = require('fs-extra');
+const process = require('process');
 
 const cwd = process.cwd();
 
@@ -34,15 +35,36 @@ const globalParserOptions = {
   },
 };
 
+const parser = new $RefParser(globalParserOptions);
+
+function removeObjectByKey(obj, keyToRemove) {
+  if (typeof (obj) == 'object') {
+    for (const prop in obj) {
+      if (prop === keyToRemove) {
+        // If the property key matches the key to remove, delete it
+        delete obj[prop];
+      } else {
+        // Recursively call the function on the property's value
+        obj[prop] = removeObjectByKey(obj[prop], keyToRemove);
+      }
+    }
+  }
+  return obj
+
+}
+
+
 async function parseSchema(filePath, destPath) {
   try {
     const fileDir = `${cwd}/${path.dirname(filePath)}`;
     const fileName = path.basename(filePath);
     process.chdir(fileDir);
-    const parser = new $RefParser(globalParserOptions);
-    const schema = await parser.parse(fileName);
+    const parsedSchema = await parser.parse(fileName);
+    const schema = await parser.dereference(parsedSchema);
     const api = await parser.bundle(schema);
     const dirname = `${cwd}/${path.dirname(destPath)}`;
+
+    const updatedAPIWithoutID = removeObjectByKey(api, '$id');
     if (!fs.existsSync(dirname)) {
       try {
         fs.mkdirSync(dirname, { recursive: true });
@@ -50,7 +72,7 @@ async function parseSchema(filePath, destPath) {
         console.log(err);
       }
     }
-    fs.writeFileSync(`${cwd}/${destPath}`, JSON.stringify(api, null, 2));
+    fs.writeFileSync(`${cwd}/${destPath}`, JSON.stringify(updatedAPIWithoutID, null, 2));
   } catch (err) {
     console.log(err);
   } finally {
