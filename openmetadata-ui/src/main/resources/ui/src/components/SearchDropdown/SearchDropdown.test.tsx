@@ -179,13 +179,12 @@ describe('Search DropDown Component', () => {
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
-    const searchInput = await screen.findByTestId('search-input');
-
     await act(async () => {
-      userEvent.type(searchInput, 'user');
+      const searchInput = await screen.findByTestId('search-input');
+      await userEvent.type(searchInput, 'user');
     });
 
-    expect(searchInput).toHaveValue('user');
+    expect(await screen.findByTestId('search-input')).toHaveValue('user');
 
     expect(mockOnSearch).toHaveBeenCalledWith('user', 'owner.displayName');
   });

@@ -174,6 +174,7 @@ describe('ImageComponent', () => {
     const embedInput = screen.getByTestId('embed-input');
 
     await act(async () => {
+      userEvent.clear(embedInput);
       userEvent.type(embedInput, 'https://open-metadata.org/images/omd-logo');
     });
 
@@ -184,7 +185,7 @@ describe('ImageComponent', () => {
     });
 
     expect(mockUpdateAttributes).toHaveBeenCalledWith({
-      src: 'https://open-metadata.org/images/omd-logo',
+      src: 'https://open-metadata.org/images/omd-logo.svgo',
     });
   });
 

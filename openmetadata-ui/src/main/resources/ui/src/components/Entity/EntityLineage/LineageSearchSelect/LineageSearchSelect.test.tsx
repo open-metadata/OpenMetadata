@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import * as React from 'react';
 import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -45,10 +46,6 @@ jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
   })),
 }));
 
-function toggleOpen(container: ReturnType<typeof render>['container']): void {
-  fireEvent.mouseDown(container.querySelector('.ant-select-selector'));
-}
-
 describe('LineageSearchSelect', () => {
   it('should render select with options', async () => {
     const { container } = render(<LineageSearchSelect />);
@@ -57,7 +54,8 @@ describe('LineageSearchSelect', () => {
     expect(selectElement).toBeInTheDocument();
 
     await act(async () => {
-      toggleOpen(container);
+      const selectElm = container.querySelector('.ant-select-selector');
+      selectElm && userEvent.click(selectElm);
     });
 
     const option1 = screen.getByTestId('option-test1');
@@ -72,7 +70,8 @@ describe('LineageSearchSelect', () => {
     expect(selectElement).toBeInTheDocument();
 
     await act(async () => {
-      toggleOpen(container);
+      const selectElm = container.querySelector('.ant-select-selector');
+      selectElm && userEvent.click(selectElm);
     });
 
     const option1 = screen.getByTestId('option-test1');
@@ -91,7 +90,8 @@ describe('LineageSearchSelect', () => {
     expect(selectElement).toBeInTheDocument();
 
     await act(async () => {
-      toggleOpen(container);
+      const selectElm = container.querySelector('.ant-select-selector');
+      selectElm && userEvent.click(selectElm);
     });
 
     const column = screen.getByTestId('option-column1');

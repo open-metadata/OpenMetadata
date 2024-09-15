@@ -57,7 +57,10 @@ describe('Test PropertyInput Component', () => {
     const saveBtn = await screen.findByTestId('save');
 
     expect(valueInput).toBeInTheDocument();
+    expect(valueInput).toHaveValue('yValue');
 
+    userEvent.clear(valueInput);
+    // type the new value
     userEvent.type(valueInput, input);
     userEvent.click(saveBtn);
 

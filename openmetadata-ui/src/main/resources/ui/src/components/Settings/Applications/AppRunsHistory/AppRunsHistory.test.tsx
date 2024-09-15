@@ -189,9 +189,13 @@ describe('AppRunsHistory component', () => {
 
   it('should fetch data based on startTs and endTs for external app onclick of NextPrevious', async () => {
     jest.useFakeTimers('modern').setSystemTime(new Date('2024-02-05'));
-
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
+      startTs: 'startDay',
+      endTs: new Date('2024-02-05').valueOf(),
+    });
 
     userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
@@ -199,10 +203,8 @@ describe('AppRunsHistory component', () => {
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
-      endTs: Date.now(),
+      endTs: new Date('2024-02-05').valueOf(),
     });
-
-    jest.useRealTimers();
   });
 
   it('should expose children method to parent using ref', async () => {

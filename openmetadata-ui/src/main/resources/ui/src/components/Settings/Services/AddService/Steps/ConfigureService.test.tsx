@@ -52,17 +52,17 @@ describe('Test ConfigureService component', () => {
   });
 
   it('Next button should work', async () => {
-    render(<ConfigureService {...mockConfigureServiceProps} />);
-    const serviceName = screen.getByTestId('service-name');
-    const nextButton = screen.getByTestId('next-button');
-
-    userEvent.type(serviceName, 'newName');
-
     await act(async () => {
-      userEvent.click(nextButton);
+      render(<ConfigureService {...mockConfigureServiceProps} />);
     });
 
-    expect(serviceName).toHaveValue('newName');
+    userEvent.clear(await screen.findByTestId('service-name'));
+    await act(async () => {
+      userEvent.type(await screen.findByTestId('service-name'), 'newName');
+    });
+    userEvent.click(await screen.findByTestId('next-button'));
+
+    expect(await screen.findByTestId('service-name')).toHaveValue('newName');
 
     expect(mockConfigureServiceProps.onNext).toHaveBeenCalled();
     expect(mockConfigureServiceProps.onNext).toHaveBeenCalledWith({
