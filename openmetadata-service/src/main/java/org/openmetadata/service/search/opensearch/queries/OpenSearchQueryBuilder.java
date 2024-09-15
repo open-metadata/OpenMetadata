@@ -8,7 +8,6 @@ import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
 
 public class OpenSearchQueryBuilder implements OMQueryBuilder {
-  private boolean isMustNot = false;
   private QueryBuilder query;
 
   public OpenSearchQueryBuilder() {
@@ -26,9 +25,7 @@ public class OpenSearchQueryBuilder implements OMQueryBuilder {
 
   @Override
   public boolean isMatchNone() {
-    // Check if the query is a bool query with must_not match_all
-    if (query instanceof BoolQueryBuilder) {
-      BoolQueryBuilder boolQuery = (BoolQueryBuilder) query;
+    if (query instanceof BoolQueryBuilder boolQuery) {
       return boolQuery.must().isEmpty()
           && boolQuery.should().isEmpty()
           && boolQuery.mustNot().size() == 1
@@ -87,8 +84,7 @@ public class OpenSearchQueryBuilder implements OMQueryBuilder {
 
   @Override
   public boolean hasClauses() {
-    if (query instanceof BoolQueryBuilder) {
-      BoolQueryBuilder boolQuery = (BoolQueryBuilder) query;
+    if (query instanceof BoolQueryBuilder boolQuery) {
       return !boolQuery.must().isEmpty()
           || !boolQuery.should().isEmpty()
           || !boolQuery.mustNot().isEmpty();

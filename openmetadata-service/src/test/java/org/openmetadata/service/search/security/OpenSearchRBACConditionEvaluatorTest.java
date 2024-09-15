@@ -28,11 +28,10 @@ class OpenSearchRBACConditionEvaluatorTest {
   private RBACConditionEvaluator evaluator;
   private User mockUser;
   private SubjectContext mockSubjectContext;
-  private QueryBuilderFactory queryBuilderFactory;
 
   @BeforeEach
   public void setUp() {
-    queryBuilderFactory = new OpenSearchQueryBuilderFactory();
+    QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     evaluator = new RBACConditionEvaluator(queryBuilderFactory);
   }
 

@@ -8,15 +8,10 @@ import java.util.List;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 
 public class ElasticQueryBuilder implements OMQueryBuilder {
-  private boolean isMustNot = false;
   private QueryBuilder query;
 
   public ElasticQueryBuilder() {
     // Default constructor
-  }
-
-  public ElasticQueryBuilder(QueryBuilder query) {
-    this.query = query;
   }
 
   @Override
@@ -27,8 +22,7 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
   @Override
   public boolean isMatchNone() {
     // Check if the query is a bool query with must_not match_all
-    if (query instanceof BoolQueryBuilder) {
-      BoolQueryBuilder boolQuery = (BoolQueryBuilder) query;
+    if (query instanceof BoolQueryBuilder boolQuery) {
       return boolQuery.must().isEmpty()
           && boolQuery.should().isEmpty()
           && boolQuery.mustNot().size() == 1
@@ -87,8 +81,7 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
 
   @Override
   public boolean hasClauses() {
-    if (query instanceof BoolQueryBuilder) {
-      BoolQueryBuilder boolQuery = (BoolQueryBuilder) query;
+    if (query instanceof BoolQueryBuilder boolQuery) {
       return !boolQuery.must().isEmpty()
           || !boolQuery.should().isEmpty()
           || !boolQuery.mustNot().isEmpty();

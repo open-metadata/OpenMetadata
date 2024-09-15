@@ -30,7 +30,6 @@ import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
   ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
-
   String UPDATE = "update";
 
   String ADD = "add";

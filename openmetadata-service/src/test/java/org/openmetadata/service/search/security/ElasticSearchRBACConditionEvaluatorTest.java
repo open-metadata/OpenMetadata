@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.security;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -13,14 +14,20 @@ import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import es.org.elasticsearch.index.query.QueryBuilder;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
@@ -28,20 +35,34 @@ import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
+@Execution(ExecutionMode.CONCURRENT)
 class ElasticSearchRBACConditionEvaluatorTest {
 
   private RBACConditionEvaluator evaluator;
   private User mockUser;
   private SubjectContext mockSubjectContext;
-  private QueryBuilderFactory queryBuilderFactory;
 
   @BeforeEach
   public void setUp() {
-    queryBuilderFactory = new ElasticQueryBuilderFactory();
+    QueryBuilderFactory queryBuilderFactory = new ElasticQueryBuilderFactory();
     evaluator = new RBACConditionEvaluator(queryBuilderFactory);
+    SearchRepository mockSearchRepository = mock(SearchRepository.class);
+    when(mockSearchRepository.getIndexOrAliasName(anyString()))
+        .thenAnswer(
+            invocation -> {
+              String resource = invocation.getArgument(0);
+              return resource.toLowerCase();
+            });
+    Entity.setSearchRepository(mockSearchRepository);
   }
 
-  private void setupMockPolicies(String expression, String effect) {
+  @AfterEach
+  public void tearDown() {
+    Entity.setSearchRepository(null);
+  }
+
+  private void setupMockPolicies(
+      List<String> expressions, String effect, List<List<String>> resourcesList) {
     // Mock the user
     mockUser = mock(User.class);
     EntityReference mockUserReference = mock(EntityReference.class);
@@ -50,25 +71,40 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
     when(mockUser.getName()).thenReturn("testUser");
 
-    // Mock the policy context and rules
+    // Mock the policy context
     SubjectContext.PolicyContext mockPolicyContext = mock(SubjectContext.PolicyContext.class);
     when(mockPolicyContext.getPolicyName()).thenReturn("TestPolicy");
 
-    CompiledRule mockRule = mock(CompiledRule.class);
-    when(mockRule.getOperations())
-        .thenReturn(List.of(MetadataOperation.VIEW_BASIC)); // Mock operation
-    when(mockRule.getCondition()).thenReturn(expression);
+    // Create a list of mock rules
+    List<CompiledRule> mockRules = new ArrayList<>();
+    for (int i = 0; i < expressions.size(); i++) {
+      CompiledRule mockRule = mock(CompiledRule.class);
+      when(mockRule.getOperations()).thenReturn(List.of(MetadataOperation.VIEW_BASIC));
+      when(mockRule.getCondition()).thenReturn(expressions.get(i));
 
-    // Mock the effect of the rule (ALLOW/DENY)
-    CompiledRule.Effect mockEffect = CompiledRule.Effect.valueOf(effect.toUpperCase());
-    when(mockRule.getEffect()).thenReturn(mockEffect);
+      // Use resources from the corresponding index in resourcesList
+      List<String> resources = (resourcesList.size() > i) ? resourcesList.get(i) : List.of("All");
+      when(mockRule.getResources()).thenReturn(resources);
 
-    when(mockPolicyContext.getRules()).thenReturn(List.of(mockRule));
+      CompiledRule.Effect mockEffect = CompiledRule.Effect.valueOf(effect.toUpperCase());
+      when(mockRule.getEffect()).thenReturn(mockEffect);
+      mockRules.add(mockRule);
+    }
+
+    when(mockPolicyContext.getRules()).thenReturn(mockRules);
 
     // Mock the subject context with this policy
     mockSubjectContext = mock(SubjectContext.class);
     when(mockSubjectContext.getPolicies(any())).thenReturn(List.of(mockPolicyContext).iterator());
     when(mockSubjectContext.user()).thenReturn(mockUser);
+  }
+
+  private void setupMockPolicies(String expression, String effect, List<String> resources) {
+    setupMockPolicies(List.of(expression), effect, List.of(resources));
+  }
+
+  private void setupMockPolicies(String expression, String effect) {
+    setupMockPolicies(expression, effect, List.of("All"));
   }
 
   @Test
@@ -187,8 +223,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     JsonNode rootNode = objectMapper.readTree(generatedQuery);
     AtomicInteger boolQueryCount = new AtomicInteger(0);
     countBoolQueries(rootNode, boolQueryCount);
-    assertTrue(
-        boolQueryCount.get() == 6, "There should be no more than 5 'bool' clauses in the query.");
+    assertEquals(
+        6, boolQueryCount.get(), "There should be no more than 5 'bool' clauses in the query.");
   }
 
   @Test
@@ -716,5 +752,233 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.should[?(@.term['owner.id'].value=='" + mockUser.getId().toString() + "')]",
         "owner.id");
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
+  }
+
+  @Test
+  void testIndexFilteringBasedOnResource() throws IOException {
+    // Assume the rule applies to 'Table' resource
+    setupMockPolicies("hasAnyRole('Admin') && matchAnyTag('Sensitive')", "ALLOW", List.of("Table"));
+
+    // Mock user roles
+    EntityReference role = new EntityReference();
+    role.setName("Admin");
+    when(mockUser.getRoles()).thenReturn(List.of(role));
+
+    // Evaluate condition and build query
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // Assert that the query contains the appropriate index (e.g., 'table_search_index')
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[?(@.terms._index && @.terms._index[?(@ == 'table')])]",
+        "Index filtering for 'Table' resource");
+    // Assert that the query contains 'tags.tagFQN' for 'Sensitive' tag
+    assertFieldExists(
+        jsonContext, "$.bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
+  }
+
+  @Test
+  void testComplexConditionWithIndexFiltering() throws IOException {
+    // Assume the rule applies to 'Database' and 'Table' resources
+    setupMockPolicies(
+        "hasDomain() && matchAnyTag('Sensitive')", "ALLOW", List.of("Database", "Table"));
+
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Technology");
+    when(mockUser.getDomain()).thenReturn(domain);
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // Assert that the query contains the appropriate indices for 'Database' and 'Table'
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[?(@.terms._index && @.terms._index[?(@ == 'database')])]",
+        "Index filtering for 'Database' resource");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[?(@.terms._index && @.terms._index[?(@ == 'table')])]",
+        "Index filtering for 'Table' resource");
+
+    // Assert that the query contains 'tags.tagFQN' for 'Sensitive' tag
+    assertFieldExists(
+        jsonContext, "$.bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[?(@.term['domain.id'].value=='" + domain.getId().toString() + "')]",
+        "domain.id");
+  }
+
+  @Test
+  void testMultipleRulesInPolicy() throws IOException {
+    // Set up policies with multiple rules
+    setupMockPolicies(
+        List.of(
+            "hasAnyRole('Admin') && matchAnyTag('Sensitive')",
+            "inAnyTeam('Engineering') && matchAllTags('Confidential', 'Internal')"),
+        "ALLOW",
+        List.of(List.of("Table"), List.of("Dashboard")));
+
+    // Mock user roles and teams
+    EntityReference role = new EntityReference();
+    role.setName("Admin");
+    when(mockUser.getRoles()).thenReturn(List.of(role));
+
+    EntityReference team = new EntityReference();
+    team.setId(UUID.randomUUID());
+    team.setName("Engineering");
+    when(mockUser.getTeams()).thenReturn(List.of(team));
+
+    // Evaluate conditions
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    // Assertions
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // Check for the "Table" index condition
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[0].bool.must[?(@.terms._index && @.terms._index[?(@ == 'table')])]",
+        "Index filtering for 'Table' resource");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[0].bool.must[?(@.match_all)]",
+        "match_all for hasAnyRole 'Admin'");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[0].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "Sensitive tag");
+
+    // Check for the "Dashboard" index condition
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[1].bool.must[?(@.terms._index && @.terms._index[?(@ == 'database')])]",
+        "Index filtering for 'Database' resource");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[1].bool.must[?(@.match_all)]",
+        "match_all for inAnyTeam 'Engineering'");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[1].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "Confidential tag");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[1].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
+        "Internal tag");
+  }
+
+  @Test
+  void testMultiplePoliciesInRole() throws IOException {
+    // Mock multiple policies in a single role
+    setupMockPolicies(
+        List.of("hasDomain() && matchAnyTag('Public')", "!inAnyTeam('HR') || isOwner()"),
+        "ALLOW",
+        List.of(List.of("Table"), List.of("Dashboard")));
+
+    // Mock user roles
+    EntityReference role = new EntityReference();
+    role.setName("DataSteward");
+    when(mockUser.getRoles()).thenReturn(List.of(role));
+
+    // Mock user teams
+    EntityReference team = new EntityReference();
+    team.setId(UUID.randomUUID());
+    team.setName("Finance");
+    when(mockUser.getTeams()).thenReturn(List.of(team));
+
+    // Mock user domain
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    when(mockUser.getDomain()).thenReturn(domain);
+
+    // Mock user ownership
+    when(mockUser.getId()).thenReturn(UUID.randomUUID());
+
+    // Evaluate the condition
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // Assertions
+    // Check for domain filtering in the "Table" index clause
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[0].bool.must[?(@.term['domain.id'].value=='"
+            + domain.getId().toString()
+            + "')]",
+        "user's domain ID");
+
+    // Check for the matchAnyTag clause for Public tag in the "Table" index clause
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[0].bool.should[?(@.term['tags.tagFQN'].value=='Public')]",
+        "Public tag");
+  }
+
+  @Test
+  void testRoleAndPolicyInheritanceFromTeams() throws IOException {
+    // Mock policies inherited through team hierarchy
+    setupMockPolicies(
+        List.of(
+            "hasAnyRole('Manager') && hasDomain()",
+            "inAnyTeam('Engineering') && matchAnyTag('Critical')"),
+        "ALLOW",
+        List.of(List.of("All"), List.of("All")));
+
+    // Mock user teams with inherited roles
+    EntityReference team = new EntityReference();
+    team.setId(UUID.randomUUID());
+    team.setName("Engineering");
+    when(mockUser.getTeams()).thenReturn(List.of(team));
+
+    EntityReference inheritedRole = new EntityReference();
+    inheritedRole.setName("Manager");
+    when(mockUser.getRoles())
+        .thenReturn(List.of(inheritedRole)); // User inherits the 'Manager' role
+
+    // Mock user domain
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Operations");
+    when(mockUser.getDomain()).thenReturn(domain);
+
+    // Evaluate the condition
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // Assertions
+    // Adjust the assertion for the hasDomain clause
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[0].bool.must[?(@.term['domain.id'].value=='"
+            + domain.getId().toString()
+            + "')]",
+        "user's domain ID");
+
+    // Check for the inAnyTeam('Engineering') clause
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[1].bool.must[?(@.match_all)]",
+        "match_all for inAnyTeam 'Engineering'");
+
+    // Check for the matchAnyTag clause for Critical tag
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Critical')]",
+        "Critical tag");
   }
 }

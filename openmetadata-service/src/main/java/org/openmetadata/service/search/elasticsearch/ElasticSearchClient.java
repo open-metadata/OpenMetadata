@@ -65,9 +65,11 @@ import es.org.elasticsearch.common.settings.Settings;
 import es.org.elasticsearch.common.unit.Fuzziness;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
+import es.org.elasticsearch.index.query.BoolQueryBuilder;
 import es.org.elasticsearch.index.query.MatchQueryBuilder;
 import es.org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import es.org.elasticsearch.index.query.Operator;
+import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
@@ -170,6 +172,8 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
@@ -189,19 +193,22 @@ import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
-// Not tagged with Repository annotation as it is programmatically initialized
 public class ElasticSearchClient implements SearchClient {
 
   @SuppressWarnings("deprecated")
   protected final RestHighLevelClient client;
 
-  // private final RBACConditionEvaluator rbacConditionEvaluator;
+  private final RBACConditionEvaluator rbacConditionEvaluator;
+  private final QueryBuilderFactory queryBuilderFactory;
 
   private final boolean isClientAvailable;
   public static final NamedXContentRegistry xContentRegistry;
@@ -229,7 +236,8 @@ public class ElasticSearchClient implements SearchClient {
     client = createElasticSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
-    // rbacConditionEvaluator = new RBACConditionEvaluator();
+    queryBuilderFactory = new ElasticQueryBuilderFactory();
+    rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
   }
 
   @Override
@@ -262,7 +270,6 @@ public class ElasticSearchClient implements SearchClient {
             "{} Created {}",
             indexMapping.getIndexName(clusterAlias),
             createIndexResponse.isAcknowledged());
-        // creating alias for indexes
         createAliases(indexMapping);
       } catch (Exception e) {
         LOG.error(
@@ -359,9 +366,8 @@ public class ElasticSearchClient implements SearchClient {
                 .xContent()
                 .createParser(
                     xContentRegistry, LoggingDeprecationHandler.INSTANCE, request.getQueryFilter());
-        es.org.elasticsearch.index.query.QueryBuilder filter =
-            SearchSourceBuilder.fromXContent(filterParser).query();
-        es.org.elasticsearch.index.query.BoolQueryBuilder newQuery =
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        BoolQueryBuilder newQuery =
             QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
         searchSourceBuilder.query(newQuery);
       } catch (Exception ex) {
@@ -376,8 +382,7 @@ public class ElasticSearchClient implements SearchClient {
                 .xContent()
                 .createParser(
                     xContentRegistry, LoggingDeprecationHandler.INSTANCE, request.getPostFilter());
-        es.org.elasticsearch.index.query.QueryBuilder filter =
-            SearchSourceBuilder.fromXContent(filterParser).query();
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
         searchSourceBuilder.postFilter(filter);
       } catch (Exception ex) {
         LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
@@ -461,10 +466,7 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
 
       if (request.isGetHierarchy()) {
-        /*
-        Search for user input terms in name, fullyQualifiedName, displayName and glossary.fullyQualifiedName, glossary.displayName
-        */
-        es.org.elasticsearch.index.query.QueryBuilder baseQuery =
+        QueryBuilder baseQuery =
             QueryBuilders.boolQuery()
                 .should(searchSourceBuilder.query())
                 .should(QueryBuilders.matchPhraseQuery("fullyQualifiedName", request.getQuery()))
@@ -485,8 +487,7 @@ public class ElasticSearchClient implements SearchClient {
                 RequestOptions.DEFAULT);
 
         // Extract parent terms from aggregation
-        es.org.elasticsearch.index.query.BoolQueryBuilder parentTermQueryBuilder =
-            QueryBuilders.boolQuery();
+        BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
         Terms parentTerms = searchResponse.getAggregations().get("fqnParts_agg");
 
         // Build  es query to get parent terms for the user input query , to build correct hierarchy
@@ -525,17 +526,7 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    if (subjectContext != null && !subjectContext.isAdmin()) {
-      // Evaluate RBAC conditions
-      /*OMQueryBuilder rbacQuery =
-          rbacConditionEvaluator.evaluateConditions(subjectContext);
-      if (rbacQuery != null) {
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery()
-                .must(searchSourceBuilder.query())
-                .filter((QueryBuilder) rbacQuery.build()));
-      }*/
-    }
+    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
     try {
 
@@ -828,8 +819,8 @@ public class ElasticSearchClient implements SearchClient {
       tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
       nodes.add(tempMap);
       for (Map<String, Object> lin : lineage) {
-        HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
-        HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
+        Map<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
+        Map<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
         if (direction.equalsIgnoreCase("lineage.fromEntity.fqnHash.keyword")) {
           if (!edges.contains(lin) && fromEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
@@ -2327,5 +2318,18 @@ public class ElasticSearchClient implements SearchClient {
 
   public Object getLowLevelClient() {
     return client.getLowLevelClient();
+  }
+
+  private void buildSearchRBACQuery(
+      SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
+    if (subjectContext != null && !subjectContext.isAdmin()) {
+      if (rbacConditionEvaluator != null) {
+        OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .filter(((ElasticQueryBuilder) rbacQuery).build()));
+      }
+    }
   }
 }

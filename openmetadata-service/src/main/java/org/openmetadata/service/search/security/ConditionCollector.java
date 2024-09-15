@@ -8,7 +8,6 @@ import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 
 public class ConditionCollector {
-
   private final QueryBuilderFactory queryBuilderFactory;
   private final List<OMQueryBuilder> mustQueries = new ArrayList<>();
   private final List<OMQueryBuilder> mustNotQueries = new ArrayList<>();

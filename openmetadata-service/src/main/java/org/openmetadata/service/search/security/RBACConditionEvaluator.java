@@ -1,8 +1,10 @@
 package org.openmetadata.service.search.security;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
@@ -38,18 +40,21 @@ public class RBACConditionEvaluator {
         it.hasNext(); ) {
       SubjectContext.PolicyContext context = it.next();
       for (CompiledRule rule : context.getRules()) {
-        if (rule.getCondition() != null && rule.getEffect().toString().equalsIgnoreCase("DENY")) {
+        if (rule.getCondition() != null) {
           ConditionCollector ruleCollector = new ConditionCollector(queryBuilderFactory);
+          if (!rule.getResources().isEmpty() && !rule.getResources().contains("All")) {
+            OMQueryBuilder indexFilter = getIndexFilter(rule.getResources());
+            ruleCollector.addMust(indexFilter);
+          }
           SpelExpression parsedExpression =
               (SpelExpression) spelParser.parseExpression(rule.getCondition());
           preprocessExpression(parsedExpression.getAST(), ruleCollector);
-          collector.addMustNot(ruleCollector.buildFinalQuery());
-        } else if (rule.getCondition() != null) {
-          ConditionCollector ruleCollector = new ConditionCollector(queryBuilderFactory);
-          SpelExpression parsedExpression =
-              (SpelExpression) spelParser.parseExpression(rule.getCondition());
-          preprocessExpression(parsedExpression.getAST(), ruleCollector);
-          collector.addMust(ruleCollector.buildFinalQuery());
+          OMQueryBuilder ruleQuery = ruleCollector.buildFinalQuery();
+          if (rule.getEffect().toString().equalsIgnoreCase("DENY")) {
+            collector.addMustNot(ruleQuery);
+          } else {
+            collector.addMust(ruleQuery);
+          }
         }
       }
     }
@@ -129,24 +134,26 @@ public class RBACConditionEvaluator {
     MethodReference methodRef = (MethodReference) node;
     String methodName = methodRef.getName();
 
-    if (methodName.equals("matchAnyTag")) {
-      List<String> tags = extractMethodArguments(methodRef);
-      matchAnyTag(tags, collector);
-    } else if (methodName.equals("matchAllTags")) {
-      List<String> tags = extractMethodArguments(methodRef);
-      matchAllTags(tags, collector);
-    } else if (methodName.equals("isOwner")) {
-      isOwner((User) spelContext.lookupVariable("user"), collector);
-    } else if (methodName.equals("noOwner")) {
-      noOwner(collector);
-    } else if (methodName.equals("hasAnyRole")) {
-      List<String> roles = extractMethodArguments(methodRef);
-      hasAnyRole(roles, collector);
-    } else if (methodName.equals("hasDomain")) {
-      hasDomain(collector);
-    } else if (methodName.equals("inAnyTeam")) {
-      List<String> teams = extractMethodArguments(methodRef);
-      inAnyTeam(teams, collector);
+    switch (methodName) {
+      case "matchAnyTag" -> {
+        List<String> tags = extractMethodArguments(methodRef);
+        matchAnyTag(tags, collector);
+      }
+      case "matchAllTags" -> {
+        List<String> tags = extractMethodArguments(methodRef);
+        matchAllTags(tags, collector);
+      }
+      case "isOwner" -> isOwner((User) spelContext.lookupVariable("user"), collector);
+      case "noOwner" -> noOwner(collector);
+      case "hasAnyRole" -> {
+        List<String> roles = extractMethodArguments(methodRef);
+        hasAnyRole(roles, collector);
+      }
+      case "hasDomain" -> hasDomain(collector);
+      case "inAnyTeam" -> {
+        List<String> teams = extractMethodArguments(methodRef);
+        inAnyTeam(teams, collector);
+      }
     }
   }
 
@@ -236,5 +243,14 @@ public class RBACConditionEvaluator {
     } else {
       collector.setMatchNothing(true);
     }
+  }
+
+  private OMQueryBuilder getIndexFilter(List<String> resources) {
+    List<String> indices =
+        resources.stream()
+            .map(resource -> Entity.getSearchRepository().getIndexOrAliasName(resource))
+            .collect(Collectors.toList());
+
+    return queryBuilderFactory.termsQuery("_index", indices);
   }
 }
