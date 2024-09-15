@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitForElement } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Query } from '../../../../generated/entity/data/query';
@@ -104,8 +104,10 @@ describe('QueryUsedByOtherTable test', () => {
     render(<QueryUsedByOtherTable {...mockProps} isEditMode />, {
       wrapper: MemoryRouter,
     });
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+
     const selectField = await screen.findByText('AsyncSelect.component');
-    waitForElement(async () => expect(await screen.findByText('Loader')));
 
     expect(selectField).toBeInTheDocument();
   });
