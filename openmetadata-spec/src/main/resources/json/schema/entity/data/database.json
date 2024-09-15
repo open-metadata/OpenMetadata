@@ -146,6 +146,9 @@
           "default": 50,
           "title": "Sample Data Rows Count"
         },
+        "samplingMethodType": {
+          "$ref": "./table.json#/definitions/samplingMethodType"
+        },
         "sampleDataStorageConfig": {
           "title": "Storage Config for Sample Data",
           "$ref": "../services/connections/connectionBasicType.json#/definitions/sampleDataStorageConfig"
