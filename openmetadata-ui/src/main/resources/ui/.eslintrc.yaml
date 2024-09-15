@@ -22,12 +22,10 @@ extends:
   - plugin:jest/recommended
   - plugin:jest/style
   - plugin:jest-formatting/recommended
-  - plugin:cypress/recommended
   - plugin:@typescript-eslint/recommended
   - plugin:prettier/recommended
   - prettier
   - plugin:i18next/recommended
-  - 'plugin:cypress/recommended'
 
 parser: '@typescript-eslint/parser'
 
@@ -45,7 +43,6 @@ plugins:
   - jest-formatting
   - '@typescript-eslint'
   - i18next
-  - 'cypress'
 
 rules:
   # ESLint rules
@@ -195,13 +192,6 @@ rules:
 
   # i18next rules
 
-  # Cypress rules
-
-  cypress/no-unnecessary-waiting: warn
-  '@typescript-eslint/no-namespace': off
-
-  # Cypress rules
-
 overrides:
   # eslint-plugin-jsonc requires its own parser
   - files:
@@ -231,19 +221,6 @@ overrides:
     rules:
       jsonc/sort-keys:
         - error
-
-  # Explicit assertions not required in most Cypress tests
-  - files:
-      - cypress/**
-    rules:
-      jest/expect-expect:
-        - off
-      jest/valid-expect-in-promise:
-        - off
-      jest/valid-expect:
-        - off
-      jest/valid-describe:
-        - off
 
   # Explicit assertions not required in most Playwright tests
   - files:
@@ -283,9 +260,6 @@ overrides:
     rules:
       i18next/no-literal-string:
         - off
-
-globals:
-  cypress: true
 
 settings:
   import/resolver:
