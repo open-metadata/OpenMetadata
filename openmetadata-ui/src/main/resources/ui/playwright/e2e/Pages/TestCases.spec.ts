@@ -63,8 +63,16 @@ test('Table difference test case', async ({ page }) => {
       // The 'networkidle' parameter tells Playwright to wait until there are no network connections
       // for at least 500 ms.
       await page.waitForLoadState('networkidle');
+
+      await expect(
+        page
+          .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
+          .locator('div')
+      ).toBeVisible();
+
       await page
         .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
+        .locator('div')
         .click();
 
       await page.fill(`#tableTestForm_params_keyColumns_0_value`, 'user_id');
