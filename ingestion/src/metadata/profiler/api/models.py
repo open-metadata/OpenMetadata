@@ -15,6 +15,7 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
+
 from typing import List, Optional, Type, Union
 
 from pydantic import ConfigDict
@@ -29,6 +30,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     PartitionProfilerConfig,
     ProfileSampleType,
+    SamplingMethodType,
     Table,
     TableData,
 )
@@ -56,6 +58,7 @@ class BaseProfileConfig(ConfigModel):
     fullyQualifiedName: FullyQualifiedEntityName
     profileSample: Optional[Union[float, int]] = None
     profileSampleType: Optional[ProfileSampleType] = None
+    samplingMethodType: Optional[SamplingMethodType] = None
     sampleDataCount: Optional[int] = 100
 
 
@@ -75,6 +78,7 @@ class TableConfig(BaseProfileConfig):
             profileSample=config.profileSample,
             profileSampleType=config.profileSampleType,
             sampleDataCount=config.sampleDataCount,
+            samplingMethodType=config.samplingMethodType,
         )
         return table_config
 
@@ -90,6 +94,7 @@ class ProfileSampleConfig(ConfigModel):
 
     profile_sample: Optional[Union[float, int]] = None
     profile_sample_type: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
+    sampling_method_type: Optional[SamplingMethodType] = None
 
 
 class ProfilerProcessorConfig(ConfigModel):

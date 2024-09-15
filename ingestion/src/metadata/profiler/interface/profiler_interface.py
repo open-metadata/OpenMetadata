@@ -248,7 +248,7 @@ class ProfilerInterface(ABC):
             DatabaseSchemaProfilerConfig,
             DatabaseProfilerConfig,
             DatabaseAndSchemaConfig,
-        ]
+        ],
     ) -> Optional[DataStorageConfig]:
         if (
             config
@@ -329,6 +329,7 @@ class ProfilerInterface(ABC):
                     return ProfileSampleConfig(
                         profile_sample=config.profileSample,
                         profile_sample_type=config.profileSampleType,
+                        sampling_method_type=config.samplingMethodType,
                     )
             except AttributeError:
                 pass

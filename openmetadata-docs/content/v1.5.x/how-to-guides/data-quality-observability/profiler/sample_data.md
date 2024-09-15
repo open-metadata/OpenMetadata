@@ -89,6 +89,13 @@ The OpenMetadata UI will always show 50 or fewer rows of sample data. *Sample Da
 
 {% /note %}
 
+- **Sampling Method Type**: The sampling method type can be set to **BERNOULLI** or **SYSTEM**. You can find the difference of two values in the document of the Snowflake. When you choice **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restlictions than **SYSTEM**. If no option is choiced, the default is **BERNOULLI**.
+
+{% note %}
+
+This parameter is effective for Snowflake only. 
+
+{% /note %}
 
 - **Bucket Name**: A bucket name is a unique identifier used to organize and store data objects. It's similar to a folder name, but it's used for object storage rather than file storage.
 - **Prefix**: The prefix of a data source refers to the first part of the data path that identifies the source or origin of the data. The generated sample data parquet file will be uploaded to this prefix path in your bucket.
