@@ -38,7 +38,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import {
   DEFAULT_DOMAIN_VALUE,
   ES_MAX_PAGE_SIZE,
@@ -55,6 +55,7 @@ import {
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import axiosClient from '../../../rest';
 import { getDomainList } from '../../../rest/domainAPI';
@@ -63,6 +64,7 @@ import {
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
 import { getLoggedInUser, updateUserDetail } from '../../../rest/userAPI';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
   getAuthConfig,
@@ -71,6 +73,7 @@ import {
   isProtectedRoute,
   prepareUserProfileFromClaims,
 } from '../../../utils/AuthProvider.util';
+import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import {
@@ -138,8 +141,9 @@ export const AuthProvider = ({
     setApplicationLoading,
   } = useApplicationStore();
   const { updateDomains, updateDomainLoading } = useDomainStore();
+  const tokenService = useRef<TokenService>();
 
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const { t } = useTranslation();
 
@@ -181,9 +185,13 @@ export const AuthProvider = ({
     setApplicationLoading(false);
   }, [timeoutId]);
 
-  const onRenewIdTokenHandler = () => {
-    return authenticatorRef.current?.renewIdToken();
-  };
+  useEffect(() => {
+    if (authenticatorRef.current?.renewIdToken) {
+      tokenService.current = new TokenService(
+        authenticatorRef.current?.renewIdToken
+      );
+    }
+  }, [authenticatorRef.current?.renewIdToken]);
 
   const fetchDomainList = useCallback(async () => {
     try {
@@ -290,8 +298,20 @@ export const AuthProvider = ({
    */
   const renewIdToken = async () => {
     try {
-      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
+      if (!tokenService.current?.isTokenUpdateInProgress()) {
+        await tokenService.current?.refreshToken();
+      } else {
+        // wait for renewal to complete
+        const wait = new Promise((resolve) => {
+          setTimeout(() => {
+            return resolve(true);
+          }, 500);
+        });
+        await wait;
+
+        // should have updated token after renewal
+        return getOidcToken();
+      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(
@@ -310,7 +330,7 @@ export const AuthProvider = ({
    * if it's not succeed then it will proceed for logout
    */
   const trySilentSignIn = async (forceLogout?: boolean) => {
-    const pathName = window.location.pathname;
+    const pathName = getPathNameFromWindowLocation();
     // Do not try silent sign in for SignIn or SignUp route
     if (
       [ROUTES.SIGNIN, ROUTES.SIGNUP, ROUTES.SILENT_CALLBACK].includes(pathName)
@@ -351,8 +371,7 @@ export const AuthProvider = ({
   const startTokenExpiryTimer = () => {
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken(
-      getOidcToken(),
-      clientType
+      getOidcToken()
     );
     const refreshToken = getRefreshToken();
 
@@ -494,7 +513,7 @@ export const AuthProvider = ({
     const isGetRequest = config.method === 'get';
     const activeDomain = useDomainStore.getState().activeDomain;
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-    const currentPath = window.location.pathname;
+    const currentPath = getPathNameFromWindowLocation();
     const shouldNotIntercept = [
       '/domain',
       '/auth/logout',

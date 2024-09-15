@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
@@ -86,6 +87,30 @@ export class DashboardClass extends EntityClass {
     };
   }
 
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/dashboards/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.entityResponseData = await response.json();
+
+    return {
+      entity: this.entityResponseData,
+    };
+  }
+
   async get() {
     return {
       service: this.serviceResponseData,
@@ -102,15 +127,15 @@ export class DashboardClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
-      `/api/v1/services/dashboardServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
-    );
-
     const chartResponse = await apiContext.delete(
       `/api/v1/charts/name/${encodeURIComponent(
         this.chartsResponseData?.['fullyQualifiedName']
+      )}?recursive=true&hardDelete=true`
+    );
+
+    const serviceResponse = await apiContext.delete(
+      `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+        this.serviceResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
     );
 

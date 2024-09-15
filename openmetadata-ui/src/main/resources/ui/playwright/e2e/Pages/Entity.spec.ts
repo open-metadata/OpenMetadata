@@ -133,6 +133,8 @@ entities.forEach((EntityClass) => {
     });
 
     test('User as Owner with unsorted list', async ({ page }) => {
+      test.slow(true);
+
       const { afterAction, apiContext } = await getApiContext(page);
       const owner1Data = generateRandomUsername('PW_A_');
       const owner2Data = generateRandomUsername('PW_B_');

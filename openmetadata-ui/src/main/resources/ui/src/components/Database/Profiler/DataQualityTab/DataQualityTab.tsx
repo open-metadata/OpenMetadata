@@ -436,10 +436,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   <Transi18next
                     i18nKey="message.no-data-quality-test-case"
                     renderElement={
-                      <Link
+                      <a
+                        href={DATA_QUALITY_PROFILER_DOCS}
                         rel="noreferrer"
                         target="_blank"
-                        to={{ pathname: DATA_QUALITY_PROFILER_DOCS }}
+                        title="Data Quality Profiler Documentation"
                       />
                     }
                     values={{

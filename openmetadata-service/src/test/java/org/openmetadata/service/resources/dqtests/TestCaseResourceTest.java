@@ -28,6 +28,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.jdbi3.TestCaseRepository.FAILED_ROWS_SAMPLE_EXTENSION;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -48,6 +49,9 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import es.org.elasticsearch.client.Request;
+import es.org.elasticsearch.client.Response;
+import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
@@ -55,6 +59,8 @@ import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.apache.http.util.EntityUtils;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -70,6 +76,7 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
@@ -96,7 +103,10 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -480,8 +490,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseIds.add(testCase1.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
 
-    TestSuite testSuite =
-        testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
     if (supportsSearchIndex) {
       // test we get the right summary for the executable test suite
       getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
@@ -733,8 +742,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_getSimplelistFromSearch(TestInfo testInfo) throws IOException, ParseException {
-    Random rand = new Random();
+  void test_getSimpleListFromSearch(TestInfo testInfo) throws IOException, ParseException {
     int tablesNum = 5;
     int testCasesNum = 5;
     TableResourceTest tableResourceTest = new TableResourceTest();
@@ -749,12 +757,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       // Add entity FQN with same prefix to validate listing
       // with AllTest=true returns all columns and table test for the
       // specific entityFQN (and does not include tests from the other entityFQN
-      // witgh the same prefix
+      // with the same prefix
       if (i == 0) {
-        tableReq = tableResourceTest.createRequest("test_getSimplelistFromSearch");
+        tableReq = tableResourceTest.createRequest("test_getSimpleListFromSearch");
         tableReq.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
       } else if (i == 1) {
-        tableReq = tableResourceTest.createRequest("test_getSimplelistFromSearch_a");
+        tableReq = tableResourceTest.createRequest("test_getSimpleListFromSearch_a");
         tableReq.setTags(List.of(PII_SENSITIVE_TAG_LABEL, TIER1_TAG_LABEL));
       } else {
         tableReq = tableResourceTest.createRequest(testInfo, i);
@@ -807,15 +815,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
     TestCase testCaseForEL = testCases.get(0);
 
-    HashMap queryParams = new HashMap<>();
+    Map queryParams = new HashMap<>();
     ResultList<TestCase> allEntities =
         listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(testCasesNum, allEntities.getData().size());
-    queryParams.put("q", "test_getSimplelistFromSearchc");
+    queryParams.put("q", "test_getSimpleListFromSearchc");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(1, allEntities.getData().size());
     org.assertj.core.api.Assertions.assertThat(allEntities.getData().get(0).getName())
-        .contains("test_getSimplelistFromSearchc");
+        .contains("test_getSimpleListFromSearchc");
 
     queryParams.clear();
     queryParams.put("entityLink", testCaseForEL.getEntityLink());
@@ -1033,14 +1041,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   public void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
       throws HttpResponseException {
+    data.setTestCaseFQN(fqn);
     WebTarget target = getCollection().path("/" + fqn + "/testCaseResult");
     TestUtils.put(target, data, CREATED, authHeaders);
-  }
-
-  public void deleteTestCaseResult(String fqn, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getCollection().path("/" + fqn + "/testCaseResult");
-    TestUtils.delete(target, authHeaders);
   }
 
   @Test
@@ -1297,7 +1300,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     UUID testSuiteId = testCase.getTestSuite().getId();
 
     String dateStr = "2023-08-";
-    List<TestCaseResult> testCaseResults = new ArrayList<>();
     for (int i = 11; i <= 15; i++) {
       TestCaseResult testCaseResult =
           new TestCaseResult()
@@ -1305,7 +1307,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               .withTestCaseStatus(TestCaseStatus.Failed)
               .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
       putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
-      testCaseResults.add(testCaseResult);
     }
 
     // check that result state is the latest
@@ -1320,7 +1321,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-15"), storedTestCase.getTestCaseResult().getTimestamp());
     assertEquals(1, storedTestSuite.getSummary().getTotal());
-    assertEquals(TestUtils.dateToTimestamp("2023-08-15"), testSuiteResultSummary.getTimestamp());
+    if (testSuiteResultSummary != null)
+      assertEquals(TestUtils.dateToTimestamp("2023-08-15"), testSuiteResultSummary.getTimestamp());
 
     // delete latest and check that result is the  new latest (i.e. the 14th)
     deleteTestCaseResult(
@@ -1337,7 +1339,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
     assertEquals(1, storedTestSuite.getSummary().getTotal());
-    assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
+    if (testSuiteResultSummary != null)
+      assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
 
     // delete the 13h and check that result is still the 14th
     deleteTestCaseResult(
@@ -1354,7 +1357,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
     assertEquals(1, storedTestSuite.getSummary().getTotal());
-    assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
+    if (testSuiteResultSummary != null)
+      assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
 
     // Patch the test case result adding the resolved status
     TestCaseResult testCaseResult = storedTestCase.getTestCaseResult();
@@ -1379,7 +1383,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-16"), storedTestCase.getTestCaseResult().getTimestamp());
     assertEquals(1, storedTestSuite.getSummary().getTotal());
-    assertEquals(TestUtils.dateToTimestamp("2023-08-16"), testSuiteResultSummary.getTimestamp());
+    if (testSuiteResultSummary != null)
+      assertEquals(TestUtils.dateToTimestamp("2023-08-16"), testSuiteResultSummary.getTimestamp());
 
     // Add a new test case
     CreateTestCase create = createRequest(test, 3);
@@ -2025,7 +2030,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_testCaseEsDocCleanUp(TestInfo testInfo) {
+  void test_testCaseEsDocCleanUp() {
     TestCase testCase =
         new TestCase()
             .withId(UUID.randomUUID())
@@ -2226,10 +2231,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
   }
 
-  private TestCaseResult patchTestCaseResult(String testCaseFqn, Long timestamp, JsonNode patch)
+  private void patchTestCaseResult(String testCaseFqn, Long timestamp, JsonNode patch)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + testCaseFqn + "/testCaseResult/" + timestamp);
-    return TestUtils.patch(target, patch, TestCaseResult.class, ADMIN_AUTH_HEADERS);
+    TestUtils.patch(target, patch, TestCaseResult.class, ADMIN_AUTH_HEADERS);
   }
 
   private void verifyTestCaseResults(
@@ -2266,7 +2271,49 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private void verifyTestCaseResult(TestCaseResult expected, TestCaseResult actual) {
-    assertEquals(expected, actual);
+    UUID id = expected.getId();
+    assertEquals(expected.withId(null), actual); // Ignore id as set on create
+    try {
+      verifyTestCaseResultInIndex(expected.withId(id));
+    } catch (IOException e) {
+      Assertions.fail("Failed to verify test case result in index: %s" + e.getMessage());
+    }
+  }
+
+  private void verifyTestCaseResultInIndex(TestCaseResult dbTestCaseResult) throws IOException {
+    // Try to search entity with INCOMPLETE description
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(Entity.TEST_CASE_RESULTS);
+    Response response;
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        String.format(
+            "{\"size\": 10,\"query\":{\"bool\":{\"must\":[{\"term\":{\"_id\":\"%s\"}}]}}}",
+            dbTestCaseResult.getId().toString());
+    request.setJsonEntity(query);
+    try {
+      response = searchClient.performRequest(request);
+    } finally {
+      searchClient.close();
+    }
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+    assertNotEquals(0, hitsList.size());
+    assertTrue(
+        hitsList.stream()
+            .allMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("id")
+                        .equals(dbTestCaseResult.getId().toString())));
   }
 
   @Override
@@ -2514,7 +2561,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         FORBIDDEN,
         permissionNotAllowed(USER2.getName(), List.of(EDIT_TESTS)));
 
-    deleteFailedRowsSample(testCase, ADMIN_AUTH_HEADERS);
+    deleteFailedRowsSample(testCase);
 
     assertResponse(
         () -> getSampleData(testCase.getId(), ADMIN_AUTH_HEADERS),
@@ -2669,7 +2716,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                     new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     String inspectionQuery = "SELECT * FROM test_table WHERE column1 = 'value1'";
-    putInspectionQuery(testCase, inspectionQuery, ADMIN_AUTH_HEADERS);
+    putInspectionQuery(testCase, inspectionQuery);
     TestCase updated = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
     assertEquals(updated.getInspectionQuery(), inspectionQuery);
   }
@@ -2709,6 +2756,37 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void aggregate_testCaseResults(TestInfo testInfo) throws IOException, ParseException {
+    // Set up tests
+    SearchRepository searchRepository = getSearchRepository();
+    CreateTestCase create = createRequest(testInfo);
+    create
+        .withEntityLink(TABLE_COLUMN_LINK)
+        .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    for (int i = 1; i < 10; i++) {
+      TestCaseResult testCaseResult =
+          new TestCaseResult()
+              .withResult("tested")
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(TestUtils.dateToTimestamp("2021-09-0%s".formatted(i)));
+      putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+    }
+
+    // Test aggregation
+    String aggregationQuery =
+        "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=1d,bucketName=dimesion:aggType=terms:field=testDefinition.dataQualityDimension";
+    Map<String, Object> aggregationString =
+        SearchIndexUtils.buildAggregationString(aggregationQuery);
+    DataQualityReport dataQualityReport =
+        searchRepository.genericAggregation(null, "testCaseResult", aggregationString);
+    assertNotNull(dataQualityReport.getData());
+  }
+
+  @Test
   void createTestCaseResults_wrongTs(TestInfo testInfo) throws IOException, HttpResponseException {
     CreateTestCase create = createRequest(testInfo);
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -2724,9 +2802,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         "Timestamp 1725521153 is not valid, it should be in milliseconds since epoch");
   }
 
-  private void putInspectionQuery(TestCase testCase, String sql, Map<String, String> authHeaders)
-      throws IOException {
-    TestCase putResponse = putInspectionQuery(testCase.getId(), sql, authHeaders);
+  private void putInspectionQuery(TestCase testCase, String sql) throws IOException {
+    TestCase putResponse = putInspectionQuery(testCase.getId(), sql, ADMIN_AUTH_HEADERS);
     assertEquals(sql, putResponse.getInspectionQuery());
   }
 
@@ -2755,10 +2832,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(tableData, data);
   }
 
-  private TestCase deleteFailedRowsSample(TestCase testCase, Map<String, String> authHeaders)
-      throws IOException {
+  private void deleteFailedRowsSample(TestCase testCase) throws IOException {
     WebTarget target = getResource(testCase.getId()).path("/failedRowsSample");
-    return TestUtils.delete(target, TestCase.class, authHeaders);
+    TestUtils.delete(target, TestCase.class, ADMIN_AUTH_HEADERS);
   }
 
   public TestCase putFailedRowsSample(

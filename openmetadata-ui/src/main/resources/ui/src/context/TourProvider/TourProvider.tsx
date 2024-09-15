@@ -18,10 +18,10 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useLocation } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 
 interface Props {
   children: ReactNode;
@@ -42,7 +42,7 @@ export interface TourProviderContextProps {
 export const TourContext = createContext({} as TourProviderContextProps);
 
 const TourProvider: FC<Props> = ({ children }) => {
-  const location = useLocation();
+  const location = useCustomLocation();
   const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
   const [currentTourPage, setCurrentTourPage] = useState<CurrentTourPageType>(
     CurrentTourPageType.MY_DATA_PAGE
