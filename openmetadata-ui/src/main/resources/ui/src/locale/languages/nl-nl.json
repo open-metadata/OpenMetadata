@@ -1796,6 +1796,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> is {{entityStatus}} en succesvol ingezet",
     "successfully-completed-the-tour": "Je hebt de tour succesvol afgerond.",
     "synonym-placeholder": "Voeg een synoniem toe door het gewoon in te typen en op Enter te drukken",
+    "system-alert-edit-message": "Editing a system generated alert is not allowed.",
     "system-tag-delete-disable-message": "Het verwijderen van door het systeem gegenereerde tags is niet toegestaan. Je kunt proberen de tag uit te schakelen.",
     "tag-update-confirmation": "Would you like to proceed with updating the tags?",
     "take-quick-product-tour": "Maak een producttour om aan de slag te gaan!",
