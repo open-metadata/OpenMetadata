@@ -201,7 +201,7 @@ def _(connection) -> Union[SSLManager, None]:
         ] = service_connection.connection.sslConfig
         if ssl and ssl.root.caCertificate:
             ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
-                "ca": ssl.root.caCertificate
+                "ca": ssl.root.caCertificate.get_secret_value()
             }
             return SSLManager(**ssl_dict)
     return None
@@ -213,7 +213,7 @@ def _(connection) -> Union[SSLManager, None]:
     ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
     if ssl and ssl.root.caCertificate:
         ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
-            "ca": ssl.root.caCertificate
+            "ca": ssl.root.caCertificate.get_secret_value()
         }
         if (ssl.root.sslCertificate) and (ssl.root.sslKey):
             ssl_dict["cert"] = ssl.root.sslCertificate
