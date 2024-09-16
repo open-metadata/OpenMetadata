@@ -149,7 +149,7 @@ export const checkIfUpdateRequired = async (
       //   We want to override any profile information that is coming from the OIDC provider
       profile: {
         ...existingUserDetails.profile,
-        profile: { ...existingUserDetails.profile, ...updatedUserData.profile },
+        ...updatedUserData.profile
       },
     };
     const jsonPatch = compare(existingUserDetails, finalData);
