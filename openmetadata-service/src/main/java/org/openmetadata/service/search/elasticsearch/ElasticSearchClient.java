@@ -2318,7 +2318,8 @@ public class ElasticSearchClient implements SearchClient {
                     SettingsType.RBAC_SEARCH_CONFIGURATION, RbacSearchConfiguration.class)
                 .getEnabled())
         && subjectContext != null
-        && !subjectContext.isAdmin()) {
+        && !subjectContext.isAdmin()
+        && rbacConditionEvaluator != null) {
       OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
