@@ -25,7 +25,7 @@ import MentionList from './MentionList';
 
 export const mentionSuggestion = () => ({
   items: async ({ query }: { query: string }) => {
-    const data = await getUserAndTeamSearch(query);
+    const data = await getUserAndTeamSearch(query, false, 5);
     const hits = data.data.hits.hits;
 
     return hits.map((hit) => ({

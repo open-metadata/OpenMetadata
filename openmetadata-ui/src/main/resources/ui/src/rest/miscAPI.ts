@@ -157,11 +157,15 @@ export const getSearchedTeams = (
   );
 };
 
-export const getUserAndTeamSearch = (term: string, userOnly = false) => {
+export const getUserAndTeamSearch = (
+  term: string,
+  userOnly = false,
+  size = PAGE_SIZE
+) => {
   return searchData(
     term ?? '',
     1,
-    PAGE_SIZE,
+    size,
     '',
     '',
     '',
