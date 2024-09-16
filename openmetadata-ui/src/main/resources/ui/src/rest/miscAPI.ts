@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
+import { PAGE_SIZE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
@@ -160,7 +161,7 @@ export const getUserAndTeamSearch = (term: string, userOnly = false) => {
   return searchData(
     term ?? '',
     1,
-    5,
+    PAGE_SIZE,
     '',
     '',
     '',
