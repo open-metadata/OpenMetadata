@@ -220,6 +220,11 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     return Arrays.asList(INCLUDE_SEARCH_FIELDS.split(","));
   }
 
+  protected void deleteAllTestCaseResults(String fqn) {
+    // Delete all the test case results
+    daoCollection.dataQualityDataTimeSeriesDao().deleteAll(fqn);
+  }
+
   private TestCaseResult getTestCaseResult(
       CreateTestCaseResult createTestCaseResults, TestCase testCase) {
     RestUtil.validateTimestampMilliseconds(createTestCaseResults.getTimestamp());
