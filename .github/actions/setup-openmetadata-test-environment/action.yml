@@ -13,6 +13,10 @@ inputs:
     description: Ingestion dependency to pass to run_local_docker.sh
     required: false
     default: "mysql,elasticsearch,sample-data"
+  database:
+    description: Database to use for tests
+    required: false
+    default: "-d mysql"  # Use "-d postgresql" for postgres and Opensearch
 
 runs:
   using: composite
@@ -63,4 +67,4 @@ runs:
         timeout_minutes: 60
         max_attempts: 2
         retry_on: error
-        command: ./docker/run_local_docker.sh ${{ inputs.args }}
+        command: ./docker/run_local_docker.sh ${{ inputs.args }} ${{ inputs.database }}
