@@ -1013,4 +1013,28 @@ class ElasticSearchRBACConditionEvaluatorTest {
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     assertNull(finalQuery, "The query should be null since the rule is ignored");
   }
+
+  @Test
+  void testRuleWithViewBasicOperationApplied() {
+    // Rule with operation ViewBasic, which should affect search results
+    setupMockPolicies(
+        List.of("isOwner()"),
+        "ALLOW",
+        List.of(List.of("All")),
+        List.of(List.of(MetadataOperation.VIEW_BASIC)));
+
+    // Mock user ownership
+    UUID userId = UUID.randomUUID();
+    when(mockUser.getId()).thenReturn(userId);
+
+    // Evaluate the condition
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    // The rule should affect the search query
+    assertTrue(generatedQuery.contains("owner.id"), "The query should contain 'owner.id'");
+    assertTrue(
+        generatedQuery.contains(userId.toString()), "The query should contain the user's ID");
+  }
 }
