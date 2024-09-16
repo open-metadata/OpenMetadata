@@ -12,6 +12,9 @@
 """
 OpenMetadata high-level API Workflow test
 """
+import sys
+
+import pytest
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.api.automations.createWorkflow import (
@@ -38,6 +41,9 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+
+if sys.version_info < (3, 9):
+    pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
 def test_connection_workflow(metadata, mysql_container):

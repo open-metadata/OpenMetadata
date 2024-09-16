@@ -12,6 +12,8 @@
 """
 Test how we create and update status in Ingestion Pipelines
 """
+import sys
+
 import pytest
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -25,6 +27,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StepSummary,
 )
 from metadata.ingestion.api.status import TruncatedStackTraceError
+
+if sys.version_info < (3, 9):
+    pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
 def test_create_ingestion_pipeline(workflow) -> None:
