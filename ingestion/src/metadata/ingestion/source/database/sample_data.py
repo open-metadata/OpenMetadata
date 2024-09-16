@@ -141,7 +141,7 @@ from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds, datetime_to_timestamp
 
 logger = ingestion_logger()
 
@@ -1646,11 +1646,9 @@ class SampleDataSource(
             life_cycle_data.created = AccessDetails(
                 timestamp=Timestamp(
                     int(
-                        convert_timestamp_to_milliseconds(
-                            (
-                                datetime.now()
-                                - timedelta(days=life_cycle["created"]["days"])
-                            ).timestamp()
+                        datetime_to_timestamp(
+                            datetime_value=datetime.now() - timedelta(days=life_cycle["created"]["days"]),
+                            milliseconds=True
                         )
                     )
                 ),
@@ -1660,11 +1658,9 @@ class SampleDataSource(
             life_cycle_data.updated = AccessDetails(
                 timestamp=Timestamp(
                     int(
-                        convert_timestamp_to_milliseconds(
-                            (
-                                datetime.now()
-                                - timedelta(days=life_cycle["updated"]["days"])
-                            ).timestamp()
+                        datetime_to_timestamp(
+                            datetime_value=datetime.now() - timedelta(days=life_cycle["updated"]["days"]),
+                            milliseconds=True
                         )
                     ),
                 ),
@@ -1674,11 +1670,9 @@ class SampleDataSource(
             life_cycle_data.accessed = AccessDetails(
                 timestamp=Timestamp(
                     int(
-                        convert_timestamp_to_milliseconds(
-                            (
-                                datetime.now()
-                                - timedelta(days=life_cycle["accessed"]["days"])
-                            ).timestamp()
+                        datetime_to_timestamp(
+                            datetime_value=datetime.now() - timedelta(days=life_cycle["accessed"]["days"]),
+                            milliseconds=True
                         )
                     ),
                 ),
