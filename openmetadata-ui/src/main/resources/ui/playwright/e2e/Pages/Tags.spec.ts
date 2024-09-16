@@ -297,10 +297,14 @@ test('Classification Page', async ({ page }) => {
       const getTags = page.waitForResponse('/api/v1/tags*');
       await sidebarClick(page, SidebarItem.TAGS);
       await getTags;
+      const classificationResponse = page.waitForResponse(
+        `/api/v1/tags?*parent=${encodeURIComponent(NEW_CLASSIFICATION.name)}*`
+      );
       await page
         .locator(`[data-testid="side-panel-classification"]`)
         .filter({ hasText: NEW_CLASSIFICATION.displayName })
         .click();
+      await classificationResponse;
 
       await expect(page.locator('.activeCategory')).toContainText(
         NEW_CLASSIFICATION.displayName
@@ -324,10 +328,14 @@ test('Classification Page', async ({ page }) => {
     const getTags = page.waitForResponse('/api/v1/tags*');
     await sidebarClick(page, SidebarItem.TAGS);
     await getTags;
+    const classificationResponse = page.waitForResponse(
+      `/api/v1/tags?*parent=${encodeURIComponent(NEW_CLASSIFICATION.name)}*`
+    );
     await page
       .locator(`[data-testid="side-panel-classification"]`)
       .filter({ hasText: NEW_CLASSIFICATION.displayName })
       .click();
+    await classificationResponse;
 
     await expect(page.locator('.activeCategory')).toContainText(
       NEW_CLASSIFICATION.displayName
