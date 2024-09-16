@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
@@ -24,6 +25,8 @@ public class RBACConditionEvaluator {
   private final QueryBuilderFactory queryBuilderFactory;
   private final ExpressionParser spelParser = new SpelExpressionParser();
   private final StandardEvaluationContext spelContext;
+  private static final Set<MetadataOperation> SEARCH_RELEVANT_OPS =
+      Set.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL);
 
   public RBACConditionEvaluator(QueryBuilderFactory queryBuilderFactory) {
     this.queryBuilderFactory = queryBuilderFactory;
@@ -40,7 +43,8 @@ public class RBACConditionEvaluator {
         it.hasNext(); ) {
       SubjectContext.PolicyContext context = it.next();
       for (CompiledRule rule : context.getRules()) {
-        if (rule.getCondition() != null) {
+        if (rule.getCondition() != null
+            && rule.getOperations().stream().anyMatch(SEARCH_RELEVANT_OPS::contains)) {
           ConditionCollector ruleCollector = new ConditionCollector(queryBuilderFactory);
           if (!rule.getResources().isEmpty() && !rule.getResources().contains("All")) {
             OMQueryBuilder indexFilter = getIndexFilter(rule.getResources());
