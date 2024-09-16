@@ -24,19 +24,19 @@ class AuthToken(BaseModel):
 
 class Workbook(BaseModel):
     workbookId: str
-    name: Optional[str] = ""
-    ownerId: Optional[str] = ""
+    name: Optional[str] = None
+    ownerId: Optional[str] = None
 
 
 class WorkbookDetails(BaseModel):
     workbookId: str
-    name: Optional[str] = ""
+    name: Optional[str] = None
     createdAt: str
     url: str
-    path: Optional[str] = ""
-    ownerId: Optional[str] = ""
+    path: Optional[str] = None
+    ownerId: Optional[str] = None
     isArchived: bool
-    description: Optional[str] = ""
+    description: Optional[str] = None
 
 
 class WorkBookResponseDetails(BaseModel):
@@ -58,8 +58,8 @@ class WorkBookPageResponse(BaseModel):
 
 class Elements(BaseModel):
     elementId: str
-    name: Optional[str] = ""
-    vizualizationType: Optional[str] = ""
+    name: Optional[str] = None
+    vizualizationType: Optional[str] = None
 
 
 class ElementsResponse(BaseModel):
@@ -67,7 +67,7 @@ class ElementsResponse(BaseModel):
 
 
 class EdgeSource(BaseModel):
-    source: Optional[str] = ""
+    source: str
 
     @property
     def node_id(self):
@@ -84,7 +84,7 @@ class EdgeSourceResponse(BaseModel):
 class NodeDetails(BaseModel):
     id: str
     name: Optional[str]
-    node_type: Optional[str] = Field("", alias="type")
+    node_type: str = Field(alias="type")
     path: Optional[str] = ""
 
     @property

@@ -33,10 +33,18 @@ from metadata.ingestion.source.dashboard.sigma.models import (
     WorkBookPageResponse,
     WorkBookResponseDetails,
 )
+from metadata.utils.constants import AUTHORIZATION_HEADER, UTF_8
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+HEADERS = {
+    "accept": "application/json",
+    "Content-type": "application/x-www-form-urlencoded",
+}
+
+TOKEN_PAYLOAD = {"grant_type": "client_credentials"}
 
 
 class SigmaApiClient:
@@ -51,21 +59,16 @@ class SigmaApiClient:
         token_api_key = str(
             b64encode(
                 f"{self.config.clientId}:{self.config.clientSecret.get_secret_value()}".encode(
-                    "utf-8"
+                    UTF_8
                 )
-            ).decode("utf-8")
+            ).decode(UTF_8)
         )
-
-        headers = {
-            "accept": "application/json",
-            "Content-type": "application/x-www-form-urlencoded",
-        }
 
         token_config = ClientConfig(
             base_url=clean_uri(config.hostPort),
             api_version=config.apiVersion,
-            auth_header="Authorization",
-            extra_headers=headers,
+            auth_header=AUTHORIZATION_HEADER,
+            extra_headers=HEADERS,
             auth_token=lambda: (token_api_key, 0),
             auth_token_mode="Basic",
         )
@@ -76,7 +79,7 @@ class SigmaApiClient:
             base_url=clean_uri(config.hostPort),
             api_version=config.apiVersion,
             auth_token=self.get_auth_token,
-            auth_header="Authorization",
+            auth_header=AUTHORIZATION_HEADER,
         )
 
         self.client = REST(client_config)
@@ -85,15 +88,16 @@ class SigmaApiClient:
         """
         generate auth token
         """
-        payload = {"grant_type": "client_credentials"}
-        result = AuthToken(**self.token_client.post("/auth/token", data=payload))
+        result = AuthToken.model_validate(
+            self.token_client.post("/auth/token", data=TOKEN_PAYLOAD)
+        )
         return result.access_token, 0
 
     def get_dashboards(self) -> Optional[List[Workbook]]:
         """
         method to fetch dashboards from api
         """
-        result = WorkBookResponseDetails(**self.client.get("/workbooks"))
+        result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks"))
         if result:
             return result.entries
 
@@ -102,7 +106,9 @@ class SigmaApiClient:
         method to fetch dashboard details from api
         """
         try:
-            result = WorkbookDetails(**self.client.get(f"/workbooks/{workbook_id}"))
+            result = WorkbookDetails.model_validate(
+                self.client.get(f"/workbooks/{workbook_id}")
+            )
             if result:
                 return result
         except Exception as exc:  # pylint: disable=broad-except
@@ -117,7 +123,9 @@ class SigmaApiClient:
         method to fetch dashboard owner details from api
         """
         try:
-            result = OwnerDetails(**self.client.get(f"/members/{owner_id}"))
+            result = OwnerDetails.model_validate(
+                self.client.get(f"/members/{owner_id}")
+            )
             if result:
                 return result
         except Exception as exc:  # pylint: disable=broad-except
@@ -131,12 +139,12 @@ class SigmaApiClient:
         """
         try:
             elements_list = []
-            pages = WorkBookPageResponse(
-                **self.client.get(f"/workbooks/{workbook_id}/pages")
+            pages = WorkBookPageResponse.model_validate(
+                self.client.get(f"/workbooks/{workbook_id}/pages")
             )
             for page in pages.entries:
-                elements = ElementsResponse(
-                    **self.client.get(
+                elements = ElementsResponse.model_validate(
+                    self.client.get(
                         f"/workbooks/{workbook_id}/pages/{page.pageId}/elements"
                     )
                 )
@@ -157,15 +165,15 @@ class SigmaApiClient:
         """
         try:
             source_nodes = []
-            edges_response = EdgeSourceResponse(
-                **self.client.get(
+            edges_response = EdgeSourceResponse.model_validate(
+                self.client.get(
                     f"/workbooks/{workbook_id}/lineage/elements/{element_id}"
                 )
             )
             for node in edges_response.edges:
                 if node.node_id:
-                    node_details = NodeDetails(
-                        **self.client.get(f"/files/{node.node_id}")
+                    node_details = NodeDetails.model_validate(
+                        self.client.get(f"/files/{node.node_id}")
                     )
                     source_nodes.append(node_details)
             return source_nodes
