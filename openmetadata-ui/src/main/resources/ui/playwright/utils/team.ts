@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
-import { descriptionBox, uuid } from './common';
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import { descriptionBox, toastNotification, uuid } from './common';
 import { validateFormNameFieldInput } from './form';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
@@ -52,6 +52,31 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
   return teamData;
 };
 
+export const softDeleteTeam = async (page: Page) => {
+  await page
+    .getByTestId('team-details-collapse')
+    .getByTestId('manage-button')
+    .click();
+  await page.getByTestId('delete-button').click();
+
+  await page.waitForLoadState('domcontentloaded');
+
+  await expect(page.getByTestId('confirmation-text-input')).toBeVisible();
+
+  await page.click('[data-testid="soft-delete-option"]');
+  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+
+  const deleteResponse = page.waitForResponse(
+    '/api/v1/teams/*?hardDelete=false&recursive=true'
+  );
+
+  await page.click('[data-testid="confirm-button"]');
+
+  await deleteResponse;
+
+  await toastNotification(page, /deleted successfully!/);
+};
+
 export const hardDeleteTeam = async (page: Page) => {
   await page
     .getByTestId('team-details-collapse')
@@ -75,11 +100,7 @@ export const hardDeleteTeam = async (page: Page) => {
 
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const getNewTeamDetails = (teamName: string) => {
@@ -207,4 +228,25 @@ export const addTeamHierarchy = async (
   const saveTeamResponse = page.waitForResponse('/api/v1/teams');
   await page.click('[form="add-team-form"]');
   await saveTeamResponse;
+};
+
+export const removeOrganizationPolicyAndRole = async (
+  apiContext: APIRequestContext
+) => {
+  const organizationTeamResponse = await apiContext
+    .get(`/api/v1/teams/name/Organization`)
+    .then((res) => res.json());
+
+  await apiContext.patch(`/api/v1/teams/${organizationTeamResponse.id}`, {
+    data: [
+      {
+        op: 'replace',
+        path: '/defaultRoles',
+        value: [],
+      },
+    ],
+    headers: {
+      'Content-Type': 'application/json-patch+json',
+    },
+  });
 };

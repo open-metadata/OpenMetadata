@@ -76,6 +76,8 @@ export const PROFILER_METRIC = [
   'customMetricsProfile',
 ];
 
+export const INCIDENT = 'Incident';
+
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
     days: 1,

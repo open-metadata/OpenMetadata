@@ -109,6 +109,16 @@ Percentage of data or number of rows to use when sampling tables to compute the 
 $$
 
 $$section
+### Sampling Method Type $(id="samplingMethodType")
+
+**This parameter is effective for Snowflake only**
+
+The sampling method type can be set to **BERNOULLI** or **SYSTEM**. You can find the difference of two values in the document of the Snowflake. When you choice **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restlictions than **SYSTEM**.
+
+If no option is choiced, the default is **BERNOULLI**.
+$$
+
+$$section
 ### PII Inference Confidence Level $(id="confidence")
 Confidence level to use when infering whether a column shoul be flagged as PII or not (between 0 and 100). A number closer to 100 will yield less false positive but potentially more false negative. 
 $$

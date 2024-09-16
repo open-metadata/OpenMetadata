@@ -178,6 +178,7 @@ const DocumentationTab = ({
         children: (
           <div className="p-md domain-content-container">
             <DescriptionV1
+              removeBlur
               description={description}
               entityName={getEntityName(domain)}
               entityType={EntityType.DOMAIN}

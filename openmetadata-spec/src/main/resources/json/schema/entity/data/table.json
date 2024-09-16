@@ -19,6 +19,14 @@
       ],
       "default": "PERCENTAGE"
     },
+    "samplingMethodType": {
+      "description": "Type of Sampling Method (BERNOULLI or SYSTEM)",
+      "type": "string",
+      "enum": [
+        "BERNOULLI",
+        "SYSTEM"
+      ]
+    },
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",
       "description": "This schema defines the type used for describing different types of tables.",
@@ -744,6 +752,9 @@
           "type": "number",
           "default": null
         },
+        "samplingMethodType": {
+          "$ref": "#/definitions/samplingMethodType"
+        },
         "sampleDataCount": {
           "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
           "type": "integer",
@@ -793,6 +804,9 @@
         },
         "profileSampleType": {
           "$ref": "#/definitions/profileSampleType"
+        },
+        "samplingMethodType": {
+          "$ref": "#/definitions/samplingMethodType"
         },
         "columnCount": {
           "description": "No.of columns in the table.",
