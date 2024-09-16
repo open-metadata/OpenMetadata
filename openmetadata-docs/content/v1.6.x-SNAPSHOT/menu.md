@@ -513,6 +513,11 @@ site_menu:
     url: /connectors/pipeline/kafkaconnect
   - category: Connectors / Pipeline / KafkaConnect / Run Externally
     url: /connectors/pipeline/kafkaconnect/yaml
+  - category: Connectors / Pipeline / Matillion
+    url: /connectors/pipeline/matillion
+    isCollateOnly: true
+  - category: Connectors / Pipeline / Matillion / Run Externally
+    url: /connectors/pipeline/matillion/yaml    
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -855,8 +860,6 @@ site_menu:
     url: /how-to-guides/data-insights/kpi
   - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
     url: /how-to-guides/data-insights/airflow-sdk
-  - category: How-to Guides / Data Insights / Run Data Insights using Metadata CLI
-    url: /how-to-guides/data-insights/metadata-cli
   - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
     url: /how-to-guides/data-insights/elasticsearch-reindex
   - category: How-to Guides / Data Insights / Data Insights Report
