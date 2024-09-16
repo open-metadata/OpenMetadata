@@ -137,7 +137,7 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.rbac.RbacSearchConfiguration;
+import org.openmetadata.schema.api.searcg.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -2314,9 +2314,8 @@ public class ElasticSearchClient implements SearchClient {
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
     if (Boolean.TRUE.equals(
-            SettingsCache.getSetting(
-                    SettingsType.RBAC_SEARCH_CONFIGURATION, RbacSearchConfiguration.class)
-                .getEnabled())
+            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
+                .getEnableAccessControl())
         && subjectContext != null
         && !subjectContext.isAdmin()
         && rbacConditionEvaluator != null) {

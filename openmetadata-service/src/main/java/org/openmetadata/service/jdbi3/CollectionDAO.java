@@ -57,7 +57,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
-import org.openmetadata.schema.api.rbac.RbacSearchConfiguration;
+import org.openmetadata.schema.api.searcg.SearchSettings;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -4581,8 +4581,7 @@ public interface CollectionDAO {
             case SLACK_APP_CONFIGURATION, SLACK_INSTALLER, SLACK_BOT, SLACK_STATE -> JsonUtils
                 .readValue(json, String.class);
             case PROFILER_CONFIGURATION -> JsonUtils.readValue(json, ProfilerConfiguration.class);
-            case RBAC_SEARCH_CONFIGURATION -> JsonUtils.readValue(
-                json, RbacSearchConfiguration.class);
+            case SEARCH_SETTINGS -> JsonUtils.readValue(json, SearchSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

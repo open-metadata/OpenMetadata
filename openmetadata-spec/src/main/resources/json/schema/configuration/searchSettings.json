@@ -1,12 +1,12 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/configuration/rbacSearchConfiguration.json",
+  "$id": "https://open-metadata.org/schema/entity/configuration/searchSettings.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RbacSearchConfiguration",
+  "title": "SearchSettings",
   "description": "This schema defines the Rbac Search Configuration.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.rbac.RbacSearchConfiguration",
+  "javaType": "org.openmetadata.schema.api.searcg.SearchSettings",
   "properties": {
-    "enabled": {
+    "enableAccessControl": {
       "type": "boolean",
       "description": "Flag to enable or disable the RBAC Search Configuration.",
       "default": false

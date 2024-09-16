@@ -30,7 +30,7 @@
         "slackInstaller",
         "slackState",
         "profilerConfiguration",
-        "rbacSearchConfiguration"
+        "searchSettings"
       ]
     }
   },
@@ -75,7 +75,7 @@
           "$ref": "../configuration/profilerConfiguration.json"
         },
         {
-          "$ref": "../configuration/rbacSearchConfiguration.json"
+          "$ref": "../configuration/searchSettings.json"
         }
       ]
     }
