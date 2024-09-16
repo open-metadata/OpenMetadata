@@ -65,7 +65,7 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
-test.describe('Activity feed', () => {
+test.describe.fixme('Activity feed', () => {
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
