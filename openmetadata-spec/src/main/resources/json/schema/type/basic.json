@@ -105,9 +105,9 @@
         "type": "string"
       }
     },
-    "metaEnum": {
+    "enumWithDescriptions": {
       "$comment": "@om-field-type",
-      "description": "List of values in Enum.",
+      "description": "List of values in Enum with description for each key.",
       "type": "array",
       "items": {
         "type": "object",

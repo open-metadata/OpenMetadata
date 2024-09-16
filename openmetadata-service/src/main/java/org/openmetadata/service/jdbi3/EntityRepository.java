@@ -145,7 +145,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.type.customproperties.MetaEnumConfig;
+import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -1453,65 +1453,84 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonNode fieldValue,
       String customPropertyType,
       String propertyConfig) {
-    DateTimeFormatter formatter;
+
     switch (customPropertyType) {
-      case "date-cp":
-        DateTimeFormatter inputFormatter =
-            DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+      case "date-cp", "dateTime-cp", "time-cp" -> {
+        String formattedValue =
+            getFormattedDateTimeField(
+                fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
+        jsonNode.put(fieldName, formattedValue);
+      }
+      case "enumWithDescriptions" -> handleEnumWithDescriptions(
+          fieldName, fieldValue, propertyConfig, jsonNode, entity);
+      default -> {}
+    }
+  }
 
-        // Parse the input string into a TemporalAccessor
-        TemporalAccessor date = inputFormatter.parse(fieldValue.textValue());
+  private String getFormattedDateTimeField(
+      String fieldValue, String customPropertyType, String propertyConfig, String fieldName) {
+    DateTimeFormatter formatter;
 
-        // Create a formatter for the desired output format
-        DateTimeFormatter outputFormatter =
-            DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
-        jsonNode.put(fieldName, outputFormatter.format(date));
-        break;
-      case "dateTime-cp":
-        formatter = DateTimeFormatter.ofPattern(propertyConfig);
-        LocalDateTime dateTime = LocalDateTime.parse(fieldValue.textValue(), formatter);
-        jsonNode.put(fieldName, dateTime.format(formatter));
-        break;
-      case "time-cp":
-        formatter = DateTimeFormatter.ofPattern(propertyConfig);
-        LocalTime time = LocalTime.parse(fieldValue.textValue(), formatter);
-        jsonNode.put(fieldName, time.format(formatter));
-        break;
-      case "metaEnum":
-        JsonNode propertyConfigNode = JsonUtils.readTree(propertyConfig);
-        MetaEnumConfig config = JsonUtils.treeToValue(propertyConfigNode, MetaEnumConfig.class);
-
-        if (!config.getMultiSelect() && fieldValue.size() > 1) {
-          throw new IllegalArgumentException(
-              "Only one key is allowed for non-multiSelect metaEnum");
+    try {
+      return switch (customPropertyType) {
+        case "date-cp" -> {
+          DateTimeFormatter inputFormatter =
+              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+          TemporalAccessor date = inputFormatter.parse(fieldValue);
+          DateTimeFormatter outputFormatter =
+              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+          yield outputFormatter.format(date);
         }
-        // Replace each metaEnum key in the fieldValue with the corresponding object from the
-        // propertyConfig
-        Map<String, JsonNode> keyToObjectMap =
-            StreamSupport.stream(propertyConfigNode.get("values").spliterator(), false)
-                .collect(Collectors.toMap(node -> node.get("key").asText(), node -> node));
-
-        if (fieldValue.isArray()) {
-          ArrayNode newArray = JsonUtils.getObjectNode().arrayNode();
-          fieldValue.forEach(
-              valueNode -> {
-                String key =
-                    valueNode.isTextual() ? valueNode.asText() : valueNode.get("key").asText();
-                JsonNode valueObject = keyToObjectMap.get(key);
-
-                if (valueObject == null) {
-                  throw new IllegalArgumentException("Key not found in propertyConfig: " + key);
-                }
-                newArray.add(valueNode.isTextual() ? valueObject : valueNode);
-              });
-
-          jsonNode.replace(fieldName, newArray);
-          entity.setExtension(JsonUtils.treeToValue(jsonNode, Object.class));
+        case "dateTime-cp" -> {
+          formatter = DateTimeFormatter.ofPattern(propertyConfig);
+          LocalDateTime dateTime = LocalDateTime.parse(fieldValue, formatter);
+          yield dateTime.format(formatter);
         }
+        case "time-cp" -> {
+          formatter = DateTimeFormatter.ofPattern(propertyConfig);
+          LocalTime time = LocalTime.parse(fieldValue, formatter);
+          yield time.format(formatter);
+        }
+        default -> throw new IllegalArgumentException(
+            "Unsupported customPropertyType: " + customPropertyType);
+      };
+    } catch (DateTimeParseException e) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.dateTimeValidationError(fieldName, propertyConfig));
+    }
+  }
 
-        break;
-      default:
-        break;
+  private void handleEnumWithDescriptions(
+      String fieldName, JsonNode fieldValue, String propertyConfig, ObjectNode jsonNode, T entity) {
+    JsonNode propertyConfigNode = JsonUtils.readTree(propertyConfig);
+    EnumWithDescriptionsConfig config =
+        JsonUtils.treeToValue(propertyConfigNode, EnumWithDescriptionsConfig.class);
+
+    if (!config.getMultiSelect() && fieldValue.size() > 1) {
+      throw new IllegalArgumentException(
+          "Only one key is allowed for non-multiSelect enumWithDescriptions");
+    }
+    // Replace each enumWithDescriptions key in the fieldValue with the corresponding object from
+    // the propertyConfig
+    Map<String, JsonNode> keyToObjectMap =
+        StreamSupport.stream(propertyConfigNode.get("values").spliterator(), false)
+            .collect(Collectors.toMap(node -> node.get("key").asText(), node -> node));
+
+    if (fieldValue.isArray()) {
+      ArrayNode newArray = JsonUtils.getObjectNode().arrayNode();
+      fieldValue.forEach(
+          valueNode -> {
+            String key = valueNode.isTextual() ? valueNode.asText() : valueNode.get("key").asText();
+            JsonNode valueObject = keyToObjectMap.get(key);
+
+            if (valueObject == null) {
+              throw new IllegalArgumentException("Key not found in propertyConfig: " + key);
+            }
+            newArray.add(valueNode.isTextual() ? valueObject : valueNode);
+          });
+
+      jsonNode.replace(fieldName, newArray);
+      entity.setExtension(JsonUtils.treeToValue(jsonNode, Object.class));
     }
   }
 
