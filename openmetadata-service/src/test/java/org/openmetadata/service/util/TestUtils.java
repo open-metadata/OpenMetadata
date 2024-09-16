@@ -28,6 +28,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.zjsonpatch.JsonDiff;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.PathNotFoundException;
 import io.github.resilience4j.core.functions.CheckedRunnable;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
@@ -703,5 +705,22 @@ public final class TestUtils {
     } catch (JsonProcessingException ignored) {
     }
     return null;
+  }
+
+  public static void assertFieldExists(
+      DocumentContext jsonContext, String jsonPath, String fieldName) {
+    List<Map<String, Object>> result = jsonContext.read(jsonPath, List.class);
+    assertTrue(result.size() > 0, "The query should contain '" + fieldName + "' term.");
+  }
+
+  public static void assertFieldDoesNotExist(
+      DocumentContext jsonContext, String jsonPath, String fieldName) {
+    try {
+      List<Map<String, Object>> result = jsonContext.read(jsonPath, List.class);
+      assertTrue(result.isEmpty(), "The query should not contain '" + fieldName + "' term.");
+    } catch (PathNotFoundException e) {
+      // If the path doesn't exist, this is expected behavior, so the test should pass.
+      assertTrue(true, "The path does not exist as expected: " + jsonPath);
+    }
   }
 }

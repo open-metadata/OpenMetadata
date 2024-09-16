@@ -451,7 +451,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               .sortOrder("desc")
               .includeSourceFields(new ArrayList<>())
               .build();
-      Response response = searchRepository.search(searchRequest);
+      Response response = searchRepository.search(searchRequest, null);
       String json = (String) response.getEntity();
       Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
       for (Iterator<JsonNode> it =

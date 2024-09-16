@@ -73,6 +73,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -723,8 +724,8 @@ public class SearchRepository {
     return scriptTxt.toString();
   }
 
-  public Response search(SearchRequest request) throws IOException {
-    return searchClient.search(request);
+  public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    return searchClient.search(request, subjectContext);
   }
 
   public Response getDocument(String indexName, UUID entityId) throws IOException {
@@ -838,7 +839,7 @@ public class SearchRepository {
               .build();
 
       // Execute the search and parse the response
-      Response response = search(searchRequest);
+      Response response = search(searchRequest, null);
       String json = (String) response.getEntity();
       Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
 
