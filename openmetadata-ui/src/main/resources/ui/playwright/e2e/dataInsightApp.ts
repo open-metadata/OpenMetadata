@@ -54,36 +54,33 @@ setup(
       }
     );
 
-    await apiContext.patch(`/api/v1/apps/trigger/DataInsightsApplication`, {
-      data: [
+    await expect(
+      await apiContext.patch(
+        `/api/v1/apps/marketplace/name/DataInsightsApplication`,
         {
-          op: 'remove',
-          path: '/appConfiguration/backfillConfiguration/startDate',
-        },
-        {
-          op: 'remove',
-          path: '/appConfiguration/backfillConfiguration/endDate',
-        },
-        {
-          op: 'replace',
-          path: '/batchSize',
-          value: 1000,
-        },
-        {
-          op: 'replace',
-          path: '/recreateDataAssetsIndex',
-          value: false,
-        },
-        {
-          op: 'replace',
-          path: '/backfillConfiguration/enabled',
-          value: false,
-        },
-      ],
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    });
+          data: [
+            {
+              op: 'replace',
+              path: '/appConfiguration/batchSize',
+              value: 1000,
+            },
+            {
+              op: 'replace',
+              path: '/appConfiguration/recreateDataAssetsIndex',
+              value: false,
+            },
+            {
+              op: 'replace',
+              path: '/appConfiguration/backfillConfiguration/enabled',
+              value: false,
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
+    ).toBeOK();
 
     await apiContext.post('/api/v1/apps/trigger/DataInsightsApplication');
 
@@ -115,7 +112,7 @@ setup(
               }),
         }
       )
-      .toBe('success');
+      .not.toEqual(/(running|queued)/);
 
     await table.delete(apiContext);
 

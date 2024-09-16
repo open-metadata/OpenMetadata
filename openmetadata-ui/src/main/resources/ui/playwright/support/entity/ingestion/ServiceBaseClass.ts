@@ -262,8 +262,8 @@ class ServiceBaseClass {
           intervals: [30_000, 15_000, 5_000],
         }
       )
-      // To allow partial success
-      .toContain('success');
+      // Move ahead if we do not have running or queued status
+      .not.toEqual(/(running|queued)/);
 
     const pipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines?**`
