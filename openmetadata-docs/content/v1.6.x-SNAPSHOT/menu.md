@@ -218,6 +218,12 @@ site_menu:
     color: violet-70
     icon: openmetadata
 
+  - category: Connectors / API
+    url: /connectors/api
+  - category: Connectors / API / REST
+    url: /connectors/api/rest
+  - category: Connectors / API / REST / Run Externally
+    url: /connectors/api/rest/yaml
   - category: Connectors / Database
     url: /connectors/database
   - category: Connectors / Database / Athena
@@ -507,6 +513,11 @@ site_menu:
     url: /connectors/pipeline/kafkaconnect
   - category: Connectors / Pipeline / KafkaConnect / Run Externally
     url: /connectors/pipeline/kafkaconnect/yaml
+  - category: Connectors / Pipeline / Matillion
+    url: /connectors/pipeline/matillion
+    isCollateOnly: true
+  - category: Connectors / Pipeline / Matillion / Run Externally
+    url: /connectors/pipeline/matillion/yaml    
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -917,6 +928,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.2 Release
+    url: /releases/all-releases/#1.5.2-release
   - category: Releases / All Releases / 1.5.1 Release
     url: /releases/all-releases/#1.5.1-release
   - category: Releases / All Releases / 1.4.8 Release

@@ -3000,8 +3000,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         addRelationship(
             fromId, ref.getId(), fromEntityType, toEntityType, relationshipType, bidirectional);
       }
-      updatedToRefs.sort(EntityUtil.compareEntityReference);
-      origToRefs.sort(EntityUtil.compareEntityReference);
+      if (!nullOrEmpty(updatedToRefs)) {
+        updatedToRefs.sort(EntityUtil.compareEntityReference);
+      }
+      if (!nullOrEmpty(origToRefs)) {
+        origToRefs.sort(EntityUtil.compareEntityReference);
+      }
     }
 
     public final void updateToRelationship(

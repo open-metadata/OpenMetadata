@@ -19,18 +19,19 @@ import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
-import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/data-model.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
-import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-colored.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/ic-api-service.svg';
-import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
+import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/ic-dashboard-data-model-colored.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product-colored.svg';
+import { ReactComponent as SchemaIcon } from '../assets/svg/ic-database-schema-colored.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
+import { ReactComponent as MetricColoredIcon } from '../assets/svg/metric-colored.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ml-model-colored.svg';
 import { ReactComponent as OMHealthIcon } from '../assets/svg/om-health-colored.svg';
 import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
@@ -415,6 +416,15 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
             icon: SchemaIcon,
+          },
+          {
+            label: t('label.metric'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.metric'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.METRICS}`,
+            icon: MetricColoredIcon,
           },
           {
             label: t('label.table-plural'),

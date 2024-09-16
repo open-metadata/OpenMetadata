@@ -16,9 +16,7 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import BulkSink, Processor, Source, Stage
 from metadata.utils.importer import (
     import_bulk_sink_type,
-    import_from_module,
     import_processor_class,
-    import_source_class,
     import_stage_class,
 )
 from metadata.utils.logger import ingestion_logger
@@ -51,16 +49,7 @@ class UsageWorkflow(IngestionWorkflow):
                 "configuration here: https://docs.open-metadata.org/connectors"
             )
 
-        source_class = (
-            import_from_module(
-                self.config.source.serviceConnection.root.config.sourcePythonClass
-            )
-            if source_type.startswith("custom")
-            else import_source_class(
-                service_type=self.service_type, source_type=source_type
-            )
-        )
-
+        source_class = self.import_source_class()
         source: Source = source_class.create(
             self.config.source.model_dump(), self.metadata
         )

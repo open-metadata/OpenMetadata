@@ -18,6 +18,7 @@ import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
@@ -55,6 +56,7 @@ const entities = [
   ContainerClass,
   SearchIndexClass,
   DashboardDataModelClass,
+  MetricClass,
 ] as const;
 
 // use the admin user to login
@@ -88,7 +90,7 @@ entities.forEach((EntityClass) => {
 
     test('Domain Propagation', async ({ page }) => {
       const serviceCategory = entity.serviceCategory;
-      if (serviceCategory) {
+      if (serviceCategory && 'service' in entity) {
         await visitServiceDetailsPage(
           page,
           {
@@ -133,6 +135,8 @@ entities.forEach((EntityClass) => {
     });
 
     test('User as Owner with unsorted list', async ({ page }) => {
+      test.slow(true);
+
       const { afterAction, apiContext } = await getApiContext(page);
       const owner1Data = generateRandomUsername('PW_A_');
       const owner2Data = generateRandomUsername('PW_B_');
