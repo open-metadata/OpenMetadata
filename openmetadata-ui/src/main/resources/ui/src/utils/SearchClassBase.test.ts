@@ -120,6 +120,9 @@ describe('SearchClassBase', () => {
     expect(searchIndexMapping[EntityType.API_ENDPOINT]).toEqual(
       SearchIndex.API_ENDPOINT_INDEX
     );
+    expect(searchIndexMapping[EntityType.METRIC]).toEqual(
+      SearchIndex.METRIC_SEARCH_INDEX
+    );
   });
 
   it('should return dropdown item based on entity type', () => {

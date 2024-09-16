@@ -61,8 +61,7 @@ test.describe('Incident Manager', () => {
     );
     await triggerTestSuitePipelineAndWaitForSuccess({
       page,
-      table: table1,
-      pipeline: { id: pipeline.id },
+      pipeline,
       apiContext,
     });
 
@@ -231,7 +230,7 @@ test.describe('Incident Manager', () => {
     await test.step('Resolve task from incident list page', async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -277,7 +276,7 @@ test.describe('Incident Manager', () => {
     await test.step('Task should be closed', async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -304,8 +303,7 @@ test.describe('Incident Manager', () => {
     await test.step('Re-run pipeline', async () => {
       await triggerTestSuitePipelineAndWaitForSuccess({
         page,
-        table: table1,
-        pipeline: { id: pipeline?.['id'] },
+        pipeline,
         apiContext,
       });
     });
@@ -366,8 +364,7 @@ test.describe('Incident Manager', () => {
     await test.step('Re-run pipeline', async () => {
       await triggerTestSuitePipelineAndWaitForSuccess({
         page,
-        table: table1,
-        pipeline: { id: pipeline?.['id'] },
+        pipeline,
         apiContext,
       });
     });
@@ -375,7 +372,7 @@ test.describe('Incident Manager', () => {
     await test.step("Verify incident's status on DQ page", async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')

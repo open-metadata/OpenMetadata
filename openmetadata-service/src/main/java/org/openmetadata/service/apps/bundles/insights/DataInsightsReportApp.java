@@ -6,6 +6,7 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
+import static org.openmetadata.service.util.email.TemplateConstants.DATA_INSIGHT_REPORT_TEMPLATE;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -41,10 +42,10 @@ import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.Utilities;
+import org.openmetadata.service.util.email.EmailUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.quartz.JobExecutionContext;
 
@@ -123,12 +124,16 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         try {
           DataInsightTotalAssetTemplate totalAssetTemplate =
               createTotalAssetTemplate(searchClient, team.getName(), timeConfig, contextData);
+
           DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
               createDescriptionTemplate(searchClient, team.getName(), timeConfig, contextData);
+
           DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
               createOwnershipTemplate(searchClient, team.getName(), timeConfig, contextData);
+
           DataInsightDescriptionAndOwnerTemplate tierTemplate =
               createTierTemplate(searchClient, team.getName(), timeConfig, contextData);
+
           EmailUtil.sendDataInsightEmailNotificationToUser(
               emails,
               getMonthAndDateFromEpoch(timeConfig.startTime()),
@@ -138,7 +143,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
               ownershipTemplate,
               tierTemplate,
               EmailUtil.getDataInsightReportSubject(),
-              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+              DATA_INSIGHT_REPORT_TEMPLATE);
         } catch (Exception ex) {
           LOG.error(
               "[DataInsightReport] Failed for Team: {}, Reason : {}",
@@ -173,7 +178,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           ownershipTemplate,
           tierTemplate,
           EmailUtil.getDataInsightReportSubject(),
-          EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+          DATA_INSIGHT_REPORT_TEMPLATE);
     } catch (Exception ex) {
       LOG.error("[DataInsightReport] Failed for Admin, Reason : {}", ex.getMessage(), ex);
     }
@@ -213,13 +218,20 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     dateWithCount.forEach((key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
+    int changeInTotalAssets = (int) (currentCount - previousCount);
+
     if (previousCount == 0D) {
       // it should be undefined
       return new DataInsightTotalAssetTemplate(
-          String.valueOf(currentCount.intValue()), 0D, timeConfig.numberOfDaysChange(), dateMap);
+          String.valueOf(currentCount.intValue()),
+          currentCount.intValue(),
+          0d,
+          timeConfig.numberOfDaysChange(),
+          dateMap);
     } else {
       return new DataInsightTotalAssetTemplate(
           String.valueOf(currentCount.intValue()),
+          changeInTotalAssets,
           ((currentCount - previousCount) / previousCount) * 100,
           timeConfig.numberOfDaysChange(),
           dateMap);
@@ -264,10 +276,13 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentCompletedDescription / currentTotalAssetCount) * 100;
     }
 
+    int changeCount = (int) (currentCompletedDescription - previousCompletedDescription);
+
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
         "percentage_of_data_asset_with_description_kpi",
         currentPercentCompleted,
+        changeCount,
         currentPercentCompleted - previousPercentCompleted,
         currentCompletedDescription.intValue(),
         timeConfig.numberOfDaysChange(),
@@ -312,10 +327,13 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentHasOwner / currentTotalAssetCount) * 100;
     }
 
+    int changeCount = (int) (currentHasOwner - previousHasOwner);
+
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
         "percentage_of_data_asset_with_owner_kpi",
         currentPercentCompleted,
+        changeCount,
         currentPercentCompleted - previousPercentCompleted,
         currentHasOwner.intValue(),
         timeConfig.numberOfDaysChange(),
@@ -358,6 +376,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentHasTier / currentTotalAssetCount) * 100;
     }
 
+    int changeCount = (int) (currentHasTier - previousHasTier);
+
     // TODO: Understand if we actually use this tierData for anything.
     Map<String, Double> tierData = new HashMap<>();
 
@@ -367,6 +387,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         String.valueOf(currentHasTier.intValue()),
         currentPercentCompleted,
         KPI_NOT_SET,
+        changeCount,
         currentPercentCompleted - previousPercentCompleted,
         false,
         "",
@@ -444,6 +465,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       DataInsightDescriptionAndOwnerTemplate.MetricType metricType,
       String chartKpiName,
       Double percentCompleted,
+      int changeCount,
       Double percentChange,
       int totalAssets,
       int numberOfDaysChange,
@@ -490,6 +512,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         String.valueOf(totalAssets),
         percentCompleted,
         targetKpi,
+        changeCount,
         percentChange,
         isKpiAvailable,
         totalDaysLeft,

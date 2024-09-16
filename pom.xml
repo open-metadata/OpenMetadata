@@ -111,7 +111,7 @@
     <opensearch.version>2.5.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.23</openapiswagger.version>
-    <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
+
     <httpclient.version>4.5.14</httpclient.version>
     <!-- Upgrading to spring version 6.x requires Java 17 -->
     <spring.version>6.1.12</spring.version>
@@ -155,6 +155,7 @@
     <picocli.version>4.7.6</picocli.version>
     <logback-core.version>1.2.13</logback-core.version>
     <logback-classic.version>1.2.13</logback-classic.version>
+    <jsonpath.version>2.4.0</jsonpath.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -368,11 +369,6 @@
         <version>${openapiswagger.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.springframework.security.kerberos</groupId>
-        <artifactId>spring-security-kerberos-core</artifactId>
-        <version>${spring-security-kerberos-core.version}</version>
-      </dependency>
-      <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpclient</artifactId>
         <version>${httpclient.version}</version>
@@ -542,6 +538,12 @@
         <groupId>com.fasterxml.jackson.dataformat</groupId>
         <artifactId>jackson-dataformat-cbor</artifactId>
         <version>${jackson.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.jayway.jsonpath</groupId>
+        <artifactId>json-path</artifactId>
+        <version>${jsonpath.version}</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->

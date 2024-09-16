@@ -75,7 +75,6 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
-import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
@@ -96,6 +95,7 @@ import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
+import org.openmetadata.service.search.indexes.TestCaseResultIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -110,6 +110,12 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -117,7 +123,6 @@ import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
 import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
-import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.delete.DeleteRequest;
@@ -134,10 +139,7 @@ import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.indices.CreateIndexRequest;
 import os.org.opensearch.client.indices.CreateIndexResponse;
 import os.org.opensearch.client.indices.GetIndexRequest;
-import os.org.opensearch.client.indices.GetMappingsRequest;
-import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.indices.PutMappingRequest;
-import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
@@ -200,6 +202,8 @@ public class OpenSearchClient implements SearchClient {
   protected final RestHighLevelClient client;
   public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
+  private final RBACConditionEvaluator rbacConditionEvaluator;
+  private final QueryBuilderFactory queryBuilderFactory;
 
   private final String clusterAlias;
 
@@ -224,6 +228,8 @@ public class OpenSearchClient implements SearchClient {
     client = createOpenSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
+    queryBuilderFactory = new OpenSearchQueryBuilderFactory();
+    rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
   }
 
   @Override
@@ -321,7 +327,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response search(SearchRequest request) throws IOException {
+  public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
     SearchSourceBuilder searchSourceBuilder =
         getSearchSourceBuilder(
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
@@ -514,7 +520,7 @@ public class OpenSearchClient implements SearchClient {
     } else {
       searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
     }
-
+    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     try {
       SearchResponse searchResponse =
@@ -1468,6 +1474,14 @@ public class OpenSearchClient implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
+  private static SearchSourceBuilder buildTestCaseResultSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryStringBuilder =
+        buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
   private static QueryStringQueryBuilder buildSearchQueryBuilder(
       String query, Map<String, Float> fields) {
     return QueryBuilders.queryStringQuery(query)
@@ -1811,17 +1825,6 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public int getSuccessFromBulkResponse(BulkResponse response) {
-    int success = 0;
-    for (BulkItemResponse bulkItemResponse : response) {
-      if (!bulkItemResponse.isFailed()) {
-        success++;
-      }
-    }
-    return success;
-  }
-
-  @Override
   public Response listDataInsightChartResult(
       Long startTs,
       Long endTs,
@@ -1974,24 +1977,6 @@ public class OpenSearchClient implements SearchClient {
     }
 
     return searchSourceBuilder;
-  }
-
-  @Override
-  public List<Map<String, String>> fetchDIChartFields() throws IOException {
-    List<Map<String, String>> fields = new ArrayList<>();
-    GetMappingsRequest request =
-        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
-
-    // Execute request
-    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
-
-    // Get mappings for the index
-    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
-      // Get fields for the index
-      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
-    }
-    return fields;
   }
 
   void getFieldNames(
@@ -2244,6 +2229,7 @@ public class OpenSearchClient implements SearchClient {
       case "data_product_search_index" -> buildDataProductSearch(q, from, size);
       case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
           q, from, size);
+      case "test_case_result_search_index" -> buildTestCaseResultSearch(q, from, size);
       case "mlmodel_service_search_index",
           "database_service_search_index",
           "messaging_service_index",
@@ -2270,5 +2256,18 @@ public class OpenSearchClient implements SearchClient {
 
   public Object getLowLevelClient() {
     return client.getLowLevelClient();
+  }
+
+  private void buildSearchRBACQuery(
+      SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
+    if (subjectContext != null && !subjectContext.isAdmin()) {
+      if (rbacConditionEvaluator != null) {
+        OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .filter(((OpenSearchQueryBuilder) rbacQuery).build()));
+      }
+    }
   }
 }

@@ -11,6 +11,11 @@
 """
 Workflow definition for the profiler
 """
+from typing import cast
+
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -44,10 +49,11 @@ class ProfilerWorkflow(IngestionWorkflow):
 
     def _get_source_class(self):
         if self.config.source.serviceName:
+            self.import_source_class()
             return OpenMetadataSource
         logger.info(
-            "Database Service name not provided, we will scan all the tables"
-            "available within data source and locate table entity in OpenMetadata"
+            "Database Service name not provided, we will scan all the tables "
+            "available within data source and locate table entity in OpenMetadata "
             "to ingest profiler data."
         )
         return OpenMetadataSourceExt
@@ -57,9 +63,17 @@ class ProfilerWorkflow(IngestionWorkflow):
         self.source = source_class.create(self.config.model_dump(), self.metadata)
 
         profiler_processor = self._get_profiler_processor()
-        pii_processor = self._get_pii_processor()
         sink = self._get_sink()
-        self.steps = (profiler_processor, pii_processor, sink)
+
+        # Only instantiate the PII Processor on demand
+        source_config: DatabaseServiceProfilerPipeline = cast(
+            DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
+        )
+        if source_config.processPiiSensitive:
+            pii_processor = self._get_pii_processor()
+            self.steps = (profiler_processor, pii_processor, sink)
+        else:
+            self.steps = (profiler_processor, sink)
 
     def test_connection(self):
         service_config = self.config.source.serviceConnection.root.config

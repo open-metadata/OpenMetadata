@@ -60,10 +60,9 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <p>SummaryTagsDescription</p>)
 );
 
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useLocation: jest.fn().mockReturnValue({ pathname: '/table' }),
-}));
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '/table' }));
+});
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({

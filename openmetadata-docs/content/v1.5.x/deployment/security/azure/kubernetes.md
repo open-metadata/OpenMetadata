@@ -1,6 +1,7 @@
 ---
 title: Azure SSO for Kubernetes
 slug: /deployment/security/azure/kubernetes
+collate: false
 ---
 
 # Azure SSO for Kubernetes

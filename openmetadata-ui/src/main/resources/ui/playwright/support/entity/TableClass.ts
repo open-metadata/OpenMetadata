@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint, TestCaseData } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  TestCaseData,
+  TestSuiteData,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class TableClass extends EntityClass {
@@ -105,6 +110,7 @@ export class TableClass extends EntityClass {
   testSuiteResponseData: unknown;
   testSuitePipelineResponseData: unknown[] = [];
   testCasesResponseData: unknown[] = [];
+  queryResponseData: unknown[] = [];
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Table);
@@ -167,7 +173,29 @@ export class TableClass extends EntityClass {
     });
   }
 
-  async createTestSuiteAndPipelines(apiContext: APIRequestContext) {
+  async createQuery(apiContext: APIRequestContext, queryText?: string) {
+    const queryResponse = await apiContext.post('/api/v1/queries', {
+      data: {
+        query:
+          queryText ??
+          `select * from ${this.entityResponseData?.['fullyQualifiedName']}`,
+        queryUsedIn: [{ id: this.entityResponseData?.['id'], type: 'table' }],
+        queryDate: Date.now(),
+        service: this.serviceResponseData?.['name'],
+      },
+    });
+
+    const query = await queryResponse.json();
+
+    this.queryResponseData.push(query);
+
+    return query;
+  }
+
+  async createTestSuiteAndPipelines(
+    apiContext: APIRequestContext,
+    testSuite?: TestSuiteData
+  ) {
     if (!this.entityResponseData) {
       await this.create(apiContext);
     }
@@ -179,6 +207,7 @@ export class TableClass extends EntityClass {
           executableEntityReference:
             this.entityResponseData?.['fullyQualifiedName'],
           description: 'Playwright test suite for table',
+          ...testSuite,
         },
       })
       .then((res) => res.json());
@@ -240,13 +269,13 @@ export class TableClass extends EntityClass {
         data: {
           name: `pw-test-case-${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
-          testDefinition:
-            testCaseData?.testDefinition ?? 'tableRowCountToBeBetween',
+          testDefinition: 'tableRowCountToBeBetween',
           testSuite: this.testSuiteResponseData?.['fullyQualifiedName'],
-          parameterValues: testCaseData?.parameterValues ?? [
+          parameterValues: [
             { name: 'minValue', value: 12 },
             { name: 'maxValue', value: 34 },
           ],
+          ...testCaseData,
         },
       })
       .then((res) => res.json());
@@ -254,6 +283,55 @@ export class TableClass extends EntityClass {
     this.testCasesResponseData.push(testCase);
 
     return testCase;
+  }
+
+  async addTestCaseResult(
+    apiContext: APIRequestContext,
+    testCaseFqn: string,
+    testCaseResult: unknown
+  ) {
+    const testCaseResultResponse = await apiContext.put(
+      `/api/v1/dataQuality/testCases/${testCaseFqn}/testCaseResult`,
+      { data: testCaseResult }
+    );
+
+    return await testCaseResultResponse.json();
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/tables/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.entityResponseData = await response.json();
+
+    return {
+      entity: this.entityResponseData,
+    };
+  }
+
+  async followTable(apiContext: APIRequestContext, userId: string) {
+    await apiContext.put(
+      `/api/v1/tables/${this.entityResponseData?.['id']}/followers`,
+      {
+        data: userId,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
   }
 
   async delete(apiContext: APIRequestContext) {

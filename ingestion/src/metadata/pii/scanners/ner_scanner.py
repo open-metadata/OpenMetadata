@@ -13,9 +13,11 @@ NER Scanner based on Presidio.
 
 Supported Entities https://microsoft.github.io/presidio/supported_entities/
 """
+import json
+import logging
 import traceback
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel
 
@@ -23,10 +25,13 @@ from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.pii.constants import PII, SPACY_EN_MODEL
 from metadata.pii.models import TagAndConfidence
 from metadata.pii.ner import NEREntity
+from metadata.pii.scanners.base import BaseScanner
 from metadata.utils import fqn
-from metadata.utils.logger import pii_logger
+from metadata.utils.logger import METADATA_LOGGER, pii_logger
 
 logger = pii_logger()
+SUPPORTED_LANG = "en"
+PRESIDIO_LOGGER = "presidio-analyzer"
 
 
 class StringAnalysis(BaseModel):
@@ -38,11 +43,16 @@ class StringAnalysis(BaseModel):
     appearances: int
 
 
+class NLPEngineModel(BaseModel):
+    """Required to pass the nlp_engine as {"lang_code": "en", "model_name": "en_core_web_lg"}"""
+
+    lang_code: str
+    model_name: str
+
+
 # pylint: disable=import-outside-toplevel
-class NERScanner:
-    """
-    Based on https://microsoft.github.io/presidio/
-    """
+class NERScanner(BaseScanner):
+    """Based on https://microsoft.github.io/presidio/"""
 
     def __init__(self):
         import spacy
@@ -58,8 +68,19 @@ class NERScanner:
             download(SPACY_EN_MODEL)
             spacy.load(SPACY_EN_MODEL)
 
+        nlp_engine_model = NLPEngineModel(
+            lang_code=SUPPORTED_LANG, model_name=SPACY_EN_MODEL
+        )
+
+        # Set the presidio logger to talk less about internal entities unless we are debugging
+        logging.getLogger(PRESIDIO_LOGGER).setLevel(
+            logging.INFO
+            if logging.getLogger(METADATA_LOGGER).level == logging.DEBUG
+            else logging.ERROR
+        )
+
         self.analyzer = AnalyzerEngine(
-            nlp_engine=SpacyNlpEngine(models={"en": SPACY_EN_MODEL})
+            nlp_engine=SpacyNlpEngine(models=[nlp_engine_model.model_dump()])
         )
 
     @staticmethod
@@ -74,7 +95,7 @@ class NERScanner:
         )
         return top_entity, entities_score[top_entity].score
 
-    def scan(self, sample_data_rows: List[Any]) -> Optional[TagAndConfidence]:
+    def scan(self, data: List[Any]) -> Optional[TagAndConfidence]:
         """
         Scan the column's sample data rows and look for PII.
 
@@ -95,24 +116,17 @@ class NERScanner:
            be thought as the "score" times "weighted down appearances".
         4. Once we have the "top" `Entity` from that column, we assign the PII label accordingly from `NEREntity`.
         """
-        logger.debug("Processing '%s'", sample_data_rows)
+        logger.debug("Processing '%s'", data)
 
         # Initialize an empty dict for the given row list
         entities_score: Dict[str, StringAnalysis] = defaultdict(
             lambda: StringAnalysis(score=0, appearances=0)
         )
 
-        str_sample_data_rows = [str(row) for row in sample_data_rows if row is not None]
+        str_sample_data_rows = [str(row) for row in data if row is not None]
         for row in str_sample_data_rows:
             try:
-                results = self.analyzer.analyze(row, language="en")
-                for result in results:
-                    entities_score[result.entity_type] = StringAnalysis(
-                        score=result.score
-                        if result.score > entities_score[result.entity_type].score
-                        else entities_score[result.entity_type].score,
-                        appearances=entities_score[result.entity_type].appearances + 1,
-                    )
+                self.process_data(row=row, entities_score=entities_score)
             except Exception as exc:
                 logger.warning(f"Unknown error while processing {row} - {exc}")
                 logger.debug(traceback.format_exc())
@@ -133,3 +147,38 @@ class NERScanner:
             )
 
         return None
+
+    def process_data(self, row: str, entities_score: Dict[str, StringAnalysis]) -> None:
+        """Process the Sample Data rows, checking if they are of JSON format as well"""
+        # first, check if the data is JSON or we can work with strings
+        is_json, value = self.is_json_data(row)
+        if is_json and isinstance(value, dict):
+            for val in value.values():
+                self.process_data(row=str(val), entities_score=entities_score)
+        elif is_json and isinstance(value, list):
+            for val in value:
+                self.process_data(row=str(val), entities_score=entities_score)
+        else:
+            self.scan_value(value=row, entities_score=entities_score)
+
+    @staticmethod
+    def is_json_data(value: str) -> Tuple[bool, Union[dict, list, None]]:
+        """Check if the value is a JSON object that we need to process differently than strings"""
+        try:
+            res = json.loads(value)
+            if isinstance(res, (dict, list)):
+                return True, res
+            return False, None
+        except json.JSONDecodeError:
+            return False, None
+
+    def scan_value(self, value: str, entities_score: Dict[str, StringAnalysis]):
+        """Scan the value for PII"""
+        results = self.analyzer.analyze(value, language="en")
+        for result in results:
+            entities_score[result.entity_type] = StringAnalysis(
+                score=result.score
+                if result.score > entities_score[result.entity_type].score
+                else entities_score[result.entity_type].score,
+                appearances=entities_score[result.entity_type].appearances + 1,
+            )

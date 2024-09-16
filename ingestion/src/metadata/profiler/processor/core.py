@@ -274,9 +274,6 @@ class Profiler(Generic[TMetric]):
 
         Data should be saved under self.results
         """
-
-        logger.debug("Running post Profiler...")
-
         current_col_results: Dict[str, Any] = self._column_results.get(col.name)
         if not current_col_results:
             logger.debug(
@@ -606,7 +603,7 @@ class Profiler(Generic[TMetric]):
 
             if self._system_results:
                 system_profile = [
-                    SystemProfile(**system_result)
+                    SystemProfile.model_validate(system_result)
                     for system_result in self._system_results
                 ]
             else:

@@ -22,6 +22,7 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.SSLUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
@@ -29,7 +30,6 @@ import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
   ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
-
   String UPDATE = "update";
 
   String ADD = "add";
@@ -106,7 +106,7 @@ public interface SearchClient {
 
   void createAliases(IndexMapping indexMapping);
 
-  Response search(SearchRequest request) throws IOException;
+  Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
   Response getDocByID(String indexName, String entityId) throws IOException;
 
@@ -134,6 +134,10 @@ public interface SearchClient {
       String entityType)
       throws IOException;
 
+  /*
+   Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
+  */
+  @SuppressWarnings("unused")
   default Response listPageHierarchy(String parent, String pageType) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
@@ -216,16 +220,6 @@ public interface SearchClient {
       es.org.elasticsearch.action.bulk.BulkRequest data,
       es.org.elasticsearch.client.RequestOptions options)
       throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default int getSuccessFromBulkResponse(BulkResponse response) {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default int getSuccessFromBulkResponse(es.org.elasticsearch.action.bulk.BulkResponse response) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }

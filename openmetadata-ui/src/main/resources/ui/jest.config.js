@@ -46,8 +46,6 @@ module.exports = {
     '^.+\\.ts|tsx?$': 'ts-jest',
     '^.+\\.js|jsx?$': '<rootDir>/node_modules/babel-jest',
   },
-  // "scriptPreprocessor": "<rootDir>/node_modules/babel-jest",
-  // "moduleFileExtensions": ["js", "json","jsx" ],
 
   setupFilesAfterEnv: ['./src/setupTests.js'],
   clearMocks: true,
@@ -64,6 +62,8 @@ module.exports = {
     '@azure/msal-react':
       '<rootDir>/node_modules/@azure/msal-react/dist/index.js',
     axios: 'axios/dist/node/axios.cjs',
+    'react-antd-column-resize':
+      '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.js',
   },
   transformIgnorePatterns: ['node_modules/(?!@azure/msal-react)'],
 

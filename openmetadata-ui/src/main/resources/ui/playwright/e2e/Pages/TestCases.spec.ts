@@ -12,8 +12,12 @@
  */
 import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
-import { deleteTestCase } from '../../utils/testCases';
+import {
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
+} from '../../utils/common';
+import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -50,16 +54,25 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
       await page.getByTitle('Compare 2 tables for').click();
-      const tableSearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(
-          testCase.table2
-        )}*index=table_search_index*`
-      );
       await page.click('#tableTestForm_params_table2');
+      const tableSearchResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*index=table_search_index*`
+      );
       await page.fill(`#tableTestForm_params_table2`, testCase.table2);
       await tableSearchResponse;
+      // The 'networkidle' parameter tells Playwright to wait until there are no network connections
+      // for at least 500 ms.
+      await page.waitForLoadState('networkidle');
+
+      await expect(
+        page
+          .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
+          .locator('div')
+      ).toBeVisible();
+
       await page
         .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
+        .locator('div')
         .click();
 
       await page.fill(`#tableTestForm_params_keyColumns_0_value`, 'user_id');
@@ -82,7 +95,7 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('submit-test').click();
       await createTestCaseResponse;
       const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases?fields=*`
+        `/api/v1/dataQuality/testCases/search/list?fields=*`
       );
       await page.getByTestId('view-service-button').click();
       await tableTestResponse;
@@ -120,7 +133,7 @@ test('Table difference test case', async ({ page }) => {
         'Test case updated successfully.'
       );
 
-      await page.getByTestId('content-wrapper').getByLabel('close').click();
+      await page.getByLabel('close', { exact: true }).click();
     });
 
     await test.step('Delete', async () => {
@@ -179,7 +192,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('submit-test').click();
       await createTestCaseResponse;
       const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases?fields=*`
+        `/api/v1/dataQuality/testCases/search/list?fields=*`
       );
       await page.getByTestId('view-service-button').click();
       await tableTestResponse;
@@ -220,11 +233,112 @@ test('Custom SQL Query', async ({ page }) => {
         'Test case updated successfully.'
       );
 
-      await page.getByTestId('content-wrapper').getByLabel('close').click();
+      await page.getByLabel('close', { exact: true }).click();
     });
 
     await test.step('Delete', async () => {
       await deleteTestCase(page, testCase.name);
+    });
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Column Values To Be Not Null', async ({ page }) => {
+  test.slow();
+
+  const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
+    name: 'id_column_values_to_be_not_null',
+    displayName: 'ID Column Values To Be Not Null',
+    column: 'user_id',
+    type: 'columnValuesToBeNotNull',
+    label: 'Column Values To Be Not Null',
+    description: 'New table test case for columnValuesToBeNotNull',
+  };
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  await table.create(apiContext);
+
+  await visitDataQualityTab(page, table);
+  await page.click('[data-testid="profiler-add-table-test-btn"]');
+  await page.click('[data-testid="column"]');
+
+  try {
+    await test.step('Create', async () => {
+      const testDefinitionResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC'
+      );
+      await page.click('#tableTestForm_column');
+      await page.click(
+        `[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.column}"]`
+      );
+      await testDefinitionResponse;
+      await page.fill(
+        '#tableTestForm_testName',
+        NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name
+      );
+
+      await page.fill(
+        '#tableTestForm_testTypeId',
+        NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type
+      );
+      await page.click(
+        `[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.label}"]`
+      );
+      await page.fill(
+        descriptionBox,
+        NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.description
+      );
+
+      await page.click('[data-testid="submit-test"]');
+      await page.waitForSelector('[data-testid="success-line"]');
+      await page.waitForSelector('[data-testid="view-service-button"]');
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list?fields=*'
+      );
+      await page.click(`[data-testid="view-service-button"]`);
+      await testCaseResponse;
+      await page.click('[data-testid="profiler-tab-left-panel"]');
+
+      await expect(
+        page.locator(
+          `[data-testid="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name}"]`
+        )
+      ).toBeVisible();
+    });
+
+    await test.step('Edit', async () => {
+      await page
+        .getByTestId(`edit-${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name}`)
+        .click();
+
+      await expect(page.locator('.ant-modal-title')).toHaveText(
+        `Edit ${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name}`
+      );
+      await expect(page.locator('#tableTestForm_name')).toHaveValue(
+        NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name
+      );
+
+      await page.locator('#tableTestForm_displayName').clear();
+      await page.fill(
+        '#tableTestForm_displayName',
+        NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.displayName
+      );
+      await page.getByText('New table test case for').first().click();
+      await page.keyboard.type(' update');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await expect(page.getByRole('alert')).toContainText(
+        'Test case updated successfully.'
+      );
+
+      await page.getByLabel('close', { exact: true }).click();
+    });
+
+    await test.step('Delete', async () => {
+      await deleteTestCase(page, NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name);
     });
   } finally {
     await table.delete(apiContext);

@@ -176,6 +176,8 @@ site_menu:
     url: /deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
   - category: Deployment / Enable Secrets Manager / Supported Implementations / Azure Key Vault
     url: /deployment/secrets-manager/supported-implementations/azure-key-vault
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / GCP Secret Manager
+    url: /deployment/secrets-manager/supported-implementations/gcp-secret-manager
   - category: Deployment / Enable Secrets Manager / How to add a new implementation
     url: /deployment/secrets-manager/how-to-add-a-new-implementation
 
@@ -358,6 +360,12 @@ site_menu:
     url: /connectors/database/sap-hana
   - category: Connectors / Database / SAP Hana / Run Externally
     url: /connectors/database/sap-hana/yaml
+  - category: Connectors / Database / SAP ERP
+    url: /connectors/database/sap-erp
+  - category: Connectors / Database / SAP ERP / Run Externally
+    url: /connectors/database/sap-erp/yaml
+  - category: Connectors / Database / SAP ERP / Setup SAP ERP APIs
+    url: /connectors/database/sap-erp/setup-sap-apis
   - category: Connectors / Database / SAS
     url: /connectors/database/sas
   - category: Connectors / Database / SAS / Run Externally
@@ -911,6 +919,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.2 Release
+    url: /releases/all-releases/#1.5.2-release
   - category: Releases / All Releases / 1.5.1 Release
     url: /releases/all-releases/#1.5.1-release
   - category: Releases / All Releases / 1.4.8 Release

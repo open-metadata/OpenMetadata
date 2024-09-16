@@ -21,12 +21,15 @@ const mockUseHistory = {
   push: jest.fn(),
   goBack: jest.fn(),
 };
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    search: 'field=columns&value="address.street_name"',
+  }));
+});
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockReturnValue({ entityType: 'table' }),
-  useLocation: jest
-    .fn()
-    .mockReturnValue({ search: 'field=columns&value="address.street_name"' }),
   useHistory: jest.fn().mockImplementation(() => mockUseHistory),
 }));
 jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>

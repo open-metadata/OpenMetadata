@@ -74,6 +74,11 @@ import {
   ActivityFeedTabs,
 } from './ActivityFeedTab.interface';
 
+const componentsVisibility = {
+  showThreadIcon: false,
+  showRepliesContainer: true,
+};
+
 export const ActivityFeedTab = ({
   fqn,
   owners = [],
@@ -151,9 +156,7 @@ export const ActivityFeedTab = ({
       return (
         <Transi18next
           i18nKey="message.no-activity-feed"
-          renderElement={
-            <Link rel="noreferrer" to={{ pathname: ROUTES.EXPLORE }} />
-          }
+          renderElement={<Link to={ROUTES.EXPLORE} />}
           values={{
             explored: t('message.have-not-explored-yet'),
           }}
@@ -429,10 +432,7 @@ export const ActivityFeedTab = ({
         <ActivityFeedListV1
           hidePopover
           activeFeedId={selectedThread?.id}
-          componentsVisibility={{
-            showThreadIcon: false,
-            showRepliesContainer: true,
-          }}
+          componentsVisibility={componentsVisibility}
           emptyPlaceholderText={placeholderText}
           feedList={entityThread}
           isForFeedTab={isForFeedTab}
