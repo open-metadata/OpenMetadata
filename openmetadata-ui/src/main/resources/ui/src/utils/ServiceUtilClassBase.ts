@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { capitalize, toLower } from 'lodash';
+import { capitalize, get, toLower } from 'lodash';
 import MetricIcon from '../assets/svg/metric.svg';
 import {
   AIRBYTE,
