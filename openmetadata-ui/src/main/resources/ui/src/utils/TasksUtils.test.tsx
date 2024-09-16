@@ -179,7 +179,7 @@ describe('Tests for fetchOptions', () => {
     const mockSetOptions = jest.fn();
 
     (getUserAndTeamSearch as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: MOCK_ASSIGNEE_DATA })
+      Promise.resolve(MOCK_ASSIGNEE_DATA)
     );
 
     await act(async () => {
@@ -208,7 +208,7 @@ describe('Tests for fetchOptions', () => {
     const mockSetOptions = jest.fn();
 
     (getUserAndTeamSearch as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: MOCK_ASSIGNEE_DATA })
+      Promise.resolve(MOCK_ASSIGNEE_DATA)
     );
 
     await act(async () => {
