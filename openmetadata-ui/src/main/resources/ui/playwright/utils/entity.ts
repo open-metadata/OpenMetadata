@@ -1276,3 +1276,13 @@ export const escapeESReservedCharacters = (text?: string) => {
     ? text.replace(reUnescapedHtml, getReplacedChar)
     : text ?? '';
 };
+
+export const getEncodedFqn = (fqn: string, spaceAsPlus = false) => {
+  let uri = encodeURIComponent(fqn);
+
+  if (spaceAsPlus) {
+    uri = uri.replaceAll('%20', '+');
+  }
+
+  return uri;
+};
