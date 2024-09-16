@@ -22,3 +22,11 @@ CREATE INDEX IF NOT EXISTS  data_quality_data_time_series_id_index  ON data_qual
 ALTER TABLE test_case DROP COLUMN status;
 UPDATE test_case SET json = jsonb_set(data, '{testCaseStatus}', json->'testCaseResult'->'testCaseStatus');
 ALTER TABLE test_case ADD COLUMN status VARCHAR(56) GENERATED ALWAYS AS (json ->> 'testCaseStatus') STORED NULL;
+
+
+-- Remove test case result states
+UPDATE test_suite
+SET json = json - 'testCaseResultSummary';
+
+UPDATE test_case
+SET json = json - 'testCaseResult';

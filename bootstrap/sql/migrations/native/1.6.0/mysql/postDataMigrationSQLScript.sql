@@ -20,3 +20,11 @@ CREATE INDEX data_quality_data_time_series_id_index ON data_quality_data_time_se
 ALTER TABLE test_case DROP COLUMN status;
 UPDATE test_case SET json = JSON_SET(json, '$.testCaseStatus', JSON_EXTRACT(json, '$.testCaseResult.testCaseStatus'));
 ALTER TABLE test_case ADD COLUMN status VARCHAR(56) GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(json, '$.testCaseStatus'))) STORED;
+
+
+-- Remove test case result states
+UPDATE test_suite
+SET json = JSON_REMOVE(json, '$.testCaseResultSummary');
+
+UPDATE test_case
+SET json = JSON_REMOVE(json, '$.testCaseResult');

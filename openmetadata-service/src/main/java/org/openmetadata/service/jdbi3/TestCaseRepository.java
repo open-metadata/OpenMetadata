@@ -277,7 +277,24 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   protected void postDelete(TestCase test) {
     super.postDelete(test);
+    // Update test suite with new test case in search index
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    TestSuite testSuite = Entity.getEntity(test.getTestSuite(), "*", ALL);
+    TestSuite original = TestSuiteRepository.copyTestSuite(testSuite);
+    testSuiteRepository.postUpdate(original, testSuite);
     deleteTestCaseFailedRowsSample(test.getId());
+  }
+
+  @Override
+  protected void postCreate(TestCase test) {
+    super.postCreate(test);
+    // Update test suite with new test case in search index
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    TestSuite testSuite = Entity.getEntity(test.getTestSuite(), "*", ALL);
+    TestSuite original = TestSuiteRepository.copyTestSuite(testSuite);
+    testSuiteRepository.postUpdate(original, testSuite);
   }
 
   public RestUtil.PutResponse<TestCaseResult> addTestCaseResult(
