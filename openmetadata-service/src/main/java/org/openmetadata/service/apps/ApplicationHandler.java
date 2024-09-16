@@ -1,17 +1,16 @@
 package org.openmetadata.service.apps;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
-import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -33,12 +32,11 @@ public class ApplicationHandler {
 
   @Getter private static ApplicationHandler instance;
   private final OpenMetadataApplicationConfig config;
-  private final AppsPrivateConfiguration privateConfiguration;
   private final AppRepository appRepository;
+  private final ConfigurationReader configReader = new ConfigurationReader();
 
   private ApplicationHandler(OpenMetadataApplicationConfig config) {
     this.config = config;
-    this.privateConfiguration = config.getAppsPrivateConfiguration();
     this.appRepository = new AppRepository();
   }
 
@@ -55,28 +53,23 @@ public class ApplicationHandler {
   public void setAppRuntimeProperties(App app) {
     app.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(config, app.getBot().getName()).build());
-
-    if (privateConfiguration != null
-        && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
-      for (AppPrivateConfig appPrivateConfig : privateConfiguration.getAppsPrivateConfiguration()) {
-        if (app.getName().equals(appPrivateConfig.getName())) {
-          app.setPreview(appPrivateConfig.getPreview());
-          app.setPrivateConfiguration(appPrivateConfig.getParameters());
-        }
-      }
+    try {
+      AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
+      app.setPreview(appPrivateConfig.getPreview());
+      app.setPrivateConfiguration(appPrivateConfig.getParameters());
+    } catch (IOException e) {
+      LOG.debug("Config file for app {} not found: ", app.getName(), e);
     }
   }
 
   public Boolean isPreview(String appName) {
-    if (privateConfiguration != null
-        && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
-      for (AppPrivateConfig appPrivateConfig : privateConfiguration.getAppsPrivateConfiguration()) {
-        if (appName.equals(appPrivateConfig.getName())) {
-          return appPrivateConfig.getPreview();
-        }
-      }
+    try {
+      AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(appName);
+      return appPrivateConfig.getPreview();
+    } catch (IOException e) {
+      LOG.debug("Config file for app {} not found: ", appName, e);
+      return false;
     }
-    return false;
   }
 
   public void triggerApplicationOnDemand(
