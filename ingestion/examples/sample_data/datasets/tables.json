@@ -1604,10 +1604,23 @@
                   },
                   {
                       "name": "shipping_address",
-                      "dataType": "ARRAY",
-                      "arrayDataType": "STRUCT",
-                      "dataTypeDisplay": "array<struct<name:varchar(32),street_address:varchar(128), city:varchar(32),postcode:varchar(8)>>",
-                      "tags": []
+                        "dataType": "ARRAY",
+                        "arrayDataType": "STRUCT",
+                        "dataTypeDisplay": "array<struct<type:string,provider:array<int>>>",
+                        "children": [
+                          {
+                            "dataType": "STRING",
+                            "dataTypeDisplay": "string",
+                            "name": "type"
+                          },
+                          {
+                            "dataType": "ARRAY",
+                            "arrayDataType": "INT",
+                            "dataTypeDisplay": "array<int>",
+                            "name": "provider"
+                          }
+                        ],
+                    "tags": []
                   },
                   {
                       "name": "orders",
