@@ -25,7 +25,12 @@ import {
 } from '../../utils/common';
 import { addMultiOwner } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
-import { createTeam, hardDeleteTeam, softDeleteTeam } from '../../utils/team';
+import {
+  createTeam,
+  hardDeleteTeam,
+  searchTeam,
+  softDeleteTeam,
+} from '../../utils/team';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -405,5 +410,41 @@ test.describe('Teams Page', () => {
 
     await hardDeleteTeam(page);
     await afterAction();
+  });
+
+  test('Team search should work properly', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const id = uuid();
+    const team1 = new TeamClass();
+    const team2 = new TeamClass({
+      name: `pw team space-${id}`,
+      displayName: `pw team space ${id}`,
+      description: 'playwright team with space description',
+      teamType: 'Group',
+    });
+    const team3 = new TeamClass({
+      name: `pw.team.dot-${id}`,
+      displayName: `pw.team.dot ${id}`,
+      description: 'playwright team with dot description',
+      teamType: 'Group',
+    });
+
+    await team1.create(apiContext);
+    await team2.create(apiContext);
+    await team3.create(apiContext);
+
+    try {
+      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await page.waitForLoadState('networkidle');
+
+      for (const team of [team1, team2, team3]) {
+        await searchTeam(page, team.responseData?.['displayName']);
+      }
+    } finally {
+      await team1.delete(apiContext);
+      await team2.delete(apiContext);
+      await team3.delete(apiContext);
+      await afterAction();
+    }
   });
 });

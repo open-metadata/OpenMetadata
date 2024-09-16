@@ -61,7 +61,7 @@ import {
   TestCaseIncidentStatusParams,
   updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
-import { getUserSuggestions } from '../../rest/miscAPI';
+import { getUserAndTeamSearch } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getUsers } from '../../rest/userAPI';
 import {
@@ -225,11 +225,11 @@ const IncidentManagerPage = () => {
       return;
     }
     try {
-      const res = await getUserSuggestions(query, true);
-      const hits = res.data.suggest['metadata-suggest'][0]['options'];
+      const res = await getUserAndTeamSearch(query, true);
+      const hits = res.data.hits.hits;
       const suggestOptions = hits.map((hit) => ({
         label: getEntityName(hit._source),
-        value: hit._id,
+        value: hit._id ?? '',
         type: hit._source.entityType,
         name: hit._source.name,
       }));

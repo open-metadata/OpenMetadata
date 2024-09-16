@@ -66,7 +66,7 @@ export const assignIncident = async (data: {
     '#testCaseResolutionStatusDetails_assignee',
     user.displayName
   );
-  await page.waitForResponse('/api/v1/search/suggest?q=*');
+  await page.waitForResponse('/api/v1/search/query?q=*');
   await page.click(`[data-testid="${user.name.toLocaleLowerCase()}"]`);
   const updateIncident = page.waitForResponse(
     '/api/v1/dataQuality/testCases/testCaseIncidentStatus'

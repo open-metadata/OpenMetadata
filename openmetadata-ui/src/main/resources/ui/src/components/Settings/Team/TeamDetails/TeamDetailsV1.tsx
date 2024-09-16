@@ -55,7 +55,6 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityAction, EntityType } from '../../../../enums/entity.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { OwnerType } from '../../../../enums/user.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
@@ -69,7 +68,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
-import { getSuggestions } from '../../../../rest/miscAPI';
+import { getSearchedTeams } from '../../../../rest/miscAPI';
 import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -268,13 +267,8 @@ const TeamDetailsV1 = ({
 
   const searchTeams = async (text: string) => {
     try {
-      const res = await getSuggestions<SearchIndex.TEAM>(
-        text,
-        SearchIndex.TEAM
-      );
-      const data = res.data.suggest['metadata-suggest'][0].options.map(
-        (value) => value._source as Team
-      );
+      const res = await getSearchedTeams(text, 1, '');
+      const data = res.data.hits.hits.map((value) => value._source as Team);
 
       setChildTeamList(data);
     } catch (error) {

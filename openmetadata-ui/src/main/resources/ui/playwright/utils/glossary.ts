@@ -867,7 +867,7 @@ export const createDescriptionTaskForGlossary = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -922,7 +922,7 @@ export const createTagTaskForGlossary = async (
     );
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;

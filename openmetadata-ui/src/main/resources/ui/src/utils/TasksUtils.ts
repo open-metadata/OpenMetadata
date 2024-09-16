@@ -70,7 +70,7 @@ import {
 import { getDataModelByFqn } from '../rest/dataModelsAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
 import { getMetricByFqn } from '../rest/metricsAPI';
-import { getUserSuggestions } from '../rest/miscAPI';
+import { getUserAndTeamSearch } from '../rest/miscAPI';
 import { getMlModelByFQN } from '../rest/mlModelAPI';
 import { getPipelineByFqn } from '../rest/pipelineAPI';
 import { getSearchIndexDetailsByFQN } from '../rest/SearchIndexAPI';
@@ -238,12 +238,12 @@ export const fetchOptions = ({
 
     return;
   }
-  getUserSuggestions(query, onlyUsers)
+  getUserAndTeamSearch(query, onlyUsers)
     .then((res) => {
-      const hits = res.data.suggest['metadata-suggest'][0]['options'];
+      const hits = res.data.hits.hits;
       const suggestOptions = hits.map((hit) => ({
         label: getEntityName(hit._source),
-        value: hit._id,
+        value: hit._id ?? '',
         type: hit._source.entityType,
         name: hit._source.name,
         displayName: hit._source.displayName,

@@ -135,7 +135,7 @@ test.describe('Incident Manager', () => {
       await page.getByRole('menuitem', { name: 'Reassign' }).click();
 
       const searchUserResponse = page.waitForResponse(
-        `/api/v1/search/suggest?q=*${user2.data.firstName}*${user2.data.lastName}*&index=user_search_index*`
+        `/api/v1/search/query?q=*${user2.data.firstName}*${user2.data.lastName}*&index=user_search_index*`
       );
 
       await page.getByTestId('select-assignee').locator('div').click();
