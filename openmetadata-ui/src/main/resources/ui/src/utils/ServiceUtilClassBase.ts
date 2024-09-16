@@ -142,6 +142,7 @@ class ServiceUtilClassBase {
     MetadataServiceType.Alation,
     APIServiceType.Webhook,
     MlModelServiceType.VertexAI,
+    PipelineServiceType.Matillion,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
