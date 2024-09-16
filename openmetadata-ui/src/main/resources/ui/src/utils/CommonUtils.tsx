@@ -20,6 +20,7 @@ import {
   capitalize,
   get,
   isEmpty,
+  isNil,
   isNull,
   isString,
   isUndefined,
@@ -877,4 +878,17 @@ export const filterSelectOptions = (
     toLower(option?.label).includes(toLower(input)) ||
     toLower(option?.value).includes(toLower(input))
   );
+};
+
+/**
+ * helper method to check to determine the deleted flag is true or false
+ * some times deleted flag is string or boolean or undefined from the API
+ * for Example "false" or false or true in Lineage API
+ * @param deleted
+ * @returns
+ */
+export const isDeleted = (deleted: unknown): boolean => {
+  return (deleted as string) === 'false' || deleted === false || isNil(deleted)
+    ? false
+    : true;
 };

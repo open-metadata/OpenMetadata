@@ -125,7 +125,9 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
               }}>
               <div className="d-flex items-center w-full overflow-hidden">
                 <img
-                  alt={entity.serviceType}
+                  alt={
+                    'serviceType' in entity ? entity.serviceType : entity.name
+                  }
                   className="m-r-xs"
                   height="16px"
                   src={serviceUtilClassBase.getServiceTypeLogo(entity)}

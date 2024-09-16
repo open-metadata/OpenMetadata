@@ -20,6 +20,7 @@ import { DashboardDataModel } from '../../../generated/entity/data/dashboardData
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
@@ -46,6 +47,7 @@ export type ExtentionEntities = {
   [EntityType.API_COLLECTION]: APICollection;
   [EntityType.API_ENDPOINT]: APIEndpoint;
   [EntityType.DATA_PRODUCT]: DataProduct;
+  [EntityType.METRIC]: Metric;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;
