@@ -155,6 +155,7 @@
     <picocli.version>4.7.6</picocli.version>
     <logback-core.version>1.2.13</logback-core.version>
     <logback-classic.version>1.2.13</logback-classic.version>
+    <jsonpath.version>2.4.0</jsonpath.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -537,6 +538,12 @@
         <groupId>com.fasterxml.jackson.dataformat</groupId>
         <artifactId>jackson-dataformat-cbor</artifactId>
         <version>${jackson.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.jayway.jsonpath</groupId>
+        <artifactId>json-path</artifactId>
+        <version>${jsonpath.version}</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->

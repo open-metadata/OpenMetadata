@@ -25,6 +25,7 @@ import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Query } from '../generated/entity/data/query';
@@ -183,6 +184,8 @@ export interface APIEndpointSearchSource
   extends SearchSourceBase,
     APIEndpoint {}
 
+export interface MetricSearchSource extends SearchSourceBase, Metric {}
+
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
@@ -211,7 +214,8 @@ export type ExploreSearchSource =
   | SearchIndexSearchSource
   | APIServiceSearchSource
   | APICollectionSearchSource
-  | APIEndpointSearchSource;
+  | APIEndpointSearchSource
+  | MetricSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ALL]: TableSearchSource;
@@ -249,6 +253,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.API_SERVICE_INDEX]: APIServiceSearchSource;
   [SearchIndex.API_COLLECTION_INDEX]: APICollectionSearchSource;
   [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointSearchSource;
+  [SearchIndex.METRIC_SEARCH_INDEX]: MetricSearchSource;
 };
 
 export type SearchRequest<
