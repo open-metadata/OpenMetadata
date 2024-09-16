@@ -1078,17 +1078,19 @@ public class OpenSearchClient implements SearchClient {
             JsonObject dateHistogramAggregation = aggregation.getJsonObject(aggregationType);
             String calendarInterval = dateHistogramAggregation.getString("calendar_interval");
             DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
-                    AggregationBuilders.dateHistogram(key)
-                            .field(dateHistogramAggregation.getString("field"))
-                            .calendarInterval(new DateHistogramInterval(calendarInterval));
+                AggregationBuilders.dateHistogram(key)
+                    .field(dateHistogramAggregation.getString("field"))
+                    .calendarInterval(new DateHistogramInterval(calendarInterval));
             aggregationBuilders.add(dateHistogramAggregationBuilder);
             break;
           case "top_hits":
             JsonObject topHitsAggregation = aggregation.getJsonObject(aggregationType);
             TopHitsAggregationBuilder topHitsAggregationBuilder =
-                    AggregationBuilders.topHits(key)
-                            .size(topHitsAggregation.getInt("size"))
-                            .sort(topHitsAggregation.getString("sort_field"), SortOrder.valueOf(topHitsAggregation.getString("sort_order")));
+                AggregationBuilders.topHits(key)
+                    .size(topHitsAggregation.getInt("size"))
+                    .sort(
+                        topHitsAggregation.getString("sort_field"),
+                        SortOrder.valueOf(topHitsAggregation.getString("sort_order")));
             aggregationBuilders.add(topHitsAggregationBuilder);
             break;
           case "aggs":
@@ -2256,19 +2258,20 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  private void getSearchFilter(String filter, SearchSourceBuilder searchSourceBuilder, boolean hasQuery) throws IOException {
+  private void getSearchFilter(
+      String filter, SearchSourceBuilder searchSourceBuilder, boolean hasQuery) throws IOException {
     if (!filter.isEmpty()) {
       try {
         XContentParser queryParser = createXContentParser(filter);
         XContentParser sourceParser = createXContentParser(filter);
         QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(queryParser).query();
         FetchSourceContext sourceFromXContent =
-                SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
+            SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
         boolQuery =
-                hasQuery
-                        ? boolQuery.filter(queryFromXContent)
-                        : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
+            hasQuery
+                ? boolQuery.filter(queryFromXContent)
+                : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
         searchSourceBuilder.query(boolQuery);
         searchSourceBuilder.fetchSource(sourceFromXContent);
       } catch (Exception e) {

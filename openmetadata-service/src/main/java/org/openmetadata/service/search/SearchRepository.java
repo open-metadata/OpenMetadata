@@ -90,7 +90,11 @@ public class SearchRepository {
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
-      List.of(Entity.FIELD_OWNERS, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED, Entity.FIELD_TEST_SUITES);
+      List.of(
+          Entity.FIELD_OWNERS,
+          Entity.FIELD_DOMAIN,
+          Entity.FIELD_DISABLED,
+          Entity.FIELD_TEST_SUITES);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
@@ -811,9 +815,11 @@ public class SearchRepository {
     return searchClient.aggregate(index, fieldName, value, query);
   }
 
-  public JsonObject aggregate(String query, String entityType, JsonObject aggregationJson, SearchListFilter filter)
+  public JsonObject aggregate(
+      String query, String entityType, JsonObject aggregationJson, SearchListFilter filter)
       throws IOException {
-    return searchClient.aggregate(query, entityType, aggregationJson, filter.getCondition(entityType));
+    return searchClient.aggregate(
+        query, entityType, aggregationJson, filter.getCondition(entityType));
   }
 
   public DataQualityReport genericAggregation(

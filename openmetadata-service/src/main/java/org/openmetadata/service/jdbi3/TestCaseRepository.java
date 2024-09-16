@@ -1,10 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
-import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
-import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -15,23 +12,19 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityByName;
-import static org.openmetadata.service.Entity.getEntityReferenceByName;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
-import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
-
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -39,7 +32,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
-import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
@@ -57,7 +49,6 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -69,7 +60,6 @@ import org.openmetadata.schema.type.TestCaseParameterValidationRuleType;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.resources.dqtests.TestCaseResultResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
@@ -108,14 +98,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void setFields(TestCase test, Fields fields) {
-    test.setTestSuites(fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
+    test.setTestSuites(
+        fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
     test.setTestSuite(fields.contains(TEST_SUITE_FIELD) ? getTestSuite(test) : test.getTestSuite());
     test.setTestDefinition(
         fields.contains(TEST_DEFINITION) ? getTestDefinition(test) : test.getTestDefinition());
     test.setTestCaseResult(
-        fields.contains(TEST_CASE_RESULT)
-            ? getTestCaseResult(test)
-            : test.getTestCaseResult());
+        fields.contains(TEST_CASE_RESULT) ? getTestCaseResult(test) : test.getTestCaseResult());
     test.setIncidentId(
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
     test.setTags(fields.contains(FIELD_TAGS) ? getTestCaseTags(test) : test.getTags());
@@ -155,15 +144,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     test.setTestSuites(fields.contains("testSuites") ? test.getTestSuites() : null);
     test.setTestSuite(fields.contains(TEST_SUITE) ? test.getTestSuite() : null);
     test.setTestDefinition(fields.contains(TEST_DEFINITION) ? test.getTestDefinition() : null);
-    test.setTestCaseResult(
-        fields.contains(TEST_CASE_RESULT) ? test.getTestCaseResult() : null);
+    test.setTestCaseResult(fields.contains(TEST_CASE_RESULT) ? test.getTestCaseResult() : null);
   }
 
   public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(
       String fqn, Long timestamp, JsonPatch patch, String updatedBy) {
     // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
     TestCaseResultRepository testCaseResultRepository =
-            (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT);
+        (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT);
     return testCaseResultRepository.patchTestCaseResults(fqn, timestamp, patch, updatedBy);
   }
 
@@ -218,8 +206,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return records.stream()
         .map(
             testSuiteId ->
-                Entity.<TestSuite>getEntity(
-                    TEST_SUITE, testSuiteId.getId(), "", Include.ALL, false).withInherited(true).withChangeDescription(null))
+                Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL, false)
+                    .withInherited(true)
+                    .withChangeDescription(null))
         .toList();
   }
 
@@ -264,7 +253,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     store(test, update);
 
     // Restore the relationships
-    test.withTestSuite(testSuite).withTestDefinition(testDefinition).withTestCaseResult(testCaseResult);
+    test.withTestSuite(testSuite)
+        .withTestDefinition(testDefinition)
+        .withTestCaseResult(testCaseResult);
   }
 
   @Override
@@ -292,7 +283,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public RestUtil.PutResponse<TestCaseResult> addTestCaseResult(
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
-    CreateTestCaseResult createTestCaseResult = new CreateTestCaseResult()
+    CreateTestCaseResult createTestCaseResult =
+        new CreateTestCaseResult()
             .withTimestamp(testCaseResult.getTimestamp())
             .withTestCaseStatus(testCaseResult.getTestCaseStatus())
             .withResult(testCaseResult.getResult())
@@ -307,9 +299,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .withMinBound(testCaseResult.getMinBound());
 
     TestCaseResultRepository testCaseResultRepository =
-            (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    Response response = testCaseResultRepository.addTestCaseResult(updatedBy, uriInfo, fqn, createTestCaseResult);
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, (TestCaseResult) response.getEntity(), ENTITY_UPDATED);
+        (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
+    Response response =
+        testCaseResultRepository.addTestCaseResult(updatedBy, uriInfo, fqn, createTestCaseResult);
+    return new RestUtil.PutResponse<>(
+        Response.Status.CREATED, (TestCaseResult) response.getEntity(), ENTITY_UPDATED);
   }
 
   @Transaction
@@ -342,17 +336,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(
       String updatedBy, String fqn, Long timestamp) {
-      // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
+    // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
     TestCaseResultRepository testCaseResultRepository =
-            (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
+        (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     Response response = testCaseResultRepository.deleteTestCaseResult(fqn, timestamp).toResponse();
-    return new RestUtil.PutResponse<>(Response.Status.OK, (TestCaseResult) response.getEntity(), ENTITY_DELETED);
+    return new RestUtil.PutResponse<>(
+        Response.Status.OK, (TestCaseResult) response.getEntity(), ENTITY_DELETED);
   }
 
   private void deleteAllTestCaseResults(String fqn) {
     // Delete all the test case results
     TestCaseResultRepository testCaseResultRepository =
-            (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
+        (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     testCaseResultRepository.deleteAllTestCaseResults(fqn);
   }
 
@@ -374,14 +369,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("testCaseFQN", testCase.getFullyQualifiedName());
-    EntityTimeSeriesRepository<?> timeSeriesRepository = Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    return (TestCaseResult) timeSeriesRepository.latestFromSearch(Fields.EMPTY_FIELDS, searchListFilter, null);
+    EntityTimeSeriesRepository<?> timeSeriesRepository =
+        Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
+    return (TestCaseResult)
+        timeSeriesRepository.latestFromSearch(Fields.EMPTY_FIELDS, searchListFilter, null);
   }
 
   public ResultList<TestCaseResult> getTestCaseResults(String fqn, Long startTs, Long endTs) {
     // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
     TestCaseResultRepository testCaseResultRepository =
-            (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
+        (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     return testCaseResultRepository.getTestCaseResults(fqn, startTs, endTs);
   }
 
@@ -438,10 +435,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
     for (UUID testCaseId : testCaseIds) {
       TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
-      ChangeDescription change = new ChangeDescription()
+      ChangeDescription change =
+          new ChangeDescription()
               .withFieldsUpdated(
-                      List.of(new FieldChange().withName("testSuites")
-                              .withNewValue(testCase.getTestSuites())));
+                  List.of(
+                      new FieldChange()
+                          .withName("testSuites")
+                          .withNewValue(testCase.getTestSuites())));
       testCase.setChangeDescription(change);
       postUpdate(testCase, testCase);
     }
@@ -454,10 +454,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
     deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
     TestCase updatedTestCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
-    ChangeDescription change = new ChangeDescription()
+    ChangeDescription change =
+        new ChangeDescription()
             .withFieldsUpdated(
-                    List.of(new FieldChange().withName("testSuites")
-                            .withNewValue(updatedTestCase.getTestSuites())));
+                List.of(
+                    new FieldChange()
+                        .withName("testSuites")
+                        .withNewValue(updatedTestCase.getTestSuites())));
     updatedTestCase.setChangeDescription(change);
     postUpdate(testCase, updatedTestCase);
     testCase.setTestSuite(updatedTestCase.getTestSuite());

@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.service.Entity.TEST_CASE;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -52,8 +54,6 @@ import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
-
-import static org.openmetadata.service.Entity.TEST_CASE;
 
 @Slf4j
 @Path("/v1/dataQuality/testCases/testCaseResults")
@@ -217,23 +217,24 @@ public class TestCaseResultResource
       @Parameter(
               description = "Test Suite Id the test case belongs to",
               schema = @Schema(type = "string"))
-      @QueryParam("testSuiteId")
-      String testSuiteId,
+          @QueryParam("testSuiteId")
+          String testSuiteId,
       @Parameter(
-              description = "Get the latest test case result for each test case -- requires `testSuiteId`. Offset and limit are ignored",
+              description =
+                  "Get the latest test case result for each test case -- requires `testSuiteId`. Offset and limit are ignored",
               schema = @Schema(type = "boolean", example = "true|false"))
-      @QueryParam("latest")
-      @DefaultValue("false")
-      String latest,
+          @QueryParam("latest")
+          @DefaultValue("false")
+          String latest,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("q")
           String q)
       throws IOException {
-      if (latest.equals("true") && testSuiteId == null) {
-          throw new IllegalArgumentException("latest=true requires testSuiteId");
-      }
+    if (latest.equals("true") && testSuiteId == null) {
+      throw new IllegalArgumentException("latest=true requires testSuiteId");
+    }
     EntityUtil.Fields fields = new EntityUtil.Fields(Set.of(""), fieldParams);
     SearchListFilter searchListFilter = new SearchListFilter();
     Optional.ofNullable(startTimestamp)
@@ -244,8 +245,8 @@ public class TestCaseResultResource
         .ifPresent(tcs -> searchListFilter.addQueryParam("testCaseStatus", tcs.toString()));
     Optional.ofNullable(testCaseFQN)
         .ifPresent(tcf -> searchListFilter.addQueryParam("testCaseFQN", tcf));
-      Optional.ofNullable(testSuiteId)
-              .ifPresent(tsi -> searchListFilter.addQueryParam("testSuiteId", tsi));
+    Optional.ofNullable(testSuiteId)
+        .ifPresent(tsi -> searchListFilter.addQueryParam("testSuiteId", tsi));
 
     ResourceContextInterface resourceContextInterface = getResourceContext(testCaseFQN);
     // Override OperationContext to change the entity to table
@@ -254,14 +255,14 @@ public class TestCaseResultResource
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
 
     if (latest.equals("true")) {
-        return listLatestFromSearch(
-                securityContext,
-                fields,
-                searchListFilter,
-                "testSuites.id",
-                q,
-                operationContext,
-                resourceContextInterface);
+      return listLatestFromSearch(
+          securityContext,
+          fields,
+          searchListFilter,
+          "testSuites.id",
+          q,
+          operationContext,
+          resourceContextInterface);
     }
     return listInternalFromSearch(
         securityContext,
@@ -275,77 +276,72 @@ public class TestCaseResultResource
         resourceContextInterface);
   }
 
-    @GET
-    @Path("/search/latest")
-    @Operation(
-            operationId = "latestTestCaseResultsFromSearchService",
-            summary = "Latest test case results using search service",
-            description =
-                    "Get latest test case results from the search service. "
-                            + "Use `testCaseFQN` to filter the results by test case fully qualified name. "
-                            + "Use `testCaseStatus` to filter the results by test case status. "
-                            + "Use `fields` to get only necessary fields. ",
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "List of test case results",
-                            content =
-                            @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = TestCaseResultList.class)))
-            })
-    public TestCaseResult latestTestCaseResultFromSearch(
-            @Context UriInfo uriInfo,
-            @Context SecurityContext securityContext,
-            @Parameter(
-                    description = "Fields requested in the returned resource",
-                    schema = @Schema(type = "string", example = FIELDS))
-            @QueryParam("fields")
-            String fieldParams,
-            @Parameter(
-                    description = "Status of the test case -- one of Success, Failed, Aborted, Queued",
-                    schema = @Schema(implementation = TestCaseStatus.class))
-            @QueryParam("testCaseStatus")
-            TestCaseStatus testCaseStatus,
-            @Parameter(
-                    description = "FullyQualifiedName of the test case",
-                    schema = @Schema(type = "string"))
-            @QueryParam("testCaseFQN")
-            String testCaseFQN,
-            @Parameter(
-                    description = "FullyQualifiedName of the test case",
-                    schema = @Schema(type = "string"))
-            @QueryParam("testSuiteId")
-            String testSuiteId,
-            @Parameter(
-                    description = "search query term to use in list",
-                    schema = @Schema(type = "string"))
-            @QueryParam("q")
-            String q)
-            throws IOException {
-        EntityUtil.Fields fields = new EntityUtil.Fields(Set.of(""), fieldParams);
-        SearchListFilter searchListFilter = new SearchListFilter();
-        Optional.ofNullable(testCaseStatus)
-                .ifPresent(tcs -> searchListFilter.addQueryParam("testCaseStatus", tcs.toString()));
-        Optional.ofNullable(testCaseFQN)
-                .ifPresent(tcf -> searchListFilter.addQueryParam("testCaseFQN", tcf));
-        Optional.ofNullable(testSuiteId)
-                .ifPresent(tsi -> searchListFilter.addQueryParam("testSuiteId", tsi));
+  @GET
+  @Path("/search/latest")
+  @Operation(
+      operationId = "latestTestCaseResultsFromSearchService",
+      summary = "Latest test case results using search service",
+      description =
+          "Get latest test case results from the search service. "
+              + "Use `testCaseFQN` to filter the results by test case fully qualified name. "
+              + "Use `testCaseStatus` to filter the results by test case status. "
+              + "Use `fields` to get only necessary fields. ",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of test case results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCaseResultList.class)))
+      })
+  public TestCaseResult latestTestCaseResultFromSearch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldParams,
+      @Parameter(
+              description = "Status of the test case -- one of Success, Failed, Aborted, Queued",
+              schema = @Schema(implementation = TestCaseStatus.class))
+          @QueryParam("testCaseStatus")
+          TestCaseStatus testCaseStatus,
+      @Parameter(
+              description = "FullyQualifiedName of the test case",
+              schema = @Schema(type = "string"))
+          @QueryParam("testCaseFQN")
+          String testCaseFQN,
+      @Parameter(
+              description = "FullyQualifiedName of the test case",
+              schema = @Schema(type = "string"))
+          @QueryParam("testSuiteId")
+          String testSuiteId,
+      @Parameter(
+              description = "search query term to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("q")
+          String q)
+      throws IOException {
+    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of(""), fieldParams);
+    SearchListFilter searchListFilter = new SearchListFilter();
+    Optional.ofNullable(testCaseStatus)
+        .ifPresent(tcs -> searchListFilter.addQueryParam("testCaseStatus", tcs.toString()));
+    Optional.ofNullable(testCaseFQN)
+        .ifPresent(tcf -> searchListFilter.addQueryParam("testCaseFQN", tcf));
+    Optional.ofNullable(testSuiteId)
+        .ifPresent(tsi -> searchListFilter.addQueryParam("testSuiteId", tsi));
 
-        ResourceContextInterface resourceContextInterface = getResourceContext(testCaseFQN);
-        // Override OperationContext to change the entity to table
-        // and operation from VIEW_ALL to VIEW_TESTS
-        OperationContext operationContext =
-                new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    ResourceContextInterface resourceContextInterface = getResourceContext(testCaseFQN);
+    // Override OperationContext to change the entity to table
+    // and operation from VIEW_ALL to VIEW_TESTS
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
 
-        return super.latestInternalFromSearch(
-                securityContext,
-                fields,
-                searchListFilter,
-                q,
-                operationContext,
-                resourceContextInterface);
-    }
+    return super.latestInternalFromSearch(
+        securityContext, fields, searchListFilter, q, operationContext, resourceContextInterface);
+  }
 
   @PATCH
   @Path("/{fqn}/{timestamp}")
@@ -420,20 +416,20 @@ public class TestCaseResultResource
   }
 
   private ResourceContextInterface getResourceContext(String testCaseFQN) {
-      // We get the resource context for the test case based on the entity linked to it
-      if (testCaseFQN == null) {
-          return TestCaseResourceContext.builder().build();
-      }
+    // We get the resource context for the test case based on the entity linked to it
+    if (testCaseFQN == null) {
+      return TestCaseResourceContext.builder().build();
+    }
 
-      TestCase testCase = Entity.getEntityByName(TEST_CASE, testCaseFQN, "", Include.ALL);
-      String entityLink = testCase.getEntityLink();
-      ResourceContextInterface resourceContext;
-      if (entityLink != null) {
-          MessageParser.EntityLink entityLinkParsed = MessageParser.EntityLink.parse(entityLink);
-          resourceContext = TestCaseResourceContext.builder().entityLink(entityLinkParsed).build();
-      } else {
-          resourceContext = TestCaseResourceContext.builder().build();
-      }
-      return resourceContext;
+    TestCase testCase = Entity.getEntityByName(TEST_CASE, testCaseFQN, "", Include.ALL);
+    String entityLink = testCase.getEntityLink();
+    ResourceContextInterface resourceContext;
+    if (entityLink != null) {
+      MessageParser.EntityLink entityLinkParsed = MessageParser.EntityLink.parse(entityLink);
+      resourceContext = TestCaseResourceContext.builder().entityLink(entityLinkParsed).build();
+    } else {
+      resourceContext = TestCaseResourceContext.builder().build();
+    }
+    return resourceContext;
   }
 }

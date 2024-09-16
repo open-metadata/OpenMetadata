@@ -21,7 +21,6 @@ import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 import javax.ws.rs.core.SecurityContext;
-
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -273,20 +272,23 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     String groupBy = "testCaseFQN.keyword";
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("testSuiteId", testSuiteId.toString());
-    EntityTimeSeriesRepository<TestCaseResult> entityTimeSeriesRepository = (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    ResultList<TestCaseResult> latestTestCaseResultResults = entityTimeSeriesRepository.listLatestFromSearch(
-            EntityUtil.Fields.EMPTY_FIELDS,
-            searchListFilter,
-            groupBy,
-            null);
+    EntityTimeSeriesRepository<TestCaseResult> entityTimeSeriesRepository =
+        (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
+    ResultList<TestCaseResult> latestTestCaseResultResults =
+        entityTimeSeriesRepository.listLatestFromSearch(
+            EntityUtil.Fields.EMPTY_FIELDS, searchListFilter, groupBy, null);
 
-    latestTestCaseResultResults.getData().forEach(testCaseResult -> {
-      ResultSummary resultSummary = new ResultSummary()
-              .withTestCaseName(testCaseResult.getTestCaseFQN())
-              .withStatus(testCaseResult.getTestCaseStatus())
-              .withTimestamp(testCaseResult.getTimestamp());
-      resultSummaries.add(resultSummary);
-    });
+    latestTestCaseResultResults
+        .getData()
+        .forEach(
+            testCaseResult -> {
+              ResultSummary resultSummary =
+                  new ResultSummary()
+                      .withTestCaseName(testCaseResult.getTestCaseFQN())
+                      .withStatus(testCaseResult.getTestCaseStatus())
+                      .withTimestamp(testCaseResult.getTimestamp());
+              resultSummaries.add(resultSummary);
+            });
     return resultSummaries;
   }
 

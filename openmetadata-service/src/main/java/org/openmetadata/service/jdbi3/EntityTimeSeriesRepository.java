@@ -392,19 +392,18 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   }
 
   public ResultList<T> listLatestFromSearch(
-          EntityUtil.Fields fields,
-          SearchListFilter searchListFilter,
-          String groupBy,
-          String q
-  ) throws IOException {
+      EntityUtil.Fields fields, SearchListFilter searchListFilter, String groupBy, String q)
+      throws IOException {
     List<T> entityList = new ArrayList<>();
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
-    String aggregationStr = "{\"aggregations\": {\"byTerms\": {\"terms\": {\"field\": \"%s\", \"size\":100},\"aggs\": {\"latest\": " +
-            "{\"top_hits\": {\"size\": 1, \"sort_field\":\"timestamp\",\"sort_order\":\"desc\"}}}}}}";
+    String aggregationStr =
+        "{\"aggregations\": {\"byTerms\": {\"terms\": {\"field\": \"%s\", \"size\":100},\"aggs\": {\"latest\": "
+            + "{\"top_hits\": {\"size\": 1, \"sort_field\":\"timestamp\",\"sort_order\":\"desc\"}}}}}}";
     aggregationStr = String.format(aggregationStr, groupBy);
     JsonObject aggregation = JsonUtils.readJson(aggregationStr).asJsonObject();
-    JsonObject jsonObjResults = searchRepository.aggregate(q, entityType, aggregation, searchListFilter);
+    JsonObject jsonObjResults =
+        searchRepository.aggregate(q, entityType, aggregation, searchListFilter);
     List<JsonObject> jsonTestCaseResults = parseListLatestAggregation(jsonObjResults);
 
     for (JsonObject json : jsonTestCaseResults) {
@@ -416,16 +415,13 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return new ResultList<>(entityList, null, null, entityList.size());
   }
 
-  public T latestFromSearch(
-          EntityUtil.Fields fields,
-          SearchListFilter searchListFilter,
-          String q)
-          throws IOException {
+  public T latestFromSearch(EntityUtil.Fields fields, SearchListFilter searchListFilter, String q)
+      throws IOException {
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     SearchSortFilter searchSortFilter = new SearchSortFilter("timestamp", "desc", null, null);
-    SearchClient.SearchResultListMapper results = searchRepository.listWithOffset(
-            searchListFilter, 1, 0, entityType, searchSortFilter, q);
+    SearchClient.SearchResultListMapper results =
+        searchRepository.listWithOffset(searchListFilter, 1, 0, entityType, searchSortFilter, q);
     for (Map<String, Object> json : results.getResults()) {
       T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
       setInheritedFields(entity);
@@ -435,19 +431,19 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return null;
   }
 
-  protected void setIncludeSearchFields(SearchListFilter searchListFilter){
+  protected void setIncludeSearchFields(SearchListFilter searchListFilter) {
     // Nothing to do in the default implementation
   }
 
-  protected void setExcludeSearchFields(SearchListFilter searchListFilter){
+  protected void setExcludeSearchFields(SearchListFilter searchListFilter) {
     // Nothing to do in the default implementation
   }
 
-  protected List<String> getIncludeSearchFields(){
+  protected List<String> getIncludeSearchFields() {
     return new ArrayList<>();
   }
 
-  protected List<String> getExcludeSearchFields(){
+  protected List<String> getExcludeSearchFields() {
     return new ArrayList<>();
   }
 
@@ -457,8 +453,9 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     List<String> includeSearchFields = getIncludeSearchFields();
     List<String> excludeSearchFields = getExcludeSearchFields();
     Optional.ofNullable(jsonByTerms)
-            .map(jbt -> jbt.getJsonArray("buckets"))
-            .ifPresent(termsBucket -> {
+        .map(jbt -> jbt.getJsonArray("buckets"))
+        .ifPresent(
+            termsBucket -> {
               for (JsonValue bucket : termsBucket) {
                 JsonObject hitsBucket = bucket.asJsonObject().getJsonObject("top_hits#latest");
                 if (hitsBucket != null) {
@@ -468,13 +465,17 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
                     if (hits != null) {
                       for (JsonValue hit : hits) {
                         JsonObject source = hit.asJsonObject().getJsonObject("_source");
-                        // Aggregation results will return all fields by default, so we need to filter out the fields
+                        // Aggregation results will return all fields by default, so we need to
+                        // filter out the fields
                         // that are not included in the search fields
-                        if (source != null && (!CommonUtil.nullOrEmpty(includeSearchFields) || !CommonUtil.nullOrEmpty(excludeSearchFields))) {
+                        if (source != null
+                            && (!CommonUtil.nullOrEmpty(includeSearchFields)
+                                || !CommonUtil.nullOrEmpty(excludeSearchFields))) {
                           JsonObjectBuilder sourceCopy = Json.createObjectBuilder();
                           for (Map.Entry<String, JsonValue> entry : source.entrySet()) {
-                            if (includeSearchFields.contains(entry.getKey()) ||
-                                    (CommonUtil.nullOrEmpty(includeSearchFields) && !excludeSearchFields.contains(entry.getKey()))) {
+                            if (includeSearchFields.contains(entry.getKey())
+                                || (CommonUtil.nullOrEmpty(includeSearchFields)
+                                    && !excludeSearchFields.contains(entry.getKey()))) {
                               sourceCopy.add(entry.getKey(), entry.getValue());
                             }
                           }
@@ -488,6 +489,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
                 }
               }
             });
-      return jsonTestCaseResults;
+    return jsonTestCaseResults;
   }
 }

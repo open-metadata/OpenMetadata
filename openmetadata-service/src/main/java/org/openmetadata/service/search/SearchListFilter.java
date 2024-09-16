@@ -31,7 +31,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
       conditions.add(entityType.equals(Entity.TEST_SUITE) ? getTestSuiteCondition() : null);
-      conditions.add(entityType.equals(Entity.TEST_CASE_RESULT) ? getTestCaseResultCondition() : null);
+      conditions.add(
+          entityType.equals(Entity.TEST_CASE_RESULT) ? getTestCaseResultCondition() : null);
     }
     String conditionFilter = addCondition(conditions);
     String sourceFilter = getExcludeIncludeFields();
@@ -235,25 +236,25 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String testSuiteId = getQueryParam("testSuiteId");
 
     if (startTimestamp != null && endTimestamp != null) {
-      conditions.add(
-              getTimestampFilter("timestamp", "gte", Long.parseLong(startTimestamp)));
-      conditions.add(
-              getTimestampFilter("timestamp", "lte", Long.parseLong(endTimestamp)));
+      conditions.add(getTimestampFilter("timestamp", "gte", Long.parseLong(startTimestamp)));
+      conditions.add(getTimestampFilter("timestamp", "lte", Long.parseLong(endTimestamp)));
     }
     if (testCaseFQN != null) {
-      conditions.add(String.format(
+      conditions.add(
+          String.format(
               "{\"bool\":{\"should\": ["
-                      + "{\"term\": {\"testCaseFQN\": \"%1$s\"}},"
-                      + "{\"term\": {\"testCase.fullyQualifiedName\": \"%1$s\"}}]}}",
-                escapeDoubleQuotes(testCaseFQN)));
+                  + "{\"term\": {\"testCaseFQN\": \"%1$s\"}},"
+                  + "{\"term\": {\"testCase.fullyQualifiedName\": \"%1$s\"}}]}}",
+              escapeDoubleQuotes(testCaseFQN)));
     }
     if (testCaseStatus != null) {
-      conditions.add(
-              String.format("{\"term\": {\"testCaseStatus\": \"%s\"}}", testCaseStatus));
+      conditions.add(String.format("{\"term\": {\"testCaseStatus\": \"%s\"}}", testCaseStatus));
     }
     if (testSuiteId != null) {
       conditions.add(
-              String.format("{\"nested\":{\"path\":\"testSuites\",\"query\":{\"term\":{\"testSuites.id\":\"%s\"}}}}", testSuiteId));
+          String.format(
+              "{\"nested\":{\"path\":\"testSuites\",\"query\":{\"term\":{\"testSuites.id\":\"%s\"}}}}",
+              testSuiteId));
     }
     return addCondition(conditions);
   }
@@ -267,7 +268,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
     if (testSuiteType != null) {
       boolean executable = !testSuiteType.equals("logical");
-        conditions.add(String.format("{\"term\": {\"executable\": \"%s\"}}", executable));
+      conditions.add(String.format("{\"term\": {\"executable\": \"%s\"}}", executable));
     }
 
     if (!includeEmptyTestSuites) {

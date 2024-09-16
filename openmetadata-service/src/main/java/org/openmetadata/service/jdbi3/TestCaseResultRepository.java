@@ -32,7 +32,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   private final TestCaseRepository testCaseRepository;
-  public static String INCLUDE_SEARCH_FIELDS = "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound";
+  public static String INCLUDE_SEARCH_FIELDS =
+      "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound";
 
   public enum OperationType {
     CREATE,
@@ -102,8 +103,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
 
   @Override
   protected void postUpdate(TestCaseResult entity) {
-      super.postUpdate(entity);
-      updateTestCaseStatus(entity, OperationType.UPDATE);
+    super.postUpdate(entity);
+    updateTestCaseStatus(entity, OperationType.UPDATE);
   }
 
   @Override
@@ -183,11 +184,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
 
   private void updateTestCaseStatus(TestCaseResult testCaseResult, OperationType operationType) {
     TestCase original =
-        Entity.getEntityByName(
-            TEST_CASE,
-            testCaseResult.getTestCaseFQN(),
-            "*",
-            Include.ALL);
+        Entity.getEntityByName(TEST_CASE, testCaseResult.getTestCaseFQN(), "*", Include.ALL);
     TestCase updated = JsonUtils.deepCopy(original, TestCase.class);
 
     if (original.getTestCaseResult() == null) {
@@ -212,7 +209,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   @Override
   protected void setIncludeSearchFields(SearchListFilter searchListFilter) {
     String includeFields = searchListFilter.getQueryParam("includeFields");
-    if (CommonUtil.nullOrEmpty(includeFields)) searchListFilter.addQueryParam("includeFields", INCLUDE_SEARCH_FIELDS);
+    if (CommonUtil.nullOrEmpty(includeFields))
+      searchListFilter.addQueryParam("includeFields", INCLUDE_SEARCH_FIELDS);
   }
 
   @Override
