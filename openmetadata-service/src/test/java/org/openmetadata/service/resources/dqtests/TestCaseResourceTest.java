@@ -77,6 +77,7 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestPlatform;
@@ -312,6 +313,74 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         TEST_DEFINITION2.getEntityReference());
     fieldUpdated(change, "parameterValues", testCase.getParameterValues(), new ArrayList<>());
     updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  void getTestCaseWithResult(TestInfo test) throws IOException, ParseException {
+    CreateTestCase create = createRequest(test);
+    create
+            .withEntityLink(TABLE_LINK)
+            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withParameterValues(
+                    List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    CreateTestCaseResult createTestCaseResult =
+            new CreateTestCaseResult()
+                    .withResult("tested")
+                    .withTestCaseStatus(TestCaseStatus.Success)
+                    .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-11")));
+    TestCaseResult testCaseResult = postTestCaseResult(
+            testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = Map.of("fields", Entity.TEST_CASE_RESULT);
+    testCase = getTestCase(testCase.getFullyQualifiedName(), queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(testCaseResult, testCase.getTestCaseResult());
+
+    ResultList<TestCase> testcases = listEntitiesFromSearch(Map.of("fields", "testCaseResult"), 100, 0, ADMIN_AUTH_HEADERS);
+    UUID testCaseId = testCase.getId();
+    TestCase testCaseFromSearch = testcases.getData().stream().filter(tc -> tc.getId().equals(testCaseId)).findFirst().orElse(null);
+    assertNotNull(testCaseFromSearch);
+    assertEquals(testCaseResult, testCaseFromSearch.getTestCaseResult());
+
+    // insert test case for a past date
+    createTestCaseResult =
+            new CreateTestCaseResult()
+                    .withResult("tested")
+                    .withTestCaseStatus(TestCaseStatus.Success)
+                    .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-01")));
+    postTestCaseResult(
+            testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+    testCase = getTestCase(testCase.getFullyQualifiedName(), queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(testCaseResult, testCase.getTestCaseResult());
+
+    testCaseFromSearch = testcases.getData().stream().filter(tc -> tc.getId().equals(testCaseId)).findFirst().orElse(null);
+    assertNotNull(testCaseFromSearch);
+    assertEquals(testCaseResult, testCaseFromSearch.getTestCaseResult());
+
+    // insert test case for a future date
+    createTestCaseResult =
+            new CreateTestCaseResult()
+                    .withResult("tested")
+                    .withTestCaseStatus(TestCaseStatus.Success)
+                    .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-21")));
+    TestCaseResult futureTestCaseResult = postTestCaseResult(
+            testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+    testCase = getTestCase(testCase.getFullyQualifiedName(), queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(futureTestCaseResult, testCase.getTestCaseResult());
+
+    testCaseFromSearch = testcases.getData().stream().filter(tc -> tc.getId().equals(testCaseId)).findFirst().orElse(null);
+    assertNotNull(testCaseFromSearch);
+    assertEquals(testCaseResult, testCaseFromSearch.getTestCaseResult());
+
+    // delete the future test case
+    deleteTestCaseResult(testCase.getFullyQualifiedName(), futureTestCaseResult.getTimestamp(), ADMIN_AUTH_HEADERS);
+    testCase = getTestCase(testCase.getFullyQualifiedName(), queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(testCaseResult, testCase.getTestCaseResult());
+
+    testCaseFromSearch = testcases.getData().stream().filter(tc -> tc.getId().equals(testCaseId)).findFirst().orElse(null);
+    assertNotNull(testCaseFromSearch);
+    assertEquals(testCaseResult, testCaseFromSearch.getTestCaseResult());
   }
 
   @Test
@@ -1920,190 +1989,188 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         testCase1ResultsList.size() + testCaseResultsList.size(),
         "/testCaseResults/search/list");
 
-    //    // Start of test summary validation// TODO: ENABLE THIS TEST ONCE WE HAVE TEST SUMMARY
-    // MIGRATION DONE
-    //    if (supportsSearchIndex) {
-    //      getAndValidateTestSummary(null);
-    //    }
-    //
-    //    // Test that we can get the test summary for a logical test suite and that
-    //    // adding a logical test suite does not change the total number of tests
-    //    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
-    //    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
-    //    TestSuite logicalTestSuite =
-    //            testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
-    //    List<UUID> testCaseIds = new ArrayList<>();
-    //    testCaseIds.add(testCase1.getId());
-    //    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
-    //
-    //    if (supportsSearchIndex) {
-    //      getAndValidateTestSummary(logicalTestSuite.getId().toString());
-    //      getAndValidateTestSummary(null);
-    //    }
-    //
-    //    // add a new test case to the logical test suite to validate if the
-    //    // summary is updated correctly
-    //    testCaseIds.clear();
-    //    testCaseIds.add(testCase.getId());
-    //    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
-    //    if (supportsSearchIndex) {
-    //      getAndValidateTestSummary(logicalTestSuite.getId().toString());
-    //      getAndValidateTestSummary(null);
-    //    }
-    //
-    //    // remove test case from logical test suite and validate
-    //    // the summary is updated as expected
-    //    deleteLogicalTestCase(logicalTestSuite, testCase.getId());
-    //
-    //    if (supportsSearchIndex) {
-    //      getAndValidateTestSummary(logicalTestSuite.getId().toString());
-    //      getAndValidateTestSummary(null);
-    //    }
+
+    if (supportsSearchIndex) {
+      getAndValidateTestSummary(null);
+    }
+
+        // Test that we can get the test summary for a logical test suite and that
+        // adding a logical test suite does not change the total number of tests
+        TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+        CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
+        TestSuite logicalTestSuite =
+                testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
+        List<UUID> testCaseIds = new ArrayList<>();
+        testCaseIds.add(testCase1.getId());
+        testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+
+        if (supportsSearchIndex) {
+          getAndValidateTestSummary(logicalTestSuite.getId().toString());
+          getAndValidateTestSummary(null);
+        }
+
+        // add a new test case to the logical test suite to validate if the
+        // summary is updated correctly
+        testCaseIds.clear();
+        testCaseIds.add(testCase.getId());
+        testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+        if (supportsSearchIndex) {
+          getAndValidateTestSummary(logicalTestSuite.getId().toString());
+          getAndValidateTestSummary(null);
+        }
+
+        // remove test case from logical test suite and validate
+        // the summary is updated as expected
+        deleteLogicalTestCase(logicalTestSuite, testCase.getId());
+
+        if (supportsSearchIndex) {
+          getAndValidateTestSummary(logicalTestSuite.getId().toString());
+          getAndValidateTestSummary(null);
+        }
   }
 
-  // TODO: ADDRESS ONCE SUMMARY MIGRATION IS DONE
-  //  @Test
-  //  void test_testCaseResultState(TestInfo test) throws IOException, ParseException {
-  //    // Create table for our test
-  //    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
-  //    TestSuite testSuite = createExecutableTestSuite(test);
-  //
-  //    // create testCase
-  //    CreateTestCase createTestCase =
-  //            new CreateTestCase()
-  //                    .withName(test.getDisplayName())
-  //                    .withDescription(test.getDisplayName())
-  //                    .withEntityLink(
-  //                            String.format(
-  //                                    "<#E::table::%s>",
-  //
-  // testSuite.getExecutableEntityReference().getFullyQualifiedName()))
-  //                    .withTestSuite(testSuite.getFullyQualifiedName())
-  //                    .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
-  //    TestCase testCase = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
-  //    UUID testSuiteId = testCase.getTestSuite().getId();
-  //
-  //    String dateStr = "2023-08-";
-  //    for (int i = 11; i <= 15; i++) {
-  //      CreateTestCaseResult createTestCaseResult =
-  //              new CreateTestCaseResult()
-  //                      .withResult("result")
-  //                      .withTestCaseStatus(TestCaseStatus.Failed)
-  //                      .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
-  //      postTestCaseResult(testCase.getFullyQualifiedName(), createTestCaseResult,
-  // ADMIN_AUTH_HEADERS);
-  //    }
-  //
-  //    // check that result state is the latest
-  //    TestCase storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
-  //    TestSuite storedTestSuite =
-  //            testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
-  //    ResultSummary testSuiteResultSummary =
-  //            storedTestSuite.getTestCaseResultSummary().stream()
-  //                    .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
-  //                    .findFirst()
-  //                    .orElse(null);
-  //    assertEquals(
-  //            TestUtils.dateToTimestamp("2023-08-15"),
-  // storedTestCase.getTestCaseResult().getTimestamp());
-  //    assertEquals(1, storedTestSuite.getSummary().getTotal());
-  //    if (testSuiteResultSummary != null)
-  //      assertEquals(TestUtils.dateToTimestamp("2023-08-15"),
-  // testSuiteResultSummary.getTimestamp());
-  //
-  //    // delete latest and check that result is the  new latest (i.e. the 14th)
-  //    deleteTestCaseResult(
-  //            testCase.getFullyQualifiedName(),
-  //            TestUtils.dateToTimestamp("2023-08-15"),
-  //            ADMIN_AUTH_HEADERS);
-  //    storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
-  //    storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
-  //    testSuiteResultSummary =
-  //            storedTestSuite.getTestCaseResultSummary().stream()
-  //                    .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
-  //                    .findFirst()
-  //                    .orElse(null);
-  //    assertEquals(
-  //            TestUtils.dateToTimestamp("2023-08-14"),
-  // storedTestCase.getTestCaseResult().getTimestamp());
-  //    assertEquals(1, storedTestSuite.getSummary().getTotal());
-  //    if (testSuiteResultSummary != null)
-  //      assertEquals(TestUtils.dateToTimestamp("2023-08-14"),
-  // testSuiteResultSummary.getTimestamp());
-  //
-  //    // delete the 13h and check that result is still the 14th
-  //    deleteTestCaseResult(
-  //            testCase.getFullyQualifiedName(),
-  //            TestUtils.dateToTimestamp("2023-08-13"),
-  //            ADMIN_AUTH_HEADERS);
-  //    storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
-  //    testSuiteResultSummary =
-  //            storedTestSuite.getTestCaseResultSummary().stream()
-  //                    .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
-  //                    .findFirst()
-  //                    .orElse(null);
-  //    storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
-  //    assertEquals(
-  //            TestUtils.dateToTimestamp("2023-08-14"),
-  // storedTestCase.getTestCaseResult().getTimestamp());
-  //    assertEquals(1, storedTestSuite.getSummary().getTotal());
-  //    if (testSuiteResultSummary != null)
-  //      assertEquals(TestUtils.dateToTimestamp("2023-08-14"),
-  // testSuiteResultSummary.getTimestamp());
-  //
-  //    // Patch the test case result adding the resolved status
-  //    TestCaseResult testCaseResult = storedTestCase.getTestCaseResult();
-  //    String original = JsonUtils.pojoToJson(testCaseResult);
-  //    JsonNode patch = TestUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
-  //    patchTestCaseResult(testCase.getFullyQualifiedName(), dateToTimestamp("2023-08-14"), patch);
-  //
-  //    // add a new test case result for the 16th and check the state is correctly updated
-  //    CreateTestCaseResult createTestCaseResult =
-  //            new CreateTestCaseResult()
-  //                    .withResult("result")
-  //                    .withTestCaseStatus(TestCaseStatus.Failed)
-  //                    .withTimestamp(TestUtils.dateToTimestamp(dateStr + 16));
-  //    postTestCaseResult(testCase.getFullyQualifiedName(), createTestCaseResult,
-  // ADMIN_AUTH_HEADERS);
-  //    storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
-  //    storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
-  //    testSuiteResultSummary =
-  //            storedTestSuite.getTestCaseResultSummary().stream()
-  //                    .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
-  //                    .findFirst()
-  //                    .orElse(null);
-  //    assertEquals(
-  //            TestUtils.dateToTimestamp("2023-08-16"),
-  // storedTestCase.getTestCaseResult().getTimestamp());
-  //    assertEquals(1, storedTestSuite.getSummary().getTotal());
-  //    if (testSuiteResultSummary != null)
-  //      assertEquals(TestUtils.dateToTimestamp("2023-08-16"),
-  // testSuiteResultSummary.getTimestamp());
-  //
-  //    // Add a new test case
-  //    CreateTestCase create = createRequest(test, 3);
-  //    create
-  //            .withEntityLink(testCase.getEntityLink())
-  //            .withTestSuite(testCase.getTestSuite().getFullyQualifiedName());
-  //    TestCase testCase1 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-  //
-  //    for (int i = 19; i <= 20; i++) {
-  //      postTestCaseResult(
-  //              testCase1.getFullyQualifiedName(),
-  //              new CreateTestCaseResult()
-  //                      .withResult("result")
-  //                      .withTestCaseStatus(TestCaseStatus.Failed)
-  //                      .withTimestamp(TestUtils.dateToTimestamp(dateStr + i)),
-  //              ADMIN_AUTH_HEADERS);
-  //    }
-  //
-  //    storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
-  //    assertEquals(2, storedTestSuite.getTestCaseResultSummary().size());
-  //
-  //    deleteEntity(testCase1.getId(), true, true, ADMIN_AUTH_HEADERS);
-  //    storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
-  //    assertEquals(1, storedTestSuite.getTestCaseResultSummary().size());
-  //  }
+    @Test
+    void test_testCaseResultState(TestInfo test) throws IOException, ParseException {
+      // Create table for our test
+      TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+      TestSuite testSuite = createExecutableTestSuite(test);
+
+      // create testCase
+      CreateTestCase createTestCase =
+              new CreateTestCase()
+                      .withName(test.getDisplayName())
+                      .withDescription(test.getDisplayName())
+                      .withEntityLink(
+                              String.format(
+                                      "<#E::table::%s>",
+
+   testSuite.getExecutableEntityReference().getFullyQualifiedName()))
+                      .withTestSuite(testSuite.getFullyQualifiedName())
+                      .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
+      TestCase testCase = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+      UUID testSuiteId = testCase.getTestSuite().getId();
+
+      String dateStr = "2023-08-";
+      for (int i = 11; i <= 15; i++) {
+        CreateTestCaseResult createTestCaseResult =
+                new CreateTestCaseResult()
+                        .withResult("result")
+                        .withTestCaseStatus(TestCaseStatus.Failed)
+                        .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
+        postTestCaseResult(testCase.getFullyQualifiedName(), createTestCaseResult,
+   ADMIN_AUTH_HEADERS);
+      }
+
+      // check that result state is the latest
+      TestCase storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+      TestSuite storedTestSuite =
+              testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+      ResultSummary testSuiteResultSummary =
+              storedTestSuite.getTestCaseResultSummary().stream()
+                      .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
+                      .findFirst()
+                      .orElse(null);
+      assertEquals(
+              TestUtils.dateToTimestamp("2023-08-15"),
+   storedTestCase.getTestCaseResult().getTimestamp());
+      assertEquals(1, storedTestSuite.getSummary().getTotal());
+      if (testSuiteResultSummary != null)
+        assertEquals(TestUtils.dateToTimestamp("2023-08-15"),
+   testSuiteResultSummary.getTimestamp());
+
+      // delete latest and check that result is the  new latest (i.e. the 14th)
+      deleteTestCaseResult(
+              testCase.getFullyQualifiedName(),
+              TestUtils.dateToTimestamp("2023-08-15"),
+              ADMIN_AUTH_HEADERS);
+      storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+      storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+      testSuiteResultSummary =
+              storedTestSuite.getTestCaseResultSummary().stream()
+                      .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
+                      .findFirst()
+                      .orElse(null);
+      assertEquals(
+              TestUtils.dateToTimestamp("2023-08-14"),
+   storedTestCase.getTestCaseResult().getTimestamp());
+      assertEquals(1, storedTestSuite.getSummary().getTotal());
+      if (testSuiteResultSummary != null)
+        assertEquals(TestUtils.dateToTimestamp("2023-08-14"),
+   testSuiteResultSummary.getTimestamp());
+
+      // delete the 13h and check that result is still the 14th
+      deleteTestCaseResult(
+              testCase.getFullyQualifiedName(),
+              TestUtils.dateToTimestamp("2023-08-13"),
+              ADMIN_AUTH_HEADERS);
+      storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+      testSuiteResultSummary =
+              storedTestSuite.getTestCaseResultSummary().stream()
+                      .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
+                      .findFirst()
+                      .orElse(null);
+      storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+      assertEquals(
+              TestUtils.dateToTimestamp("2023-08-14"),
+   storedTestCase.getTestCaseResult().getTimestamp());
+      assertEquals(1, storedTestSuite.getSummary().getTotal());
+      if (testSuiteResultSummary != null)
+        assertEquals(TestUtils.dateToTimestamp("2023-08-14"),
+   testSuiteResultSummary.getTimestamp());
+
+      // Patch the test case result adding the resolved status
+      TestCaseResult testCaseResult = storedTestCase.getTestCaseResult();
+      String original = JsonUtils.pojoToJson(testCaseResult);
+      JsonNode patch = TestUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
+      patchTestCaseResult(testCase.getFullyQualifiedName(), dateToTimestamp("2023-08-14"), patch);
+
+      // add a new test case result for the 16th and check the state is correctly updated
+      CreateTestCaseResult createTestCaseResult =
+              new CreateTestCaseResult()
+                      .withResult("result")
+                      .withTestCaseStatus(TestCaseStatus.Failed)
+                      .withTimestamp(TestUtils.dateToTimestamp(dateStr + 16));
+      postTestCaseResult(testCase.getFullyQualifiedName(), createTestCaseResult,
+   ADMIN_AUTH_HEADERS);
+      storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+      storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+      testSuiteResultSummary =
+              storedTestSuite.getTestCaseResultSummary().stream()
+                      .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
+                      .findFirst()
+                      .orElse(null);
+      assertEquals(
+              TestUtils.dateToTimestamp("2023-08-16"),
+   storedTestCase.getTestCaseResult().getTimestamp());
+      assertEquals(1, storedTestSuite.getSummary().getTotal());
+      if (testSuiteResultSummary != null)
+        assertEquals(TestUtils.dateToTimestamp("2023-08-16"),
+   testSuiteResultSummary.getTimestamp());
+
+      // Add a new test case
+      CreateTestCase create = createRequest(test, 3);
+      create
+              .withEntityLink(testCase.getEntityLink())
+              .withTestSuite(testCase.getTestSuite().getFullyQualifiedName());
+      TestCase testCase1 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+      for (int i = 19; i <= 20; i++) {
+        postTestCaseResult(
+                testCase1.getFullyQualifiedName(),
+                new CreateTestCaseResult()
+                        .withResult("result")
+                        .withTestCaseStatus(TestCaseStatus.Failed)
+                        .withTimestamp(TestUtils.dateToTimestamp(dateStr + i)),
+                ADMIN_AUTH_HEADERS);
+      }
+
+      storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+      assertEquals(2, storedTestSuite.getTestCaseResultSummary().size());
+
+      deleteEntity(testCase1.getId(), true, true, ADMIN_AUTH_HEADERS);
+      storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
+      assertEquals(1, storedTestSuite.getTestCaseResultSummary().size());
+    }
 
   @Test
   void get_testCaseResultWithIncidentId(TestInfo test)
@@ -2237,97 +2304,95 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         testCaseResultResultListUpdated.getData().get(0).getTestCaseStatus());
   }
 
-  //  TODO: ENABLE THIS TEST ONCE WE HAVE TEST SUMMARY MIGRATION DONE
-  //  @Test
-  //  void test_resultSummaryCascadeToAllSuites(TestInfo test) throws IOException, ParseException {
-  //    TestCase testCase = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
-  //    TestCase testCase1 = createAndCheckEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
-  //
-  //    CreateTestCaseResult createTestCaseResult;
-  //
-  //    String dateStr = "2021-10-";
-  //    for (int i = 11; i <= 15; i++) {
-  //      createTestCaseResult =
-  //              new CreateTestCaseResult()
-  //                      .withResult("result")
-  //                      .withTestCaseStatus(TestCaseStatus.Failed)
-  //                      .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
-  //      postTestCaseResult(testCase.getFullyQualifiedName(), createTestCaseResult,
-  // ADMIN_AUTH_HEADERS);
-  //    }
-  //
-  //    for (int i = 11; i <= 20; i++) {
-  //      createTestCaseResult =
-  //              new CreateTestCaseResult()
-  //                      .withResult("result")
-  //                      .withTestCaseStatus(TestCaseStatus.Success)
-  //                      .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
-  //      postTestCaseResult(testCase1.getFullyQualifiedName(), createTestCaseResult,
-  // ADMIN_AUTH_HEADERS);
-  //    }
-  //
-  //    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
-  //    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
-  //    TestSuite logicalTestSuite =
-  //            testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
-  //    List<UUID> testCaseIds = new ArrayList<>();
-  //    testCaseIds.add(testCase1.getId());
-  //    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
-  //
-  //    testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
-  //    if (supportsSearchIndex) {
-  //      // test we get the right summary for the executable test suite
-  //      getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
-  //    }
-  //
-  //    // test we get the right summary for the logical test suite
-  //
-  //    if (supportsSearchIndex) {
-  //      getAndValidateTestSummary(logicalTestSuite.getId().toString());
-  //    }
-  //    testCaseIds.clear();
-  //    testCaseIds.add(testCase.getId());
-  //    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
-  //    if (supportsSearchIndex) {
-  //      getAndValidateTestSummary(logicalTestSuite.getId().toString());
-  //    }
-  //    deleteEntity(testCase1.getId(), ADMIN_AUTH_HEADERS);
-  //    ResultList<TestCaseResult> resultList =
-  //            getTestCaseResults(
-  //                    testCase1.getFullyQualifiedName(),
-  //                    TestUtils.dateToTimestamp("2021-10-01"),
-  //                    TestUtils.dateToTimestamp("2021-10-30"),
-  //                    ADMIN_AUTH_HEADERS);
-  //    assertNotEquals(
-  //            resultList.getData().size(), 0); // soft deletion should not delete existing results
-  //
-  //    if (supportsSearchIndex) {
-  //      getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
-  //      getAndValidateTestSummary(logicalTestSuite.getId().toString());
-  //    }
-  //
-  //    deleteEntity(testCase1.getId(), true, true, ADMIN_AUTH_HEADERS); // hard delete
-  //    resultList =
-  //            getTestCaseResults(
-  //                    testCase1.getFullyQualifiedName(),
-  //                    TestUtils.dateToTimestamp("2021-10-01"),
-  //                    TestUtils.dateToTimestamp("2021-10-30"),
-  //                    ADMIN_AUTH_HEADERS);
-  //    assertEquals(resultList.getData().size(), 0); // hard deletion should delete existing
-  // results
-  //
-  //    if (supportsSearchIndex) {
-  //      getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
-  //      getAndValidateTestSummary(logicalTestSuite.getId().toString());
-  //    }
-  //    // check the deletion of the test case from the executable test suite
-  //    // cascaded to the logical test suite
-  //    deleteLogicalTestCase(logicalTestSuite, testCase.getId());
-  //
-  //    if (supportsSearchIndex) {
-  //      getAndValidateTestSummary(logicalTestSuite.getId().toString());
-  //    }
-  //  }
+    @Test
+    void test_resultSummaryCascadeToAllSuites(TestInfo test) throws IOException, ParseException {
+      TestCase testCase = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
+      TestCase testCase1 = createAndCheckEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
+
+      CreateTestCaseResult createTestCaseResult;
+
+      String dateStr = "2021-10-";
+      for (int i = 11; i <= 15; i++) {
+        createTestCaseResult =
+                new CreateTestCaseResult()
+                        .withResult("result")
+                        .withTestCaseStatus(TestCaseStatus.Failed)
+                        .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
+        postTestCaseResult(testCase.getFullyQualifiedName(), createTestCaseResult,
+   ADMIN_AUTH_HEADERS);
+      }
+
+      for (int i = 11; i <= 20; i++) {
+        createTestCaseResult =
+                new CreateTestCaseResult()
+                        .withResult("result")
+                        .withTestCaseStatus(TestCaseStatus.Success)
+                        .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
+        postTestCaseResult(testCase1.getFullyQualifiedName(), createTestCaseResult,
+   ADMIN_AUTH_HEADERS);
+      }
+
+      TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+      CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
+      TestSuite logicalTestSuite =
+              testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
+      List<UUID> testCaseIds = new ArrayList<>();
+      testCaseIds.add(testCase1.getId());
+      testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+
+      testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+      if (supportsSearchIndex) {
+        // test we get the right summary for the executable test suite
+        getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
+      }
+
+      // test we get the right summary for the logical test suite
+
+      if (supportsSearchIndex) {
+        getAndValidateTestSummary(logicalTestSuite.getId().toString());
+      }
+      testCaseIds.clear();
+      testCaseIds.add(testCase.getId());
+      testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+      if (supportsSearchIndex) {
+        getAndValidateTestSummary(logicalTestSuite.getId().toString());
+      }
+      deleteEntity(testCase1.getId(), ADMIN_AUTH_HEADERS);
+      ResultList<TestCaseResult> resultList =
+              getTestCaseResults(
+                      testCase1.getFullyQualifiedName(),
+                      TestUtils.dateToTimestamp("2021-10-01"),
+                      TestUtils.dateToTimestamp("2021-10-30"),
+                      ADMIN_AUTH_HEADERS);
+      assertNotEquals(
+              resultList.getData().size(), 0); // soft deletion should not delete existing results
+
+      if (supportsSearchIndex) {
+        getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
+        getAndValidateTestSummary(logicalTestSuite.getId().toString());
+      }
+
+      deleteEntity(testCase1.getId(), true, true, ADMIN_AUTH_HEADERS); // hard delete
+      resultList =
+              getTestCaseResults(
+                      testCase1.getFullyQualifiedName(),
+                      TestUtils.dateToTimestamp("2021-10-01"),
+                      TestUtils.dateToTimestamp("2021-10-30"),
+                      ADMIN_AUTH_HEADERS);
+      assertEquals(resultList.getData().size(), 0); // hard deletion should delete existing results
+
+      if (supportsSearchIndex) {
+        getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
+        getAndValidateTestSummary(logicalTestSuite.getId().toString());
+      }
+      // check the deletion of the test case from the executable test suite
+      // cascaded to the logical test suite
+      deleteLogicalTestCase(logicalTestSuite, testCase.getId());
+
+      if (supportsSearchIndex) {
+        getAndValidateTestSummary(logicalTestSuite.getId().toString());
+      }
+    }
 
   // Test utils methods
 
@@ -2485,11 +2550,18 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
   }
 
-  public TestCase getTestCase(String fqn, Map<String, String> authHeaders)
+  public TestCase getTestCase(String fqn, Map<String, String> params, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/name/" + fqn);
-    target = target.queryParam("fields", "incidentId,inspectionQuery");
+    for (Map.Entry<String, String> entry : params.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
     return TestUtils.get(target, TestCase.class, authHeaders);
+  }
+
+  private TestCase getTestCase(String fqn, Map<String, String> authHeaders) throws HttpResponseException {
+    Map<String, String> params = Map.of("fields", "incidentId,inspectionQuery");
+    return getTestCase(fqn, params, authHeaders);
   }
 
   private TestSummary getTestSummary(String testSuiteId) throws IOException {
@@ -2536,8 +2608,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     params.put("limit", "10000");
     params.put("include", "non-deleted");
 
-    ResultList<TestCase> testCaseResultList = listEntities(params, ADMIN_AUTH_HEADERS);
-    testCases = testCaseResultList.getData();
+      ResultList<TestCase> testCaseList = listEntities(params, ADMIN_AUTH_HEADERS);
+    testCases = testCaseList.getData();
     for (TestCase testCase : testCases) {
       TestCaseResult testCaseResult = testCase.getTestCaseResult();
       if (testCaseResult == null) {

@@ -93,6 +93,7 @@ import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBui
 import es.org.elasticsearch.search.aggregations.metrics.AvgAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import es.org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -646,24 +647,7 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     List<Map<String, Object>> results = new ArrayList<>();
-    if (!filter.isEmpty()) {
-      try {
-        XContentParser queryParser = createXContentParser(filter);
-        XContentParser sourceParser = createXContentParser(filter);
-        QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(queryParser).query();
-        FetchSourceContext sourceFromXContent =
-            SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
-        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-        boolQuery =
-            nullOrEmpty(q)
-                ? boolQuery.filter(queryFromXContent)
-                : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
-        searchSourceBuilder.query(boolQuery);
-        searchSourceBuilder.fetchSource(sourceFromXContent);
-      } catch (Exception e) {
-        throw new IOException("Failed to parse query filter: %s", e);
-      }
-    }
+    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(q));
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchSourceBuilder.from(offset);
@@ -1018,6 +1002,14 @@ public class ElasticSearchClient implements SearchClient {
                     .calendarInterval(new DateHistogramInterval(calendarInterval));
             aggregationBuilders.add(dateHistogramAggregationBuilder);
             break;
+          case "top_hits":
+            JsonObject topHitsAggregation = aggregation.getJsonObject(aggregationType);
+            TopHitsAggregationBuilder topHitsAggregationBuilder =
+                    AggregationBuilders.topHits(key)
+                            .size(topHitsAggregation.getInt("size"))
+                            .sort(topHitsAggregation.getString("sort_field"), SortOrder.fromString(topHitsAggregation.getString("sort_order")));
+            aggregationBuilders.add(topHitsAggregationBuilder);
+            break;
           case "nested":
             JsonObject nestedAggregation = aggregation.getJsonObject("nested");
             AggregationBuilder nestedAggregationBuilder =
@@ -1095,7 +1087,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+  public JsonObject aggregate(String query, String index, JsonObject aggregationJson, String filter)
       throws IOException {
     JsonObject aggregations = aggregationJson.getJsonObject("aggregations");
     if (aggregations == null) {
@@ -1116,6 +1108,7 @@ public class ElasticSearchClient implements SearchClient {
       BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
       searchSourceBuilder.query(boolQueryBuilder);
     }
+    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(query));
 
     searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
 
@@ -2276,6 +2269,27 @@ public class ElasticSearchClient implements SearchClient {
     } catch (IOException e) {
       LOG.error("Failed to create XContentParser", e);
       throw e;
+    }
+  }
+
+  private void getSearchFilter(String filter, SearchSourceBuilder searchSourceBuilder, boolean hasQuery) throws IOException {
+    if (!filter.isEmpty()) {
+      try {
+        XContentParser queryParser = createXContentParser(filter);
+        XContentParser sourceParser = createXContentParser(filter);
+        QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(queryParser).query();
+        FetchSourceContext sourceFromXContent =
+                SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        boolQuery =
+                !hasQuery
+                        ? boolQuery.filter(queryFromXContent)
+                        : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
+        searchSourceBuilder.query(boolQuery);
+        searchSourceBuilder.fetchSource(sourceFromXContent);
+      } catch (Exception e) {
+        throw new IOException("Failed to parse query filter: %s", e);
+      }
     }
   }
 

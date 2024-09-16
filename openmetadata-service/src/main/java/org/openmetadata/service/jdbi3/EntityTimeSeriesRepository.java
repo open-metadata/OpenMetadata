@@ -10,11 +10,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import javax.json.Json;
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import javax.json.JsonPatch;
+import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.EntityReference;
@@ -361,6 +368,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     List<T> entityList = new ArrayList<>();
     long total;
 
+    setIncludeSearchFields(searchListFilter);
+    setExcludeSearchFields(searchListFilter);
     if (limit > 0) {
       SearchClient.SearchResultListMapper results =
           searchRepository.listWithOffset(
@@ -380,5 +389,105 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, (int) total);
     }
+  }
+
+  public ResultList<T> listLatestFromSearch(
+          EntityUtil.Fields fields,
+          SearchListFilter searchListFilter,
+          String groupBy,
+          String q
+  ) throws IOException {
+    List<T> entityList = new ArrayList<>();
+    setIncludeSearchFields(searchListFilter);
+    setExcludeSearchFields(searchListFilter);
+    String aggregationStr = "{\"aggregations\": {\"byTerms\": {\"terms\": {\"field\": \"%s\", \"size\":100},\"aggs\": {\"latest\": " +
+            "{\"top_hits\": {\"size\": 1, \"sort_field\":\"timestamp\",\"sort_order\":\"desc\"}}}}}}";
+    aggregationStr = String.format(aggregationStr, groupBy);
+    JsonObject aggregation = JsonUtils.readJson(aggregationStr).asJsonObject();
+    JsonObject jsonObjResults = searchRepository.aggregate(q, entityType, aggregation, searchListFilter);
+    List<JsonObject> jsonTestCaseResults = parseListLatestAggregation(jsonObjResults);
+
+    for (JsonObject json : jsonTestCaseResults) {
+      T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+      setInheritedFields(entity);
+      clearFieldsInternal(entity, fields);
+      entityList.add(entity);
+    }
+    return new ResultList<>(entityList, null, null, entityList.size());
+  }
+
+  public T latestFromSearch(
+          EntityUtil.Fields fields,
+          SearchListFilter searchListFilter,
+          String q)
+          throws IOException {
+    setIncludeSearchFields(searchListFilter);
+    setExcludeSearchFields(searchListFilter);
+    SearchSortFilter searchSortFilter = new SearchSortFilter("timestamp", "desc", null, null);
+    SearchClient.SearchResultListMapper results = searchRepository.listWithOffset(
+            searchListFilter, 1, 0, entityType, searchSortFilter, q);
+    for (Map<String, Object> json : results.getResults()) {
+      T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+      setInheritedFields(entity);
+      clearFieldsInternal(entity, fields);
+      return entity;
+    }
+    return null;
+  }
+
+  protected void setIncludeSearchFields(SearchListFilter searchListFilter){
+    // Nothing to do in the default implementation
+  }
+
+  protected void setExcludeSearchFields(SearchListFilter searchListFilter){
+    // Nothing to do in the default implementation
+  }
+
+  protected List<String> getIncludeSearchFields(){
+    return new ArrayList<>();
+  }
+
+  protected List<String> getExcludeSearchFields(){
+    return new ArrayList<>();
+  }
+
+  private List<JsonObject> parseListLatestAggregation(JsonObject jsonObjResults) {
+    JsonObject jsonByTerms = jsonObjResults.getJsonObject("sterms#byTerms");
+    List<JsonObject> jsonTestCaseResults = new ArrayList<>();
+    List<String> includeSearchFields = getIncludeSearchFields();
+    List<String> excludeSearchFields = getExcludeSearchFields();
+    Optional.ofNullable(jsonByTerms)
+            .map(jbt -> jbt.getJsonArray("buckets"))
+            .ifPresent(termsBucket -> {
+              for (JsonValue bucket : termsBucket) {
+                JsonObject hitsBucket = bucket.asJsonObject().getJsonObject("top_hits#latest");
+                if (hitsBucket != null) {
+                  JsonObject hitsTwo = hitsBucket.getJsonObject("hits");
+                  if (hitsTwo != null) {
+                    JsonArray hits = hitsTwo.getJsonArray("hits");
+                    if (hits != null) {
+                      for (JsonValue hit : hits) {
+                        JsonObject source = hit.asJsonObject().getJsonObject("_source");
+                        // Aggregation results will return all fields by default, so we need to filter out the fields
+                        // that are not included in the search fields
+                        if (source != null && (!CommonUtil.nullOrEmpty(includeSearchFields) || !CommonUtil.nullOrEmpty(excludeSearchFields))) {
+                          JsonObjectBuilder sourceCopy = Json.createObjectBuilder();
+                          for (Map.Entry<String, JsonValue> entry : source.entrySet()) {
+                            if (includeSearchFields.contains(entry.getKey()) ||
+                                    (CommonUtil.nullOrEmpty(includeSearchFields) && !excludeSearchFields.contains(entry.getKey()))) {
+                              sourceCopy.add(entry.getKey(), entry.getValue());
+                            }
+                          }
+                          jsonTestCaseResults.add(sourceCopy.build());
+                        } else {
+                          if (source != null) jsonTestCaseResults.add(source);
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            });
+      return jsonTestCaseResults;
   }
 }

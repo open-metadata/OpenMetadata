@@ -179,7 +179,7 @@
           "$ref": "../type/entityReference.json"
         }
       },
-      "required": ["id", "timestamp"]
+      "required": ["timestamp"]
     },
     "testSuiteExecutionFrequency": {
       "description": "How often the test case should run.",

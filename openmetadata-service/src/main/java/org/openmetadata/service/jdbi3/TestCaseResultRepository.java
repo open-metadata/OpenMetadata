@@ -4,6 +4,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -11,6 +12,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -19,6 +21,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -29,6 +32,13 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   private final TestCaseRepository testCaseRepository;
+  public static String INCLUDE_SEARCH_FIELDS = "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound";
+
+  public enum OperationType {
+    CREATE,
+    UPDATE,
+    DELETE
+  }
 
   public TestCaseResultRepository() {
     super(
@@ -87,7 +97,19 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   @Override
   protected void postCreate(TestCaseResult entity) {
     super.postCreate(entity);
-    updateTestCaseStatus(entity);
+    updateTestCaseStatus(entity, OperationType.CREATE);
+  }
+
+  @Override
+  protected void postUpdate(TestCaseResult entity) {
+      super.postUpdate(entity);
+      updateTestCaseStatus(entity, OperationType.UPDATE);
+  }
+
+  @Override
+  protected void postDelete(TestCaseResult entity) {
+    super.postDelete(entity);
+    updateTestCaseStatus(entity, OperationType.DELETE);
   }
 
   @SneakyThrows
@@ -113,6 +135,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     if (storedTestCaseResult != null) {
       timeSeriesDao.deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
       searchRepository.deleteTimeSeriesEntityById(storedTestCaseResult);
+      postDelete(storedTestCaseResult);
       return new RestUtil.DeleteResponse<>(storedTestCaseResult, ENTITY_DELETED);
     }
     throw new EntityNotFoundException(
@@ -158,7 +181,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     return testCase.getTestDefinition();
   }
 
-  private void updateTestCaseStatus(TestCaseResult testCaseResult) {
+  private void updateTestCaseStatus(TestCaseResult testCaseResult, OperationType operationType) {
     TestCase original =
         Entity.getEntityByName(
             TEST_CASE,
@@ -166,11 +189,35 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
             "*",
             Include.ALL);
     TestCase updated = JsonUtils.deepCopy(original, TestCase.class);
+
+    if (original.getTestCaseResult() == null) {
+      if (!operationType.equals(OperationType.DELETE)) {
+        updated.setTestCaseResult(testCaseResult);
+      }
+    } else if (testCaseResult.getTimestamp() >= original.getTestCaseResult().getTimestamp()) {
+      if (operationType.equals(OperationType.DELETE)) {
+        testCaseResult = getLatestRecord(original.getFullyQualifiedName());
+      }
+      updated.setTestCaseResult(testCaseResult);
+    } else {
+      return;
+    }
     updated.setTestCaseStatus(testCaseResult.getTestCaseStatus());
 
     EntityRepository.EntityUpdater entityUpdater =
         testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH);
     entityUpdater.update();
+  }
+
+  @Override
+  protected void setIncludeSearchFields(SearchListFilter searchListFilter) {
+    String includeFields = searchListFilter.getQueryParam("includeFields");
+    if (CommonUtil.nullOrEmpty(includeFields)) searchListFilter.addQueryParam("includeFields", INCLUDE_SEARCH_FIELDS);
+  }
+
+  @Override
+  protected List<String> getIncludeSearchFields() {
+    return Arrays.asList(INCLUDE_SEARCH_FIELDS.split(","));
   }
 
   private TestCaseResult getTestCaseResult(

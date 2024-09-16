@@ -60,4 +60,31 @@ public abstract class EntityTimeSeriesResource<
     return repository.listFromSearchWithOffset(
         fields, searchListFilter, limit, offset, searchSortFilter, q);
   }
+
+  public ResultList<T> listLatestFromSearch(
+          SecurityContext securityContext,
+          EntityUtil.Fields fields,
+          SearchListFilter searchListFilter,
+          String groupBy,
+          String q,
+          OperationContext operationContext,
+          ResourceContextInterface resourceContext)
+          throws IOException {
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.listLatestFromSearch(
+            fields, searchListFilter, groupBy, q);
+  }
+
+  protected T latestInternalFromSearch(
+          SecurityContext securityContext,
+          EntityUtil.Fields fields,
+          SearchListFilter searchListFilter,
+          String q,
+          OperationContext operationContext,
+          ResourceContextInterface resourceContext)
+          throws IOException {
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.latestFromSearch(
+            fields, searchListFilter, q);
+  }
 }

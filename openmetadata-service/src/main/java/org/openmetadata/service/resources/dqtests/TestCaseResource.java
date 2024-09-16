@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
@@ -1025,6 +1026,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestCase testCase = repository.find(id, Include.NON_DELETED);
+    repository.setFields(testCase, new Fields(Set.of("testCaseResult")));
     if (testCase.getTestCaseResult() == null
         || !testCase.getTestCaseResult().getTestCaseStatus().equals(TestCaseStatus.Failed)) {
       throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");

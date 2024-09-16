@@ -6,7 +6,9 @@ import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.io.IOException;
@@ -19,6 +21,8 @@ import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 import javax.ws.rs.core.SecurityContext;
+
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Table;
@@ -26,6 +30,7 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -35,10 +40,12 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
@@ -134,6 +141,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     entity.setSummary(
         fields.contains("summary") ? getTestSummary(entity.getId()) : entity.getSummary());
     entity.withTests(fields.contains(UPDATE_FIELDS) ? getTestCases(entity) : entity.getTests());
+    entity.withTestCaseResultSummary(getResultSummary(entity.getId()));
   }
 
   @Override
@@ -242,14 +250,14 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       TestSummary testSummary;
       if (testSuiteId == null) {
         JsonObject testCaseResultSummary =
-            searchRepository.aggregate(null, TEST_CASE, aggregationJson);
+            searchRepository.aggregate(null, TEST_CASE, aggregationJson, new SearchListFilter());
         testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
       } else {
         String query = ENTITY_EXECUTION_SUMMARY_FILTER.formatted(testSuiteId);
         // don't want to get it from the cache as test results summary may be stale
         aggregationJson = JsonUtils.readJson(ENTITY_EXECUTION_SUMMARY_AGGS).asJsonObject();
         JsonObject testCaseResultSummary =
-            searchRepository.aggregate(query, TEST_CASE, aggregationJson);
+            searchRepository.aggregate(query, TEST_CASE, aggregationJson, new SearchListFilter());
         testSummary = getEntityTestCasesExecutionSummary(testCaseResultSummary);
       }
       return testSummary;
@@ -257,6 +265,29 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       LOG.error("Error reading aggregation query", e);
     }
     return null;
+  }
+
+  @SneakyThrows
+  private List<ResultSummary> getResultSummary(UUID testSuiteId) {
+    List<ResultSummary> resultSummaries = new ArrayList<>();
+    String groupBy = "testCaseFQN.keyword";
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("testSuiteId", testSuiteId.toString());
+    EntityTimeSeriesRepository<TestCaseResult> entityTimeSeriesRepository = (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
+    ResultList<TestCaseResult> latestTestCaseResultResults = entityTimeSeriesRepository.listLatestFromSearch(
+            EntityUtil.Fields.EMPTY_FIELDS,
+            searchListFilter,
+            groupBy,
+            null);
+
+    latestTestCaseResultResults.getData().forEach(testCaseResult -> {
+      ResultSummary resultSummary = new ResultSummary()
+              .withTestCaseName(testCaseResult.getTestCaseFQN())
+              .withStatus(testCaseResult.getTestCaseStatus())
+              .withTimestamp(testCaseResult.getTimestamp());
+      resultSummaries.add(resultSummary);
+    });
+    return resultSummaries;
   }
 
   @Override

@@ -124,6 +124,8 @@ public final class Entity {
 
   public static final String FIELD_DISABLED = "disabled";
 
+  public static final String FIELD_TEST_SUITES = "testSuites";
+
   //
   // Service entities
   //

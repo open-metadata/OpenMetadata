@@ -15,6 +15,7 @@ import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.PROPAGATE_TEST_SUITES_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -88,7 +89,7 @@ public class SearchRepository {
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
-      List.of(Entity.FIELD_OWNERS, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
+      List.of(Entity.FIELD_OWNERS, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED, Entity.FIELD_TEST_SUITES);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
@@ -491,8 +492,13 @@ public class SearchRepository {
                     field.getName()));
             fieldData.put(field.getName(), newEntityReference);
           } catch (UnhandledServerException e) {
-            scriptTxt.append(
-                String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+            if (field.getName().equals(Entity.FIELD_TEST_SUITES)) {
+              scriptTxt.append(PROPAGATE_TEST_SUITES_SCRIPT);
+              fieldData.put(Entity.FIELD_TEST_SUITES, field.getNewValue());
+            } else {
+              scriptTxt.append(
+                  String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+            }
           }
         }
       }
@@ -804,9 +810,9 @@ public class SearchRepository {
     return searchClient.aggregate(index, fieldName, value, query);
   }
 
-  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+  public JsonObject aggregate(String query, String entityType, JsonObject aggregationJson, SearchListFilter filter)
       throws IOException {
-    return searchClient.aggregate(query, index, aggregationJson);
+    return searchClient.aggregate(query, entityType, aggregationJson, filter.getCondition(entityType));
   }
 
   public DataQualityReport genericAggregation(

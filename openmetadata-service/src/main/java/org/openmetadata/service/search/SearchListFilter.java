@@ -31,6 +31,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
       conditions.add(entityType.equals(Entity.TEST_SUITE) ? getTestSuiteCondition() : null);
+      conditions.add(entityType.equals(Entity.TEST_CASE_RESULT) ? getTestCaseResultCondition() : null);
     }
     String conditionFilter = addCondition(conditions);
     String sourceFilter = getExcludeIncludeFields();
@@ -224,19 +225,49 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return addCondition(conditions);
   }
 
+  private String getTestCaseResultCondition() {
+    ArrayList<String> conditions = new ArrayList<>();
+
+    String startTimestamp = getQueryParam("startTimestamp");
+    String endTimestamp = getQueryParam("endTimestamp");
+    String testCaseFQN = getQueryParam("testCaseFQN");
+    String testCaseStatus = getQueryParam("testCaseStatus");
+    String testSuiteId = getQueryParam("testSuiteId");
+
+    if (startTimestamp != null && endTimestamp != null) {
+      conditions.add(
+              getTimestampFilter("timestamp", "gte", Long.parseLong(startTimestamp)));
+      conditions.add(
+              getTimestampFilter("timestamp", "lte", Long.parseLong(endTimestamp)));
+    }
+    if (testCaseFQN != null) {
+      conditions.add(String.format(
+              "{\"bool\":{\"should\": ["
+                      + "{\"term\": {\"testCaseFQN\": \"%1$s\"}},"
+                      + "{\"term\": {\"testCase.fullyQualifiedName\": \"%1$s\"}}]}}",
+                escapeDoubleQuotes(testCaseFQN)));
+    }
+    if (testCaseStatus != null) {
+      conditions.add(
+              String.format("{\"term\": {\"testCaseStatus\": \"%s\"}}", testCaseStatus));
+    }
+    if (testSuiteId != null) {
+      conditions.add(
+              String.format("{\"nested\":{\"path\":\"testSuites\",\"query\":{\"term\":{\"testSuites.id\":\"%s\"}}}}", testSuiteId));
+    }
+    return addCondition(conditions);
+  }
+
   private String getTestSuiteCondition() {
     ArrayList<String> conditions = new ArrayList<>();
 
     String testSuiteType = getQueryParam("testSuiteType");
     String fullyQualifiedName = getQueryParam("fullyQualifiedName");
-    Boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
+    boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
 
     if (testSuiteType != null) {
-      Boolean executable = true;
-      if (testSuiteType.equals("logical")) {
-        executable = false;
-      }
-      conditions.add(String.format("{\"term\": {\"executable\": \"%s\"}}", executable));
+      boolean executable = !testSuiteType.equals("logical");
+        conditions.add(String.format("{\"term\": {\"executable\": \"%s\"}}", executable));
     }
 
     if (!includeEmptyTestSuites) {
