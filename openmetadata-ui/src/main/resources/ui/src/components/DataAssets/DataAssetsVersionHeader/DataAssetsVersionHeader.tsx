@@ -109,7 +109,7 @@ function DataAssetsVersionHeader({
               deleted={deleted}
               displayName={displayName}
               icon={
-                currentVersionData.serviceType && (
+                'serviceType' in currentVersionData && (
                   <img className="h-9" src={logo} />
                 )
               }

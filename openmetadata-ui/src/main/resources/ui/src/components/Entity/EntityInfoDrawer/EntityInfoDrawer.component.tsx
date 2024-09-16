@@ -21,6 +21,7 @@ import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
@@ -41,6 +42,7 @@ import APIEndpointSummary from '../../Explore/EntitySummaryPanel/APIEndpointSumm
 import ContainerSummary from '../../Explore/EntitySummaryPanel/ContainerSummary/ContainerSummary.component';
 import DashboardSummary from '../../Explore/EntitySummaryPanel/DashboardSummary/DashboardSummary.component';
 import DataModelSummary from '../../Explore/EntitySummaryPanel/DataModelSummary/DataModelSummary.component';
+import MetricSummary from '../../Explore/EntitySummaryPanel/MetricSummary/MetricSummary';
 import MlModelSummary from '../../Explore/EntitySummaryPanel/MlModelSummary/MlModelSummary.component';
 import PipelineSummary from '../../Explore/EntitySummaryPanel/PipelineSummary/PipelineSummary.component';
 import SearchIndexSummary from '../../Explore/EntitySummaryPanel/SearchIndexSummary/SearchIndexSummary.component';
@@ -72,7 +74,7 @@ const EntityInfoDrawer = ({
 
   const icon = useMemo(
     () =>
-      selectedNode?.serviceType ? (
+      'serviceType' in selectedNode ? (
         <img
           className="h-9"
           src={serviceUtilClassBase.getServiceTypeLogo(
@@ -176,6 +178,14 @@ const EntityInfoDrawer = ({
           <APIEndpointSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as APIEndpoint}
+          />
+        );
+
+      case EntityType.METRIC:
+        return (
+          <MetricSummary
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+            entityDetails={entityDetail as Metric}
           />
         );
 

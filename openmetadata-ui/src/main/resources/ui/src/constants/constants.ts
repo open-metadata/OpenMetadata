@@ -284,6 +284,10 @@ export const ROUTES = {
   NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
   NOTIFICATION_ALERT_DETAILS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Metric Entity
+  METRICS: '/metrics',
+  ADD_METRIC: '/metrics/add-metric',
 };
 
 export const SOCKET_EVENTS = {
@@ -534,6 +538,7 @@ export const ENTITY_PATH = {
   apiCollections: 'apiCollection',
   apiEndpoints: 'apiEndpoint',
   dataProducts: 'dataProduct',
+  metrics: 'metric',
 };
 
 export const VALIDATION_MESSAGES = {

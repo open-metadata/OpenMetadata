@@ -117,6 +117,22 @@ export const GLOBAL_SETTING_PERMISSIONS: Record<
     testid: GlobalSettingOptions.API_ENDPOINTS,
     isCustomProperty: true,
   },
+  customAttributesMetric: {
+    testid: GlobalSettingOptions.METRICS,
+    isCustomProperty: true,
+  },
+  customAttributesDataProduct: {
+    testid: GlobalSettingOptions.DATA_PRODUCTS,
+    isCustomProperty: true,
+  },
+  customAttributesDataModel: {
+    testid: GlobalSettingOptions.DASHBOARD_DATA_MODEL,
+    isCustomProperty: true,
+  },
+  customAttributesContainer: {
+    testid: GlobalSettingOptions.CONTAINERS,
+    isCustomProperty: true,
+  },
   bots: {
     testid: GlobalSettingOptions.BOTS,
   },

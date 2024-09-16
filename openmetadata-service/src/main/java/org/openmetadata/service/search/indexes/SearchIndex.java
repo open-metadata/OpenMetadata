@@ -84,6 +84,7 @@ public interface SearchIndex {
         getFQNParts(
             entity.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
+    map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
     return map;
   }
 
