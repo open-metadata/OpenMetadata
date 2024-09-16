@@ -223,7 +223,7 @@ export const getAuthConfig = (
 
 // Add here scopes for id token to be used at MS Identity Platform endpoints.
 export const msalLoginRequest: PopupRequest = {
-  scopes: ['openid', 'profile', 'email', 'offline_access'],
+  scopes: ['openid', 'profile', 'email', 'offline_access', 'User.Read'],
 };
 
 export const getNameFromEmail = (email: string) => {

@@ -200,11 +200,11 @@ module.exports = {
           to: outputPath,
         },
         {
-          from: path.join(__dirname, 'public/favicon-16x16.png'),
+          from: path.join(__dirname, 'public/favicons/favicon-16x16.png'),
           to: outputPath,
         },
         {
-          from: path.join(__dirname, 'public/favicon-32x32.png'),
+          from: path.join(__dirname, 'public/favicons/favicon-32x32.png'),
           to: outputPath,
         },
         {
