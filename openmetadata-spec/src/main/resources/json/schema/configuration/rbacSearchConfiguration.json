@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/rbacSearchConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RbacSearchConfiguration",
+  "description": "This schema defines the Rbac Search Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rbac.RbacSearchConfiguration",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "description": "Flag to enable or disable the RBAC Search Configuration.",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}
