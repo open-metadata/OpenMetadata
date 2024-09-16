@@ -77,6 +77,7 @@ import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel'
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import {
@@ -1005,6 +1006,43 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
 
   return overview;
 };
+const getMetricOverview = (metric: Metric) => {
+  if (isNil(metric) || isEmpty(metric)) {
+    return [];
+  }
+
+  const overview = [
+    {
+      name: i18next.t('label.metric-type'),
+      value: metric.metricType || NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+    {
+      name: i18next.t('label.unit-of-measurement'),
+      value: metric.unitOfMeasurement || NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+    {
+      name: i18next.t('label.granularity'),
+      value: metric.granularity || NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+  ];
+
+  return overview;
+};
 
 export const getEntityOverview = (
   type: string,
@@ -1059,6 +1097,10 @@ export const getEntityOverview = (
 
     case ExplorePageTabs.API_ENDPOINT: {
       return getApiEndpointOverview(entityDetail as APIEndpoint);
+    }
+
+    case ExplorePageTabs.METRIC: {
+      return getMetricOverview(entityDetail as Metric);
     }
 
     case ExplorePageTabs.DATABASE_SERVICE:
@@ -1457,6 +1499,8 @@ export const getEntityLinkFromType = (
     case EntityType.SEARCH_INDEX:
     case EntityType.API_COLLECTION:
     case EntityType.API_ENDPOINT:
+      return getEntityDetailsPath(entityType, fullyQualifiedName);
+    case EntityType.METRIC:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
@@ -2145,6 +2189,19 @@ export const getEntityBreadcrumbs = (
     case EntityType.API_ENDPOINT:
       return getBreadCrumbForAPIEndpoint(entity as APIEndpoint);
 
+    case EntityType.METRIC: {
+      return [
+        {
+          name: t('label.metric-plural'),
+          url: ROUTES.METRICS,
+        },
+        {
+          name: getEntityName(entity),
+          url: '',
+        },
+      ];
+    }
+
     case EntityType.KPI:
       return getBreadCrumbForKpi(entity as Kpi);
 
@@ -2326,6 +2383,7 @@ export const getPluralizeEntityName = (entityType?: string) => {
     [EntityType.SEARCH_INDEX]: t('label.search-index-plural'),
     [EntityType.API_COLLECTION]: t('label.api-collection-plural'),
     [EntityType.API_ENDPOINT]: t('label.api-endpoint-plural'),
+    [EntityType.METRIC]: t('label.metric-plural'),
   };
 
   return (

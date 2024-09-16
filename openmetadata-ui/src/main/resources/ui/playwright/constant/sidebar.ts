@@ -24,6 +24,7 @@ export enum SidebarItem {
   INSIGHTS = 'insights',
   SETTINGS = 'settings',
   LOGOUT = 'logout',
+  METRICS = 'metrics',
 }
 
 export const SIDEBAR_LIST_ITEMS = {
@@ -41,6 +42,7 @@ export const SIDEBAR_LIST_ITEMS = {
   ],
   [SidebarItem.GLOSSARY]: [SidebarItem.GOVERNANCE, SidebarItem.GLOSSARY],
   [SidebarItem.TAGS]: [SidebarItem.GOVERNANCE, SidebarItem.TAGS],
+  [SidebarItem.METRICS]: [SidebarItem.GOVERNANCE, SidebarItem.METRICS],
 
   // Profile Dropdown
   'user-name': ['dropdown-profile', 'user-name'],
