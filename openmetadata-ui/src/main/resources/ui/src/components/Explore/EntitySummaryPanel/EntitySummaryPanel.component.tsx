@@ -33,6 +33,7 @@ import { DashboardDataModel } from '../../../generated/entity/data/dashboardData
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
@@ -66,6 +67,7 @@ import DataProductSummary from './DataProductSummary/DataProductSummary.componen
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.component';
+import MetricSummary from './MetricSummary/MetricSummary';
 import MlModelSummary from './MlModelSummary/MlModelSummary.component';
 import PipelineSummary from './PipelineSummary/PipelineSummary.component';
 import SearchIndexSummary from './SearchIndexSummary/SearchIndexSummary.component';
@@ -315,6 +317,14 @@ export default function EntitySummaryPanel({
         return (
           <APICollectionSummary
             entityDetails={entity as APICollection}
+            highlights={highlights}
+          />
+        );
+
+      case EntityType.METRIC:
+        return (
+          <MetricSummary
+            entityDetails={entity as Metric}
             highlights={highlights}
           />
         );

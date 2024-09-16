@@ -15,6 +15,7 @@ import { get } from 'lodash';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
@@ -51,6 +52,7 @@ const entities = [
   MlModelClass,
   ContainerClass,
   SearchIndexClass,
+  MetricClass,
 ] as const;
 
 const pipeline = new PipelineClass();

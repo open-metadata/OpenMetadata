@@ -163,7 +163,7 @@ const APIEndpointPage = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-details-fetch-error', {
-            entityType: t('label.pipeline'),
+            entityType: t('label.api-endpoint'),
             entityName: apiEndpointFqn,
           })
         );

@@ -24,6 +24,7 @@ import {
   DashboardSearchSource,
   ExploreSearchSource,
   GlossarySearchSource,
+  MetricSearchSource,
   MlmodelSearchSource,
   PipelineSearchSource,
   QuerySearchSource,
@@ -64,6 +65,15 @@ export type SourceType = (
   | Pick<APICollectionSearchSource, Fields>
   | Pick<APIEndpointSearchSource, Fields>
   | Pick<
+      MetricSearchSource,
+      | 'name'
+      | 'fullyQualifiedName'
+      | 'description'
+      | 'displayName'
+      | 'deleted'
+      | 'domain'
+    >
+  | Pick<
       Exclude<
         ExploreSearchSource,
         | TableSearchSource
@@ -79,6 +89,7 @@ export type SourceType = (
         | StoredProcedureSearchSource
         | APICollectionSearchSource
         | APIEndpointSearchSource
+        | MetricSearchSource
       >,
       Fields
     >

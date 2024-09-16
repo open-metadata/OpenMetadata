@@ -81,16 +81,6 @@
       "fqnParts": {
         "type": "keyword"
       },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
-      },
       "version": {
         "type": "float"
       },
@@ -154,7 +144,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -224,7 +214,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -236,7 +226,7 @@
         "normalizer": "lowercase_normalizer"
       },
       "deleted": {
-        "type": "text"
+        "type": "boolean"
       },
       "domain" : {
         "properties": {
@@ -278,7 +268,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -328,7 +318,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -386,7 +376,7 @@
             "analyzer": "om_analyzer"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"

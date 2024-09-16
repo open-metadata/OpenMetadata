@@ -160,6 +160,9 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.dataProducts:
         return PAGE_HEADERS.DATA_PRODUCT_CUSTOM_ATTRIBUTES;
 
+      case ENTITY_PATH.metrics:
+        return PAGE_HEADERS.METRIC_CUSTOM_ATTRIBUTES;
+
       case ENTITY_PATH.pipelines:
         return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
 

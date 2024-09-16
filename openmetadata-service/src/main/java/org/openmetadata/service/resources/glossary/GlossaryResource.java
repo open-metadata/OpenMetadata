@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -85,7 +86,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("reviewers,usageCount,termCount", MetadataOperation.VIEW_BASIC);
-    return null;
+    return Collections.emptyList();
   }
 
   public static class GlossaryList extends ResultList<Glossary> {

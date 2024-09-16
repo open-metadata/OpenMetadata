@@ -47,6 +47,7 @@ import {
   patchGlossaries,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
+import { getMetricByFqn, patchMetric } from '../../rest/metricsAPI';
 import { getMlModelByFQN, patchMlModelDetails } from '../../rest/mlModelAPI';
 import { getPipelineByFqn, patchPipelineDetails } from '../../rest/pipelineAPI';
 import {
@@ -113,6 +114,8 @@ export const getAPIfromSource = (
       return patchApiCollection;
     case EntityType.API_ENDPOINT:
       return patchApiEndPoint;
+    case EntityType.METRIC:
+      return patchMetric;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -170,6 +173,8 @@ export const getEntityAPIfromSource = (
       return getApiCollectionByFQN;
     case EntityType.API_ENDPOINT:
       return getApiEndPointByFQN;
+    case EntityType.METRIC:
+      return getMetricByFqn;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:

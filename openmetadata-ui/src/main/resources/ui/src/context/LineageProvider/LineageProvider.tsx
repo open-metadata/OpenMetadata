@@ -75,6 +75,7 @@ import {
 } from '../../generated/type/entityLineage';
 import { useFqn } from '../../hooks/useFqn';
 import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
+import { isDeleted } from '../../utils/CommonUtils';
 import {
   addLineageHandler,
   centerNodePosition,
@@ -649,7 +650,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       } else {
         setSelectedEdge(undefined);
         setActiveNode(node);
-        setSelectedNode(node.data.node as SourceType);
+        const sourceTypeNode = node.data.node as SourceType;
+        setSelectedNode({
+          ...sourceTypeNode,
+          // we are getting deleted as a string instead of boolean from API so need to handle it like this
+          deleted: isDeleted(sourceTypeNode.deleted),
+        });
         setIsDrawerOpen(true);
         handleLineageTracing(node);
       }

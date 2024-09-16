@@ -726,7 +726,7 @@ public class ElasticSearchClient implements SearchClient {
     searchRequest.source(searchSourceBuilder.size(1000));
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      Map<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
       tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
       responseMap.put("entity", tempMap);
     }
@@ -1639,7 +1639,7 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void softDeleteOrRestoreChildren(
       List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
-    if (isClientAvailable) {
+    if (isClientAvailable && !nullOrEmpty(indexName)) {
       UpdateByQueryRequest updateByQueryRequest =
           new UpdateByQueryRequest(indexName.toArray(new String[0]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();

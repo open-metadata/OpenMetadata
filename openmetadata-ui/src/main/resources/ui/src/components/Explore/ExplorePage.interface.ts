@@ -24,6 +24,7 @@ import { DashboardDataModel } from '../../generated/entity/data/dashboardDataMod
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { Metric } from '../../generated/entity/data/metric';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
@@ -65,7 +66,8 @@ export type ExploreSearchIndex =
   | SearchIndex.STORED_PROCEDURE
   | SearchIndex.DASHBOARD_DATA_MODEL
   | SearchIndex.API_COLLECTION_INDEX
-  | SearchIndex.API_ENDPOINT_INDEX;
+  | SearchIndex.API_ENDPOINT_INDEX
+  | SearchIndex.METRIC_SEARCH_INDEX;
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
@@ -147,7 +149,8 @@ export type EntityUnion =
   | SearchService
   | APIEndpoint
   | APIService
-  | APICollection;
+  | APICollection
+  | Metric;
 
 export type EntityWithServices =
   | Topic

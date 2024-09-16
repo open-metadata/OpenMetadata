@@ -71,6 +71,10 @@ export const entityData = [
     type: SearchIndex.API_ENDPOINT_INDEX,
     label: t('label.api-endpoint-plural'),
   },
+  {
+    type: SearchIndex.METRIC_SEARCH_INDEX,
+    label: t('label.metric-plural'),
+  },
 ];
 
 export const POSITION_X = 150;

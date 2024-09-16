@@ -138,6 +138,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -191,6 +192,7 @@ import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
+import org.openmetadata.service.resources.metrics.MetricResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.APIServiceResourceTest;
@@ -333,6 +335,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Glossary GLOSSARY1;
   public static Glossary GLOSSARY2;
 
+  public static Metric Metric1;
+  public static Metric Metric2;
+
   public static GlossaryTerm GLOSSARY1_TERM1;
   public static TagLabel GLOSSARY1_TERM1_LABEL;
 
@@ -448,6 +453,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     new TagResourceTest().setupTags();
     new GlossaryResourceTest().setupGlossaries();
+    new MetricResourceTest().setupMetrics();
 
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();

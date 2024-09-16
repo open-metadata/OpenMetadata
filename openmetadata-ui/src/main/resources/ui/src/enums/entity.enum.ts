@@ -72,6 +72,7 @@ export enum EntityType {
   API_SERVICE = 'apiService',
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
+  METRIC = 'metric',
 }
 
 export enum EntityLineageDirection {
@@ -154,6 +155,7 @@ export enum TabSpecificField {
   METRIC_TYPE = 'metricType',
   CUSTOM_PROPERTIES = 'customProperties',
   LOCATION = 'location',
+  RELATED_METRICS = 'relatedMetrics',
 }
 
 export enum FqnPart {
@@ -200,6 +202,7 @@ export enum EntityTabs {
   CODE = 'code',
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
+  OVERVIEW = 'overview',
 }
 
 export enum EntityAction {

@@ -37,6 +37,7 @@ import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetails
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
 import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexDetailsPage';
@@ -248,6 +249,14 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+      case SearchIndex.METRIC_SEARCH_INDEX:
+      case EntityType.METRIC:
+        return getEntityDetailsPath(
+          EntityType.METRIC,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:
@@ -291,6 +300,8 @@ class EntityUtilClassBase {
         return APICollectionPage;
       case EntityType.API_ENDPOINT:
         return APIEndpointPage;
+      case EntityType.METRIC:
+        return MetricDetailsPage;
 
       default:
         return null;
@@ -343,6 +354,9 @@ class EntityUtilClassBase {
       }
       case EntityType.API_ENDPOINT: {
         return ResourceEntity.API_ENDPOINT;
+      }
+      case EntityType.METRIC: {
+        return ResourceEntity.METRIC;
       }
 
       default: {

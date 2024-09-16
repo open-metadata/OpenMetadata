@@ -25,6 +25,7 @@ import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
@@ -175,6 +176,11 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = IconApiEndpoint;
 
       break;
+    case SearchIndex.METRIC_SEARCH_INDEX:
+      label = i18next.t('label.metric-plural');
+      GroupIcon = MetricIcon;
+
+      break;
 
     default: {
       const { label: indexLabel, GroupIcon: IndexIcon } =
@@ -279,6 +285,7 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
     [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
     [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
+    [SearchIndex.METRIC_SEARCH_INDEX]: EntityType.METRIC,
     [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
   };
 

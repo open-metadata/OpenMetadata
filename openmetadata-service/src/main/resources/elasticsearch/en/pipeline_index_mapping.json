@@ -123,7 +123,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -186,7 +186,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -269,7 +269,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -316,7 +316,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -324,7 +324,7 @@
         }
       },
       "deleted": {
-        "type": "text"
+        "type": "boolean"
       },
       "followers": {
         "type": "keyword"
@@ -377,16 +377,6 @@
       },
       "entityType": {
         "type": "keyword"
-      },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
       },
       "task_suggest": {
         "type": "completion"

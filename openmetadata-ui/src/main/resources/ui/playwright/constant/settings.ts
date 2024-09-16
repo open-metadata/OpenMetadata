@@ -72,6 +72,7 @@ export enum GlobalSettingOptions {
   API_ENDPOINTS = 'apiEndpoints',
   DATA_PRODUCTS = 'dataProducts',
   DASHBOARD_DATA_MODEL = 'dashboardDataModels',
+  METRICS = 'metrics',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -250,5 +251,9 @@ export const SETTING_CUSTOM_PROPERTIES_PATH = {
   [GlobalSettingOptions.DASHBOARD_DATA_MODEL]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
+  ],
+  [GlobalSettingOptions.METRICS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.METRICS}`,
   ],
 };

@@ -32,7 +32,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.Metrics;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
@@ -288,7 +288,7 @@ public class MigrationUtil {
     updateFQNHashForEntity(handle, Container.class, collectionDAO.containerDAO(), limitParam);
     updateFQNHashForEntity(handle, MlModel.class, collectionDAO.mlModelDAO(), limitParam);
     updateFQNHashForEntity(handle, Pipeline.class, collectionDAO.pipelineDAO(), limitParam);
-    updateFQNHashForEntity(handle, Metrics.class, collectionDAO.metricsDAO(), limitParam);
+    updateFQNHashForEntity(handle, Metric.class, collectionDAO.metricDAO(), limitParam);
     updateFQNHashForEntity(handle, Report.class, collectionDAO.reportDAO(), limitParam);
 
     // Update Glossaries & Classifications

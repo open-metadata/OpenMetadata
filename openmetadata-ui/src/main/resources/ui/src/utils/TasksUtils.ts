@@ -69,6 +69,7 @@ import {
 } from '../rest/databaseAPI';
 import { getDataModelByFqn } from '../rest/dataModelsAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
+import { getMetricByFqn } from '../rest/metricsAPI';
 import { getUserSuggestions } from '../rest/miscAPI';
 import { getMlModelByFQN } from '../rest/mlModelAPI';
 import { getPipelineByFqn } from '../rest/pipelineAPI';
@@ -355,6 +356,7 @@ export const TASK_ENTITIES = [
   EntityType.GLOSSARY_TERM,
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
+  EntityType.METRIC,
 ];
 
 export const getBreadCrumbList = (
@@ -484,6 +486,19 @@ export const getBreadCrumbList = (
     }
     case EntityType.API_COLLECTION: {
       return [service(ServiceCategory.API_SERVICES), activeEntity];
+    }
+
+    case EntityType.METRIC: {
+      return [
+        {
+          name: i18Next.t('label.metric-plural'),
+          url: ROUTES.METRICS,
+        },
+        {
+          name: getEntityName(entityData),
+          url: '',
+        },
+      ];
     }
 
     default:
@@ -642,6 +657,17 @@ export const fetchEntityDetail = (
     }
     case EntityType.API_ENDPOINT: {
       getApiEndPointByFQN(entityFQN, {
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+      })
+        .then((res) => {
+          setEntityData(res as EntityData);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    }
+    case EntityType.METRIC: {
+      getMetricByFqn(entityFQN, {
         fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
       })
         .then((res) => {

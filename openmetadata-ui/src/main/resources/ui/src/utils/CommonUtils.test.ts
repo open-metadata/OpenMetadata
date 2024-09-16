@@ -33,6 +33,7 @@ import {
   getNameFromFQN,
   getServiceTypeExploreQueryFilter,
   getTagValue,
+  isDeleted,
   prepareLabel,
   reduceColorOpacity,
   sortTagsCaseInsensitive,
@@ -312,6 +313,14 @@ describe('Tests for CommonUtils', () => {
           '{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"serviceType":"mysql"}}]}}]}}}'
         );
       });
+    });
+
+    it('isDeleted should return proper boolean value', () => {
+      expect(isDeleted(true)).toBe(true);
+      expect(isDeleted(false)).toBe(false);
+      expect(isDeleted('false')).toBe(false);
+      expect(isDeleted(undefined)).toBe(false);
+      expect(isDeleted(null)).toBe(false);
     });
   });
 });

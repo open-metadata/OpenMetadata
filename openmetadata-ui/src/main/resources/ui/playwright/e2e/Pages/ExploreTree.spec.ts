@@ -35,6 +35,7 @@ test.describe('Explore Tree scenarios ', () => {
       await expect(page.getByRole('tree')).toContainText('Search Indexes');
       await expect(page.getByRole('tree')).toContainText('Governance');
       await expect(page.getByRole('tree')).toContainText('APIs');
+      await expect(page.getByRole('tree')).toContainText('Metrics');
 
       await page
         .locator('div')
@@ -94,5 +95,16 @@ test.describe('Explore Tree scenarios ', () => {
         page.getByTestId('search-dropdown-Data Assets')
       ).toContainText('Data Assets: tag');
     });
+
+    await test.step(
+      'Click on tree item metrics and check quick filter',
+      async () => {
+        await page.getByTestId('explore-tree-title-Metrics').click();
+
+        await expect(
+          page.getByTestId('search-dropdown-Data Assets')
+        ).toContainText('Data Assets: metric');
+      }
+    );
   });
 });
