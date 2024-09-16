@@ -35,6 +35,7 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
@@ -457,6 +458,13 @@ export const getDataAssetsHeaderInfo = (
           )}
         </>
       );
+
+      break;
+    }
+    case EntityType.METRIC: {
+      const metric = dataAsset as Metric;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(metric, EntityType.METRIC);
 
       break;
     }
