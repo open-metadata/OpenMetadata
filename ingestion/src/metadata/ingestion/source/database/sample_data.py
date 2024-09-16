@@ -141,7 +141,7 @@ from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds, datetime_to_timestamp
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
 
@@ -1647,8 +1647,9 @@ class SampleDataSource(
                 timestamp=Timestamp(
                     int(
                         datetime_to_timestamp(
-                            datetime_value=datetime.now() - timedelta(days=life_cycle["created"]["days"]),
-                            milliseconds=True
+                            datetime_value=datetime.now()
+                            - timedelta(days=life_cycle["created"]["days"]),
+                            milliseconds=True,
                         )
                     )
                 ),
@@ -1659,8 +1660,9 @@ class SampleDataSource(
                 timestamp=Timestamp(
                     int(
                         datetime_to_timestamp(
-                            datetime_value=datetime.now() - timedelta(days=life_cycle["updated"]["days"]),
-                            milliseconds=True
+                            datetime_value=datetime.now()
+                            - timedelta(days=life_cycle["updated"]["days"]),
+                            milliseconds=True,
                         )
                     ),
                 ),
@@ -1671,8 +1673,9 @@ class SampleDataSource(
                 timestamp=Timestamp(
                     int(
                         datetime_to_timestamp(
-                            datetime_value=datetime.now() - timedelta(days=life_cycle["accessed"]["days"]),
-                            milliseconds=True
+                            datetime_value=datetime.now()
+                            - timedelta(days=life_cycle["accessed"]["days"]),
+                            milliseconds=True,
                         )
                     ),
                 ),
