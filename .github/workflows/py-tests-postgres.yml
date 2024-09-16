@@ -79,9 +79,8 @@ jobs:
       uses: ./.github/actions/setup-openmetadata-test-environment
       with:
         python-version: ${{ matrix.py-version}}
-        args: "-m no-ui"
+        args: "-m no-ui -d postgresql"
         ingestion_dependency: "mysql,elasticsearch,sample-data"
-        database: "-d postgresql"
 
     - name: Run Python Tests
       if: ${{ matrix.py-version != '3.9' }}
