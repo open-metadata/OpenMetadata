@@ -2,6 +2,7 @@ package org.openmetadata.service.search.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -62,7 +63,10 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   private void setupMockPolicies(
-      List<String> expressions, String effect, List<List<String>> resourcesList) {
+      List<String> expressions,
+      String effect,
+      List<List<String>> resourcesList,
+      List<List<MetadataOperation>> operationsList) {
     // Mock the user
     mockUser = mock(User.class);
     EntityReference mockUserReference = mock(EntityReference.class);
@@ -86,6 +90,10 @@ class ElasticSearchRBACConditionEvaluatorTest {
       List<String> resources = (resourcesList.size() > i) ? resourcesList.get(i) : List.of("All");
       when(mockRule.getResources()).thenReturn(resources);
 
+      List<MetadataOperation> operations =
+          (operationsList.size() > i) ? operationsList.get(i) : List.of(MetadataOperation.VIEW_ALL);
+      when(mockRule.getOperations()).thenReturn(operations);
+
       CompiledRule.Effect mockEffect = CompiledRule.Effect.valueOf(effect.toUpperCase());
       when(mockRule.getEffect()).thenReturn(mockEffect);
       mockRules.add(mockRule);
@@ -100,7 +108,11 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   private void setupMockPolicies(String expression, String effect, List<String> resources) {
-    setupMockPolicies(List.of(expression), effect, List.of(resources));
+    setupMockPolicies(
+        List.of(expression),
+        effect,
+        List.of(resources),
+        List.of(List.of(MetadataOperation.VIEW_ALL)));
   }
 
   private void setupMockPolicies(String expression, String effect) {
@@ -247,7 +259,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testComplexConditionWithRolesDomainTagsTeams() throws IOException {
+  void testComplexConditionWithRolesDomainTagsTeams() {
     setupMockPolicies(
         "hasAnyRole('Admin', 'DataSteward') && hasDomain() && (matchAnyTag('Sensitive') || inAnyTeam('Interns'))",
         "ALLOW");
@@ -294,7 +306,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testConditionUserDoesNotHaveRole() throws IOException {
+  void testConditionUserDoesNotHaveRole() {
     setupMockPolicies("hasAnyRole('Admin', 'DataSteward') && isOwner()", "ALLOW");
     EntityReference role = new EntityReference();
     role.setName("DataConsumer");
@@ -312,7 +324,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testNegationWithRolesAndTeams() throws IOException {
+  void testNegationWithRolesAndTeams() {
     setupMockPolicies("!(hasAnyRole('Viewer') || inAnyTeam('Marketing')) && isOwner()", "ALLOW");
     EntityReference role = new EntityReference();
     role.setName("Viewer");
@@ -332,7 +344,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testComplexConditionUserMeetsAllCriteria() throws IOException {
+  void testComplexConditionUserMeetsAllCriteria() {
     setupMockPolicies(
         "hasDomain() && inAnyTeam('Engineering', 'Analytics') && matchAllTags('Confidential', 'Internal')",
         "ALLOW");
@@ -363,7 +375,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testConditionUserLacksDomain() throws IOException {
+  void testConditionUserLacksDomain() {
     setupMockPolicies("hasDomain() && isOwner() && matchAnyTag('Public')", "ALLOW");
     when(mockUser.getDomain()).thenReturn(null);
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -383,7 +395,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testNestedLogicalOperators() throws IOException {
+  void testNestedLogicalOperators() {
     setupMockPolicies(
         "(hasAnyRole('Admin') || inAnyTeam('Engineering')) && (matchAnyTag('Sensitive') || isOwner())",
         "ALLOW");
@@ -428,7 +440,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testComplexNestedConditions() throws IOException {
+  void testComplexNestedConditions() {
     setupMockPolicies(
         "(hasAnyRole('Admin') || (matchAnyTag('Confidential') && hasDomain())) && (!inAnyTeam('HR') || noOwner())",
         "ALLOW");
@@ -471,7 +483,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testMultipleNestedNotOperators() throws IOException {
+  void testMultipleNestedNotOperators() {
     setupMockPolicies(
         "!(matchAllTags('Sensitive', 'Internal') && (!hasDomain()) || isOwner())", "ALLOW");
 
@@ -498,7 +510,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testComplexOrConditionsWithNegations() throws IOException {
+  void testComplexOrConditionsWithNegations() {
     setupMockPolicies(
         "(hasAnyRole('Analyst') && matchAnyTag('Public')) || (!hasAnyRole('Viewer') && !inAnyTeam('Finance'))",
         "ALLOW");
@@ -528,7 +540,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testNestedAndOrWithMultipleMethods() throws IOException {
+  void testNestedAndOrWithMultipleMethods() {
     setupMockPolicies(
         "(hasDomain() || matchAnyTag('External')) && (inAnyTeam('Engineering', 'Analytics') || hasAnyRole('DataEngineer')) && !noOwner()",
         "ALLOW");
@@ -568,7 +580,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testComplexConditionWithAllMethods() throws IOException {
+  void testComplexConditionWithAllMethods() {
     setupMockPolicies(
         "(hasAnyRole('Admin') && hasDomain() && matchAllTags('PII', 'Sensitive')) || (isOwner() && !matchAnyTag('Restricted'))",
         "ALLOW");
@@ -626,7 +638,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testMultipleOrConditionsWithNestedAnd() throws IOException {
+  void testMultipleOrConditionsWithNestedAnd() {
     setupMockPolicies(
         "(hasAnyRole('Admin') || hasAnyRole('DataSteward')) && (matchAnyTag('Finance') || matchAllTags('Confidential', 'Internal')) && !inAnyTeam('Data')",
         "ALLOW");
@@ -675,7 +687,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testComplexConditionWithMultipleNegations() throws IOException {
+  void testComplexConditionWithMultipleNegations() {
     setupMockPolicies(
         "!((hasAnyRole('Admin') || inAnyTeam('Engineering')) && matchAnyTag('Confidential') && matchAllTags('Sensitive', 'Classified')) && hasDomain() && isOwner()",
         "ALLOW");
@@ -732,7 +744,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testNotHasDomainWhenUserHasNoDomain() throws IOException {
+  void testNotHasDomainWhenUserHasNoDomain() {
     setupMockPolicies("!hasDomain() && isOwner()", "ALLOW");
     when(mockUser.getDomain()).thenReturn(null);
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
@@ -755,7 +767,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testIndexFilteringBasedOnResource() throws IOException {
+  void testIndexFilteringBasedOnResource() {
     // Assume the rule applies to 'Table' resource
     setupMockPolicies("hasAnyRole('Admin') && matchAnyTag('Sensitive')", "ALLOW", List.of("Table"));
 
@@ -782,7 +794,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testComplexConditionWithIndexFiltering() throws IOException {
+  void testComplexConditionWithIndexFiltering() {
     // Assume the rule applies to 'Database' and 'Table' resources
     setupMockPolicies(
         "hasDomain() && matchAnyTag('Sensitive')", "ALLOW", List.of("Database", "Table"));
@@ -818,14 +830,15 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testMultipleRulesInPolicy() throws IOException {
+  void testMultipleRulesInPolicy() {
     // Set up policies with multiple rules
     setupMockPolicies(
         List.of(
             "hasAnyRole('Admin') && matchAnyTag('Sensitive')",
             "inAnyTeam('Engineering') && matchAllTags('Confidential', 'Internal')"),
         "ALLOW",
-        List.of(List.of("Table"), List.of("Dashboard")));
+        List.of(List.of("Table"), List.of("Dashboard")),
+        List.of(List.of(MetadataOperation.VIEW_BASIC)));
 
     // Mock user roles and teams
     EntityReference role = new EntityReference();
@@ -879,12 +892,13 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testMultiplePoliciesInRole() throws IOException {
+  void testMultiplePoliciesInRole() {
     // Mock multiple policies in a single role
     setupMockPolicies(
         List.of("hasDomain() && matchAnyTag('Public')", "!inAnyTeam('HR') || isOwner()"),
         "ALLOW",
-        List.of(List.of("Table"), List.of("Dashboard")));
+        List.of(List.of("Table"), List.of("Dashboard")),
+        List.of(List.of(MetadataOperation.VIEW_BASIC)));
 
     // Mock user roles
     EntityReference role = new EntityReference();
@@ -928,14 +942,15 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
-  void testRoleAndPolicyInheritanceFromTeams() throws IOException {
+  void testRoleAndPolicyInheritanceFromTeams() {
     // Mock policies inherited through team hierarchy
     setupMockPolicies(
         List.of(
             "hasAnyRole('Manager') && hasDomain()",
             "inAnyTeam('Engineering') && matchAnyTag('Critical')"),
         "ALLOW",
-        List.of(List.of("All"), List.of("All")));
+        List.of(List.of("All"), List.of("All")),
+        List.of(List.of(MetadataOperation.VIEW_BASIC)));
 
     // Mock user teams with inherited roles
     EntityReference team = new EntityReference();
@@ -980,5 +995,22 @@ class ElasticSearchRBACConditionEvaluatorTest {
         jsonContext,
         "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Critical')]",
         "Critical tag");
+  }
+
+  @Test
+  void testRuleWithNonViewOperationIgnored() {
+    // Rule with operation EditDescription, which should be ignored in search RBAC
+    setupMockPolicies(
+        List.of("isOwner()"),
+        "ALLOW",
+        List.of(List.of("All")),
+        List.of(List.of(MetadataOperation.EDIT_DESCRIPTION)));
+
+    // Mock user ownership
+    when(mockUser.getId()).thenReturn(UUID.randomUUID());
+
+    // Evaluate the condition
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    assertNull(finalQuery, "The query should be null since the rule is ignored");
   }
 }
