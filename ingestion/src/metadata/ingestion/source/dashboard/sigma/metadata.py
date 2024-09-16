@@ -95,7 +95,7 @@ class SigmaSource(DashboardServiceSource):
         """
         try:
             dashboard_request = CreateDashboardRequest(
-                name=EntityName(str(dashboard_details.name)),
+                name=EntityName(str(dashboard_details.workbookId)),
                 displayName=dashboard_details.name,
                 description=Markdown(dashboard_details.description),
                 charts=[
@@ -172,7 +172,7 @@ class SigmaSource(DashboardServiceSource):
             self.metadata,
             entity_type=LineageDashboard,
             service_name=self.config.serviceName,
-            dashboard_name=str(dashboard_details.name),
+            dashboard_name=str(dashboard_details.workbookId),
         )
         to_entity = self.metadata.get_by_name(
             entity=LineageDashboard,

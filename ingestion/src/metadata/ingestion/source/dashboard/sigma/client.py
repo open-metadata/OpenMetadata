@@ -85,26 +85,17 @@ class SigmaApiClient:
         """
         generate auth token
         """
-        try:
-            payload = {"grant_type": "client_credentials"}
-            result = AuthToken(**self.token_client.post("/auth/token", data=payload))
-            return result.access_token, 0
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error fetching Access Token: {exc}")
+        payload = {"grant_type": "client_credentials"}
+        result = AuthToken(**self.token_client.post("/auth/token", data=payload))
+        return result.access_token, 0
 
     def get_dashboards(self) -> Optional[List[Workbook]]:
         """
         method to fetch dashboards from api
         """
-        try:
-            result = WorkBookResponseDetails(**self.client.get("/workbooks"))
-            if result:
-                return result.entries
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error fetching Dashboards List: {exc}")
-        return None
+        result = WorkBookResponseDetails(**self.client.get("/workbooks"))
+        if result:
+            return result.entries
 
     def get_dashboard_detail(self, workbook_id: str) -> Optional[WorkbookDetails]:
         """
