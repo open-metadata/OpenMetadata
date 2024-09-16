@@ -203,7 +203,7 @@ public class SearchResource {
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .searchAfter(searchAfter)
             .build();
-    return searchRepository.search(request);
+    return searchRepository.search(request, subjectContext);
   }
 
   @GET
