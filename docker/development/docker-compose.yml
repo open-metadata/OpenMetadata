@@ -54,16 +54,16 @@ services:
       - 9200
       - 9300
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "9201:9200"
+      - "9301:9300"
     healthcheck:
       test: "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -qE 'green|yellow' || exit 1"
       interval: 15s
       timeout: 10s
       retries: 10
     volumes:
-      - es-data:/usr/share/elasticsearch/data
-    
+      - ./docker-volume/es-data:/usr/share/elasticsearch/data
+
   
   execute-migrate-all:
     build:
