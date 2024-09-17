@@ -300,7 +300,6 @@ class OMetaESTest(TestCase):
         res = self.metadata.es_get_queries_with_lineage(self.service.name.root)
         self.assertIn(self.checksum, res)
 
-    @pytest.skip("This never finished with Opensearch", allow_module_level=True)
     def test_paginate_no_filter(self):
         """We can paginate all the data"""
         # Since the test can run in parallel with other tables being there, we just
@@ -309,7 +308,6 @@ class OMetaESTest(TestCase):
             assert asset
             break
 
-    @pytest.skip("This never finished with Opensearch", allow_module_level=True)
     def test_paginate_with_errors(self):
         """We don't want to stop the ES yields just because a single Entity has an error"""
         # 1. First, prepare some tables

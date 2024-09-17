@@ -331,19 +331,9 @@ class ESMixin(Generic[T]):
                 else:
                     break
 
-            # Get the data
-            for hit in response.hits.hits:
-                try:
-                    yield self.get_by_name(
-                        entity=entity,
-                        fqn=hit.source["fullyQualifiedName"],
-                        fields=fields,
-                        nullable=False,  # Raise an error if we don't find the Entity
-                    )
-                except Exception as exc:
-                    logger.warning(
-                        f"Error while getting {hit.source['fullyQualifiedName']} - {exc}"
-                    )
+            yield from self._yield_hits_from_api(
+                response=response, entity=entity, fields=fields
+            )
 
             # Get next page
             last_hit = response.hits.hits[-1] if response.hits.hits else None
@@ -362,3 +352,20 @@ class ESMixin(Generic[T]):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error while getting ES response: {exc}")
         return None
+
+    def _yield_hits_from_api(
+        self, response: ESResponse, entity: Type[T], fields: Optional[List[str]]
+    ) -> Iterator[T]:
+        """Get the data from the API based on ES responses"""
+        for hit in response.hits.hits:
+            try:
+                yield self.get_by_name(
+                    entity=entity,
+                    fqn=hit.source["fullyQualifiedName"],
+                    fields=fields,
+                    nullable=False,  # Raise an error if we don't find the Entity
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"Error while getting {hit.source['fullyQualifiedName']} - {exc}"
+                )
