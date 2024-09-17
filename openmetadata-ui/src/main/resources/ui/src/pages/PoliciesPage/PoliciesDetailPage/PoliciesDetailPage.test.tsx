@@ -13,6 +13,8 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { getPolicyByName } from '../../../rest/rolesAPIV1';
 import { POLICY_DATA } from '../PoliciesData.mock';
 import PoliciesDetailPage from './PoliciesDetailPage';
 
@@ -95,6 +97,11 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
 describe('Test Policy details page', () => {
   it('Should render the policy details page component', async () => {
     render(<PoliciesDetailPage />);
+
+    expect(getPolicyByName).toHaveBeenCalledWith(
+      'policy',
+      `${TabSpecificField.OWNERS},${TabSpecificField.LOCATION},${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`
+    );
 
     const container = await screen.findByTestId('policy-details-container');
 

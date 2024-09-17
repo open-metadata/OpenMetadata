@@ -84,12 +84,7 @@ const AddRulePage = () => {
     try {
       const data = await getPolicyByName(
         fqn,
-        `${
-          (TabSpecificField.OWNERS,
-          TabSpecificField.LOCATION,
-          TabSpecificField.TEAMS,
-          TabSpecificField.ROLES)
-        }`
+        `${TabSpecificField.OWNERS},${TabSpecificField.LOCATION},${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`
       );
       setPolicy(data ?? ({} as Policy));
     } catch (error) {

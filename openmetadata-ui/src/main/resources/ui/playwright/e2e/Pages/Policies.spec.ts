@@ -287,4 +287,42 @@ test.describe('Policy page should work properly', () => {
       ).not.toBeVisible();
     });
   });
+
+  test('Policy should have associated rules and teams', async ({ page }) => {
+    const policyResponsePromise = page.waitForResponse(
+      '/api/v1/policies/name/OrganizationPolicy?fields=owners%2Clocation%2Cteams%2Croles'
+    );
+
+    await page
+      .getByRole('link', {
+        name: DEFAULT_POLICIES.organizationPolicy,
+        exact: true,
+      })
+      .click();
+
+    await policyResponsePromise;
+
+    // validate rules tab
+
+    await expect(
+      page.getByText('OrganizationPolicy-NoOwner-Rule')
+    ).toBeVisible();
+
+    await expect(page.getByText('OrganizationPolicy-Owner-Rule')).toBeVisible();
+
+    // validate roles tab
+    await page.getByRole('tab', { name: 'Roles', exact: true }).click();
+
+    await expect(
+      page.getByRole('tabpanel', { name: 'Roles', exact: true })
+    ).toBeVisible();
+
+    // validate teams tab
+
+    await page.getByRole('tab', { name: 'Teams', exact: true }).click();
+
+    await expect(
+      page.getByRole('link', { name: 'Organization', exact: true })
+    ).toBeVisible();
+  });
 });

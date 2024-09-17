@@ -574,7 +574,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         {
           fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${
             isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS
-          },${isMetadataService ? '' : 'domain'}`,
+          },${isMetadataService ? '' : TabSpecificField.DOMAIN}`,
           include: Include.All,
         }
       );
