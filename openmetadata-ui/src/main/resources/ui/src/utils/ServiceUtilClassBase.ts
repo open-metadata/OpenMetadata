@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { capitalize, get, toLower } from 'lodash';
+import { capitalize, toLower } from 'lodash';
 import MetricIcon from '../assets/svg/metric.svg';
 import {
   AIRBYTE,
@@ -522,11 +522,11 @@ class ServiceUtilClassBase {
   public getServiceTypeLogo(
     searchSource: SearchSuggestions[number] | SearchSourceAlias
   ) {
-    const type = get(searchSource, 'serviceType', '');
-    const entityType = get(searchSource, 'entityType', '');
+    const type =
+      'serviceType' in searchSource ? searchSource.serviceType ?? '' : '';
 
     // metric entity does not have service so we need to handle it separately
-    if (entityType === EntityType.METRIC) {
+    if (searchSource.entityType === EntityType.METRIC) {
       return MetricIcon;
     }
 
