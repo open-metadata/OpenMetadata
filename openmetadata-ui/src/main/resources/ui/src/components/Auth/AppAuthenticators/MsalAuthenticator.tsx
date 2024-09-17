@@ -104,7 +104,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     ): Promise<OidcUser> => {
       const tokenRequest = {
         account: account || accounts[0], // This is an example - Select account based on your app's requirements
-        scopes: ['User.Read'],
+        scopes: msalLoginRequest.scopes,
       };
       try {
         const response = await instance.ssoSilent(tokenRequest);
