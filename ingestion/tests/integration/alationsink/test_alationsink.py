@@ -487,9 +487,9 @@ class AlationSinkTest(TestCase):
                     om_table=om_table,
                 )
             )
-        print(returned_tables)
-        for _, (expected, original) in enumerate(zip(EXPECTED_TABLES, returned_tables)):
-            self.assertEqual(expected, original)
+        self.assertEqual(len(returned_tables), len(EXPECTED_TABLES))
+        for expected_table in EXPECTED_TABLES:
+            self.assertIn(expected_table, returned_tables)
 
     def test_columns(self):
         """
