@@ -375,4 +375,17 @@ public class TestCaseResolutionStatusRepository
         (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     testCaseRepository.deleteTestCaseFailedRowsSample(entity.getTestCaseReference().getId());
   }
+
+  public static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
+    // if originEntityFQN is present, we need to join with test_case table
+    if (filter.getQueryParam("originEntityFQN") != null) {
+      condition =
+          """
+              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash FROM test_case) \
+              tc ON entityFQNHash = testCaseHash
+              """
+              + condition;
+    }
+    return condition;
+  }
 }

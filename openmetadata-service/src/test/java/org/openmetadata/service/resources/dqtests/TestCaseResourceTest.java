@@ -95,6 +95,7 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
@@ -1569,6 +1570,34 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         TestCaseResolutionStatusTypes.Ack,
         storedTestCaseResolutions.getData().get(0).getTestCaseResolutionStatusType());
 
+    // Get the test case resolution by FQN
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("testCaseFQN", TEST_TABLE1.getFullyQualifiedName());
+    storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, null, null, queryParams);
+    assertTrue(
+        storedTestCaseResolutions.getData().stream()
+            .allMatch(
+                t ->
+                    t.getTestCaseReference()
+                        .getFullyQualifiedName()
+                        .equals(testCaseEntity1.getFullyQualifiedName())));
+
+    // Get the test case resolution by origin entity FQN
+    queryParams.clear();
+    queryParams.put("originEntityFQN", TEST_TABLE1.getFullyQualifiedName());
+    storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, null, null, queryParams);
+    for (TestCaseResolutionStatus testCaseResolution : storedTestCaseResolutions.getData()) {
+      EntityReference testCaseReference = testCaseResolution.getTestCaseReference();
+      TestCase testCase = getEntity(testCaseReference.getId(), ADMIN_AUTH_HEADERS);
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(testCase.getEntityLink());
+      assertEquals(entityLink.getEntityFQN(), TEST_TABLE1.getFullyQualifiedName());
+    }
+
+    queryParams.put("originEntityFQN", "IDONOTEXIST123");
+    storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, null, null, queryParams);
+    assertEquals(0, storedTestCaseResolutions.getData().size());
+
     // Delete test case recursively and check that the test case resolution status is also deleted
     // 1. soft delete - should not delete the test case resolution status
     // 2. hard delete - should delete the test case resolution status
@@ -2385,9 +2414,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       Long startTs,
       Long endTs,
       String assignee,
-      TestCaseResolutionStatusTypes testCaseResolutionStatusType)
+      TestCaseResolutionStatusTypes testCaseResolutionStatusType,
+      Map<String, String> fields)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus");
+    for (Map.Entry<String, String> entry : fields.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
     target = target.queryParam("startTs", startTs);
     target = target.queryParam("endTs", endTs);
     target = assignee != null ? target.queryParam("assignee", assignee) : target;
@@ -2399,6 +2432,16 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         target,
         TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class,
         ADMIN_AUTH_HEADERS);
+  }
+
+  public ResultList<TestCaseResolutionStatus> getTestCaseFailureStatus(
+      Long startTs,
+      Long endTs,
+      String assignee,
+      TestCaseResolutionStatusTypes testCaseResolutionStatusType)
+      throws HttpResponseException {
+    return getTestCaseFailureStatus(
+        startTs, endTs, assignee, testCaseResolutionStatusType, new HashMap<>());
   }
 
   private TestCaseResolutionStatus getTestCaseFailureStatusById(UUID id)
