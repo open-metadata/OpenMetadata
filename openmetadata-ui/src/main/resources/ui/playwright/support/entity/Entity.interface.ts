@@ -38,7 +38,9 @@ export enum EntityTypeEndpoint {
   API_COLLECTION = 'apiCollections',
   API_ENDPOINT = 'apiEndpoints',
   DATA_PRODUCT = 'dataProducts',
+  METRIC = 'metrics',
   TestSuites = 'dataQuality/testSuites',
+  Teams = 'teams',
 }
 
 export type EntityDataType = {
@@ -65,8 +67,16 @@ export enum ENTITY_PATH {
   'apiCollections' = 'apiCollection',
   'apiEndpoints' = 'apiEndpoint',
   'dataProducts' = 'dataProduct',
+  'metrics' = 'metric',
 }
 
+export type ResponseDataType = {
+  name: string;
+  displayName: string;
+  description: string;
+  id: string;
+  fullyQualifiedName: string;
+};
 export type TestCaseData = {
   parameterValues?: unknown[];
   name?: string;

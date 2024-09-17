@@ -110,6 +110,12 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -196,6 +202,8 @@ public class OpenSearchClient implements SearchClient {
   protected final RestHighLevelClient client;
   public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
+  private final RBACConditionEvaluator rbacConditionEvaluator;
+  private final QueryBuilderFactory queryBuilderFactory;
 
   private final String clusterAlias;
 
@@ -220,6 +228,8 @@ public class OpenSearchClient implements SearchClient {
     client = createOpenSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
+    queryBuilderFactory = new OpenSearchQueryBuilderFactory();
+    rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
   }
 
   @Override
@@ -317,7 +327,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response search(SearchRequest request) throws IOException {
+  public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
     SearchSourceBuilder searchSourceBuilder =
         getSearchSourceBuilder(
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
@@ -337,6 +347,8 @@ public class OpenSearchClient implements SearchClient {
                 .mustNot(QueryBuilders.existsQuery("domain.fullyQualifiedName")));
       }
     }
+
+    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
     // Add Query Filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
@@ -371,6 +383,10 @@ public class OpenSearchClient implements SearchClient {
       } catch (Exception ex) {
         LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
       }
+    }
+
+    if (!nullOrEmpty(request.getSearchAfter())) {
+      searchSourceBuilder.searchAfter(request.getSearchAfter());
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
@@ -2246,5 +2262,18 @@ public class OpenSearchClient implements SearchClient {
 
   public Object getLowLevelClient() {
     return client.getLowLevelClient();
+  }
+
+  private void buildSearchRBACQuery(
+      SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
+    if (subjectContext != null && !subjectContext.isAdmin()) {
+      OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
+      if (rbacQuery != null) {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .filter(((OpenSearchQueryBuilder) rbacQuery).build()));
+      }
+    }
   }
 }

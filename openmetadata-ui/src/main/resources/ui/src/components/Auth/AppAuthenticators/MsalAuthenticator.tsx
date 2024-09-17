@@ -153,6 +153,12 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
+    const renewIdToken = async () => {
+      const user = await fetchIdToken();
+
+      return user.id_token;
+    };
+
     useEffect(() => {
       const oidcUserToken = getOidcToken();
       if (
@@ -177,23 +183,9 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     }, [inProgress, accounts, instance, account]);
 
     useImperativeHandle(ref, () => ({
-      invokeLogin() {
-        login();
-      },
-      invokeLogout() {
-        logout();
-      },
-      renewIdToken(): Promise<string> {
-        return new Promise((resolve, reject) => {
-          fetchIdToken()
-            .then((user) => {
-              resolve(user.id_token);
-            })
-            .catch((e) => {
-              reject(e);
-            });
-        });
-      },
+      invokeLogin: login,
+      invokeLogout: logout,
+      renewIdToken: renewIdToken,
     }));
 
     return <Fragment>{children}</Fragment>;

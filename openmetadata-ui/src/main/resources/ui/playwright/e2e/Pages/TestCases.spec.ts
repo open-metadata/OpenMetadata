@@ -54,16 +54,25 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
       await page.getByTitle('Compare 2 tables for').click();
-      const tableSearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(
-          testCase.table2
-        )}*index=table_search_index*`
-      );
       await page.click('#tableTestForm_params_table2');
+      const tableSearchResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*index=table_search_index*`
+      );
       await page.fill(`#tableTestForm_params_table2`, testCase.table2);
       await tableSearchResponse;
+      // The 'networkidle' parameter tells Playwright to wait until there are no network connections
+      // for at least 500 ms.
+      await page.waitForLoadState('networkidle');
+
+      await expect(
+        page
+          .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
+          .locator('div')
+      ).toBeVisible();
+
       await page
         .getByTitle(table2.entityResponseData?.['fullyQualifiedName'])
+        .locator('div')
         .click();
 
       await page.fill(`#tableTestForm_params_keyColumns_0_value`, 'user_id');
@@ -86,7 +95,7 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('submit-test').click();
       await createTestCaseResponse;
       const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases?fields=*`
+        `/api/v1/dataQuality/testCases/search/list?fields=*`
       );
       await page.getByTestId('view-service-button').click();
       await tableTestResponse;
@@ -124,7 +133,7 @@ test('Table difference test case', async ({ page }) => {
         'Test case updated successfully.'
       );
 
-      await page.getByTestId('content-wrapper').getByLabel('close').click();
+      await page.getByLabel('close', { exact: true }).click();
     });
 
     await test.step('Delete', async () => {
@@ -183,7 +192,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('submit-test').click();
       await createTestCaseResponse;
       const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases?fields=*`
+        `/api/v1/dataQuality/testCases/search/list?fields=*`
       );
       await page.getByTestId('view-service-button').click();
       await tableTestResponse;
@@ -224,7 +233,7 @@ test('Custom SQL Query', async ({ page }) => {
         'Test case updated successfully.'
       );
 
-      await page.getByTestId('content-wrapper').getByLabel('close').click();
+      await page.getByLabel('close', { exact: true }).click();
     });
 
     await test.step('Delete', async () => {
@@ -287,7 +296,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
       await page.waitForSelector('[data-testid="success-line"]');
       await page.waitForSelector('[data-testid="view-service-button"]');
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?fields=*'
       );
       await page.click(`[data-testid="view-service-button"]`);
       await testCaseResponse;
@@ -325,7 +334,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
         'Test case updated successfully.'
       );
 
-      await page.getByTestId('content-wrapper').getByLabel('close').click();
+      await page.getByLabel('close', { exact: true }).click();
     });
 
     await test.step('Delete', async () => {
