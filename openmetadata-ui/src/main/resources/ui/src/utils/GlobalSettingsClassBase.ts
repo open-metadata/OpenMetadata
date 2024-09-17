@@ -297,6 +297,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
             icon: PoliciesIcon,
           },
+          {
+            label: t('label.rbac-Search'),
+            description: t('message.page-sub-header-for-rbac-search'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.RBAC_SEARCH}`,
+            icon: PoliciesIcon,
+          },
         ],
       },
       {

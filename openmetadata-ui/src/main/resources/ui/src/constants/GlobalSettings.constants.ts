@@ -76,6 +76,7 @@ export enum GlobalSettingOptions {
   API_ENDPOINTS = 'apiEndpoints',
   DATA_PRODUCT = 'dataProducts',
   METRICS = 'metrics',
+  RBAC_SEARCH = 'rbac-search',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [
