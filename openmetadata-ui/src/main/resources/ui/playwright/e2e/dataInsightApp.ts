@@ -112,7 +112,7 @@ setup(
               }),
         }
       )
-      .not.toEqual(/(running|queued)/);
+      .toEqual(expect.stringMatching(/(success|failed)/));
 
     await table.delete(apiContext);
 

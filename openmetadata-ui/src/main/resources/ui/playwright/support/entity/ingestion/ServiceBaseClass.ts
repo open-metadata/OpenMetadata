@@ -177,6 +177,12 @@ class ServiceBaseClass {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
+    // Re-deploy before running the ingestion
+    await page.click(
+      `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
+    );
+    await page.getByTestId('re-deploy-button').click();
+
     // need manual wait to settle down the deployed pipeline, before triggering the pipeline
     await page.waitForTimeout(2000);
 
@@ -263,7 +269,7 @@ class ServiceBaseClass {
         }
       )
       // Move ahead if we do not have running or queued status
-      .not.toEqual(/(running|queued)/);
+      .toEqual(expect.stringMatching(/(success|failed)/));
 
     const pipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines?**`
@@ -439,6 +445,15 @@ class ServiceBaseClass {
     await page
       .getByRole('cell', { name: 'Pause Logs' })
       .waitFor({ state: 'visible' });
+
+    // Re-deploy before running the ingestion
+    await page.click(
+      `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
+    );
+    await page.getByTestId('re-deploy-button').click();
+
+    // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+    await page.waitForTimeout(2000);
 
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
