@@ -47,3 +47,11 @@ This step is required only for Collate SaaS. If you are using Hybrid SaaS, you w
   src="/images/v1.5/getting-started/test-connection.png"
   alt="Verifying the Test Connection"
   caption="Verifying the Test Connection" /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="Explore Hybrid SaaS"
+  icon="MdArrowForward"
+  href="/getting-started/day-1/hybrid-saas"%}
+  You can read more about Hybrid SaaS.
+{%/inlineCallout%}
