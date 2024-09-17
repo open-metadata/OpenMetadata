@@ -2,17 +2,23 @@ package org.openmetadata.service.apps;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.dropwizard.configuration.ConfigurationException;
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.FileConfigurationSourceProvider;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
+import io.dropwizard.configuration.YamlConfigurationFactory;
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
+import java.net.URL;
 import java.util.Map;
-import joptsimple.internal.Strings;
 import org.apache.commons.text.StringSubstitutor;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
 import org.openmetadata.service.util.JsonUtils;
 
 public class ConfigurationReader {
 
+  // envMap is for custom environment variables (e.g., for testing), defaulting to the system
+  // environment.
   private final Map<String, String> envMap;
 
   public ConfigurationReader(Map<String, String> envMap) {
@@ -23,52 +29,33 @@ public class ConfigurationReader {
     this.envMap = System.getenv();
   }
 
-  public AppPrivateConfig readConfigFromResource(String appName) throws IOException {
+  public AppPrivateConfig readConfigFromResource(String appName)
+      throws IOException, ConfigurationException {
     String configFilePath = "applications/" + appName + "/config.yaml";
-    try (InputStream inputStream =
-        ConfigurationReader.class.getClassLoader().getResourceAsStream(configFilePath)) {
-      if (inputStream == null) {
-        throw new IOException("Configuration file not found: " + configFilePath);
-      }
-      return JsonUtils.convertValue(readConfigFile(inputStream), AppPrivateConfig.class);
+    URL resource = ConfigurationReader.class.getClassLoader().getResource(configFilePath);
+    if (resource == null) {
+      throw new IOException("Configuration file not found: " + configFilePath);
     }
+    File configFile = new File(resource.getFile());
+    return JsonUtils.convertValue(readConfigFile(configFile), AppPrivateConfig.class);
   }
 
-  public Map<String, Object> readConfigFile(InputStream configStream) throws IOException {
+  public Map<String, Object> readConfigFile(File configFile)
+      throws IOException, ConfigurationException {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-    Map<String, Object> config = mapper.readValue(configStream, Map.class);
-    resolveEnvVariablesInMap(config);
-    return mapper.convertValue(config, Map.class);
-  }
-
-  private void resolveEnvVariablesInMap(Map<String, Object> map) {
-    for (Map.Entry<String, Object> entry : map.entrySet()) {
-      if (entry.getValue() instanceof String) {
-        map.put(entry.getKey(), resolveEnvVariables((String) entry.getValue(), envMap));
-      } else if (entry.getValue() instanceof Map) {
-        resolveEnvVariablesInMap((Map<String, Object>) entry.getValue());
-      } else if (entry.getValue() instanceof List) {
-        resolveEnvVariablesInList((List<Object>) entry.getValue());
-      }
+    YamlConfigurationFactory<Object> factory =
+        new YamlConfigurationFactory<>(Object.class, null, mapper, "dw");
+    StringSubstitutor substitutor =
+        this.envMap == null
+            ? new EnvironmentVariableSubstitutor(false)
+            : new StringSubstitutor(this.envMap);
+    try {
+      return (Map<String, Object>)
+          factory.build(
+              new SubstitutingSourceProvider(new FileConfigurationSourceProvider(), substitutor),
+              configFile.getAbsolutePath());
+    } catch (ClassCastException e) {
+      throw new RuntimeException("Configuration file is not a valid YAML file", e);
     }
-  }
-
-  private void resolveEnvVariablesInList(List<Object> list) {
-    for (int i = 0; i < list.size(); i++) {
-      Object element = list.get(i);
-      if (element instanceof String) {
-        list.set(i, resolveEnvVariables((String) element, envMap));
-      } else if (element instanceof Map) {
-        resolveEnvVariablesInMap((Map<String, Object>) element);
-      } else if (element instanceof List) {
-        resolveEnvVariablesInList((List<Object>) element);
-      }
-    }
-  }
-
-  public static String resolveEnvVariables(String value, Map<String, String> envMap) {
-    StringSubstitutor substitutor = new StringSubstitutor(envMap);
-    String resolved = substitutor.replace(value);
-    return resolved.equals("\"\"") ? Strings.EMPTY : resolved;
   }
 }

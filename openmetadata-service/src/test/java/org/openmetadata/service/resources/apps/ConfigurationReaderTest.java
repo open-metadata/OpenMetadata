@@ -1,8 +1,10 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import io.dropwizard.configuration.ConfigurationException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +15,7 @@ import org.openmetadata.service.apps.ConfigurationReader;
 public class ConfigurationReaderTest {
 
   @Test
-  public void testReadConfigFile() throws IOException {
+  public void testReadConfigFile() throws IOException, ConfigurationException {
     ConfigurationReader reader =
         new ConfigurationReader(
             Map.of(
@@ -35,5 +37,21 @@ public class ConfigurationReaderTest {
     List<String> list =
         (List<String>) appConfig.getParameters().getAdditionalProperties().get("list");
     assertEquals("value1", list.get(1));
+  }
+
+  @Test
+  public void testInvalidConfig() {
+    ConfigurationReader reader = new ConfigurationReader();
+    assertThrows(RuntimeException.class, () -> reader.readConfigFromResource("InvalidConfig"));
+  }
+
+  @Test
+  public void missingConfig() {
+    ConfigurationReader reader = new ConfigurationReader();
+    assertThrows(
+        IOException.class,
+        () -> {
+          reader.readConfigFromResource("missing");
+        });
   }
 }

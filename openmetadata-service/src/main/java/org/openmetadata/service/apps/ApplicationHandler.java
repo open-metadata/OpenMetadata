@@ -4,6 +4,7 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROU
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
+import io.dropwizard.configuration.ConfigurationException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -59,6 +60,8 @@ public class ApplicationHandler {
       app.setPrivateConfiguration(appPrivateConfig.getParameters());
     } catch (IOException e) {
       LOG.debug("Config file for app {} not found: ", app.getName(), e);
+    } catch (ConfigurationException e) {
+      LOG.error("Error reading config file for app {}", app.getName(), e);
     }
   }
 
@@ -68,6 +71,9 @@ public class ApplicationHandler {
       return appPrivateConfig.getPreview();
     } catch (IOException e) {
       LOG.debug("Config file for app {} not found: ", appName, e);
+      return false;
+    } catch (ConfigurationException e) {
+      LOG.error("Error reading config file for app {}", appName, e);
       return false;
     }
   }
