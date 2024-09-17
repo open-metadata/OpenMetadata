@@ -49,9 +49,7 @@ public class DashboardIndex implements SearchIndex {
     Map<String, Object> commonAttributes = getCommonAttributesMap(dashboard, Entity.DASHBOARD);
     doc.putAll(commonAttributes);
 
-    doc.put(
-        "displayName",
-        dashboard.getDisplayName() != null ? dashboard.getDisplayName() : dashboard.getName());
+    doc.put("displayName", dashboard.getDisplayName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("chart_suggest", chartSuggest);

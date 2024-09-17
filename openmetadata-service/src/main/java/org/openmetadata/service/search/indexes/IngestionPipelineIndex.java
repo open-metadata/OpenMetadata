@@ -60,11 +60,7 @@ public class IngestionPipelineIndex implements SearchIndex {
         ingestionPipeline.getName() != null
             ? ingestionPipeline.getName()
             : ingestionPipeline.getDisplayName());
-    doc.put(
-        "displayName",
-        ingestionPipeline.getDisplayName() != null
-            ? ingestionPipeline.getDisplayName()
-            : ingestionPipeline.getName());
+    doc.put("displayName", ingestionPipeline.getDisplayName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("service_suggest", serviceSuggest);

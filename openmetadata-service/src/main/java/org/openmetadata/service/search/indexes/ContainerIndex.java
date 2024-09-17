@@ -57,9 +57,7 @@ public record ContainerIndex(Container container) implements ColumnIndex {
 
     Map<String, Object> commonAttributes = getCommonAttributesMap(container, Entity.CONTAINER);
     doc.putAll(commonAttributes);
-    doc.put(
-        "displayName",
-        container.getDisplayName() != null ? container.getDisplayName() : container.getName());
+    doc.put("displayName", container.getDisplayName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("service_suggest", serviceSuggest);
