@@ -381,7 +381,7 @@ public class TestCaseResolutionStatusRepository
     if (filter.getQueryParam("originEntityFQN") != null) {
       condition =
           """
-              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash FROM test_case) \
+              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash FROM test_case) tc \
               ON entityFQNHash = testCaseHash
               """
               + condition;
