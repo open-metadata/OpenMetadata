@@ -386,6 +386,10 @@ public class OpenSearchClient implements SearchClient {
       }
     }
 
+    if (!nullOrEmpty(request.getSearchAfter())) {
+      searchSourceBuilder.searchAfter(request.getSearchAfter());
+    }
+
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
     if (request
             .getIndex()

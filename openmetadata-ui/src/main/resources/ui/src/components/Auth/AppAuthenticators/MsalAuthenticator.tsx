@@ -14,7 +14,6 @@
 import {
   AuthenticationResult,
   InteractionRequiredAuthError,
-  InteractionStatus,
 } from '@azure/msal-browser';
 import { useAccount, useMsal } from '@azure/msal-react';
 import { AxiosError } from 'axios';
@@ -23,10 +22,8 @@ import React, {
   forwardRef,
   Fragment,
   ReactNode,
-  useEffect,
   useImperativeHandle,
 } from 'react';
-import { useMutex } from 'react-context-mutex';
 import { toast } from 'react-toastify';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { msalLoginRequest } from '../../../utils/AuthProvider.util';
@@ -50,34 +47,9 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     { children, onLoginSuccess, onLogoutSuccess, onLoginFailure }: Props,
     ref
   ) => {
-    const { setOidcToken, getOidcToken } = useApplicationStore();
-    const { instance, accounts, inProgress } = useMsal();
+    const { setOidcToken } = useApplicationStore();
+    const { instance, accounts } = useMsal();
     const account = useAccount(accounts[0] || {});
-    const MutexRunner = useMutex();
-    const mutex = new MutexRunner('fetchIdToken');
-
-    const handleOnLogoutSuccess = () => {
-      for (const key in localStorage) {
-        if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
-          localStorage.removeItem(key);
-        }
-      }
-      onLogoutSuccess();
-    };
-
-    const login = () => {
-      try {
-        instance.loginPopup(msalLoginRequest);
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(error);
-        onLoginFailure(error as AxiosError);
-      }
-    };
-
-    const logout = () => {
-      handleOnLogoutSuccess();
-    };
 
     const parseResponse = (response: AuthenticationResult): OidcUser => {
       // Call your API with the access token and return the data you need to save in state
@@ -102,6 +74,29 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       setOidcToken(idToken);
 
       return user;
+    };
+
+    const handleOnLogoutSuccess = () => {
+      for (const key in localStorage) {
+        if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
+          localStorage.removeItem(key);
+        }
+      }
+      onLogoutSuccess();
+    };
+
+    const login = async () => {
+      try {
+        const response = await instance.loginPopup(msalLoginRequest);
+
+        onLoginSuccess(parseResponse(response));
+      } catch (error) {
+        onLoginFailure(error as AxiosError);
+      }
+    };
+
+    const logout = () => {
+      handleOnLogoutSuccess();
     };
 
     const fetchIdToken = async (
@@ -154,33 +149,10 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const renewIdToken = async () => {
-      const user = await fetchIdToken();
+      const user = await fetchIdToken(true);
 
       return user.id_token;
     };
-
-    useEffect(() => {
-      const oidcUserToken = getOidcToken();
-      if (
-        !oidcUserToken &&
-        inProgress === InteractionStatus.None &&
-        (accounts.length > 0 || account?.idTokenClaims)
-      ) {
-        mutex.run(async () => {
-          mutex.lock();
-          fetchIdToken(true)
-            .then((user) => {
-              if ((user as OidcUser).id_token) {
-                onLoginSuccess(user as OidcUser);
-              }
-            })
-            .catch(onLoginFailure)
-            .finally(() => {
-              mutex.unlock();
-            });
-        });
-      }
-    }, [inProgress, accounts, instance, account]);
 
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
