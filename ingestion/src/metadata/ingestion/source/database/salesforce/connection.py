@@ -15,7 +15,6 @@ Source connection handler
 from typing import Optional
 
 from simple_salesforce.api import Salesforce
-from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -27,14 +26,18 @@ from metadata.ingestion.connections.test_connections import test_connection_step
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-def get_connection(connection: SalesforceConnection) -> Engine:
+def get_connection(connection: SalesforceConnection):
     """
     Create connection
     """
     return Salesforce(
         username=connection.username,
-        password=connection.password.get_secret_value(),
-        security_token=connection.securityToken.get_secret_value(),
+        password=connection.password.get_secret_value()
+        if connection.password
+        else None,
+        security_token=connection.securityToken.get_secret_value()
+        if connection.securityToken
+        else None,
         domain=connection.salesforceDomain,
         version=connection.salesforceApiVersion,
         **connection.connectionArguments.root if connection.connectionArguments else {},
