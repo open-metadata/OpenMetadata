@@ -52,6 +52,7 @@ const entities = [
   MlModelClass,
   ContainerClass,
   SearchIndexClass,
+  ApiEndpointClass,
   MetricClass,
 ] as const;
 

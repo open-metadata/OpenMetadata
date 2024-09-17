@@ -38,7 +38,7 @@ export const activateColumnLayer = async (page: Page) => {
 };
 
 export const performZoomOut = async (page: Page) => {
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 8; i++) {
     const zoomOutBtn = page.locator('.react-flow__controls-zoomout');
     const enabled = await zoomOutBtn.isEnabled();
     if (enabled) {
@@ -99,6 +99,13 @@ export const dragConnection = async (
   await lineageRes;
 };
 
+type BoundingBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export const connectEdgeBetweenNodes = async (
   page: Page,
   fromNode: EntityClass,
@@ -109,10 +116,39 @@ export const connectEdgeBetweenNodes = async (
   const toNodeName = get(toNode, 'entityResponseData.name');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  await page.locator(`[data-testid="${type}-draggable-icon"]`).hover();
+  const dragElement = await page.locator(
+    `[data-testid="${type}-draggable-icon"]`
+  );
+
+  await dragElement.scrollIntoViewIfNeeded();
+  const dragBox: BoundingBox = (await dragElement.boundingBox()) as BoundingBox;
+  await page.mouse.move(
+    dragBox.x + dragBox.width / 2,
+    dragBox.y + dragBox.height / 2
+  );
+
   await page.mouse.down();
-  await page.locator('[data-testid="lineage-details"]').hover();
+
+  // Move the mouse to the drop target (first move)
+  const dropBox: BoundingBox = (await page
+    .locator('[data-testid="lineage-details"]')
+    .boundingBox()) as BoundingBox;
+
+  await page.mouse.move(
+    dropBox.x + (dropBox.width + 100) / 2,
+    dropBox.y + (dropBox.height + 100) / 2
+  );
+
+  // Added second mouse move as per playwright documentation
+  await page.mouse.move(
+    dropBox.x + dropBox.width / 2,
+    dropBox.y + dropBox.height / 2
+  );
+
+  // Simulate mouse up (to drop the item)
   await page.mouse.up();
+
+  await page.waitForLoadState('networkidle');
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
