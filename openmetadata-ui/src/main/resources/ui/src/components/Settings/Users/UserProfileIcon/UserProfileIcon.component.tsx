@@ -47,7 +47,7 @@ type ListMenuItemProps = {
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;
   readMoreLabelRenderer: (count: number) => ReactNode;
-  readMoreKey?: string;
+  readMoreKey: string;
   sizeLimit?: number;
 };
 
@@ -66,7 +66,7 @@ const renderLimitedListMenuItem = ({
   const items = listItems.slice(0, sizeLimit);
 
   return isEmpty(items)
-    ? [{ label: NO_DATA_PLACEHOLDER, key: 'no-teams' }]
+    ? [{ label: NO_DATA_PLACEHOLDER, key: readMoreKey.replace('more', 'no') }]
     : [
         ...(items?.map((item) => ({
           label: labelRenderer(item),

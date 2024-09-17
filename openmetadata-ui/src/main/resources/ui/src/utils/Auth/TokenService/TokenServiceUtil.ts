@@ -73,6 +73,7 @@ class TokenService {
         response = await this.renewToken();
         this.tokeUpdateInProgress = false;
       } catch (error) {
+        useApplicationStore.getState().onLogoutHandler();
         // Do nothing
       } finally {
         this.tokeUpdateInProgress = false;

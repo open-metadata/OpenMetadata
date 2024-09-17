@@ -109,7 +109,6 @@
     "react-antd-column-resize": "1.0.3",
     "react-awesome-query-builder": "5.1.2",
     "react-codemirror2": "^7.2.1",
-    "react-context-mutex": "^2.0.0",
     "react-dnd": "14.0.2",
     "react-dnd-html5-backend": "14.0.2",
     "react-dom": "^17.0.2",
