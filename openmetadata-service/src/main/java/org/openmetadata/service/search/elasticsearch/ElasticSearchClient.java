@@ -357,6 +357,8 @@ public class ElasticSearchClient implements SearchClient {
       }
     }
 
+    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
     // Add Filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
@@ -529,7 +531,6 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
     try {
 
@@ -2320,10 +2321,12 @@ public class ElasticSearchClient implements SearchClient {
         && !subjectContext.isAdmin()
         && rbacConditionEvaluator != null) {
       OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .filter(((ElasticQueryBuilder) rbacQuery).build()));
+        if (rbacQuery != null) {
+            searchSourceBuilder.query(
+                    QueryBuilders.boolQuery()
+                            .must(searchSourceBuilder.query())
+                            .filter(((ElasticQueryBuilder) rbacQuery).build()));
+        }
     }
   }
 }
