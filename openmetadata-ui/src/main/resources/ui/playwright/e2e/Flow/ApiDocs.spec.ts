@@ -27,13 +27,15 @@ test.describe('API docs should work properly', () => {
 
     await expect(
       page.getByRole('link', {
-        name: 'openmetadata-dev@googlegroups',
+        name: 'openmetadata-dev@googlegroups.com',
+        exact: true,
       })
     ).toBeVisible();
 
     await expect(
       page.getByRole('link', {
         name: 'https://open-metadata.org',
+        exact: true,
       })
     ).toBeVisible();
   });
