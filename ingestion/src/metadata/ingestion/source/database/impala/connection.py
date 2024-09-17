@@ -80,21 +80,21 @@ def get_connection(connection: ImpalaConnection) -> Engine:
     if connection.authMechanism:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__[
+        connection.connectionArguments.root[
             "auth_mechanism"
         ] = connection.authMechanism.value
 
     if connection.kerberosServiceName:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__[
+        connection.connectionArguments.root[
             "kerberos_service_name"
         ] = connection.kerberosServiceName
 
     if connection.useSSL:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["use_ssl"] = connection.useSSL
+        connection.connectionArguments.root["use_ssl"] = connection.useSSL
 
     return create_generic_db_connection(
         connection=connection,

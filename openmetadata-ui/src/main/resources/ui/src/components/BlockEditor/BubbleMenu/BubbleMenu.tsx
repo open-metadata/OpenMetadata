@@ -111,12 +111,14 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
     // - the selection is empty
     // - the selection is a node selection (for drag handles)
     // - link is active
+    // - editor is not editable
     if (
       editor.isActive('image') ||
       empty ||
       isNodeSelection(selection) ||
       editor.isActive('link') ||
-      editor.isActive('table')
+      editor.isActive('table') ||
+      !editor.isEditable
     ) {
       return false;
     }
@@ -130,27 +132,25 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
       data-testid="menu-container"
       editor={editor}
       shouldShow={handleShouldShow}>
-      <div>
-        {menuList.map(
-          ({ icon: Icon, ariaLabel, className, command, isActive }) => (
-            <Tooltip key={ariaLabel} title={ariaLabel}>
-              <Button
-                aria-label={ariaLabel}
-                className={classNames('p-0', className, {
-                  'is-format-active': isActive(),
-                })}
-                type="text"
-                onClick={command}>
-                {isString(Icon) ? (
-                  <Typography>{Icon}</Typography>
-                ) : (
-                  <Icon className="d-flex" height={24} width={24} />
-                )}
-              </Button>
-            </Tooltip>
-          )
-        )}
-      </div>
+      {menuList.map(
+        ({ icon: Icon, ariaLabel, className, command, isActive }) => (
+          <Tooltip key={ariaLabel} title={ariaLabel}>
+            <Button
+              aria-label={ariaLabel}
+              className={classNames('p-0', className, {
+                'is-format-active': isActive(),
+              })}
+              type="text"
+              onClick={command}>
+              {isString(Icon) ? (
+                <Typography>{Icon}</Typography>
+              ) : (
+                <Icon className="d-flex " height={24} width={24} />
+              )}
+            </Button>
+          </Tooltip>
+        )
+      )}
     </CoreBubbleMenu>
   );
 };

@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getVersionPathWithTab } from '../../../constants/constants';
+import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -50,7 +50,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   domain,
   dataProducts,
   tier,
@@ -72,11 +72,11 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const pipelineVersionTableData = useMemo(
@@ -92,7 +92,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPathWithTab(
+      getVersionPath(
         EntityType.PIPELINE,
         currentVersionData.fullyQualifiedName ?? '',
         String(version),
@@ -299,6 +299,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
       <EntityVersionTimeLine
         currentVersion={version}
+        entityType={EntityType.PIPELINE}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Form, FormProps, Input, Modal } from 'antd';
-
 import { isUndefined, omit } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,9 +22,17 @@ import { StyleModalProps, StyleWithInput } from './StyleModal.interface';
 const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const [saving, setSaving] = React.useState<boolean>(false);
 
-  const handleSubmit: FormProps<StyleWithInput>['onFinish'] = (value) => {
-    onSubmit(omit(value, 'colorInput'));
+  const handleSubmit: FormProps<StyleWithInput>['onFinish'] = async (value) => {
+    try {
+      setSaving(true);
+      await onSubmit(omit(value, 'colorInput'));
+    } catch (err) {
+      // Error is handled in parent component
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -34,6 +41,7 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
       okButtonProps={{
         form: 'style-modal',
         htmlType: 'submit',
+        loading: saving,
       }}
       okText={t('label.submit')}
       open={open}

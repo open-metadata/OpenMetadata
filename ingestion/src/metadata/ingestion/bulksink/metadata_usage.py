@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
@@ -93,8 +94,13 @@ class MetadataUsageBulkSink(BulkSink):
         return "OpenMetadata"
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
-        config = MetadataUsageSinkConfig.parse_obj(config_dict)
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
+        config = MetadataUsageSinkConfig.model_validate(config_dict)
         return cls(config, metadata)
 
     def __populate_table_usage_map(
@@ -104,8 +110,8 @@ class MetadataUsageBulkSink(BulkSink):
         Method Either initialise the map data or
         update existing data with information from new queries on the same table
         """
-        if not self.table_usage_map.get(table_entity.id.__root__):
-            self.table_usage_map[table_entity.id.__root__] = {
+        if not self.table_usage_map.get(table_entity.id.root):
+            self.table_usage_map[table_entity.id.root] = {
                 "table_entity": table_entity,
                 "usage_count": table_usage.count,
                 "usage_date": table_usage.date,
@@ -113,7 +119,7 @@ class MetadataUsageBulkSink(BulkSink):
                 "database_schema": table_usage.databaseSchema,
             }
         else:
-            self.table_usage_map[table_entity.id.__root__][
+            self.table_usage_map[table_entity.id.root][
                 "usage_count"
             ] += table_usage.count
 
@@ -134,10 +140,10 @@ class MetadataUsageBulkSink(BulkSink):
                     value_dict["table_entity"], table_usage_request
                 )
                 logger.info(
-                    f"Successfully table usage published for {value_dict['table_entity'].fullyQualifiedName.__root__}"
+                    f"Successfully table usage published for {value_dict['table_entity'].fullyQualifiedName.root}"
                 )
                 self.status.scanned(
-                    f"Table: {value_dict['table_entity'].fullyQualifiedName.__root__}"
+                    f"Table: {value_dict['table_entity'].fullyQualifiedName.root}"
                 )
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
@@ -145,13 +151,13 @@ class MetadataUsageBulkSink(BulkSink):
                     f"Cannot construct UsageRequest from {value_dict['table_entity']}: {err}"
                 )
             except Exception as exc:
-                name = value_dict["table_entity"].fullyQualifiedName.__root__
+                name = value_dict["table_entity"].fullyQualifiedName.root
                 error = f"Failed to update usage for {name} :{exc}"
                 logger.debug(traceback.format_exc())
                 logger.warning(error)
                 self.status.failed(
                     StackTraceError(
-                        name=value_dict["table_entity"].fullyQualifiedName.__root__,
+                        name=value_dict["table_entity"].fullyQualifiedName.root,
                         error=f"Failed to update usage for {name} :{exc}",
                         stackTrace=traceback.format_exc(),
                     )
@@ -250,7 +256,7 @@ class MetadataUsageBulkSink(BulkSink):
                         )
                     )
                 except Exception as exc:
-                    name = table_entity.name.__root__
+                    name = table_entity.name.root
                     error = (
                         f"Error getting usage and join information for {name}: {exc}"
                     )
@@ -276,8 +282,10 @@ class MetadataUsageBulkSink(BulkSink):
         """
         Method to get Table Joins
         """
+        # TODO: Clean up how we are passing dates from query parsing to here to use timestamps instead of strings
+        start_date = datetime.fromtimestamp(int(table_usage.date) / 1000)
         table_joins: TableJoins = TableJoins(
-            columnJoins=[], directTableJoins=[], startDate=table_usage.date
+            columnJoins=[], directTableJoins=[], startDate=start_date
         )
         column_joins_dict = {}
         for column_join in table_usage.joins:
@@ -312,7 +320,7 @@ class MetadataUsageBulkSink(BulkSink):
             key_name = get_column_fqn(table_entity=table_entity, column=key)
             if not key_name:
                 logger.warning(
-                    f"Could not find column {key} in table {table_entity.fullyQualifiedName.__root__}"
+                    f"Could not find column {key} in table {table_entity.fullyQualifiedName.root}"
                 )
                 continue
             table_joins.columnJoins.append(
@@ -365,15 +373,15 @@ class MetadataUsageBulkSink(BulkSink):
                 query_type = get_query_type(create_query=create_query)
                 if query_type:
                     access_details = AccessDetails(
-                        timestamp=create_query.queryDate.__root__,
+                        timestamp=Timestamp(create_query.queryDate.root),
                         accessedBy=user,
                         accessedByAProcess=process_user,
                     )
                     life_cycle_attr = getattr(life_cycle, query_type)
                     if (
                         not life_cycle_attr
-                        or life_cycle_attr.timestamp.__root__
-                        < access_details.timestamp.__root__
+                        or life_cycle_attr.timestamp.root
+                        < access_details.timestamp.root
                     ):
                         setattr(life_cycle, query_type, access_details)
 

@@ -89,7 +89,6 @@ const mockParams = {
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
-  useLocation: jest.fn().mockReturnValue({ pathname: 'dashboard' }),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
@@ -97,7 +96,7 @@ jest.mock('../../common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
-jest.mock('../../common/EntityDescription/Description', () => {
+jest.mock('../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {

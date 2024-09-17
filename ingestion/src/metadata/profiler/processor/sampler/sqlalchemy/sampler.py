@@ -21,14 +21,13 @@ from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalType,
+    PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
     TableData,
 )
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
-from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.utils.helpers import is_safe_sql_query
@@ -87,17 +86,10 @@ class SQASampler(SamplerInterface):
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
-            rnd = (
-                self._base_sample_query(
-                    column,
-                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
-                )
-                .suffix_with(
-                    f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
-                    dialect=Dialects.Snowflake,
-                )
-                .cte(f"{self.table.__tablename__}_rnd")
-            )
+            rnd = self._base_sample_query(
+                column,
+                (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
+            ).cte(f"{self.table.__tablename__}_rnd")
             session_query = self.client.query(rnd)
             return session_query.where(rnd.c.random <= self.profile_sample).cte(
                 f"{self.table.__tablename__}_sample"
@@ -212,6 +204,10 @@ class SQASampler(SamplerInterface):
 
     def _partitioned_table(self) -> Query:
         """Return the Query object for partitioned tables"""
+        return aliased(self.get_partitioned_query().subquery())
+
+    def get_partitioned_query(self) -> Query:
+        """Return the partitioned query"""
         self._partition_details = cast(
             PartitionProfilerConfig, self._partition_details
         )  # satisfying type checker
@@ -224,63 +220,38 @@ class SQASampler(SamplerInterface):
 
         if (
             self._partition_details.partitionIntervalType
-            == PartitionIntervalType.COLUMN_VALUE
+            == PartitionIntervalTypes.COLUMN_VALUE
         ):
-            return aliased(
-                self.table,
-                (
-                    self.client.query(self.table)
-                    .filter(
-                        get_value_filter(
-                            Column(partition_field),
-                            self._partition_details.partitionValues,
-                        )
-                    )
-                    .subquery()
-                ),
+            return self.client.query(self.table).filter(
+                get_value_filter(
+                    Column(partition_field),
+                    self._partition_details.partitionValues,
+                )
             )
-
         if (
             self._partition_details.partitionIntervalType
-            == PartitionIntervalType.INTEGER_RANGE
+            == PartitionIntervalTypes.INTEGER_RANGE
         ):
-            return aliased(
-                self.table,
-                (
-                    self.client.query(self.table)
-                    .filter(
-                        get_integer_range_filter(
-                            Column(partition_field),
-                            self._partition_details.partitionIntegerRangeStart,
-                            self._partition_details.partitionIntegerRangeEnd,
-                        )
-                    )
-                    .subquery()
-                ),
-            )
-
-        return aliased(
-            self.table,
-            (
-                self.client.query(self.table)
-                .filter(
-                    build_query_filter(
-                        [
-                            (
-                                Column(partition_field),
-                                "ge",
-                                dispatch_to_date_or_datetime(
-                                    self._partition_details.partitionInterval,
-                                    text(
-                                        self._partition_details.partitionIntervalUnit.value
-                                    ),
-                                    type_,
-                                ),
-                            )
-                        ],
-                        False,
-                    )
+            return self.client.query(self.table).filter(
+                get_integer_range_filter(
+                    Column(partition_field),
+                    self._partition_details.partitionIntegerRangeStart,
+                    self._partition_details.partitionIntegerRangeEnd,
                 )
-                .subquery()
-            ),
+            )
+        return self.client.query(self.table).filter(
+            build_query_filter(
+                [
+                    (
+                        Column(partition_field),
+                        "ge",
+                        dispatch_to_date_or_datetime(
+                            self._partition_details.partitionInterval,
+                            text(self._partition_details.partitionIntervalUnit.value),
+                            type_,
+                        ),
+                    )
+                ],
+                False,
+            )
         )

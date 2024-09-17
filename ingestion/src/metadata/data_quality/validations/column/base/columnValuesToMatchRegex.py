@@ -50,9 +50,8 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         )
         try:
             column: Union[SQALikeColumn, Column] = self._get_column_name()
-            count = self._run_results(Metrics.COUNT, column)
-            match_count = self._run_results(
-                Metrics.REGEX_COUNT, column, expression=regex
+            count, match_count = self._run_results(
+                (Metrics.COUNT, Metrics.REGEX_COUNT), column, expression=regex
             )
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -66,7 +65,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
             )
 
         if self.test_case.computePassedFailedRowCount:
-            row_count = self.get_row_count()
+            row_count = count
         else:
             row_count = None
 

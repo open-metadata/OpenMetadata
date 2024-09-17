@@ -16,6 +16,7 @@ package org.openmetadata.service.security.auth;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.USER;
@@ -31,12 +32,22 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_USER_OR_PASSWORD;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_ERROR;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_DISABLED_MESSAGE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_NOT_ENABLED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRY_ERROR;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
-import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
+import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
+import static org.openmetadata.service.util.UserUtil.getUser;
+import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
+import static org.openmetadata.service.util.email.EmailUtil.sendAccountStatus;
+import static org.openmetadata.service.util.email.TemplateConstants.APPLICATION_LOGIN_LINK;
+import static org.openmetadata.service.util.email.TemplateConstants.ENTITY;
+import static org.openmetadata.service.util.email.TemplateConstants.INVITE_CREATE_PASSWORD_TEMPLATE;
+import static org.openmetadata.service.util.email.TemplateConstants.INVITE_RANDOM_PASSWORD_TEMPLATE;
+import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD;
+import static org.openmetadata.service.util.email.TemplateConstants.SUPPORT_URL;
+import static org.openmetadata.service.util.email.TemplateConstants.USERNAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -54,7 +65,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
-import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
@@ -68,25 +78,23 @@ import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.TokenUtil;
+import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 public class BasicAuthenticator implements AuthenticatorHandler {
@@ -96,8 +104,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private TokenRepository tokenRepository;
   private LoginAttemptCache loginAttemptCache;
   private AuthorizerConfiguration authorizerConfiguration;
-  private LoginConfiguration loginConfiguration;
-  private boolean isEmailServiceEnabled;
   private boolean isSelfSignUpAvailable;
 
   @Override
@@ -106,11 +112,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     this.tokenRepository = Entity.getTokenRepository();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.loginAttemptCache = new LoginAttemptCache();
-    SmtpSettings smtpSettings = config.getSmtpSettings();
-    this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
-    this.loginConfiguration =
-        SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
   }
 
   @Override
@@ -134,7 +136,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       registeredUser.setAuthenticationMechanism(null);
       return registeredUser;
     } else {
-      throw new CustomExceptionMessage(NOT_IMPLEMENTED, SELF_SIGNUP_NOT_ENABLED, SELF_SIGNUP_ERROR);
+      throw new CustomExceptionMessage(
+          NOT_IMPLEMENTED, SELF_SIGNUP_NOT_ENABLED, SELF_SIGNUP_DISABLED_MESSAGE);
     }
   }
 
@@ -174,7 +177,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void sendEmailVerification(UriInfo uriInfo, User user) throws IOException {
-    if (isEmailServiceEnabled) {
+    if (getSmtpSettings().getEnableSmtpServer()) {
       UUID mailVerificationToken = UUID.randomUUID();
       EmailVerificationToken emailVerificationToken =
           TokenUtil.getEmailVerificationToken(user.getId(), mailVerificationToken);
@@ -258,7 +261,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // Update user about Password Change
     try {
-      EmailUtil.sendAccountStatus(storedUser, "Update Password", "Change Successful");
+      sendAccountStatus(storedUser, "Update Password", "Change Successful");
     } catch (TemplateException ex) {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage(), ex);
       throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
@@ -311,12 +314,12 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     loginAttemptCache.recordSuccessfulLogin(userName);
 
     // in case admin updates , send email to user
-    if (request.getRequestType() == USER && isEmailServiceEnabled) {
+    if (request.getRequestType() == USER && getSmtpSettings().getEnableSmtpServer()) {
       // Send mail
       sendInviteMailToUser(
           uriInfo,
           response.getEntity(),
-          String.format("%s: Password Update", EmailUtil.getEmailingEntity()),
+          String.format("%s: Password Update", getSmtpSettings().getEmailingEntity()),
           ADMIN_CREATE,
           request.getNewPassword());
     }
@@ -333,19 +336,14 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     switch (requestType) {
       case ADMIN_CREATE -> {
         Map<String, Object> templatePopulator = new HashMap<>();
-        templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getEmailingEntity());
-        templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getSupportUrl());
-        templatePopulator.put(EmailUtil.USERNAME, user.getName());
-        templatePopulator.put(EmailUtil.PASSWORD, pwd);
-        templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getOMUrl());
+        templatePopulator.put(ENTITY, getSmtpSettings().getEmailingEntity());
+        templatePopulator.put(SUPPORT_URL, getSmtpSettings().getSupportUrl());
+        templatePopulator.put(USERNAME, user.getName());
+        templatePopulator.put(PASSWORD, pwd);
+        templatePopulator.put(APPLICATION_LOGIN_LINK, getSmtpSettings().getOpenMetadataUrl());
         try {
           EmailUtil.sendMail(
-              subject,
-              templatePopulator,
-              user.getEmail(),
-              EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-              EmailUtil.INVITE_RANDOM_PWD,
-              true);
+              subject, templatePopulator, user.getEmail(), INVITE_RANDOM_PASSWORD_TEMPLATE, true);
         } catch (TemplateException ex) {
           LOG.error(
               "Failed in sending Mail to user [{}]. Reason : {}",
@@ -355,7 +353,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         }
       }
       case USER_CREATE -> sendPasswordResetLink(
-          uriInfo, user, subject, EmailUtil.INVITE_CREATE_PWD);
+          uriInfo, user, subject, INVITE_CREATE_PASSWORD_TEMPLATE);
       default -> LOG.error("Invalid Password Create Type");
     }
   }
@@ -387,8 +385,10 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         JWTTokenGenerator.getInstance()
             .generateJWTToken(
                 storedUser.getName(),
+                getRoleListFromUser(storedUser),
+                !nullOrEmpty(storedUser.getIsAdmin()) && storedUser.getIsAdmin(),
                 storedUser.getEmail(),
-                loginConfiguration.getJwtTokenExpiryTime(),
+                SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime(),
                 false,
                 ServiceTokenType.OM_USER);
     JwtResponse response = new JwtResponse();
@@ -444,17 +444,14 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         BCrypt.withDefaults().hashToString(HASHING_COST, create.getPassword().toCharArray());
 
     BasicAuthMechanism newAuthMechanism = new BasicAuthMechanism().withPassword(hashedPwd);
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(username)
-        .withFullyQualifiedName(username)
-        .withEmail(create.getEmail())
-        .withDisplayName(create.getFirstName() + create.getLastName())
-        .withIsBot(false)
-        .withIsAdmin(false)
-        .withUpdatedBy(username)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withIsEmailVerified(false)
+    return getUser(
+            username,
+            new CreateUser()
+                .withName(username)
+                .withEmail(create.getEmail())
+                .withDisplayName(String.format("%s%s", create.getFirstName(), create.getLastName()))
+                .withIsBot(false)
+                .withIsAdmin(false))
         .withAuthenticationMechanism(
             new AuthenticationMechanism()
                 .withAuthType(AuthenticationMechanism.AuthType.BASIC)
@@ -473,7 +470,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(userName);
     User storedUser = lookUserInProvider(userName);
     validatePassword(userName, storedUser, loginRequest.getPassword());
-    return getJwtResponse(storedUser, loginConfiguration.getJwtTokenExpiryTime());
+    return getJwtResponse(storedUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
   @Override
@@ -488,13 +485,13 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       throws TemplateException, IOException {
     loginAttemptCache.recordFailedLogin(providedIdentity);
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
-    if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
-      EmailUtil.sendAccountStatus(
+    if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
+      sendAccountStatus(
           storedUser,
           "Multiple Failed Login Attempts.",
           String.format(
               "Someone is trying to access your account. Login is Blocked for %s minutes. Please change your password.",
-              loginConfiguration.getAccessBlockTime()));
+              SecurityUtil.getLoginConfiguration().getAccessBlockTime()));
     }
   }
 
@@ -519,7 +516,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public User lookUserInProvider(String userName) {
-    User storedUser;
+    User storedUser = null;
     try {
       if (userName.contains("@")) {
         // lookup by User Email
@@ -527,23 +524,18 @@ public class BasicAuthenticator implements AuthenticatorHandler {
             userRepository.getByEmail(
                 null,
                 userName,
-                new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
-      } else {
-        storedUser =
-            userRepository.getByName(
-                null,
-                userName,
-                new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+                new EntityUtil.Fields(
+                    Set.of(USER_PROTECTED_FIELDS, "roles"), "authenticationMechanism,roles"));
       }
+    } catch (Exception ignored) {
 
-      if (storedUser != null && Boolean.TRUE.equals(storedUser.getIsBot())) {
-        throw new CustomExceptionMessage(
-            BAD_REQUEST, INVALID_USER_OR_PASSWORD, INVALID_USERNAME_PASSWORD);
-      }
-    } catch (Exception ex) {
+    }
+
+    if (storedUser == null || Boolean.TRUE.equals(storedUser.getIsBot())) {
       throw new CustomExceptionMessage(
           BAD_REQUEST, INVALID_USER_OR_PASSWORD, INVALID_USERNAME_PASSWORD);
     }
+
     return storedUser;
   }
 }

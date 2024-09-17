@@ -26,10 +26,15 @@ const mockNode = {
 const mockDeleteNode = jest.fn();
 const mockUpdateAttributes = jest.fn();
 
+const mockEditor = {
+  isEditable: true,
+};
+
 const mockNodeViewProps = {
   node: mockNode,
   updateAttributes: mockUpdateAttributes,
   deleteNode: mockDeleteNode,
+  editor: mockEditor,
 } as unknown as NodeViewProps;
 
 describe('ImageComponent', () => {
@@ -64,13 +69,23 @@ describe('ImageComponent', () => {
 
     expect(popover).toBeInTheDocument();
 
-    expect(screen.getByText('label.upload')).toBeInTheDocument();
     expect(screen.getByText('label.embed-link')).toBeInTheDocument();
   });
 
-  it('should render the upload tab by default', async () => {
+  it("should not render the popover when image node is clicked and the editor isn't editable", async () => {
+    const nonEditableEditor = {
+      isEditable: false,
+    };
+
+    const nonEditableNodeViewProps = {
+      node: mockNode,
+      updateAttributes: mockUpdateAttributes,
+      deleteNode: mockDeleteNode,
+      editor: nonEditableEditor,
+    } as unknown as NodeViewProps;
+
     await act(async () => {
-      render(<ImageComponent {...mockNodeViewProps} />);
+      render(<ImageComponent {...nonEditableNodeViewProps} />);
     });
 
     const imageNode = screen.getByTestId('uploaded-image-node');
@@ -79,23 +94,9 @@ describe('ImageComponent', () => {
       userEvent.click(imageNode);
     });
 
-    const uploadTab = screen.getByText('label.upload');
+    const popover = screen.queryByRole('tooltip');
 
-    expect(uploadTab).toBeInTheDocument();
-
-    expect(uploadTab).toHaveAttribute('aria-selected', 'true');
-
-    // image upload form should be visible
-
-    expect(screen.getByTestId('image-upload-form')).toBeInTheDocument();
-
-    // update button should be disabled
-
-    expect(screen.getByText('label.update-image')).toBeInTheDocument();
-
-    // delete button should be visible
-
-    expect(screen.getByText('label.delete')).toBeInTheDocument();
+    expect(popover).not.toBeInTheDocument();
   });
 
   it('should render the embed link tab when clicked', async () => {
@@ -173,6 +174,7 @@ describe('ImageComponent', () => {
     const embedInput = screen.getByTestId('embed-input');
 
     await act(async () => {
+      userEvent.clear(embedInput);
       userEvent.type(embedInput, 'https://open-metadata.org/images/omd-logo');
     });
 
@@ -183,7 +185,7 @@ describe('ImageComponent', () => {
     });
 
     expect(mockUpdateAttributes).toHaveBeenCalledWith({
-      src: 'https://open-metadata.org/images/omd-logo',
+      src: 'https://open-metadata.org/images/omd-logo.svgo',
     });
   });
 

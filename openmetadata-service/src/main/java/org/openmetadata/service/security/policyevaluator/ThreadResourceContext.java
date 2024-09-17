@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
@@ -15,8 +16,10 @@ public record ThreadResourceContext(String createdBy) implements ResourceContext
   }
 
   @Override
-  public EntityReference getOwner() {
-    return Entity.getEntityReferenceByName(Entity.USER, createdBy, Include.NON_DELETED);
+  public List<EntityReference> getOwners() {
+    List<EntityReference> owners = new ArrayList<>();
+    owners.add(Entity.getEntityReferenceByName(Entity.USER, createdBy, Include.NON_DELETED));
+    return owners;
   }
 
   @Override
@@ -26,6 +29,12 @@ public record ThreadResourceContext(String createdBy) implements ResourceContext
 
   @Override
   public EntityInterface getEntity() {
+    return null;
+  }
+
+  // TODO: Fix this this should be thread.getEntity().getDomain()
+  @Override
+  public EntityReference getDomain() {
     return null;
   }
 }

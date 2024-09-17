@@ -37,13 +37,6 @@ public class AuditEventHandler implements EventHandler {
 
   public Void process(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-    if (requestContext
-        .getUriInfo()
-        .getPath()
-        .contains(WebAnalyticEventHandler.WEB_ANALYTIC_ENDPOINT)) {
-      // we don't want to send web analytic event to the audit log
-      return null;
-    }
     int responseCode = responseContext.getStatus();
     String method = requestContext.getMethod();
     if (responseContext.getEntity() != null) {
@@ -58,8 +51,8 @@ public class AuditEventHandler implements EventHandler {
         // We should implement a parent class that captures the common fields and then have
         // EntityInterface and EntityTimeSeriesInterface extend it.
         // TODO: if we are just interested in entity's we can just do else and return null.
-        UUID entityId = null;
-        String entityType = "";
+        UUID entityId;
+        String entityType;
         if (responseContext.getEntity()
             instanceof EntityTimeSeriesInterface entityTimeSeriesInterface) {
           entityId = entityTimeSeriesInterface.getEntityReference().getId();

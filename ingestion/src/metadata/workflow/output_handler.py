@@ -10,40 +10,21 @@
 #  limitations under the License.
 
 """
-Common Output Handling methods
+Module that handles the legacy WorkflowType until deprecation
 """
-import traceback
 from enum import Enum
-from logging import Logger
-from pathlib import Path
-from typing import Dict, List
+from typing import Optional
 
-from pydantic import BaseModel
-from tabulate import tabulate
-
-from metadata.generated.schema.entity.services.ingestionPipelines.status import (
-    StackTraceError,
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineType,
 )
-from metadata.generated.schema.metadataIngestion.workflow import LogLevels
-from metadata.ingestion.api.step import Summary
-from metadata.utils.execution_time_tracker import ExecutionTimeTracker
-from metadata.utils.helpers import pretty_print_time_duration
-from metadata.utils.logger import ANSI, log_ansi_encoded_string
-
-WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
-WORKFLOW_WARNING_MESSAGE = "Workflow finished with warnings"
-WORKFLOW_SUCCESS_MESSAGE = "Workflow finished successfully"
+from metadata.utils.deprecation import deprecated
 
 
-class Failure(BaseModel):
-    """
-    Auxiliary class to print the error per status
-    """
-
-    name: str
-    failures: List[StackTraceError]
-
-
+@deprecated(
+    message="Use 'PipelineType' in 'metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline'",
+    release="1.6",
+)
 class WorkflowType(Enum):
     """
     Workflow type enums based on the `metadata` CLI commands
@@ -58,169 +39,31 @@ class WorkflowType(Enum):
     APP = "application"
 
 
-EXAMPLES_WORKFLOW_PATH: Path = Path(__file__).parent / "../examples" / "workflows"
+# TODO: Delete this method after the removal of WorkflowType in release 1.6
+# Remember to remove it where it is being used
+def workflow_type_to_pipeline_type(
+    workflow_type: WorkflowType, source_type_name: Optional[str]
+) -> PipelineType:
+    """Helper Function to Map between the Deprecated WorkflowType to PipelineType."""
 
-URLS = {
-    WorkflowType.INGEST: "https://docs.open-metadata.org/connectors/ingestion/workflows/metadata",
-    WorkflowType.PROFILE: "https://docs.open-metadata.org/connectors/ingestion/workflows/profiler",
-    WorkflowType.TEST: "https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality",
-    WorkflowType.LINEAGE: "https://docs.open-metadata.org/connectors/ingestion/workflows/lineage",
-    WorkflowType.USAGE: "https://docs.open-metadata.org/connectors/ingestion/workflows/usage",
-}
+    def _fix_ingest_type() -> PipelineType:
+        """Helper Function to Map between the Deprecated WorkflowType.INGESTION and the
+        correct PipelineType."""
+        if source_type_name:
+            if source_type_name.endswith("lineage"):
+                return PipelineType.lineage
+            if source_type_name.endswith("usage"):
+                return PipelineType.usage
+        return PipelineType.metadata
 
-DEFAULT_EXAMPLE_FILE = {
-    WorkflowType.INGEST: "bigquery",
-    WorkflowType.PROFILE: "bigquery_profiler",
-    WorkflowType.TEST: "test_suite",
-    WorkflowType.LINEAGE: "bigquery_lineage",
-    WorkflowType.USAGE: "bigquery_usage",
-}
-
-
-def print_more_info(workflow_type: WorkflowType) -> None:
-    """
-    Print more information message
-    """
-    log_ansi_encoded_string(
-        message=f"\nFor more information, please visit: {URLS[workflow_type]}"
-        "\nOr join us in Slack: https://slack.open-metadata.org/"
-    )
-
-
-def print_error_msg(msg: str) -> None:
-    """
-    Print message with error style
-    """
-    log_ansi_encoded_string(color=ANSI.BRIGHT_RED, bold=False, message=f"{msg}")
-
-
-def get_failures(failure: Failure) -> List[Dict[str, str]]:
-    return [
-        {
-            "From": failure.name,
-            "Entity Name": f.name,
-            "Message": f.error,
-            "Stack Trace": f.stackTrace,
-        }
-        for f in failure.failures
-    ]
-
-
-def print_failures_if_apply(failures: List[Failure]) -> None:
-    # take only the ones that contain failures
-    failures = [f for f in failures if f.failures]
-    if failures:
-        # create a list of dictionaries' list
-        all_data = [get_failures(failure) for failure in failures]
-        # create a single of dictionaries
-        data = [f for fs in all_data for f in fs]
-        # create a dictionary with a key and a list of values from the list
-        error_table = {k: [dic[k] for dic in data] for k in data[0]}
-        if len(list(error_table.items())[0][1]) > 100:
-            log_ansi_encoded_string(
-                bold=True, message="Showing only the first 100 failures:"
-            )
-            # truncate list if number of values are over 100
-            error_table = {k: v[:100] for k, v in error_table.items()}
-        else:
-            log_ansi_encoded_string(bold=True, message="List of failures:")
-
-        log_ansi_encoded_string(
-            message=f"\n{tabulate(error_table, headers='keys', tablefmt='grid')}"
-        )
-
-
-def is_debug_enabled(workflow) -> bool:
-    return (
-        hasattr(workflow, "config")
-        and hasattr(workflow.config, "workflowConfig")
-        and hasattr(workflow.config.workflowConfig, "loggerLevel")
-        and workflow.config.workflowConfig.loggerLevel is LogLevels.DEBUG
-    )
-
-
-def print_execution_time_summary():
-    """Log the ExecutionTimeTracker Summary."""
-    tracker = ExecutionTimeTracker()
-
-    summary_table = {
-        "Context": [],
-        "Execution Time Aggregate": [],
+    map_ = {
+        WorkflowType.INGEST: _fix_ingest_type(),
+        WorkflowType.PROFILE: PipelineType.profiler,
+        WorkflowType.TEST: PipelineType.TestSuite,
+        WorkflowType.LINEAGE: PipelineType.lineage,
+        WorkflowType.USAGE: PipelineType.usage,
+        WorkflowType.INSIGHT: PipelineType.dataInsight,
+        WorkflowType.APP: PipelineType.application,
     }
 
-    for key in sorted(tracker.state.keys()):
-        summary_table["Context"].append(key)
-        summary_table["Execution Time Aggregate"].append(
-            pretty_print_time_duration(tracker.state[key])
-        )
-
-    log_ansi_encoded_string(bold=True, message="Execution Time Summary")
-    log_ansi_encoded_string(message=f"\n{tabulate(summary_table, tablefmt='grid')}")
-
-
-def print_workflow_summary(workflow: "BaseWorkflow") -> None:
-    """
-    Args:
-        workflow: the workflow status to be printed
-
-    Returns:
-        Print Workflow status when the workflow logger level is DEBUG
-    """
-
-    if is_debug_enabled(workflow):
-        print_workflow_status_debug(workflow)
-        print_execution_time_summary()
-
-    failures = []
-    total_records = 0
-    total_errors = 0
-    for step in workflow.workflow_steps():
-        step_summary = Summary.from_step(step)
-        total_records += step_summary.records
-        total_errors += step_summary.errors
-        failures.append(Failure(name=step.name, failures=step.get_status().failures))
-
-        log_ansi_encoded_string(bold=True, message=f"Workflow {step.name} Summary:")
-        log_ansi_encoded_string(message=f"Processed records: {step_summary.records}")
-        log_ansi_encoded_string(
-            message=f"Updated records: {step_summary.updated_records}"
-        )
-        log_ansi_encoded_string(message=f"Warnings: {step_summary.warnings}")
-        if step_summary.filtered:
-            log_ansi_encoded_string(message=f"Filtered: {step_summary.filtered}")
-        log_ansi_encoded_string(message=f"Errors: {step_summary.errors}")
-
-    print_failures_if_apply(failures)
-
-    total_success = max(total_records, 1)
-    log_ansi_encoded_string(
-        color=ANSI.BRIGHT_CYAN,
-        bold=True,
-        message=f"Success %: "
-        f"{round(total_success * 100 / (total_success + total_errors), 2)}",
-    )
-
-
-def print_workflow_status_debug(workflow: "BaseWorkflow") -> None:
-    """Print the statuses from each workflow step"""
-    log_ansi_encoded_string(bold=True, message="Statuses detailed info:")
-    for step in workflow.workflow_steps():
-        log_ansi_encoded_string(bold=True, message=f"{step.name} Status:")
-        log_ansi_encoded_string(message=step.get_status().as_string())
-
-
-def report_ingestion_status(logger: Logger, workflow: "BaseWorkflow") -> None:
-    """
-    Given a logger, use it to INFO the workflow status
-    """
-    try:
-        for step in workflow.workflow_steps():
-            logger.info(
-                f"{step.name}: Processed {len(step.status.records)} records,"
-                f" filtered {len(step.status.filtered)} records,"
-                f" found {len(step.status.failures)} errors"
-            )
-
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.error(f"Wild exception reporting status - {exc}")
+    return map_.get(workflow_type, PipelineType.metadata)

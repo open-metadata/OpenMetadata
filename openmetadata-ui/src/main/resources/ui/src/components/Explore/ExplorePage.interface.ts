@@ -16,18 +16,22 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
+import { APICollection } from '../../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { Metric } from '../../generated/entity/data/metric';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
+import { APIService } from '../../generated/entity/services/apiService';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
@@ -56,11 +60,14 @@ export type ExploreSearchIndex =
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER
-  | SearchIndex.GLOSSARY
+  | SearchIndex.GLOSSARY_TERM
   | SearchIndex.TAG
   | SearchIndex.SEARCH_INDEX
   | SearchIndex.STORED_PROCEDURE
-  | SearchIndex.DASHBOARD_DATA_MODEL;
+  | SearchIndex.DASHBOARD_DATA_MODEL
+  | SearchIndex.API_COLLECTION_INDEX
+  | SearchIndex.API_ENDPOINT_INDEX
+  | SearchIndex.METRIC_SEARCH_INDEX;
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
@@ -75,7 +82,7 @@ export interface ExploreProps {
     queryFilter: QueryFilterInterface | undefined
   ) => void;
 
-  searchIndex: ExploreSearchIndex;
+  searchIndex: SearchIndex.DATA_ASSET | ExploreSearchIndex;
   onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
 
   sortValue: string;
@@ -139,7 +146,11 @@ export type EntityUnion =
   | PipelineService
   | MlmodelService
   | StorageService
-  | SearchService;
+  | SearchService
+  | APIEndpoint
+  | APIService
+  | APICollection
+  | Metric;
 
 export type EntityWithServices =
   | Topic
@@ -150,7 +161,9 @@ export type EntityWithServices =
   | DashboardDataModel
   | Database
   | DatabaseSchema
-  | SearchIndexEntity;
+  | SearchIndexEntity
+  | APICollection
+  | APIEndpoint;
 
 export type EntityServiceUnion =
   | DatabaseService
@@ -159,7 +172,8 @@ export type EntityServiceUnion =
   | PipelineService
   | MlmodelService
   | StorageService
-  | SearchService;
+  | SearchService
+  | APIService;
 
 export interface EntityDetailsObjectInterface {
   details: SearchedDataProps['data'][number]['_source'];

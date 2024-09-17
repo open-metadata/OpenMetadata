@@ -18,7 +18,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import Description from '../../../components/common/EntityDescription/Description';
+import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -28,7 +28,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useFqn } from '../../../hooks/useFqn';
@@ -113,7 +113,7 @@ const RolesDetailPage = () => {
   const handleTeamsUpdate = async (data: EntityReference) => {
     try {
       const team = await getTeamByName(data.fullyQualifiedName || '', {
-        fields: 'defaultRoles',
+        fields: TabSpecificField.DEFAULT_ROLES,
       });
       const updatedAttributeData = (team.defaultRoles ?? []).filter(
         (attrData) => attrData.id !== role.id
@@ -142,7 +142,7 @@ const RolesDetailPage = () => {
   const handleUsersUpdate = async (data: EntityReference) => {
     try {
       const user = await getUserByName(data.fullyQualifiedName || '', {
-        fields: 'roles',
+        fields: TabSpecificField.ROLES,
       });
       const updatedAttributeData = (user.roles ?? []).filter(
         (attrData) => attrData.id !== role.id
@@ -259,14 +259,15 @@ const RolesDetailPage = () => {
                 level={5}>
                 {roleName}
               </Typography.Title>
-              <Description
+              <DescriptionV1
                 hasEditAccess
-                className="m-b-md"
+                className="m-y-md"
                 description={role.description || ''}
                 entityFqn={role.fullyQualifiedName}
                 entityName={roleName}
                 entityType={EntityType.ROLE}
                 isEdit={editDescription}
+                showCommentsIcon={false}
                 onCancel={() => setEditDescription(false)}
                 onDescriptionEdit={() => setEditDescription(true)}
                 onDescriptionUpdate={handleDescriptionUpdate}
@@ -274,7 +275,9 @@ const RolesDetailPage = () => {
 
               <Tabs data-testid="tabs" defaultActiveKey="policies">
                 <TabPane key="policies" tab={t('label.policy-plural')}>
-                  <Space className="w-full" direction="vertical">
+                  <Space
+                    className="role-detail-tab w-full"
+                    direction="vertical">
                     <Button
                       data-testid="add-policy"
                       type="primary"

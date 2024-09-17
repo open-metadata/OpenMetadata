@@ -56,7 +56,7 @@ class S3FileSystem(IcebergFileSystemBase):
 
         unused_keys = []
 
-        for key, value in fs_config.dict().items():
+        for key, value in fs_config.model_dump().items():
             if key not in SUPPORTED_KEYS and value:
                 unused_keys.append(key)
 

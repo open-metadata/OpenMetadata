@@ -4,6 +4,36 @@
   "title": "Basic",
   "description": "This schema defines basic types that are used by other test schemas.",
   "definitions": {
+    "columnTestSummaryDefinition": {
+      "description": "Schema to capture test case execution summary at the column level.",
+      "javaType": "org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition",
+      "type": "object",
+      "properties": {
+        "success": {
+          "description": "Number of test cases that passed.",
+          "type": "integer"
+        },
+        "failed": {
+          "description": "Number of test cases that failed.",
+          "type": "integer"
+        },
+        "aborted": {
+          "description": "Number of test cases that aborted.",
+          "type": "integer"
+        },
+        "queued": {
+          "description": "Number of test cases that are queued for execution.",
+          "type": "integer"
+        },
+        "total": {
+          "description": "Total number of test cases.",
+          "type": "integer"
+        },
+        "entityLink": {
+          "$ref": "../type/basic.json#/definitions/entityLink"
+        }
+      }
+    },
     "testSummary": {
       "description": "Schema to capture test case execution summary.",
       "javaType": "org.openmetadata.schema.tests.type.TestSummary",
@@ -28,6 +58,12 @@
         "total": {
           "description": "Total number of test cases.",
           "type": "integer"
+        },
+        "columnTestSummary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnTestSummaryDefinition"
+          }
         }
       }
     },
@@ -42,6 +78,10 @@
         },
         "value": {
           "description": "test result value",
+          "type": "string"
+        },
+        "predictedValue": {
+          "description": "predicted value",
           "type": "string"
         }
       }
@@ -69,8 +109,17 @@
     "testCaseResult": {
       "description": "Schema to capture test case result.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",
+      "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
       "type": "object",
       "properties": {
+        "id": {
+          "description": "Unique identifier of this failure instance",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "testCaseFQN": {
+          "description": "Fully qualified name of the test case.",
+          "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
         "timestamp": {
           "description": "Data one which test case result is taken.",
           "$ref": "../type/basic.json#/definitions/timestamp"
@@ -112,6 +161,14 @@
         "incidentId": {
           "description": "Incident State ID associated with this result. This association happens when the result is created, and will stay there even when the incident is resolved.",
           "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "maxBound": {
+          "description": "Upper bound limit for the test case result as defined in the test definition.",
+          "type": "number"
+        },
+        "minBound": {
+          "description": "Lower bound limit for the test case result as defined in the test definition.",
+          "type": "number"
         }
       }
     },

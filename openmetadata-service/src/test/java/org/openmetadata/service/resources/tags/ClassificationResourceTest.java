@@ -78,7 +78,7 @@ public class ClassificationResourceTest
     assertResponseContains(
         () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "name size must be between 2 and 64");
+        "name size must be between 1 and 256");
   }
 
   @Test

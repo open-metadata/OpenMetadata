@@ -33,6 +33,7 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
     REDSHIFT_TABLE_COMMENTS,
 )
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.sqlalchemy_utils import get_table_comment_wrapper
 
 sa_version = Version(sa.__version__)
@@ -45,6 +46,7 @@ ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
 
 
 # pylint: disable=protected-access
+@calculate_execution_time()
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
@@ -80,6 +82,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return columns
 
 
+@calculate_execution_time()
 def _get_column_info(self, *args, **kwargs):
     """
     Get column info
@@ -112,6 +115,7 @@ def _get_column_info(self, *args, **kwargs):
     return column_info
 
 
+@calculate_execution_time()
 @reflection.cache
 def _get_schema_column_info(
     self, connection, schema=None, **kw
@@ -130,13 +134,12 @@ def _get_schema_column_info(
     """
     schema_clause = f"AND schema = '{schema if schema else ''}'"
     all_columns = defaultdict(list)
-    with connection.connect() as cnct:
-        result = cnct.execute(
-            REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)
-        )
-        for col in result:
-            key = RelationKey(col.table_name, col.schema, connection)
-            all_columns[key].append(col)
+    result = connection.execute(
+        REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)
+    )
+    for col in result:
+        key = RelationKey(col.table_name, col.schema, connection)
+        all_columns[key].append(col)
     return dict(all_columns)
 
 
@@ -241,14 +244,14 @@ def _update_column_info(  # pylint: disable=too-many-arguments
     return column_info
 
 
+# pylint: disable=unused-argument
 def _update_coltype(coltype, args, kwargs, attype, name, is_array):
     if coltype:
         coltype = coltype(*args, **kwargs)
         if is_array:
             coltype = ischema_names["_array"](coltype)
     else:
-        util.warn(f"Did not recognize type '{attype}' of column '{name}'")
-        coltype = sqltypes.NULLTYPE
+        coltype = create_sqlalchemy_type("UNKNOWN")
     return coltype
 
 
@@ -270,6 +273,7 @@ def _get_charlen(format_type):
     return charlen
 
 
+@calculate_execution_time()
 @reflection.cache
 def _get_pg_column_info(  # pylint: disable=too-many-locals,too-many-arguments, unused-argument
     self,
@@ -353,6 +357,7 @@ def _get_pg_column_info(  # pylint: disable=too-many-locals,too-many-arguments, 
     return column_info
 
 
+@calculate_execution_time()
 @reflection.cache
 def get_table_comment(
     self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
@@ -366,6 +371,7 @@ def get_table_comment(
     )
 
 
+@calculate_execution_time()
 @reflection.cache
 def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-argument
     # pylint: disable=consider-using-f-string
@@ -380,7 +386,7 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
     result = connection.execute(
         sa.text(
             REDSHIFT_GET_ALL_RELATIONS.format(
-                schema_clause=schema_clause, table_clause=table_clause
+                schema_clause=schema_clause, table_clause=table_clause, limit_clause=""
             )
         )
     )
@@ -389,3 +395,22 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
         key = RelationKey(rel.relname, rel.schema, connection)
         relations[key] = rel
     return relations
+
+
+@reflection.cache
+def get_view_definition(self, connection, view_name, schema=None, **kw):
+    """Return view definition.
+    Given a :class:`.Connection`, a string `view_name`,
+    and an optional string `schema`, return the view definition.
+
+    Overrides interface
+    :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
+    """
+    view = self._get_redshift_relation(connection, view_name, schema, **kw)
+    pattern = re.compile("WITH NO SCHEMA BINDING", re.IGNORECASE)
+    view_definition = str(sa.text(pattern.sub("", view.view_definition)))
+    if not view_definition.startswith("create"):
+        view_definition = (
+            f"CREATE VIEW {view.schema}.{view.relname} AS {view_definition}"
+        )
+    return view_definition

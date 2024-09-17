@@ -23,14 +23,15 @@ import {
 } from '../../../../constants/TestSuite.constant';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import { OwnerType } from '../../../../enums/user.enum';
+import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   addTestCaseToLogicalTestSuite,
   createTestSuites,
 } from '../../../../rest/testAPI';
 import { getTestSuitePath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -43,7 +44,7 @@ import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
 const TestSuiteStepper = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
 
@@ -56,21 +57,26 @@ const TestSuiteStepper = () => {
     setActiveServiceStep(2);
   };
 
-  const onSubmit = async (data: string[]) => {
+  const onSubmit = async (data: TestCase[]) => {
+    const testCaseIds = data.reduce((ids, curr) => {
+      return curr.id ? [...ids, curr.id] : ids;
+    }, [] as string[]);
     try {
-      const owner = {
-        id: currentUser?.id ?? '',
-        type: OwnerType.USER,
-      };
+      const owners = [
+        {
+          id: currentUser?.id ?? '',
+          type: OwnerType.USER,
+        },
+      ];
 
       const response = await createTestSuites({
         name: testSuiteResponse?.name ?? '',
         description: testSuiteResponse?.description,
-        owner,
+        owners,
       });
       setTestSuiteResponse(response);
       await addTestCaseToLogicalTestSuite({
-        testCaseIds: data,
+        testCaseIds: testCaseIds,
         testSuiteId: response.id ?? '',
       });
       setActiveServiceStep(3);
@@ -127,7 +133,9 @@ const TestSuiteStepper = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div
             className="max-width-md w-9/10 service-form-container"
@@ -171,13 +179,9 @@ const TestSuiteStepper = () => {
             )}
           />
         ),
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'p-md p-t-xl content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

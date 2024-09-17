@@ -14,10 +14,11 @@ import { Form, Input, Select } from 'antd';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
-import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { CustomMetric } from '../../../generated/entity/data/table';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Loader from '../../common/Loader/Loader';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
@@ -32,7 +33,7 @@ const CustomMetricForm = ({
   isEditMode = false,
 }: CustomMetricFormProps) => {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const [isLoading, setIsLoading] = useState(true);
 
   const { activeColumnFqn } = useMemo(() => {
@@ -76,29 +77,13 @@ const CustomMetricForm = ({
       data-testid="custom-metric-form"
       form={form}
       layout="vertical"
+      validateMessages={VALIDATION_MESSAGES}
       onFinish={onFinish}>
       <Form.Item
         label={t('label.name')}
         name="name"
         rules={[
-          {
-            required: true,
-            message: t('label.field-required', {
-              field: t('label.name'),
-            }),
-          },
-          {
-            pattern: ENTITY_NAME_REGEX,
-            message: t('message.entity-name-validation'),
-          },
-          {
-            min: 1,
-            max: 128,
-            message: `${t('message.entity-maximum-size', {
-              entity: `${t('label.name')}`,
-              max: '128',
-            })}`,
-          },
+          ...NAME_FIELD_RULES,
           {
             validator: (_, value) => {
               if (metricNames.includes(value) && !isEditMode) {
@@ -126,9 +111,6 @@ const CustomMetricForm = ({
           rules={[
             {
               required: true,
-              message: t('label.field-required', {
-                field: t('label.column'),
-              }),
             },
           ]}>
           <Select
@@ -152,18 +134,13 @@ const CustomMetricForm = ({
         rules={[
           {
             required: true,
-            message: t('label.field-required', {
-              field: t('label.sql-uppercase-query'),
-            }),
           },
         ]}
         trigger="onChange">
         <SchemaEditor
           className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
           mode={{ name: CSMode.SQL }}
-          options={{
-            readOnly: false,
-          }}
+          showCopyButton={false}
         />
       </Form.Item>
     </Form>

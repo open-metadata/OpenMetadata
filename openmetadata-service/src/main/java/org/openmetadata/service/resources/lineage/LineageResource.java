@@ -16,15 +16,20 @@ package org.openmetadata.service.resources.lineage;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 import es.org.elasticsearch.action.search.SearchResponse;
+import io.dropwizard.jersey.PATCH;
 import io.dropwizard.jersey.errors.ErrorMessage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
+import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -203,6 +208,42 @@ public class LineageResource {
         .searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
+  @GET
+  @Path("/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Operation(
+      operationId = "exportLineage",
+      summary = "Export lineage",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public String exportLineage(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          boolean deleted,
+      @Parameter(description = "entity type") @QueryParam("type") String entityType)
+      throws IOException {
+
+    return dao.exportCsv(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+  }
+
   @PUT
   @Operation(
       operationId = "addLineageEdge",
@@ -223,6 +264,82 @@ public class LineageResource {
         new LineageResourceContext());
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
+  }
+
+  @GET
+  @Path("/getLineageEdge/{fromId}/{toId}")
+  @Operation(
+      operationId = "getLineageEdge",
+      summary = "Get  a lineage edge",
+      description =
+          "Get a lineage edge with from entity as upstream node and to entity as downstream node.",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity for instance {fromId} is not found")
+      })
+  public Response getLineageEdge(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("fromId")
+          UUID fromId,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("toId")
+          UUID toId) {
+    return dao.getLineageEdge(fromId, toId);
+  }
+
+  @PATCH
+  @Path("/{fromEntity}/{fromId}/{toEntity}/{toId}")
+  @Operation(
+      operationId = "patchLineageEdge",
+      summary = "Patch a lineage edge",
+      description =
+          "Patch a lineage edge with from entity as upstream node and to entity as downstream node.",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity for instance {fromId} is not found")
+      })
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchLineageEdge(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of upstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("fromEntity")
+          String fromEntity,
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("fromId")
+          UUID fromId,
+      @Parameter(
+              description = "Entity type for downstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("toEntity")
+          String toEntity,
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string"))
+          @PathParam("toId")
+          UUID toId,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext());
+    return dao.patchLineageEdge(fromEntity, fromId, toEntity, toId, patch);
   }
 
   @DELETE
@@ -273,6 +390,92 @@ public class LineageResource {
     return Response.status(Status.OK).build();
   }
 
+  @DELETE
+  @Path("/{fromEntity}/name/{fromFQN}/{toEntity}/name/{toFQN}")
+  @Operation(
+      operationId = "deleteLineageEdgeByName",
+      summary = "Delete a lineage edge by FQNs",
+      description =
+          "Delete a lineage edge with from entity as upstream node and to entity as downstream node.",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity for instance {fromFQN} is not found")
+      })
+  public Response deleteLineageByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of upstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("fromEntity")
+          String fromEntity,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("fromFQN")
+          String fromFQN,
+      @Parameter(
+              description = "Entity type for downstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("toEntity")
+          String toEntity,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("toFQN")
+          String toFQN) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext());
+    boolean deleted = dao.deleteLineageByFQN(fromEntity, fromFQN, toEntity, toFQN);
+    if (!deleted) {
+      return Response.status(NOT_FOUND)
+          .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not found"))
+          .build();
+    }
+    return Response.status(Status.OK).build();
+  }
+
+  @DELETE
+  @Path("/{entityType}/{entityId}/type/{lineageSource}")
+  @Operation(
+      operationId = "deleteLineageEdgeByType",
+      summary = "Delete a lineage edge by Type",
+      description =
+          "Delete a lineage edge with from entity as upstream node and to entity as downstream node by source of lineage",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity for instance {entityFQN} is not found")
+      })
+  public Response deleteLineageByType(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of upstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("entityType")
+          String entityType,
+      @Parameter(description = "Entity ID", required = true, schema = @Schema(type = "string"))
+          @PathParam("entityId")
+          UUID entityId,
+      @Parameter(
+              description = "Lineage Type",
+              required = true,
+              schema = @Schema(type = "string", example = "ViewLineage"))
+          @PathParam("lineageSource")
+          String lineageSource) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext());
+    dao.deleteLineageBySource(entityId, entityType, lineageSource);
+    return Response.status(Status.OK).build();
+  }
+
   private EntityLineage addHref(UriInfo uriInfo, EntityLineage lineage) {
     Entity.withHref(uriInfo, lineage.getEntity());
     Entity.withHref(uriInfo, lineage.getNodes());
@@ -287,7 +490,7 @@ public class LineageResource {
     }
 
     @Override
-    public EntityReference getOwner() {
+    public List<EntityReference> getOwners() {
       return null;
     }
 
@@ -298,6 +501,11 @@ public class LineageResource {
 
     @Override
     public EntityInterface getEntity() {
+      return null;
+    }
+
+    @Override
+    public EntityReference getDomain() {
       return null;
     }
   }

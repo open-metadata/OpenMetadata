@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { TableType } from '../../generated/entity/data/table';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
@@ -22,7 +23,7 @@ const mockEntityPermissionByFqn = jest
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
 const COMMON_API_FIELDS =
-  'columns,followers,joins,tags,owner,dataModel,tableConstraints,viewDefinition,domain,dataProducts,votes,extension';
+  'columns,followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domain,dataProducts,votes,extension';
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -41,6 +42,10 @@ jest.mock('../../rest/tableAPI', () => ({
   patchTableDetails: jest.fn(),
   removeFollower: jest.fn(),
   restoreTable: jest.fn(),
+}));
+
+jest.mock('../../rest/suggestionsAPI', () => ({
+  getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -157,6 +162,25 @@ jest.mock(
   })
 );
 
+jest.mock(
+  '../../components/Suggestions/SuggestionsProvider/SuggestionsProvider',
+  () => ({
+    useSuggestionsContext: jest.fn().mockImplementation(() => ({
+      suggestions: [],
+      suggestionsByUser: new Map(),
+      selectedUserSuggestions: [],
+      entityFqn: 'fqn',
+      loading: false,
+      allSuggestionsUsers: [],
+      onUpdateActiveUser: jest.fn(),
+      fetchSuggestions: jest.fn(),
+      acceptRejectSuggestion: jest.fn(),
+    })),
+    __esModule: true,
+    default: 'SuggestionsProvider',
+  })
+);
+
 jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
@@ -177,6 +201,12 @@ jest.mock('../../components/common/Loader/Loader', () => {
 });
 
 jest.useFakeTimers();
+
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
+});
 
 describe('TestDetailsPageV1 component', () => {
   it('TableDetailsPageV1 should fetch permissions', () => {
@@ -221,7 +251,7 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
-      fields: `${COMMON_API_FIELDS}`,
+      fields: `${COMMON_API_FIELDS},usageSummary,testSuite`,
     });
   });
 
@@ -281,7 +311,7 @@ describe('TestDetailsPageV1 component', () => {
     expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
   });
 
-  it('TableDetailsPageV1 should render view defination if data is present', async () => {
+  it('TableDetailsPageV1 should dbt tab for rawSql, when sql is empty', async () => {
     (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
       getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
         ViewBasic: true,
@@ -292,7 +322,8 @@ describe('TestDetailsPageV1 component', () => {
       Promise.resolve({
         name: 'test',
         id: '123',
-        viewDefinition: 'viewDefinition',
+        tableFqn: 'fqn',
+        dataModel: { sql: '', rawSql: 'rawSql' },
       })
     );
 
@@ -300,11 +331,78 @@ describe('TestDetailsPageV1 component', () => {
       render(<TableDetailsPageV1 />);
     });
 
-    expect(screen.queryByText('label.dbt-lowercase')).not.toBeInTheDocument();
+    expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
+    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+  });
 
-    expect(
-      await screen.findByText('label.view-definition')
-    ).toBeInTheDocument();
+  it('TableDetailsPageV1 should dbt tab for rawSql, when there is no sql available', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        name: 'test',
+        id: '123',
+        tableFqn: 'fqn',
+        dataModel: { rawSql: 'rawSql' },
+      })
+    );
+
+    await act(async () => {
+      render(<TableDetailsPageV1 />);
+    });
+
+    expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
+    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+  });
+
+  it('TableDetailsPageV1 should render schema definition tab table type is not view', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        name: 'test',
+        id: '123',
+        schemaDefinition: 'schemaDefinition query',
+      })
+    );
+
+    await act(async () => {
+      render(<TableDetailsPageV1 />);
+    });
+
+    expect(screen.getByText('label.schema-definition')).toBeInTheDocument();
+    expect(screen.queryByText('label.dbt-lowercase')).not.toBeInTheDocument();
+  });
+
+  it('TableDetailsPageV1 should render view definition tab if table type is view', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        name: 'test',
+        id: '123',
+        schemaDefinition: 'viewDefinition query',
+        tableType: TableType.View,
+      })
+    );
+
+    await act(async () => {
+      render(<TableDetailsPageV1 />);
+    });
+
+    expect(screen.getByText('label.view-definition')).toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should render schemaTab by default', async () => {

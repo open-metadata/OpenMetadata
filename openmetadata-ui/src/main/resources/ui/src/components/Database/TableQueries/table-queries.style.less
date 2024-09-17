@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 @import url('../../../styles/variables.less');
-@summary-panel-offset: 236px;
 
 .query-entity-button {
   position: absolute;
@@ -40,18 +39,13 @@
 }
 
 .query-right-panel {
-  position: sticky;
-  height: calc(100vh - @summary-panel-offset);
-  border: @global-border;
+  height: @entity-details-tab-height;
   border-top: unset;
   font-size: 14px;
   overflow-y: scroll;
   overflow-x: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  .ant-drawer-content-wrapper {
-    box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
-  }
   .ant-drawer-body {
     padding: unset;
   }

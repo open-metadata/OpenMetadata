@@ -11,9 +11,18 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  findByRole,
+  fireEvent,
+  render,
+  screen,
+  waitForElement,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { MOCK_USER_ROLE } from '../../../../../mocks/User.mock';
 import { getRoles } from '../../../../../rest/rolesAPIV1';
 import { mockUserRole } from '../../mocks/User.mocks';
 import UserProfileRoles from './UserProfileRoles.component';
@@ -21,6 +30,7 @@ import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
 const mockPropsData: UserProfileRolesProps = {
   userRoles: [],
+  isDeletedUser: false,
   updateUserDetails: jest.fn(),
 };
 
@@ -29,7 +39,18 @@ jest.mock('../../../../../hooks/authHooks', () => ({
 }));
 
 jest.mock('../../../../common/InlineEdit/InlineEdit.component', () => {
-  return jest.fn().mockReturnValue(<p>InlineEdit</p>);
+  return jest.fn().mockImplementation(({ children, onCancel, onSave }) => (
+    <div data-testid="inline-edit">
+      <span>InlineEdit</span>
+      {children}
+      <button data-testid="save" onClick={onSave}>
+        save
+      </button>
+      <button data-testid="cancel" onClick={onCancel}>
+        cancel
+      </button>
+    </div>
+  ));
 });
 
 jest.mock('../../../../common/Chip/Chip.component', () => {
@@ -71,6 +92,14 @@ describe('Test User Profile Roles Component', () => {
     expect(screen.queryByTestId('edit-roles-button')).not.toBeInTheDocument();
   });
 
+  it('should not render roles edit button if user is deleted', async () => {
+    render(<UserProfileRoles {...mockPropsData} isDeletedUser />);
+
+    expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
+
+    expect(screen.queryByTestId('edit-roles-button')).not.toBeInTheDocument();
+  });
+
   it('should render edit button if admin user', async () => {
     (useAuth as jest.Mock).mockImplementation(() => ({
       isAdminUser: true,
@@ -101,6 +130,26 @@ describe('Test User Profile Roles Component', () => {
     expect(screen.getByText('InlineEdit')).toBeInTheDocument();
   });
 
+  it('should call updateUserDetails on click save', async () => {
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      isAdminUser: true,
+    }));
+    render(<UserProfileRoles {...mockPropsData} />);
+
+    fireEvent.click(screen.getByTestId('edit-roles-button'));
+
+    expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('save'));
+    });
+
+    expect(mockPropsData.updateUserDetails).toHaveBeenCalledWith(
+      { roles: [], isAdmin: false },
+      'roles'
+    );
+  });
+
   it('should call roles api on edit button action', async () => {
     (useAuth as jest.Mock).mockImplementation(() => ({
       isAdminUser: true,
@@ -119,5 +168,53 @@ describe('Test User Profile Roles Component', () => {
     expect(getRoles).toHaveBeenCalledWith('', undefined, undefined, false, 50);
 
     expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+  });
+
+  it('should maintain initial state if edit is close without save', async () => {
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      isAdminUser: true,
+    }));
+
+    render(
+      <UserProfileRoles
+        {...mockPropsData}
+        userRoles={MOCK_USER_ROLE.slice(0, 2)}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('edit-roles-button'));
+
+    const selectInput = await findByRole(
+      screen.getByTestId('select-user-roles'),
+      'combobox'
+    );
+
+    await act(async () => {
+      userEvent.click(selectInput);
+    });
+
+    // wait for list to render, checked with item having in the list
+    await waitForElement(() => screen.findByText('admin'));
+
+    await act(async () => {
+      userEvent.click(screen.getByText('admin'));
+    });
+
+    fireEvent.click(screen.getByTestId('cancel'));
+
+    fireEvent.click(screen.getByTestId('edit-roles-button'));
+
+    await act(async () => {
+      userEvent.click(selectInput);
+    });
+
+    expect(
+      screen.getByText('37a00e0b-383c-4451-b63f-0bad4c745abc')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('afc5583c-e268-4f6c-a638-a876d04ebaa1')
+    ).toBeInTheDocument();
+
+    expect(screen.queryByText('admin')).not.toBeInTheDocument();
   });
 });

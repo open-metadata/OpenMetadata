@@ -50,7 +50,7 @@ class ModeApiClient:
     def __init__(self, config):
         self.config = config
         client_config = ClientConfig(
-            base_url=config.hostPort,
+            base_url=str(config.hostPort),
             api_version="api",
             auth_header="Authorization",
             auth_token_mode="Basic",

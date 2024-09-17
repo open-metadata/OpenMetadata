@@ -16,6 +16,11 @@
           "type": "string",
           "description": "Application Name"
         },
+        "preview": {
+          "type": "boolean",
+          "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
+          "default": false
+        },
         "parameters": {
           "javaType": "org.openmetadata.schema.api.configuration.apps.Parameters",
           "description": "Parameters to initialize the Applications.",

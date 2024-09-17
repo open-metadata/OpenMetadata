@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.4.0-SNAPSHOT</version>
+    <version>1.6.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -15,6 +15,7 @@
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
     <!-- Don't upgrade from this version as tests don't work with later version-->
     <skipTests>false</skipTests>
+    <yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
   </properties>
 
   <profiles>
@@ -117,6 +118,7 @@
             </goals>
             <phase>prepare-package</phase>
             <configuration>
+              <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
               <arguments>install --frozen-lockfile</arguments>
             </configuration>
           </execution>
@@ -127,6 +129,7 @@
             </goals>
             <phase>prepare-package</phase>
             <configuration>
+              <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
               <skip>${skipTests}</skip>
               <arguments>run test</arguments>
             </configuration>
@@ -139,6 +142,7 @@
             <!-- optional: the default phase is "generate-resources" -->
             <phase>prepare-package</phase>
             <configuration>
+              <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
               <!-- optional: if not specified, it will run gulp's default task
                   (and you can remove this whole <configuration> section.) -->
               <arguments>run build</arguments>

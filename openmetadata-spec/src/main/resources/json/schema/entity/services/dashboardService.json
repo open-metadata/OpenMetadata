@@ -27,7 +27,8 @@
         "QuickSight",
         "QlikSense",
         "Lightdash",
-        "Mstr"
+        "Mstr",
+        "QlikCloud"
       ],
       "javaEnums": [
         {
@@ -68,6 +69,9 @@
         },
         {
           "name": "Mstr"
+        },
+        {
+          "name": "QlikCloud"
         }
       ]
     },
@@ -120,6 +124,9 @@
             },
             {
               "$ref": "./connections/dashboard/mstrConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/qlikCloudConnection.json"
             }
           ]
         }
@@ -171,9 +178,9 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this dashboard service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this dashboard service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "version": {
       "description": "Metadata version of the entity.",

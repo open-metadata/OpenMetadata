@@ -46,7 +46,7 @@
         padding-left: 18px;
         font-size: 12px;
         font-weight: 400;
-        color: @text-color-secondary;
+        color: @text-color;
         margin: 4px;
         li {
           margin: 0;
@@ -63,7 +63,7 @@
       }
 
       &:hover .ant-radio-inner {
-        background-color: @primary-color-hover;
+        background-color: @primary-1;
       }
 
       &.ant-radio-checked .ant-radio-inner::after {
@@ -72,4 +72,9 @@
       }
     }
   }
+}
+
+.tier-card-content {
+  max-height: 460px;
+  overflow-y: auto;
 }

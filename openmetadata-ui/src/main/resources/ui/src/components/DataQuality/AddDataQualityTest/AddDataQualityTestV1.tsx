@@ -26,11 +26,12 @@ import {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
-import { getTableTabPath } from '../../../constants/constants';
+import { getEntityDetailsPath } from '../../../constants/constants';
 import {
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
 } from '../../../constants/profiler.constant';
+import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
@@ -38,17 +39,18 @@ import { OwnerType } from '../../../enums/user.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   createExecutableTestSuite,
   createTestCase,
+  getTestSuiteByName,
 } from '../../../rest/testAPI';
 import {
   getEntityBreadcrumbs,
   getEntityName,
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -77,14 +79,16 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
+  const { getResourceLimit } = useLimitStore();
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = [
       ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
-        url: getTableTabPath(
+        url: getEntityDetailsPath(
+          EntityType.TABLE,
           table.fullyQualifiedName ?? '',
           EntityTabs.PROFILER
         ),
@@ -101,17 +105,20 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     return data;
   }, [table, fqn, isColumnFqn]);
 
-  const owner = useMemo(
-    () => ({
-      id: currentUser?.id ?? '',
-      type: OwnerType.USER,
-    }),
+  const owners = useMemo(
+    () => [
+      {
+        id: currentUser?.id ?? '',
+        type: OwnerType.USER,
+      },
+    ],
     [currentUser]
   );
 
   const handleRedirection = () => {
     history.push({
-      pathname: getTableTabPath(
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
         table.fullyQualifiedName ?? '',
         EntityTabs.PROFILER
       ),
@@ -123,7 +130,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     const testSuite = {
       name: `${table.fullyQualifiedName}.testSuite`,
       executableEntityReference: table.fullyQualifiedName,
-      owner,
+      owners,
     };
     const response = await createExecutableTestSuite(testSuite);
     setTestSuiteData(response);
@@ -131,8 +138,19 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     return response;
   };
 
+  const fetchTestSuiteByFqn = async (fqn: string) => {
+    try {
+      const response = await getTestSuiteByName(fqn);
+      setTestSuiteData(response);
+    } catch (error) {
+      setTestSuiteData(undefined);
+    }
+  };
+
   useEffect(() => {
-    setTestSuiteData(table.testSuite);
+    if (table.testSuite?.fullyQualifiedName) {
+      fetchTestSuiteByFqn(table.testSuite.fullyQualifiedName);
+    }
   }, [table.testSuite]);
 
   const handleFormSubmit = async (data: CreateTestCase) => {
@@ -145,11 +163,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
       const testCasePayload: CreateTestCase = {
         ...data,
-        owner,
+        owners,
         testSuite: testSuite?.fullyQualifiedName ?? '',
       };
 
       const testCaseResponse = await createTestCase(testCasePayload);
+      // Update current count when Create / Delete operation performed
+      await getResourceLimit('dataQuality', true, true);
       setActiveServiceStep(2);
       setTestCaseRes(testCaseResponse);
     } catch (error) {
@@ -258,7 +278,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div className="max-width-md w-9/10 service-form-container">
             <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -267,6 +289,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
                 <TestSuiteIngestion
                   testSuite={testSuiteData as TestSuite}
                   onCancel={() => setAddIngestion(false)}
+                  onViewServiceClick={handleRedirection}
                 />
               ) : (
                 <Row className="p-xs" gutter={[16, 16]}>
@@ -301,14 +324,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
+        className: 'p-md p-t-xl content-resizable-panel-container',
+        minWidth: 400,
         flex: 0.4,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.data-profiler-metrics'),
-          rotation: 'counter-clockwise',
-        },
       }}
     />
   );

@@ -25,9 +25,12 @@ jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
-jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     currentUser: mockUserData,
+    theme: {
+      primaryColor: '#00ff00',
+    },
   })),
 }));
 
@@ -42,6 +45,14 @@ jest.mock('../../../common/PopOverCard/UserPopOverCard', () => {
 jest.mock('../AppLogo/AppLogo.component', () =>
   jest.fn().mockImplementation(() => <>AppLogo</>)
 );
+
+jest.mock('../../../../constants/constants', () => ({
+  LIGHT_GREEN_COLOR: '#00ff00',
+}));
+
+jest.mock('../../../../utils/CommonUtils', () => ({
+  Transi18next: jest.fn().mockReturnValue('Transi18next'),
+}));
 
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();

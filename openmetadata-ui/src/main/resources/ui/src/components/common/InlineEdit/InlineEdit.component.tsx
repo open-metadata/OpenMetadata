@@ -23,12 +23,17 @@ const InlineEdit = ({
   direction,
   className,
   isLoading,
+  cancelButtonProps,
+  saveButtonProps,
 }: InlineEditProps) => {
   return (
     <Space
       className={classNames(className, 'w-full')}
       data-testid="inline-edit-container"
-      direction={direction}>
+      direction={direction}
+      // Used onClick to stop click propagation event anywhere in the component to parent
+      // TeamDetailsV1 and User.component collapsible panel.
+      onClick={(e) => e.stopPropagation()}>
       {children}
 
       <Space className="w-full justify-end" data-testid="buttons" size={4}>
@@ -39,6 +44,7 @@ const InlineEdit = ({
           size="small"
           type="primary"
           onClick={onCancel}
+          {...cancelButtonProps}
         />
         <Button
           data-testid="inline-save-btn"
@@ -47,6 +53,7 @@ const InlineEdit = ({
           size="small"
           type="primary"
           onClick={onSave}
+          {...saveButtonProps}
         />
       </Space>
     </Space>

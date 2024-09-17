@@ -31,9 +31,9 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
-    setIsSigningIn: jest.fn(),
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
+    setIsSigningUp: jest.fn(),
     newUser: {
       name: '',
       email: '',
@@ -106,6 +106,10 @@ describe('SignUp page', () => {
   });
 
   it('Handlers in forms for change and submit should work properly', async () => {
+    (createUser as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(undefined)
+    );
+
     render(<SignUp />);
     const form = screen.getByTestId('create-user-form');
     const fullNameInput = screen.getByTestId(
@@ -135,12 +139,8 @@ describe('SignUp page', () => {
     expect(userNameInput).toHaveValue(mockChangedFormData.userName);
     expect(emailInput).toHaveValue(mockChangedFormData.email);
 
-    fireEvent.click(submitButton);
-
     await act(async () => {
-      (createUser as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve(undefined)
-      );
+      fireEvent.click(submitButton);
     });
 
     expect(createUser as jest.Mock).toHaveBeenCalledTimes(1);
@@ -203,5 +203,14 @@ describe('SignUp page', () => {
     fireEvent.click(submitButton);
 
     expect(createUser as jest.Mock).toHaveBeenCalledTimes(0);
+  });
+
+  it('should have username as hidden field', async () => {
+    render(<SignUp />);
+
+    const usernameInput = screen.getByTestId('username-label');
+    usernameInput.parentElement?.parentElement;
+
+    expect(usernameInput.parentElement).toHaveClass('ant-form-item-hidden');
   });
 });

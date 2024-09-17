@@ -19,6 +19,14 @@
       ],
       "default": "PERCENTAGE"
     },
+    "samplingMethodType": {
+      "description": "Type of Sampling Method (BERNOULLI or SYSTEM)",
+      "type": "string",
+      "enum": [
+        "BERNOULLI",
+        "SYSTEM"
+      ]
+    },
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",
       "description": "This schema defines the type used for describing different types of tables.",
@@ -26,6 +34,7 @@
       "enum": [
         "Regular",
         "External",
+        "Dynamic",
         "View",
         "SecureView",
         "MaterializedView",
@@ -41,6 +50,9 @@
         },
         {
           "name": "External"
+        },
+        {
+          "name": "Dynamic"
         },
         {
           "name": "View"
@@ -150,7 +162,9 @@
         "QUANTILE_STATE",
         "AGG_STATE",
         "BITMAP",
-        "UINT"
+        "UINT",
+        "BIT",
+        "MONEY"
       ]
     },
     "constraint": {
@@ -207,28 +221,46 @@
       "maxLength": 256,
       "pattern": "^((?!::).)*$"
     },
+    "partitionIntervalTypes": {
+      "javaType": "org.openmetadata.schema.type.PartitionIntervalTypes",
+      "description": "type of partition interval",
+      "type": "string",
+      "enum": [
+        "TIME-UNIT",
+        "INTEGER-RANGE",
+        "INGESTION-TIME",
+        "COLUMN-VALUE",
+        "INJECTED",
+        "ENUM",
+        "OTHER"
+      ]
+    },
     "tablePartition": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.TablePartition",
       "description": "This schema defines the partition column of a table and format the partition is created.",
       "properties": {
         "columns": {
-          "description": "List of column names corresponding to the partition.",
+          "description": "List of column partitions with their type and interval.",
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/partitionColumnDetails"
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    "partitionColumnDetails": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.PartitionColumnDetails",
+      "description": "This schema defines the partition column of a table and format the partition is created.",
+      "properties": {
+        "columnName": {
+          "description": "List of column names corresponding to the partition.",
+          "type": "string"
         },
         "intervalType": {
-          "type": "string",
-          "description": "type of partition interval, example time-unit, integer-range",
-          "enum": [
-            "TIME-UNIT",
-            "INTEGER-RANGE",
-            "INGESTION-TIME",
-            "COLUMN-VALUE",
-            "OTHER"
-          ]
+          "$ref": "#/definitions/partitionIntervalTypes"
         },
         "interval": {
           "type": "string",
@@ -510,6 +542,9 @@
             },
             {
               "$ref": "../../type/basic.json#/definitions/date"
+            },
+            {
+              "type": "string"
             }
           ]
         },
@@ -530,6 +565,9 @@
             },
             {
               "$ref": "../../type/basic.json#/definitions/date"
+            },
+            {
+              "type": "string"
             }
           ]
         },
@@ -669,14 +707,7 @@
           "type": "string"
         },
         "partitionIntervalType": {
-          "description": "type of partition interval",
-          "type": "string",
-          "enum": [
-            "TIME-UNIT",
-            "INTEGER-RANGE",
-            "INGESTION-TIME",
-            "COLUMN-VALUE"
-          ]
+          "$ref": "#/definitions/partitionIntervalTypes"
         },
         "partitionInterval": {
           "description": "The interval to use for the partitioning",
@@ -713,16 +744,19 @@
       "javaType": "org.openmetadata.schema.type.TableProfilerConfig",
       "description": "This schema defines the type for Table profile config.",
       "properties": {
-        "profileSample": {
-          "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
-          "type": "number",
-          "default": null
-        },
         "profileSampleType": {
           "$ref": "#/definitions/profileSampleType"
         },
+        "profileSample": {
+          "description": "Percentage of data or no. of rows used to compute the profiler metrics and run data quality tests",
+          "type": "number",
+          "default": null
+        },
+        "samplingMethodType": {
+          "$ref": "#/definitions/samplingMethodType"
+        },
         "sampleDataCount": {
-          "description": "Number of row of sample data to be generated",
+          "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
           "type": "integer",
           "default": 50,
           "title": "Sample Data Rows Count"
@@ -771,6 +805,9 @@
         "profileSampleType": {
           "$ref": "#/definitions/profileSampleType"
         },
+        "samplingMethodType": {
+          "$ref": "#/definitions/samplingMethodType"
+        },
         "columnCount": {
           "description": "No.of columns in the table.",
           "type": "number"
@@ -803,18 +840,22 @@
       "additionalProperties": false
     },
     "modelType": {
-      "$comment": "Currently only DBT model type is supported",
+      "$comment": "Currently only DBT and DDL model type is supported",
       "enum": [
-        "DBT"
+        "DBT",
+        "DDL"
       ],
       "javaEnums": [
         {
           "name": "DBT"
+        },
+        {
+          "name": "DDL"
         }
       ]
     },
     "dataModel": {
-      "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
+      "description": "This captures information about how the table is modeled. Currently only DBT and DDL model is supported.",
       "type": "object",
       "javaType": "org.openmetadata.schema.type.DataModel",
       "properties": {
@@ -848,9 +889,9 @@
             "type": "string"
           }
         },
-        "owner": {
-          "description": "Owner of this Model.",
-          "$ref": "../../type/entityReference.json",
+        "owners": {
+          "description": "Owners of this Table.",
+          "$ref": "../../type/entityReferenceList.json",
           "default": null
         },
         "tags": {
@@ -874,15 +915,14 @@
         }
       },
       "required": [
-        "modelType",
-        "sql"
+        "modelType"
       ],
       "additionalProperties": false
     },
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "type": "string",
-      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip"]
+      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
     }
   },
   "properties": {
@@ -945,9 +985,9 @@
     "tablePartition": {
       "$ref": "#/definitions/tablePartition"
     },
-    "owner": {
-      "description": "Owner of this table.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this table.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "databaseSchema": {
@@ -970,8 +1010,8 @@
       "description": "Reference to the Location that contains this table.",
       "$ref": "../../type/entityReference.json"
     },
-    "viewDefinition": {
-      "description": "View Definition in SQL. Applies to TableType.View only.",
+    "schemaDefinition": {
+      "description": "DDL for Tables and Views",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
     },
     "tags": {
@@ -1020,7 +1060,7 @@
     },
     "testSuite": {
       "description": "Executable test suite associated with this table",
-      "$ref": "../../tests/testSuite.json"
+      "$ref": "../../type/entityReference.json"
     },
     "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
@@ -1048,7 +1088,7 @@
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "domain" : {
-      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
     "dataProducts" : {
@@ -1060,6 +1100,7 @@
       "$ref" : "#/definitions/fileFormat"
     },
     "votes" : {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "lifeCycle": {

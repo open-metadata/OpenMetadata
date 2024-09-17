@@ -13,6 +13,7 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { t } from 'i18next';
+import { isEmpty } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -26,6 +27,7 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
   Status,
@@ -50,6 +52,7 @@ import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/Asset
 import { GlossaryTabs } from '../GlossaryDetails/GlossaryDetails.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
+import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
 import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
@@ -57,7 +60,6 @@ import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
 
 const GlossaryTermsV1 = ({
   glossaryTerm,
-  childGlossaryTerms,
   handleGlossaryTermUpdate,
   handleGlossaryTermDelete,
   permissions,
@@ -76,11 +78,13 @@ const GlossaryTermsV1 = ({
   const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
   const assetTabRef = useRef<AssetsTabRef>(null);
-  const [assetModalVisible, setAssetModelVisible] = useState(false);
+  const [assetModalVisible, setAssetModalVisible] = useState(false);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
   const [assetCount, setAssetCount] = useState<number>(0);
+  const { glossaryChildTerms } = useGlossaryStore();
+  const childGlossaryTerms = glossaryChildTerms ?? [];
 
   const assetPermissions = useMemo(() => {
     const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
@@ -153,8 +157,8 @@ const GlossaryTermsV1 = ({
     [glossaryTerm, handleGlossaryTermUpdate]
   );
 
-  const onTermUpdate = async (data: GlossaryTerm) => {
-    await handleGlossaryTermUpdate(data);
+  const onTermUpdate = async (data: GlossaryTerm | Glossary) => {
+    await handleGlossaryTermUpdate(data as GlossaryTerm);
     getEntityFeedCount();
   };
 
@@ -165,12 +169,17 @@ const GlossaryTermsV1 = ({
         key: 'overview',
         children: (
           <GlossaryOverviewTab
+            editCustomAttributePermission={
+              !isVersionView &&
+              (permissions.EditAll || permissions.EditCustomFields)
+            }
             isGlossary={false}
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossaryTerm}
+            onExtensionUpdate={onExtensionUpdate}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={(data) => onTermUpdate(data as GlossaryTerm)}
+            onUpdate={onTermUpdate}
           />
         ),
       },
@@ -192,12 +201,10 @@ const GlossaryTermsV1 = ({
               key: 'terms',
               children: (
                 <GlossaryTermTab
-                  childGlossaryTerms={childGlossaryTerms}
                   className="p-md glossary-term-table-container"
                   isGlossary={false}
                   permissions={permissions}
                   refreshGlossaryTerms={refreshGlossaryTerms}
-                  selectedData={glossaryTerm}
                   termsLoading={termsLoading}
                   onAddGlossaryTerm={onAddGlossaryTerm}
                   onEditGlossaryTerm={onEditGlossaryTerm}
@@ -221,7 +228,7 @@ const GlossaryTermsV1 = ({
                   isSummaryPanelOpen={isSummaryPanelOpen}
                   permissions={assetPermissions}
                   ref={assetTabRef}
-                  onAddAsset={() => setAssetModelVisible(true)}
+                  onAddAsset={() => setAssetModalVisible(true)}
                   onAssetClick={onAssetClick}
                   onRemoveAsset={handleAssetSave}
                 />
@@ -241,6 +248,8 @@ const GlossaryTermsV1 = ({
                 <ActivityFeedTab
                   entityType={EntityType.GLOSSARY_TERM}
                   fqn={glossaryTerm.fullyQualifiedName ?? ''}
+                  hasGlossaryReviewer={!isEmpty(glossaryTerm.reviewers)}
+                  owners={glossaryTerm.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={refreshActiveGlossaryTerm}
                 />
@@ -291,7 +300,10 @@ const GlossaryTermsV1 = ({
   ]);
 
   useEffect(() => {
-    fetchGlossaryTermAssets();
+    // Adding manual wait for ES to update assets when glossary term is renamed
+    setTimeout(() => {
+      fetchGlossaryTermAssets();
+    }, 500);
     getEntityFeedCount();
   }, [glossaryFqn]);
 
@@ -332,9 +344,9 @@ const GlossaryTermsV1 = ({
             selectedData={{ ...glossaryTerm, displayName, name }}
             updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
-            onAssetAdd={() => setAssetModelVisible(true)}
+            onAssetAdd={() => setAssetModalVisible(true)}
             onDelete={handleGlossaryTermDelete}
-            onUpdate={(data) => onTermUpdate(data as GlossaryTerm)}
+            onUpdate={onTermUpdate}
           />
         </Col>
 
@@ -356,7 +368,7 @@ const GlossaryTermsV1 = ({
             glossaryTerm.fullyQualifiedName
           )}
           type={AssetsOfEntity.GLOSSARY}
-          onCancel={() => setAssetModelVisible(false)}
+          onCancel={() => setAssetModalVisible(false)}
           onSave={handleAssetSave}
         />
       )}

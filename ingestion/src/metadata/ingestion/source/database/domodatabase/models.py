@@ -15,18 +15,18 @@ Domo Database Source Model module
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DomoDatabaseBaseModel(BaseModel):
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     id: str
     name: str
 
 
 class User(DomoDatabaseBaseModel):
+    id: int
     email: str
     role: str
 
@@ -34,7 +34,7 @@ class User(DomoDatabaseBaseModel):
 class SchemaColumn(BaseModel):
     type: str
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
 
 
 class Schema(BaseModel):
@@ -49,6 +49,6 @@ class Owner(DomoDatabaseBaseModel):
 class OutputDataset(DomoDatabaseBaseModel):
     rows: int
     columns: int
-    schemas: Optional[Schema] = Field(alias="schema")
+    schemas: Optional[Schema] = Field(None, alias="schema")
     owner: Owner
-    description: Optional[str]
+    description: Optional[str] = None

@@ -12,26 +12,34 @@
 """
 Source connection handler
 """
+from functools import partial
 from typing import Optional
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.sql import text
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
-    SslMode,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_url_common,
-    init_empty_connection_arguments,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    execute_inspector_func,
+    test_connection_engine_step,
+    test_connection_steps,
+    test_query,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import kill_active_connections
 from metadata.ingestion.source.database.redshift.queries import (
+    REDSHIFT_GET_ALL_RELATIONS,
     REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_TEST_GET_QUERIES,
     REDSHIFT_TEST_PARTITION_DETAILS,
@@ -42,14 +50,6 @@ def get_connection(connection: RedshiftConnection) -> Engine:
     """
     Create connection
     """
-    if connection.sslMode:
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["sslmode"] = connection.sslMode.value
-        if connection.sslMode in (SslMode.verify_ca, SslMode.verify_full):
-            connection.connectionArguments.__root__[
-                "sslrootcert"
-            ] = connection.sslConfig.__root__.certificatePath
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,
@@ -67,15 +67,40 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    queries = {
-        "GetQueries": REDSHIFT_TEST_GET_QUERIES,
-        "GetDatabases": REDSHIFT_GET_DATABASE_NAMES,
-        "GetPartitionTableDetails": REDSHIFT_TEST_PARTITION_DETAILS,
-    }
-    test_connection_db_common(
-        metadata=metadata,
-        engine=engine,
-        service_connection=service_connection,
-        automation_workflow=automation_workflow,
-        queries=queries,
+    table_and_view_query = text(
+        REDSHIFT_GET_ALL_RELATIONS.format(
+            schema_clause="", table_clause="", limit_clause="LIMIT 1"
+        )
     )
+
+    def test_get_queries_permissions(engine_: Engine):
+        """Check if we have the right permissions to list queries"""
+        with engine_.connect() as conn:
+            res = conn.execute(REDSHIFT_TEST_GET_QUERIES).fetchone()
+            if not all(res):
+                raise SourceConnectionException(
+                    f"We don't have the right permissions to list queries - {res}"
+                )
+
+    test_fn = {
+        "CheckAccess": partial(test_connection_engine_step, engine),
+        "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
+        "GetTables": partial(test_query, statement=table_and_view_query, engine=engine),
+        "GetViews": partial(test_query, statement=table_and_view_query, engine=engine),
+        "GetQueries": partial(test_get_queries_permissions, engine),
+        "GetDatabases": partial(
+            test_query, statement=REDSHIFT_GET_DATABASE_NAMES, engine=engine
+        ),
+        "GetPartitionTableDetails": partial(
+            test_query, statement=REDSHIFT_TEST_PARTITION_DETAILS, engine=engine
+        ),
+    }
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )
+
+    kill_active_connections(engine)

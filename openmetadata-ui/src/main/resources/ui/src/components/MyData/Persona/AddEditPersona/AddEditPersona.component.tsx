@@ -20,7 +20,7 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
+import { NAME_FIELD_RULES } from '../../../../constants/Form.constants';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import { EntityReference } from '../../../../generated/entity/type';
 import {
@@ -55,12 +55,13 @@ export const AddEditPersonaForm = ({
         const { users } = data;
 
         const usersList = users?.map((u) => u.id) ?? [];
+        const domain = data.domain?.fullyQualifiedName;
         if (persona && isEditMode) {
           const jsonPatch = compare(persona, data);
 
           await updatePersona(persona?.id, jsonPatch);
         } else {
-          await createPersona({ ...data, users: usersList });
+          await createPersona({ ...data, users: usersList, domain });
         }
         onSave();
       } catch (error) {
@@ -85,12 +86,7 @@ export const AddEditPersonaForm = ({
           autoComplete: 'off',
         },
         placeholder: t('label.name'),
-        rules: [
-          {
-            pattern: ENTITY_NAME_REGEX,
-            message: t('message.custom-property-name-validation'),
-          },
-        ],
+        rules: NAME_FIELD_RULES,
       },
       {
         name: 'displayName',

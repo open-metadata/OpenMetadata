@@ -9,39 +9,48 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenSchemaField;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 public class TopicIndex implements SearchIndex {
-  final List<String> excludeTopicFields =
-      List.of("sampleData", "changeDescription", "messageSchema");
+  final Set<String> excludeTopicFields = Set.of("sampleData");
   final Topic topic;
 
   public TopicIndex(Topic topic) {
     this.topic = topic;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(topic);
+  @Override
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
+    suggest.add(SearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
+    suggest.add(SearchSuggest.builder().input(topic.getName()).weight(10).build());
+    return suggest;
+  }
+
+  @Override
+  public Object getEntity() {
+    return topic;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return excludeTopicFields;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> fieldSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> fieldsWithChildrenName = new ArrayList<>();
-    suggest.add(SearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(topic.getName()).weight(10).build());
     serviceSuggest.add(
         SearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeTopicFields);
 
     if (topic.getMessageSchema() != null
         && topic.getMessageSchema().getSchemaFields() != null
@@ -65,30 +74,18 @@ public class TopicIndex implements SearchIndex {
         tagsWithChildren.stream()
             .flatMap(List::stream)
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    Map<String, Object> commonAttributes = getCommonAttributesMap(topic, Entity.TOPIC);
+    doc.putAll(commonAttributes);
     doc.put(
         "displayName", topic.getDisplayName() != null ? topic.getDisplayName() : topic.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
-    doc.put("followers", SearchIndexUtils.parseFollowers(topic.getFollowers()));
-    doc.put("suggest", suggest);
     doc.put("field_suggest", fieldSuggest);
     doc.put("service_suggest", serviceSuggest);
-    doc.put("entityType", Entity.TOPIC);
     doc.put("serviceType", topic.getServiceType());
     doc.put("lineage", SearchIndex.getLineageData(topic.getEntityReference()));
-    doc.put(
-        "totalVotes",
-        CommonUtil.nullOrEmpty(topic.getVotes())
-            ? 0
-            : topic.getVotes().getUpVotes() - topic.getVotes().getDownVotes());
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            topic.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("owner", getEntityWithDisplayName(topic.getOwner()));
     doc.put("service", getEntityWithDisplayName(topic.getService()));
-    doc.put("domain", getEntityWithDisplayName(topic.getDomain()));
     return doc;
   }
 

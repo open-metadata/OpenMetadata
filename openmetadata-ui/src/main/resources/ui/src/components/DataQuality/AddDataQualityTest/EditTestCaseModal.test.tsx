@@ -26,6 +26,12 @@ const mockProps: EditTestCaseModalProps = {
   onUpdate: jest.fn(),
 };
 
+jest.mock('../../../utils/DataQuality/DataQualityUtils', () => {
+  return {
+    createTestCaseParameters: jest.fn().mockImplementation(() => []),
+  };
+});
+
 jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
@@ -36,6 +42,9 @@ jest.mock('./components/ParameterForm', () => {
 });
 jest.mock('../../../rest/testAPI', () => {
   return {
+    getTestCaseByFqn: jest
+      .fn()
+      .mockImplementation(() => Promise.resolve(MOCK_TEST_CASE[0])),
     getTestDefinitionById: jest
       .fn()
       .mockImplementation(() =>
@@ -91,7 +100,7 @@ describe('EditTestCaseModal Component', () => {
       'column_values_to_match_regex'
     );
     expect(await screen.findByLabelText('label.test-entity')).toHaveValue(
-      'columnValuesToMatchRegex'
+      'Column Values To Match Regex Pattern'
     );
   });
 
@@ -125,5 +134,19 @@ describe('EditTestCaseModal Component', () => {
 
     expect(displayName).toBeInTheDocument();
     expect(displayName).toHaveValue(MOCK_TEST_CASE[0].displayName);
+  });
+
+  it('Should not show parameter if useDynamicAssertion is true', async () => {
+    render(
+      <EditTestCaseModal
+        {...mockProps}
+        testCase={{
+          ...MOCK_TEST_CASE[0],
+          useDynamicAssertion: true,
+        }}
+      />
+    );
+
+    expect(screen.queryByText('ParameterForm.component')).toBeNull();
   });
 });

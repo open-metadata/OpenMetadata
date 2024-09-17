@@ -12,18 +12,20 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Col, Drawer, Row, Space, Typography } from 'antd';
+import { Button, Col, Drawer, Row, Space, Tooltip, Typography } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
 import { DE_ACTIVE_COLOR, getUserPath } from '../../../../constants/constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import Description from '../../../common/EntityDescription/Description';
+import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import Loader from '../../../common/Loader/Loader';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import TagsInput from '../../../TagsInput/TagsInput.component';
@@ -36,16 +38,16 @@ const TableQueryRightPanel = ({
   permission,
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
-  const { EditAll, EditDescription, EditOwner, EditTags } = permission;
+  const { EditAll, EditDescription, EditOwners, EditTags } = permission;
 
   const [isEditDescription, setIsEditDescription] = useState(false);
 
-  const handleUpdateOwner = async (owner: Query['owner']) => {
+  const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
       ...query,
-      owner,
+      owners,
     };
-    await onQueryUpdate(updatedData, 'owner');
+    await onQueryUpdate(updatedData, 'owners');
   };
 
   const onDescriptionUpdate = async (description: string) => {
@@ -79,7 +81,7 @@ const TableQueryRightPanel = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <Row className="m-y-md p-x-md" gutter={[16, 40]}>
+        <Row className="m-y-md p-x-md w-full" gutter={[16, 40]}>
           <Col span={24}>
             <Space className="relative" direction="vertical" size={4}>
               <Space align="center" className="w-full" size={0}>
@@ -87,70 +89,42 @@ const TableQueryRightPanel = ({
                   {t('label.owner')}
                 </Typography.Text>
 
-                {(EditAll || EditOwner) && (
+                {(EditAll || EditOwners) && (
                   <UserTeamSelectableList
-                    hasPermission={EditAll || EditOwner}
-                    owner={query.owner}
-                    onUpdate={handleUpdateOwner}>
-                    <Button
-                      className="cursor-pointer flex-center"
-                      data-testid="edit-owner"
-                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                      size="small"
-                      type="text"
-                    />
+                    hasPermission={EditAll || EditOwners}
+                    multiple={{ user: true, team: false }}
+                    owner={query.owners}
+                    onUpdate={(updatedUsers) =>
+                      handleUpdateOwner(updatedUsers)
+                    }>
+                    <Tooltip
+                      title={t('label.edit-entity', {
+                        entity: t('label.owner-lowercase'),
+                      })}>
+                      <Button
+                        className="cursor-pointer flex-center"
+                        data-testid="edit-owner"
+                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                        size="small"
+                        type="text"
+                      />
+                    </Tooltip>
                   </UserTeamSelectableList>
                 )}
               </Space>
-              <div data-testid="owner-name-container">
-                {query.owner && getEntityName(query.owner) ? (
-                  <Space className="m-r-xss" size={4}>
-                    <ProfilePicture
-                      displayName={getEntityName(query.owner)}
-                      name={query.owner?.name || ''}
-                      width="20"
-                    />
-                    <Link
-                      data-testid="owner-link"
-                      to={getUserPath(query.owner.name ?? '')}>
-                      {getEntityName(query.owner)}
-                    </Link>
-                  </Space>
-                ) : (
-                  <span className="text-grey-muted">
-                    {t('label.no-entity', {
-                      entity: t('label.owner-lowercase'),
-                    })}
-                  </span>
-                )}
-              </div>
+              <OwnerLabel hasPermission={false} owners={query.owners} />
             </Space>
           </Col>
           <Col span={24}>
             <Space direction="vertical" size={4}>
-              <Space align="center" size={0}>
-                <Typography.Text className="right-panel-label">
-                  {t('label.description')}
-                </Typography.Text>
-
-                {(EditDescription || EditAll) && (
-                  <Button
-                    className="flex-center p-0"
-                    data-testid="edit-description-btn"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                    onClick={() => setIsEditDescription(true)}
-                  />
-                )}
-              </Space>
-              <Description
+              <DescriptionV1
                 description={query?.description || ''}
-                header={t('label.edit-entity', {
-                  entity: t('label.description'),
-                })}
+                entityType={EntityType.QUERY}
+                hasEditAccess={EditDescription || EditAll}
                 isEdit={isEditDescription}
+                showCommentsIcon={false}
                 onCancel={() => setIsEditDescription(false)}
+                onDescriptionEdit={() => setIsEditDescription(true)}
                 onDescriptionUpdate={onDescriptionUpdate}
               />
             </Space>
@@ -176,7 +150,6 @@ const TableQueryRightPanel = ({
                       <ProfilePicture
                         displayName={getEntityName(user)}
                         name={user.name || ''}
-                        textClass="text-xs"
                         width="20"
                       />
                       <Link to={getUserPath(user.name ?? '')}>

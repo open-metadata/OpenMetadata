@@ -48,9 +48,10 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/Settings/Applications/AppDetails/ApplicationSchemaClassBase',
+  '../../components/Settings/Applications/AppDetails/ApplicationsClassBase',
   () => ({
     importSchema: jest.fn().mockResolvedValue({}),
+    getJSONUISchema: jest.fn().mockReturnValue({}),
   })
 );
 
@@ -187,7 +188,7 @@ describe('AppInstall component', () => {
     );
 
     // will call for Submit TestSuiteScheduler and Cancel AppInstallVerifyCard
-    expect(mockPush).toHaveBeenCalledTimes(2);
+    expect(mockPush).toHaveBeenCalledTimes(1);
   });
 
   it('actions check with allowConfiguration', async () => {

@@ -16,6 +16,9 @@ from typing import List, Optional
 
 from sqlalchemy.orm import DeclarativeMeta
 
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    ProfilerConfiguration,
+)
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -73,9 +76,13 @@ class DefaultProfiler(Profiler):
         profiler_interface: ProfilerInterface,
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
+        global_profiler_configuration: Optional[ProfilerConfiguration] = None,
+        db_service=None,
     ):
         _metrics = get_default_metrics(
-            table=profiler_interface.table, ometa_client=profiler_interface.ometa_client
+            table=profiler_interface.table,
+            ometa_client=profiler_interface.ometa_client,
+            db_service=db_service,
         )
 
         super().__init__(
@@ -83,4 +90,5 @@ class DefaultProfiler(Profiler):
             profiler_interface=profiler_interface,
             include_columns=include_columns,
             exclude_columns=exclude_columns,
+            global_profiler_configuration=global_profiler_configuration,
         )

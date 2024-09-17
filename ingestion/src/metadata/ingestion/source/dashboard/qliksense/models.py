@@ -19,7 +19,8 @@ from pydantic import BaseModel
 
 
 class QlikDashboardMeta(BaseModel):
-    description: Optional[str]
+    description: Optional[str] = None
+    published: Optional[bool] = None
 
 
 class QlikDashboard(BaseModel):
@@ -43,8 +44,8 @@ class QlikSheetInfo(BaseModel):
 
 
 class QlikSheetMeta(BaseModel):
-    title: Optional[str]
-    description: Optional[str]
+    title: Optional[str] = None
+    description: Optional[str] = None
 
 
 class QlikSheet(BaseModel):
@@ -70,8 +71,8 @@ class QlikSheetResult(BaseModel):
 
 # datamodel models
 class QlikFields(BaseModel):
-    name: Optional[str]
-    id: Optional[str]
+    name: Optional[str] = None
+    id: Optional[str] = None
 
 
 class QlikTableConnectionProp(BaseModel):
@@ -79,8 +80,8 @@ class QlikTableConnectionProp(BaseModel):
 
 
 class QlikTable(BaseModel):
-    tableName: Optional[str]
-    id: Optional[str]
+    tableName: Optional[str] = None
+    id: Optional[str] = None
     connectorProperties: Optional[QlikTableConnectionProp] = QlikTableConnectionProp()
     fields: Optional[List[QlikFields]] = []
 

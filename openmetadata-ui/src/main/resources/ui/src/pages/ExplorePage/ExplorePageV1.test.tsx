@@ -32,15 +32,20 @@ jest.mock('../../components/ExploreV1/ExploreV1.component', () => {
   return jest.fn().mockReturnValue(<p>ExploreV1</p>);
 });
 
-jest.mock('../../context/GlobalSearchProvider/GlobalSearchProvider', () => ({
-  useGlobalSearchProvider: jest.fn().mockImplementation(() => ({
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
   })),
 }));
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => ({ pathname: 'pathname', search: '' }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
-  useLocation: jest.fn().mockReturnValue({ pathname: 'pathname', search: '' }),
   useParams: jest.fn().mockImplementation(() => {
     return {
       tab: 'tables',

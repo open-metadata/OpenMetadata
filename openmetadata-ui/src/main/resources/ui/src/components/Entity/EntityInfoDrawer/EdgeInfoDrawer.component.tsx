@@ -21,10 +21,15 @@ import { Node } from 'reactflow';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getLineageDetailsObject } from '../../../utils/EntityLineageUtils';
+import {
+  getColumnSourceTargetHandles,
+  getLineageDetailsObject,
+} from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Loader from '../../common/Loader/Loader';
@@ -58,7 +63,10 @@ const EdgeInfoDrawer = ({
   }, [edge]);
 
   const getEdgeInfo = () => {
-    const { source, target, data, sourceHandle, targetHandle } = edge;
+    const { source, target, data } = edge;
+    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    const { pipeline, pipelineEntityType } = data?.edge ?? {};
+
     let sourceData: Node | undefined, targetData: Node | undefined;
     nodes.forEach((node) => {
       if (source === node.id) {
@@ -68,16 +76,23 @@ const EdgeInfoDrawer = ({
       }
     });
 
+    const {
+      entityType: sourceEntityType = '',
+      fullyQualifiedName: sourceFqn = '',
+    } = sourceData?.data?.node ?? {};
+
+    const {
+      entityType: targetEntityType = '',
+      fullyQualifiedName: targetFqn = '',
+    } = targetData?.data?.node ?? {};
+
     setEdgeData({
       sourceData: {
         key: t('label.source'),
         value: sourceData && getEntityName(sourceData?.data?.node),
         link:
           sourceData &&
-          entityUtilClassBase.getEntityLink(
-            data.sourceType,
-            sourceData.data.node.fullyQualifiedName
-          ),
+          entityUtilClassBase.getEntityLink(sourceEntityType, sourceFqn),
       },
       sourceColumn: {
         key: t('label.source-column'),
@@ -88,10 +103,7 @@ const EdgeInfoDrawer = ({
         value: targetData ? getEntityName(targetData?.data?.node) : undefined,
         link:
           targetData &&
-          entityUtilClassBase.getEntityLink(
-            data.targetData,
-            targetData.data.node.fullyQualifiedName
-          ),
+          entityUtilClassBase.getEntityLink(targetEntityType, targetFqn),
       },
       targetColumn: {
         key: t('label.target-column'),
@@ -99,14 +111,12 @@ const EdgeInfoDrawer = ({
       },
       pipeline: {
         key: t('label.edge'),
-        value: data?.edge?.pipeline
-          ? getEntityName(data?.edge?.pipeline)
-          : undefined,
+        value: pipeline ? getEntityName(pipeline) : undefined,
         link:
-          data?.edge?.pipeline &&
+          pipeline &&
           entityUtilClassBase.getEntityLink(
-            data?.edge?.pipeline.type,
-            data?.edge?.pipeline.fullyQualifiedName
+            pipelineEntityType,
+            pipeline.fullyQualifiedName
           ),
       },
       functionInfo: {
@@ -224,7 +234,7 @@ const EdgeInfoDrawer = ({
               <DescriptionV1
                 description={edgeDescription}
                 entityName="Edge"
-                entityType={EntityType.GLOSSARY}
+                entityType={EntityType.LINEAGE_EDGE}
                 hasEditAccess={hasEditAccess}
                 isEdit={isDescriptionEditable}
                 showCommentsIcon={false}
@@ -265,6 +275,15 @@ const EdgeInfoDrawer = ({
                   {t('server.no-query-available')}
                 </Typography.Paragraph>
               )}
+            </Col>
+            <Col>
+              <Divider />
+              <Typography.Paragraph className="right-panel-label m-b-sm">
+                {`${t('label.lineage-source')}`}
+              </Typography.Paragraph>
+              <Typography.Text className="m-b-0">
+                {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
+              </Typography.Text>
             </Col>
           </Row>
         )}

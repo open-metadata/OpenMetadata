@@ -23,6 +23,7 @@ import {
   LabelType,
   State,
   TagSource,
+  TypeEnum,
 } from '../generated/entity/services/databaseService';
 import {
   MessagingService,
@@ -79,7 +80,7 @@ export const MOCK_DATABASE_SERVICE: DatabaseService = {
       hostPort: 'localhost:1234',
       credentials: {
         gcpConfig: {
-          type: 'service_account',
+          type: TypeEnum.ServiceAccount,
           projectId: ['projectID'],
           privateKeyId: 'privateKeyId',
           privateKey: '*********',
@@ -340,15 +341,17 @@ export const MOCK_METADATA_SERVICE: MetadataService = {
   updatedAt: 1698077526246,
   updatedBy: 'mayur',
   tags: [],
-  owner: {
-    id: '7a12b462-36c7-488a-b4c2-9756918704cb',
-    type: 'user',
-    name: 'mayur',
-    fullyQualifiedName: 'mayur',
-    displayName: 'Mayur Singal',
-    deleted: false,
-    href: 'http://sandbox-beta.open-metadata.org/api/v1/users/7a12b462-36c7-488a-b4c2-9756918704cb',
-  },
+  owners: [
+    {
+      id: '7a12b462-36c7-488a-b4c2-9756918704cb',
+      type: 'user',
+      name: 'mayur',
+      fullyQualifiedName: 'mayur',
+      displayName: 'Mayur Singal',
+      deleted: false,
+      href: 'http://sandbox-beta.open-metadata.org/api/v1/users/7a12b462-36c7-488a-b4c2-9756918704cb',
+    },
+  ],
   href: 'http://sandbox-beta.open-metadata.org/api/v1/services/databaseServices/9b09f404-7713-4f04-b7db-95111bac0c59',
   changeDescription: {
     fieldsAdded: [],

@@ -66,14 +66,15 @@ test_suite_config = {
                     "name": "my_test_case",
                     "testDefinitionName": "tableColumnCountToBeBetween",
                     "parameterValues": [
-                        {"name": "minColValue", "value": 1},
-                        {"name": "maxColValue", "value": 5},
+                        {"name": "minColValue", "value": "1"},
+                        {"name": "maxColValue", "value": "5"},
                     ],
                 },
                 {
-                    "name": "table_column_name_to_exists",
-                    "testDefinitionName": "tableColumnNameToExist",
-                    "parameterValues": [{"name": "columnName", "value": "id"}],
+                    "name": "table_column_to_be_not_null",
+                    "testDefinitionName": "columnValuesToBeNotNull",
+                    "columnName": "id",
+                    "computePassedFailedRowCount": True,
                 },
             ],
         },
@@ -94,7 +95,16 @@ Base = declarative_base()
 
 
 class User(Base):
-    __tablename__ = ("users",)
+    __tablename__ = "users"
+    id = sqa.Column(sqa.Integer, primary_key=True)
+    name = sqa.Column(sqa.String(256))
+    fullname = sqa.Column(sqa.String(256))
+    nickname = sqa.Column(sqa.String(256))
+    age = sqa.Column(sqa.Integer)
+
+
+class EmptyUser(Base):
+    __tablename__ = "empty_users"
     id = sqa.Column(sqa.Integer, primary_key=True)
     name = sqa.Column(sqa.String(256))
     fullname = sqa.Column(sqa.String(256))
@@ -106,7 +116,7 @@ class TestE2EWorkflow(unittest.TestCase):
     """e2e test for the workflow"""
 
     metadata = OpenMetadata(
-        OpenMetadataConnection.parse_obj(
+        OpenMetadataConnection.model_validate(
             test_suite_config["workflowConfig"]["openMetadataServerConfig"]
         )
     )
@@ -159,11 +169,25 @@ class TestE2EWorkflow(unittest.TestCase):
                 databaseSchema=database_schema.fullyQualifiedName,
             )
         )
+        cls.metadata.create_or_update(
+            CreateTableRequest(
+                name="empty_users",
+                columns=[
+                    Column(name="id", dataType=DataType.INT),
+                    Column(name="name", dataType=DataType.STRING),
+                    Column(name="fullname", dataType=DataType.STRING),
+                    Column(name="nickname", dataType=DataType.STRING),
+                    Column(name="age", dataType=DataType.INT),
+                ],
+                databaseSchema=database_schema.fullyQualifiedName,
+            )
+        )
 
         engine = sqa.create_engine(f"sqlite:///{cls.sqlite_conn.config.databaseMode}")
         session = Session(bind=engine)
 
         User.__table__.create(bind=engine)
+        EmptyUser.__table__.create(bind=engine)
 
         for _ in range(10):
             data = [
@@ -197,7 +221,7 @@ class TestE2EWorkflow(unittest.TestCase):
         service_db_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test_suite_service_test"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -212,38 +236,64 @@ class TestE2EWorkflow(unittest.TestCase):
 
     def test_e2e_cli_workflow(self):
         """test cli workflow e2e"""
-        workflow = TestSuiteWorkflow.create(test_suite_config)
-        workflow.execute()
-        workflow.raise_from_status()
+        parameters = [
+            {"table_name": "users", "status": "Success"},
+            {"table_name": "empty_users", "status": "Success"},
+        ]
 
-        test_case_1 = self.metadata.get_by_name(
-            entity=TestCase,
-            fqn="test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case",
-            fields=["testDefinition", "testSuite"],
-        )
-        test_case_2 = self.metadata.get_by_name(
-            entity=TestCase,
-            fqn="test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists",
-            fields=["testDefinition", "testSuite"],
-        )
+        for param in parameters:
+            with self.subTest(param=param):
+                table_name = param["table_name"]
+                status = param["status"]
+                test_suite_config["source"]["sourceConfig"]["config"].update(
+                    {
+                        "entityFullyQualifiedName": f"test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
+                    }
+                )
 
-        assert test_case_1
-        assert test_case_2
+                workflow = TestSuiteWorkflow.create(test_suite_config)
+                workflow.execute()
+                workflow.raise_from_status()
 
-        test_case_result_1 = self.metadata.client.get(
-            "/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case/testCaseResult",
-            data={
-                "startTs": int((datetime.now() - timedelta(days=3)).timestamp()),
-                "endTs": int((datetime.now() + timedelta(days=3)).timestamp()),
-            },
-        )
-        test_case_result_2 = self.metadata.client.get(
-            "/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists/testCaseResult",
-            data={
-                "startTs": int((datetime.now() - timedelta(days=3)).timestamp()),
-                "endTs": int((datetime.now() + timedelta(days=3)).timestamp()),
-            },
-        )
+                test_case_1 = self.metadata.get_by_name(
+                    entity=TestCase,
+                    fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}.my_test_case",
+                    fields=["testDefinition", "testSuite"],
+                )
+                test_case_2 = self.metadata.get_by_name(
+                    entity=TestCase,
+                    fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}.id.table_column_to_be_not_null",
+                    fields=["testDefinition", "testSuite"],
+                )
 
-        assert test_case_result_1
-        assert test_case_result_2
+                assert test_case_1
+                assert test_case_2
+
+                test_case_result_1 = self.metadata.client.get(
+                    f"/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
+                    ".my_test_case/testCaseResult",
+                    data={
+                        "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
+                        * 1000,
+                        "endTs": int((datetime.now() + timedelta(days=3)).timestamp())
+                        * 1000,
+                    },
+                )
+                test_case_result_2 = self.metadata.client.get(
+                    f"/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
+                    ".id.table_column_to_be_not_null/testCaseResult",
+                    data={
+                        "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
+                        * 1000,
+                        "endTs": int((datetime.now() + timedelta(days=3)).timestamp())
+                        * 1000,
+                    },
+                )
+
+                data_test_case_result_1: dict = test_case_result_1.get("data")  # type: ignore
+                data_test_case_result_2: dict = test_case_result_2.get("data")  # type: ignore
+
+                assert data_test_case_result_1
+                assert data_test_case_result_1[0]["testCaseStatus"] == "Success"
+                assert data_test_case_result_2
+                assert data_test_case_result_2[0]["testCaseStatus"] == status

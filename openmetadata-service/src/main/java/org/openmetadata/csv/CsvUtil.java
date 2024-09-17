@@ -35,6 +35,8 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 public final class CsvUtil {
   public static final String SEPARATOR = ",";
   public static final String FIELD_SEPARATOR = ";";
+
+  public static final String ENTITY_TYPE_SEPARATOR = ":";
   public static final String LINE_SEPARATOR = "\r\n";
 
   private CsvUtil() {
@@ -84,7 +86,12 @@ public final class CsvUtil {
 
   public static List<String> fieldToStrings(String field) {
     // Split a field that contains multiple strings separated by FIELD_SEPARATOR
-    return field == null ? null : listOf(field.split(FIELD_SEPARATOR));
+    return field == null || field.isBlank() ? null : listOf(field.split(FIELD_SEPARATOR));
+  }
+
+  public static List<String> fieldToEntities(String field) {
+    // Split a field that contains multiple strings separated by FIELD_SEPARATOR
+    return field == null ? null : listOf(field.split(ENTITY_TYPE_SEPARATOR));
   }
 
   public static String quote(String field) {
@@ -132,16 +139,64 @@ public final class CsvUtil {
     csvRecord.add(
         nullOrEmpty(tags)
             ? null
-            : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(FIELD_SEPARATOR)));
+            : tags.stream()
+                .filter(
+                    tagLabel ->
+                        tagLabel.getSource().equals(TagLabel.TagSource.CLASSIFICATION)
+                            && !tagLabel.getTagFQN().split("\\.")[0].equals("Tier")
+                            && !tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED))
+                .map(TagLabel::getTagFQN)
+                .collect(Collectors.joining(FIELD_SEPARATOR)));
+
     return csvRecord;
   }
 
-  public static void addOwner(List<String> csvRecord, EntityReference owner) {
-    csvRecord.add(nullOrEmpty(owner) ? null : owner.getType() + FIELD_SEPARATOR + owner.getName());
+  public static List<String> addGlossaryTerms(List<String> csvRecord, List<TagLabel> tags) {
+    csvRecord.add(
+        nullOrEmpty(tags)
+            ? null
+            : tags.stream()
+                .filter(
+                    tagLabel ->
+                        tagLabel.getSource().equals(TagLabel.TagSource.GLOSSARY)
+                            && !tagLabel.getTagFQN().split("\\.")[0].equals("Tier"))
+                .map(TagLabel::getTagFQN)
+                .collect(Collectors.joining(FIELD_SEPARATOR)));
+
+    return csvRecord;
   }
 
-  public static void addUserOwner(List<String> csvRecord, EntityReference owner) {
-    csvRecord.add(nullOrEmpty(owner) ? null : owner.getName());
+  public static List<String> addTagTiers(List<String> csvRecord, List<TagLabel> tags) {
+    csvRecord.add(
+        nullOrEmpty(tags)
+            ? null
+            : tags.stream()
+                .filter(
+                    tagLabel ->
+                        tagLabel.getSource().equals(TagLabel.TagSource.CLASSIFICATION)
+                            && tagLabel.getTagFQN().split("\\.")[0].equals("Tier"))
+                .map(TagLabel::getTagFQN)
+                .collect(Collectors.joining(FIELD_SEPARATOR)));
+
+    return csvRecord;
+  }
+
+  public static void addOwners(List<String> csvRecord, List<EntityReference> owners) {
+    csvRecord.add(
+        nullOrEmpty(owners)
+            ? null
+            : owners.stream()
+                .map(owner -> (owner.getType() + ENTITY_TYPE_SEPARATOR + owner.getName()))
+                .collect(Collectors.joining(FIELD_SEPARATOR)));
+  }
+
+  public static void addReviewers(List<String> csvRecord, List<EntityReference> reviewers) {
+    csvRecord.add(
+        nullOrEmpty(reviewers)
+            ? null
+            : reviewers.stream()
+                .map(reviewer -> (reviewer.getType() + ENTITY_TYPE_SEPARATOR + reviewer.getName()))
+                .collect(Collectors.joining(FIELD_SEPARATOR)));
   }
 
   private static String quoteCsvField(String str) {

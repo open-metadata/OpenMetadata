@@ -53,10 +53,10 @@ const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
         {t('label.table-constraints')}
       </Typography.Text>
       {supportedConstraints.map(
-        ({ constraintType, columns, referredColumns }) => {
+        ({ constraintType, columns, referredColumns }, index) => {
           if (constraintType === ConstraintType.PrimaryKey) {
             return (
-              <div className="d-flex constraint-columns">
+              <div className="d-flex constraint-columns" key={index}>
                 <Space
                   className="constraint-icon-container"
                   direction="vertical"
@@ -85,7 +85,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
           }
           if (constraintType === ConstraintType.ForeignKey) {
             return (
-              <Space className="constraint-columns">
+              <Space className="constraint-columns" key={index}>
                 <ForeignKeyConstraint />
                 <Space direction="vertical" size={16}>
                   <Typography.Text>{columns?.join(', ')}</Typography.Text>

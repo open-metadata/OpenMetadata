@@ -328,15 +328,6 @@
     ],
     "supportedActions" : [
       {
-        "name": "GetTestCaseSchemaChanges",
-        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
-        "displayName": "Get Schema Changes",
-        "description" : "Get Updates for Schema Changes",
-        "effect" : "include",
-        "condition": "matchAnyFieldChange({'testDefinition','parameterValues','description'})",
-        "inputType": "none"
-      },
-      {
         "name": "GetTestCaseStatusUpdates",
         "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdates",
         "displayName": "Get Test Case Status Updates",
@@ -345,6 +336,19 @@
         "condition": "matchTestResult(${testResultList})",
         "arguments": [
           "testResultList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "GetTestCaseStatusUpdatesUnderSuite",
+        "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdatesUnderSuite",
+        "displayName": "Get Test Case Status Updates belonging to a Test Suite",
+        "description" : "Get Status Updates Test Cases belonging to a Test Suite",
+        "effect" : "include",
+        "condition": "getTestCaseStatusIfInTestSuite(${testStatusList}, ${testSuiteList})",
+        "arguments": [
+          "testStatusList",
+          "testSuiteList"
         ],
         "inputType": "runtime"
       }
@@ -391,28 +395,6 @@
       }
     ],
     "supportedActions" : [
-      {
-        "name": "GetTestSuiteSchemaChanges",
-        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
-        "displayName": "Get Schema Changes",
-        "description" : "Get Updates for Schema Changes",
-        "effect" : "include",
-        "condition": "matchAnyFieldChange({'connection','pipelines','description'})",
-        "inputType": "none"
-      },
-      {
-        "name": "GetTestCaseStatusUpdatesUnderSuite",
-        "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdatesUnderSuite",
-        "displayName": "Get Test Case Status Updates belonging to a Test Suite",
-        "description" : "Get Status Updates Test Cases belonging to a Test Suite",
-        "effect" : "include",
-        "condition": "getTestCaseStatusIfInTestSuite(${testStatusList}, ${testSuiteList})",
-        "arguments": [
-          "testStatusList",
-          "testSuiteList"
-        ],
-        "inputType": "runtime"
-      }
     ]
   }
 ]

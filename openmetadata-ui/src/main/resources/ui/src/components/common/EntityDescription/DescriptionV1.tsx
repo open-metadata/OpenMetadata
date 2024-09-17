@@ -13,6 +13,7 @@
 
 import Icon from '@ant-design/icons';
 import { Card, Space, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router';
@@ -22,7 +23,6 @@ import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { Table } from '../../../generated/entity/data/table';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import {
   getRequestDescriptionPath,
@@ -30,35 +30,20 @@ import {
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
+import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
+import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import { DescriptionProps } from './Description.interface';
+
 const { Text } = Typography;
 
-interface Props {
-  entityName?: string;
-  owner?: Table['owner'];
-  hasEditAccess?: boolean;
-  removeBlur?: boolean;
-  description?: string;
-  isEdit?: boolean;
-  isReadOnly?: boolean;
-  entityType: EntityType;
-  entityFqn?: string;
-  onThreadLinkSelect?: (value: string) => void;
-  onDescriptionEdit?: () => void;
-  onCancel?: () => void;
-  onDescriptionUpdate?: (value: string) => Promise<void>;
-  onSuggest?: (value: string) => void;
-  onEntityFieldSelect?: (value: string) => void;
-  wrapInCard?: boolean;
-  showActions?: boolean;
-  showCommentsIcon?: boolean;
-  reduceDescription?: boolean;
-}
 const DescriptionV1 = ({
   hasEditAccess,
   onDescriptionEdit,
   description = '',
   isEdit,
+  className,
   onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
@@ -71,8 +56,13 @@ const DescriptionV1 = ({
   showActions = true,
   showCommentsIcon = true,
   reduceDescription,
-}: Props) => {
+  showSuggestions = false,
+  isDescriptionExpanded,
+}: DescriptionProps) => {
   const history = useHistory();
+  const { suggestions = [], selectedUserSuggestions = [] } =
+    useSuggestionsContext();
+
   const handleRequestDescription = useCallback(() => {
     history.push(
       getRequestDescriptionPath(entityType as string, entityFqn as string)
@@ -85,8 +75,18 @@ const DescriptionV1 = ({
     );
   }, [entityType, entityFqn]);
 
-  const entityLink = useMemo(() => {
-    return getEntityFeedLink(entityType, entityFqn, EntityField.DESCRIPTION);
+  const { entityLink, entityLinkWithoutField } = useMemo(() => {
+    const entityLink = getEntityFeedLink(
+      entityType,
+      entityFqn,
+      EntityField.DESCRIPTION
+    );
+    const entityLinkWithoutField = getEntityFeedLink(entityType, entityFqn);
+
+    return {
+      entityLink,
+      entityLinkWithoutField,
+    };
   }, [entityType, entityFqn]);
 
   const taskActionButton = useMemo(() => {
@@ -126,24 +126,34 @@ const DescriptionV1 = ({
     () => (
       <Space size={12}>
         {!isReadOnly && hasEditAccess && (
-          <Icon
-            component={EditIcon}
-            data-testid="edit-description"
-            style={{ color: DE_ACTIVE_COLOR }}
-            onClick={onDescriptionEdit}
-          />
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.description'),
+            })}>
+            <Icon
+              component={EditIcon}
+              data-testid="edit-description"
+              style={{ color: DE_ACTIVE_COLOR }}
+              onClick={onDescriptionEdit}
+            />
+          </Tooltip>
         )}
         {taskActionButton}
         {showCommentsIcon && (
-          <Icon
-            component={CommentIcon}
-            data-testid="description-thread"
-            style={{ color: DE_ACTIVE_COLOR }}
-            width={20}
-            onClick={() => {
-              onThreadLinkSelect?.(entityLink);
-            }}
-          />
+          <Tooltip
+            title={t('label.list-entity', {
+              entity: t('label.conversation'),
+            })}>
+            <Icon
+              component={CommentIcon}
+              data-testid="description-thread"
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={20}
+              onClick={() => {
+                onThreadLinkSelect?.(entityLink);
+              }}
+            />
+          </Tooltip>
         )}
       </Space>
     ),
@@ -157,26 +167,56 @@ const DescriptionV1 = ({
     ]
   );
 
+  const suggestionData = useMemo(() => {
+    const activeSuggestion = selectedUserSuggestions.find(
+      (suggestion) => suggestion.entityLink === entityLinkWithoutField
+    );
+
+    if (activeSuggestion?.entityLink === entityLinkWithoutField) {
+      return (
+        <SuggestionsAlert
+          hasEditAccess={hasEditAccess}
+          suggestion={activeSuggestion}
+        />
+      );
+    }
+
+    return null;
+  }, [hasEditAccess, entityLinkWithoutField, selectedUserSuggestions]);
+
+  const descriptionContent = useMemo(() => {
+    if (suggestionData) {
+      return suggestionData;
+    } else {
+      return description.trim() ? (
+        <RichTextEditorPreviewer
+          className={reduceDescription ? 'max-two-lines' : ''}
+          enableSeeMoreVariant={!removeBlur}
+          isDescriptionExpanded={isDescriptionExpanded}
+          markdown={description}
+        />
+      ) : (
+        <span>{t('label.no-description')}</span>
+      );
+    }
+  }, [description, suggestionData, isDescriptionExpanded]);
+
   const content = (
     <Space
-      className="schema-description d-flex"
+      className={classNames('schema-description d-flex', className)}
       data-testid="asset-description-container"
       direction="vertical"
       size={16}>
-      <Space size="middle">
-        <Text className="right-panel-label">{t('label.description')}</Text>
-        {showActions && actionButtons}
-      </Space>
+      <div className="d-flex justify-between flex-wrap">
+        <div className="d-flex items-center gap-2">
+          <Text className="right-panel-label">{t('label.description')}</Text>
+          {showActions && actionButtons}
+        </div>
+        {showSuggestions && suggestions.length > 0 && <SuggestionsSlider />}
+      </div>
+
       <div>
-        {description.trim() ? (
-          <RichTextEditorPreviewer
-            className={reduceDescription ? 'max-two-lines' : ''}
-            enableSeeMoreVariant={!removeBlur}
-            markdown={description}
-          />
-        ) : (
-          <span>{t('label.no-description')}</span>
-        )}
+        {descriptionContent}
         <ModalWithMarkdownEditor
           header={t('label.edit-description-for', { entityName })}
           placeholder={t('label.enter-entity', {

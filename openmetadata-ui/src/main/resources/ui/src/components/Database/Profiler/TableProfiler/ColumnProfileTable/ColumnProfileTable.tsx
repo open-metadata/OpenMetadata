@@ -29,15 +29,12 @@ import { DateRangeObject } from 'Models';
 import Qs from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../../assets/svg/drop-down.svg';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
-import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
+import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
-import {
-  DEFAULT_TEST_VALUE,
-  INITIAL_TEST_RESULT_SUMMARY,
-} from '../../../../../constants/profiler.constant';
+import { TabSpecificField } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import {
   Column,
@@ -47,19 +44,24 @@ import {
   TestCase,
   TestCaseStatus,
 } from '../../../../../generated/tests/testCase';
+import LimitWrapper from '../../../../../hoc/LimitWrapper';
+import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
+import { getListTestCase } from '../../../../../rest/testAPI';
 import { formatNumberWithComma } from '../../../../../utils/CommonUtils';
-import { updateTestResults } from '../../../../../utils/DataQualityAndProfilerUtils';
 import {
   getEntityName,
   searchInColumns,
 } from '../../../../../utils/EntityUtils';
+import { getEntityColumnFQN } from '../../../../../utils/FeedUtils';
 import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
 } from '../../../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../../../utils/StringsUtils';
-import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
+import {
+  generateEntityLink,
+  getTableExpandableConfig,
+} from '../../../../../utils/TableUtils';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
@@ -67,7 +69,7 @@ import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.componen
 import { SummaryCardProps } from '../../../../common/SummaryCard/SummaryCard.interface';
 import Table from '../../../../common/Table/Table';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
-import TestIndicator from '../../../../common/TestIndicator/TestIndicator';
+import TestCaseStatusSummaryIndicator from '../../../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import PageHeader from '../../../../PageHeader/PageHeader.component';
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from '../ColumnPickerMenu';
@@ -75,14 +77,11 @@ import ColumnSummary from '../ColumnSummary';
 import NoProfilerBanner from '../NoProfilerBanner/NoProfilerBanner.component';
 import ProfilerProgressWidget from '../ProfilerProgressWidget/ProfilerProgressWidget';
 import SingleColumnProfile from '../SingleColumnProfile';
-import {
-  columnTestResultType,
-  ModifiedColumn,
-} from '../TableProfiler.interface';
+import { ModifiedColumn } from '../TableProfiler.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
 
 const ColumnProfileTable = () => {
-  const location = useLocation();
+  const location = useCustomLocation();
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useFqn();
@@ -95,17 +94,20 @@ const ColumnProfileTable = () => {
     onSettingButtonClick,
     isProfilingEnabled,
     tableProfiler,
-    splitTestCases,
     dateRangeObject,
     onDateRangeChange,
+    testCaseSummary,
   } = useTableProfiler();
+  const testCaseCounts = useMemo(
+    () => testCaseSummary?.columnTestSummary ?? [],
+    [testCaseSummary]
+  );
   const isLoading = isTestsLoading || isProfilerDataLoading;
-  const columnTests = splitTestCases.column ?? [];
   const columns = tableProfiler?.columns ?? [];
   const [searchText, setSearchText] = useState<string>('');
   const [data, setData] = useState<ModifiedColumn[]>(columns);
-  const [columnTestSummary, setColumnTestSummary] =
-    useState<columnTestResultType>();
+  const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
+  const [columnTestCases, setColumnTestCases] = useState<TestCase[]>([]);
 
   const { activeColumnFqn, activeTab } = useMemo(() => {
     const param = location.search;
@@ -223,50 +225,46 @@ const ColumnProfileTable = () => {
         title: t('label.test-plural'),
         dataIndex: 'testCount',
         key: 'Tests',
-        render: (_, record) => (
-          <Link
-            data-testid={`${record.name}-test-count`}
-            to={{
-              search: Qs.stringify({
-                activeTab: TableProfilerTab.DATA_QUALITY,
-              }),
-            }}>
-            {record.testCount ?? 0}
-          </Link>
-        ),
-        sorter: (col1, col2) => (col1.testCount ?? 0) - (col2.testCount ?? 0),
+        render: (_, record) => {
+          const testCounts = testCaseCounts.find((column) => {
+            return isEqual(
+              getEntityColumnFQN(column.entityLink ?? ''),
+              record.fullyQualifiedName
+            );
+          });
+
+          return (
+            <Link
+              data-testid={`${record.name}-test-count`}
+              to={{
+                search: Qs.stringify({
+                  activeTab: TableProfilerTab.DATA_QUALITY,
+                }),
+              }}>
+              {testCounts?.total ?? 0}
+            </Link>
+          );
+        },
       },
       {
         title: t('label.status'),
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
         render: (_, record) => {
-          const summary =
-            columnTestSummary?.[
-              getEncodedFqn(record.fullyQualifiedName || '', true)
-            ]?.results;
-          const currentResult = summary
-            ? Object.entries(summary).map(([key, value]) => ({
-                value,
-                type: key,
-              }))
-            : DEFAULT_TEST_VALUE;
+          const testCounts = testCaseCounts.find((column) => {
+            return isEqual(
+              getEntityColumnFQN(column.entityLink ?? ''),
+              record.fullyQualifiedName
+            );
+          });
 
-          const hasStatus = currentResult.some(({ value }) => value !== 0);
-
-          return hasStatus ? (
-            <Space size={16}>
-              {currentResult.map((test, i) => (
-                <TestIndicator key={i} type={test.type} value={test.value} />
-              ))}
-            </Space>
-          ) : (
-            <Typography.Text> {NO_DATA_PLACEHOLDER} </Typography.Text>
+          return (
+            <TestCaseStatusSummaryIndicator testCaseStatusCounts={testCounts} />
           );
         },
       },
     ];
-  }, [columns, columnTestSummary]);
+  }, [columns, testCaseCounts]);
 
   const selectedColumn = useMemo(() => {
     return find(
@@ -303,9 +301,8 @@ const ColumnProfileTable = () => {
 
   const selectedColumnTestsObj = useMemo(() => {
     const temp = filter(
-      columnTests,
-      (test: TestCase) =>
-        test.entityFQN === activeColumnFqn && !isUndefined(test.testCaseResult)
+      columnTestCases,
+      (test: TestCase) => !isUndefined(test.testCaseResult)
     );
 
     const statusDict = {
@@ -316,7 +313,7 @@ const ColumnProfileTable = () => {
     };
 
     return { statusDict, totalTests: temp.length };
-  }, [activeColumnFqn, columnTests]);
+  }, [columnTestCases]);
 
   const pageHeader = useMemo(() => {
     return {
@@ -359,35 +356,34 @@ const ColumnProfileTable = () => {
     }
   };
 
-  useEffect(() => {
-    if (columnTests.length) {
-      const colResult = columnTests.reduce((acc, curr) => {
-        const fqn = curr.entityFQN || '';
-        if (isUndefined(acc[fqn])) {
-          acc[fqn] = { results: { ...INITIAL_TEST_RESULT_SUMMARY }, count: 0 };
-        }
-        updateTestResults(
-          acc[fqn].results,
-          curr.testCaseResult?.testCaseStatus || ''
-        );
-        acc[fqn].count += 1;
+  const fetchColumnTestCase = async (activeColumnFqn: string) => {
+    setIsTestCaseLoading(true);
+    try {
+      const { data } = await getListTestCase({
+        fields: TabSpecificField.TEST_CASE_RESULT,
+        entityLink: generateEntityLink(activeColumnFqn),
+        limit: PAGE_SIZE_LARGE,
+      });
 
-        return acc;
-      }, {} as columnTestResultType);
-      setData(
-        columns.map((col) => ({
-          ...col,
-          key: col.name,
-          testCount:
-            colResult?.[getEncodedFqn(col.fullyQualifiedName || '', true)]
-              ?.count,
-        }))
-      );
-      setColumnTestSummary(colResult);
-    } else {
-      setData(columns);
+      setColumnTestCases(data);
+    } catch (error) {
+      setColumnTestCases([]);
+    } finally {
+      setIsTestCaseLoading(false);
     }
-  }, [columnTests, columns]);
+  };
+
+  useEffect(() => {
+    setData(columns);
+  }, [columns]);
+
+  useEffect(() => {
+    if (activeColumnFqn) {
+      fetchColumnTestCase(activeColumnFqn);
+    } else {
+      setColumnTestCases([]);
+    }
+  }, [activeColumnFqn]);
 
   return (
     <Row data-testid="column-profile-table-container" gutter={[16, 16]}>
@@ -417,21 +413,23 @@ const ColumnProfileTable = () => {
                   )}
 
                   {editTest && (
-                    <Dropdown
-                      menu={{
-                        items: addButtonContent,
-                      }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <Button
-                        data-testid="profiler-add-table-test-btn"
-                        type="primary">
-                        <Space>
-                          {t('label.add')}
-                          <DownOutlined />
-                        </Space>
-                      </Button>
-                    </Dropdown>
+                    <LimitWrapper resource="dataQuality">
+                      <Dropdown
+                        menu={{
+                          items: addButtonContent,
+                        }}
+                        placement="bottomRight"
+                        trigger={['click']}>
+                        <Button
+                          data-testid="profiler-add-table-test-btn"
+                          type="primary">
+                          <Space>
+                            {t('label.add')}
+                            <DownOutlined />
+                          </Space>
+                        </Button>
+                      </Dropdown>
+                    </LimitWrapper>
                   )}
                   {editDataProfile && (
                     <Tooltip
@@ -488,7 +486,7 @@ const ColumnProfileTable = () => {
                   <Col key={key}>
                     <SummaryCard
                       showProgressBar
-                      isLoading={isLoading}
+                      isLoading={isTestCaseLoading}
                       title={key}
                       total={selectedColumnTestsObj.totalTests}
                       type={toLower(key) as SummaryCardProps['type']}

@@ -20,11 +20,12 @@ import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
-  INGESTION_WORKFLOW_NAME_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
 } from '../../../../../constants/Services.constant';
-import { FormSubmitType } from '../../../../../enums/form.enum';
-import { PipelineType } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import {
+  DbtConfigType,
+  PipelineType,
+} from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
@@ -79,10 +80,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       };
     }
 
-    if (operationType === FormSubmitType.EDIT) {
-      commonSchema = { ...commonSchema, ...INGESTION_WORKFLOW_NAME_UI_SCHEMA };
-    }
-
     return commonSchema;
   }, [pipeLineType, operationType]);
 
@@ -108,6 +105,8 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
           ...formData,
           dbtConfigSource: {
             ...omitBy(formData.dbtConfigSource ?? {}, isUndefined),
+            dbtConfigType: formData.dbtConfigSource
+              ?.dbtConfigType as DbtConfigType,
           },
         };
       }
@@ -140,6 +139,8 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
           ...formData,
           dbtConfigSource: {
             ...omitBy(formData.dbtConfigSource ?? {}, isUndefined),
+            dbtConfigType: formData.dbtConfigSource
+              ?.dbtConfigType as DbtConfigType,
           },
         };
       }

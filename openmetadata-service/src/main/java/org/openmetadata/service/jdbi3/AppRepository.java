@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.resources.teams.UserResource.getUser;
+import static org.openmetadata.service.exception.AppException.APP_RUN_RECORD_NOT_FOUND;
+import static org.openmetadata.service.util.UserUtil.getUser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -75,7 +77,7 @@ public class AppRepository extends EntityRepository<App> {
     User botUser;
     Bot bot;
     try {
-      botUser = userRepository.findByName(botName, Include.NON_DELETED);
+      botUser = userRepository.getByName(null, botName, userRepository.getFields("id"));
     } catch (EntityNotFoundException ex) {
       // Get Bot Role
       EntityReference roleRef =
@@ -88,6 +90,7 @@ public class AppRepository extends EntityRepository<App> {
       CreateUser createUser =
           new CreateUser()
               .withName(botName)
+              .withDisplayName(application.getDisplayName())
               .withEmail(String.format("%s@openmetadata.org", botName))
               .withIsAdmin(false)
               .withIsBot(true)
@@ -96,7 +99,7 @@ public class AppRepository extends EntityRepository<App> {
       User user = getUser("admin", createUser);
 
       // Set User Ownership to the application creator
-      user.setOwner(application.getOwner());
+      user.setOwners(application.getOwners());
 
       // Set Auth Mechanism in Bot
       JWTAuthMechanism jwtAuthMechanism = (JWTAuthMechanism) authMechanism.getConfig();
@@ -115,12 +118,12 @@ public class AppRepository extends EntityRepository<App> {
       Bot appBot =
           new Bot()
               .withId(UUID.randomUUID())
-              .withName(botUser.getName())
+              .withName(botName)
               .withUpdatedBy("admin")
               .withUpdatedAt(System.currentTimeMillis())
               .withBotUser(botUser.getEntityReference())
               .withProvider(ProviderType.USER)
-              .withFullyQualifiedName(botUser.getName());
+              .withFullyQualifiedName(botName);
 
       // Create Bot with above user
       bot = botRepository.createInternal(appBot);
@@ -135,15 +138,14 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public void storeEntity(App entity, boolean update) {
-    EntityReference botUserRef = entity.getBot();
-    EntityReference ownerRef = entity.getOwner();
-    entity.withBot(null).withOwner(null);
+    List<EntityReference> ownerRefs = entity.getOwners();
+    entity.withOwners(null);
 
     // Store
     store(entity, update);
 
     // Restore entity fields
-    entity.withBot(botUserRef).withOwner(ownerRef);
+    entity.withOwners(ownerRefs);
   }
 
   public EntityReference getBotUser(App application) {
@@ -209,6 +211,17 @@ public class AppRepository extends EntityRepository<App> {
 
   public AppRunRecord getLatestAppRuns(UUID appId) {
     String json = daoCollection.appExtensionTimeSeriesDao().getLatestAppRun(appId);
+    if (json == null) {
+      throw new AppException(APP_RUN_RECORD_NOT_FOUND);
+    }
+    return JsonUtils.readValue(json, AppRunRecord.class);
+  }
+
+  public AppRunRecord getLatestAppRunsAfterStartTime(UUID appId, long startTime) {
+    String json = daoCollection.appExtensionTimeSeriesDao().getLatestAppRun(appId, startTime);
+    if (json == null) {
+      throw new AppException(APP_RUN_RECORD_NOT_FOUND);
+    }
     return JsonUtils.readValue(json, AppRunRecord.class);
   }
 
@@ -227,6 +240,7 @@ public class AppRepository extends EntityRepository<App> {
       recordChange(
           "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
       recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
+      recordChange("bot", original.getBot(), updated.getBot());
     }
   }
 }

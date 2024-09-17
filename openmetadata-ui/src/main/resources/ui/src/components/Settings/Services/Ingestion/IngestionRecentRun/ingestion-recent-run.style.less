@@ -10,16 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.ingestion-run-badge {
-  display: block;
-  border-radius: 0.125rem;
-  font-size: 14px;
+.ant-tag.ingestion-run-badge {
+  display: flex;
+  align-items: center;
+  border-radius: 2px;
+  font-size: 12px;
   line-height: 20px;
-  height: 1.25rem;
-  width: 1rem;
+  height: 30px;
+  width: 7px;
+  padding: 0 2px;
   margin: 0;
+  cursor: pointer;
 
   &.latest {
-    width: auto;
+    width: fit-content;
+    padding: 0 12px;
+    border-radius: 5px;
   }
 }

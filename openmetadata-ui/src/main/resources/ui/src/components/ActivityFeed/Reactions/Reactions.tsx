@@ -26,7 +26,7 @@ import {
   Reaction as ReactionProp,
   ReactionType,
 } from '../../../generated/type/reaction';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
 import './reactions.less';
@@ -42,7 +42,7 @@ interface ReactionsProps {
 const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const hide = () => {
     setVisible(false);
@@ -88,7 +88,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
     return (
       reactionListValue && (
         <Emoji
-          key={uniqueId()}
+          key={reaction}
           reaction={reaction}
           reactionList={reactionListValue}
           onReactionSelect={onReactionSelect}
@@ -101,6 +101,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
     <div className="d-flex items-center" data-testid="feed-reaction-container">
       {emojis}
       <Popover
+        arrowPointAtCenter
         align={{ targetOffset: [0, -10] }}
         content={reactionList}
         open={visible}
@@ -110,7 +111,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
         zIndex={9999}
         onOpenChange={handleVisibleChange}>
         <Button
-          className="flex-center"
+          className="flex-center p-0"
           data-testid="add-reactions"
           icon={<AddReactionIcon width={18} />}
           shape="circle"
@@ -118,6 +119,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
           title={t('label.add-entity', {
             entity: t('label.reaction-lowercase-plural'),
           })}
+          type="text"
           onClick={(e) => e.stopPropagation()}
         />
       </Popover>

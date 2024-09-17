@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,18 +12,22 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Drawer, Row, Typography } from 'antd';
+import { Button, Col, Divider, Drawer, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
-import React, { Fragment, useMemo } from 'react';
+import React, { forwardRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getUserPath } from '../../../constants/constants';
+import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getSummary, isMajorVersion } from '../../../utils/EntityVersionUtils';
+import {
+  getSummary,
+  renderVersionButton,
+} from '../../../utils/EntityVersionUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import CloseIcon from '../../Modals/CloseIcon.component';
 import './entity-version-timeline.less';
@@ -31,12 +36,10 @@ import {
   EntityVersionTimelineProps,
 } from './EntityVersionTimeline.interface';
 
-export const VersionButton = ({
-  version,
-  onVersionSelect,
-  selected,
-  isMajorVersion,
-}: EntityVersionButtonProps) => {
+export const VersionButton = forwardRef<
+  HTMLDivElement,
+  EntityVersionButtonProps
+>(({ version, onVersionSelect, selected, isMajorVersion, className }, ref) => {
   const { t } = useTranslation();
 
   const {
@@ -55,7 +58,11 @@ export const VersionButton = ({
 
   return (
     <div
-      className="timeline-content p-b-md cursor-pointer"
+      className={classNames(
+        'timeline-content p-b-md cursor-pointer',
+        className
+      )}
+      ref={ref}
       onClick={() => onVersionSelect(toString(versionNumber))}>
       <div className="timeline-wrapper">
         <span
@@ -111,50 +118,80 @@ export const VersionButton = ({
       </div>
     </div>
   );
-};
+});
 
 const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
   versionList = {} as EntityHistory,
   currentVersion,
   versionHandler,
   onBack,
+  entityType,
 }) => {
   const { t } = useTranslation();
 
-  const versions = useMemo(
-    () =>
-      versionList.versions.map((v, i) => {
-        const currV = JSON.parse(v);
+  const { resourceLimit, getResourceLimit } = useLimitStore();
 
-        const majorVersionChecks = () => {
-          return isMajorVersion(
-            parseFloat(currV?.changeDescription?.previousVersion)
-              .toFixed(1)
-              .toString(),
-            parseFloat(currV?.version).toFixed(1).toString()
-          );
-        };
+  useEffect(() => {
+    entityType && getResourceLimit(entityType);
+  }, [entityType]);
 
-        return (
-          <Fragment key={currV.version}>
-            {i === 0 ? (
-              <div className="timeline-content cursor-pointer">
-                <div className="timeline-wrapper">
-                  <span className="timeline-line-se" />
-                </div>
+  const { configuredLimit: { maxVersions } = { maxVersions: -1 } } =
+    resourceLimit[entityType ?? ''] ?? {};
+
+  const versions = useMemo(() => {
+    const maxAllowed = maxVersions ?? -1;
+    let versions = versionList.versions ?? [];
+
+    let hiddenVersions = [];
+
+    if (maxAllowed > 0) {
+      versions = versionList.versions?.slice(0, maxAllowed) ?? [];
+      hiddenVersions = versionList.versions?.slice(maxAllowed) ?? [];
+    }
+
+    return (
+      <div className="relative h-full">
+        {versions.length ? (
+          <div className="timeline-content cursor-pointer">
+            <div className="timeline-wrapper">
+              <span className="timeline-line-se" />
+            </div>
+          </div>
+        ) : null}
+
+        {versions?.map((v) => {
+          return renderVersionButton(v, currentVersion, versionHandler);
+        })}
+        {hiddenVersions?.length > 0 ? (
+          <>
+            <Tooltip title={`+${hiddenVersions.length} more versions`}>
+              <div className="version-hidden">
+                {hiddenVersions.map((v) =>
+                  renderVersionButton(v, currentVersion, versionHandler)
+                )}
               </div>
-            ) : null}
-            <VersionButton
-              isMajorVersion={majorVersionChecks()}
-              selected={toString(currV.version) === currentVersion}
-              version={currV}
-              onVersionSelect={versionHandler}
-            />
-          </Fragment>
-        );
-      }),
-    [versionList, currentVersion, versionHandler]
-  );
+            </Tooltip>
+            <div className="version-pricing-reached">
+              <Typography.Title className="font-medium" level={4}>
+                Unlock all of your version history
+              </Typography.Title>
+              <Typography.Text className="text-grey-muted font-normal">
+                Upgrade to paid plan for access to all of your version history.
+              </Typography.Text>
+
+              <Button
+                block
+                className="m-t-lg"
+                href="/settings/billing/plans"
+                type="primary">
+                See Upgrade Options
+              </Button>
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
+  }, [versionList, currentVersion, versionHandler]);
 
   return (
     <Drawer

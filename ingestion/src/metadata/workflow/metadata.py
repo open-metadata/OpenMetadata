@@ -14,11 +14,7 @@ Workflow definition for metadata related ingestions: metadata and lineage.
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import Sink, Source
-from metadata.utils.importer import (
-    import_from_module,
-    import_sink_class,
-    import_source_class,
-)
+from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import ingestion_logger
 from metadata.workflow.ingestion import IngestionWorkflow
 
@@ -47,17 +43,17 @@ class MetadataWorkflow(IngestionWorkflow):
                 "configuration here: https://docs.open-metadata.org/connectors"
             )
 
-        source_class = (
-            import_from_module(
-                self.config.source.serviceConnection.__root__.config.sourcePythonClass
-            )
-            if source_type.startswith("custom")
-            else import_source_class(
-                service_type=self.service_type, source_type=source_type
-            )
+        source_class = self.import_source_class()
+
+        pipeline_name = (
+            self.ingestion_pipeline.fullyQualifiedName.root
+            if self.ingestion_pipeline
+            else None
         )
 
-        source: Source = source_class.create(self.config.source.dict(), self.metadata)
+        source: Source = source_class.create(
+            self.config.source.model_dump(), self.metadata, pipeline_name
+        )
         logger.debug(f"Source type:{source_type},{source_class} configured")
         source.prepare()
         logger.debug(f"Source type:{source_type},{source_class}  prepared")
@@ -67,7 +63,7 @@ class MetadataWorkflow(IngestionWorkflow):
     def _get_sink(self) -> Sink:
         sink_type = self.config.sink.type
         sink_class = import_sink_class(sink_type=sink_type)
-        sink_config = self.config.sink.dict().get("config", {})
+        sink_config = self.config.sink.model_dump().get("config", {})
         sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import (reference) url('../../../styles/variables.less');
+
 .ql-container {
   box-sizing: border-box;
   font-size: 13px;
@@ -439,7 +441,7 @@
 .ql-snow .ql-toolbar .ql-picker-item:hover,
 .ql-snow.ql-toolbar .ql-picker-item.ql-selected,
 .ql-snow .ql-toolbar .ql-picker-item.ql-selected {
-  color: #0968da;
+  color: @primary-color;
 }
 .ql-snow.ql-toolbar button:hover .ql-fill,
 .ql-snow .ql-toolbar button:hover .ql-fill,
@@ -469,7 +471,7 @@
 .ql-snow .ql-toolbar .ql-picker-item:hover .ql-stroke.ql-fill,
 .ql-snow.ql-toolbar .ql-picker-item.ql-selected .ql-stroke.ql-fill,
 .ql-snow .ql-toolbar .ql-picker-item.ql-selected .ql-stroke.ql-fill {
-  fill: #0968da;
+  fill: @primary-color;
 }
 .ql-snow.ql-toolbar button:hover .ql-stroke,
 .ql-snow .ql-toolbar button:hover .ql-stroke,
@@ -499,7 +501,7 @@
 .ql-snow .ql-toolbar .ql-picker-item:hover .ql-stroke-miter,
 .ql-snow.ql-toolbar .ql-picker-item.ql-selected .ql-stroke-miter,
 .ql-snow .ql-toolbar .ql-picker-item.ql-selected .ql-stroke-miter {
-  stroke: #0968da;
+  stroke: @primary-color;
 }
 @media (pointer: coarse) {
   .ql-snow.ql-toolbar button:hover:not(.ql-active),
@@ -916,7 +918,7 @@
   content: 'Edit';
   padding-right: 8px;
   color: #ffffff;
-  background: #0968da;
+  background: @primary-color;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 8px;
@@ -927,7 +929,7 @@
   content: 'Remove';
   margin-left: 8px;
   color: #ffffff;
-  background: #0968da;
+  background: @primary-color;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 8px;
@@ -936,11 +938,11 @@
 }
 .ql-snow .ql-tooltip a {
   line-height: 26px;
-  color: #0968da;
+  color: @primary-color;
 }
 
 .ql-snow .ql-tooltip a:hover {
-  color: #0968da;
+  color: @primary-color;
 }
 .ql-snow .ql-tooltip.ql-editing a.ql-preview,
 .ql-snow .ql-tooltip.ql-editing a.ql-remove {
@@ -951,7 +953,7 @@
 }
 .ql-snow .ql-tooltip.ql-editing input[type='text']:hover,
 .ql-snow .ql-tooltip.ql-editing input[type='text']:focus {
-  border: 1px solid #0968da;
+  border: 1px solid @primary-color;
   outline: none;
 }
 .ql-snow .ql-tooltip.ql-editing a.ql-action {
@@ -964,7 +966,7 @@
   padding-right: 0px;
   margin: 0px;
   color: #ffffff;
-  background: #0968da;
+  background: @primary-color;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 8px;
@@ -1032,7 +1034,7 @@
   vertical-align: middle;
 }
 .ql-mention-list-item.selected {
-  background-color: #e6f4ff;
+  background-color: var(--ant-primary-1);
   text-decoration: none;
 }
 
@@ -1088,6 +1090,7 @@ button.ql-emoji {
 }
 
 .mention-profile-image {
+  color: @white;
   display: inline-block;
   height: 24px;
   width: 24px;

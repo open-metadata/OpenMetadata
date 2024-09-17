@@ -16,7 +16,7 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
@@ -27,9 +27,10 @@ import {
   TWO_MINUTE_IN_MILLISECOND,
 } from '../../../constants/constants';
 import { OMD_REPOSITORY_LINK } from '../../../constants/docs.constants';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getRepositoryData } from '../../../rest/commonAPI';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { COOKIE_VERSION } from '../../Modals/WhatsNewModal/whatsNewData';
 import './github-star-card.style.less';
 
@@ -37,8 +38,8 @@ const cookieStorage = new CookieStorage();
 
 const GithubStarCard = () => {
   const { t } = useTranslation();
-  const location = useLocation();
-  const { currentUser } = useAuthContext();
+  const location = useCustomLocation();
+  const { currentUser } = useApplicationStore();
   const [showGithubStarPopup, setShowGithubStarPopup] = useState(false);
   const [starredCount, setStarredCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);

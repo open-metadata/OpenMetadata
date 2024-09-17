@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
@@ -36,6 +37,8 @@ from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
+from metadata.utils.importer import import_source_class
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -72,27 +75,29 @@ class TestSuiteSource(Source):
         """
         table: Table = self.metadata.get_by_name(
             entity=Table,
-            fqn=self.source_config.entityFullyQualifiedName.__root__,
-            fields=["tableProfilerConfig", "testSuite"],
+            fqn=self.source_config.entityFullyQualifiedName.root,
+            fields=["tableProfilerConfig", "testSuite", "serviceType"],
         )
 
         return table
 
     def _get_test_cases_from_test_suite(
         self, test_suite: Optional[TestSuite]
-    ) -> Optional[List[TestCase]]:
+    ) -> List[TestCase]:
         """Return test cases if the test suite exists and has them"""
         if test_suite:
-            test_cases = self.metadata.list_entities(
+            test_cases = self.metadata.list_all_entities(
                 entity=TestCase,
                 fields=["testSuite", "entityLink", "testDefinition"],
-                params={"testSuiteId": test_suite.id.__root__},
-            ).entities
+                params={"testSuiteId": test_suite.id.root},
+            )
             test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
-
+            if self.source_config.testCases is not None:
+                test_cases = [
+                    t for t in test_cases if t.name in self.source_config.testCases
+                ]
             return test_cases
-
-        return None
+        return []
 
     def prepare(self):
         """Nothing to prepare"""
@@ -102,15 +107,23 @@ class TestSuiteSource(Source):
 
     def _iter(self) -> Iterable[Either[TableAndTests]]:
         table: Table = self._get_table_entity()
-
         if table:
+            source_type = table.serviceType.value.lower()
+            if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):
+                logger.warning(
+                    "Data quality tests might not work as expected with custom sources"
+                )
+            else:
+                import_source_class(
+                    service_type=ServiceType.Database, source_type=source_type
+                )
             yield from self._process_table_suite(table)
 
         else:
             yield Either(
                 left=StackTraceError(
                     name="Missing Table",
-                    error=f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.__root__}."
+                    error=f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.root}."
                     " Make sure the table exists in OpenMetadata and/or the JWT Token provided is valid.",
                 )
             )
@@ -125,42 +138,53 @@ class TestSuiteSource(Source):
                 name=fqn.build(
                     None,
                     TestSuite,
-                    table_fqn=self.source_config.entityFullyQualifiedName.__root__,
+                    table_fqn=self.source_config.entityFullyQualifiedName.root,
                 ),
-                displayName=f"{self.source_config.entityFullyQualifiedName.__root__} Test Suite",
+                displayName=f"{self.source_config.entityFullyQualifiedName.root} Test Suite",
                 description="Test Suite created from YAML processor config file",
-                owner=None,
-                executableEntityReference=self.source_config.entityFullyQualifiedName.__root__,
+                owners=None,
+                executableEntityReference=self.source_config.entityFullyQualifiedName.root,
             )
             yield Either(
                 right=TableAndTests(
                     executable_test_suite=executable_test_suite,
-                    service_type=self.config.source.serviceConnection.__root__.config.type.value,
+                    service_type=self.config.source.serviceConnection.root.config.type.value,
                 )
             )
 
-        if table.testSuite and not table.testSuite.executable:
+        test_suite: Optional[TestSuite] = None
+        if table.testSuite:
+            test_suite = self.metadata.get_by_id(
+                entity=TestSuite, entity_id=table.testSuite.id.root
+            )
+
+        if test_suite and not test_suite.executable:
             yield Either(
                 left=StackTraceError(
                     name="Non-executable Test Suite",
-                    error=f"The table {self.source_config.entityFullyQualifiedName.__root__} "
+                    error=f"The table {self.source_config.entityFullyQualifiedName.root} "
                     "has a test suite that is not executable.",
                 )
             )
 
         else:
-            test_suite_cases = self._get_test_cases_from_test_suite(table.testSuite)
+            test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
 
             yield Either(
                 right=TableAndTests(
                     table=table,
                     test_cases=test_suite_cases,
-                    service_type=self.config.source.serviceConnection.__root__.config.type.value,
+                    service_type=self.config.source.serviceConnection.root.config.type.value,
                 )
             )
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 

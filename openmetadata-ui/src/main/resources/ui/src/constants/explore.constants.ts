@@ -12,7 +12,9 @@
  */
 
 import { SortingField } from '../components/Explore/SortingDropDown';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../enums/common.enum';
+import { EntityType } from '../enums/entity.enum';
 import i18n from '../utils/i18next/LocalUtil';
 
 export const INITIAL_SORT_FIELD = 'totalVotes';
@@ -25,6 +27,17 @@ export const TAG_FQN_KEY = 'tags.tagFQN';
 export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';
 export const MAX_RESULT_HITS = 10000;
+
+export const SUPPORTED_EMPTY_FILTER_FIELDS = [
+  EntityFields.OWNERS,
+  EntityFields.DOMAIN,
+  EntityFields.TIER,
+  EntityFields.TAG,
+];
+
+export const NOT_INCLUDE_AGGREGATION_QUICK_FILTER = [
+  EntityType.INGESTION_PIPELINE,
+];
 
 // as it is used only in unit tests it's not needed for translation
 export const tableSortingFields: SortingField[] = [
@@ -94,3 +107,70 @@ export const FAILED_TO_FIND_INDEX_ERROR = 'Failed to to find index';
 export const ES_EXCEPTION_SHARDS_FAILED = 'reason=all shards failed';
 
 export const SEARCH_INDEXING_APPLICATION = 'SearchIndexingApplication';
+
+export const INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER = {
+  id: 'descriptionID1',
+  type: 'group',
+  properties: { conjunction: 'AND', not: false },
+  children1: {
+    descriptionID2: {
+      type: 'group',
+      properties: { conjunction: 'AND', not: false },
+      children1: {
+        descriptionID3: {
+          type: 'rule',
+          properties: {
+            field: 'descriptionStatus',
+            operator: 'select_equals',
+            value: ['INCOMPLETE'],
+            valueSrc: ['value'],
+            operatorOptions: null,
+            valueType: ['select'],
+            asyncListValues: [
+              {
+                key: 'INCOMPLETE',
+                value: 'INCOMPLETE',
+                children: 'Incomplete',
+              },
+            ],
+          },
+          id: 'descriptionID3',
+          path: ['descriptionID1', 'descriptionID2', 'descriptionID3'],
+        },
+      },
+      id: 'descriptionID2',
+      path: ['descriptionID1', 'descriptionID2'],
+    },
+  },
+  path: ['descriptionID1'],
+};
+
+export const NO_OWNER_ADVANCE_SEARCH_FILTER = {
+  id: 'ownerID1',
+  type: 'group',
+  properties: { conjunction: 'AND', not: false },
+  children1: {
+    ownerID3: {
+      type: 'group',
+      properties: { conjunction: 'AND', not: false },
+      children1: {
+        ownerID2: {
+          type: 'rule',
+          properties: {
+            field: 'owners.displayName.keyword',
+            operator: 'is_null',
+            value: [],
+            valueSrc: [],
+            operatorOptions: null,
+            valueType: [],
+          },
+          id: 'ownerID2',
+          path: ['ownerID1', 'ownerID3', 'ownerID2'],
+        },
+      },
+      id: 'ownerID3',
+      path: ['ownerID1', 'ownerID3'],
+    },
+  },
+  path: ['ownerID1'],
+};

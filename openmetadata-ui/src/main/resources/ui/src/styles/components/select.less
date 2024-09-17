@@ -11,26 +11,42 @@
  *  limitations under the License.
  */
 
+@import (reference) url('../variables.less');
+
 .ant-select-custom {
   width: 100%;
   margin: 8px 0px;
   outline: none;
 }
 .ant-select-custom:not(.ant-select-disabled):hover .ant-select-selector {
-  border-color: #0968da;
+  border-color: @primary-color;
 }
 .ant-select-focused {
-  border-color: #0968da;
+  border-color: @primary-color;
   outline: none;
 }
 
 .ant-advaced-field-select {
-  color: #0968da;
+  color: @primary-color;
   min-width: 130px;
 }
 .ant-suggestion-dropdown {
   min-width: 200px !important;
 }
 .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-  background-color: #e6f4ff;
+  background-color: var(--ant-primary-1);
+}
+.ant-select-tree-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.no-wrap-option {
+  .ant-select-item {
+    .ant-select-item-option-content {
+      white-space: unset;
+      word-wrap: break-word;
+    }
+  }
 }

@@ -19,6 +19,7 @@ import 'quill-mention';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
   forwardRef,
+  KeyboardEvent,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -35,7 +36,8 @@ import {
   MENTION_DENOTATION_CHARS,
   TOOLBAR_ITEMS,
 } from '../../../constants/Feeds.constants';
-import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
 import {
   HTMLToMarkdown,
@@ -44,7 +46,8 @@ import {
 } from '../../../utils/FeedUtils';
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import { getSanitizeContent } from '../../../utils/sanitize.utils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { editorRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
@@ -72,10 +75,13 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
   ) => {
     const { t, i18n } = useTranslation();
     const editorRef = useRef<ReactQuill>(null);
-    const [value, setValue] = useState<string>(defaultValue ?? '');
+    const [value, setValue] = useState(() =>
+      getSanitizeContent(defaultValue ?? '')
+    );
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
-    const { userProfilePics } = useApplicationConfigContext();
+
+    const { userProfilePics } = useApplicationStore();
 
     const userSuggestionRenderer = async (
       searchTerm: string,
@@ -88,17 +94,17 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         // Fetch profile images in case of user listing
         const promises = matches.map(async (item, index) => {
           if (item.type === 'user') {
-            return getUserByName(item.name, { fields: 'profile' }).then(
-              (res) => {
-                newMatches[index] = {
-                  ...item,
-                  avatarEle: userMentionItemWithAvatar(
-                    item,
-                    userProfilePics[item.name] ?? res
-                  ),
-                };
-              }
-            );
+            return getUserByName(item.name, {
+              fields: TabSpecificField.PROFILE,
+            }).then((res) => {
+              newMatches[index] = {
+                ...item,
+                avatarEle: userMentionItemWithAvatar(
+                  item,
+                  userProfilePics[item.name] ?? res
+                ),
+              };
+            });
           } else if (item.type === 'team') {
             newMatches[index] = {
               ...item,
@@ -136,16 +142,16 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             </div>`
           : '';
 
-        const icon = ReactDOMServer.renderToString(
-          getEntityIcon(item.type as string)
-        );
+        const icon = searchClassBase.getEntityIcon(item.type ?? '');
+
+        const iconString = ReactDOMServer.renderToString(icon ?? <></>);
 
         const typeSpan = !breadcrumbEle
           ? `<span class="text-grey-muted text-xs">${item.type}</span>`
           : '';
 
         const result = `<div class="d-flex items-center gap-2">
-          <div class="flex-center mention-icon-image">${icon}</div>
+          <div class="flex-center mention-icon-image">${iconString}</div>
           <div>
             ${breadcrumbEle}
             <div class="d-flex flex-col">
@@ -232,24 +238,40 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
      */
     const handleKeyDown = (e: KeyboardEvent) => {
       // This logic will handle Enter key binding
-      if (e.key === 'Enter' && !e.shiftKey && !isMentionListOpen) {
-        e.preventDefault();
-        onSaveHandle();
-      }
-      // handle enter keybinding for mention popup
-      // set mention list state to false when mention item is selected
-      else if (e.key === 'Enter') {
-        toggleMentionList(false);
+      if (e.key === 'Enter') {
+        // Ignore Enter keydown events caused by IME operations during CJK text input.
+        // https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event#keydown_events_with_ime
+        // Note: `compositionstart` may fire after keydown when typing the first character that opens up the IME,
+        // and compositionend may fire before keydown when typing the last character that closes the IME.
+        // In these cases, isComposing is false even when the event is part of composition.
+        // However, KeyboardEvent.keyCode is still 229 in these cases,
+        // so it's still advisable to check keyCode as well, although it's deprecated.
+        if (e.nativeEvent.isComposing || e.keyCode === 229) {
+          return;
+        }
+        // handle enter keybinding for save
+        if (!e.shiftKey && !isMentionListOpen) {
+          e.preventDefault();
+          onSaveHandle();
+        }
+        // handle enter keybinding for mention popup
+        // set mention list state to false when mention item is selected
+        else {
+          toggleMentionList(false);
+        }
       }
     };
 
     /**
      * Handle onChange logic and set updated value to state
-     * @param value - updated value
+     * @param updatedValue - updated value
      */
-    const handleOnChange = (value: string) => {
-      setValue(value);
-      onChangeHandler?.(value);
+    const handleOnChange = (updatedValue: string) => {
+      setValue(updatedValue);
+
+      // sanitize the content before sending it to the parent component
+      const sanitizedContent = getSanitizeContent(updatedValue);
+      onChangeHandler?.(sanitizedContent);
     };
 
     /**
@@ -259,7 +281,8 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       getEditorValue() {
         setValue('');
 
-        return HTMLToMarkdown.turndown(value);
+        // sanitize the content before sending it to the parent component
+        return HTMLToMarkdown.turndown(getSanitizeContent(value));
       },
       clearEditorValue() {
         setValue('');

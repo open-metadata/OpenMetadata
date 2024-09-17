@@ -38,16 +38,19 @@ jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditor</div>);
 });
 
-jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockReturnValue({ pathname: 'pathname' }),
-}));
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: 'pathname' }));
+});
+
 const onCancel = jest.fn();
+const onSave = jest.fn();
 
 const mockProps = {
   open: true,
   entityType: '',
   entityFQN: '',
   onCancel,
+  onSave,
 };
 
 describe('Test Add Announcement modal', () => {

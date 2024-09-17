@@ -12,16 +12,17 @@
 """
 AVG Metric definition
 """
-# pylint: disable=duplicate-code
+from functools import partial
+from typing import Callable, List, Optional, cast
 
-
-from typing import List, cast
-
-from sqlalchemy import column, func
+from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
+from metadata.generated.schema.entity.data.table import Table
+from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
     FLOAT_SET,
@@ -32,23 +33,34 @@ from metadata.profiler.orm.registry import (
 )
 from metadata.utils.logger import profiler_logger
 
+# pylint: disable=duplicate-code
+
+
 logger = profiler_logger()
 
 
-# pylint: disable=invalid-name
-class avg(GenericFunction):
+class AvgFn(GenericFunction):
     name = "avg"
     inherit_cache = CACHE
 
 
-@compiles(avg, Dialects.ClickHouse)
+@compiles(AvgFn, Dialects.ClickHouse)
 def _(element, compiler, **kw):
     """Handle case for empty table. If empty, clickhouse returns NaN"""
     proc = compiler.process(element.clauses, **kw)
     return f"if(isNaN(avg({proc})), null, avg({proc}))"
 
 
-@compiles(avg, Dialects.MSSQL)
+@compiles(AvgFn, Dialects.Redshift)
+def _(element, compiler, **kw):
+    """
+    Cast to decimal to get around potential integer overflow error
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return f"avg(CAST({proc} AS DECIMAL(38,0)))"
+
+
+@compiles(AvgFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
     """
     Cast to decimal to get around potential integer overflow error -
@@ -58,7 +70,7 @@ def _(element, compiler, **kw):
     return f"avg(cast({proc} as decimal))"
 
 
-@compiles(avg, Dialects.Trino)
+@compiles(AvgFn, Dialects.Trino)
 def _(element, compiler, **kw):
     proc = compiler.process(element.clauses, **kw)
     first_clause = element.clauses.clauses[0]
@@ -85,7 +97,7 @@ class Mean(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "mean"
+        return MetricType.mean.value
 
     @property
     def metric_type(self):
@@ -95,10 +107,10 @@ class Mean(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return func.avg(column(self.col.name, self.col.type))
+            return AvgFn(column(self.col.name, self.col.type))
 
         if is_concatenable(self.col.type):
-            return func.avg(LenFn(column(self.col.name, self.col.type)))
+            return AvgFn(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MEAN"
@@ -115,25 +127,23 @@ class Mean(StaticMetric):
 
         means = []
         weights = []
-
-        if is_quantifiable(self.col.type):
-            for df in dfs:
-                mean = df[self.col.name].mean()
-                if not pd.isnull(mean):
-                    means.append(mean)
-                    weights.append(df[self.col.name].count())
-
-        if is_concatenable(self.col.type):
-            length_vectorize_func = vectorize(len)
-            for df in dfs:
+        length_vectorize_func = vectorize(len)
+        for df in dfs:
+            processed_df = df[self.col.name].dropna()
+            try:
                 mean = None
-                if any(df[self.col.name]):
-                    mean = length_vectorize_func(
-                        df[self.col.name].dropna().astype(str)
-                    ).mean()
+                if is_quantifiable(self.col.type):
+                    mean = processed_df.mean()
+                if is_concatenable(self.col.type):
+                    mean = length_vectorize_func(processed_df.astype(str)).mean()
                 if not pd.isnull(mean):
                     means.append(mean)
-                    weights.append(df[self.col.name].dropna().count())
+                    weights.append(processed_df.count())
+            except Exception as err:
+                logger.debug(
+                    f"Error while computing mean for column {self.col.name}: {err}"
+                )
+                return None
 
         if means:
             return average(means, weights=weights)
@@ -142,3 +152,9 @@ class Mean(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing MEAN"
         )
         return None
+
+    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
+        """nosql function"""
+        if is_quantifiable(self.col.type):
+            return partial(adaptor.mean, column=self.col)
+        return lambda table: None

@@ -46,27 +46,27 @@ MSSQL_GET_TABLE_COMMENTS = textwrap.dedent(
 SELECT obj.name AS table_name,
         ep.value AS table_comment,
         s.name AS "schema"
-FROM sys.tables AS obj
+FROM sys.objects AS obj
 LEFT JOIN sys.extended_properties AS ep
-    ON obj.object_id = ep.major_id AND ep.minor_id = 0
+    ON obj.object_id = ep.major_id AND ep.minor_id = 0 AND ep.name = 'MS_Description'
 JOIN sys.schemas AS s
     ON obj.schema_id = s.schema_id
-WHERE ep.name = 'MS_Description'
+WHERE
+    obj.type IN ('U', 'V') /* User tables and views */
 """
 )
 
 MSSQL_ALL_VIEW_DEFINITIONS = textwrap.dedent(
     """
-select
-	definition view_def,
-	views.name view_name,
-	sch.name "schema"
-from sys.sql_modules as mod,
-sys.views as views,
-sys.schemas as sch
- where
-mod.object_id=views.object_id and
-views.schema_id=sch.schema_id
+SELECT
+    definition view_def,
+    views.name view_name,
+    sch.name "schema"
+FROM sys.sql_modules as mod
+INNER JOIN sys.views as views
+    ON mod.object_id = views.object_id
+INNER JOIN sys.schemas as sch
+    ON views.schema_id = sch.schema_id
 """
 )
 
@@ -191,10 +191,12 @@ MSSQL_GET_STORED_PROCEDURES = textwrap.dedent(
     """
 SELECT
   ROUTINE_NAME AS name,
-  NULL AS owner,
+  NULL AS owner,            
   ROUTINE_BODY AS language,
-  ROUTINE_DEFINITION AS definition
-FROM INFORMATION_SCHEMA.ROUTINES
+  l.definition AS definition
+FROM INFORMATION_SCHEMA.ROUTINES r
+JOIN sys.procedures p ON p.name = r.ROUTINE_NAME 
+JOIN sys.sql_modules l on l.object_id = p.object_id
  WHERE ROUTINE_TYPE = 'PROCEDURE'
    AND ROUTINE_CATALOG = '{database_name}'
    AND ROUTINE_SCHEMA = '{schema_name}' 
@@ -263,3 +265,5 @@ order by PROCEDURE_START_TIME desc
 ;
     """
 )
+
+GET_DB_CONFIGS = textwrap.dedent("DBCC USEROPTIONS;")

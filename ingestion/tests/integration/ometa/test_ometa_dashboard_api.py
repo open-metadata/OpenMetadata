@@ -36,6 +36,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -61,7 +62,7 @@ class OMetaDashboardTest(TestCase):
     user = metadata.create_or_update(
         data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
-    owner = EntityReference(id=user.id, type="user")
+    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreateDashboardServiceRequest(
         name="test-service-dashboard",
@@ -102,7 +103,7 @@ class OMetaDashboardTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DashboardService, fqn="test-service-dashboard"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -121,7 +122,7 @@ class OMetaDashboardTest(TestCase):
 
         self.assertEqual(res.name, self.entity.name)
         self.assertEqual(res.service.id, self.entity.service.id)
-        self.assertEqual(res.owner, None)
+        self.assertIsNone(res.owners)
 
     def test_update(self):
         """
@@ -130,18 +131,16 @@ class OMetaDashboardTest(TestCase):
 
         res_create = self.metadata.create_or_update(data=self.create)
 
-        updated = self.create.dict(exclude_unset=True)
-        updated["owner"] = self.owner
+        updated = self.create.model_dump(exclude_unset=True)
+        updated["owners"] = self.owners
         updated_entity = CreateDashboardRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
-        self.assertEqual(
-            res.service.fullyQualifiedName, updated_entity.service.__root__
-        )
+        self.assertEqual(res.service.fullyQualifiedName, updated_entity.service.root)
         self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owner.id, self.user.id)
+        self.assertEqual(res.owners.root[0].id, self.user.id)
 
     def test_get_name(self):
         """
@@ -199,12 +198,12 @@ class OMetaDashboardTest(TestCase):
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
-            entity=Dashboard, entity_id=str(res_name.id.__root__)
+            entity=Dashboard, entity_id=str(res_name.id.root)
         )
 
         # Delete
         self.metadata.delete(
-            entity=Dashboard, entity_id=str(res_id.id.__root__), recursive=True
+            entity=Dashboard, entity_id=str(res_id.id.root), recursive=True
         )
 
         # Then we should not find it
@@ -230,7 +229,7 @@ class OMetaDashboardTest(TestCase):
         )
 
         res = self.metadata.get_list_entity_versions(
-            entity=Dashboard, entity_id=res_name.id.__root__
+            entity=Dashboard, entity_id=res_name.id.root
         )
         assert res
 
@@ -245,11 +244,11 @@ class OMetaDashboardTest(TestCase):
             entity=Dashboard, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
-            entity=Dashboard, entity_id=res_name.id.__root__, version=0.1
+            entity=Dashboard, entity_id=res_name.id.root, version=0.1
         )
 
         # check we get the correct version requested and the correct entity ID
-        assert res.version.__root__ == 0.1
+        assert res.version.root == 0.1
         assert res.id == res_name.id
 
     def test_get_entity_ref(self):

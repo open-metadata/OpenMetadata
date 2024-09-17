@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { formatJsonString, getDecodedFqn, getEncodedFqn } from './StringsUtils';
+import {
+  formatJsonString,
+  getDecodedFqn,
+  getEncodedFqn,
+  jsonToCSV,
+  replaceCallback,
+} from './StringsUtils';
 
 describe('StringsUtils', () => {
   it('getEncodedFqn should return encoded Fqn', () => {
@@ -39,6 +45,29 @@ describe('StringsUtils', () => {
     const decodedFqn = 'sample_data.db_sample.schema_sample.dim client.';
 
     expect(getDecodedFqn(fqn, true)).toEqual(decodedFqn);
+  });
+
+  describe('replaceCallback', () => {
+    it('should return a hexadecimal string', () => {
+      const result = replaceCallback('x');
+
+      expect(typeof result).toBe('string');
+      expect(/^[0-9a-f]$/.test(result)).toBeTruthy();
+    });
+
+    it('should return a hexadecimal string between 0 and f when character is x', () => {
+      const result = replaceCallback('x');
+
+      expect(parseInt(result, 16)).toBeGreaterThanOrEqual(0);
+      expect(parseInt(result, 16)).toBeLessThanOrEqual(15);
+    });
+
+    it('should return a hexadecimal string between 8 and b when character is not x', () => {
+      const result = replaceCallback('y');
+
+      expect(parseInt(result, 16)).toBeGreaterThanOrEqual(8);
+      expect(parseInt(result, 16)).toBeLessThanOrEqual(11);
+    });
   });
 
   describe('formatJsonString', () => {
@@ -71,5 +100,25 @@ describe('StringsUtils', () => {
 
       expect(formatJsonString(jsonString)).toStrictEqual(jsonString);
     });
+  });
+
+  it('jsonToCSV should return expected csv', () => {
+    const jsonData = [
+      { name: 'John', age: 30, city: 'New York' },
+      { name: 'Jane', age: 25, city: 'San Francisco' },
+      { name: 'Bob', age: 35, city: 'Chicago' },
+    ];
+
+    const headers = [
+      { field: 'name', title: 'Name' },
+      { field: 'age', title: 'Age' },
+      { field: 'city', title: 'City' },
+    ];
+
+    const expectedCSV = `Name,Age,City\n"John","30","New York"\n"Jane","25","San Francisco"\n"Bob","35","Chicago"`;
+
+    expect(jsonToCSV(jsonData, headers)).toEqual(expectedCSV);
+    expect(jsonToCSV(jsonData, [])).toEqual('');
+    expect(jsonToCSV([], headers)).toEqual('');
   });
 });

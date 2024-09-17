@@ -67,9 +67,12 @@ const mockParams = {
   tab: EntityTabs.SCHEMA,
 };
 
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: 'topic' }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
-  useLocation: jest.fn().mockReturnValue({ pathname: 'topic' }),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
@@ -77,7 +80,7 @@ jest.mock('../../Lineage/Lineage.component', () => {
   return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
 });
 
-jest.mock('../../common/EntityDescription/Description', () => {
+jest.mock('../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 

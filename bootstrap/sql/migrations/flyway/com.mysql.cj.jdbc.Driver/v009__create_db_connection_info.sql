@@ -86,17 +86,17 @@ CREATE TABLE IF NOT EXISTS temp_query_migration (
 
 
 INSERT INTO temp_query_migration(tableId,json)
-SELECT id,JSON_OBJECT('id',UUID(),'query',query,'users',users,'checksum',checksum,'duration',duration,'name',checksum,'updatedAt',UNIX_TIMESTAMP(NOW()),'updatedBy','admin','deleted',false) as json from entity_extension d, json_table(d.json, '$[*]' columns (query varchar(200) path '$.query',users json path '$.users',checksum varchar(200) path '$.checksum',name varchar(255) path '$.checksum', duration double path '$.duration',queryDate varchar(200) path '$.queryDate')) AS j WHERE extension = "table.tableQueries";
+SELECT id,JSON_OBJECT('id',UUID(),'query',query,'users',users,'checksum',checksum,'duration',duration,'name',checksum,'updatedAt',UNIX_TIMESTAMP(NOW()),'updatedBy','admin','deleted',false) as json from entity_extension d, json_table(d.json, '$[*]' columns (query varchar(200) path '$.query',users json path '$.users',checksum varchar(200) path '$.checksum',name varchar(255) path '$.checksum', duration double path '$.duration',queryDate varchar(200) path '$.queryDate')) AS j WHERE extension = 'table.tableQueries';
 
 INSERT INTO query_entity (json)
 SELECT t.json from temp_query_migration t
 ON DUPLICATE KEY UPDATE json = VALUES(json);
 
 INSERT INTO entity_relationship(fromId,toId,fromEntity,toEntity,relation)
-SELECT tmq.tableId, (select qe.id from query_entity qe where qe.name = tmq.queryName) ,"table","query",5 FROM temp_query_migration tmq;
+SELECT tmq.tableId, (select qe.id from query_entity qe where qe.name = tmq.queryName) ,'table','query',5 FROM temp_query_migration tmq;
 
 DELETE FROM entity_extension WHERE id IN
- (SELECT DISTINCT tableId FROM temp_query_migration) AND extension = "table.tableQueries";
+ (SELECT DISTINCT tableId FROM temp_query_migration) AND extension = 'table.tableQueries';
 
 DROP Table temp_query_migration;
 
@@ -222,8 +222,8 @@ SET json = JSON_REMOVE(json, '$.connection.config.supportsProfiler')
 WHERE serviceType = 'DynamoDB';
 
 -- Update TagLabels source from 'Tag' to 'Classification' after #10486
-UPDATE table_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");
-UPDATE ml_model_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");
+UPDATE table_entity SET json = REGEXP_REPLACE(json, '\"source\"\\s*:\\s*\"Tag\"', '\"source\": \"Classification\"');
+UPDATE ml_model_entity SET json = REGEXP_REPLACE(json, '\"source\"\\s*:\\s*\"Tag\"', '\"source\": \"Classification\"');
 
 
 -- Delete supportsProfiler from Mssql

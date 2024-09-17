@@ -131,7 +131,7 @@
       "default": "None"
     },
     "schemaFields": {
-      "description": "Columns in this table.",
+      "description": "Columns in this schema.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/field"

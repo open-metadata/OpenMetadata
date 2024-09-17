@@ -32,6 +32,7 @@ bulkSink:
   config:
     filename: /tmp/bigquery_usage
 workflowConfig:
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

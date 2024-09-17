@@ -17,6 +17,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -34,8 +35,10 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -58,10 +61,10 @@ public final class CommonUtil {
   public static List<String> getResources(Pattern pattern) throws IOException {
     ArrayList<String> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
-    List<String> classPathElements =
+    Set<String> classPathElements =
         Arrays.stream(classPath.split(File.pathSeparator))
             .filter(jarName -> JAR_NAME_FILTER.stream().anyMatch(jarName.toLowerCase()::contains))
-            .toList();
+            .collect(Collectors.toSet());
 
     for (String element : classPathElements) {
       File file = new File(element);
@@ -82,6 +85,7 @@ public final class CommonUtil {
   }
 
   private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {
+    LOG.debug("Adding from file {}", file);
     ArrayList<String> retval = new ArrayList<>();
     try (ZipFile zf = new ZipFile(file)) {
       Enumeration<? extends ZipEntry> e = zf.entries();
@@ -174,12 +178,20 @@ public final class CommonUtil {
     return Optional.ofNullable(list).orElse(Collections.emptyList());
   }
 
+  public static <T> List<T> listOrEmptyMutable(List<T> list) {
+    return nullOrEmpty(list) ? new ArrayList<>() : new ArrayList<>(list);
+  }
+
   public static boolean nullOrEmpty(String string) {
     return string == null || string.isEmpty();
   }
 
   public static boolean nullOrEmpty(List<?> list) {
     return list == null || list.isEmpty();
+  }
+
+  public static boolean nullOrEmpty(Map<?, ?> m) {
+    return m == null || m.isEmpty();
   }
 
   public static boolean nullOrEmpty(Object object) {
@@ -206,5 +218,25 @@ public final class CommonUtil {
       LOG.error("Error creating URI ", e);
     }
     return null;
+  }
+
+  public static <T> boolean findChildren(List<?> list, String methodName, String fqn) {
+    if (list == null || list.isEmpty()) return false;
+    try {
+      Method getChildren = list.get(0).getClass().getMethod(methodName);
+      Method getFQN = list.get(0).getClass().getMethod("getFullyQualifiedName");
+      return list.stream()
+          .anyMatch(
+              o -> {
+                try {
+                  return getFQN.invoke(o).equals(fqn)
+                      || findChildren((List<?>) getChildren.invoke(o), methodName, fqn);
+                } catch (Exception e) {
+                  return false;
+                }
+              });
+    } catch (Exception e) {
+      return false;
+    }
   }
 }

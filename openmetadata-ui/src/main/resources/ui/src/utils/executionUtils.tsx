@@ -44,7 +44,8 @@ export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
       alt="result"
       className="align-middle"
       component={getStatusBadgeIcon(status)}
-      style={{ fontSize: '16px' }}
+      // by default, color is set to inherit for Icon in ANTD, so we need to set it to transparent
+      style={{ fontSize: '16px', color: 'transparent' }}
     />
     <p>
       {status === StatusType.Successful
@@ -210,7 +211,8 @@ export const getTreeData = (
                   alt="result"
                   className="align-middle"
                   component={getStatusBadgeIcon(status.executionStatus)}
-                  style={{ fontSize: '24px' }}
+                  // by default, color is set to inherit for Icon in ANTD, so we need to set it to transparent
+                  style={{ fontSize: '24px', color: 'transparent' }}
                 />
               </Tooltip>
             ))}

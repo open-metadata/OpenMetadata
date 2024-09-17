@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -21,7 +23,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
-import { getDashboardDetailsPath } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  getEntityDetailsPath,
+} from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -32,6 +37,8 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import LimitWrapper from '../../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
@@ -42,21 +49,17 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
-import {
-  getFilterIcon,
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -90,7 +93,7 @@ const DashboardDetails = ({
   handleToggleDelete,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser, theme } = useApplicationStore();
   const history = useHistory();
   const { tab: activeTab = EntityTabs.DETAILS } =
     useParams<{ tab: EntityTabs }>();
@@ -119,7 +122,7 @@ const DashboardDetails = ({
   >([]);
 
   const {
-    owner,
+    owners,
     description,
     entityName,
     followers = [],
@@ -225,7 +228,13 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getDashboardDetailsPath(decodedDashboardFQN, activeKey));
+      history.push(
+        getEntityDetailsPath(
+          EntityType.DASHBOARD,
+          decodedDashboardFQN,
+          activeKey
+        )
+      );
     }
   };
 
@@ -255,14 +264,14 @@ const DashboardDetails = ({
   };
 
   const onOwnerUpdate = useCallback(
-    async (newOwner?: Dashboard['owner']) => {
+    async (newOwners?: Dashboard['owners']) => {
       const updatedDashboard = {
         ...dashboardDetails,
-        owner: newOwner ? { ...owner, ...newOwner } : undefined,
+        owners: newOwners,
       };
-      await onDashboardUpdate(updatedDashboard, 'owner');
+      await onDashboardUpdate(updatedDashboard, 'owners');
     },
-    [owner]
+    [owners]
   );
 
   const onTierUpdate = async (newTier?: Tag) => {
@@ -437,10 +446,10 @@ const DashboardDetails = ({
               <Typography.Link href={record.sourceUrl} target="_blank">
                 <span className="break-all">{chartName}</span>
 
-                <ExternalLinkIcon
-                  className="m-l-xs flex-none"
-                  height={14}
-                  width={14}
+                <Icon
+                  className="m-l-xs flex-none align-middle"
+                  component={ExternalLinkIcon}
+                  style={DATA_ASSET_ICON_DIMENSION}
                 />
               </Typography.Link>
             </div>
@@ -494,7 +503,14 @@ const DashboardDetails = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('tag-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
+          />
+        ),
         render: (tags: TagLabel[], record: ChartType, index: number) => {
           return (
             <TableTags<ChartType>
@@ -521,7 +537,14 @@ const DashboardDetails = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('glossary-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
+          />
+        ),
         render: (tags: TagLabel[], record: ChartType, index: number) => (
           <TableTags<ChartType>
             entityFqn={decodedDashboardFQN}
@@ -548,6 +571,7 @@ const DashboardDetails = ({
       hasEditTagAccess,
       handleUpdateChart,
       handleChartTagSelection,
+      charts,
     ]
   );
 
@@ -589,55 +613,75 @@ const DashboardDetails = ({
         key: EntityTabs.DETAILS,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={dashboardDetails.description}
-                  entityFqn={decodedDashboardFQN}
-                  entityName={entityName}
-                  entityType={EntityType.DASHBOARD}
-                  hasEditAccess={editDescriptionPermission}
-                  isEdit={isEdit}
-                  owner={dashboardDetails.owner}
-                  showActions={!deleted}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
+              <ResizablePanels
+                firstPanel={{
+                  className: 'entity-resizable-panel-container',
+                  children: (
+                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
+                      <DescriptionV1
+                        description={dashboardDetails.description}
+                        entityFqn={decodedDashboardFQN}
+                        entityName={entityName}
+                        entityType={EntityType.DASHBOARD}
+                        hasEditAccess={editDescriptionPermission}
+                        isDescriptionExpanded={isEmpty(charts)}
+                        isEdit={isEdit}
+                        owner={dashboardDetails.owners}
+                        showActions={!deleted}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
 
-                {isEmpty(charts) ? (
-                  <ErrorPlaceHolder />
-                ) : (
-                  <Table
-                    bordered
-                    columns={tableColumn}
-                    data-testid="charts-table"
-                    dataSource={charts}
-                    pagination={false}
-                    rowKey="id"
-                    scroll={{ x: 1200 }}
-                    size="small"
-                  />
-                )}
-              </div>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel
-                customProperties={dashboardDetails}
-                dataProducts={dashboardDetails?.dataProducts ?? []}
-                domain={dashboardDetails?.domain}
-                editTagPermission={editTagsPermission}
-                entityFQN={decodedDashboardFQN}
-                entityId={dashboardDetails.id}
-                entityType={EntityType.DASHBOARD}
-                selectedTags={dashboardTags}
-                viewAllPermission={viewAllPermission}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+                      {isEmpty(charts) ? (
+                        <ErrorPlaceHolder />
+                      ) : (
+                        <Table
+                          bordered
+                          className="align-table-filter-left"
+                          columns={tableColumn}
+                          data-testid="charts-table"
+                          dataSource={charts}
+                          pagination={false}
+                          rowKey="id"
+                          scroll={{ x: 1200 }}
+                          size="small"
+                        />
+                      )}
+                    </div>
+                  ),
+                  minWidth: 800,
+                  flex: 0.87,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.DASHBOARD>
+                        customProperties={dashboardDetails}
+                        dataProducts={dashboardDetails?.dataProducts ?? []}
+                        domain={dashboardDetails?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedDashboardFQN}
+                        entityId={dashboardDetails.id}
+                        entityType={EntityType.DASHBOARD}
+                        selectedTags={dashboardTags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={onExtensionUpdate}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 320,
+                  flex: 0.13,
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
+                }}
               />
             </Col>
           </Row>
@@ -776,6 +820,9 @@ const DashboardDetails = ({
           onSave={onChartUpdate}
         />
       )}
+      <LimitWrapper resource="dashboard">
+        <></>
+      </LimitWrapper>
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}

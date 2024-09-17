@@ -30,8 +30,8 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
-  getDatabaseSchemaDetailsPath,
-  getVersionPathWithTab,
+  getEntityDetailsPath,
+  getVersionPath,
   INITIAL_PAGING_VALUE,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -96,7 +96,7 @@ function DatabaseSchemaVersionPage() {
     [servicePermissions]
   );
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
     useMemo(
       () =>
         getBasicEntityInfoFromVersionData(
@@ -111,11 +111,11 @@ function DatabaseSchemaVersionPage() {
       () =>
         getCommonExtraInfoForVersionDetails(
           currentVersionData.changeDescription as ChangeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [currentVersionData.changeDescription, owner, tier, domain]
+      [currentVersionData.changeDescription, owners, tier, domain]
     );
 
   const fetchResourcePermission = useCallback(async () => {
@@ -200,7 +200,7 @@ function DatabaseSchemaVersionPage() {
     () => ({
       versionHandler: (newVersion = version) => {
         history.push(
-          getVersionPathWithTab(
+          getVersionPath(
             EntityType.DATABASE_SCHEMA,
             decodedEntityFQN,
             newVersion,
@@ -209,7 +209,13 @@ function DatabaseSchemaVersionPage() {
         );
       },
       backHandler: () => {
-        history.push(getDatabaseSchemaDetailsPath(decodedEntityFQN));
+        history.push(
+          getEntityDetailsPath(
+            EntityType.DATABASE_SCHEMA,
+            decodedEntityFQN,
+            tab
+          )
+        );
       },
     }),
     [decodedEntityFQN, decodedEntityFQN, tab]
@@ -217,7 +223,7 @@ function DatabaseSchemaVersionPage() {
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPathWithTab(
+      getVersionPath(
         EntityType.DATABASE_SCHEMA,
         decodedEntityFQN,
         String(version),
@@ -349,6 +355,7 @@ function DatabaseSchemaVersionPage() {
 
         <EntityVersionTimeLine
           currentVersion={toString(version)}
+          entityType={EntityType.DATABASE_SCHEMA}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}

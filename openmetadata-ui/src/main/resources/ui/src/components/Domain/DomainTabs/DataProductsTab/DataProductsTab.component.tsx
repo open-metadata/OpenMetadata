@@ -35,9 +35,9 @@ import {
 } from '../../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
+import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import { DataProductsTabProps } from './DataProductsTab.interface';
 
@@ -118,11 +118,36 @@ const DataProductsTab = forwardRef(
     }
 
     return (
-      <PageLayoutV1
-        className="domain-page-layout"
+      <ResizablePanels
+        className="domain-height-with-resizable-panel"
+        firstPanel={{
+          className: 'domain-resizable-panel-container',
+          children: (
+            <div className="p-x-md p-y-md">
+              {dataProducts.data.map((dataProduct) => (
+                <ExploreSearchCard
+                  className={classNames(
+                    'm-b-sm cursor-pointer',
+                    selectedCard?.id === dataProduct.id ? 'highlight-card' : ''
+                  )}
+                  handleSummaryPanelDisplay={updateSelectedCard}
+                  id={dataProduct.id}
+                  key={'data_products_card' + dataProduct.id}
+                  showTags={false}
+                  source={{
+                    ...dataProduct,
+                    entityType: EntityType.DATA_PRODUCT,
+                  }}
+                />
+              ))}
+            </div>
+          ),
+          minWidth: 800,
+          flex: 0.87,
+        }}
         pageTitle={t('label.domain')}
-        rightPanel={
-          selectedCard && (
+        secondPanel={{
+          children: selectedCard && (
             <EntitySummaryPanel
               entityDetails={{
                 details: {
@@ -132,24 +157,13 @@ const DataProductsTab = forwardRef(
               }}
               handleClosePanel={() => setSelectedCard(undefined)}
             />
-          )
-        }>
-        <div className="p-x-md">
-          {dataProducts.data.map((dataProduct) => (
-            <ExploreSearchCard
-              className={classNames(
-                'm-b-sm cursor-pointer',
-                selectedCard?.id === dataProduct.id ? 'highlight-card' : ''
-              )}
-              handleSummaryPanelDisplay={updateSelectedCard}
-              id={dataProduct.id}
-              key={'data_products_card' + dataProduct.id}
-              showTags={false}
-              source={{ ...dataProduct, entityType: EntityType.DATA_PRODUCT }}
-            />
-          ))}
-        </div>
-      </PageLayoutV1>
+          ),
+          minWidth: 320,
+          flex: 0.13,
+          className:
+            'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
+        }}
+      />
     );
   }
 );

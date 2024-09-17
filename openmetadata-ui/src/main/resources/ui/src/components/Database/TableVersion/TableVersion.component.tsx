@@ -18,7 +18,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { getVersionPathWithTab } from '../../../constants/constants';
+import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
@@ -50,7 +50,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   domain,
   dataProducts,
   tier,
@@ -78,11 +78,11 @@ const TableVersion: React.FC<TableVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const columns = useMemo(() => {
@@ -93,12 +93,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPathWithTab(
-        EntityType.TABLE,
-        entityFqn,
-        String(version),
-        activeKey
-      )
+      getVersionPath(EntityType.TABLE, entityFqn, String(version), activeKey)
     );
   };
 
@@ -271,6 +266,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
+        entityType={EntityType.TABLE}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

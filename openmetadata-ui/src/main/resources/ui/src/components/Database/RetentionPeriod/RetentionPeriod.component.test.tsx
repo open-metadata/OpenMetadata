@@ -14,7 +14,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import RetentionPeriod from './RetentionPeriod.component';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
 
@@ -34,7 +33,7 @@ const mockOnUpdate = jest.fn();
 const mockRetentionPeriodProps: RetentionPeriodProps = {
   retentionPeriod: undefined,
   onUpdate: mockOnUpdate,
-  permissions: { EditAll: true } as OperationPermission,
+  hasPermission: true,
 };
 
 describe('Test Retention Period Component', () => {
@@ -145,12 +144,8 @@ describe('Test Retention Period Component', () => {
   });
 
   it('Should not render Retention Period Component if has no permission', () => {
-    const permissions = { EditAll: false } as OperationPermission;
     render(
-      <RetentionPeriod
-        {...mockRetentionPeriodProps}
-        permissions={permissions}
-      />
+      <RetentionPeriod {...mockRetentionPeriodProps} hasPermission={false} />
     );
 
     expect(
@@ -158,5 +153,8 @@ describe('Test Retention Period Component', () => {
     ).toBeInTheDocument();
 
     expect(screen.getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('edit-retention-period-button')
+    ).not.toBeInTheDocument();
   });
 });

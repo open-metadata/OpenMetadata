@@ -26,6 +26,12 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -50,9 +56,11 @@ class LightdashSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: LightdashConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config = WorkflowSource.model_validate(config_dict)
+        connection: LightdashConnection = config.serviceConnection.root.config
         if not isinstance(connection, LightdashConnection):
             raise InvalidSourceException(
                 f"Expected LightdashConnection, but got {connection}"
@@ -103,21 +111,25 @@ class LightdashSource(DashboardServiceSource):
                 f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
             )
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details.uuid,
-                sourceUrl=dashboard_url,
+                name=EntityName(dashboard_details.uuid),
+                sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=dashboard_details.description,
+                description=Markdown(dashboard_details.description)
+                if dashboard_details.description
+                else None,
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                service=self.context.get().dashboard_service,
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield dashboard_request
             self.register_record(dashboard_request=dashboard_request)
@@ -148,11 +160,13 @@ class LightdashSource(DashboardServiceSource):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
                 yield CreateChartRequest(
-                    name=chart.uuid,
+                    name=EntityName(chart.uuid),
                     displayName=chart.name,
-                    description=chart.description,
-                    sourceUrl=chart_url,
-                    service=self.context.dashboard_service,
+                    description=Markdown(chart.description)
+                    if chart.description
+                    else None,
+                    sourceUrl=SourceUrl(chart_url),
+                    service=self.context.get().dashboard_service,
                 )
                 self.status.scanned(chart.name)
             except Exception as exc:  # pylint: disable=broad-except

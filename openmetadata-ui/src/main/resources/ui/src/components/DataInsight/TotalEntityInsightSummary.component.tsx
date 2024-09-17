@@ -118,7 +118,7 @@ const TotalEntityInsightSummary = ({
                   isActive={
                     activeKeys?.length ? activeKeys.includes(entity) : true
                   }
-                  latestData={latestData}
+                  label={latestData[entity]}
                   progress={progress}
                   strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
                 />

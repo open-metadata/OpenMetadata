@@ -13,24 +13,21 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { useApplicationConfigContext } from '../../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getImageWithResolutionAndFallback } from '../../../../utils/ProfilerUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import { mockPersonaData, mockUserData } from '../mocks/User.mocks';
 import { UserProfileIcon } from './UserProfileIcon.component';
 
 const mockLogout = jest.fn();
-const mockUpdateSelectedPersona = jest.fn();
 
-jest.mock(
-  '../../../../context/ApplicationConfigProvider/ApplicationConfigProvider',
-  () => ({
-    useApplicationConfigContext: jest.fn().mockImplementation(() => ({
-      selectedPersona: {},
-      updateSelectedPersona: mockUpdateSelectedPersona,
-    })),
-  })
-);
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    selectedPersona: {},
+    setSelectedPersona: jest.fn(),
+    onLogoutHandler: mockLogout,
+    currentUser: mockUserData,
+  })),
+}));
 
 jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test User'),
@@ -43,8 +40,8 @@ jest.mock('../../../../utils/ProfilerUtils', () => ({
   ImageQuality: jest.fn().mockReturnValue('6x'),
 }));
 
-jest.mock('../../../common/AvatarComponent/Avatar', () =>
-  jest.fn().mockReturnValue(<div>Avatar</div>)
+jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
+  jest.fn().mockReturnValue(<div>ProfilePicture</div>)
 );
 
 jest.mock('react-router-dom', () => ({
@@ -53,13 +50,6 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <p data-testid="link">{children}</p>
     )),
-}));
-
-jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
-    currentUser: mockUserData,
-  })),
-  onLogoutHandler: mockLogout,
 }));
 
 describe('UserProfileIcon', () => {
@@ -94,16 +84,16 @@ describe('UserProfileIcon', () => {
     const { queryByTestId, getByText } = render(<UserProfileIcon />);
 
     expect(queryByTestId('app-bar-user-profile-pic')).not.toBeInTheDocument();
-    expect(getByText('Avatar')).toBeInTheDocument();
+    expect(getByText('ProfilePicture')).toBeInTheDocument();
   });
 
   it('should display the user team', () => {
-    (useApplicationConfigContext as jest.Mock).mockImplementation(() => ({
+    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
       selectedPersona: {
         id: '3362fe18-05ad-4457-9632-84f22887dda6',
         type: 'team',
       },
-      updateSelectedPersona: jest.fn(),
+      setSelectedPersona: jest.fn(),
     }));
     const { getByTestId } = render(<UserProfileIcon />);
 
@@ -111,7 +101,7 @@ describe('UserProfileIcon', () => {
   });
 
   it('should show empty placeholder when no teams data', async () => {
-    (useAuthContext as jest.Mock).mockImplementation(() => ({
+    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
       currentUser: { ...mockUserData, teams: [] },
       onLogoutHandler: mockLogout,
     }));
@@ -123,20 +113,19 @@ describe('UserProfileIcon', () => {
   });
 
   it('should show checked if selected persona is true', async () => {
-    (useAuthContext as jest.Mock).mockImplementation(() => ({
+    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
       currentUser: {
         ...mockUserData,
         personas: mockPersonaData,
       },
       onLogoutHandler: mockLogout,
-    }));
-    (useApplicationConfigContext as jest.Mock).mockImplementation(() => ({
       selectedPersona: {
         id: '0430976d-092a-46c9-90a8-61c6091a6f38',
         type: 'persona',
       },
-      updateSelectedPersona: jest.fn(),
+      setSelectedPersona: jest.fn(),
     }));
+
     const { getByTestId } = render(<UserProfileIcon />);
     await act(async () => {
       userEvent.click(getByTestId('dropdown-profile'));
@@ -149,20 +138,19 @@ describe('UserProfileIcon', () => {
   });
 
   it('should not show checked if selected persona is true', async () => {
-    (useAuthContext as jest.Mock).mockImplementation(() => ({
+    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
       currentUser: {
         ...mockUserData,
         personas: mockPersonaData,
       },
       onLogoutHandler: mockLogout,
-    }));
-    (useApplicationConfigContext as jest.Mock).mockImplementation(() => ({
       selectedPersona: {
         id: 'test',
         type: 'persona',
       },
-      updateSelectedPersona: jest.fn(),
+      setSelectedPersona: jest.fn(),
     }));
+
     const { getByTestId, queryByTestId } = render(<UserProfileIcon />);
     await act(async () => {
       userEvent.click(getByTestId('dropdown-profile'));

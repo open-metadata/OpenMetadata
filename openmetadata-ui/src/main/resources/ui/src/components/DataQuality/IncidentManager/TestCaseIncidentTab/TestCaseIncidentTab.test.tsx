@@ -12,92 +12,34 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { MOCK_THREAD_DATA } from '../../../../mocks/TestCase.mock';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TestCaseIncidentTab from './TestCaseIncidentTab.component';
-const mockThread = [
-  {
-    id: '33873393-bd68-46e9-bccc-7701c1c41ad6',
-    type: 'Task',
-    threadTs: 1703570590556,
-    about:
-      '<#E::testCase::sample_data.ecommerce_db.shopify.dim_address.table_column_count_between>',
-    entityId: '6206a003-281c-4984-9728-4e949a4e4023',
-    createdBy: 'admin',
-    updatedAt: 1703570590652,
-    updatedBy: 'admin',
-    resolved: false,
-    message: 'Test Case Failure Resolution requested for ',
-    postsCount: 1,
-    posts: [
-      {
-        id: 'a3e5f8cc-f852-47a4-b2a3-3dd4f5e52f89',
-        message: 'Resolved the Task.',
-        postTs: 1703570590652,
-        from: 'admin',
-        reactions: [],
-      },
-    ],
-    task: {
-      id: 6,
-      type: 'RequestTestCaseFailureResolution',
-      assignees: [
-        {
-          id: 'd75b492b-3b73-449d-922c-14b61bc44b3d',
-          type: 'user',
-          name: 'aaron_johnson0',
-          fullyQualifiedName: 'aaron_johnson0',
-          displayName: 'Aaron Johnson',
-          deleted: false,
-        },
-      ],
-      status: 'Closed',
-      closedBy: 'admin',
-      closedAt: 1703570590648,
-      newValue: 'Resolution comment',
-      testCaseResolutionStatusId: 'f93d08e9-2d38-4d01-a294-f8b44fbb0f4a',
-    },
-  },
-  {
-    id: '9950d7a0-01a4-4e02-bd7f-c431d9cd77f1',
-    type: 'Task',
-    threadTs: 1703570590829,
-    about:
-      '<#E::testCase::sample_data.ecommerce_db.shopify.dim_address.table_column_count_between>',
-    entityId: '6206a003-281c-4984-9728-4e949a4e4023',
-    createdBy: 'admin',
-    updatedAt: 1703570590829,
-    updatedBy: 'admin',
-    resolved: false,
-    message: 'Test Case Failure Resolution requested for ',
-    postsCount: 0,
-    posts: [],
-    task: {
-      id: 9,
-      type: 'RequestTestCaseFailureResolution',
-      assignees: [
-        {
-          id: 'd75b492b-3b73-449d-922c-14b61bc44b3d',
-          type: 'user',
-          name: 'aaron_johnson0',
-          fullyQualifiedName: 'aaron_johnson0',
-          displayName: 'Aaron Johnson',
-          deleted: false,
-        },
-      ],
-      status: 'Open',
-      testCaseResolutionStatusId: 'c0bd7ad8-ada8-48b0-82dd-799df5f5a737',
-    },
-  },
-];
 
 const mockUseActivityFeedProviderValue = {
   entityPaging: { total: 4 },
-  entityThread: mockThread,
+  entityThread: MOCK_THREAD_DATA,
   getFeedData: jest.fn().mockImplementation(() => Promise.resolve()),
   loading: false,
-  selectedThread: mockThread[0],
+  selectedThread: MOCK_THREAD_DATA[0],
   setActiveThread: jest.fn(),
 };
+
+jest.mock(
+  '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
+  () => ({
+    useTestCaseStore: jest.fn().mockImplementation(() => ({
+      testCase: {
+        owner: {
+          name: 'arron_johnson',
+          displayName: 'Arron Johnson',
+          id: '1',
+          type: 'user',
+        },
+      },
+    })),
+  })
+);
 
 jest.mock('../../../Entity/Task/TaskTab/TaskTab.component', () => {
   return {
@@ -120,7 +62,9 @@ jest.mock(
     return jest.fn().mockImplementation(({ onFeedClick }) => (
       <div>
         ActivityFeedListV1
-        <button data-testid="feed" onClick={() => onFeedClick(mockThread[1])}>
+        <button
+          data-testid="feed"
+          onClick={() => onFeedClick(MOCK_THREAD_DATA[1])}>
           Task1
         </button>
       </div>
@@ -193,7 +137,7 @@ describe('TestCaseIssueTab', () => {
 
     expect(
       mockUseActivityFeedProviderValue.setActiveThread
-    ).toHaveBeenCalledWith(mockThread[1]);
+    ).toHaveBeenCalledWith(MOCK_THREAD_DATA[1]);
   });
 
   it('Should call setActiveThread, on click of open and close task btn', async () => {

@@ -10,21 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, {
+import {
   CheckOutlined,
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Button, Col, Input, Space, Tooltip, Typography } from 'antd';
+import { Button, Input, Space, Tooltip, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
+import { DE_ACTIVE_COLOR } from '../../../../../constants/constants';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { hasEditAccess } from '../../../../../utils/CommonUtils';
+import { getEntityName } from '../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../../Auth/AuthProviders/AuthProvider';
 import { TeamsHeadingLabelProps } from '../team.interface';
 
 const TeamsHeadingLabel = ({
@@ -39,14 +41,12 @@ const TeamsHeadingLabel = ({
     currentTeam ? currentTeam.displayName : ''
   );
   const { isAdminUser } = useAuth();
-  const { currentUser } = useAuthContext();
-  const { owner } = useMemo(() => currentTeam, [currentTeam]);
+  const { currentUser } = useApplicationStore();
+  const { owners } = useMemo(() => currentTeam, [currentTeam]);
 
   const isCurrentTeamOwner = useMemo(
-    () =>
-      currentUser &&
-      hasEditAccess(owner?.type ?? '', owner?.id ?? '', currentUser),
-    [owner]
+    () => currentUser && hasEditAccess(owners ?? [], currentUser),
+    [owners, currentUser]
   );
 
   const { hasEditDisplayNamePermission, hasAccess } = useMemo(
@@ -82,14 +82,16 @@ const TeamsHeadingLabel = ({
   };
 
   const handleClose = useCallback(() => {
-    setHeading(currentTeam ? currentTeam.displayName : '');
+    setHeading(currentTeam ? getEntityName(currentTeam) : '');
     setIsHeadingEditing(false);
-  }, [currentTeam.displayName]);
+  }, [currentTeam]);
 
   const teamHeadingRender = useMemo(
     () =>
       isHeadingEditing ? (
-        <Space>
+        // Used onClick stop click propagation event anywhere in the component to parent
+        // TeamDetailsV1 component collapsible panel
+        <Space onClick={(e) => e.stopPropagation()}>
           <Input
             className="w-48"
             data-testid="team-name-input"
@@ -120,8 +122,8 @@ const TeamsHeadingLabel = ({
           </Space>
         </Space>
       ) : (
-        <Space align="center">
-          <Space align="baseline">
+        <>
+          <>
             {heading ? (
               <Typography.Title
                 className="m-b-0 w-max-200"
@@ -149,26 +151,31 @@ const TeamsHeadingLabel = ({
                       })
                     : t('message.no-permission-for-action')
                 }>
-                <Icon
-                  className="align-middle"
-                  component={EditIcon}
+                <Button
+                  className="p-0 flex-center"
                   data-testid="edit-team-name"
                   disabled={!hasEditDisplayNamePermission}
-                  style={{ fontSize: '16px' }}
-                  onClick={() => setIsHeadingEditing(true)}
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
+                  size="small"
+                  type="text"
+                  onClick={(e) => {
+                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                    e.stopPropagation();
+                    setIsHeadingEditing(true);
+                  }}
                 />
               </Tooltip>
             )}
-          </Space>
+          </>
           {currentTeam.deleted && (
-            <Col className="text-xs">
-              <div className="deleted-badge-button" data-testid="deleted-badge">
-                <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
-                {t('label.deleted')}
-              </div>
-            </Col>
+            <div
+              className="deleted-badge-button text-xs flex-center"
+              data-testid="deleted-badge">
+              <ExclamationCircleFilled className="m-r-xss" />
+              {t('label.deleted')}
+            </div>
           )}
-        </Space>
+        </>
       ),
     [
       heading,

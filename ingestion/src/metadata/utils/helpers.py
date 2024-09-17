@@ -19,12 +19,13 @@ import itertools
 import re
 import shutil
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from math import floor, log
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import sqlparse
+from pydantic_core import Url
 from sqlparse.sql import Statement
 
 from metadata.generated.schema.entity.data.chart import ChartType
@@ -105,8 +106,11 @@ def pretty_print_time_duration(duration: Union[int, float]) -> str:
     """
 
     days = divmod(duration, 86400)[0]
+    duration = duration - days * 86400
     hours = divmod(duration, 3600)[0]
+    duration = duration - hours * 3600
     minutes = divmod(duration, 60)[0]
+    duration = duration - minutes * 60
     seconds = round(divmod(duration, 60)[1], 2)
     if days:
         return f"{days}day(s) {hours}h {minutes}m {seconds}s"
@@ -117,12 +121,12 @@ def pretty_print_time_duration(duration: Union[int, float]) -> str:
     return f"{seconds}s"
 
 
-def get_start_and_end(duration: int = 0):
+def get_start_and_end(duration: int = 0) -> Tuple[datetime, datetime]:
     """
     Method to return start and end time based on duration
     """
 
-    today = datetime.utcnow()
+    today = datetime.now(timezone.utc).replace(tzinfo=None)
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
@@ -206,7 +210,7 @@ def find_column_in_table(
         return first.lower() == second.lower()
 
     return next(
-        (col for col in table.columns if equals(col.name.__root__, column_name)), None
+        (col for col in table.columns if equals(col.name.root, column_name)), None
     )
 
 
@@ -222,7 +226,7 @@ def find_suggestion(
         (
             sugg
             for sugg in suggestions
-            if sugg.type == suggestion_type and sugg.entityLink == entity_link
+            if sugg.root.type == suggestion_type and sugg.root.entityLink == entity_link
         ),
         None,
     )
@@ -244,7 +248,7 @@ def find_column_in_table_with_index(
         (
             (col_index, col)
             for col_index, col in enumerate(table.columns)
-            if str(col.name.__root__).lower() == column_name.lower()
+            if str(col.name.root).lower() == column_name.lower()
         ),
         (None, None),
     )
@@ -325,11 +329,7 @@ def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
     if not tags:
         return None
     return next(
-        (
-            tag.tagFQN.__root__
-            for tag in tags
-            if tag.tagFQN.__root__.lower().startswith("tier")
-        ),
+        (tag.tagFQN.root for tag in tags if tag.tagFQN.root.lower().startswith("tier")),
         None,
     )
 
@@ -346,15 +346,20 @@ def format_large_string_numbers(number: Union[float, int]) -> str:
     units = ["", "K", "M", "B", "T"]
     constant_k = 1000.0
     magnitude = int(floor(log(abs(number), constant_k)))
+    if magnitude >= len(units):
+        return f"{int(number / constant_k**magnitude)}e{magnitude*3}"
     return f"{number / constant_k**magnitude:.3f}{units[magnitude]}"
 
 
-def clean_uri(uri: str) -> str:
+def clean_uri(uri: Union[str, Url]) -> str:
     """
     if uri is like http://localhost:9000/
     then remove the end / and
     make it http://localhost:9000
     """
+    # force a string of the given Uri if needed
+    if isinstance(uri, Url):
+        uri = str(uri)
     return uri[:-1] if uri.endswith("/") else uri
 
 

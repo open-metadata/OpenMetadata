@@ -10,21 +10,42 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from '../../../../components/common/RichTextEditor/RichTextEditorPreviewer';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
+import { EntityType } from '../../../../enums/entity.enum';
+import { CardStyle } from '../../../../generated/entity/feed/thread';
 import {
+  AlertType,
+  EventSubscription,
+} from '../../../../generated/events/eventSubscription';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import {
+  entityDisplayName,
+  getEntityFQN,
+  getEntityType,
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
+import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import CustomPropertyFeed from '../../ActivityFeedCardV2/FeedCardBody/CustomPropertyFeed/CustomPropertyFeed.component';
+import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
+import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
+import TestCaseFeed from '../../ActivityFeedCardV2/FeedCardBody/TestCaseFeed/TestCaseFeed';
+import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
 const FeedCardBodyV1 = ({
+  isPost = false,
+  feed,
   isEditPost,
   className,
   showSchedule = true,
@@ -36,6 +57,14 @@ const FeedCardBodyV1 = ({
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
 
+  const { entityFQN, entityType, cardStyle } = useMemo(() => {
+    return {
+      entityFQN: getEntityFQN(feed.about) ?? '',
+      entityType: getEntityType(feed.about) ?? '',
+      cardStyle: feed.cardStyle ?? '',
+    };
+  }, [feed]);
+
   const handleSave = useCallback(() => {
     onUpdate?.(postMessage ?? '');
   }, [onUpdate, postMessage]);
@@ -44,9 +73,77 @@ const FeedCardBodyV1 = ({
     return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
 
-  const feedBody = useMemo(
-    () =>
-      isEditPost ? (
+  const feedBodyStyleCardsRender = useMemo(() => {
+    if (!isPost) {
+      if (cardStyle === CardStyle.Description) {
+        return <DescriptionFeed feed={feed} />;
+      }
+
+      if (cardStyle === CardStyle.Tags) {
+        return <TagsFeed feed={feed} />;
+      }
+
+      if (cardStyle === CardStyle.TestCaseResult) {
+        return (
+          <TestCaseFeed
+            entitySpecificInfo={feed.feedInfo?.entitySpecificInfo}
+            testCaseName={entityDisplayName(entityType, entityFQN) ?? ''}
+          />
+        );
+      }
+
+      if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
+        const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
+        const isExecutableTestSuite =
+          entityType === EntityType.TEST_SUITE && entityInfo.executable;
+        const isObservabilityAlert =
+          entityType === EntityType.EVENT_SUBSCRIPTION &&
+          (entityInfo as EventSubscription).alertType ===
+            AlertType.Observability;
+
+        const entityCard = (
+          <ExploreSearchCard
+            className="asset-info-card"
+            id={`tabledatacard${entityInfo.id}`}
+            showTags={false}
+            source={{ ...entityInfo, entityType }}
+          />
+        );
+
+        return cardStyle === CardStyle.EntityDeleted ? (
+          <div className="deleted-entity">{entityCard}</div>
+        ) : (
+          <Link
+            className="no-underline text-body text-hover-body"
+            to={entityUtilClassBase.getEntityLink(
+              entityType,
+              entityFQN,
+              '',
+              '',
+              isExecutableTestSuite,
+              isObservabilityAlert
+            )}>
+            {entityCard}
+          </Link>
+        );
+      }
+
+      if (cardStyle === CardStyle.CustomProperties) {
+        return <CustomPropertyFeed feed={feed} />;
+      }
+    }
+
+    return (
+      <RichTextEditorPreviewer
+        className="text-wrap"
+        markdown={getFrontEndFormat(message)}
+      />
+    );
+  }, [isPost, message, postMessage, cardStyle, feed, entityType, entityFQN]);
+
+  const feedBodyRender = useMemo(() => {
+    if (isEditPost) {
+      return (
         <ActivityFeedEditor
           focused
           className="mb-8"
@@ -75,17 +172,18 @@ const FeedCardBodyV1 = ({
           onSave={handleSave}
           onTextChange={(message) => setPostMessage(message)}
         />
-      ) : (
-        <RichTextEditorPreviewer
-          className="activity-feed-card-v1-text"
-          markdown={getFrontEndFormat(message)}
-        />
-      ),
-    [isEditPost, message, postMessage]
-  );
+      );
+    }
+
+    return feedBodyStyleCardsRender;
+  }, [isEditPost, message, feedBodyStyleCardsRender]);
 
   return (
-    <div className={classNames('feed-card-body', isEditPost ? '' : className)}>
+    <div
+      className={classNames(
+        'feed-card-body bg-grey-5 p-sm rounded-6',
+        isEditPost ? '' : className
+      )}>
       <div className="feed-message">
         {!isUndefined(announcement) ? (
           <>
@@ -94,9 +192,9 @@ const FeedCardBodyV1 = ({
                 {showSchedule && (
                   <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
                     {t('label.schedule')}{' '}
-                    {formatDateTime(announcement.startTime * 1000)}{' '}
+                    {formatDateTime(announcement.startTime)}{' '}
                     {t('label.to-lowercase')}{' '}
-                    {formatDateTime(announcement.endTime * 1000)}
+                    {formatDateTime(announcement.endTime)}
                   </Typography.Text>
                 )}
               </Col>
@@ -111,14 +209,14 @@ const FeedCardBodyV1 = ({
             <Row>
               <Col span={24}>
                 <RichTextEditorPreviewer
-                  className="activity-feed-card-v1-text"
+                  className="text-wrap"
                   markdown={announcement.description ?? ''}
                 />
               </Col>
             </Row>
           </>
         ) : (
-          feedBody
+          feedBodyRender
         )}
       </div>
     </div>

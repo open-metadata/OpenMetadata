@@ -21,6 +21,7 @@ from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
@@ -103,7 +104,7 @@ class StdDev(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "stddev"
+        return MetricType.stddev.value
 
     @property
     def metric_type(self):

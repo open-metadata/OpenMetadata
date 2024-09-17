@@ -42,6 +42,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   deletePostById,
   deleteThread,
@@ -59,7 +60,6 @@ import {
 } from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 
@@ -89,7 +89,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [initialAssignees, setInitialAssignees] = useState<EntityReference[]>(
     []
   );
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const fetchTestCaseResolution = useCallback(async (id: string) => {
     try {
@@ -166,17 +166,19 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       type?: ThreadType,
       entityType?: EntityType,
       fqn?: string,
-      taskStatus?: ThreadTaskStatus
+      taskStatus?: ThreadTaskStatus,
+      limit?: number
     ) => {
       try {
         setLoading(true);
         const feedFilterType = filterType ?? FeedFilter.ALL;
-        const userId =
-          entityType === EntityType.USER
-            ? user
-            : feedFilterType === FeedFilter.ALL
-            ? undefined
-            : currentUser?.id;
+        let userId = undefined;
+
+        if (entityType === EntityType.USER) {
+          userId = user;
+        } else if (feedFilterType !== FeedFilter.ALL) {
+          userId = currentUser?.id;
+        }
 
         const { data, paging } = await getAllFeeds(
           entityType !== EntityType.USER && fqn
@@ -185,8 +187,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           after,
           type,
           feedFilterType,
-          taskStatus,
-          userId
+          type === ThreadType.Task ? taskStatus : undefined,
+          userId,
+          limit
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);
@@ -217,6 +220,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
     try {
       const res = await postFeedById(id, data);
+      setActiveThread(res);
       const { id: responseId, posts } = res;
       setEntityThread((pre) => {
         return pre.map((thread) => {
@@ -227,7 +231,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           }
         });
       });
-      setActiveThread(res);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -241,6 +244,21 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const refreshActivityFeed = useCallback((threads) => {
     setEntityThread([...threads]);
   }, []);
+
+  const updateEntityThread = useCallback(
+    (thread: Thread) => {
+      setEntityThread((prev) => {
+        return prev.map((threadItem) => {
+          if (threadItem.id === thread.id) {
+            return thread;
+          } else {
+            return threadItem;
+          }
+        });
+      });
+    },
+    [setEntityThread]
+  );
 
   const deleteFeed = useCallback(
     async (threadId: string, postId: string, isThread: boolean) => {
@@ -340,11 +358,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       data: Operation[]
     ) => {
       if (isThread) {
-        updateThreadHandler(threadId, data).catch(() => {
+        await updateThreadHandler(threadId, data).catch(() => {
           // ignore since error is displayed in toast in the parent promise.
         });
       } else {
-        updatePostHandler(threadId, postId, data).catch(() => {
+        await updatePostHandler(threadId, postId, data).catch(() => {
           // ignore since error is displayed in toast in the parent promise.
         });
       }
@@ -352,7 +370,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     []
   );
 
-  const updateReactions = (
+  const updateReactions = async (
     post: Post,
     feedId: string,
     isThread: boolean,
@@ -387,7 +405,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       }
     );
 
-    updateFeed(feedId, post.id, isThread, patch).catch(() => {
+    await updateFeed(feedId, post.id, isThread, patch).catch(() => {
       // ignore since error is displayed in toast in the parent promise.
     });
   };
@@ -454,6 +472,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       hideDrawer,
       updateEditorFocus,
       setActiveThread,
+      updateEntityThread,
       entityPaging,
       userId: user ?? currentUser?.id ?? '',
       testCaseResolutionStatus,
@@ -478,6 +497,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     hideDrawer,
     updateEditorFocus,
     setActiveThread,
+    updateEntityThread,
     entityPaging,
     user,
     currentUser,
@@ -490,11 +510,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   return (
     <ActivityFeedContext.Provider value={activityFeedContextValues}>
       {children}
-      {isDrawerOpen && (
-        <>
-          <ActivityFeedDrawer open={isDrawerOpen} />
-        </>
-      )}
+      {isDrawerOpen && <ActivityFeedDrawer open={isDrawerOpen} />}
     </ActivityFeedContext.Provider>
   );
 };

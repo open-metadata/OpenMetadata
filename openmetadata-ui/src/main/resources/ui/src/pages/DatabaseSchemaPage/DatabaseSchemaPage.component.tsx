@@ -21,7 +21,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +35,7 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
@@ -44,9 +44,10 @@ import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRig
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  getDatabaseSchemaDetailsPath,
-  getVersionPathWithTab,
+  getEntityDetailsPath,
+  getVersionPath,
   INITIAL_PAGING_VALUE,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -54,8 +55,13 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -80,6 +86,7 @@ import {
   getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -96,7 +103,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
-  const isMounting = useRef(true);
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -127,6 +133,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
+
+  const extraDropdownContent = useMemo(
+    () =>
+      entityUtilClassBase.getManageExtraOptions(
+        EntityType.DATABASE_SCHEMA,
+        decodedDatabaseSchemaFQN,
+        databaseSchemaPermission
+      ),
+    [databaseSchemaPermission, decodedDatabaseSchemaFQN]
+  );
 
   const handleShowDeletedTables = (value: boolean) => {
     setShowDeletedTables(value);
@@ -169,7 +185,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const viewDatabaseSchemaPermission = useMemo(
     () =>
       databaseSchemaPermission.ViewAll || databaseSchemaPermission.ViewBasic,
-    [databaseSchemaPermission]
+    [databaseSchemaPermission?.ViewAll, databaseSchemaPermission?.ViewBasic]
   );
 
   const onThreadLinkSelect = useCallback(
@@ -204,7 +220,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         decodedDatabaseSchemaFQN,
         {
-          fields: 'owner,usageSummary,tags,domain,votes,extension',
+          // eslint-disable-next-line max-len
+          fields: `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
           include: Include.All,
         }
       );
@@ -214,6 +231,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       setShowDeletedTables(response.deleted ?? false);
     } catch (err) {
       // Error
+      if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsSchemaDetailsLoading(false);
     }
@@ -292,7 +312,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     (activeKey: string) => {
       if (activeKey !== activeTab) {
         history.push({
-          pathname: getDatabaseSchemaDetailsPath(
+          pathname: getEntityDetailsPath(
+            EntityType.DATABASE_SCHEMA,
             decodedDatabaseSchemaFQN,
             activeKey
           ),
@@ -303,11 +324,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleUpdateOwner = useCallback(
-    async (owner: DatabaseSchema['owner']) => {
+    async (owners: DatabaseSchema['owners']) => {
       try {
         const updatedData = {
           ...databaseSchema,
-          owner: owner ? { ...databaseSchema?.owner, ...owner } : undefined,
+          owners,
         };
 
         const response = await saveUpdatedDatabaseSchemaData(
@@ -324,7 +345,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         );
       }
     },
-    [databaseSchema, databaseSchema?.owner]
+    [databaseSchema, databaseSchema?.owners]
   );
 
   const handleTagsUpdate = async (selectedTags?: Array<EntityTags>) => {
@@ -449,7 +470,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getVersionPathWithTab(
+        getVersionPath(
           EntityType.DATABASE_SCHEMA,
           decodedDatabaseSchemaFQN,
           String(currentVersion),
@@ -496,7 +517,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       fetchStoreProcedureCount();
       getEntityFeedCount();
     }
-  }, [viewDatabaseSchemaPermission, decodedDatabaseSchemaFQN]);
+  }, [viewDatabaseSchemaPermission]);
 
   useEffect(() => {
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
@@ -508,11 +529,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     viewDatabaseSchemaPermission,
     deleted,
   ]);
-
-  // always Keep this useEffect at the end...
-  useEffect(() => {
-    isMounting.current = false;
-  }, []);
 
   const {
     editTagsPermission,
@@ -568,40 +584,60 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       key: EntityTabs.TABLE,
       children: (
         <Row gutter={[0, 16]} wrap={false}>
-          <Col className="p-t-sm m-x-lg" flex="auto">
-            <SchemaTablesTab
-              currentTablesPage={currentTablesPage}
-              databaseSchemaDetails={databaseSchema}
-              description={description}
-              editDescriptionPermission={editDescriptionPermission}
-              isEdit={isEdit}
-              showDeletedTables={showDeletedTables}
-              tableData={tableData}
-              tableDataLoading={tableDataLoading}
-              tablePaginationHandler={tablePaginationHandler}
-              onCancel={onEditCancel}
-              onDescriptionEdit={onDescriptionEdit}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onShowDeletedTablesChange={handleShowDeletedTables}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-          </Col>
-          <Col
-            className="entity-tag-right-panel-container"
-            data-testid="entity-right-panel"
-            flex="320px">
-            <EntityRightPanel
-              customProperties={databaseSchema}
-              dataProducts={databaseSchema?.dataProducts ?? []}
-              domain={databaseSchema?.domain}
-              editTagPermission={editTagsPermission}
-              entityFQN={decodedDatabaseSchemaFQN}
-              entityId={databaseSchema?.id ?? ''}
-              entityType={EntityType.DATABASE_SCHEMA}
-              selectedTags={tags}
-              viewAllPermission={viewAllPermission}
-              onTagSelectionChange={handleTagSelection}
-              onThreadLinkSelect={onThreadLinkSelect}
+          <Col className="tab-content-height-with-resizable-panel" span={24}>
+            <ResizablePanels
+              firstPanel={{
+                className: 'entity-resizable-panel-container',
+                children: (
+                  <div className="p-t-sm m-x-lg">
+                    <SchemaTablesTab
+                      currentTablesPage={currentTablesPage}
+                      databaseSchemaDetails={databaseSchema}
+                      description={description}
+                      editDescriptionPermission={editDescriptionPermission}
+                      isEdit={isEdit}
+                      showDeletedTables={showDeletedTables}
+                      tableData={tableData}
+                      tableDataLoading={tableDataLoading}
+                      tablePaginationHandler={tablePaginationHandler}
+                      onCancel={onEditCancel}
+                      onDescriptionEdit={onDescriptionEdit}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                      onShowDeletedTablesChange={handleShowDeletedTables}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
+                  </div>
+                ),
+                minWidth: 800,
+                flex: 0.87,
+              }}
+              secondPanel={{
+                children: (
+                  <div data-testid="entity-right-panel">
+                    <EntityRightPanel<EntityType.DATABASE_SCHEMA>
+                      customProperties={databaseSchema}
+                      dataProducts={databaseSchema?.dataProducts ?? []}
+                      domain={databaseSchema?.domain}
+                      editCustomAttributePermission={
+                        editCustomAttributePermission
+                      }
+                      editTagPermission={editTagsPermission}
+                      entityFQN={decodedDatabaseSchemaFQN}
+                      entityId={databaseSchema?.id ?? ''}
+                      entityType={EntityType.DATABASE_SCHEMA}
+                      selectedTags={tags}
+                      viewAllPermission={viewAllPermission}
+                      onExtensionUpdate={handleExtensionUpdate}
+                      onTagSelectionChange={handleTagSelection}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
+                  </div>
+                ),
+                minWidth: 320,
+                flex: 0.13,
+                className:
+                  'entity-resizable-right-panel-container entity-resizable-panel-container',
+              }}
             />
           </Col>
         </Row>
@@ -673,7 +709,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         decodedDatabaseSchemaFQN,
         {
-          fields: 'owner,usageSummary,tags,votes',
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.USAGE_SUMMARY,
+            TabSpecificField.TAGS,
+            TabSpecificField.VOTES,
+          ],
           include: Include.All,
         }
       );
@@ -723,6 +764,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 afterDomainUpdateAction={afterDomainUpdateAction}
                 dataAsset={databaseSchema}
                 entityType={EntityType.DATABASE_SCHEMA}
+                extraDropdownContent={extraDropdownContent}
                 permissions={databaseSchemaPermission}
                 onDisplayNameUpdate={handleUpdateDisplayName}
                 onOwnerUpdate={handleUpdateOwner}

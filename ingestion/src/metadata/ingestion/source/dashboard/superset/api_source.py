@@ -13,7 +13,7 @@ Superset source module
 """
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -27,11 +27,18 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.models import (
     ChartResult,
     DashboardResult,
+    FetchChart,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_datamodel
@@ -77,6 +84,11 @@ class SupersetAPISource(SupersetSourceMixin):
             dashboards = self.client.fetch_dashboards(current_page, page_size)
             current_page += 1
             for dashboard in dashboards.result:
+                if (
+                    not self.source_config.includeDraftDashboard
+                    and not dashboard.published
+                ):
+                    continue
                 yield dashboard
 
     def yield_dashboard(
@@ -87,27 +99,31 @@ class SupersetAPISource(SupersetSourceMixin):
         """
         try:
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details.id,
+                name=EntityName(str(dashboard_details.id)),
                 displayName=dashboard_details.dashboard_title,
-                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{dashboard_details.url}",
+                sourceUrl=SourceUrl(
+                    f"{clean_uri(self.service_connection.hostPort)}{dashboard_details.url}"
+                ),
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
-                    name=dashboard_details.id or "Dashboard",
+                    name=str(dashboard_details.id) or "Dashboard",
                     error=f"Error creating dashboard [{dashboard_details.dashboard_title}]: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
@@ -135,18 +151,22 @@ class SupersetAPISource(SupersetSourceMixin):
                     )
                     continue
                 chart = CreateChartRequest(
-                    name=chart_json.id,
+                    name=EntityName(str(chart_json.id)),
                     displayName=chart_json.slice_name,
-                    description=chart_json.description,
+                    description=Markdown(chart_json.description)
+                    if chart_json.description
+                    else None,
                     chartType=get_standard_chart_type(chart_json.viz_type),
-                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}",
-                    service=self.context.dashboard_service,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}"
+                    ),
+                    service=self.context.get().dashboard_service,
                 )
                 yield Either(right=chart)
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(
                     left=StackTraceError(
-                        name=chart_json.id,
+                        name=str(chart_json.id),
                         error=f"Error creating chart [{chart_json.id} - {chart_json.slice_name}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
@@ -178,7 +198,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         table_name=datasource_json.result.table_name,
                         schema_name=datasource_json.result.table_schema,
                         database_name=database_name,
-                        service_name=db_service_entity.name.__root__,
+                        service_name=db_service_entity.name.root,
                     )
                 return dataset_fqn
         except Exception as err:
@@ -213,9 +233,11 @@ class SupersetAPISource(SupersetSourceMixin):
                             "Data model filtered out.",
                         )
                     data_model_request = CreateDashboardDataModelRequest(
-                        name=datasource_json.id,
+                        name=EntityName(str(datasource_json.id)),
                         displayName=datasource_json.result.table_name,
-                        service=self.context.dashboard_service,
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
                         columns=self.get_column_info(datasource_json.result.columns),
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )
@@ -229,3 +251,14 @@ class SupersetAPISource(SupersetSourceMixin):
                             stackTrace=traceback.format_exc(),
                         )
                     )
+
+    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> List[str]:
+        """
+        Args:
+            chart_json: FetchChart
+        Returns:
+            List of columns as str to generate column lineage
+        """
+        datasource_json = self.client.fetch_datasource(chart_json.datasource_id)
+        datasource_columns = self.get_column_info(datasource_json.result.columns)
+        return [col.displayName for col in datasource_columns]

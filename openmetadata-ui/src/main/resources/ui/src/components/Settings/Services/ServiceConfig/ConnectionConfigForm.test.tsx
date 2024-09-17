@@ -151,10 +151,6 @@ jest.mock('../../../../utils/SearchServiceUtils', () => ({
   }),
 }));
 
-jest.mock('../../../../utils/ServiceUtilClassBase', () => ({
-  serviceUtilClassBase: jest.fn(),
-}));
-
 jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
   formatFormDataForSubmit: jest.fn(),
 }));
@@ -166,6 +162,10 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
       <div data-testid="airflowMessageBanner">AirflowMessageBanner</div>
     );
 });
+
+jest.mock('../../../../utils/CommonUtils', () => ({
+  Transi18next: jest.fn().mockReturnValue('message.airflow-host-ip-address'),
+}));
 
 jest.mock('../../../common/FormBuilder/FormBuilder', () =>
   forwardRef(

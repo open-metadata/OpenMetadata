@@ -86,6 +86,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.search'),
     subHeader: i18n.t('message.page-sub-header-for-search'),
   },
+  API_SERVICES: {
+    header: i18n.t('label.api-uppercase-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-apis'),
+  },
   ACTIVITY_FEED: {
     header: i18n.t('label.activity-feed'),
     subHeader: i18n.t('message.page-sub-header-for-activity-feed'),
@@ -106,6 +110,18 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.dashboard-plural'),
     subHeader: i18n.t('message.define-custom-property-for-entity', {
       entity: i18n.t('label.dashboard-plural'),
+    }),
+  },
+  DASHBOARD_DATA_MODEL_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.dashboard-data-model-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.dashboard-data-model-plural'),
+    }),
+  },
+  DATA_PRODUCT_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.data-product-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.data-product-plural'),
     }),
   },
   PIPELINES_CUSTOM_ATTRIBUTES: {
@@ -182,6 +198,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.login'),
     subHeader: i18n.t('message.page-sub-header-for-login-configuration'),
   },
+  OM_HEALTH: {
+    header: i18n.t('label.health-check'),
+    subHeader: i18n.t('message.page-sub-header-for-om-health-configuration'),
+  },
   NOTIFICATION: {
     header: i18n.t('label.notification-plural'),
     subHeader: i18n.t('message.alerts-description'),
@@ -190,5 +210,23 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.custom-metric'),
     // Todo: need to update message once @harshach provides the message
     subHeader: '',
+  },
+  API_COLLECTION_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.api-collection-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.api-collection-plural'),
+    }),
+  },
+  API_ENDPOINT_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.api-endpoint-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.api-endpoint-plural'),
+    }),
+  },
+  METRIC_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.metric-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.metric-plural'),
+    }),
   },
 };

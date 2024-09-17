@@ -27,7 +27,11 @@
     border-top: 0;
     background: @white;
     transition: 0.3s ease-in-out;
-    overflow: hidden;
+    overflow: scroll;
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
 
     //  sub menu dropdown will be closed by default
     .ant-menu-sub {
@@ -73,6 +77,14 @@
         .left-panel-item {
           .left-panel-label {
             opacity: 1;
+          }
+
+          .service-beta-tag {
+            position: static;
+            sup {
+              margin-left: 8px;
+              position: static;
+            }
           }
         }
       }
@@ -127,7 +139,7 @@
           right: 20px;
           sup {
             font-size: 8px;
-            background: @primary-color-hover;
+            background: @primary-1;
             border: 1px solid @primary-color;
             color: @primary-color;
           }
@@ -267,7 +279,7 @@
   padding: 0 0 24px 0 !important;
   border-right: 1px solid @border-color;
   overflow: auto;
-  height: calc(100vh - 64px);
+  height: calc(100vh - @om-navbar-height);
   background-color: @white;
   overflow-x: hidden;
 }

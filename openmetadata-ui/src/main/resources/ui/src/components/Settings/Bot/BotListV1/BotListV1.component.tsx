@@ -24,11 +24,13 @@ import { getBotsPath } from '../../../../constants/constants';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Bot, ProviderType } from '../../../../generated/entity/bot';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
+import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../hooks/authHooks';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getBots } from '../../../../rest/botsAPI';
@@ -58,7 +60,7 @@ const BotListV1 = ({
   const [botUsers, setBotUsers] = useState<Bot[]>([]);
   const [selectedUser, setSelectedUser] = useState<Bot>();
   const [loading, setLoading] = useState(true);
-
+  const { getResourceLimit } = useLimitStore();
   const {
     currentPage,
     paging,
@@ -158,7 +160,7 @@ const BotListV1 = ({
           return (
             <Tooltip placement="topRight" title={title}>
               <Button
-                data-testid={`bot-delete-${getEntityName(record)}`}
+                data-testid={`bot-delete-${record.name}`}
                 disabled={isDisabled}
                 icon={
                   <Icon
@@ -198,6 +200,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
+    await getResourceLimit('bot', true, true);
     fetchBots(showDeleted);
   }, [selectedUser]);
 
@@ -264,6 +267,7 @@ const BotListV1 = ({
           <Space align="end" size={5}>
             <Switch
               checked={showDeleted}
+              data-testid="switch-deleted"
               id="switch-deleted"
               onClick={handleShowDeleted}
             />
@@ -273,13 +277,15 @@ const BotListV1 = ({
           <Tooltip
             placement="topLeft"
             title={!isAdminUser && t('message.admin-only-action')}>
-            <Button
-              data-testid="add-bot"
-              disabled={!isAdminUser}
-              type="primary"
-              onClick={handleAddBotClick}>
-              {addBotLabel}
-            </Button>
+            <LimitWrapper resource="bot">
+              <Button
+                data-testid="add-bot"
+                disabled={!isAdminUser}
+                type="primary"
+                onClick={handleAddBotClick}>
+                {addBotLabel}
+              </Button>
+            </LimitWrapper>
           </Tooltip>
         </Space>
       </Col>

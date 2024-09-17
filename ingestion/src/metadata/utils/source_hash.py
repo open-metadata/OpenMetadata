@@ -14,9 +14,14 @@ Source hash utils module
 """
 
 import hashlib
+import traceback
 from typing import Dict, Optional
 
 from metadata.ingestion.ometa.ometa_api import C
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
+
 
 SOURCE_HASH_EXCLUDE_FIELDS = {
     "sourceHash": True,
@@ -25,19 +30,24 @@ SOURCE_HASH_EXCLUDE_FIELDS = {
 
 def generate_source_hash(
     create_request: C, exclude_fields: Optional[Dict] = None
-) -> str:
+) -> Optional[str]:
     """
     Given a create_request model convert it to json string and generate a hash value
     """
+    try:
+        # We always want to exclude the sourceHash when generating the fingerprint
+        exclude_fields = (
+            SOURCE_HASH_EXCLUDE_FIELDS.update(exclude_fields)
+            if exclude_fields
+            else SOURCE_HASH_EXCLUDE_FIELDS
+        )
 
-    # We always want to exclude the sourceHash when generating the fingerprint
-    exclude_fields = (
-        SOURCE_HASH_EXCLUDE_FIELDS.update(exclude_fields)
-        if exclude_fields
-        else SOURCE_HASH_EXCLUDE_FIELDS
-    )
+        create_request_json = create_request.model_dump_json(exclude=exclude_fields)
 
-    create_request_json = create_request.json(exclude=exclude_fields)
+        json_bytes = create_request_json.encode("utf-8")
+        return hashlib.md5(json_bytes).hexdigest()
 
-    json_bytes = create_request_json.encode("utf-8")
-    return hashlib.md5(json_bytes).hexdigest()
+    except Exception as exc:
+        logger.warning(f"Failed to generate source hash due to - {exc}")
+        logger.debug(traceback.format_exc())
+    return None

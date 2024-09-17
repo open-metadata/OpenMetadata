@@ -81,10 +81,13 @@ jest.mock('../../../PageLayoutV1/PageLayoutV1', () => {
   ));
 });
 
-jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest
-    .fn()
-    .mockImplementation(() => ({ currentUser: mockUserData })),
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    currentUser: mockUserData,
+    theme: {
+      primaryColor: '#00ff00',
+    },
+  })),
 }));
 
 jest.mock('../../../../rest/feedsAPI', () => ({
@@ -93,12 +96,21 @@ jest.mock('../../../../rest/feedsAPI', () => ({
     .mockImplementation(() => mockActiveAnnouncementData),
 }));
 
-jest.mock('../../../../rest/userAPI', () => ({
-  getUserById: jest.fn().mockImplementation(() => mockUserData),
-}));
+jest.mock('../../../../rest/searchAPI', () => {
+  return {
+    searchQuery: jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ hits: { hits: [], total: { value: 0 } } })
+      ),
+  };
+});
+
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '/' }));
+});
 
 jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({ pathname: '' })),
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
@@ -154,7 +166,7 @@ describe('CustomizeMyData component', () => {
     await act(async () => userEvent.click(cancelButton));
 
     expect(mockPush).toHaveBeenCalledWith(
-      '/settings/openMetadata/customizeLandingPage'
+      '/settings/preferences/customizeLandingPage'
     );
   });
 

@@ -32,6 +32,10 @@ mock_redshift_config = {
                 "password": "password",
                 "database": "database",
                 "hostPort": "cluster.name.region.redshift.amazonaws.com:5439",
+                "sslMode": "verify-full",
+                "sslConfig": {
+                    "caCertificate": "CA certificate content",
+                },
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -51,7 +55,7 @@ mock_redshift_config = {
 
 RAW_DIST_STYLE = ["KEY(eventid)", "EVEN", "ALL"]
 
-EXPECTED_PARTITION_COLUMNS = [["eventid"], None, None]
+EXPECTED_PARTITION_COLUMNS = ["eventid", None, None]
 
 
 class RedshiftUnitTest(TestCase):
@@ -61,7 +65,7 @@ class RedshiftUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_redshift_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_redshift_config)
         self.redshift_source = RedshiftSource.create(
             mock_redshift_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
@@ -69,7 +73,16 @@ class RedshiftUnitTest(TestCase):
 
     def test_partition_parse_columns(self):
         for i in range(len(RAW_DIST_STYLE)):
-            assert (
-                self.redshift_source._get_partition_key(RAW_DIST_STYLE[i])
-                == EXPECTED_PARTITION_COLUMNS[i]
-            )
+            with self.subTest(i=i):
+                self.assertEqual(
+                    self.redshift_source._get_partition_key(RAW_DIST_STYLE[i]),
+                    EXPECTED_PARTITION_COLUMNS[i],
+                )
+
+    @patch("sqlalchemy.engine.base.Engine")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+    )
+    def test_close_connection(self, engine, connection):
+        connection.return_value = True
+        self.redshift_source.close()

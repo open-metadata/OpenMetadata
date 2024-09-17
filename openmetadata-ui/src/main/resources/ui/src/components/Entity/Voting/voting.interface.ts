@@ -18,7 +18,7 @@ export interface VotingProps {
   votes?: Votes;
   disabled?: boolean;
   voteStatus: QueryVoteType;
-  onUpdateVote: (updatedVoteType: VotingDataProps) => void;
+  onUpdateVote: (updatedVoteType: VotingDataProps) => void | Promise<void>;
 }
 
 export interface VotingDataProps {

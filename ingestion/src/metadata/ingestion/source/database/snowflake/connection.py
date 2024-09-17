@@ -45,6 +45,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_TEST_FETCH_TAG,
     SNOWFLAKE_TEST_GET_QUERIES,
     SNOWFLAKE_TEST_GET_TABLES,
+    SNOWFLAKE_TEST_GET_VIEWS,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -54,7 +55,7 @@ logger = ingestion_logger()
 class SnowflakeEngineWrapper(BaseModel):
     service_connection: SnowflakeConnection
     engine: Any
-    database_name: Optional[str]
+    database_name: Optional[str] = None
 
 
 def get_connection_url(connection: SnowflakeConnection) -> str:
@@ -125,10 +126,10 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
             encryption_algorithm=serialization.NoEncryption(),
         )
 
-        connection.connectionArguments.__root__["private_key"] = pkb
+        connection.connectionArguments.root["private_key"] = pkb
 
     if connection.clientSessionKeepAlive:
-        connection.connectionArguments.__root__[
+        connection.connectionArguments.root[
             "client_session_keep_alive"
         ] = connection.clientSessionKeepAlive
 
@@ -176,7 +177,11 @@ def test_connection(
             statement=SNOWFLAKE_TEST_GET_TABLES,
             engine_wrapper=engine_wrapper,
         ),
-        "GetViews": partial(execute_inspector_func, engine_wrapper, "get_view_names"),
+        "GetViews": partial(
+            test_table_query,
+            statement=SNOWFLAKE_TEST_GET_VIEWS,
+            engine_wrapper=engine_wrapper,
+        ),
         "GetQueries": partial(
             test_query, statement=SNOWFLAKE_TEST_GET_QUERIES, engine=engine
         ),

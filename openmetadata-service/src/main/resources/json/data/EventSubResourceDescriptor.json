@@ -268,5 +268,14 @@
     "supportedFilters" : [
       "filterByMentionedName"
     ]
+  },
+  {
+    "name": "user",
+    "supportedFilters": [
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain"
+    ]
   }
 ]

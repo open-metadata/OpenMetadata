@@ -21,7 +21,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { mockTablePermission } from '../../../../constants/mockTourData.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -31,11 +30,11 @@ import {
 } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
-import { Table, TestSummary } from '../../../../generated/entity/data/table';
-import {
-  getLatestTableProfileByFqn,
-  getTableDetailsByFQN,
-} from '../../../../rest/tableAPI';
+import { Table } from '../../../../generated/entity/data/table';
+import { TestSummary } from '../../../../generated/tests/testCase';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
+import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import {
   getFormattedEntityData,
@@ -65,7 +64,7 @@ function TableSummary({
   highlights,
 }: TableSummaryProps) {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { getEntityPermission } = usePermissionProvider();
 
@@ -88,17 +87,16 @@ function TableSummary({
   const isTableDeleted = useMemo(() => tableDetails.deleted, [tableDetails]);
 
   const fetchAllTests = async () => {
-    try {
-      const res = await getTableDetailsByFQN(
-        tableDetails.fullyQualifiedName ?? '',
-        { fields: 'testSuite' }
-      );
+    if (tableDetails?.testSuite?.id) {
+      try {
+        const res = await getTestCaseExecutionSummary(
+          tableDetails.testSuite.id
+        );
 
-      if (res?.testSuite?.summary) {
-        setTestSuiteSummary(res?.testSuite?.summary);
+        setTestSuiteSummary(res);
+      } catch (error) {
+        // Error
       }
-    } catch (error) {
-      // Error
     }
   };
 

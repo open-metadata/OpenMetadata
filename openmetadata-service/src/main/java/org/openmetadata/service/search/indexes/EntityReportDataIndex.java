@@ -7,7 +7,12 @@ import org.openmetadata.service.util.JsonUtils;
 public record EntityReportDataIndex(ReportData reportData) implements SearchIndex {
 
   @Override
-  public Map<String, Object> buildESDoc() {
+  public Object getEntity() {
+    return reportData;
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
     Map<String, Object> doc = JsonUtils.getMap(reportData);
     doc.put("entityType", "entityReportData");
     return doc;

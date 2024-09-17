@@ -18,9 +18,13 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
+  APICollectionSource,
+  APIEndpointSource,
+  ChartSource,
   DashboardSource,
   DataProductSource,
   GlossarySource,
+  MetricSource,
   MlModelSource,
   Option,
   PipelineSource,
@@ -79,7 +83,7 @@ const Suggestions = ({
   const [containerSuggestions, setContainerSuggestions] = useState<
     ContainerSearchSource[]
   >([]);
-  const [glossarySuggestions, setGlossarySuggestions] = useState<
+  const [glossaryTermSuggestions, setGlossaryTermSuggestions] = useState<
     GlossarySource[]
   >([]);
   const [searchIndexSuggestions, setSearchIndexSuggestions] = useState<
@@ -97,6 +101,19 @@ const Suggestions = ({
   const [dataProductSuggestions, setDataProductSuggestions] = useState<
     DataProductSource[]
   >([]);
+
+  const [chartSuggestions, setChartSuggestions] = useState<ChartSource[]>([]);
+
+  const [apiCollectionSuggestions, setApiCollectionSuggestions] = useState<
+    APICollectionSource[]
+  >([]);
+
+  const [apiEndpointSuggestions, setApiEndpointSuggestions] = useState<
+    APIEndpointSource[]
+  >([]);
+  const [metricSuggestions, setMetricSuggestions] = useState<MetricSource[]>(
+    []
+  );
 
   const isMounting = useRef(true);
 
@@ -120,10 +137,25 @@ const Suggestions = ({
     setDataModelSuggestions(
       filterOptionsByIndex(options, SearchIndex.DASHBOARD_DATA_MODEL)
     );
-    setGlossarySuggestions(filterOptionsByIndex(options, SearchIndex.GLOSSARY));
+    setGlossaryTermSuggestions(
+      filterOptionsByIndex(options, SearchIndex.GLOSSARY_TERM)
+    );
     setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
     setDataProductSuggestions(
       filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
+    );
+
+    setChartSuggestions(filterOptionsByIndex(options, SearchIndex.CHART));
+
+    setApiCollectionSuggestions(
+      filterOptionsByIndex(options, SearchIndex.API_COLLECTION_INDEX)
+    );
+
+    setApiEndpointSuggestions(
+      filterOptionsByIndex(options, SearchIndex.API_ENDPOINT_INDEX)
+    );
+    setMetricSuggestions(
+      filterOptionsByIndex(options, SearchIndex.METRIC_SEARCH_INDEX)
     );
   };
 
@@ -139,9 +171,7 @@ const Suggestions = ({
       <div data-testid={`group-${searchIndex}`}>
         {getGroupLabel(searchIndex)}
         {suggestions.map((suggestion: SearchSuggestions[number]) => {
-          return getSuggestionElement(suggestion, searchIndex, () =>
-            setIsOpen(false)
-          );
+          return getSuggestionElement(suggestion, () => setIsOpen(false));
         })}
       </div>
     );
@@ -179,13 +209,29 @@ const Suggestions = ({
             searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
           },
           {
-            suggestions: glossarySuggestions,
-            searchIndex: SearchIndex.GLOSSARY,
+            suggestions: glossaryTermSuggestions,
+            searchIndex: SearchIndex.GLOSSARY_TERM,
           },
           { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
           {
             suggestions: dataProductSuggestions,
             searchIndex: SearchIndex.DATA_PRODUCT,
+          },
+          {
+            suggestions: chartSuggestions,
+            searchIndex: SearchIndex.CHART,
+          },
+          {
+            suggestions: apiCollectionSuggestions,
+            searchIndex: SearchIndex.API_COLLECTION_INDEX,
+          },
+          {
+            suggestions: apiEndpointSuggestions,
+            searchIndex: SearchIndex.API_ENDPOINT_INDEX,
+          },
+          {
+            suggestions: metricSuggestions,
+            searchIndex: SearchIndex.METRIC_SEARCH_INDEX,
           },
           ...searchClassBase.getEntitiesSuggestions(options ?? []),
         ].map(({ suggestions, searchIndex }) =>

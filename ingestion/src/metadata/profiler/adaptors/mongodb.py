@@ -12,32 +12,76 @@
 MongoDB adaptor for the NoSQL profiler.
 """
 import json
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, List, Optional
+from enum import Enum
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
+
+from pydantic import BaseModel, Field
 
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+from metadata.utils.sqa_like_column import SQALikeColumn
 
+# pylint: disable=invalid-name
 if TYPE_CHECKING:
     from pymongo import MongoClient
+    from pymongo.command_cursor import CommandCursor
+    from pymongo.cursor import Cursor
 else:
-    MongoClient = None  # pylint: disable=invalid-name
+    MongoClient = None
+    CommandCursor = None
+    Cursor = None
 
 
-@dataclass
-class Query:
+class AggregationFunction(Enum):
+    SUM = "$sum"
+    MEAN = "$avg"
+    COUNT = "$count"
+    MAX = "$max"
+    MIN = "$min"
+
+
+class Executable(BaseModel):
+    def to_executable(self, client: MongoClient) -> Union[CommandCursor, Cursor]:
+        raise NotImplementedError
+
+
+class Query(Executable):
     database: str
     collection: str
-    filter: dict = field(default_factory=dict)
+    filter: dict = Field(default_factory=dict)
     limit: Optional[int] = None
 
-    def to_executable(self, client: MongoClient):
+    def to_executable(self, client: MongoClient) -> Cursor:
         db = client[self.database]
         collection = db[self.collection]
         query = collection.find(self.filter)
         if self.limit:
             query = query.limit(self.limit)
         return query
+
+
+class Aggregation(Executable):
+    database: str
+    collection: str
+    column: str
+    aggregations: List[AggregationFunction]
+
+    def to_executable(self, client: MongoClient) -> CommandCursor:
+        db = client[self.database]
+        collection = db[self.collection]
+        return collection.aggregate(
+            [
+                {
+                    "$group": {
+                        "_id": None,
+                        **{
+                            a.name.lower(): {a.value: f"${self.column}"}
+                            for a in self.aggregations
+                        },
+                    }
+                }
+            ]
+        )
 
 
 class MongoDB(NoSQLAdaptor):
@@ -48,7 +92,7 @@ class MongoDB(NoSQLAdaptor):
 
     def item_count(self, table: Table) -> int:
         db = self.client[table.databaseSchema.name]
-        collection = db[table.name.__root__]
+        collection = db[table.name.root]
         return collection.count_documents({})
 
     def scan(
@@ -57,7 +101,7 @@ class MongoDB(NoSQLAdaptor):
         return self.execute(
             Query(
                 database=table.databaseSchema.name,
-                collection=table.name.__root__,
+                collection=table.name.root,
                 limit=limit,
             )
         )
@@ -72,22 +116,51 @@ class MongoDB(NoSQLAdaptor):
         return self.execute(
             Query(
                 database=table.databaseSchema.name,
-                collection=table.name.__root__,
+                collection=table.name.root,
                 filter=json_query,
             )
         )
 
-    def execute(self, query: Query) -> List[Dict[str, any]]:
-        records = list(query.to_executable(self.client))
-        result = []
-        for r in records:
-            result.append({c: self._json_safe(r.get(c)) for c in r})
-        return result
+    def get_aggregates(
+        self,
+        table: Table,
+        column: SQALikeColumn,
+        aggregate_functions: List[AggregationFunction],
+    ) -> Dict[str, Union[int, float]]:
+        """
+        Get the aggregate functions for a column in a table
+        Returns:
+            Dict[str, Union[int, float]]: A dictionary of the aggregate functions
+            Example:
+            {
+                "sum": 100,
+                "avg": 50,
+                "count": 2,
+                "max": 75,
+                "min": 25
+            }
+        """
+        row = self.execute(
+            Aggregation(
+                database=table.databaseSchema.name,
+                collection=table.name.root,
+                column=column.name,
+                aggregations=aggregate_functions,
+            )
+        )[0]
+        return {k: v for k, v in row.items() if k != "_id"}
 
-    @staticmethod
-    def _json_safe(data: any):
-        try:
-            json.dumps(data)
-            return data
-        except Exception:
-            return str(data)
+    def sum(self, table: Table, column: SQALikeColumn) -> AggregationFunction:
+        return AggregationFunction.SUM
+
+    def mean(self, table: Table, column: SQALikeColumn) -> AggregationFunction:
+        return AggregationFunction.MEAN
+
+    def max(self, table: Table, column: SQALikeColumn) -> AggregationFunction:
+        return AggregationFunction.MAX
+
+    def min(self, table: Table, column: SQALikeColumn) -> AggregationFunction:
+        return AggregationFunction.MIN
+
+    def execute(self, query: Executable) -> List[Dict[str, any]]:
+        return list(query.to_executable(self.client))

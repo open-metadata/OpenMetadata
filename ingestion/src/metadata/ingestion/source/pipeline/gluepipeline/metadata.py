@@ -14,7 +14,7 @@ Glue pipeline source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -33,6 +33,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
+)
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+    Timestamp,
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -72,9 +78,11 @@ class GluepipelineSource(PipelineServiceSource):
         self.glue = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: GluePipelineConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: GluePipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, GluePipelineConnection):
             raise InvalidSourceException(
                 f"Expected GlueConnection, but got {connection}"
@@ -93,17 +101,17 @@ class GluepipelineSource(PipelineServiceSource):
         self, pipeline_details: Any
     ) -> Iterable[Either[CreatePipelineRequest]]:
         """Method to Get Pipeline Entity"""
-        source_url = (
+        source_url = SourceUrl(
             f"https://{self.service_connection.awsConfig.awsRegion}.console.aws.amazon.com/glue/home?"
             f"region={self.service_connection.awsConfig.awsRegion}#/v2/etl-configuration/"
             f"workflows/view/{pipeline_details[NAME]}"
         )
         self.job_name_list = set()
         pipeline_request = CreatePipelineRequest(
-            name=pipeline_details[NAME],
+            name=EntityName(pipeline_details[NAME]),
             displayName=pipeline_details[NAME],
             tasks=self.get_tasks(pipeline_details),
-            service=self.context.pipeline_service,
+            service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             sourceUrl=source_url,
         )
         yield Either(right=pipeline_request)
@@ -152,18 +160,24 @@ class GluepipelineSource(PipelineServiceSource):
                             executionStatus=STATUS_MAP.get(
                                 attempt["JobRunState"].lower(), StatusType.Pending
                             ).value,
-                            startTime=convert_timestamp_to_milliseconds(
-                                attempt["StartedOn"].timestamp()
+                            startTime=Timestamp(
+                                convert_timestamp_to_milliseconds(
+                                    attempt["StartedOn"].timestamp()
+                                )
                             ),
-                            endTime=convert_timestamp_to_milliseconds(
-                                attempt["CompletedOn"].timestamp()
+                            endTime=Timestamp(
+                                convert_timestamp_to_milliseconds(
+                                    attempt["CompletedOn"].timestamp()
+                                )
                             ),
                         )
                     )
                     pipeline_status = PipelineStatus(
                         taskStatus=task_status,
-                        timestamp=convert_timestamp_to_milliseconds(
-                            attempt["StartedOn"].timestamp()
+                        timestamp=Timestamp(
+                            convert_timestamp_to_milliseconds(
+                                attempt["StartedOn"].timestamp()
+                            )
                         ),
                         executionStatus=STATUS_MAP.get(
                             attempt["JobRunState"].lower(), StatusType.Pending
@@ -172,8 +186,8 @@ class GluepipelineSource(PipelineServiceSource):
                     pipeline_fqn = fqn.build(
                         metadata=self.metadata,
                         entity_type=Pipeline,
-                        service_name=self.context.pipeline_service,
-                        pipeline_name=self.context.pipeline,
+                        service_name=self.context.get().pipeline_service,
+                        pipeline_name=self.context.get().pipeline,
                     )
                     yield Either(
                         right=OMetaPipelineStatus(

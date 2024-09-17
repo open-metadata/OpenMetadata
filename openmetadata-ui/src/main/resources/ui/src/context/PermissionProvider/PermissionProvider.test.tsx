@@ -44,15 +44,32 @@ let currentUser: { id: string; name: string } | null = {
   name: 'Test User',
 };
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => {
+jest.mock('../../hooks/useApplicationStore', () => {
   return {
-    useAuthContext: jest.fn().mockImplementation(() => ({
+    useApplicationStore: jest.fn().mockImplementation(() => ({
       currentUser,
     })),
   };
 });
 
+jest.mock('../../components/common/Loader/Loader', () => {
+  return jest.fn().mockImplementation(() => <p>Loader</p>);
+});
+
 describe('PermissionProvider', () => {
+  it('Should render loader and call getLoggedInUserPermissions', async () => {
+    render(
+      <PermissionProvider>
+        <div data-testid="children">Children</div>
+      </PermissionProvider>
+    );
+
+    // Verify that the API methods were called
+    expect(getLoggedInUserPermissions).toHaveBeenCalled();
+
+    expect(screen.getByText('Loader')).toBeInTheDocument();
+  });
+
   it('Should render children and call apis when current user is present', async () => {
     render(
       <PermissionProvider>
@@ -82,5 +99,8 @@ describe('PermissionProvider', () => {
     expect(getEntityPermissionById).not.toHaveBeenCalled();
     expect(getEntityPermissionByFqn).not.toHaveBeenCalled();
     expect(getResourcePermission).not.toHaveBeenCalled();
+
+    expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('children')).toBeInTheDocument();
   });
 });

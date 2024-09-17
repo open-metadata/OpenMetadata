@@ -46,8 +46,8 @@ const mockUpdateTierTag = jest.fn();
 const mockShowErrorToast = jest.fn();
 const ENTITY_MISSING_ERROR = 'Entity missing error.';
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     currentUser: mockUserData,
   })),
 }));
@@ -125,6 +125,7 @@ jest.mock('../../rest/feedsAPI', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
+  addToRecentViewed: jest.fn(),
   getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
   sortTagsCaseInsensitive: jest.fn((tags) => tags),
 }));

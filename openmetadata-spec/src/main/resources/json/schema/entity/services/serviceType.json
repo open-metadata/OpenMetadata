@@ -13,7 +13,8 @@
     "MlModel",
     "Pipeline",
     "Storage",
-    "Search"
+    "Search",
+    "API"
   ],
   "additionalProperties": false
 }

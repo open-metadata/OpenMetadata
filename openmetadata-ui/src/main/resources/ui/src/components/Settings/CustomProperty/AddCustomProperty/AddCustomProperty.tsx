@@ -14,7 +14,7 @@
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isUndefined, map, startCase } from 'lodash';
+import { isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import React, {
   FocusEvent,
   useCallback,
@@ -23,7 +23,12 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { SUPPORTED_FIELD_TYPES } from '../../../../constants/constants';
+import {
+  ENTITY_REFERENCE_OPTIONS,
+  PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
+  PROPERTY_TYPES_WITH_FORMAT,
+  SUPPORTED_FORMAT_MAP,
+} from '../../../../constants/CustomProperty.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../../constants/regex.constants';
 import {
@@ -32,14 +37,12 @@ import {
 } from '../../../../constants/service-guide.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
-import {
-  Category,
-  CustomProperty,
-  Type,
-} from '../../../../generated/entity/type';
+import { Category, Type } from '../../../../generated/entity/type';
+import { CustomProperty } from '../../../../generated/type/customProperty';
 import {
   FieldProp,
   FieldTypes,
+  FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import {
   addPropertyToEntity,
@@ -55,6 +58,7 @@ import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 
 const AddCustomProperty = () => {
+  const [form] = Form.useForm();
   const { entityType } = useParams<{ entityType: EntityType }>();
   const history = useHistory();
 
@@ -63,6 +67,8 @@ const AddCustomProperty = () => {
   const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
   const [activeField, setActiveField] = useState<string>('');
   const [isCreating, setIsCreating] = useState<boolean>(false);
+
+  const watchedPropertyType = Form.useWatch('propertyType', form);
 
   const slashedBreadcrumb = useMemo(
     () => [
@@ -88,16 +94,40 @@ const AddCustomProperty = () => {
   );
 
   const propertyTypeOptions = useMemo(() => {
-    const supportedTypes = propertyTypes.filter((property) =>
-      SUPPORTED_FIELD_TYPES.includes(property.name)
-    );
-
-    return map(supportedTypes, (type) => ({
+    return map(propertyTypes, (type) => ({
       key: type.name,
-      label: startCase(type.displayName ?? type.name),
+      // Remove -cp from the name and convert to start case
+      label: startCase((type.displayName ?? type.name).replace(/-cp/g, '')),
       value: type.id,
     }));
   }, [propertyTypes]);
+
+  const {
+    hasEnumConfig,
+    hasFormatConfig,
+    hasEntityReferenceConfig,
+    watchedOption,
+  } = useMemo(() => {
+    const watchedOption = propertyTypeOptions.find(
+      (option) => option.value === watchedPropertyType
+    );
+    const watchedOptionKey = watchedOption?.key ?? '';
+
+    const hasEnumConfig = watchedOptionKey === 'enum';
+
+    const hasFormatConfig =
+      PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
+
+    const hasEntityReferenceConfig =
+      PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(watchedOptionKey);
+
+    return {
+      hasEnumConfig,
+      hasFormatConfig,
+      hasEntityReferenceConfig,
+      watchedOption,
+    };
+  }, [watchedPropertyType, propertyTypeOptions]);
 
   const fetchPropertyType = async () => {
     try {
@@ -130,7 +160,13 @@ const AddCustomProperty = () => {
      * In CustomProperty the propertyType is type of entity reference, however from the form we
      * get propertyType as string
      */
-    data: Exclude<CustomProperty, 'propertyType'> & { propertyType: string }
+    data: Exclude<CustomProperty, 'propertyType'> & {
+      propertyType: string;
+      enumConfig: string[];
+      formatConfig: string;
+      entityReferenceConfig: string[];
+      multiSelect?: boolean;
+    }
   ) => {
     if (isUndefined(typeDetail)) {
       return;
@@ -138,13 +174,47 @@ const AddCustomProperty = () => {
 
     try {
       setIsCreating(true);
-      await addPropertyToEntity(typeDetail?.id ?? '', {
-        ...data,
-        propertyType: {
-          id: data.propertyType,
-          type: 'type',
+      let customPropertyConfig;
+
+      if (hasEnumConfig) {
+        customPropertyConfig = {
+          config: {
+            multiSelect: Boolean(data?.multiSelect),
+            values: data.enumConfig,
+          },
+        };
+      }
+
+      if (hasFormatConfig) {
+        customPropertyConfig = {
+          config: data.formatConfig,
+        };
+      }
+
+      if (hasEntityReferenceConfig) {
+        customPropertyConfig = {
+          config: data.entityReferenceConfig,
+        };
+      }
+
+      const payload = omitBy(
+        {
+          ...omit(data, [
+            'multiSelect',
+            'formatConfig',
+            'entityReferenceConfig',
+            'enumConfig',
+          ]),
+          propertyType: {
+            id: data.propertyType,
+            type: 'type',
+          },
+          customPropertyConfig,
         },
-      });
+        isUndefined
+      ) as unknown as CustomProperty;
+
+      await addPropertyToEntity(typeDetail?.id ?? '', payload);
       history.goBack();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -192,20 +262,110 @@ const AddCustomProperty = () => {
         placeholder: `${t('label.select-field', {
           field: t('label.type'),
         })}`,
-      },
-    },
-    {
-      name: 'description',
-      required: true,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: '',
+        showSearch: true,
+        filterOption: (input: string, option: { label: string }) => {
+          return (option?.label ?? '')
+            .toLowerCase()
+            .includes(input.toLowerCase());
+        },
       },
     },
   ];
+
+  const descriptionField: FieldProp = {
+    name: 'description',
+    required: true,
+    label: t('label.description'),
+    id: 'root/description',
+    type: FieldTypes.DESCRIPTION,
+    props: {
+      'data-testid': 'description',
+      initialValue: '',
+    },
+  };
+
+  const enumConfigField: FieldProp = {
+    name: 'enumConfig',
+    required: false,
+    label: t('label.enum-value-plural'),
+    id: 'root/enumConfig',
+    type: FieldTypes.SELECT,
+    props: {
+      'data-testid': 'enumConfig',
+      mode: 'tags',
+      placeholder: t('label.enum-value-plural'),
+    },
+    rules: [
+      {
+        required: true,
+        message: t('label.field-required', {
+          field: t('label.enum-value-plural'),
+        }),
+      },
+    ],
+  };
+
+  const multiSelectField: FieldProp = {
+    name: 'multiSelect',
+    label: t('label.multi-select'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      'data-testid': 'multiSelect',
+    },
+    id: 'root/multiSelect',
+    formItemLayout: FormItemLayout.HORIZONTAL,
+  };
+
+  const formatConfigField: FieldProp = {
+    name: 'formatConfig',
+    required: false,
+    label: t('label.format'),
+    id: 'root/formatConfig',
+    type: FieldTypes.TEXT,
+    props: {
+      'data-testid': 'formatConfig',
+      autoComplete: 'off',
+    },
+    placeholder: t('label.format'),
+    rules: [
+      {
+        validator: (_, value) => {
+          const propertyName = watchedOption?.key ?? '';
+          const supportedFormats =
+            SUPPORTED_FORMAT_MAP[
+              propertyName as keyof typeof SUPPORTED_FORMAT_MAP
+            ];
+
+          if (!supportedFormats.includes(value)) {
+            return Promise.reject(
+              t('label.field-invalid', {
+                field: t('label.format'),
+              })
+            );
+          }
+
+          return Promise.resolve();
+        },
+      },
+    ],
+  };
+
+  const entityReferenceConfigField: FieldProp = {
+    name: 'entityReferenceConfig',
+    required: true,
+    label: t('label.entity-reference-types'),
+    id: 'root/entityReferenceConfig',
+    type: FieldTypes.SELECT,
+    props: {
+      mode: 'multiple',
+      options: ENTITY_REFERENCE_OPTIONS,
+      'data-testid': 'entityReferenceConfig',
+      placeholder: `${t('label.select-field', {
+        field: t('label.type'),
+      })}`,
+    },
+  };
 
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
@@ -213,10 +373,27 @@ const AddCustomProperty = () => {
       <Form
         className="m-t-md"
         data-testid="custom-property-form"
+        form={form}
         layout="vertical"
         onFinish={handleSubmit}
         onFocus={handleFieldFocus}>
         {generateFormFields(formFields)}
+        {
+          // Only show enum value field if the property type has enum config
+          hasEnumConfig &&
+            generateFormFields([enumConfigField, multiSelectField])
+        }
+        {
+          // Only show format field if the property type has format config
+          hasFormatConfig && generateFormFields([formatConfigField])
+        }
+
+        {
+          // Only show entity reference field if the property type has entity reference config
+          hasEntityReferenceConfig &&
+            generateFormFields([entityReferenceConfigField])
+        }
+        {generateFormFields([descriptionField])}
         <Row justify="end">
           <Col>
             <Button
@@ -250,7 +427,9 @@ const AddCustomProperty = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
@@ -260,13 +439,9 @@ const AddCustomProperty = () => {
       })}
       secondPanel={{
         children: secondPanelChildren,
-        className: 'service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'service-doc-panel content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

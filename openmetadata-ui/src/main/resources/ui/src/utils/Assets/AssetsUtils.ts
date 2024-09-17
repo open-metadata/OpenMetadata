@@ -20,6 +20,14 @@ import { Table } from '../../generated/entity/data/table';
 import { Domain } from '../../generated/entity/domains/domain';
 import { ListParams } from '../../interface/API.interface';
 import {
+  getApiCollectionByFQN,
+  patchApiCollection,
+} from '../../rest/apiCollectionsAPI';
+import {
+  getApiEndPointByFQN,
+  patchApiEndPoint,
+} from '../../rest/apiEndpointsAPI';
+import {
   getDashboardByFqn,
   patchDashboardDetails,
 } from '../../rest/dashboardAPI';
@@ -39,6 +47,7 @@ import {
   patchGlossaries,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
+import { getMetricByFqn, patchMetric } from '../../rest/metricsAPI';
 import { getMlModelByFQN, patchMlModelDetails } from '../../rest/mlModelAPI';
 import { getPipelineByFqn, patchPipelineDetails } from '../../rest/pipelineAPI';
 import {
@@ -60,6 +69,7 @@ import {
 import { getTableDetailsByFQN, patchTableDetails } from '../../rest/tableAPI';
 import { getTeamByName, patchTeamDetail } from '../../rest/teamsAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
+import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../ToastUtils';
 
@@ -98,6 +108,14 @@ export const getAPIfromSource = (
       return patchDatabaseDetails;
     case EntityType.TEAM:
       return patchTeamDetail;
+    case EntityType.USER:
+      return updateUserDetail;
+    case EntityType.API_COLLECTION:
+      return patchApiCollection;
+    case EntityType.API_ENDPOINT:
+      return patchApiEndPoint;
+    case EntityType.METRIC:
+      return patchMetric;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -105,6 +123,7 @@ export const getAPIfromSource = (
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
+    case EntityType.API_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -148,6 +167,14 @@ export const getEntityAPIfromSource = (
       return getSearchIndexDetailsByFQN;
     case EntityType.TEAM:
       return getTeamByName;
+    case EntityType.USER:
+      return getUserByName;
+    case EntityType.API_COLLECTION:
+      return getApiCollectionByFQN;
+    case EntityType.API_ENDPOINT:
+      return getApiEndPointByFQN;
+    case EntityType.METRIC:
+      return getMetricByFqn;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -155,6 +182,7 @@ export const getEntityAPIfromSource = (
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
+    case EntityType.API_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 

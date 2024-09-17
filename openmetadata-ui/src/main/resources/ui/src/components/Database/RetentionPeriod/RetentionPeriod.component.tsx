@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Button, Form, FormProps, Input, Modal, Space } from 'antd';
+import {
+  Alert,
+  Button,
+  Form,
+  FormProps,
+  Input,
+  Modal,
+  Space,
+  Tooltip,
+} from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -28,7 +37,7 @@ import { RetentionPeriodProps } from './RetentionPeriod.interface';
 const RetentionPeriod = ({
   retentionPeriod,
   onUpdate,
-  permissions,
+  hasPermission,
 }: RetentionPeriodProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
@@ -61,15 +70,20 @@ const RetentionPeriod = ({
           value={retentionPeriod ?? NO_DATA_PLACEHOLDER}
         />
 
-        {permissions?.EditAll && (
-          <Button
-            className="flex-center p-0"
-            data-testid="edit-retention-period-button"
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
-            onClick={() => setIsEdit(true)}
-          />
+        {hasPermission && (
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.retention-period'),
+            })}>
+            <Button
+              className="flex-center p-0"
+              data-testid="edit-retention-period-button"
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={() => setIsEdit(true)}
+            />
+          </Tooltip>
         )}
       </Space>
 

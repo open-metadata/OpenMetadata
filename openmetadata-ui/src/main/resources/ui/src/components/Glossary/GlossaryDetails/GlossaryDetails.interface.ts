@@ -24,12 +24,11 @@ export enum GlossaryTabs {
 export type GlossaryDetailsProps = {
   isVersionView?: boolean;
   permissions: OperationPermission;
-  glossary: Glossary;
-  glossaryTerms: GlossaryTerm[];
+
   termsLoading: boolean;
   updateGlossary: (value: Glossary) => Promise<void>;
   updateVote?: (data: VotingDataProps) => Promise<void>;
-  handleGlossaryDelete: (id: string) => void;
+  handleGlossaryDelete: (id: string) => Promise<void>;
   refreshGlossaryTerms: () => void;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
   onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;

@@ -59,8 +59,8 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <>ActivityThreadPanel</>)
 );
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn().mockReturnValue({
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
     id: 'userid',
   }),
 }));
@@ -157,7 +157,7 @@ jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
 );
 
 jest.mock('../../constants/constants', () => ({
-  getContainerDetailPath: jest.fn().mockReturnValue('/container-detail-path'),
+  getEntityDetailsPath: jest.fn().mockReturnValue('/container-detail-path'),
   getVersionPath: jest.fn().mockReturnValue('/version-path'),
 }));
 
@@ -227,6 +227,10 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockUseParams()),
 }));
 
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <>{children}</>);
+});
+
 describe('Container Page Component', () => {
   it('should show error-placeholder, if not have view permission', async () => {
     mockGetEntityPermissionByFqn.mockResolvedValueOnce({
@@ -259,8 +263,17 @@ describe('Container Page Component', () => {
     expect(getContainerByName).toHaveBeenCalledWith(
       CONTAINER_DATA.fullyQualifiedName,
       {
-        fields:
-          'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
+        fields: [
+          'parent',
+          'dataModel',
+          'owners',
+          'tags',
+          'followers',
+          'extension',
+          'domain',
+          'dataProducts',
+          'votes',
+        ],
         include: Include.All,
       }
     );

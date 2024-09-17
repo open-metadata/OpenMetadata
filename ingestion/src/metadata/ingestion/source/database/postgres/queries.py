@@ -76,13 +76,20 @@ POSTGRES_PARTITION_DETAILS = textwrap.dedent(
 )
 
 POSTGRES_GET_ALL_TABLE_PG_POLICY = """
-SELECT object_id, polname, table_catalog , table_schema ,table_name  
+SELECT object_id, polname, table_catalog, table_schema, table_name  
 FROM information_schema.tables AS it
 JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
       FROM pg_policy AS pp
       JOIN pg_class AS pc ON pp.polrelid = pc.oid
       JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
 WHERE it.table_schema='{schema_name}' AND it.table_catalog='{database_name}';
+"""
+
+POSTGRES_SCHEMA_COMMENTS = """
+    SELECT n.nspname AS schema_name, 
+            d.description AS comment
+    FROM pg_catalog.pg_namespace n
+    LEFT JOIN pg_catalog.pg_description d ON d.objoid = n.oid AND d.objsubid = 0;
 """
 
 POSTGRES_TABLE_COMMENTS = """
@@ -187,4 +194,105 @@ POSTGRES_SQL_COLUMNS = """
 
 POSTGRES_GET_SERVER_VERSION = """
 show server_version
+"""
+
+POSTGRES_FETCH_FK = """
+    SELECT r.conname,
+        pg_catalog.pg_get_constraintdef(r.oid, true) as condef,
+        n.nspname as conschema,
+        d.datname AS con_db_name
+    FROM  pg_catalog.pg_constraint r,
+        pg_namespace n,
+        pg_class c
+    JOIN pg_database d ON d.datname = current_database()
+    WHERE r.conrelid = :table AND
+        r.contype = 'f' AND
+        c.oid = confrelid AND
+        n.oid = c.relnamespace
+    ORDER BY 1
+"""
+
+POSTGRES_GET_JSON_FIELDS = """
+    WITH RECURSIVE json_hierarchy AS (
+        SELECT
+            key AS path,
+            json_typeof(value) AS type,
+            value,
+            json_build_object() AS properties,
+            key AS title
+        FROM
+            {table_name} tbd,
+            LATERAL json_each({column_name}::json)
+    ),
+    build_hierarchy AS (
+        SELECT
+            path,
+            type,
+            title,
+            CASE
+                WHEN type = 'object' THEN
+                    json_build_object(
+                        'title', title,
+                        'type', 'object',
+                        'properties', (
+                            SELECT json_object_agg(
+                                key,
+                                json_build_object(
+                                    'title', key,
+                                    'type', json_typeof(value),
+                                    'properties', (
+                                        CASE
+                                            WHEN json_typeof(value) = 'object' THEN
+                                                (
+                                                    SELECT json_object_agg(
+                                                        key,
+                                                        json_build_object(
+                                                            'title', key,
+                                                            'type', json_typeof(value),
+                                                            'properties',
+                                                            json_build_object()
+                                                        )
+                                                    )
+                                                    FROM json_each(value::json) AS sub_key_value
+                                                )
+                                            ELSE json_build_object()
+                                        END
+                                    )
+                                )
+                            )
+                            FROM json_each(value::json) AS key_value
+                        )
+                    )
+                WHEN type = 'array' THEN
+                    json_build_object(
+                        'title', title,
+                        'type', 'array',
+                        'properties', json_build_object()
+                    )
+                ELSE
+                    json_build_object(
+                        'title', title,
+                        'type', type
+                    )
+            END AS hierarchy
+        FROM
+            json_hierarchy
+    ),
+    aggregate_hierarchy AS (
+        select
+            json_build_object(
+            'title','{column_name}',
+            'type','object',
+            'properties',
+            json_object_agg(
+                path,
+                hierarchy
+            )) AS result
+        FROM
+            build_hierarchy
+    )
+    SELECT
+        result
+    FROM
+        aggregate_hierarchy;
 """

@@ -103,6 +103,45 @@ MOCK_TABLE = {
     ],
 }
 
+MOCK_TABLE_2 = {
+    "id": "3df43ed7-5f2f-46bb-9793-384c6374a81d",
+    "name": "growth data",
+    "description": "company growth data",
+    "rows": 5,
+    "columns": 2,
+    "schema": {
+        "columns": [
+            {"type": "ARRAY", "name": "quarters.result"},
+            {"type": "NUMBER", "name": "profit"},
+        ]
+    },
+    "owner": {"id": 6024954162, "name": "Sam"},
+    "dataCurrentAt": "2024-07-15T05:30:06Z",
+    "createdAt": "2024-07-15T05:52:21Z",
+    "updatedAt": "2024-07-15T05:30:07Z",
+}
+
+EXPTECTED_TABLE_2 = [
+    CreateTableRequest(
+        name="growth data",
+        displayName="growth data",
+        description="company growth data",
+        tableType=TableType.Regular.value,
+        columns=[
+            Column(
+                name="quarters.result",
+                dataType=DataType.ARRAY.value,
+            ),
+            Column(
+                name="profit",
+                dataType=DataType.NUMBER.value,
+            ),
+        ],
+        databaseSchema=FullyQualifiedEntityName(
+            "local_databricks.hive_metastore.do_it_all_with_default_schema"
+        ),
+    )
+]
 
 EXPECTED_DATABASE_NAMES = ["hive_metastore"]
 EXPECTED_DATABASE_SCHEMA_NAMES = ["default"]
@@ -142,7 +181,7 @@ EXPTECTED_DATABASE_SCHEMA = [
         name="do_it_all_with_default_schema",
         displayName=None,
         description=None,
-        owner=None,
+        owners=None,
         database="local_databricks.hive_metastore",
     )
 ]
@@ -235,12 +274,12 @@ EXPTECTED_TABLE = [
         tableConstraints=None,
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
+        owners=None,
         databaseSchema=FullyQualifiedEntityName(
-            __root__="local_databricks.hive_metastore.do_it_all_with_default_schema"
+            "local_databricks.hive_metastore.do_it_all_with_default_schema"
         ),
         tags=None,
-        viewDefinition=None,
+        schemaDefinition=None,
         extension=None,
     )
 ]
@@ -262,21 +301,21 @@ class DatabricksUnitTest(TestCase):
         test_connection.return_value = False
         db_init_version.return_value = None
 
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
         self.databricks_source = DatabricksSource.create(
             mock_databricks_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.databricks_source.context.__dict__[
+        self.databricks_source.context.get().__dict__[
             "database"
-        ] = MOCK_DATABASE.name.__root__
-        self.databricks_source.context.__dict__[
+        ] = MOCK_DATABASE.name.root
+        self.databricks_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        ] = MOCK_DATABASE_SERVICE.name.root
 
-        self.databricks_source.context.__dict__[
+        self.databricks_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_schema_names(self):
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(
@@ -314,4 +353,17 @@ class DatabricksUnitTest(TestCase):
                 table_list.append(table)
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):
+            self.assertEqual(expected, original)
+
+    def test_yield_table_2(self):
+        table_list = []
+        yield_tables = self.databricks_source.yield_table(
+            ("3df43ed7-5f2f-46bb-9793-384c6374a81d", "Regular")
+        )
+
+        for table in yield_tables:
+            if isinstance(table, CreateTableRequest):
+                table_list.append(table)
+
+        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE_2, table_list)):
             self.assertEqual(expected, original)

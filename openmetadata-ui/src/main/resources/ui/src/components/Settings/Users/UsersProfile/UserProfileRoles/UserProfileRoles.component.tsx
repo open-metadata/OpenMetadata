@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card, Select, Space, Typography } from 'antd';
+import { Card, Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as UserIcons } from '../../../../../assets/svg/user.svg';
@@ -24,6 +24,7 @@ import {
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
 } from '../../../../../constants/constants';
+import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { getRoles } from '../../../../../rest/rolesAPIV1';
@@ -36,6 +37,7 @@ import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
 const UserProfileRoles = ({
   userRoles,
+  isDeletedUser,
   updateUserDetails,
   isUserAdmin,
 }: UserProfileRolesProps) => {
@@ -87,6 +89,15 @@ const UserProfileRoles = ({
     }
   };
 
+  const setUserRoles = useCallback(() => {
+    const defaultUserRoles = [
+      ...(userRoles?.map((role) => role.id) ?? []),
+      ...(isUserAdmin ? [toLower(TERM_ADMIN)] : []),
+    ];
+
+    setSelectedRoles(defaultUserRoles);
+  }, [userRoles, isUserAdmin]);
+
   const handleRolesSave = async () => {
     setIsLoading(true);
     // filter out the roles , and exclude the admin one
@@ -98,14 +109,17 @@ const UserProfileRoles = ({
     const isAdmin = selectedRoles.find(
       (roleId) => roleId === toLower(TERM_ADMIN)
     );
-    await updateUserDetails({
-      roles: updatedRoles.map((roleId) => {
-        const role = roles.find((r) => r.id === roleId);
+    await updateUserDetails(
+      {
+        roles: updatedRoles.map((roleId) => {
+          const role = roles.find((r) => r.id === roleId);
 
-        return { id: roleId, type: 'role', name: role?.name ?? '' };
-      }),
-      isAdmin: Boolean(isAdmin),
-    });
+          return { id: roleId, type: 'role', name: role?.name ?? '' };
+        }),
+        isAdmin: Boolean(isAdmin),
+      },
+      'roles'
+    );
     setIsLoading(false);
     setIsRolesEdit(false);
   };
@@ -119,6 +133,7 @@ const UserProfileRoles = ({
             : []),
           ...(userRoles ?? []),
         ]}
+        entityType={EntityType.ROLE}
         icon={<UserIcons height={20} />}
         noDataPlaceholder={t('message.no-roles-assigned')}
         showNoDataPlaceholder={!isUserAdmin}
@@ -127,14 +142,14 @@ const UserProfileRoles = ({
     [userRoles, isUserAdmin]
   );
 
-  useEffect(() => {
-    const defaultUserRoles = [
-      ...(userRoles?.map((role) => role.id) ?? []),
-      ...(isUserAdmin ? [toLower(TERM_ADMIN)] : []),
-    ];
+  const handleCloseEditRole = useCallback(() => {
+    setIsRolesEdit(false);
+    setUserRoles();
+  }, [setUserRoles]);
 
-    setSelectedRoles(defaultUserRoles);
-  }, [isUserAdmin, userRoles]);
+  useEffect(() => {
+    setUserRoles();
+  }, [setUserRoles]);
 
   useEffect(() => {
     if (isRolesEdit && isEmpty(roles)) {
@@ -152,14 +167,19 @@ const UserProfileRoles = ({
           <Typography.Text className="right-panel-label">
             {t('label.role-plural')}
           </Typography.Text>
-          {!isRolesEdit && isAdminUser && (
-            <EditIcon
-              className="cursor-pointer align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="edit-roles-button"
-              {...ICON_DIMENSION}
-              onClick={() => setIsRolesEdit(true)}
-            />
+          {!isRolesEdit && isAdminUser && !isDeletedUser && (
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.role-plural'),
+              })}>
+              <EditIcon
+                className="cursor-pointer align-middle"
+                color={DE_ACTIVE_COLOR}
+                data-testid="edit-roles-button"
+                {...ICON_DIMENSION}
+                onClick={() => setIsRolesEdit(true)}
+              />
+            </Tooltip>
           )}
         </Space>
       }>
@@ -168,7 +188,7 @@ const UserProfileRoles = ({
           <InlineEdit
             direction="vertical"
             isLoading={isLoading}
-            onCancel={() => setIsRolesEdit(false)}
+            onCancel={handleCloseEditRole}
             onSave={handleRolesSave}>
             <Select
               allowClear

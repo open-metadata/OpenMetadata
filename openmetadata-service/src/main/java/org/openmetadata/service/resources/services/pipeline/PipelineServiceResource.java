@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PipelineServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -72,7 +73,7 @@ import org.openmetadata.service.util.ResultList;
 public class PipelineServiceResource
     extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
-  static final String FIELDS = "pipelines,owner,domain";
+  static final String FIELDS = "pipelines,owners,domain";
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
@@ -81,8 +82,8 @@ public class PipelineServiceResource
     return service;
   }
 
-  public PipelineServiceResource(Authorizer authorizer) {
-    super(Entity.PIPELINE_SERVICE, authorizer, ServiceType.PIPELINE);
+  public PipelineServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.PIPELINE_SERVICE, authorizer, limits, ServiceType.PIPELINE);
   }
 
   @Override
@@ -411,6 +412,35 @@ public class PipelineServiceResource
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchPipelineService",
+      summary = "Update a pipeline service using name.",
+      description = "Update an existing pipeline service using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the pipeline service", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE

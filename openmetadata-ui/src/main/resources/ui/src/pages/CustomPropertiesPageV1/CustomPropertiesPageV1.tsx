@@ -154,6 +154,15 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.dashboards:
         return PAGE_HEADERS.DASHBOARD_CUSTOM_ATTRIBUTES;
 
+      case ENTITY_PATH.dashboardDataModels:
+        return PAGE_HEADERS.DASHBOARD_DATA_MODEL_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.dataProducts:
+        return PAGE_HEADERS.DATA_PRODUCT_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.metrics:
+        return PAGE_HEADERS.METRIC_CUSTOM_ATTRIBUTES;
+
       case ENTITY_PATH.pipelines:
         return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
 
@@ -177,6 +186,12 @@ const CustomEntityDetailV1 = () => {
 
       case ENTITY_PATH.databaseSchemas:
         return PAGE_HEADERS.DATABASE_SCHEMA_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.apiEndpoints:
+        return PAGE_HEADERS.API_ENDPOINT_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.apiCollections:
+        return PAGE_HEADERS.API_COLLECTION_CUSTOM_ATTRIBUTES;
 
       default:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;

@@ -1,9 +1,11 @@
 package org.openmetadata.service.resources.domains;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.*;
@@ -14,6 +16,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -24,7 +27,10 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResource.DataProductList;
@@ -160,6 +166,17 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(p4.getName())));
   }
 
+  @Test
+  void testValidateDataProducts() {
+    UUID rdnUUID = UUID.randomUUID();
+    EntityReference entityReference = new EntityReference().withId(rdnUUID);
+    TableRepository entityRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+
+    assertThatThrownBy(() -> entityRepository.validateDataProducts(List.of(entityReference)))
+        .isInstanceOf(EntityNotFoundException.class)
+        .hasMessage(String.format("dataProduct instance for %s not found", rdnUUID));
+  }
+
   private void entityInDataProduct(
       EntityInterface entity, EntityInterface product, boolean inDataProduct)
       throws HttpResponseException {
@@ -209,8 +226,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         byName
             ? getEntityByName(dataProduct.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
             : getEntity(dataProduct.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(getDataProduct.getOwner(), getDataProduct.getExperts());
-    String fields = "owner,domain,experts,assets";
+    assertListNull(getDataProduct.getOwners(), getDataProduct.getExperts());
+    String fields = "owners,domain,experts,assets";
     getDataProduct =
         byName
             ? getEntityByName(getDataProduct.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -220,7 +237,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     assertEntityReferences(dataProduct.getExperts(), getDataProduct.getExperts());
     assertEntityReferences(dataProduct.getAssets(), getDataProduct.getAssets());
 
-    // Checks for other owner, tags, and followers is done in the base class
+    // Checks for other owners, tags, and followers is done in the base class
     return getDataProduct;
   }
 

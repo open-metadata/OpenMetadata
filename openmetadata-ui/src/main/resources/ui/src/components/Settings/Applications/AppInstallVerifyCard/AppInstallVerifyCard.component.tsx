@@ -27,10 +27,10 @@ import {
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../../common/BrandImage/BrandImage';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import AppLogo from '../AppLogo/AppLogo.component';
@@ -44,7 +44,7 @@ const AppInstallVerifyCard = ({
   onSave,
 }: AppInstallVerifyCardProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser, theme } = useApplicationStore();
 
   return (
     <div className="flex-center flex-col">
@@ -87,7 +87,7 @@ const AppInstallVerifyCard = ({
                   <a
                     href={appData?.developerUrl}
                     rel="noreferrer"
-                    style={{ color: '#1890ff' }}
+                    style={{ color: theme.primaryColor }}
                     target="_blank"
                   />
                 }

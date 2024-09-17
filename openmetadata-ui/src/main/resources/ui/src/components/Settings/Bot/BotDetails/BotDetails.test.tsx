@@ -11,18 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  findByTestId,
-  findByText,
-  fireEvent,
-  render,
-  screen,
-} from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { getAuthMechanismForBotUser } from '../../../../rest/userAPI';
+import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
 import BotDetails from './BotDetails.component';
 
 const revokeTokenHandler = jest.fn();
@@ -100,6 +94,10 @@ jest.mock('../../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
+const mockGetResourceLimit = jest.fn().mockResolvedValue({
+  configuredLimit: { disabledFields: [] },
+});
+
 jest.mock('../../../../rest/userAPI', () => {
   return {
     createUserWithPut: jest
@@ -108,10 +106,11 @@ jest.mock('../../../../rest/userAPI', () => {
     getAuthMechanismForBotUser: jest
       .fn()
       .mockImplementation(() => Promise.resolve(mockAuthMechanism)),
+    getRoles: jest.fn().mockImplementation(() => Promise.resolve({ data: [] })),
   };
 });
 
-jest.mock('../../../common/EntityDescription/Description', () => {
+jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 
@@ -136,75 +135,64 @@ jest.mock('../../../PageLayoutV1/PageLayoutV1', () =>
     ))
 );
 
+jest.mock('../../Users/AccessTokenCard/AccessTokenCard.component', () => {
+  return jest.fn().mockReturnValue(<>AccessTokenCard</>);
+});
+
+jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: jest.fn().mockImplementation(() => ({
+    getResourceLimit: mockGetResourceLimit,
+    config: { enable: true },
+  })),
+}));
+
 describe('Test BotsDetail Component', () => {
   it('Should render all child elements', async () => {
-    const { container } = render(<BotDetails {...mockProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const breadCrumb = await findByTestId(container, 'breadcrumb');
-
-    const leftPanel = await findByTestId(container, 'left-panel');
-    const rightPanel = await findByTestId(container, 'right-panel');
-    const centerPanel = await findByTestId(container, 'center-panel');
-
-    expect(breadCrumb).toBeInTheDocument();
-    expect(leftPanel).toBeInTheDocument();
-    expect(rightPanel).toBeInTheDocument();
-    expect(centerPanel).toBeInTheDocument();
-  });
-
-  it('Should render token if token is present', async () => {
-    const { container } = render(<BotDetails {...mockProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const tokenElement = await findByTestId(container, 'token');
-    const tokenExpiry = await findByTestId(container, 'token-expiry');
-
-    expect(tokenElement).toBeInTheDocument();
-    expect(tokenExpiry).toBeInTheDocument();
-  });
-
-  it('Test Revoke token flow', async () => {
     await act(async () => {
       render(<BotDetails {...mockProp} />, {
         wrapper: MemoryRouter,
       });
     });
 
-    const revokeButton = await screen.findByTestId('revoke-button');
+    const breadCrumb = await screen.findByTestId('breadcrumb');
 
-    expect(revokeButton).toBeInTheDocument();
+    const leftPanel = await screen.findByTestId('left-panel');
+    const rightPanel = await screen.findByTestId('right-panel');
 
-    fireEvent.click(revokeButton);
-
-    // should open confirmartion before revoking token
-    const confirmationModal = await screen.findByTestId('confirmation-modal');
-
-    expect(confirmationModal).toBeInTheDocument();
-
-    const confirmButton = await screen.findByTestId('save-button');
-
-    expect(confirmButton).toBeInTheDocument();
-
-    fireEvent.click(confirmButton);
-
-    // revoke token handler should get called
-    expect(revokeTokenHandler).toHaveBeenCalled();
+    expect(breadCrumb).toBeInTheDocument();
+    expect(leftPanel).toBeInTheDocument();
+    expect(rightPanel).toBeInTheDocument();
+    expect(AccessTokenCard).toHaveBeenCalledWith(
+      {
+        botData,
+        isBot: true,
+        botUserData,
+        disabled: false,
+        revokeTokenHandlerBot: mockProp.revokeTokenHandler,
+      },
+      {}
+    );
   });
 
-  it('Should render the generate form if the authmechanism is empty', async () => {
+  it('should call accessTokenCard with disabled, if limit has `token` as disabledFields', async () => {
+    mockGetResourceLimit.mockResolvedValueOnce({
+      configuredLimit: { disabledFields: ['token'] },
+    });
     (getAuthMechanismForBotUser as jest.Mock).mockImplementationOnce(() => {
       return Promise.resolve(undefined);
     });
 
-    const { container } = render(<BotDetails {...mockProp} />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<BotDetails {...mockProp} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    const authMechanismForm = await findByText(container, 'label.om-jwt-token');
+    expect(mockGetResourceLimit).toHaveBeenCalledWith('bot', false);
 
-    expect(authMechanismForm).toBeInTheDocument();
+    expect(AccessTokenCard).toHaveBeenCalledWith(
+      expect.objectContaining({ disabled: true }),
+      {}
+    );
   });
 });

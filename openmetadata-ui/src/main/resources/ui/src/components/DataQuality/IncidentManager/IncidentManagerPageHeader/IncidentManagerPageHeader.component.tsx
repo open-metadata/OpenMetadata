@@ -18,16 +18,18 @@ import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { getTableTabPath } from '../../../../constants/constants';
+import { getEntityDetailsPath } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ThreadType } from '../../../../generated/api/feed/createThread';
+import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import {
   Thread,
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
 import { Operation } from '../../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../../generated/tests/testCase';
 import {
   Severities,
   TestCaseResolutionStatus,
@@ -35,6 +37,7 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   getListTestCaseIncidentByStateId,
+  postTestCaseIncidentStatus,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
@@ -97,9 +100,47 @@ const IncidentManagerPageHeader = ({
     }
   };
 
+  const updateAssignee = async (data: CreateTestCaseResolutionStatus) => {
+    try {
+      await postTestCaseIncidentStatus(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const onIncidentStatusUpdate = (data: TestCaseResolutionStatus) => {
     setTestCaseStatusData(data);
     updateTestCaseIncidentStatus([...testCaseResolutionStatus, data]);
+  };
+
+  const handleAssigneeUpdate = (assignee?: EntityReference[]) => {
+    if (isUndefined(testCaseStatusData)) {
+      return;
+    }
+
+    const assigneeData = assignee?.[0];
+
+    const updatedData: TestCaseResolutionStatus = {
+      ...testCaseStatusData,
+      testCaseResolutionStatusDetails: {
+        ...testCaseStatusData?.testCaseResolutionStatusDetails,
+        assignee: assigneeData,
+      },
+      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+    };
+
+    const createTestCaseResolutionStatus: CreateTestCaseResolutionStatus = {
+      severity: testCaseStatusData.severity,
+      testCaseReference:
+        testCaseStatusData.testCaseReference?.fullyQualifiedName ?? '',
+      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      testCaseResolutionStatusDetails: {
+        assignee: assigneeData,
+      },
+    };
+
+    updateAssignee(createTestCaseResolutionStatus);
+    onIncidentStatusUpdate(updatedData);
   };
 
   const fetchTestCaseResolution = async (id: string) => {
@@ -220,14 +261,25 @@ const IncidentManagerPageHeader = ({
           />
         </Typography.Text>
         <Divider className="self-center m-x-sm" type="vertical" />
-        <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
+        <Typography.Text
+          className="d-flex items-center gap-2 text-xs whitespace-nowrap"
+          data-testid="assignee">
           <span className="text-grey-muted">{`${t('label.assignee')}: `}</span>
 
           <OwnerLabel
-            owner={details?.assignee}
+            hasPermission={hasEditPermission}
+            multiple={{
+              user: false,
+              team: false,
+            }}
+            owners={details?.assignee ? [details.assignee] : []}
             placeHolder={t('label.no-entity', {
               entity: t('label.assignee'),
             })}
+            tooltipText={t('label.edit-entity', {
+              entity: t('label.assignee'),
+            })}
+            onUpdate={handleAssigneeUpdate}
           />
         </Typography.Text>
         <Divider className="self-center m-x-sm" type="vertical" />
@@ -247,7 +299,7 @@ const IncidentManagerPageHeader = ({
     <Space wrap align="center">
       <OwnerLabel
         hasPermission={hasEditPermission}
-        owner={testCaseData?.owner}
+        owners={testCaseData?.owners}
         onUpdate={onOwnerUpdate}
       />
       {statusDetails}
@@ -261,7 +313,11 @@ const IncidentManagerPageHeader = ({
               className="font-medium"
               data-testid="table-name"
               to={{
-                pathname: getTableTabPath(tableFqn, EntityTabs.PROFILER),
+                pathname: getEntityDetailsPath(
+                  EntityType.TABLE,
+                  tableFqn,
+                  EntityTabs.PROFILER
+                ),
                 search: QueryString.stringify({
                   activeTab: TableProfilerTab.DATA_QUALITY,
                 }),

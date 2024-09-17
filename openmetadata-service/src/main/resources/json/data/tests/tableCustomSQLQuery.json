@@ -29,6 +29,7 @@
         "required": false
       }
     ],
-    "provider": "system"
+    "provider": "system",
+    "dataQualityDimension": "SQL"
   }
   

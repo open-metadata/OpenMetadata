@@ -1,0 +1,40 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Avoid running Playwright CI on each PR opened which does not modify Java or UI code
+# https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-
+# of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks
+name: Postgresql PR Playwright E2E Tests
+
+on:
+  pull_request_target:
+    types:
+      - labeled
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - openmetadata-docs/**
+      - .github/**
+      - openmetadata-dist/**
+      - docker/**
+
+jobs:
+  playwright-ci-postgresql:
+    runs-on: ubuntu-latest
+    strategy:
+    fail-fast: false
+    matrix:
+      shardIndex: [1, 2]
+      shardTotal: [2]
+    steps:
+      - run: 'echo "Step is not required"'

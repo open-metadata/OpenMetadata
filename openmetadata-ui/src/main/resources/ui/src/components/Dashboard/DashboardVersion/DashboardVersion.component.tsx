@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
@@ -18,7 +19,10 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
-import { getVersionPathWithTab } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  getVersionPath,
+} from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
@@ -47,7 +51,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   tier,
   slashedDashboardName,
   versionList,
@@ -70,16 +74,16 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPathWithTab(
+      getVersionPath(
         EntityType.DASHBOARD,
         currentVersionData.fullyQualifiedName ?? '',
         String(version),
@@ -107,7 +111,11 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             <Space>
               <span>{getEntityName(record)}</span>
 
-              <IconExternalLink width={16} />
+              <Icon
+                className="m-l-xs flex-none align-middle"
+                component={IconExternalLink}
+                style={DATA_ASSET_ICON_DIMENSION}
+              />
             </Space>
           </Link>
         ),
@@ -278,6 +286,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
 
       <EntityVersionTimeLine
         currentVersion={version}
+        entityType={EntityType.DASHBOARD}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

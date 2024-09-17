@@ -50,9 +50,21 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             literal_eval,
         )
 
+        match_enum = self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "matchEnum",
+            bool,
+            default=False,
+        )
+
         try:
             column: Union[SQALikeColumn, Column] = self._get_column_name()
             res = self._run_results(Metrics.COUNT_IN_SET, column, values=allowed_values)
+            if match_enum:
+                count = self._run_results(
+                    Metrics.ROW_COUNT, column, values=allowed_values
+                )
+                res = count - res
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -71,7 +83,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
 
         return self.get_test_case_result_object(
             self.execution_date,
-            self.get_test_case_status(res >= 1),
+            self.get_test_case_status(res == 0 if match_enum else res >= 1),
             f"Found countInSet={res}.",
             [TestResultValue(name=ALLOWED_VALUE_COUNT, value=str(res))],
             row_count=row_count,

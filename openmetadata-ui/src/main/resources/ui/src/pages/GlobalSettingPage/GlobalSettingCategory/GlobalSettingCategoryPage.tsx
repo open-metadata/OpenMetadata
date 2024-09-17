@@ -27,8 +27,8 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../../enums/ElasticSearch.enum';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { useAuth } from '../../../hooks/authHooks';
+import globalSettingsClassBase from '../../../utils/GlobalSettingsClassBase';
 import {
-  getGlobalSettingsMenuWithPermission,
   getSettingPageEntityBreadCrumb,
   SettingMenuItem,
 } from '../../../utils/GlobalSettingsUtils';
@@ -52,10 +52,9 @@ const GlobalSettingCategoryPage = () => {
   );
 
   const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
-    let categoryItem = getGlobalSettingsMenuWithPermission(
-      permissions,
-      isAdminUser
-    ).find((item) => item.key === settingCategory);
+    let categoryItem = globalSettingsClassBase
+      .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
+      .find((item) => item.key === settingCategory);
 
     if (categoryItem) {
       categoryItem = {
@@ -76,7 +75,7 @@ const GlobalSettingCategoryPage = () => {
 
         break;
       case GlobalSettingOptions.SEARCH:
-        if (category === GlobalSettingsMenuCategory.OPEN_METADATA) {
+        if (category === GlobalSettingsMenuCategory.PREFERENCES) {
           history.push(
             getSettingsPathWithFqn(
               category,

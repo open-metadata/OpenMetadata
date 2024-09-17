@@ -15,7 +15,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual, startCase } from 'lodash';
+import { isEqual, pick, startCase } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,12 +34,12 @@ import TestCaseIncidentManagerStatus from '../../components/DataQuality/Incident
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
-  getTableTabPath,
+  getEntityDetailsPath,
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { DEFAULT_SELECTED_RANGE } from '../../constants/profiler.constant';
+import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
@@ -61,7 +61,7 @@ import {
   TestCaseIncidentStatusParams,
   updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
-import { getUserSuggestions } from '../../rest/miscAPI';
+import { getUserAndTeamSearch } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getUsers } from '../../rest/userAPI';
 import {
@@ -84,13 +84,20 @@ import { Option } from '../TasksPage/TasksPage.interface';
 import { TestCaseIncidentStatusData } from './IncidentManager.interface';
 
 const IncidentManagerPage = () => {
+  const defaultRange = useMemo(
+    () => ({
+      key: 'last30days',
+      title: PROFILER_FILTER_RANGE.last30days.title,
+    }),
+    []
+  );
   const [testCaseListData, setTestCaseListData] =
     useState<TestCaseIncidentStatusData>({
       data: [],
       isLoading: true,
     });
   const [filters, setFilters] = useState<TestCaseIncidentStatusParams>({
-    startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
+    startTs: getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days),
     endTs: getCurrentMillis(),
   });
   const [users, setUsers] = useState<{
@@ -218,11 +225,11 @@ const IncidentManagerPage = () => {
       return;
     }
     try {
-      const res = await getUserSuggestions(query, true);
-      const hits = res.data.suggest['metadata-suggest'][0]['options'];
+      const res = await getUserAndTeamSearch(query, true);
+      const hits = res.data.hits.hits;
       const suggestOptions = hits.map((hit) => ({
         label: getEntityName(hit._source),
-        value: hit._id,
+        value: hit._id ?? '',
         type: hit._source.entityType,
         name: hit._source.name,
       }));
@@ -242,13 +249,11 @@ const IncidentManagerPage = () => {
   };
 
   const handleDateRangeChange = (value: DateRangeObject) => {
-    const dateRangeObject = {
-      startTs: filters.startTs,
-      endTs: filters.endTs,
-    };
+    const updatedFilter = pick(value, ['startTs', 'endTs']);
+    const existingFilters = pick(filters, ['startTs', 'endTs']);
 
-    if (!isEqual(value, dateRangeObject)) {
-      setFilters((pre) => ({ ...pre, ...dateRangeObject }));
+    if (!isEqual(existingFilters, updatedFilter)) {
+      setFilters((pre) => ({ ...pre, ...updatedFilter }));
     }
   };
 
@@ -374,7 +379,11 @@ const IncidentManagerPage = () => {
             <Link
               data-testid="table-link"
               to={{
-                pathname: getTableTabPath(tableFqn, EntityTabs.PROFILER),
+                pathname: getEntityDetailsPath(
+                  EntityType.TABLE,
+                  tableFqn,
+                  EntityTabs.PROFILER
+                ),
                 search: QueryString.stringify({
                   activeTab: TableProfilerTab.DATA_QUALITY,
                 }),
@@ -426,7 +435,7 @@ const IncidentManagerPage = () => {
         width: 150,
         render: (value?: Assigned) => (
           <OwnerLabel
-            owner={value?.assignee}
+            owners={value?.assignee ? [value.assignee] : []}
             placeHolder={t('label.no-entity', { entity: t('label.assignee') })}
           />
         ),
@@ -441,7 +450,7 @@ const IncidentManagerPage = () => {
 
   return (
     <PageLayoutV1 pageTitle="Incident Manager">
-      <Row className="p-x-lg p-t-md" gutter={[0, 16]}>
+      <Row className="p-x-lg p-b-lg p-t-md" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Title
             className="m-b-md"
@@ -490,6 +499,7 @@ const IncidentManagerPage = () => {
               showSearch
               api={searchTestCases}
               className="w-min-20"
+              data-testid="test-case-select"
               options={testCaseInitialOptions}
               placeholder={t('label.test-case')}
               suffixIcon={undefined}
@@ -503,6 +513,7 @@ const IncidentManagerPage = () => {
           </Space>
           <DatePickerMenu
             showSelectedCustomRange
+            defaultDateRange={defaultRange}
             handleDateRangeChange={handleDateRangeChange}
           />
         </Col>

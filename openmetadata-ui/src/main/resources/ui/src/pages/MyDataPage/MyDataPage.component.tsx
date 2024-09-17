@@ -23,20 +23,24 @@ import React, {
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import Loader from '../../components/common/Loader/Loader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
-import { useApplicationConfigContext } from '../../context/ApplicationConfigProvider/ApplicationConfigProvider';
-import { AssetsType, EntityType } from '../../enums/entity.enum';
+import {
+  KNOWLEDGE_LIST_LENGTH,
+  LOGGED_IN_USER_STORAGE_KEY,
+} from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
-import { getUserById } from '../../rest/userAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -47,9 +51,8 @@ const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
-  const { selectedPersona } = useApplicationConfigContext();
-  const [followedData, setFollowedData] = useState<Array<EntityReference>>();
+  const { currentUser, selectedPersona } = useApplicationStore();
+  const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,27 +113,22 @@ const MyDataPage = () => {
     return () => updateWelcomeScreen(false);
   }, []);
 
-  const fetchMyData = async () => {
+  const fetchUserFollowedData = async () => {
     if (!currentUser?.id) {
       return;
     }
     setIsLoadingOwnedData(true);
     try {
-      const userData = await getUserById(currentUser?.id, {
-        fields: 'follows,owns',
+      const res = await searchQuery({
+        pageSize: KNOWLEDGE_LIST_LENGTH,
+        searchIndex: SearchIndex.ALL,
+        query: '*',
+        filters: `followers:${currentUser.id}`,
       });
 
-      if (userData) {
-        const includeData = Object.values(AssetsType);
-        const follows: EntityReference[] = userData.follows ?? [];
-        const includedFollowsData = follows.filter((data) =>
-          includeData.includes(data.type as AssetsType)
-        );
-        setFollowedDataCount(includedFollowsData.length);
-        setFollowedData(includedFollowsData.slice(0, 8));
-      }
+      setFollowedDataCount(res?.hits?.total.value ?? 0);
+      setFollowedData(res.hits.hits.map((hit) => hit._source));
     } catch (err) {
-      setFollowedData([]);
       showErrorToast(err as AxiosError);
     } finally {
       setIsLoadingOwnedData(false);
@@ -139,7 +137,7 @@ const MyDataPage = () => {
 
   useEffect(() => {
     if (currentUser) {
-      fetchMyData();
+      fetchUserFollowedData();
     }
   }, [currentUser]);
 
@@ -157,8 +155,8 @@ const MyDataPage = () => {
         <div data-grid={widget} key={widget.i}>
           {getWidgetFromKey({
             announcements: announcements,
-            followedData: followedData ?? [],
-            followedDataCount: followedDataCount,
+            followedData,
+            followedDataCount,
             isLoadingOwnedData: isLoadingOwnedData,
             widgetConfig: widget,
           })}
@@ -212,18 +210,23 @@ const MyDataPage = () => {
             <Loader />
           </div>
         ) : (
-          <ReactGridLayout
-            className="bg-white"
-            cols={4}
-            isDraggable={false}
-            isResizable={false}
-            margin={[
-              customizePageClassBase.landingPageWidgetMargin,
-              customizePageClassBase.landingPageWidgetMargin,
-            ]}
-            rowHeight={100}>
-            {widgets}
-          </ReactGridLayout>
+          <>
+            <ReactGridLayout
+              className="bg-white"
+              cols={4}
+              isDraggable={false}
+              isResizable={false}
+              margin={[
+                customizePageClassBase.landingPageWidgetMargin,
+                customizePageClassBase.landingPageWidgetMargin,
+              ]}
+              rowHeight={100}>
+              {widgets}
+            </ReactGridLayout>
+            <LimitWrapper resource="dataAssets">
+              <br />
+            </LimitWrapper>
+          </>
         )}
       </PageLayoutV1>
     </ActivityFeedProvider>

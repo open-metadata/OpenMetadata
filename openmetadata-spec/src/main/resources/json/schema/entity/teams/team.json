@@ -93,9 +93,9 @@
       "description": "List of entities owned by the team.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "owner": {
+    "owners": {
       "description": "Owner of this team. ",
-      "$ref": "../../type/entityReference.json",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "isJoinable": {
@@ -124,9 +124,9 @@
       "description": "Policies that is attached to this team.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "domain" : {
+    "domains" : {
       "description": "Domain the Team belongs to.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": ["id", "name"],

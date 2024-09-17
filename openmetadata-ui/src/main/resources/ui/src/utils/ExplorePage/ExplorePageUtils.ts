@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isEqual, isUndefined, uniqWith } from 'lodash';
+import {
+  isArray,
+  isEmpty,
+  isEqual,
+  isString,
+  isUndefined,
+  uniqWith,
+} from 'lodash';
 import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
 import {
   QueryFieldInterface,
@@ -43,7 +50,8 @@ export const getCombinedFields = (
 
   filtersArray.forEach((filtersObj) => {
     if (!isUndefined(filtersObj)) {
-      combinedFiltersArray.push(...getQueryFiltersArray(field, filtersObj));
+      const data = getQueryFiltersArray(field, filtersObj);
+      combinedFiltersArray.push(...(isArray(data) ? data : [data]));
     }
   });
 
@@ -82,4 +90,44 @@ export const getCombinedQueryFilterObject = (
       },
     },
   };
+};
+
+export const getQuickFilterWithDeletedFlag = (
+  quickFilter: string,
+  showDeleted: boolean
+) => {
+  const defaultQuery = {
+    query: {
+      bool: {
+        must: [
+          {
+            match: {
+              deleted: showDeleted,
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  if (!isString(quickFilter)) {
+    return defaultQuery;
+  }
+
+  try {
+    const parsedQueryFilter = JSON.parse(quickFilter);
+    const mustArray = parsedQueryFilter.query.bool.must || [];
+    parsedQueryFilter.query.bool.must = [
+      ...mustArray,
+      {
+        match: {
+          deleted: showDeleted,
+        },
+      },
+    ];
+
+    return parsedQueryFilter;
+  } catch {
+    return defaultQuery;
+  }
 };

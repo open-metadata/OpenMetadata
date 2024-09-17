@@ -12,24 +12,15 @@
  */
 
 import { ThreadType } from '../../../generated/api/feed/createThread';
-import {
-  ColumnJoins,
-  Table,
-  TableData,
-  TablePartition,
-} from '../../../generated/entity/data/table';
+import { Table } from '../../../generated/entity/data/table';
+import { TestSummary } from '../../../generated/tests/testCase';
 
 export type Props = {
-  columns: Table['columns'];
-  joins: Array<ColumnJoins>;
-  columnName: string;
-  tableConstraints: Table['tableConstraints'];
-  sampleData?: TableData;
+  table?: Table;
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
   isReadOnly?: boolean;
-  entityFqn: string;
-  tablePartitioned?: TablePartition;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (columns: Table['columns']) => Promise<void>;
+  testCaseSummary?: TestSummary;
 };

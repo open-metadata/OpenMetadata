@@ -19,8 +19,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import localState from '../../../utils/LocalStorageUtils';
-import { useAuthContext } from './AuthProvider';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { OidcUser } from './AuthProvider.interface';
 
 interface Props {
@@ -32,7 +31,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
   children,
   onLoginSuccess,
 }: Props) => {
-  const { authConfig, setIsAuthenticated } = useAuthContext();
+  const { authConfig, setOidcToken } = useApplicationStore();
   const { clientId, issuer, redirectUri, scopes, pkce } =
     authConfig as OktaAuthOptions;
 
@@ -58,12 +57,11 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
   const restoreOriginalUri = useCallback(async (_oktaAuth: OktaAuth) => {
     const idToken = _oktaAuth.getIdToken() ?? '';
     const scopes =
-      _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() ?? '';
-    localState.setOidcToken(idToken);
+      _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
+    setOidcToken(idToken);
     _oktaAuth
       .getUser()
       .then((info) => {
-        setIsAuthenticated(true);
         const user = {
           id_token: idToken,
           scope: scopes,

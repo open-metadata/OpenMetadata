@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 import { LeftOutlined } from '@ant-design/icons';
-import { Button, Carousel, Col, Row, Space, Tooltip, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Carousel,
+  Col,
+  Row,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -19,17 +28,20 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as CheckMarkIcon } from '../../../../assets/svg/ic-cloud-checkmark.svg';
 import { ROUTES } from '../../../../constants/constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getApplicationByName } from '../../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../../../rest/applicationMarketPlaceAPI';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
+import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './market-place-app-details.less';
 
@@ -42,10 +54,12 @@ const MarketPlaceAppDetails = () => {
   const [isInstalled, setIsInstalled] = useState(false);
   const [appScreenshots, setAppScreenshots] = useState<JSX.Element[]>([]);
 
+  const isPreviewApp = useMemo(() => !!appData?.preview, [appData]);
+
   const loadScreenshot = async (screenshotName: string) => {
     try {
-      const imageModule = await import(
-        `../../../../assets/img/appScreenshots/${screenshotName}`
+      const imageModule = await applicationsClassBase.importAppScreenshot(
+        screenshotName
       );
       const imageSrc = imageModule.default;
 
@@ -61,7 +75,7 @@ const MarketPlaceAppDetails = () => {
     setIsLoading(true);
     try {
       const data = await getMarketPlaceApplicationByFqn(fqn, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
       });
       setAppData(data);
 
@@ -89,7 +103,7 @@ const MarketPlaceAppDetails = () => {
   const fetchInstalledAppDetails = useCallback(async () => {
     try {
       await getApplicationByName(fqn, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
         include: Include.All,
       });
       setIsInstalled(true);
@@ -106,6 +120,27 @@ const MarketPlaceAppDetails = () => {
     history.push(ROUTES.MARKETPLACE);
   };
 
+  const tooltipTitle = useMemo(() => {
+    if (isInstalled) {
+      return t('message.app-already-installed');
+    }
+    if (isPreviewApp) {
+      return (
+        <Transi18next
+          i18nKey="message.paid-addon-description"
+          renderElement={
+            <span data-testid="appName" style={{ fontWeight: 600 }} />
+          }
+          values={{
+            app: appData?.displayName,
+          }}
+        />
+      );
+    }
+
+    return '';
+  }, [isInstalled, isPreviewApp, appData?.displayName]);
+
   const leftPanel = useMemo(() => {
     return (
       <div className="p-x-md p-t-md ">
@@ -119,32 +154,52 @@ const MarketPlaceAppDetails = () => {
             {t('label.browse-app-plural')}
           </Typography.Text>
         </Button>
-
         <div className="flex-center m-t-md">
           <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         </div>
-        <Tooltip
-          placement="top"
-          title={isInstalled ? t('message.app-already-installed') : ''}
-          trigger="hover">
+        <Tooltip placement="top" title={tooltipTitle} trigger="hover">
           <Button
             block
             className="m-t-md"
             data-testid="install-application"
-            disabled={isInstalled}
+            disabled={isInstalled || isPreviewApp}
             type="primary"
             onClick={installApp}>
             {t('label.install')}
           </Button>
         </Tooltip>
 
+        {isPreviewApp && (
+          <Alert
+            className="m-t-md text-xs d-flex items-start p-xs"
+            message={
+              <>
+                <Typography.Text>
+                  <Transi18next
+                    i18nKey="message.paid-addon-description"
+                    renderElement={
+                      <span data-testid="appName" style={{ fontWeight: 600 }} />
+                    }
+                    values={{
+                      app: appData?.displayName,
+                    }}
+                  />
+                </Typography.Text>
+
+                <Typography.Text className="d-block">
+                  {t('message.please-contact-us')}
+                </Typography.Text>
+              </>
+            }
+            type="info"
+          />
+        )}
         <div className="m-t-md">
           <CheckMarkIcon className="v-middle m-r-xss" />
           <Typography.Text className="text-xs font-medium text-grey-muted">
             {t('message.marketplace-verify-msg')}
           </Typography.Text>
         </div>
-
         <Space className="p-t-lg" direction="vertical" size={8}>
           <Typography.Text>
             {appData?.supportEmail && (
@@ -166,7 +221,7 @@ const MarketPlaceAppDetails = () => {
         </Space>
       </div>
     );
-  }, [appData, isInstalled]);
+  }, [appData, isInstalled, tooltipTitle]);
 
   useEffect(() => {
     fetchAppDetails();

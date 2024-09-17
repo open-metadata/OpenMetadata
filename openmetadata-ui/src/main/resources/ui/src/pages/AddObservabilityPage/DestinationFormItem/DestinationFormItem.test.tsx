@@ -13,6 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import { Form, FormInstance } from 'antd';
 import React from 'react';
+import { DESTINATION_SOURCE_ITEMS } from '../../../constants/Alerts.constants';
 import DestinationFormItem from './DestinationFormItem.component';
 
 jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
@@ -21,6 +22,12 @@ jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
     .mockReturnValue(<div data-testid="destination-field" />),
   getSubscriptionTypeOptions: jest.fn().mockReturnValue([]),
   listLengthValidator: jest.fn().mockImplementation(() => Promise.resolve()),
+  getFilteredDestinationOptions: jest
+    .fn()
+    .mockImplementation((key) => DESTINATION_SOURCE_ITEMS[key]),
+  getConnectionTimeoutField: jest
+    .fn()
+    .mockReturnValue(<div data-testid="connection-timeout" />),
 }));
 
 jest.mock('../../../utils/ObservabilityUtils', () => ({
@@ -30,11 +37,15 @@ jest.mock('../../../utils/ObservabilityUtils', () => ({
     .mockImplementation(() => <span data-testid="icon">Icon</span>),
 }));
 
-const mockProps = {
-  heading: 'heading',
-  subHeading: 'subHeading',
-  buttonLabel: 'buttonLabel',
-};
+jest.mock('../../../components/common/FormCardSection/FormCardSection', () =>
+  jest.fn().mockImplementation(({ heading, subHeading, children }) => (
+    <div>
+      <div>{heading}</div>
+      <div>{subHeading}</div>
+      <div>{children}</div>
+    </div>
+  ))
+);
 
 describe('DestinationFormItem', () => {
   it('should renders without crashing', () => {
@@ -51,11 +62,13 @@ describe('DestinationFormItem', () => {
     const useWatchMock = jest.spyOn(Form, 'useWatch');
     useWatchMock.mockImplementation(() => ['container']);
 
-    render(<DestinationFormItem {...mockProps} />);
+    render(<DestinationFormItem />);
 
-    expect(screen.getByText('heading')).toBeInTheDocument();
-    expect(screen.getByText('subHeading')).toBeInTheDocument();
-    expect(screen.getByText('buttonLabel')).toBeInTheDocument();
+    expect(screen.getByText('label.destination')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.alerts-destination-description')
+    ).toBeInTheDocument();
+    expect(screen.getByText('label.add-entity')).toBeInTheDocument();
 
     expect(screen.getByTestId('add-destination-button')).toBeInTheDocument();
   });
@@ -74,7 +87,7 @@ describe('DestinationFormItem', () => {
     const useWatchMock = jest.spyOn(Form, 'useWatch');
     useWatchMock.mockImplementation(() => []);
 
-    render(<DestinationFormItem {...mockProps} />);
+    render(<DestinationFormItem />);
 
     expect(screen.getByTestId('add-destination-button')).toBeDisabled();
   });
@@ -93,8 +106,27 @@ describe('DestinationFormItem', () => {
     const useWatchMock = jest.spyOn(Form, 'useWatch');
     useWatchMock.mockImplementation(() => ['container']);
 
-    render(<DestinationFormItem {...mockProps} />);
+    render(<DestinationFormItem />);
 
     expect(screen.getByTestId('add-destination-button')).toBeEnabled();
+  });
+
+  it('should display the connection timeout field', () => {
+    const setFieldValue = jest.fn();
+    const getFieldValue = jest.fn();
+    jest.spyOn(Form, 'useFormInstance').mockImplementation(
+      () =>
+        ({
+          setFieldValue,
+          getFieldValue,
+        } as unknown as FormInstance)
+    );
+
+    const useWatchMock = jest.spyOn(Form, 'useWatch');
+    useWatchMock.mockImplementation(() => ['container']);
+
+    render(<DestinationFormItem />);
+
+    expect(screen.getByTestId('connection-timeout')).toBeInTheDocument();
   });
 });

@@ -14,6 +14,9 @@ Base class for ingesting Object Storage services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.services.storageService import (
@@ -38,10 +41,11 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -68,7 +72,14 @@ OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 
 
 class StorageServiceTopology(ServiceTopology):
-    root = TopologyNode(
+    """
+    Defines the hierarchy in Messaging Services.
+    service -> container -> container -> container...
+    """
+
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -84,9 +95,18 @@ class StorageServiceTopology(ServiceTopology):
         post_process=["mark_containers_as_deleted"],
     )
 
-    container = TopologyNode(
+    container: Annotated[
+        TopologyNode, Field(description="Container Processing Node")
+    ] = TopologyNode(
         producer="get_containers",
         stages=[
+            NodeStage(
+                type_=OMetaTagAndClassification,
+                context="tags",
+                processor="yield_tag_details",
+                nullable=True,
+                store_all_in_context=True,
+            ),
             NodeStage(
                 type_=Container,
                 context="container",
@@ -94,7 +114,7 @@ class StorageServiceTopology(ServiceTopology):
                 consumer=["objectstore_service"],
                 nullable=True,
                 use_cache=True,
-            )
+            ),
         ],
     )
 
@@ -109,10 +129,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: StorageConnection.__fields__["config"].type_
+    service_connection: StorageConnection.model_fields["config"].annotation
 
     topology = StorageServiceTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
     container_source_state: Set = set()
 
     global_manifest: Optional[ManifestMetadataConfig]
@@ -125,7 +145,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: StorageServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -176,6 +196,22 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing needs to be taken care of when loading the source"""
 
+    def yield_container_tags(
+        self, container_details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each container
+        """
+
+    def yield_tag_details(
+        self, container_details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each container
+        """
+        if self.source_config.includeTags:
+            yield from self.yield_container_tags(container_details) or []
+
     def register_record(self, container_request: CreateContainerRequest) -> None:
         """
         Mark the container record as scanned and update
@@ -184,16 +220,16 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         parent_container = (
             self.metadata.get_by_id(
                 entity=Container, entity_id=container_request.parent.id
-            ).fullyQualifiedName.__root__
+            ).fullyQualifiedName.root
             if container_request.parent
             else None
         )
         container_fqn = fqn.build(
             self.metadata,
             entity_type=Container,
-            service_name=self.context.objectstore_service,
+            service_name=self.context.get().objectstore_service,
             parent_container=parent_container,
-            container_name=container_request.name.__root__,
+            container_name=fqn.quote_name(container_request.name.root),
         )
 
         self.container_source_state.add(container_fqn)
@@ -210,7 +246,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Container,
                 entity_source_state=self.container_source_state,
                 mark_deleted_entity=self.source_config.markDeletedContainers,
-                params={"service": self.context.objectstore_service},
+                params={"service": self.context.get().objectstore_service},
             )
 
     def yield_create_request_objectstore_service(self, config: WorkflowSource):
@@ -245,7 +281,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Return a prefix if we have structure data to read
         """
-        result = f"{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
+        # Adding the ending separator so that we only read files from the right directory, for example:
+        # if we have files in `transactions/*` and `transactions_old/*`, only passing the prefix as
+        # `transactions` would list files for both directories. We need the prefix to be `transactions/`.
+        result = f"{metadata_entry.dataPath.strip(KEY_SEPARATOR)}{KEY_SEPARATOR}"
         if not metadata_entry.structureFormat:
             logger.warning(f"Ignoring un-structured metadata entry {result}")
             return None
@@ -260,7 +299,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         metadata_entry: MetadataEntry,
     ) -> List[Column]:
         """Extract Column related metadata from s3"""
-        data_structure_details = fetch_dataframe(
+        data_structure_details, raw_data = fetch_dataframe(
             config_source=config_source,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
@@ -269,10 +308,13 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 file_extension=SupportedTypes(metadata_entry.structureFormat),
                 separator=metadata_entry.separator,
             ),
+            fetch_raw_data=True,
         )
         columns = []
         column_parser = DataFrameColumnParser.create(
-            data_structure_details, SupportedTypes(metadata_entry.structureFormat)
+            data_structure_details,
+            SupportedTypes(metadata_entry.structureFormat),
+            raw_data=raw_data,
         )
         columns = column_parser.get_columns()
         return columns

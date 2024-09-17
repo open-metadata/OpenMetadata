@@ -30,7 +30,7 @@ export interface SelectTestSuiteProps {
 
 export interface TestCaseFormProps {
   initialValue?: CreateTestCase;
-  onSubmit: (data: CreateTestCase) => void;
+  onSubmit: (data: CreateTestCase) => Promise<void>;
   onCancel: (data: CreateTestCase) => void;
   table: Table;
 }
@@ -38,19 +38,38 @@ export interface TestCaseFormProps {
 export interface TestSuiteIngestionProps {
   testSuite: TestSuite;
   ingestionPipeline?: IngestionPipeline;
-  onCancel: () => void;
+  onCancel?: () => void;
+  onViewServiceClick?: () => void;
 }
 
+export type TestSuiteIngestionDataType = {
+  repeatFrequency: string;
+  enableDebugLog?: boolean;
+  testCases?: string[];
+  name?: string;
+  selectAllTestCases?: boolean;
+};
+
 export interface TestSuiteSchedulerProps {
-  initialData?: string;
+  initialData?: Partial<TestSuiteIngestionDataType>;
+  allowEnableDebugLog?: boolean;
   isLoading: boolean;
-  onSubmit: (repeatFrequency: string) => void;
+  onSubmit: (data: TestSuiteIngestionDataType) => void;
   onCancel: () => void;
   buttonProps?: {
     okText: string;
     cancelText: string;
   };
   includePeriodOptions?: string[];
+}
+
+export interface AddTestSuitePipelineProps {
+  initialData?: Partial<TestSuiteIngestionDataType>;
+  isLoading: boolean;
+  testSuiteFQN?: string;
+  onSubmit: (data: TestSuiteIngestionDataType) => void;
+  includePeriodOptions?: string[];
+  onCancel?: () => void;
 }
 
 export interface RightPanelProps {
@@ -79,3 +98,12 @@ export interface EditTestCaseModalProps {
   onCancel: () => void;
   onUpdate?: (testCase: TestCase) => void;
 }
+
+export type TestCaseFormType = {
+  testName: string;
+  params: Record<string, string | { [key: string]: string }[]>;
+  useDynamicAssertion?: boolean;
+  testTypeId: string;
+  computePassedFailedRowCount?: boolean;
+  description?: string;
+};

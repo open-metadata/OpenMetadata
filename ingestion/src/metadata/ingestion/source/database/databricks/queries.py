@@ -24,8 +24,9 @@ DATABRICKS_VIEW_DEFINITIONS = textwrap.dedent(
     """
 )
 
-
-DATABRICKS_GET_TABLE_COMMENTS = "DESCRIBE TABLE EXTENDED {schema_name}.{table_name}"
+DATABRICKS_GET_TABLE_COMMENTS = (
+    "DESCRIBE TABLE EXTENDED {database_name}.{schema_name}.{table_name}"
+)
 
 DATABRICKS_GET_CATALOGS = "SHOW CATALOGS"
 
@@ -37,8 +38,7 @@ DATABRICKS_GET_SCHEMA_TAGS = textwrap.dedent(
     """
     SELECT 
         * 
-    FROM {database_name}.information_schema.schema_tags 
-    WHERE schema_name='{schema_name}'"""
+    FROM {database_name}.information_schema.schema_tags"""
 )
 
 DATABRICKS_GET_TABLE_TAGS = textwrap.dedent(
@@ -46,7 +46,7 @@ DATABRICKS_GET_TABLE_TAGS = textwrap.dedent(
     SELECT 
         * 
     FROM {database_name}.information_schema.table_tags 
-    WHERE schema_name = '{schema_name}' AND table_name = '{table_name}';"""
+    """
 )
 
 DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
@@ -54,5 +54,7 @@ DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
     SELECT 
         * 
     FROM {database_name}.information_schema.column_tags 
-    WHERE schema_name='{schema_name}' AND table_name='{table_name}';"""
+    """
 )
+
+DATABRICKS_DDL = "SHOW CREATE TABLE {table_name}"

@@ -19,8 +19,8 @@ import {
 import userEvent from '@testing-library/user-event';
 import { Table as AntdTable } from 'antd';
 import React from 'react';
-import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { AppType } from '../../../../generated/entity/applications/app';
+import { Status } from '../../../../generated/entity/applications/appRunRecord';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import AppRunsHistory from './AppRunsHistory.component';
 
@@ -121,6 +121,13 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
+jest.mock('../../../../constants/constants', () => ({
+  NO_DATA_PLACEHOLDER: '--',
+  STATUS_LABEL: {
+    [Status.Success]: 'Success',
+  },
+}));
+
 const mockProps1 = {
   appData: mockApplicationData,
   maxRecords: 10,
@@ -150,7 +157,7 @@ describe('AppRunsHistory component', () => {
       userEvent.click(screen.getByText('label.log-plural'));
     });
 
-    expect(screen.queryByText(NO_DATA_PLACEHOLDER)).not.toBeInTheDocument();
+    expect(screen.queryByText('--')).not.toBeInTheDocument();
 
     expect(screen.getByText('NextPrevious')).toBeInTheDocument();
   });
@@ -182,9 +189,13 @@ describe('AppRunsHistory component', () => {
 
   it('should fetch data based on startTs and endTs for external app onclick of NextPrevious', async () => {
     jest.useFakeTimers('modern').setSystemTime(new Date('2024-02-05'));
-
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
+      startTs: 'startDay',
+      endTs: new Date('2024-02-05').valueOf(),
+    });
 
     userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
@@ -192,10 +203,8 @@ describe('AppRunsHistory component', () => {
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
-      endTs: Date.now(),
+      endTs: new Date('2024-02-05').valueOf(),
     });
-
-    jest.useRealTimers();
   });
 
   it('should expose children method to parent using ref', async () => {
@@ -236,6 +245,6 @@ describe('AppRunsHistory component', () => {
     render(<AppRunsHistory />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    expect(screen.getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
+    expect(screen.getByText('--')).toBeInTheDocument();
   });
 });

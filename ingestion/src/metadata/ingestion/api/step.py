@@ -46,7 +46,12 @@ class Step(ABC, Closeable):
 
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "Step":
         pass
 
     def get_status(self) -> Status:

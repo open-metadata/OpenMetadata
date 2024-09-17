@@ -20,10 +20,14 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -39,6 +43,7 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   private EntityReference TABLE_REF;
   private String QUERY;
@@ -48,6 +53,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     super(
         Entity.QUERY, Query.class, QueryResource.QueryList.class, "queries", QueryResource.FIELDS);
     supportsSearchIndex = true;
+    EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG = false;
   }
 
   @BeforeAll
@@ -61,10 +67,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
             .createRequest(test)
             .withName(getEntityName(test))
             .withColumns(columns)
-            .withOwner(EntityResourceTest.USER1_REF);
+            .withOwners(List.of(EntityResourceTest.USER1_REF));
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     TABLE_REF = createdTable.getEntityReference();
-    QUERY = "select * from sales";
+    QUERY = "select * from %s";
     QUERY_CHECKSUM = EntityUtil.hash(QUERY);
   }
 
@@ -72,10 +78,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   public CreateQuery createRequest(String type) {
     return new CreateQuery()
         .withName(type)
-        .withOwner(USER1_REF)
+        .withOwners(List.of(USER1_REF))
         .withUsers(List.of(USER2.getName()))
         .withQueryUsedIn(List.of(TABLE_REF))
-        .withQuery(QUERY)
+        .withQuery(String.format(QUERY, RandomStringUtils.random(10, true, false)))
         .withDuration(0.0)
         .withQueryDate(1673857635064L)
         .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
@@ -100,13 +106,13 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner(), entity.getUsers(), entity.getQueryUsedIn());
-    fields = "owner,tags,followers,users,queryUsedIn"; // Not testing for kpiResult field
+    assertListNull(entity.getOwners(), entity.getUsers(), entity.getQueryUsedIn());
+    fields = "owners,tags,followers,users,queryUsedIn"; // Not testing for kpiResult field
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner(), entity.getUsers(), entity.getQueryUsedIn());
+    assertListNotNull(entity.getOwners(), entity.getUsers(), entity.getQueryUsedIn());
     return entity;
   }
 
@@ -204,9 +210,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     // Note: in case of Query empty name works fine since we internally use Checksum
     // Create an entity with mandatory name field null
     final CreateQuery request =
-        createRequest(null, "description", "displayName", null).withQuery(QUERY);
+        createRequest(null, "description", "displayName", null)
+            .withQuery(String.format(QUERY, RandomStringUtils.random(10, true, false)));
     Query entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    assertEquals(QUERY_CHECKSUM, entity.getName());
+    assertEquals(EntityUtil.hash(request.getQuery()), entity.getChecksum());
 
     // Create an entity with mandatory name field empty
     final CreateQuery request1 = createRequest("TestQueryName", "description", "displayName", null);
@@ -223,17 +230,17 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   }
 
   @Test
+  @Order(1)
   void test_sensitivePIIQuery() throws IOException {
     CreateQuery create = createRequest("sensitiveQuery");
     create.withTags(List.of(PII_SENSITIVE_TAG_LABEL));
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
+    String createQuery = create.getQuery();
     // Owner (USER1_REF) can see the results
-    ResultList<Query> queries = getQueries(100, "*", false, authHeaders(USER1_REF.getName()));
-    queries.getData().forEach(query -> assertEquals(query.getQuery(), QUERY));
-
+    ResultList<Query> queries = getQueries(1, "*", false, authHeaders(USER1_REF.getName()));
+    queries.getData().forEach(query -> assertEquals(query.getQuery(), createQuery));
     // Another user won't see the PII query body
-    ResultList<Query> maskedQueries = getQueries(100, "*", false, authHeaders(USER2_REF.getName()));
+    ResultList<Query> maskedQueries = getQueries(1, "*", false, authHeaders(USER2_REF.getName()));
     maskedQueries
         .getData()
         .forEach(
@@ -246,6 +253,82 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
                 assertEquals(query.getQuery(), QUERY);
               }
             });
+  }
+
+  @Test
+  void patch_usingFqn_queryAttributes_200_ok(TestInfo test) throws IOException {
+    CreateQuery create = createRequest(getEntityName(test));
+    Query query = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add queryUsedIn as TEST_TABLE2
+    String origJson = JsonUtils.pojoToJson(query);
+    query.setQueryUsedIn(List.of(TEST_TABLE2.getEntityReference()));
+    ChangeDescription change = getChangeDescription(query, MINOR_UPDATE);
+    fieldAdded(change, "queryUsedIn", List.of(TEST_TABLE2.getEntityReference()));
+    fieldDeleted(change, "queryUsedIn", List.of(TABLE_REF));
+    patchEntityUsingFqnAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
+    updatedQuery.setQuery("select * from table1");
+    updatedQuery.setQueryUsedIn(List.of(TABLE_REF, TEST_TABLE2.getEntityReference()));
+  }
+
+  @Test
+  void test_usingFqn_patchQueryMustUpdateChecksum(TestInfo test) throws IOException {
+    CreateQuery create = createRequest(getEntityName(test));
+    Query query = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add queryUsedIn as TEST_TABLE2
+    String origJson = JsonUtils.pojoToJson(query);
+    String queryText = String.format(QUERY, "test3");
+    query.setQuery(queryText);
+    ChangeDescription change = getChangeDescription(query, MINOR_UPDATE);
+    fieldUpdated(change, "query", create.getQuery(), queryText);
+    fieldUpdated(
+        change, "checksum", EntityUtil.hash(create.getQuery()), EntityUtil.hash(queryText));
+    patchEntityUsingFqnAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(updatedQuery.getQuery(), queryText);
+    assertEquals(updatedQuery.getChecksum(), EntityUtil.hash(updatedQuery.getQuery()));
+  }
+
+  @Test
+  void test_duplicateQueryFail() throws IOException {
+    String query = "select * from test";
+    CreateQuery create = createRequest("duplicateQuery");
+    create.setQuery(query);
+    Query createdQuery = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    CreateQuery create1 = createRequest("query2");
+    create.setQuery("select * from dim_address");
+    Query createdQuery2 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
+    CreateQuery postDuplicateCreate = createRequest("duplicateQuery1");
+    postDuplicateCreate.setQuery(query);
+    String origJson = JsonUtils.pojoToJson(query);
+    Query updatedQuery = getEntity(createdQuery.getId(), ADMIN_AUTH_HEADERS);
+    updatedQuery.setQuery("select * from dim_address");
+    assertResponse(
+        () -> createEntity(postDuplicateCreate, ADMIN_AUTH_HEADERS),
+        Response.Status.CONFLICT,
+        "Entity already exists");
+  }
+
+  @Test
+  void test_patchQueryMustUpdateChecksum(TestInfo test) throws IOException {
+    CreateQuery create = createRequest(getEntityName(test));
+    Query query = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add queryUsedIn as TEST_TABLE2
+    String origJson = JsonUtils.pojoToJson(query);
+    String queryText = String.format(QUERY, "test2");
+    query.setQuery(queryText);
+    ChangeDescription change = getChangeDescription(query, MINOR_UPDATE);
+    fieldUpdated(change, "query", create.getQuery(), queryText);
+    fieldUpdated(
+        change, "checksum", EntityUtil.hash(create.getQuery()), EntityUtil.hash(queryText));
+    patchEntityAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(updatedQuery.getQuery(), queryText);
+    assertEquals(updatedQuery.getChecksum(), EntityUtil.hash(updatedQuery.getQuery()));
   }
 
   public ResultList<Query> getQueries(

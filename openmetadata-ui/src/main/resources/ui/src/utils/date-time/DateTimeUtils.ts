@@ -28,18 +28,6 @@ export const formatDateTime = (date?: number) => {
 };
 
 /**
- * @param date EPOCH seconds
- * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
- */
-export const formatDateTimeFromSeconds = (date?: number) => {
-  if (isNil(date)) {
-    return '';
-  }
-
-  return formatDateTime(date * 1000);
-};
-
-/**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
@@ -187,3 +175,13 @@ export const getDaysRemaining = (timestamp: number) =>
   toInteger(
     -DateTime.now().diff(DateTime.fromMillis(timestamp), ['days']).days
   );
+
+export const isValidDateFormat = (format: string) => {
+  try {
+    const dt = DateTime.fromFormat(DateTime.now().toFormat(format), format);
+
+    return dt.isValid;
+  } catch (error) {
+    return false;
+  }
+};

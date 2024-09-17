@@ -7,29 +7,32 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record ContainerIndex(Container container) implements ColumnIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
-
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(container);
+  @Override
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
+    suggest.add(SearchSuggest.builder().input(container.getFullyQualifiedName()).weight(5).build());
+    suggest.add(SearchSuggest.builder().input(container.getName()).weight(10).build());
+    return suggest;
+  }
+
+  @Override
+  public Object getEntity() {
+    return container;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> columnSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
-    suggest.add(SearchSuggest.builder().input(container.getFullyQualifiedName()).weight(5).build());
-    suggest.add(SearchSuggest.builder().input(container.getName()).weight(10).build());
     if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(container.getDataModel().getColumns(), cols, null);
@@ -52,31 +55,19 @@ public record ContainerIndex(Container container) implements ColumnIndex {
             .flatMap(List::stream)
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
 
+    Map<String, Object> commonAttributes = getCommonAttributesMap(container, Entity.CONTAINER);
+    doc.putAll(commonAttributes);
     doc.put(
         "displayName",
         container.getDisplayName() != null ? container.getDisplayName() : container.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
-    doc.put("followers", SearchIndexUtils.parseFollowers(container.getFollowers()));
-    doc.put("suggest", suggest);
     doc.put("service_suggest", serviceSuggest);
     doc.put("column_suggest", columnSuggest);
-    doc.put("entityType", Entity.CONTAINER);
     doc.put("serviceType", container.getServiceType());
+    doc.put("fullPath", container.getFullPath());
     doc.put("lineage", SearchIndex.getLineageData(container.getEntityReference()));
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            container.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("owner", getEntityWithDisplayName(container.getOwner()));
     doc.put("service", getEntityWithDisplayName(container.getService()));
-    doc.put(
-        "totalVotes",
-        CommonUtil.nullOrEmpty(container.getVotes())
-            ? 0
-            : container.getVotes().getUpVotes() - container.getVotes().getDownVotes());
-    doc.put("domain", getEntityWithDisplayName(container.getDomain()));
     return doc;
   }
 

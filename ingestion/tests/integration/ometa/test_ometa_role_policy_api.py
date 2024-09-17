@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.policies.accessControl.resourceDescriptor 
     Operation,
 )
 from metadata.generated.schema.entity.policies.accessControl.rule import Effect, Rule
-from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.policies.policy import Policy, Rules
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -35,15 +35,23 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    Expression,
+    FullyQualifiedEntityName,
+    Markdown,
+    Uuid,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 
 # Conditions
-CONDITION_IS_OWNER: str = "isOwner()"
-CONDITION_IS_NOT_OWNER: str = "!isOwner"
-CONDITION_NO_OWNER_IS_OWNER: str = "noOwner() || isOwner()"
+CONDITION_IS_OWNER = Expression(root="isOwner()")
+CONDITION_IS_NOT_OWNER = Expression(root="!isOwner")
+CONDITION_NO_OWNER_IS_OWNER = Expression(root="noOwner() || isOwner()")
 
 # Resources
 RESOURCE_BOT: str = "Bot"
@@ -89,7 +97,7 @@ class OMetaRolePolicyTest(TestCase):
 
         cls.rule_1: Rule = Rule(
             name="rule-1",
-            description="Description of rule-1",
+            description=Markdown("Description of rule-1"),
             resources=[
                 RESOURCE_TABLE,
             ],
@@ -103,8 +111,8 @@ class OMetaRolePolicyTest(TestCase):
 
         cls.rule_2: Rule = Rule(
             name="rule-2",
-            description="Description of rule-2",
-            fullyQualifiedName="test-policy-1.rule-2",
+            description=Markdown("Description of rule-2"),
+            fullyQualifiedName=FullyQualifiedEntityName("test-policy-1.rule-2"),
             resources=[
                 RESOURCE_BOT,
                 RESOURCE_PIPELINE,
@@ -119,7 +127,7 @@ class OMetaRolePolicyTest(TestCase):
 
         cls.rule_3: Rule = Rule(
             name="rule-3",
-            fullyQualifiedName="test-policy-1.rule-3",
+            fullyQualifiedName=FullyQualifiedEntityName("test-policy-1.rule-3"),
             resources=[
                 RESOURCE_TABLE,
             ],
@@ -132,57 +140,67 @@ class OMetaRolePolicyTest(TestCase):
         )
 
         cls.policy_entity = Policy(
-            id=uuid.uuid4(),
-            name="test-policy-1",
-            fullyQualifiedName="test-policy-1",
-            description="Description of test policy 1",
-            rules=[
-                cls.rule_1,
-                cls.rule_2,
-            ],
+            id=Uuid(uuid.uuid4()),
+            name=EntityName("test-policy-1"),
+            fullyQualifiedName=EntityName("test-policy-1"),
+            description=Markdown("Description of test policy 1"),
+            rules=Rules(
+                root=[
+                    cls.rule_1,
+                    cls.rule_2,
+                ]
+            ),
         )
 
         cls.create_policy = CreatePolicyRequest(
-            name="test-policy-1",
-            description="Description of test policy 1",
-            rules=[
-                cls.rule_1,
-                cls.rule_2,
-            ],
+            name=EntityName("test-policy-1"),
+            description=Markdown("Description of test policy 1"),
+            rules=Rules(
+                root=[
+                    cls.rule_1,
+                    cls.rule_2,
+                ]
+            ),
         )
 
         cls.role_policy_1 = cls.metadata.create_or_update(
             CreatePolicyRequest(
-                name="test-role-policy-1",
-                description="Description of test role policy 1",
-                rules=[
-                    cls.rule_1,
-                    cls.rule_2,
-                ],
+                name=EntityName("test-role-policy-1"),
+                description=Markdown("Description of test role policy 1"),
+                rules=Rules(
+                    root=[
+                        cls.rule_1,
+                        cls.rule_2,
+                    ]
+                ),
             )
         )
 
         cls.role_policy_2 = cls.metadata.create_or_update(
             data=CreatePolicyRequest(
-                name="test-role-policy-2",
-                description="Description of test role policy 2",
-                rules=[
-                    cls.rule_1,
-                ],
+                name=EntityName("test-role-policy-2"),
+                description=Markdown("Description of test role policy 2"),
+                rules=Rules(
+                    root=[
+                        cls.rule_1,
+                    ]
+                ),
             )
         )
 
         cls.role_entity = Role(
-            id=uuid.uuid4(),
-            name="test-role",
-            fullyQualifiedName="test-role",
-            policies=[
-                EntityReference(id=model_str(cls.role_policy_1.id), type="policy"),
-            ],
+            id=Uuid(uuid.uuid4()),
+            name=EntityName("test-role"),
+            fullyQualifiedName=FullyQualifiedEntityName("test-role"),
+            policies=EntityReferenceList(
+                root=[
+                    EntityReference(id=cls.role_policy_1.id, type="policy"),
+                ]
+            ),
         )
 
         cls.create_role = CreateRoleRequest(
-            name="test-role",
+            name=EntityName("test-role"),
             policies=[
                 cls.role_policy_1.name,
             ],
@@ -203,8 +221,8 @@ class OMetaRolePolicyTest(TestCase):
 
         roles = cls.metadata.list_entities(entity=Role)
         for role in roles.entities:
-            if model_str(role.name.__root__).startswith(
-                model_str(cls.role_entity.name.__root__)
+            if model_str(role.name.root).startswith(
+                model_str(cls.role_entity.name.root)
             ):
                 cls.metadata.delete(entity=Role, entity_id=model_str(role.id))
 
@@ -216,7 +234,7 @@ class OMetaRolePolicyTest(TestCase):
         res: Policy = self.metadata.create_or_update(data=self.create_policy)
 
         self.assertEqual(res.name, self.policy_entity.name)
-        self.assertEqual(res.rules.__root__[0].name, self.rule_1.name)
+        self.assertEqual(res.rules.root[0].name, self.rule_1.name)
 
     def test_policy_update(self):
         """
@@ -225,7 +243,7 @@ class OMetaRolePolicyTest(TestCase):
 
         res_create = self.metadata.create_or_update(data=self.create_policy)
 
-        updated = self.create_policy.dict(exclude_unset=True)
+        updated = self.create_policy.model_dump(exclude_unset=True)
         updated["rules"] = [self.rule_3]
         updated_policy_entity = CreatePolicyRequest(**updated)
 
@@ -233,7 +251,7 @@ class OMetaRolePolicyTest(TestCase):
 
         # Same ID, updated owner
         self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.rules.__root__[0].name, self.rule_3.name)
+        self.assertEqual(res.rules.root[0].name, self.rule_3.name)
 
     def test_policy_get_name(self):
         """
@@ -285,7 +303,7 @@ class OMetaRolePolicyTest(TestCase):
         """
         fake_create = deepcopy(self.create_policy)
         for i in range(0, 10):
-            fake_create.name = model_str(self.create_policy.name) + str(i)
+            fake_create.name = EntityName(self.create_policy.name.root + str(i))
             self.metadata.create_or_update(data=fake_create)
 
         all_entities = self.metadata.list_all_entities(
@@ -354,7 +372,7 @@ class OMetaRolePolicyTest(TestCase):
         )
 
         # check we get the correct version requested and the correct entity ID
-        assert res.version.__root__ == 0.1
+        assert res.version.root == 0.1
         assert res.id == res_name.id
 
     def test_policy_get_entity_ref(self):
@@ -375,59 +393,55 @@ class OMetaRolePolicyTest(TestCase):
         policy: Policy = self.metadata.create_or_update(self.create_policy)
         dest_policy = deepcopy(policy)
         if dest_policy.rules is None:
-            dest_policy.rules.__root__ = list()
-        dest_policy.rules.__root__.append(self.rule_3)
+            dest_policy.rules.root = list()
+        dest_policy.rules.root.append(self.rule_3)
         # Add rule
 
         res: Policy = self.metadata.patch(
             entity=Policy, source=policy, destination=dest_policy
         )
         self.assertIsNotNone(res)
-        self.assertEqual(len(res.rules.__root__), 3)
-        self.assertEqual(res.rules.__root__[2].name, self.rule_3.name)
+        self.assertEqual(len(res.rules.root), 3)
+        self.assertEqual(res.rules.root[2].name, self.rule_3.name)
         dest_policy = deepcopy(res)
-        dest_policy.rules.__root__.pop(2)
+        dest_policy.rules.root.pop(2)
         # Remove last rule
         res = self.metadata.patch(entity=Policy, source=res, destination=dest_policy)
         self.assertIsNotNone(res)
-        self.assertEqual(len(res.rules.__root__), 2)
-        self.assertEqual(res.rules.__root__[1].name, self.rule_2.name)
+        self.assertEqual(len(res.rules.root), 2)
+        self.assertEqual(res.rules.root[1].name, self.rule_2.name)
         dest_policy = deepcopy(res)
-        dest_policy.rules.__root__.append(self.rule_3)
+        dest_policy.rules.root.append(self.rule_3)
         # Remove rule with fewer operations
         res: Policy = self.metadata.patch(
             entity=Policy, source=policy, destination=dest_policy
         )
         dest_policy = deepcopy(res)
-        dest_policy.rules.__root__.remove(self.rule_2)
+        dest_policy.rules.root.remove(self.rule_2)
         res: Policy = self.metadata.patch(
             entity=Policy, source=res, destination=dest_policy
         )
         self.assertIsNotNone(res)
-        self.assertEqual(len(res.rules.__root__), 2)
-        self.assertEqual(res.rules.__root__[1].name, self.rule_3.name)
-        self.assertEqual(
-            len(res.rules.__root__[1].operations), len(self.rule_3.operations)
-        )
-        self.assertIsNone(res.rules.__root__[1].description)
+        self.assertEqual(len(res.rules.root), 2)
+        self.assertEqual(res.rules.root[1].name, self.rule_3.name)
+        self.assertEqual(len(res.rules.root[1].operations), len(self.rule_3.operations))
+        self.assertIsNone(res.rules.root[1].description)
 
         # Remove rule with more operations
         policy = self.metadata.create_or_update(self.create_policy)
         dest_policy = deepcopy(policy)
-        dest_policy.rules.__root__.remove(self.rule_1)
+        dest_policy.rules.root.remove(self.rule_1)
         res = self.metadata.patch(entity=Policy, source=res, destination=dest_policy)
         self.assertIsNotNone(res)
-        self.assertEqual(len(res.rules.__root__), 1)
-        self.assertEqual(res.rules.__root__[0].name, self.rule_2.name)
+        self.assertEqual(len(res.rules.root), 1)
+        self.assertEqual(res.rules.root[0].name, self.rule_2.name)
+        self.assertEqual(len(res.rules.root[0].operations), len(self.rule_2.operations))
         self.assertEqual(
-            len(res.rules.__root__[0].operations), len(self.rule_2.operations)
-        )
-        self.assertEqual(
-            res.rules.__root__[0].fullyQualifiedName, self.rule_2.fullyQualifiedName
+            res.rules.root[0].fullyQualifiedName, self.rule_2.fullyQualifiedName
         )
 
         dest_policy = deepcopy(res)
-        dest_policy.rules.__root__.remove(self.rule_2)
+        dest_policy.rules.root.remove(self.rule_2)
         # Try to remove the only rule - Fails
         res = self.metadata.patch(entity=Policy, source=res, destination=dest_policy)
         self.assertIsNone(res)
@@ -440,9 +454,7 @@ class OMetaRolePolicyTest(TestCase):
         res = self.metadata.create_or_update(data=self.create_role)
 
         self.assertEqual(res.name, self.role_entity.name)
-        self.assertEqual(
-            res.policies.__root__[0].name, model_str(self.role_policy_1.name)
-        )
+        self.assertEqual(res.policies.root[0].name, model_str(self.role_policy_1.name))
 
     def test_role_update(self):
         """
@@ -451,7 +463,7 @@ class OMetaRolePolicyTest(TestCase):
 
         res_create = self.metadata.create_or_update(data=self.create_role)
 
-        updated = self.create_role.dict(exclude_unset=True)
+        updated = self.create_role.model_dump(exclude_unset=True)
         updated["policies"] = [self.role_policy_2.name]
         updated_entity = CreateRoleRequest(**updated)
 
@@ -459,9 +471,7 @@ class OMetaRolePolicyTest(TestCase):
 
         # Same ID, updated owner
         self.assertEqual(res_create.id, res.id)
-        self.assertEqual(
-            res.policies.__root__[0].name, model_str(self.role_policy_2.name)
-        )
+        self.assertEqual(res.policies.root[0].name, model_str(self.role_policy_2.name))
 
     def test_role_get_name(self):
         """
@@ -512,7 +522,7 @@ class OMetaRolePolicyTest(TestCase):
         """
         fake_create = deepcopy(self.create_role)
         for i in range(0, 10):
-            fake_create.name = f"{model_str(self.create_role.name.__root__)}-{str(i)}"
+            fake_create.name = EntityName(self.create_role.name.root + str(i))
             self.metadata.create_or_update(data=fake_create)
 
         all_entities = self.metadata.list_all_entities(
@@ -537,7 +547,7 @@ class OMetaRolePolicyTest(TestCase):
         res_id = self.metadata.get_by_id(entity=Role, entity_id=res_name.id)
 
         # Delete
-        self.metadata.delete(entity=Role, entity_id=str(res_id.id.__root__))
+        self.metadata.delete(entity=Role, entity_id=str(res_id.id.root))
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=Role)
@@ -577,11 +587,11 @@ class OMetaRolePolicyTest(TestCase):
             entity=Role, fqn=self.role_entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
-            entity=Role, entity_id=res_name.id.__root__, version=0.1
+            entity=Role, entity_id=res_name.id.root, version=0.1
         )
 
         # check we get the correct version requested and the correct entity ID
-        assert res.version.__root__ == 0.1
+        assert res.version.root == 0.1
         assert res.id == res_name.id
 
     def test_role_get_entity_ref(self):
@@ -614,7 +624,7 @@ class OMetaRolePolicyTest(TestCase):
             fqn=self.role_entity.fullyQualifiedName,
             fields=ROLE_FIELDS,
         )
-        assert res.users.__root__[0].id == user.id
+        assert res.users.root[0].id == user.id
 
         self.metadata.delete(entity=User, entity_id=user.id)
 
@@ -645,7 +655,7 @@ class OMetaRolePolicyTest(TestCase):
             fqn=self.role_entity.fullyQualifiedName,
             fields=ROLE_FIELDS,
         )
-        assert res.teams.__root__[0].id == team.id
+        assert res.teams.root[0].id == team.id
 
         self.metadata.delete(entity=Team, entity_id=team.id)
         self.metadata.delete(entity=User, entity_id=user.id)
@@ -664,8 +674,8 @@ class OMetaRolePolicyTest(TestCase):
         )
         assert res
         assert res.id == role.id
-        assert len(res.policies.__root__) == 2
-        assert res.policies.__root__[1].id == self.role_policy_2.id
+        assert len(res.policies.root) == 2
+        assert res.policies.root[1].id == self.role_policy_2.id
 
         # Remove last policy from role
         res = self.metadata.patch_role_policy(
@@ -675,8 +685,8 @@ class OMetaRolePolicyTest(TestCase):
         )
         assert res
         assert res.id == role.id
-        assert len(res.policies.__root__) == 1
-        assert res.policies.__root__[0].id == self.role_policy_1.id
+        assert len(res.policies.root) == 1
+        assert res.policies.root[0].id == self.role_policy_1.id
 
         # Remove first policy from role
         res: Role = self.metadata.patch_role_policy(
@@ -691,8 +701,8 @@ class OMetaRolePolicyTest(TestCase):
         )
         assert res
         assert res.id == role.id
-        assert len(res.policies.__root__) == 1
-        assert res.policies.__root__[0].id == self.role_policy_2.id
+        assert len(res.policies.root) == 1
+        assert res.policies.root[0].id == self.role_policy_2.id
 
         # Try to remove the only policy - Fail
         res = self.metadata.patch_role_policy(

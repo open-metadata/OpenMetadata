@@ -35,6 +35,7 @@ import { Persona } from '../../generated/entity/teams/persona';
 import { PageType } from '../../generated/system/ui/page';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getAllPersonas } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -49,6 +50,7 @@ import './custom-page-settings.less';
 export const CustomPageSettings = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { theme } = useApplicationStore();
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -66,7 +68,7 @@ export const CustomPageSettings = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         t('label.customize-entity', {
           entity: t('label.landing-page'),
         })
@@ -124,7 +126,7 @@ export const CustomPageSettings = () => {
               i18nKey="message.no-persona-message"
               renderElement={
                 <Link
-                  style={{ color: '#1890ff' }}
+                  style={{ color: theme.primaryColor }}
                   to={getSettingPath(
                     GlobalSettingsMenuCategory.MEMBERS,
                     GlobalSettingOptions.PERSONA

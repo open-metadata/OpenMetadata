@@ -59,9 +59,11 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AzureSQLConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: AzureSQLConnection = config.serviceConnection.root.config
         if not isinstance(connection, AzureSQLConnection):
             raise InvalidSourceException(
                 f"Expected AzureSQLConnection, but got {connection}"
@@ -77,8 +79,8 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(AZURE_SQL_GET_DATABASES)
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.__root__.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:
+            configured_db = self.config.serviceConnection.root.config.database
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -86,7 +88,7 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 

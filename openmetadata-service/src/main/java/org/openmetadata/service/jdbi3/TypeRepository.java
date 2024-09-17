@@ -22,8 +22,11 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -32,9 +35,11 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.customproperties.EnumConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.resources.types.TypeResource;
@@ -117,6 +122,7 @@ public class TypeRepository extends EntityRepository<Type> {
     property.setPropertyType(
         Entity.getEntityReferenceById(
             Entity.TYPE, property.getPropertyType().getId(), NON_DELETED));
+    validateProperty(property);
     if (type.getCategory().equals(Category.Field)) {
       throw new IllegalArgumentException(
           "Only entity types can be extended and field types can't be extended");
@@ -161,6 +167,68 @@ public class TypeRepository extends EntityRepository<Type> {
     return customProperties;
   }
 
+  private void validateProperty(CustomProperty customProperty) {
+    switch (customProperty.getPropertyType().getName()) {
+      case "enum" -> {
+        CustomPropertyConfig config = customProperty.getCustomPropertyConfig();
+        if (config != null) {
+          EnumConfig enumConfig = JsonUtils.convertValue(config.getConfig(), EnumConfig.class);
+          if (enumConfig == null
+              || (enumConfig.getValues() != null && enumConfig.getValues().isEmpty())) {
+            throw new IllegalArgumentException(
+                "Enum Custom Property Type must have EnumConfig populated with values.");
+          } else if (enumConfig.getValues() != null
+              && enumConfig.getValues().stream().distinct().count()
+                  != enumConfig.getValues().size()) {
+            throw new IllegalArgumentException(
+                "Enum Custom Property values cannot have duplicates.");
+          }
+        } else {
+          throw new IllegalArgumentException("Enum Custom Property Type must have EnumConfig.");
+        }
+      }
+      case "date-cp" -> validateDateFormat(
+          customProperty.getCustomPropertyConfig(), getDateTokens(), "Invalid date format");
+      case "dateTime-cp" -> validateDateFormat(
+          customProperty.getCustomPropertyConfig(), getDateTimeTokens(), "Invalid dateTime format");
+      case "time-cp" -> validateDateFormat(
+          customProperty.getCustomPropertyConfig(), getTimeTokens(), "Invalid time format");
+      case "int", "string" -> {}
+    }
+  }
+
+  private void validateDateFormat(
+      CustomPropertyConfig config, Set<Character> validTokens, String errorMessage) {
+    if (config != null) {
+      String format = String.valueOf(config.getConfig());
+      for (char c : format.toCharArray()) {
+        if (Character.isLetter(c) && !validTokens.contains(c)) {
+          throw new IllegalArgumentException(errorMessage + ": " + format);
+        }
+      }
+      try {
+        DateTimeFormatter.ofPattern(format);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException(errorMessage + ": " + format, e);
+      }
+    } else {
+      throw new IllegalArgumentException(errorMessage + " must have Config populated with format.");
+    }
+  }
+
+  private Set<Character> getDateTokens() {
+    return Set.of('y', 'M', 'd', 'E', 'D', 'W', 'w');
+  }
+
+  private Set<Character> getDateTimeTokens() {
+    return Set.of(
+        'y', 'M', 'd', 'E', 'D', 'W', 'w', 'H', 'h', 'm', 's', 'a', 'T', 'X', 'Z', '+', '-', 'S');
+  }
+
+  private Set<Character> getTimeTokens() {
+    return Set.of('H', 'h', 'm', 's', 'a', 'S');
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class TypeUpdater extends EntityUpdater {
     public TypeUpdater(Type original, Type updated, Operation operation) {
@@ -199,6 +267,7 @@ public class TypeRepository extends EntityRepository<Type> {
           continue;
         }
         updateCustomPropertyDescription(updated, storedProperty, updateProperty);
+        updateCustomPropertyConfig(updated, storedProperty, updateProperty);
       }
     }
 
@@ -268,6 +337,56 @@ public class TypeRepository extends EntityRepository<Type> {
                 Relationship.HAS.ordinal(),
                 "customProperty",
                 customPropertyJson);
+      }
+    }
+
+    private void updateCustomPropertyConfig(
+        Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
+      String fieldName = getCustomField(origProperty, "customPropertyConfig");
+      if (previous == null || !previous.getVersion().equals(updated.getVersion())) {
+        validatePropertyConfigUpdate(entity, origProperty, updatedProperty);
+      }
+      if (recordChange(
+          fieldName,
+          origProperty.getCustomPropertyConfig(),
+          updatedProperty.getCustomPropertyConfig())) {
+        String customPropertyFQN =
+            getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
+        EntityReference propertyType =
+            updatedProperty.getPropertyType(); // Don't store entity reference
+        String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
+        updatedProperty.withPropertyType(propertyType); // Restore entity reference
+        daoCollection
+            .fieldRelationshipDAO()
+            .upsert(
+                customPropertyFQN,
+                updatedProperty.getPropertyType().getName(),
+                customPropertyFQN,
+                updatedProperty.getPropertyType().getName(),
+                Entity.TYPE,
+                Entity.TYPE,
+                Relationship.HAS.ordinal(),
+                "customProperty",
+                customPropertyJson);
+      }
+    }
+
+    private void validatePropertyConfigUpdate(
+        Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
+      if (origProperty.getPropertyType().getName().equals("enum")) {
+        EnumConfig origConfig =
+            JsonUtils.convertValue(
+                origProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);
+        EnumConfig updatedConfig =
+            JsonUtils.convertValue(
+                updatedProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);
+        HashSet<String> updatedValues = new HashSet<>(updatedConfig.getValues());
+        if (updatedValues.size() != updatedConfig.getValues().size()) {
+          throw new IllegalArgumentException("Enum Custom Property values cannot have duplicates.");
+        } else if (!updatedValues.containsAll(origConfig.getValues())) {
+          throw new IllegalArgumentException(
+              "Existing Enum Custom Property values cannot be removed.");
+        }
       }
     }
   }

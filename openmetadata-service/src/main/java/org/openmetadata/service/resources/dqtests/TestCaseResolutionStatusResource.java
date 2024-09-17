@@ -275,6 +275,12 @@ public class TestCaseResolutionStatusResource
     authorizer.authorize(securityContext, operationContext, resourceContext);
     RestUtil.PatchResponse<TestCaseResolutionStatus> response =
         repository.patch(id, patch, securityContext.getUserPrincipal().getName());
+    if (response
+        .entity()
+        .getTestCaseResolutionStatusType()
+        .equals(TestCaseResolutionStatusTypes.Resolved)) {
+      repository.deleteTestCaseFailedSamples(response.entity());
+    }
     return response.toResponse();
   }
 

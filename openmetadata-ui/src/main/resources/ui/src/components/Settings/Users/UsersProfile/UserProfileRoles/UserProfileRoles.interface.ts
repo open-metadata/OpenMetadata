@@ -14,6 +14,7 @@ import { User } from '../../../../../generated/entity/teams/user';
 
 export interface UserProfileRolesProps {
   isUserAdmin?: boolean;
+  isDeletedUser: User['deleted'];
   userRoles: User['roles'];
-  updateUserDetails: (data: Partial<User>) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
 }

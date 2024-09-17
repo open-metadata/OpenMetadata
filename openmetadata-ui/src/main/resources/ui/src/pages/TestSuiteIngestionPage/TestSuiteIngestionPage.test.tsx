@@ -74,6 +74,9 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>)
 );
+jest.mock('../../components/common/Loader/Loader', () =>
+  jest.fn().mockReturnValue(<div>Loader.component</div>)
+);
 jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockReturnValue(<div>TitleBreadcrumb.component</div>)
@@ -104,10 +107,27 @@ describe('TestSuiteIngestionPage', () => {
     expect(
       await screen.findByText('TitleBreadcrumb.component')
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText('TestSuiteIngestion.component')
-    ).toBeInTheDocument();
     expect(await screen.findByText('RightPanel.component')).toBeInTheDocument();
+  });
+
+  it('should render loading state', async () => {
+    jest.useFakeTimers();
+    (getTestSuiteByName as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => setTimeout(() => resolve(mockTestSuite), 1000))
+    );
+
+    await act(async () => {
+      render(<TestSuiteIngestionPage />);
+    });
+
+    expect(screen.getByText('Loader.component')).toBeInTheDocument();
+
+    await act(async () => {
+      await jest.runAllTimers();
+    });
+
+    expect(screen.queryByText('Loader.component')).not.toBeInTheDocument();
   });
 
   it('should render error placeholder', async () => {
@@ -136,16 +156,5 @@ describe('TestSuiteIngestionPage', () => {
     });
 
     expect(getIngestionPipelineByFqn).toHaveBeenCalledWith('ingestionFQN');
-  });
-
-  it('should go back on back button click', async () => {
-    await act(async () => {
-      render(<TestSuiteIngestionPage />);
-    });
-
-    const backButton = screen.getByTestId('back-btn');
-    backButton.click();
-
-    expect(mockUseHistory.goBack).toHaveBeenCalled();
   });
 });

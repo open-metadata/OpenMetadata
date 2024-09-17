@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-
 export interface RetentionPeriodProps {
   retentionPeriod?: string;
   onUpdate: (retentionPeriod: string) => Promise<void>;
-  permissions: OperationPermission;
+  hasPermission: boolean;
 }

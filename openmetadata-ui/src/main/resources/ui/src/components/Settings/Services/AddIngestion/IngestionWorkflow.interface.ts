@@ -54,15 +54,18 @@ export interface AddIngestionProps {
 export type ScheduleIntervalProps = {
   onChange: (newScheduleInterval: string) => void;
   status: LoadingState;
-  scheduleInterval: string;
+  scheduleInterval?: string;
   includePeriodOptions?: string[];
   submitButtonLabel: string;
   children?: ReactNode;
   disabledCronChange?: boolean;
   onBack: () => void;
   onDeploy: (values: WorkflowExtraConfig) => void;
+  allowEnableDebugLog?: boolean;
+  debugLogInitialValue?: boolean;
 };
 
 export interface WorkflowExtraConfig {
-  retries: number;
+  retries?: number;
+  enableDebugLog?: boolean;
 }

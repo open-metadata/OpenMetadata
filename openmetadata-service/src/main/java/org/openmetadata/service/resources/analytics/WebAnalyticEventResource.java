@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -35,22 +36,32 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.analytics.CustomEvent;
+import org.openmetadata.schema.analytics.PageViewData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest;
 import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
+import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
+import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -63,10 +74,11 @@ import org.openmetadata.service.util.ResultList;
 public class WebAnalyticEventResource
     extends EntityResource<WebAnalyticEvent, WebAnalyticEventRepository> {
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
-  static final String FIELDS = "owner";
+  static final String FIELDS = "owners";
+  private static final Pattern HTML_PATTERN = Pattern.compile(".*\\<[^>]+>.*", Pattern.DOTALL);
 
-  public WebAnalyticEventResource(Authorizer authorizer) {
-    super(Entity.WEB_ANALYTIC_EVENT, authorizer);
+  public WebAnalyticEventResource(Authorizer authorizer, Limits limits) {
+    super(Entity.WEB_ANALYTIC_EVENT, authorizer, limits);
   }
 
   public static class WebAnalyticEventList extends ResultList<WebAnalyticEvent> {
@@ -255,6 +267,35 @@ public class WebAnalyticEventResource
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchWebAnalyticEventTypeByName",
+      summary = "Update a web analytic event type by fully qualified name",
+      description = "Update a web analytic event type by `fullyQualifiedName`.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response updateDescription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the web analytic event", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -447,7 +488,43 @@ public class WebAnalyticEventResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid WebAnalyticEventData webAnalyticEventData) {
-    return repository.addWebAnalyticEventData(webAnalyticEventData);
+
+    return repository.addWebAnalyticEventData(sanitizeWebAnalyticEventData(webAnalyticEventData));
+  }
+
+  @POST
+  @Path("/sendTestAlert")
+  @Operation(
+      operationId = "testDestination",
+      summary = "Send a test message alert to external destinations.",
+      description = "Send a test message alert to external destinations of the alert.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test message sent successfully",
+            content = @Content(schema = @Schema(implementation = Response.class)))
+      })
+  public Response sendTestMessageAlert(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      EventSubscriptionDestinationTestRequest request) {
+    EventSubscription eventSubscription =
+        new EventSubscription().withFullyQualifiedName(request.getAlertName());
+
+    request
+        .getDestinations()
+        .forEach(
+            (destination) -> {
+              Destination<ChangeEvent> alert =
+                  AlertFactory.getAlert(eventSubscription, destination);
+              try { // by-pass alertEventConsumer
+                alert.sendTestMessage();
+              } catch (EventPublisherException e) {
+                LOG.error(e.getMessage());
+              }
+            });
+
+    return Response.ok().build();
   }
 
   @DELETE
@@ -525,5 +602,37 @@ public class WebAnalyticEventResource
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
         .withEventType(create.getEventType());
+  }
+
+  public static WebAnalyticEventData sanitizeWebAnalyticEventData(
+      WebAnalyticEventData webAnalyticEventDataInput) {
+    Object inputData = webAnalyticEventDataInput.getEventData();
+    if (webAnalyticEventDataInput.getEventType().equals(WebAnalyticEventType.PAGE_VIEW)) {
+      // Validate Json as Page View Data
+      PageViewData pageViewData = JsonUtils.convertValue(inputData, PageViewData.class);
+      webAnalyticEventDataInput.setEventData(pageViewData);
+    } else if (webAnalyticEventDataInput.getEventType().equals(WebAnalyticEventType.CUSTOM_EVENT)) {
+      // Validate Json as type Custom Event
+      CustomEvent customEventData = JsonUtils.convertValue(inputData, CustomEvent.class);
+      if (customEventData.getEventType().equals(CustomEvent.CustomEventTypes.CLICK)) {
+        if (containsHtml(customEventData.getEventValue())) {
+          throw new IllegalArgumentException("Invalid event value for custom event.");
+        }
+        webAnalyticEventDataInput.setEventData(customEventData);
+      } else {
+        throw new IllegalArgumentException("Invalid event type for custom event");
+      }
+    } else {
+      throw new IllegalArgumentException("Invalid event type for Web Analytic Event Data");
+    }
+
+    return webAnalyticEventDataInput;
+  }
+
+  public static boolean containsHtml(String input) {
+    if (input == null || input.isEmpty()) {
+      return false;
+    }
+    return HTML_PATTERN.matcher(input).matches();
   }
 }

@@ -15,6 +15,7 @@ bigquery unit tests
 
 # pylint: disable=line-too-long
 import types
+from copy import deepcopy
 from typing import Dict
 from unittest import TestCase
 from unittest.mock import Mock, patch
@@ -50,6 +51,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
@@ -59,7 +61,24 @@ mock_bq_config = {
         "type": "bigquery",
         "serviceName": "local_bigquery",
         "serviceConnection": {
-            "config": {"type": "BigQuery", "credentials": {"gcpConfig": {}}}
+            "config": {
+                "type": "BigQuery",
+                "credentials": {
+                    "gcpConfig": {
+                        "type": "service_account",
+                        "projectId": "my-gcp-project",
+                        "privateKeyId": "private_key_id",
+                        # this is a valid key that was generated on a local machine and is not used for any real project
+                        "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpQIBAAKCAQEAw3vHG9fDIkcYB0xi2Mv4fS2gUzKR9ZRrcVNeKkqGFTT71AVB\nOzgIqYVe8b2aWODuNye6sipcrqTqOt05Esj+sxhk5McM9bE2RlxXC5QH/Bp9zxMP\n/Yksv9Ov7fdDt/loUk7sTXvI+7LDJfmRYU6MtVjyyLs7KpQIB2xBWEToU1xZY+v0\ndRC1NA+YWc+FjXbAiFAf9d4gXkYO8VmU5meixVh4C8nsjokEXk0T/HEItpZCxadk\ndZ7LKUE/HDmWCO2oNG6sCf4ET2crjSdYIfXuREopX1aQwnk7KbI4/YIdlRz1I369\nAz3+Hxlf9lLJVH3+itN4GXrR9yWWKWKDnwDPbQIDAQABAoIBAQC3X5QuTR7SN8iV\niBUtc2D84+ECSmza5shG/UJW/6N5n0Mf53ICgBS4GNEwiYCRISa0/ILIgK6CcVb7\nsuvH8F3kWNzEMui4TO0x4YsR5GH9HkioCCS224frxkLBQnL20HIIy9ok8Rpe6Zjg\nNZUnp4yczPyqSeA9l7FUbTt69uDM2Cx61m8REOpFukpnYLyZGbmNPYmikEO+rq9r\nwNID5dkSeVuQYo4MQdRavOGFUWvUYXzkEQ0A6vPyraVBfolESX8WaLNVjic7nIa3\nujdSNojnJqGJ3gslntcmN1d4JOfydc4bja4/NdNlcOHpWDGLzY1QnaDe0Koxn8sx\nLT9MVD2NAoGBAPy7r726bKVGWcwqTzUuq1OWh5c9CAc4N2zWBBldSJyUdllUq52L\nWTyva6GRoRzCcYa/dKLLSM/k4eLf9tpxeIIfTOMsvzGtbAdm257ndMXNvfYpxCfU\nK/gUFfAUGHZ3MucTHRY6DTkJg763Sf6PubA2fqv3HhVZDK/1HGDtHlTPAoGBAMYC\npdV7O7lAyXS/d9X4PQZ4BM+P8MbXEdGBbPPlzJ2YIb53TEmYfSj3z41u9+BNnhGP\n4uzUyAR/E4sxrA2+Ll1lPSCn+KY14WWiVGfWmC5j1ftdpkbrXstLN8NpNYzrKZwx\njdR0ZkwvZ8B5+kJ1hK96giwWS+SJxJR3TohcQ18DAoGAJSfmv2r//BBqtURnHrd8\nwq43wvlbC8ytAVg5hA0d1r9Q4vM6w8+vz+cuWLOTTyobDKdrG1/tlXrd5r/sh9L0\n15SIdkGm3kPTxQbPNP5sQYRs8BrV1tEvoao6S3B45DnEBwrdVN42AXOvpcNGoqE4\nuHpahyeuiY7s+ZV8lZdmxSsCgYEAolr5bpmk1rjwdfGoaKEqKGuwRiBX5DHkQkxE\n8Zayt2VOBcX7nzyRI05NuEIMrLX3rZ61CktN1aH8fF02He6aRaoE/Qm9L0tujM8V\nNi8WiLMDeR/Ifs3u4/HAv1E8v1byv0dCa7klR8J257McJ/ID4X4pzcxaXgE4ViOd\nGOHNu9ECgYEApq1zkZthEQymTUxs+lSFcubQpaXyf5ZC61cJewpWkqGDtSC+8DxE\nF/jydybWuoNHXymnvY6QywxuIooivbuib6AlgpEJeybmnWlDOZklFOD0abNZ+aNO\ndUk7XVGffCakXQ0jp1kmZA4lGsYK1h5dEU5DgXqu4UYJ88Vttax2W+Y=\n-----END RSA PRIVATE KEY-----\n",
+                        "clientEmail": "gcpuser@project_id.iam.gserviceaccount.com",
+                        "clientId": "1234",
+                        "authUri": "https://accounts.google.com/o/oauth2/auth",
+                        "tokenUri": "https://oauth2.googleapis.com/token",
+                        "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                        "clientX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                    }
+                },
+            },
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata", "includeTags": False}},
     },
@@ -68,18 +87,10 @@ mock_bq_config = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
-            "securityConfig": {
-                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-            },
+            "securityConfig": {"jwtToken": "jwt"},
         }
     },
 }
-
-mock_credentials_path_bq_config = mock_bq_config
-mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"][
-    "gcpConfig"
-]["__root__"] = "credentials.json"
-
 
 MOCK_DB_NAME = "random-project-id"
 MOCK_SCHEMA_NAME = "test_omd"
@@ -106,9 +117,9 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 
 MOCK_TABLE = Table(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    name=EntityName(__root__="customers"),
+    name=EntityName("customers"),
     displayName=None,
-    description=None,
+    description="description\nwith new line",
     tableType="Regular",
     columns=[
         Column(
@@ -172,16 +183,16 @@ MOCK_TABLE = Table(
     tableConstraints=[],
     tablePartition=None,
     tableProfilerConfig=None,
-    owner=None,
+    owners=None,
     databaseSchema=EntityReference(
         id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"
     ),
     tags=[],
-    viewDefinition=None,
+    schemaDefinition=None,
     retentionPeriod=None,
     extension=None,
     sourceUrl=SourceUrl(
-        __root__="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
+        "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
     ),
     domain=None,
     dataProducts=None,
@@ -192,18 +203,18 @@ MOCK_TABLE = Table(
 
 EXPECTED_DATABASE = [
     CreateDatabaseRequest(
-        name=EntityName(__root__="random-project-id"),
+        name=EntityName("random-project-id"),
         displayName=None,
         description=None,
         tags=[],
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="bigquery_source_test"),
+        owners=None,
+        service=FullyQualifiedEntityName("bigquery_source_test"),
         dataProducts=None,
         default=False,
         retentionPeriod=None,
         extension=None,
         sourceUrl=SourceUrl(
-            __root__="https://console.cloud.google.com/bigquery?project=random-project-id"
+            "https://console.cloud.google.com/bigquery?project=random-project-id"
         ),
         domain=None,
         lifeCycle=None,
@@ -212,19 +223,17 @@ EXPECTED_DATABASE = [
 ]
 EXPTECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
-        name=EntityName(__root__="sample_schema"),
+        name=EntityName("sample_schema"),
         displayName=None,
-        description="",
-        owner=None,
-        database=FullyQualifiedEntityName(
-            __root__="bigquery_source_test.random-project-id"
-        ),
+        description="Some description with it's own\nnew line",
+        owners=None,
+        database=FullyQualifiedEntityName("bigquery_source_test.random-project-id"),
         dataProducts=None,
         tags=None,
         retentionPeriod=None,
         extension=None,
         sourceUrl=SourceUrl(
-            __root__="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m4!1m3!3m2!1srandom-project-id!2ssample_schema"
+            "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m4!1m3!3m2!1srandom-project-id!2ssample_schema"
         ),
         domain=None,
         lifeCycle=None,
@@ -232,7 +241,10 @@ EXPTECTED_DATABASE_SCHEMA = [
     )
 ]
 
-MOCK_TABLE_NAMES = [tuple(("customers", "Regular")), tuple(("orders", "Regular"))]
+MOCK_TABLE_NAMES = [
+    ("customers", "Regular", None),
+    ("orders", "Regular", "description\nwith new line"),
+]
 
 MOCK_COLUMN_DATA = [
     [
@@ -340,9 +352,8 @@ MOCK_FK_CONSTRAINT = {
 EXPECTED_TABLE = [
     [
         CreateTableRequest(
-            name=EntityName(__root__="customers"),
+            name=EntityName("customers"),
             displayName=None,
-            description=None,
             tableType="Regular",
             columns=[
                 Column(
@@ -406,16 +417,16 @@ EXPECTED_TABLE = [
             tableConstraints=[],
             tablePartition=None,
             tableProfilerConfig=None,
-            owner=None,
+            owners=None,
             databaseSchema=FullyQualifiedEntityName(
-                __root__="bigquery_source_test.random-project-id.sample_schema"
+                root="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-            viewDefinition=None,
+            schemaDefinition=None,
             retentionPeriod=None,
             extension=None,
             sourceUrl=SourceUrl(
-                __root__="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
+                "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
             ),
             domain=None,
             dataProducts=None,
@@ -426,9 +437,9 @@ EXPECTED_TABLE = [
     ],
     [
         CreateTableRequest(
-            name=EntityName(__root__="orders"),
+            name=EntityName("orders"),
             displayName=None,
-            description=None,
+            description="description\nwith new line",
             tableType="Regular",
             columns=[
                 Column(
@@ -495,23 +506,23 @@ EXPECTED_TABLE = [
                     columns=["customer_id"],
                     referredColumns=[
                         FullyQualifiedEntityName(
-                            __root__="bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
+                            root="bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
                         )
                     ],
                 )
             ],
             tablePartition=None,
             tableProfilerConfig=None,
-            owner=None,
+            owners=None,
             databaseSchema=FullyQualifiedEntityName(
-                __root__="bigquery_source_test.random-project-id.sample_schema"
+                root="bigquery_source_test.random-project-id.sample_schema"
             ),
             tags=[],
-            viewDefinition=None,
+            schemaDefinition=None,
             retentionPeriod=None,
             extension=None,
             sourceUrl=SourceUrl(
-                __root__="https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
+                "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
             ),
             domain=None,
             dataProducts=None,
@@ -531,7 +542,7 @@ MOCK_TABLE_CONSTRAINT = [
             columns=["customer_id"],
             referredColumns=[
                 FullyQualifiedEntityName(
-                    __root__="bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
+                    "bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
                 )
             ],
         )
@@ -559,23 +570,31 @@ class BigqueryUnitTest(TestCase):
         get_connection.return_value = Mock()
         test_connection.return_value = False
         set_project_id.return_value = "random-project-id"
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bq_config)
+        self.config = parse_workflow_config_gracefully(mock_bq_config)
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 mock_bq_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
         self.bq_source = BigquerySource.create(mock_bq_config["source"], self.metadata)
-        self.bq_source.context.__dict__[
+        self.bq_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.bq_source.inspector = types.SimpleNamespace()
-        self.bq_source.inspector.get_pk_constraint = lambda table_name, schema: []
-        self.bq_source.inspector.get_unique_constraints = (
-            lambda table_name, schema_name: []
-        )
-        self.bq_source.inspector.get_foreign_keys = lambda table_name, schema: []
-        self.bq_source.inspector.get_columns = lambda table_name, schema, db_name: []
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.thread_id = self.bq_source.context.get_current_thread_id()
+        self.bq_source._inspector_map[self.thread_id] = types.SimpleNamespace()
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_pk_constraint = lambda table_name, schema: []
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_unique_constraints = lambda table_name, schema_name: []
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_foreign_keys = lambda table_name, schema: []
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_columns = lambda table_name, schema, db_name: []
+        self.bq_source.client = Mock()
 
     def test_source_url(self):
         self.assertEqual(
@@ -598,10 +617,26 @@ class BigqueryUnitTest(TestCase):
         ]
 
     def test_yield_database_schema(self):
+        def schema_comment_query(query: str):
+            if query.strip().startswith(
+                "SELECT option_value as schema_description FROM"
+            ):
+                result = Mock()
+                mock_result = Mock()
+                mock_result.schema_description = (
+                    '"Some description with it\'s own\\nnew line"'
+                )
+                result.result.return_value = [mock_result]
+                return result
+            else:
+                raise NotImplementedError
+
+        self.bq_source.client.query = schema_comment_query
+
         assert EXPTECTED_DATABASE_SCHEMA == [
             either.right
             for either in self.bq_source.yield_database_schema(
-                schema_name=MOCK_DATABASE_SCHEMA.name.__root__
+                schema_name=MOCK_DATABASE_SCHEMA.name.root
             )
         ]
 
@@ -623,10 +658,10 @@ class BigqueryUnitTest(TestCase):
 
         get_tag_labels.return_value = []
         get_table_partition_details.return_value = False, None
-        self.bq_source.context.__dict__["database"] = MOCK_DB_NAME
-        self.bq_source.context.__dict__[
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
         for i, table in enumerate(MOCK_TABLE_NAMES):
             _get_foreign_constraints.return_value = MOCK_TABLE_CONSTRAINT[i]
@@ -645,8 +680,15 @@ class BigqueryUnitTest(TestCase):
                     i
                 ]  # pylint: disable=cell-var-from-loop
             )
+            self.bq_source.inspector.get_table_ddl = (
+                lambda table_name, schema, db_name: None  # pylint: disable=cell-var-from-loop
+            )
+            self.bq_source.inspector.get_table_comment = lambda table_name, schema: {
+                "text": table[2]
+            }  # pylint: disable=cell-var-from-loop
             assert EXPECTED_TABLE[i] == [
-                either.right for either in self.bq_source.yield_table(table)
+                either.right
+                for either in self.bq_source.yield_table((table[0], table[1]))
             ]
 
 
@@ -670,7 +712,11 @@ class BigqueryLineageSourceTest(TestCase):
     ) -> None:
         super().__init__(methodName)
 
-        self.config = OpenMetadataWorkflowConfig.parse_obj(
+        mock_credentials_path_bq_config = deepcopy(mock_bq_config)
+        mock_credentials_path_bq_config["source"]["serviceConnection"]["config"][
+            "credentials"
+        ]["gcpConfig"] = {"path": "credentials.json", "projectId": "my-gcp-project"}
+        self.config = OpenMetadataWorkflowConfig.model_validate(
             mock_credentials_path_bq_config
         )
         self.bq_query_parser = BigqueryLineageSource(

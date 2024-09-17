@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -43,13 +43,16 @@ import {
 } from '../../constants/GlobalSettings.constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { searchData } from '../../rest/miscAPI';
 import { getUsers, restoreUser, UsersQueryParams } from '../../rest/userAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -65,7 +68,7 @@ const UserListPageV1 = () => {
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
 
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
   const { isAdminUser } = useAuth();
 
@@ -79,6 +82,7 @@ const UserListPageV1 = () => {
   const showRestore = showDeletedUser && !isDataLoading;
   const [isLoading, setIsLoading] = useState(false);
   const [searchValue, setSearchValue] = useState<string>('');
+  const { getResourceLimit } = useLimitStore();
   const {
     currentPage,
     handlePageChange,
@@ -111,7 +115,11 @@ const UserListPageV1 = () => {
     try {
       const { data, paging: userPaging } = await getUsers({
         isBot: false,
-        fields: 'profile,teams,roles',
+        fields: [
+          TabSpecificField.PROFILE,
+          TabSpecificField.TEAMS,
+          TabSpecificField.ROLES,
+        ].join(','),
         limit: pageSize,
         ...params,
       });
@@ -313,9 +321,18 @@ const UserListPageV1 = () => {
             className="w-full justify-center action-icons"
             size={8}>
             {showRestore && (
-              <Tooltip placement="bottom" title={t('label.restore')}>
+              <Tooltip
+                placement={isAdminUser ? 'bottom' : 'left'}
+                title={
+                  isAdminUser
+                    ? t('label.restore-entity', {
+                        entity: t('label.user'),
+                      })
+                    : ADMIN_ONLY_ACTION
+                }>
                 <Button
                   data-testid={`restore-user-btn-${record.name}`}
+                  disabled={!isAdminUser}
                   icon={<IconRestore name={t('label.restore')} width="16px" />}
                   type="text"
                   onClick={() => {
@@ -325,7 +342,15 @@ const UserListPageV1 = () => {
                 />
               </Tooltip>
             )}
-            <Tooltip placement="left" title={!isAdminUser && ADMIN_ONLY_ACTION}>
+            <Tooltip
+              placement={isAdminUser ? 'bottom' : 'left'}
+              title={
+                isAdminUser
+                  ? t('label.delete-entity', {
+                      entity: t('label.user'),
+                    })
+                  : ADMIN_ONLY_ACTION
+              }>
               <Button
                 disabled={!isAdminUser}
                 icon={
@@ -407,12 +432,14 @@ const UserListPageV1 = () => {
             </span>
 
             {isAdminUser && (
-              <Button
-                data-testid="add-user"
-                type="primary"
-                onClick={handleAddNewUser}>
-                {t('label.add-entity', { entity: t('label.user') })}
-              </Button>
+              <LimitWrapper resource="user">
+                <Button
+                  data-testid="add-user"
+                  type="primary"
+                  onClick={handleAddNewUser}>
+                  {t('label.add-entity', { entity: t('label.user') })}
+                </Button>
+              </LimitWrapper>
             )}
           </Space>
         </Col>
@@ -482,7 +509,11 @@ const UserListPageV1 = () => {
         </Modal>
 
         <DeleteWidgetModal
-          afterDeleteAction={() => handleSearch('')}
+          afterDeleteAction={async () => {
+            handleSearch('');
+            // Update current count when Create / Delete operation performed
+            await getResourceLimit('user', true, true);
+          }}
           allowSoftDelete={!showDeletedUser}
           entityId={selectedUser?.id || ''}
           entityName={getEntityName(selectedUser)}

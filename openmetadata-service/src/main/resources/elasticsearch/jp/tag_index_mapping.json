@@ -136,19 +136,18 @@
             }
           }
         },
-        "suggest": {
-          "type": "completion",
-          "contexts": [
-            {
-              "name": "deleted",
-              "type": "category",
-              "path": "deleted"
-            }
-          ]
-      },
       "entityType": {
         "type": "keyword"
-      }
+      },
+        "totalVotes": {
+          "type": "long"
+        },
+        "votes" : {
+          "type": "object"
+        },
+        "descriptionStatus": {
+          "type": "keyword"
+        }
     }
   }
 }
