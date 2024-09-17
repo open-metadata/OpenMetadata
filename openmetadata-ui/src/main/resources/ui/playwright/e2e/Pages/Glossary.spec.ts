@@ -565,8 +565,6 @@ test.describe('Glossary tests', () => {
   });
 
   test('Drag and Drop Glossary Term', async ({ browser }) => {
-    test.slow(true);
-
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
