@@ -24,6 +24,7 @@ import {
   DashboardSource,
   DataProductSource,
   GlossarySource,
+  MetricSource,
   MlModelSource,
   Option,
   PipelineSource,
@@ -110,6 +111,9 @@ const Suggestions = ({
   const [apiEndpointSuggestions, setApiEndpointSuggestions] = useState<
     APIEndpointSource[]
   >([]);
+  const [metricSuggestions, setMetricSuggestions] = useState<MetricSource[]>(
+    []
+  );
 
   const isMounting = useRef(true);
 
@@ -149,6 +153,9 @@ const Suggestions = ({
 
     setApiEndpointSuggestions(
       filterOptionsByIndex(options, SearchIndex.API_ENDPOINT_INDEX)
+    );
+    setMetricSuggestions(
+      filterOptionsByIndex(options, SearchIndex.METRIC_SEARCH_INDEX)
     );
   };
 
@@ -221,6 +228,10 @@ const Suggestions = ({
           {
             suggestions: apiEndpointSuggestions,
             searchIndex: SearchIndex.API_ENDPOINT_INDEX,
+          },
+          {
+            suggestions: metricSuggestions,
+            searchIndex: SearchIndex.METRIC_SEARCH_INDEX,
           },
           ...searchClassBase.getEntitiesSuggestions(options ?? []),
         ].map(({ suggestions, searchIndex }) =>

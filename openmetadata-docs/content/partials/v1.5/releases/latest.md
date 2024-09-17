@@ -1,7 +1,7 @@
-# 1.5.2 Release 🎉
+# 1.5.4 Release 🎉
 
 {% note noteType="Tip" %}
-**Sep 2nd, 2024**
+**Sep 13th, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,22 +10,28 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.2!
+Learn how to upgrade your OpenMetadata instance to 1.5.4!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.2-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.4-release).
 
-# What's New
+# What's Changed
 
-- Resolved issue with lineage lookup for long Fully Qualified Names (FQNs), ensuring accurate lineage tracking and display.
-- Fixed the 'Edit Reviewers' permission issue, allowing correct permission management for editing reviewers.
-- Addressed email update issues to ensure that email addresses are properly updated throughout the system.
-- Fixed the delete lineage functionality to handle cases where override lineage is enabled, preventing errors and ensuring consistency.
-- Added support for the 'Edit Assign' button in the Incident Manager, allowing for easier assignment changes.
-- Introduced a resizable layout for the glossary page, improving usability and adaptability to different screen sizes.
-- Enhanced the display of tier tags with improved styling for better visibility and distinction.
-- Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
-- Added custom properties support in Data Product.
+## OpenMetadata
+- Hotfix to the Term Aggregation size on Data Insights
+- ES pagination with error handling
+- Updated Domain in Docker Compose & Docs
+- Fix Classification API returns Table class for restore
+- Fix Redshift View Def regex_replace Error
+- Make ingestion pipeline APIs public
+- Updating the domain PRINCIPAL DOMAIN
+- Glossary list selector for bulk import
+- Unable to access the import glossary page
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.1-release...1.5.2-release
+## Collate
+- Fix token limitations using config
+- Fix Automator pagination
+- Fix MetaPilot push for no constraint
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.3-release...1.5.4-release

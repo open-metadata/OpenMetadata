@@ -165,7 +165,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
 
-    installSearchRepository(catalogConfig.getElasticSearchConfiguration());
+    initializeSearchRepository(catalogConfig.getElasticSearchConfiguration());
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
@@ -301,7 +301,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  protected void installSearchRepository(ElasticSearchConfiguration esConfig) {
+  protected void initializeSearchRepository(ElasticSearchConfiguration esConfig) {
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
     SearchRepository searchRepository = new SearchRepository(esConfig);

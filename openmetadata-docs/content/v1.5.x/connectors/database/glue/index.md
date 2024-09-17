@@ -20,7 +20,7 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 - [Metadata Ingestion](#metadata-ingestion)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
+{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/glue/yaml"} /%}
 
 ## Requirements
 

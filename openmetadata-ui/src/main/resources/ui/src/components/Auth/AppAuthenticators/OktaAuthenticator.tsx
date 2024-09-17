@@ -42,22 +42,20 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
       onLogoutSuccess();
     };
 
-    useImperativeHandle(ref, () => ({
-      invokeLogin() {
-        login();
-      },
-      invokeLogout() {
-        logout();
-      },
-      async renewIdToken() {
-        const renewToken = await oktaAuth.token.renewTokens();
-        oktaAuth.tokenManager.setTokens(renewToken);
-        const newToken =
-          renewToken?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
-        setOidcToken(newToken);
+    const renewToken = async () => {
+      const renewToken = await oktaAuth.token.renewTokens();
+      oktaAuth.tokenManager.setTokens(renewToken);
+      const newToken =
+        renewToken?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
+      setOidcToken(newToken);
 
-        return Promise.resolve(newToken);
-      },
+      return Promise.resolve(newToken);
+    };
+
+    useImperativeHandle(ref, () => ({
+      invokeLogin: login,
+      invokeLogout: logout,
+      renewIdToken: renewToken,
     }));
 
     return <Fragment>{children}</Fragment>;
