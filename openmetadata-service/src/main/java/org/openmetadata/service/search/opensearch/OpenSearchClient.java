@@ -348,6 +348,8 @@ public class OpenSearchClient implements SearchClient {
       }
     }
 
+    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
     // Add Query Filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
@@ -381,6 +383,10 @@ public class OpenSearchClient implements SearchClient {
       } catch (Exception ex) {
         LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
       }
+    }
+
+    if (!nullOrEmpty(request.getSearchAfter())) {
+      searchSourceBuilder.searchAfter(request.getSearchAfter());
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
@@ -520,7 +526,7 @@ public class OpenSearchClient implements SearchClient {
     } else {
       searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
     }
-    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     try {
       SearchResponse searchResponse =
@@ -2261,8 +2267,8 @@ public class OpenSearchClient implements SearchClient {
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
     if (subjectContext != null && !subjectContext.isAdmin()) {
-      if (rbacConditionEvaluator != null) {
-        OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
+      OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
+      if (rbacQuery != null) {
         searchSourceBuilder.query(
             QueryBuilders.boolQuery()
                 .must(searchSourceBuilder.query())
