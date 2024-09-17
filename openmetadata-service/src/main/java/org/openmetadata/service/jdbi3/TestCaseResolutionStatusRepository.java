@@ -382,7 +382,7 @@ public class TestCaseResolutionStatusRepository
       condition =
           """
               INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash FROM test_case) \
-              tc ON entityFQNHash = testCaseHash
+              ON entityFQNHash = testCaseHash
               """
               + condition;
     }
