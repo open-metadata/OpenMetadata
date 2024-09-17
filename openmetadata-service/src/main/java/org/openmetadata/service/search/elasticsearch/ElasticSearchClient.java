@@ -1153,6 +1153,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static FunctionScoreQueryBuilder boostScore(QueryStringQueryBuilder queryBuilder) {
+
     FunctionScoreQueryBuilder.FilterFunctionBuilder tier1Boost =
         new FunctionScoreQueryBuilder.FilterFunctionBuilder(
             QueryBuilders.termQuery("tier.tagFQN", "Tier.Tier1"),

@@ -8,7 +8,6 @@ import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
@@ -22,7 +21,6 @@ import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_S
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
@@ -981,12 +979,7 @@ public class OpenSearchClient implements SearchClient {
 
   private static HighlightBuilder buildHighlights(List<String> fields) {
     List<String> defaultFields =
-        List.of(
-            FIELD_DISPLAY_NAME,
-            FIELD_NAME,
-            FIELD_DESCRIPTION,
-            FIELD_DISPLAY_NAME_NGRAM,
-            FIELD_NAME_NGRAM);
+        List.of(FIELD_DISPLAY_NAME, FIELD_DESCRIPTION, FIELD_DISPLAY_NAME_NGRAM);
     defaultFields = Stream.concat(defaultFields.stream(), fields.stream()).toList();
     HighlightBuilder hb = new HighlightBuilder();
     for (String field : defaultFields) {
@@ -1306,6 +1299,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TableIndex.getFields());
+
     FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
     HighlightBuilder hb =
         buildHighlights(List.of("columns.name", "columns.description", "columns.children.name"));
