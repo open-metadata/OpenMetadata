@@ -2321,12 +2321,12 @@ public class ElasticSearchClient implements SearchClient {
         && !subjectContext.isAdmin()
         && rbacConditionEvaluator != null) {
       OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
-        if (rbacQuery != null) {
-            searchSourceBuilder.query(
-                    QueryBuilders.boolQuery()
-                            .must(searchSourceBuilder.query())
-                            .filter(((ElasticQueryBuilder) rbacQuery).build()));
-        }
+      if (rbacQuery != null) {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .filter(((ElasticQueryBuilder) rbacQuery).build()));
+      }
     }
   }
 }

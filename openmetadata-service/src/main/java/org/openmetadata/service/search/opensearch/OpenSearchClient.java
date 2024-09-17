@@ -2272,12 +2272,12 @@ public class OpenSearchClient implements SearchClient {
         && !subjectContext.isAdmin()
         && rbacConditionEvaluator != null) {
       OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
-        if (rbacQuery != null) {
-            searchSourceBuilder.query(
-                    QueryBuilders.boolQuery()
-                            .must(searchSourceBuilder.query())
-                            .filter(((OpenSearchQueryBuilder) rbacQuery).build()));
-        }
+      if (rbacQuery != null) {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .filter(((OpenSearchQueryBuilder) rbacQuery).build()));
+      }
     }
   }
 }
