@@ -13,7 +13,7 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
-import { isEmpty } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -89,13 +89,19 @@ function DataAssetsVersionHeader({
     () => getDataAssetsVersionHeaderInfo(entityType, currentVersionData),
     [entityType, currentVersionData]
   );
-  const logo = useMemo(
-    () =>
-      serviceUtilClassBase.getServiceTypeLogo(
-        currentVersionData as SearchSourceAlias
-      ),
-    [currentVersionData]
-  );
+
+  const icon = useMemo(() => {
+    const serviceType = get(currentVersionData, 'serviceType', '');
+
+    return serviceType ? (
+      <img
+        className="h-9"
+        src={serviceUtilClassBase.getServiceTypeLogo(
+          currentVersionData as SearchSourceAlias
+        )}
+      />
+    ) : null;
+  }, [currentVersionData]);
 
   return (
     <Row className="p-x-lg" gutter={[8, 12]} justify="space-between">
@@ -108,11 +114,7 @@ function DataAssetsVersionHeader({
             <EntityHeaderTitle
               deleted={deleted}
               displayName={displayName}
-              icon={
-                'serviceType' in currentVersionData && (
-                  <img className="h-9" src={logo} />
-                )
-              }
+              icon={icon}
               name={currentVersionData?.name}
               serviceName={serviceName ?? ''}
             />

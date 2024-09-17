@@ -13,7 +13,7 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row } from 'antd';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, get } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
@@ -72,18 +72,18 @@ const EntityInfoDrawer = ({
     [selectedNode]
   );
 
-  const icon = useMemo(
-    () =>
-      'serviceType' in selectedNode ? (
-        <img
-          className="h-9"
-          src={serviceUtilClassBase.getServiceTypeLogo(
-            selectedNode as SearchSourceAlias
-          )}
-        />
-      ) : null,
-    [selectedNode]
-  );
+  const icon = useMemo(() => {
+    const serviceType = get(selectedNode, 'serviceType', '');
+
+    return serviceType ? (
+      <img
+        className="h-9"
+        src={serviceUtilClassBase.getServiceTypeLogo(
+          selectedNode as SearchSourceAlias
+        )}
+      />
+    ) : null;
+  }, [selectedNode]);
 
   const tags = useMemo(
     () =>
