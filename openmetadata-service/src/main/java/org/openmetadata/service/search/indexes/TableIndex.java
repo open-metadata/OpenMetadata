@@ -91,8 +91,7 @@ public record TableIndex(Table table) implements ColumnIndex {
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     Map<String, Object> commonAttributes = getCommonAttributesMap(table, Entity.TABLE);
     doc.putAll(commonAttributes);
-    doc.put(
-        "displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
+    doc.put("displayName", table.getDisplayName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("service_suggest", serviceSuggest);
@@ -113,7 +112,7 @@ public record TableIndex(Table table) implements ColumnIndex {
     fields.put("columns.name", 5.0f);
     fields.put("columns.displayName", 5.0f);
     fields.put("columns.description", 2.0f);
-    fields.put("columns.children.name", 5.0f);
+    fields.put("columns.children.name", 3.0f);
     return fields;
   }
 }

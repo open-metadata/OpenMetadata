@@ -5,7 +5,6 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.jdbi3.LineageRepository.buildRelationshipDetailsMap;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
@@ -167,9 +166,8 @@ public interface SearchIndex {
     fields.put(FIELD_DISPLAY_NAME, 10.0f);
     fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
     fields.put(FIELD_NAME, 10.0f);
+    fields.put(NAME_KEYWORD, 10.0f);
     fields.put(FIELD_NAME_NGRAM, 1.0f);
-    fields.put(DISPLAY_NAME_KEYWORD, 8.0f);
-    fields.put(NAME_KEYWORD, 8.0f);
     fields.put(FIELD_DESCRIPTION, 2.0f);
     fields.put(FULLY_QUALIFIED_NAME, 5.0f);
     fields.put(FULLY_QUALIFIED_NAME_PARTS, 5.0f);
