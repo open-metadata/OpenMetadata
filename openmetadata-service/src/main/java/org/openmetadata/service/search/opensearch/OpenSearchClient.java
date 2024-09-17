@@ -349,6 +349,8 @@ public class OpenSearchClient implements SearchClient {
       }
     }
 
+    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
     // Add Query Filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
@@ -521,7 +523,7 @@ public class OpenSearchClient implements SearchClient {
     } else {
       searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
     }
-    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     try {
       SearchResponse searchResponse =
@@ -2287,8 +2289,8 @@ public class OpenSearchClient implements SearchClient {
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
     if (subjectContext != null && !subjectContext.isAdmin()) {
-      if (rbacConditionEvaluator != null) {
-        OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
+      OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
+      if (rbacQuery != null) {
         searchSourceBuilder.query(
             QueryBuilders.boolQuery()
                 .must(searchSourceBuilder.query())
