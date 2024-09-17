@@ -357,6 +357,8 @@ public class ElasticSearchClient implements SearchClient {
       }
     }
 
+    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
     // Add Filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
@@ -529,7 +531,6 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
     try {
 
@@ -2305,8 +2306,8 @@ public class ElasticSearchClient implements SearchClient {
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
     if (subjectContext != null && !subjectContext.isAdmin()) {
-      if (rbacConditionEvaluator != null) {
-        OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
+      OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
+      if (rbacQuery != null) {
         searchSourceBuilder.query(
             QueryBuilders.boolQuery()
                 .must(searchSourceBuilder.query())
