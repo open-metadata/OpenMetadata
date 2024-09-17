@@ -251,7 +251,9 @@ test('Permissions', async ({ userPage, adminPage }) => {
 
     await userPage.getByTestId('profiler').click();
     const testCaseResponse = userPage.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list?fields=*'
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testCases/') &&
+        response.request().method() === 'GET'
     );
     await userPage
       .getByTestId('profiler-tab-left-panel')
