@@ -59,7 +59,7 @@ const test = base.extend<{
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
 
-  test.describe.fixme(entity.getType(), () => {
+  test.describe(entity.getType(), () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 

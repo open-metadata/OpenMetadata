@@ -121,7 +121,7 @@ const GlossaryTermTab = ({
         key: 'name',
         className: 'glossary-name-column',
         ellipsis: true,
-        width: 200,
+        width: '40%',
         render: (_, record) => {
           const name = getEntityName(record);
 
@@ -150,7 +150,7 @@ const GlossaryTermTab = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        width: 200,
+        width: permissions.Create ? '21%' : '33%',
         render: (description: string) =>
           description.trim() ? (
             <RichTextEditorPreviewer
@@ -166,14 +166,14 @@ const GlossaryTermTab = ({
         title: t('label.owner'),
         dataIndex: 'owners',
         key: 'owners',
-        width: 100,
+        width: '17%',
         render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
       {
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
-        width: 100,
+        width: '12%',
         filterIcon: (filtered) => (
           <FilterOutlined
             style={{
@@ -200,7 +200,7 @@ const GlossaryTermTab = ({
       data.push({
         title: t('label.action-plural'),
         key: 'new-term',
-        width: 100,
+        width: '10%',
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
           const allowAddTerm = status === Status.Approved;
@@ -474,7 +474,6 @@ const GlossaryTermTab = ({
           <DndProvider backend={HTML5Backend}>
             <Table
               bordered
-              resizableColumns
               className={classNames('drop-over-background', {
                 'drop-over-table': isTableHovered,
               })}
