@@ -70,6 +70,7 @@ class TestColumnParameter:
                 ],
             ),
             expected_result=TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Failed,
             ),
         ),
@@ -86,6 +87,7 @@ class TestColumnParameter:
                 ],
             ),
             expected_result=TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Failed,
             ),
         ),
@@ -101,6 +103,7 @@ class TestColumnParameter:
                 ],
             ),
             expected_result=TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Failed,
             ),
         ),
@@ -116,6 +119,7 @@ class TestColumnParameter:
                 ],
             ),
             expected_result=TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Success,
             ),
         ),
@@ -131,6 +135,7 @@ class TestColumnParameter:
                 ],
             ),
             expected_result=TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Success,
             ),
         ),
@@ -144,6 +149,7 @@ class TestColumnParameter:
                 parameterValues=[],
             ),
             expected_result=TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Success,
             ),
         ),
@@ -162,6 +168,7 @@ class TestColumnParameter:
                 ],
             ),
             expected_result=TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Success,
             ),
         ),
@@ -180,6 +187,7 @@ class TestColumnParameter:
                 ],
             ),
             expected_result=TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Failed,
             ),
         ),

@@ -1090,7 +1090,7 @@ public class OpenSearchClient implements SearchClient {
                     .size(topHitsAggregation.getInt("size"))
                     .sort(
                         topHitsAggregation.getString("sort_field"),
-                        SortOrder.valueOf(topHitsAggregation.getString("sort_order")));
+                        SortOrder.fromString(topHitsAggregation.getString("sort_order")));
             aggregationBuilders.add(topHitsAggregationBuilder);
             break;
           case "aggs":
@@ -2269,7 +2269,7 @@ public class OpenSearchClient implements SearchClient {
             SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
         boolQuery =
-            hasQuery
+            !hasQuery
                 ? boolQuery.filter(queryFromXContent)
                 : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
         searchSourceBuilder.query(boolQuery);

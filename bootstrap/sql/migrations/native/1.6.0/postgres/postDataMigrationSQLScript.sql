@@ -20,7 +20,7 @@ CREATE INDEX IF NOT EXISTS  data_quality_data_time_series_id_index  ON data_qual
 -- Remove VIRTUAL status column from test_case table and remove
 -- testCaseResult state from testCase; fetch from search repo.
 ALTER TABLE test_case DROP COLUMN status;
-UPDATE test_case SET json = jsonb_set(data, '{testCaseStatus}', json->'testCaseResult'->'testCaseStatus');
+UPDATE test_case SET json = jsonb_set(json, '{testCaseStatus}', json->'testCaseResult'->'testCaseStatus');
 ALTER TABLE test_case ADD COLUMN status VARCHAR(56) GENERATED ALWAYS AS (json ->> 'testCaseStatus') STORED NULL;
 
 
