@@ -224,6 +224,9 @@ def test_column_test_cases(
         nullable=False,
     )
     cleanup_fqns(TestCase, test_case.fullyQualifiedName.root)
+    parameters.expected_result.timestamp = (
+        test_case.testCaseResult.timestamp
+    )  # timestamp is not deterministic
     assert_equal_pydantic_objects(
         parameters.expected_result,
         test_case.testCaseResult,
