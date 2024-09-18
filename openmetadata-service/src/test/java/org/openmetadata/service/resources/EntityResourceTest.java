@@ -1559,6 +1559,32 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void patch_entityUpdateOwnerFromNull_200(TestInfo test) throws IOException {
+    if (!supportsOwners || !supportsPatch) {
+      return; // Entity doesn't support ownership
+    }
+
+    // Create Entity with Null Owner
+    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    T createdEntity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    T entity = getEntity(createdEntity.getId(), "id", ADMIN_AUTH_HEADERS);
+
+    // Check if the Owner is update to user1 and user 2
+    List<EntityReference> updateOwners =
+        List.of(
+            new EntityReference().withId(USER1.getId()).withType(USER),
+            new EntityReference().withId(USER1.getId()).withType(USER));
+
+    String json = JsonUtils.pojoToJson(entity);
+    entity.setOwners(updateOwners);
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    fieldAdded(change, FIELD_OWNERS, updateOwners);
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertEntityReferences(updateOwners, entity.getOwners());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void put_entityUpdate_as_non_owner_4xx(TestInfo test) throws IOException {
     if (!supportsOwners) {
       return; // Entity doesn't support ownership
