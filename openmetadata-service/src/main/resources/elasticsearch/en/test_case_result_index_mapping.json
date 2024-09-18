@@ -69,10 +69,10 @@
             }
           },
           "value": {
-            "type": "double"
+            "type": "text"
           },
           "predictedValue": {
-            "type": "double"
+            "type": "text"
           }
         }
       },

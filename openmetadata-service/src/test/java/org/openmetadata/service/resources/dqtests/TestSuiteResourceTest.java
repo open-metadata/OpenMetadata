@@ -34,11 +34,11 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.Column;
@@ -123,8 +123,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   void put_testCaseResults_200() throws IOException, ParseException {
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     List<EntityReference> testCases1 = new ArrayList<>();
-    TestCaseResult testCaseResult =
-        new TestCaseResult()
+    CreateTestCaseResult createTestCaseResult =
+        new CreateTestCaseResult()
             .withResult("tested")
             .withTestCaseStatus(TestCaseStatus.Success)
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
@@ -137,8 +137,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
-      testCaseResourceTest.putTestCaseResult(
-          testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+      testCaseResourceTest.postTestCaseResult(
+          testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
     }
 
     for (int i = 5; i < 10; i++) {
@@ -147,8 +147,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
               .createRequest("test_testSuite_2_" + i)
               .withTestSuite(TEST_SUITE2.getFullyQualifiedName());
       TestCase testCase = testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-      testCaseResourceTest.putTestCaseResult(
-          testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+      testCaseResourceTest.postTestCaseResult(
+          testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
     }
 
     ResultList<TestSuite> actualTestSuites =

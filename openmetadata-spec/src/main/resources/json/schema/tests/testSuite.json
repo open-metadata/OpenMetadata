@@ -151,6 +151,11 @@
         "$ref": "../type/tagLabel.json"
       },
       "default": null
+    },
+    "inherited": {
+      "description": "Indicates if the test suite is inherited from a parent entity.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

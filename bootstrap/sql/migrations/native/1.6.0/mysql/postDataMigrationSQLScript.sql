@@ -14,3 +14,17 @@ ADD CONSTRAINT UNIQUE (id);
 
 -- Create index on id column
 CREATE INDEX data_quality_data_time_series_id_index ON data_quality_data_time_series (id);
+
+-- Remove VIRTUAL status column from test_case table and remove
+-- testCaseResult state from testCase; fetch from search repo.
+ALTER TABLE test_case DROP COLUMN status;
+UPDATE test_case SET json = JSON_SET(json, '$.testCaseStatus', JSON_EXTRACT(json, '$.testCaseResult.testCaseStatus'));
+ALTER TABLE test_case ADD COLUMN status VARCHAR(56) GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(json, '$.testCaseStatus'))) STORED;
+
+
+-- Remove test case result states
+UPDATE test_suite
+SET json = JSON_REMOVE(json, '$.testCaseResultSummary');
+
+UPDATE test_case
+SET json = JSON_REMOVE(json, '$.testCaseResult');

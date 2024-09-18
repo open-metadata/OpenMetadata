@@ -169,8 +169,17 @@
         "minBound": {
           "description": "Lower bound limit for the test case result as defined in the test definition.",
           "type": "number"
+        },
+        "testCase": {
+          "description": "Test case that this result is for.",
+          "$ref": "../type/entityReference.json"
+        },
+        "testDefinition": {
+          "description": "Test definition that this result is for.",
+          "$ref": "../type/entityReference.json"
         }
-      }
+      },
+      "required": ["timestamp"]
     },
     "testSuiteExecutionFrequency": {
       "description": "How often the test case should run.",
