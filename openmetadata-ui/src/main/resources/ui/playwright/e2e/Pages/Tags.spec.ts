@@ -230,7 +230,7 @@ test('Classification Page', async ({ page }) => {
 
       await page.click('[data-testid="select-assignee"]');
       const assigneeResponse = page.waitForResponse(
-        '/api/v1/search/suggest?q=*&index=user_search_index*team_search_index*'
+        '/api/v1/search/query?q=*&index=user_search_index*team_search_index*'
       );
       await page.keyboard.type(assignee);
       await page.click(`[data-testid="${assignee}"]`);

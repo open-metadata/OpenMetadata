@@ -48,12 +48,35 @@ There's two options on how to set up a data connector:
 Once the connector has been added, set up a [metadata ingestion pipeline](/how-to-guides/admin-guide/how-to-ingest-metadata) 
 to bring in the metadata into Collate at a regular schedule.
 
-- Go to **Settings > Services > Databases** and click on the service you have added.
-- Navigate to the Ingestion tab to **Add Metadata Ingestion**.
+- Go to **Settings > Services > Databases** and click on the service you have added. Navigate to the Ingestion tab to **Add Metadata Ingestion**.
+
+{% image
+  src="/images/v1.5/getting-started/add-ingestion.png"
+  alt="Adding Ingestion"
+  caption="Adding Ingestion" /%}
+
 - Make any necessary configuration changes or filters for the ingestion, with documentation available in the side panel.
+
+{% image
+  src="/images/v1.5/getting-started/ingestion-config.png"
+  alt="Configure Ingestion"
+  caption="Configure Ingestion" /%}
+
 - Schedule the pipeline to ingest metadata regularly.
+
+{% image
+  src="/images/v1.5/getting-started/schedule-ingesgtion.png"
+  alt="Schedule Ingestion"
+  caption="Schedule Ingestion" /%}
+
 - Once scheduled, you can also set up additional ingestion pipelines to bring in lineage, profiler, or dbt information.
 - Once the metadata ingestion has been completed, you can see the available data assets under **Explore** in the main menu.
+
+{% image
+  src="/images/v1.5/getting-started/explore-tab.png"
+  alt="Ingested Data"
+  caption="Ingested Data under Explore Tab" /%}
+
 - You can repeat these steps to ingest metadata from other data sources.
 
 ## Step 3: Invite Users
@@ -66,7 +89,6 @@ to collaborate on the data and assign different roles.
 {% image
   src="/images/v1.5/getting-started/users.png"
   alt="Users Navigation"
-  height="300px"
   caption="Users Navigation" /%}
 
 - Click on **Add User**, and enter their email and other details to provide access to the platform.
@@ -80,6 +102,12 @@ to collaborate on the data and assign different roles.
 - You can organize users into different Teams, as well as assign them to different Roles.
 - Users will inherit the access defined for their assigned Teams and Roles.
 - Admin access can also be granted. Admins will have access to all settings and can invite other users.
+
+{% image
+  src="/images/v1.5/getting-started/update-user.png"
+  alt="Users Profile"
+  caption="Users Profile" /%}
+
 - New users will receive an email invitation to set up their account.
 
 ## Step 4: Explore Features of OpenMetadata
