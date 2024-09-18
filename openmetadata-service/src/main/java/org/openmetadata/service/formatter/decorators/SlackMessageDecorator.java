@@ -209,11 +209,20 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
     // Info about the event
     List<TextObject> first_field = new ArrayList<>();
-    first_field.add(BlockCompositions.markdownText("*Event Type:* " + event.getEventType()));
-    first_field.add(BlockCompositions.markdownText("*Updated By:* " + event.getUserName()));
-    first_field.add(BlockCompositions.markdownText("*Entity Type:* " + event.getEntityType()));
-    first_field.add(BlockCompositions.markdownText("*Publisher:* " + publisherName));
-    first_field.add(BlockCompositions.markdownText("*Time:* " + new Date(event.getTimestamp())));
+    first_field.add(
+        BlockCompositions.markdownText(
+            String.format(getBold(), "Event Type: ") + event.getEventType()));
+    first_field.add(
+        BlockCompositions.markdownText(
+            String.format(getBold(), "Updated By: ") + event.getUserName()));
+    first_field.add(
+        BlockCompositions.markdownText(
+            String.format(getBold(), "Entity Type: ") + event.getEntityType()));
+    first_field.add(
+        BlockCompositions.markdownText(String.format(getBold(), "Publisher: ") + publisherName));
+    first_field.add(
+        BlockCompositions.markdownText(
+            String.format(getBold(), "Time: ") + new Date(event.getTimestamp())));
 
     // Split fields into multiple sections to avoid block limits
     for (int i = 0; i < first_field.size(); i += 10) {
@@ -277,10 +286,20 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
     // Info about the event
     List<TextObject> first_field = new ArrayList<>();
-    first_field.add(BlockCompositions.markdownText("*Event Type:*  " + event.getEventType()));
-    first_field.add(BlockCompositions.markdownText("*Updated By:*  " + event.getUserName()));
-    first_field.add(BlockCompositions.markdownText("*Entity Type:*  " + event.getEntityType()));
-    first_field.add(BlockCompositions.markdownText("*Publisher:*  " + publisherName));
+    first_field.add(
+        BlockCompositions.markdownText(
+            String.format(getBold(), "Event Type:  ") + event.getEventType()));
+    first_field.add(
+        BlockCompositions.markdownText(
+            String.format(getBold(), "Updated By:  ") + event.getUserName()));
+    first_field.add(
+        BlockCompositions.markdownText(
+            String.format(getBold(), "Entity Type:  ") + event.getEntityType()));
+    first_field.add(
+        BlockCompositions.markdownText(String.format(getBold(), "Publisher:  ") + publisherName));
+    first_field.add(
+        BlockCompositions.markdownText(
+            String.format(getBold(), "Time:  ") + new Date(event.getTimestamp())));
 
     // Split fields into multiple sections to avoid block limits
     for (int i = 0; i < first_field.size(); i += 10) {
@@ -293,12 +312,25 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
     List<TextObject> pipelineFields =
         Arrays.asList(
-            BlockCompositions.markdownText("*Pipeline ID*\n" + entityInterface.getId()),
-            BlockCompositions.markdownText("*Pipeline Name*\n" + entityInterface.getDisplayName()),
-            BlockCompositions.markdownText("*Pipeline Type*\n" + entityInterface.getPipelineType()),
             BlockCompositions.markdownText(
-                "*Status*\n" + buildPipelineStatusMessage(entityInterface.getPipelineStatuses())),
-            BlockCompositions.markdownText("*Provider*\n" + entityInterface.getProvider()));
+                String.format(getBold(), "Pipeline ID") + getLineBreak() + entityInterface.getId()),
+            BlockCompositions.markdownText(
+                String.format(getBold(), "Pipeline Name")
+                    + getLineBreak()
+                    + entityInterface.getDisplayName()),
+            BlockCompositions.markdownText(
+                String.format(getBold(), "Pipeline Type")
+                    + getLineBreak()
+                    + entityInterface.getPipelineType()),
+            BlockCompositions.markdownText(
+                String.format(getBold(), "Status")
+                    + getLineBreak()
+                    + buildPipelineStatusMessage(entityInterface.getPipelineStatuses())),
+            BlockCompositions.markdownText(
+                String.format(getBold(), "Provider")
+                    + getLineBreak()
+                    + entityInterface.getProvider()));
+
     blocks.add(Blocks.section(section -> section.fields(pipelineFields)));
 
     blocks.add(Blocks.divider());
@@ -352,22 +384,22 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     PipelineStatusType pipelineState = pipelineStatus.getPipelineState();
     switch (pipelineState) {
       case QUEUED:
-        statusString.append("Queued :hourglass_flowing_sand: \n");
+        statusString.append("Queued :hourglass_flowing_sand: ").append(getLineBreak());
         break;
       case RUNNING:
-        statusString.append("Running :gear: \n");
+        statusString.append("Running :gear: ").append(getLineBreak());
         break;
       case SUCCESS:
-        statusString.append("Success :white_check_mark: \n");
+        statusString.append("Success :white_check_mark: ").append(getLineBreak());
         break;
       case PARTIAL_SUCCESS:
-        statusString.append("Partial Success :warning: \n");
+        statusString.append("Partial Success :warning: ").append(getLineBreak());
         break;
       case FAILED:
-        statusString.append("Failed :x:\n");
+        statusString.append("Failed :x:").append(getLineBreak());
         break;
       default:
-        statusString.append("Unknown :grey_question:\n");
+        statusString.append("Unknown :grey_question:").append(getLineBreak());
         break;
     }
 
