@@ -136,6 +136,7 @@ def ingest(metadata, service, create_data):
 
     ingestion = MetadataWorkflow.create(workflow_config)
     ingestion.execute()
+    ingestion.raise_from_status()
     return
 
 
