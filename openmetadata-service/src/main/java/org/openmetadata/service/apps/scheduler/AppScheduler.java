@@ -261,4 +261,32 @@ public class AppScheduler {
       LOG.error("Failed in running job", ex);
     }
   }
+
+  public void stopApplicationRun(App application) {
+    if (application.getFullyQualifiedName() == null) {
+      throw new IllegalArgumentException("Application's fullyQualifiedName is null.");
+    }
+    try {
+      // Interrupt any scheduled job
+      JobDetail jobDetailScheduled =
+          scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
+      if (jobDetailScheduled != null) {
+        scheduler.interrupt(jobDetailScheduled.getKey());
+      }
+
+      // Interrupt any on-demand job
+      JobDetail jobDetailOnDemand =
+          scheduler.getJobDetail(
+              new JobKey(
+                  String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP));
+
+      if (jobDetailOnDemand != null) {
+        scheduler.interrupt(jobDetailOnDemand.getKey());
+      }
+    } catch (ObjectAlreadyExistsException ex) {
+      throw new UnhandledServerException("Job is already running, please wait for it to complete.");
+    } catch (SchedulerException ex) {
+      LOG.error("Failed in running job", ex);
+    }
+  }
 }

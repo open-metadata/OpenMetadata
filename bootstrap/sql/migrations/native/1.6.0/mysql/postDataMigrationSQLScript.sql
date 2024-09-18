@@ -28,3 +28,8 @@ SET json = JSON_REMOVE(json, '$.testCaseResultSummary');
 
 UPDATE test_case
 SET json = JSON_REMOVE(json, '$.testCaseResult');
+
+-- Add Supports interrupts to SearchIndexingApplication
+UPDATE installed_apps SET json = JSON_SET(json, '$.supportsInterrupt', true) where name = 'SearchIndexingApplication'; 
+UPDATE apps_marketplace  SET json = JSON_SET(json, '$.supportsInterrupt', true) where name = 'SearchIndexingApplication';
+
