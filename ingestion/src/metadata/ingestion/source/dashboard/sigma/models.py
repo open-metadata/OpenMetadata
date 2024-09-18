@@ -18,8 +18,9 @@ from pydantic import BaseModel, Field
 
 class AuthToken(BaseModel):
     access_token: str
-    refresh_token: str
+    refresh_token: Optional[str] = None
     token_type: str
+    expires_in: Optional[int] = 0
 
 
 class Workbook(BaseModel):

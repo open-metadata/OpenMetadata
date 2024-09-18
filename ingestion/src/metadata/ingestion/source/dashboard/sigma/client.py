@@ -87,11 +87,13 @@ class SigmaApiClient:
     def get_auth_token(self) -> Tuple[str, int]:
         """
         generate auth token
+         Returns:
+            Tuple[str, int]: A tuple containing the access_token (str) and expires_in (int)
         """
         result = AuthToken.model_validate(
             self.token_client.post("/auth/token", data=TOKEN_PAYLOAD)
         )
-        return result.access_token, 0
+        return result.access_token, result.expires_in
 
     def get_dashboards(self) -> Optional[List[Workbook]]:
         """
