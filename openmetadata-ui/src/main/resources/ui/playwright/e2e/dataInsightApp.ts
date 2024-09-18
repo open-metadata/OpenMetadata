@@ -112,7 +112,7 @@ setup(
               }),
         }
       )
-      .toEqual(expect.stringMatching(/(success|failed)/));
+      .toEqual(expect.stringMatching(/(success|failed|partialSuccess)/));
 
     await table.delete(apiContext);
 

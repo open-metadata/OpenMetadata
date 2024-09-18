@@ -267,7 +267,7 @@ class ServiceBaseClass {
         }
       )
       // Move ahead if we do not have running or queued status
-      .toEqual(expect.stringMatching(/(success|failed)/));
+      .toEqual(expect.stringMatching(/(success|failed|partialSuccess)/));
 
     const pipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines?**`
