@@ -131,7 +131,6 @@ class PostgresIngestionClass extends ServiceBaseClass {
           )
           .then((res) => res.json());
 
-        
         // Re-deploy before running the ingestion
         await page.click(
           `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`

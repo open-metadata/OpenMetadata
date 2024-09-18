@@ -36,6 +36,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWebhookCondition(tableName));
     conditions.add(getWebhookTypeCondition(tableName));
     conditions.add(getTestCaseCondition());
+    conditions.add(getTestCaseIncidentCondition());
     conditions.add(getTestSuiteTypeCondition(tableName));
     conditions.add(getTestSuiteFQNCondition());
     conditions.add(getDomainCondition(tableName));
@@ -229,6 +230,18 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return addCondition(conditions);
+  }
+
+  private String getTestCaseIncidentCondition() {
+    String originEntityFQN = getQueryParam("originEntityFQN");
+    if (originEntityFQN != null) {
+      queryParams.put(
+          "originEntityFQNLike",
+          originEntityFQN + ".%"); // Add wildcard to get all column test cases under the entity
+      return "(testCaseEntityFQN = :originEntityFQN\n"
+          + " OR testCaseEntityFQN LIKE :originEntityFQNLike)";
+    }
+    return "";
   }
 
   private String getTestSuiteTypeCondition(String tableName) {
