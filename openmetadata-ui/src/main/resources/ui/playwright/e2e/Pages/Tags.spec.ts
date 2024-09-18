@@ -53,8 +53,6 @@ const permanentDeleteModal = async (page: Page, entity: string) => {
   await page.click('[data-testid="confirm-button"]');
 };
 
-test.describe.configure({ mode: 'serial' });
-
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -77,6 +75,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Classification Page', async ({ page }) => {
+  test.slow();
+
   await test.step('Should render basic elements on page', async () => {
     const getTags = page.waitForResponse('/api/v1/tags*');
     await sidebarClick(page, SidebarItem.TAGS);
@@ -230,7 +230,7 @@ test('Classification Page', async ({ page }) => {
 
       await page.click('[data-testid="select-assignee"]');
       const assigneeResponse = page.waitForResponse(
-        '/api/v1/search/suggest?q=*&index=user_search_index*team_search_index*'
+        '/api/v1/search/query?q=*&index=user_search_index*team_search_index*'
       );
       await page.keyboard.type(assignee);
       await page.click(`[data-testid="${assignee}"]`);
@@ -297,10 +297,14 @@ test('Classification Page', async ({ page }) => {
       const getTags = page.waitForResponse('/api/v1/tags*');
       await sidebarClick(page, SidebarItem.TAGS);
       await getTags;
+      const classificationResponse = page.waitForResponse(
+        `/api/v1/tags?*parent=${encodeURIComponent(NEW_CLASSIFICATION.name)}*`
+      );
       await page
         .locator(`[data-testid="side-panel-classification"]`)
         .filter({ hasText: NEW_CLASSIFICATION.displayName })
         .click();
+      await classificationResponse;
 
       await expect(page.locator('.activeCategory')).toContainText(
         NEW_CLASSIFICATION.displayName
@@ -324,10 +328,14 @@ test('Classification Page', async ({ page }) => {
     const getTags = page.waitForResponse('/api/v1/tags*');
     await sidebarClick(page, SidebarItem.TAGS);
     await getTags;
+    const classificationResponse = page.waitForResponse(
+      `/api/v1/tags?*parent=${encodeURIComponent(NEW_CLASSIFICATION.name)}*`
+    );
     await page
       .locator(`[data-testid="side-panel-classification"]`)
       .filter({ hasText: NEW_CLASSIFICATION.displayName })
       .click();
+    await classificationResponse;
 
     await expect(page.locator('.activeCategory')).toContainText(
       NEW_CLASSIFICATION.displayName

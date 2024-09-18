@@ -48,7 +48,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.classification.Classification;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -440,7 +439,7 @@ public class ClassificationResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = Classification.class)))
       })
   public Response restore(
       @Context UriInfo uriInfo,

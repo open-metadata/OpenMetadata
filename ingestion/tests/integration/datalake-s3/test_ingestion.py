@@ -13,6 +13,7 @@
 
 import pytest
 
+from .conftest import BUCKET_NAME
 from metadata.generated.schema.entity.data.table import DataType, Table
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -37,11 +38,15 @@ class TestDatalake:
         )  # type: ignore
 
         entities = resp.entities
-        assert len(entities) == 4
+        assert len(entities) == 5
         names = [entity.name.root for entity in entities]
-        assert {"names.json", "names.jsonl", "new_users.parquet", "users.csv"} == set(
-            names
-        )
+        assert {
+            "names.json",
+            "names.jsonl",
+            "new_users.parquet",
+            "users.csv",
+            "profiler_test_.csv",
+        } == set(names)
 
         for entity in entities:
             columns = entity.columns
@@ -53,7 +58,7 @@ class TestDatalake:
         """Also excluding the test for parquet files until the above is fixed"""
         csv_ = self.metadata.get_by_name(
             entity=Table,
-            fqn='datalake_for_integration_tests.default.MyBucket."users.csv"',
+            fqn=f'datalake_for_integration_tests.default.{BUCKET_NAME}."users.csv"',
             fields=["tableProfilerConfig"],
         )
         # parquet_ = self.metadata.get_by_name(
@@ -63,13 +68,13 @@ class TestDatalake:
         # )
         json_ = self.metadata.get_by_name(
             entity=Table,
-            fqn='datalake_for_integration_tests.default.MyBucket."names.json"',
+            fqn=f'datalake_for_integration_tests.default.{BUCKET_NAME}."names.json"',
             fields=["tableProfilerConfig"],
         )
 
         jsonl_ = self.metadata.get_by_name(
             entity=Table,
-            fqn='datalake_for_integration_tests.default.MyBucket."names.jsonl"',
+            fqn=f'datalake_for_integration_tests.default.{BUCKET_NAME}."names.jsonl"',
             fields=["tableProfilerConfig"],
         )
 

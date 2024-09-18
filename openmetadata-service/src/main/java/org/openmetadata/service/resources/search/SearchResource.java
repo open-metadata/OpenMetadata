@@ -129,6 +129,11 @@ public class SearchResource {
           int size,
       @Parameter(
               description =
+                  "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...")
+          @QueryParam("search_after")
+          String searchAfter,
+      @Parameter(
+              description =
                   "Sort the search results by field, available fields to "
                       + "sort weekly_stats"
                       + " , daily_stats, monthly_stats, last_updated_timestamp")
@@ -166,7 +171,13 @@ public class SearchResource {
                   "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched. Currently only supported for glossary_term_search_index.")
           @DefaultValue("false")
           @QueryParam("getHierarchy")
-          boolean getHierarchy)
+          boolean getHierarchy,
+      @Parameter(
+              description =
+                  "Explain the results of the query. Defaults to false. Only for debugging purposes.")
+          @DefaultValue("false")
+          @QueryParam("explain")
+          boolean explain)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -196,8 +207,10 @@ public class SearchResource {
             .domains(domains)
             .applyDomainFilter(
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+            .searchAfter(searchAfter)
+            .explain(explain)
             .build();
-    return searchRepository.search(request);
+    return searchRepository.search(request, subjectContext);
   }
 
   @GET

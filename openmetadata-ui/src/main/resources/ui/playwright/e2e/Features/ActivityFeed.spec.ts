@@ -21,13 +21,18 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
+  addMentionCommentInFeed,
   checkDescriptionInEditModal,
   deleteFeedComments,
+  FIRST_FEED_SELECTOR,
+  REACTION_EMOJIS,
+  reactOnFeed,
 } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
   descriptionBox,
   redirectToHomePage,
+  removeLandingBanner,
   toastNotification,
   uuid,
   visitOwnProfilePage,
@@ -88,6 +93,51 @@ test.describe('Activity feed', () => {
     await adminUser.delete(apiContext);
 
     await afterAction();
+  });
+
+  test('Feed widget should be visible', async ({ page }) => {
+    await removeLandingBanner(page);
+    // Locate the feed widget
+    const feedWidget = page.locator('[data-testid="activity-feed-widget"]');
+
+    // Check if the feed widget is visible
+    await expect(feedWidget).toBeVisible();
+
+    // Check if the feed widget contains specific text
+    await expect(feedWidget).toContainText('All');
+    await expect(feedWidget).toContainText('@Mentions');
+    await expect(feedWidget).toContainText('Tasks');
+  });
+
+  test('Emoji reaction on feed should be working fine', async ({ page }) => {
+    await removeLandingBanner(page);
+
+    await test.step('Add Emoji reaction', async () => {
+      // Assign reaction for latest feed
+      await reactOnFeed(page);
+
+      // Verify if reaction is working or not
+      for (const emoji of REACTION_EMOJIS) {
+        await expect(
+          page.locator(
+            '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child [data-testid="feed-reaction-container"]'
+          )
+        ).toContainText(emoji);
+      }
+    });
+
+    await test.step('Remove Emoji reaction from feed', async () => {
+      // Remove reaction for latest feed
+      await reactOnFeed(page);
+
+      // Verify if reaction is removed or not
+      const feedReactionContainer = page
+        .locator('[data-testid="message-container"]')
+        .nth(1)
+        .locator('[data-testid="feed-reaction-container"]');
+
+      await expect(feedReactionContainer).toHaveCount(1);
+    });
   });
 
   test('Assigned task should appear to task tab', async ({ page }) => {
@@ -476,6 +526,54 @@ test.describe('Activity feed', () => {
 
     // create description task
     await createDescriptionTask(page, value);
+  });
+
+  test('Mention should work for the feed reply', async ({ page }) => {
+    await addMentionCommentInFeed(page, adminUser.responseData.name);
+
+    // Close drawer
+    await page.locator('[data-testid="closeDrawer"]').click();
+
+    // Get the feed text
+    const feedText = await page
+      .locator(`${FIRST_FEED_SELECTOR} [data-testid="headerText"]`)
+      .innerText();
+
+    // Click on @Mentions tab
+    const fetchMentionsFeedResponse = page.waitForResponse(
+      '/api/v1/feed?filterType=MENTIONS&userId=*'
+    );
+    await page
+      .locator('[data-testid="activity-feed-widget"]')
+      .locator('text=@Mentions')
+      .click();
+
+    await fetchMentionsFeedResponse;
+
+    const mentionedText = await page
+      .locator(`${FIRST_FEED_SELECTOR} [data-testid="headerText"]`)
+      .innerText();
+
+    expect(mentionedText).toContain(feedText);
+  });
+
+  test('Mention should work for the feed reply in case of users having dot in their name', async ({
+    page,
+  }) => {
+    await addMentionCommentInFeed(page, 'aaron.warren5');
+
+    await expect(
+      page.locator(
+        `#feed-panel [data-testid="message-container"] [data-testid="feed-replies"] [data-testid="viewer-container"] [data-testid="markdown-parser"]`
+      )
+    ).toContainText('Can you resolve this thread for me? @aaron.warren5');
+
+    // Close drawer
+    await page.locator('[data-testid="closeDrawer"]').click();
+
+    expect(
+      page.locator(`${FIRST_FEED_SELECTOR} [data-testid="reply-count"]`)
+    ).toContainText('01 Reply');
   });
 });
 

@@ -57,6 +57,12 @@ export const redirectToHomePage = async (page: Page) => {
   await page.waitForURL('**/my-data');
 };
 
+export const removeLandingBanner = async (page: Page) => {
+  const widgetResponse = page.waitForResponse('/api/v1/search/query?q=**');
+  await page.click('[data-testid="welcome-screen-close-btn"]');
+  await widgetResponse;
+};
+
 export const createNewPage = async (browser: Browser) => {
   // create a new page
   const page = await browser.newPage();
@@ -99,6 +105,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     Container: 'container_search_index',
     SearchIndex: 'search_entity_search_index',
     ApiEndpoint: 'api_endpoint_search_index',
+    Metric: 'metric_search_index',
   };
 
   return entityMapping[entityType];
