@@ -264,7 +264,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
             workflow.source._process_table_suite(table=table)
         )[0]
 
-        test_cases: List[TestCase] = workflow.steps[0].get_test_cases(
+        test_cases: List[TestCase] = workflow.steps[0].get_test_case_definitions(
             test_cases=table_and_tests.right.test_cases,
             test_suite_fqn=self.table_with_suite.fullyQualifiedName.root + ".testSuite",
             table_fqn=self.table_with_suite.fullyQualifiedName.root,
