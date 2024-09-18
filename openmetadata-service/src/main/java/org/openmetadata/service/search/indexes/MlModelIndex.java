@@ -32,9 +32,6 @@ public class MlModelIndex implements SearchIndex {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.MLMODEL, mlModel));
     Map<String, Object> commonAttributes = getCommonAttributesMap(mlModel, Entity.MLMODEL);
     doc.putAll(commonAttributes);
-    doc.put(
-        "displayName",
-        mlModel.getDisplayName() != null ? mlModel.getDisplayName() : mlModel.getName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("serviceType", mlModel.getServiceType());

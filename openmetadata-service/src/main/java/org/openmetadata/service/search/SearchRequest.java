@@ -29,6 +29,7 @@ public class SearchRequest {
   private final List<String> domains;
   private final boolean getHierarchy;
   private final Object[] searchAfter;
+  private final boolean explain;
 
   public SearchRequest(ElasticSearchRequestBuilder builder) {
     this.query = builder.query;
@@ -48,6 +49,7 @@ public class SearchRequest {
     this.domains = builder.domains;
     this.applyDomainFilter = builder.applyDomainFilter;
     this.searchAfter = builder.searchAfter;
+    this.explain = builder.explain;
   }
 
   // Builder class for ElasticSearchRequest
@@ -70,6 +72,7 @@ public class SearchRequest {
     private boolean applyDomainFilter;
     private List<String> domains;
     private Object[] searchAfter;
+    private boolean explain;
 
     public ElasticSearchRequestBuilder(String query, int size, String index) {
       this.query = query;
@@ -150,6 +153,11 @@ public class SearchRequest {
       if (!nullOrEmpty(searchAfter)) {
         this.searchAfter = Stream.of(searchAfter.split(",")).toArray(Object[]::new);
       }
+      return this;
+    }
+
+    public ElasticSearchRequestBuilder explain(boolean explain) {
+      this.explain = explain;
       return this;
     }
 
