@@ -7,6 +7,7 @@ SET json = jsonb_set(
 FROM test_case tc
 WHERE dqdts.entityfqnHash = tc.fqnHash;
 
+
 -- Add id column to data_quality_data_time_series table
 -- after we have added the id values to the records
 ALTER TABLE data_quality_data_time_series
@@ -15,3 +16,17 @@ ADD CONSTRAINT id_unique UNIQUE (id);
 
 -- Create index on id column
 CREATE INDEX IF NOT EXISTS  data_quality_data_time_series_id_index  ON data_quality_data_time_series (id);
+
+-- Remove VIRTUAL status column from test_case table and remove
+-- testCaseResult state from testCase; fetch from search repo.
+ALTER TABLE test_case DROP COLUMN status;
+UPDATE test_case SET json = jsonb_set(json, '{testCaseStatus}', json->'testCaseResult'->'testCaseStatus');
+ALTER TABLE test_case ADD COLUMN status VARCHAR(56) GENERATED ALWAYS AS (json ->> 'testCaseStatus') STORED NULL;
+
+
+-- Remove test case result states
+UPDATE test_suite
+SET json = json - 'testCaseResultSummary';
+
+UPDATE test_case
+SET json = json - 'testCaseResult';

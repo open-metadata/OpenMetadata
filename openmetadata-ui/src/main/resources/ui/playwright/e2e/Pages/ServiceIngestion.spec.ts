@@ -49,6 +49,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
 test.use({
   storageState: 'playwright/.auth/admin.json',
   trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
+  video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
 services.forEach((ServiceClass) => {
