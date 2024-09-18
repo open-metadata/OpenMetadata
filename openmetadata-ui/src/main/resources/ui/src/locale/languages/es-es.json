@@ -621,6 +621,7 @@
     "june": "Junio",
     "jwt-token-expiry-time": "Tiempo de caducidad del token JWT",
     "jwt-uppercase": "JWT",
+    "key": "Key",
     "keyword-lowercase-plural": "palabras clave",
     "kill": "Eliminar",
     "kpi-display-name": "Nombre para mostrar del KPI",
