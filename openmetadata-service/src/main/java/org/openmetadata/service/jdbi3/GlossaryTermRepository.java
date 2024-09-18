@@ -107,7 +107,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
-  FeedRepository feedRepository = Entity.getFeedRepository();
+  final FeedRepository feedRepository = Entity.getFeedRepository();
 
   public GlossaryTermRepository() {
     super(
@@ -451,7 +451,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               .sortOrder("desc")
               .includeSourceFields(new ArrayList<>())
               .build();
-      Response response = searchRepository.search(searchRequest);
+      Response response = searchRepository.search(searchRequest, null);
       String json = (String) response.getEntity();
       Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
       for (Iterator<JsonNode> it =

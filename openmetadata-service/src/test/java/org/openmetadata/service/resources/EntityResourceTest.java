@@ -138,6 +138,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -191,6 +192,7 @@ import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
+import org.openmetadata.service.resources.metrics.MetricResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.APIServiceResourceTest;
@@ -333,6 +335,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Glossary GLOSSARY1;
   public static Glossary GLOSSARY2;
 
+  public static Metric Metric1;
+  public static Metric Metric2;
+
   public static GlossaryTerm GLOSSARY1_TERM1;
   public static TagLabel GLOSSARY1_TERM1_LABEL;
 
@@ -394,7 +399,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private static final int RUN_SLACK_TEST = 1;
   private static final int RUN_MS_TEAMS_TEST = 2;
   public static boolean EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG = true;
-  private static int selectedTestCategory = new Random().nextInt(3);
+  private static final int SELECTED_TEST_CATEGORY = new Random().nextInt(3);
 
   protected boolean supportsSearchIndex = false;
 
@@ -448,6 +453,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     new TagResourceTest().setupTags();
     new GlossaryResourceTest().setupGlossaries();
+    new MetricResourceTest().setupMetrics();
 
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
@@ -469,25 +475,25 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new APICollectionResourceTest().setupAPICollection(test);
 
     if (EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
-      switch (selectedTestCategory) {
-        case RUN_WEBHOOK_TEST:
+      switch (SELECTED_TEST_CATEGORY) {
+        case RUN_WEBHOOK_TEST -> {
           webhookCallbackResource.clearEvents();
           EventSubscriptionResourceTest webhookTest = new EventSubscriptionResourceTest();
           webhookTest.startWebhookSubscription();
           webhookTest.startWebhookEntitySubscriptions(entityType);
-          break;
-        case RUN_SLACK_TEST:
+        }
+        case RUN_SLACK_TEST -> {
           slackCallbackResource.clearEvents();
           EventSubscriptionResourceTest slackTest = new EventSubscriptionResourceTest();
           slackTest.startSlackSubscription();
           slackTest.startSlackEntitySubscriptions(entityType);
-          break;
-        case RUN_MS_TEAMS_TEST:
+        }
+        case RUN_MS_TEAMS_TEST -> {
           teamsCallbackResource.clearEvents();
           EventSubscriptionResourceTest msTeamsTest = new EventSubscriptionResourceTest();
           msTeamsTest.startMSTeamsSubscription();
           msTeamsTest.startMSTeamsEntitySubscription(entityType);
-          break;
+        }
       }
     }
   }
@@ -495,22 +501,22 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @AfterAll
   public void afterAllTests() throws Exception {
     if (EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
-      switch (selectedTestCategory) {
-        case RUN_WEBHOOK_TEST:
+      switch (SELECTED_TEST_CATEGORY) {
+        case RUN_WEBHOOK_TEST -> {
           EventSubscriptionResourceTest webhookTest = new EventSubscriptionResourceTest();
           webhookTest.validateWebhookEvents();
           webhookTest.validateWebhookEntityEvents(entityType);
-          break;
-        case RUN_SLACK_TEST:
+        }
+        case RUN_SLACK_TEST -> {
           EventSubscriptionResourceTest slackTest = new EventSubscriptionResourceTest();
           slackTest.validateSlackEvents();
           slackTest.validateSlackEntityEvents(entityType);
-          break;
-        case RUN_MS_TEAMS_TEST:
+        }
+        case RUN_MS_TEAMS_TEST -> {
           EventSubscriptionResourceTest msTeamsTest = new EventSubscriptionResourceTest();
           msTeamsTest.validateMSTeamsEvents();
           msTeamsTest.validateMSTeamsEntityEvents(entityType);
-          break;
+        }
       }
     }
     delete_recursiveTest();
@@ -528,9 +534,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final K createRequest(TestInfo test, int index) {
-    K createRequest =
-        createRequest(getEntityName(test, index)).withDescription("").withDisplayName(null);
-    return createRequest;
+    return createRequest(getEntityName(test, index)).withDescription("").withDisplayName(null);
   }
 
   public final K createRequest(
@@ -808,8 +812,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected void validateEntityListFromSearchWithPagination(
-      Map<String, String> queryParams, Integer maxEntities)
-      throws IOException, InterruptedException {
+      Map<String, String> queryParams, Integer maxEntities) throws IOException {
     // List all entities and use it for checking pagination
     Random rand = new Random();
 
@@ -825,8 +828,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
       ResultList<T> forwardPage;
       ResultList<T> backwardPage;
-      int offset = 0;
-      int cumEntityCount = 0;
+      int offset;
+      int cumEntityCount;
       // List entity with "limit" set from 1 to maxEntities size with random jumps
       for (int limit = 1; limit <= maxEntities; limit += rand.nextInt(5) + 1) {
         offset = 0;
@@ -1055,8 +1058,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void get_entityWithNullDescriptionFromSearch(TestInfo test)
-      throws InterruptedException, IOException {
+  void get_entityWithNullDescriptionFromSearch(TestInfo test) throws IOException {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(
         Arrays.asList(entityClass.getInterfaces()).contains(EntityInterface.class));
@@ -1112,8 +1114,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void get_entityWithEmptyDescriptionFromSearch(TestInfo test)
-      throws InterruptedException, IOException {
+  void get_entityWithEmptyDescriptionFromSearch(TestInfo test) throws IOException {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(
         Arrays.asList(entityClass.getInterfaces()).contains(EntityInterface.class));
@@ -2193,7 +2194,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  protected void checkCreatedEntity(TestInfo test) throws IOException, InterruptedException {
+  protected void checkCreatedEntity(TestInfo test) throws IOException {
     Assumptions.assumeTrue(supportsSearchIndex);
     // create entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
@@ -2213,8 +2214,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  protected void checkDeletedEntity(TestInfo test)
-      throws HttpResponseException, InterruptedException {
+  protected void checkDeletedEntity(TestInfo test) throws HttpResponseException {
     Assumptions.assumeTrue(supportsSearchIndex);
     // create entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
@@ -2249,12 +2249,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  protected void updateDescriptionAndCheckInSearch(TestInfo test)
-      throws IOException, InterruptedException {
+  protected void updateDescriptionAndCheckInSearch(TestInfo test) throws IOException {
     Assumptions.assumeTrue(supportsSearchIndex);
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
-    String desc = "";
+    String desc;
     String original = JsonUtils.pojoToJson(entity);
     entity.setDescription("update description");
     entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
@@ -2269,7 +2268,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test)
-      throws HttpResponseException, InterruptedException {
+      throws HttpResponseException {
     Assumptions.assumeTrue(supportsSearchIndex && supportsTags);
     // create an entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
@@ -3825,7 +3824,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public T assertDomainInheritance(K createRequest, EntityReference expectedDomain)
-      throws HttpResponseException, IOException, InterruptedException, InterruptedException {
+      throws IOException {
     T entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
@@ -3839,7 +3838,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public void assertDomainInheritanceOverride(T entity, K updateRequest, EntityReference newDomain)
-      throws HttpResponseException, IOException, InterruptedException {
+      throws IOException {
     // When an entity has domain set, it does not inherit domain from the parent
     String json = JsonUtils.pojoToJson(entity);
     entity.setDomain(newDomain);

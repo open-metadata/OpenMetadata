@@ -202,7 +202,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             try:
                 logger.debug("Requesting [dbt_run_results]")
                 dbt_run_results = client.get(
-                    f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}"
+                    f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}.json"
                 )
             except Exception as exc:
                 logger.debug(

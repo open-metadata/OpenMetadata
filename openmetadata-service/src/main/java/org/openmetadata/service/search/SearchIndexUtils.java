@@ -4,13 +4,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.json.JsonArray;
+import javax.json.JsonNumber;
 import javax.json.JsonObject;
+import javax.json.JsonString;
+import javax.json.JsonValue;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
@@ -191,10 +195,17 @@ public final class SearchIndexUtils {
                 .forEach(
                     bucket -> {
                       JsonObject bucketObject = (JsonObject) bucket;
-                      Optional<String> bucketKey = Optional.of(bucketObject.getString("key"));
+                      Optional<JsonValue> val = Optional.of(bucketObject.get("key"));
 
-                      bucketKey.ifPresentOrElse(
-                          s -> nodeData.put(dimensions.get(0), s),
+                      val.ifPresentOrElse(
+                          s -> {
+                            switch (s.getValueType()) {
+                              case NUMBER -> nodeData.put(
+                                  dimensions.get(0), String.valueOf((JsonNumber) s));
+                              default -> nodeData.put(
+                                  dimensions.get(0), ((JsonString) s).getString());
+                            }
+                          },
                           () -> nodeData.put(dimensions.get(0), null));
 
                       // Traverse the next level of the aggregation tree.
@@ -257,22 +268,36 @@ public final class SearchIndexUtils {
         Map<String, String> aggregationMap = new HashMap<>();
         String[] parts = nested[i].split(":");
 
-        for (int j = 0; j < parts.length; j++) {
-          String part = parts[j];
-          String[] kvPairs = part.split("=");
-          if (kvPairs[0].equals("field")) {
-            aggregationString
-                .append("\"")
-                .append(kvPairs[0])
-                .append("\":\"")
-                .append(kvPairs[1])
-                .append("\"");
+        Iterator<String> partsIterator = Arrays.stream(parts).iterator();
+
+        while (partsIterator.hasNext()) {
+          String part = partsIterator.next();
+          if (!partsIterator.hasNext()) {
+            // last element = key=value pairs of the aggregation
+            String[] subParts = part.split("&");
+            Arrays.stream(subParts)
+                .forEach(
+                    subPart -> {
+                      String[] kvPairs = subPart.split("=");
+                      aggregationString
+                          .append("\"")
+                          .append(kvPairs[0])
+                          .append("\":\"")
+                          .append(kvPairs[1])
+                          .append("\"");
+                      aggregationMap.put(kvPairs[0], kvPairs[1]);
+                      // add comma if not the last element
+                      if (Arrays.asList(subParts).indexOf(subPart) < subParts.length - 1)
+                        aggregationString.append(",");
+                    });
             aggregationString.append("}");
           } else {
+            String[] kvPairs = part.split("=");
             aggregationString.append("\"").append(kvPairs[1]).append("\":{");
+            aggregationMap.put(kvPairs[0], kvPairs[1]);
           }
-          aggregationMap.put(kvPairs[0], kvPairs[1]);
         }
+
         if (i < nested.length - 1) {
           aggregationString.append(",\"aggs\":{");
         }

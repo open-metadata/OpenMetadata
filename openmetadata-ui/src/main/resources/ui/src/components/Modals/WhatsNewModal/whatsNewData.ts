@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_4_8'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_4'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -915,6 +915,63 @@ To continue pursuing this objective, the application was completely refactored t
 
 4.  **GCS Storage Connector** as a community contribution from [Matt Chamberlin](https://github.com/MChamberlin)
 5.  **Synapse Connector** ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 44,
+    version: 'v1.5.2',
+    description: `Released on 2nd September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   [Fix]: Resolved issue with lineage lookup for long Fully Qualified Names (FQNs), ensuring accurate lineage tracking and display.
+-   [Improve]: Fixed the 'Edit Reviewers' permission issue, allowing correct permission management for editing reviewers.
+-   [Improve]: Addressed email update issues to ensure that email addresses are properly updated throughout the system.
+-   [Improve]: Fixed the delete lineage functionality to handle cases where override lineage is enabled, preventing errors and ensuring consistency.
+-   [Improve]: Added support for the 'Edit Assign' button in the Incident Manager, allowing for easier assignment changes.
+-   [Improve]: Introduced a resizable layout for the glossary page, improving usability and adaptability to different screen sizes.
+-   [Improve]: Enhanced the display of tier tags with improved styling for better visibility and distinction.
+-   [Improve]: Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
+-   [Improve]: Added custom properties support in Data Product`,
+    },
+  },
+  {
+    id: 45,
+    version: 'v1.5.3',
+    description: `Released on 10th September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Added resizable columns for custom properties
+-   Added support for automated ingestion of Tableau data source tags and description
+-   Improved "follow data" landing page module performance
+-   Improved search result suggestion by showing display name instead of FQN
+-   Fixed Cost Analysis issue when service has no connection
+-   Improved PII classification for JSON data types
+-   Fixed issue with expand all operation on terms page
+-   Fixed feed freezing when large images are part of the feed results
+-   Fixed dbt run_results file name with dbt cloud connection
+-   Cleaned Argo logs artifacts ${CollateIconWithLinkMD}
+-   Shipped VertexAI Connector ${CollateIconWithLinkMD}
+-   Fixed automator lineage propagation issues with possible None entities ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 46,
+    version: 'v1.5.4',
+    description: `Released on 12th September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Hotfix to the Term Aggregation size on Data Insights
+-   ES pagination with error handling
+-   Updated Domain in Docker Compose & Docs
+-   Fix Classification API returns Table class for restore
+-   Fix Redshift View Def regex_replace Error
+-   Make ingestion pipeline APIs public
+-   Fix token limitations using config ${CollateIconWithLinkMD}
+-   Updating the domain PRINCIPAL DOMAIN
+-   Fix Automator pagination ${CollateIconWithLinkMD}
+-   Fix MetaPilot push for no constraint ${CollateIconWithLinkMD}
+-   Glossary list selector for bulk import
+-   Unable to access import glossary page`,
     },
   },
 ];

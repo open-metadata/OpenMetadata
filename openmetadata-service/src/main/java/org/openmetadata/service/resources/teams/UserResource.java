@@ -32,6 +32,7 @@ import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationTo
 import static org.openmetadata.service.util.UserUtil.getUser;
 import static org.openmetadata.service.util.UserUtil.reSyncUserRolesFromToken;
 import static org.openmetadata.service.util.UserUtil.validateAndGetRolesRef;
+import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -107,7 +108,6 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.auth.TokenType;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -146,7 +146,6 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
@@ -154,6 +153,8 @@ import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TokenUtil;
+import org.openmetadata.service.util.email.EmailUtil;
+import org.openmetadata.service.util.email.TemplateConstants;
 
 @Slf4j
 @Path("/v1/users")
@@ -172,7 +173,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
-  private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
@@ -212,8 +212,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     super.initialize(config);
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
-    SmtpSettings smtpSettings = config.getSmtpSettings();
-    this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.repository.initializeUsers(config);
     this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
   }
@@ -445,10 +443,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     Fields fields = getFields(fieldsParam);
     String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
-    User user = repository.getByEmail(uriInfo, currentEmail, fields);
-
-    repository.validateLoggedInUserNameAndEmailMatches(
-        securityContext.getUserPrincipal().getName(), currentEmail, user);
+    User user =
+        repository.getLoggedInUserByNameAndEmail(
+            uriInfo, catalogSecurityContext.getUserPrincipal().getName(), currentEmail, fields);
 
     // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
@@ -643,12 +640,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
-    if (isBasicAuth() && isEmailServiceEnabled) {
+    if (isBasicAuth() && getSmtpSettings().getEnableSmtpServer()) {
       try {
         authHandler.sendInviteMailToUser(
             uriInfo,
             user,
-            String.format("Welcome to %s", EmailUtil.getEmailingEntity()),
+            String.format("Welcome to %s", EmailUtil.getSmtpSettings().getEmailingEntity()),
             create.getCreatePasswordType(),
             create.getPassword());
       } catch (Exception ex) {
@@ -1078,7 +1075,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           uriInfo,
           registeredUser,
           EmailUtil.getPasswordResetSubject(),
-          EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
+          TemplateConstants.RESET_LINK_TEMPLATE);
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();

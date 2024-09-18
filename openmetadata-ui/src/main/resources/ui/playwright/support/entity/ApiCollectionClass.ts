@@ -11,15 +11,10 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
-import {
-  addMultiOwner,
-  addOwner,
-  removeOwner,
-  updateOwner,
-  visitEntityPage,
-} from '../../utils/entity';
+import { visitEntityPage } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
@@ -183,6 +178,24 @@ export class ApiCollectionClass extends EntityClass {
     };
   }
 
+  async patch(apiContext: APIRequestContext, payload: Operation[]) {
+    const apiCollectionResponse = await apiContext.patch(
+      `/api/v1/apiCollections/${this.entityResponseData?.['id']}`,
+      {
+        data: payload,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    const apiCollection = await apiCollectionResponse.json();
+
+    this.entityResponseData = apiCollection;
+
+    return apiCollection;
+  }
+
   get() {
     return {
       service: this.serviceResponseData,
@@ -229,68 +242,5 @@ export class ApiCollectionClass extends EntityClass {
     });
     await page.getByRole('link', { name: owner }).isVisible();
     await this.visitEntityPage(page);
-  }
-
-  override async owner(
-    page: Page,
-    owner1: string[],
-    owner2: string[],
-    type: 'Teams' | 'Users' = 'Users',
-    isEditPermission = true
-  ) {
-    if (type === 'Teams') {
-      await addOwner({
-        page,
-        owner: owner1[0],
-        type,
-        endpoint: this.endpoint,
-        dataTestId: 'data-assets-header',
-      });
-      if (isEditPermission) {
-        await updateOwner({
-          page,
-          owner: owner2[0],
-          type,
-          endpoint: this.endpoint,
-          dataTestId: 'data-assets-header',
-        });
-        await this.verifyOwnerPropagation(page, owner2[0]);
-
-        await removeOwner({
-          page,
-          endpoint: this.endpoint,
-          ownerName: owner2[0],
-          type,
-          dataTestId: 'data-assets-header',
-        });
-      }
-    } else {
-      await addMultiOwner({
-        page,
-        ownerNames: owner1,
-        activatorBtnDataTestId: 'edit-owner',
-        resultTestId: 'data-assets-header',
-        endpoint: this.endpoint,
-        type,
-      });
-      if (isEditPermission) {
-        await addMultiOwner({
-          page,
-          ownerNames: owner2,
-          activatorBtnDataTestId: 'edit-owner',
-          resultTestId: 'data-assets-header',
-          endpoint: this.endpoint,
-          type,
-        });
-        await this.verifyOwnerPropagation(page, owner2[0]);
-        await removeOwner({
-          page,
-          endpoint: this.endpoint,
-          ownerName: owner2[0],
-          type,
-          dataTestId: 'data-assets-header',
-        });
-      }
-    }
   }
 }

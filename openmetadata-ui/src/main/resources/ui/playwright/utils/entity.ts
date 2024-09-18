@@ -141,6 +141,40 @@ export const updateOwner = async ({
   );
 };
 
+export const removeOwnersFromList = async ({
+  page,
+  endpoint,
+  ownerNames,
+  dataTestId,
+}: {
+  page: Page;
+  endpoint: EntityTypeEndpoint;
+  ownerNames: string[];
+  dataTestId?: string;
+}) => {
+  await page.getByTestId('edit-owner').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  for (const ownerName of ownerNames) {
+    const ownerItem = page.getByRole('listitem', {
+      name: ownerName,
+      exact: true,
+    });
+
+    await ownerItem.click();
+  }
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  await page.click('[data-testid="selectable-list-update-btn"]');
+  await patchRequest;
+
+  for (const ownerName of ownerNames) {
+    await expect(
+      page.getByTestId(dataTestId ?? 'owner-link')
+    ).not.toContainText(ownerName);
+  }
+};
+
+// Removes All Owners
 export const removeOwner = async ({
   page,
   endpoint,
@@ -182,6 +216,7 @@ export const addMultiOwner = async (data: {
   resultTestId?: string;
   isSelectableInsideForm?: boolean;
   type: 'Teams' | 'Users';
+  clearAll?: boolean;
 }) => {
   const {
     page,
@@ -191,6 +226,7 @@ export const addMultiOwner = async (data: {
     isSelectableInsideForm = false,
     endpoint,
     type,
+    clearAll = true,
   } = data;
   const isMultipleOwners = Array.isArray(ownerNames);
   const owners = isMultipleOwners ? ownerNames : [ownerNames];
@@ -201,11 +237,14 @@ export const addMultiOwner = async (data: {
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await page.getByRole('tab', { name: 'Users' }).click();
+  await page
+    .locator("[data-testid='select-owner-tabs']")
+    .getByRole('tab', { name: 'Users' })
+    .click();
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  if (isMultipleOwners) {
+  if (clearAll && isMultipleOwners) {
     await page.click('[data-testid="clear-all-button"]');
   }
 

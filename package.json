@@ -11,8 +11,7 @@
     "url": "https://github.com/open-metadata/OpenMetadata.git"
   },
   "devDependencies": {
-    "quicktype": "^17.0.6",
-    "node-gyp": "^10.0.1"
+    "quicktype": "^23.0.170"
   },
   "scripts": {
     "preinstall": "yarn global add node-gyp",

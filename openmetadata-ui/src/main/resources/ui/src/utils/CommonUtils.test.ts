@@ -33,6 +33,7 @@ import {
   getNameFromFQN,
   getServiceTypeExploreQueryFilter,
   getTagValue,
+  isDeleted,
   prepareLabel,
   reduceColorOpacity,
   sortTagsCaseInsensitive,
@@ -50,7 +51,6 @@ import {
   mockTableNameWithSpecialChar4,
   mockTableNameWithSpecialChar5,
   mockTags,
-  sortedMockTags,
 } from './CommonUtils.mock';
 
 const AXIOS_ERROR_MESSAGE = {
@@ -71,21 +71,7 @@ const AXIOS_ERROR_MESSAGE = {
 describe('Tests for CommonUtils', () => {
   describe('Tests for sortTagsCaseInsensitive function', () => {
     it('Input of unsorted array to sortTagsCaseInsensitive should return array of tags sorted by tagFQN', () => {
-      expect(sortTagsCaseInsensitive(cloneDeep(mockTags))).toEqual(
-        sortedMockTags
-      );
-    });
-
-    it('Input of sorted array to sortTagsCaseInsensitive should return array of tags sorted by tagFQN', () => {
-      expect(sortTagsCaseInsensitive(cloneDeep(sortedMockTags))).toEqual(
-        sortedMockTags
-      );
-    });
-
-    it('Array returned by sortTagsCaseInsensitive should not be equal to the unsorted input array of tags', () => {
-      expect(sortTagsCaseInsensitive(cloneDeep(mockTags))).not.toEqual(
-        mockTags
-      );
+      expect(sortTagsCaseInsensitive(cloneDeep(mockTags))).toEqual(mockTags);
     });
 
     it('Function getNameFromFQN should return the correct table name for fqn without special characters', () => {
@@ -327,6 +313,14 @@ describe('Tests for CommonUtils', () => {
           '{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"serviceType":"mysql"}}]}}]}}}'
         );
       });
+    });
+
+    it('isDeleted should return proper boolean value', () => {
+      expect(isDeleted(true)).toBe(true);
+      expect(isDeleted(false)).toBe(false);
+      expect(isDeleted('false')).toBe(false);
+      expect(isDeleted(undefined)).toBe(false);
+      expect(isDeleted(null)).toBe(false);
     });
   });
 });

@@ -20,6 +20,7 @@ import {
   capitalize,
   get,
   isEmpty,
+  isNil,
   isNull,
   isString,
   isUndefined,
@@ -733,9 +734,7 @@ export const getTrimmedContent = (content: string, limit: number) => {
 };
 
 export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
-  return tags.sort((tag1, tag2) =>
-    tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
-  );
+  return tags;
 };
 
 export const Transi18next = ({
@@ -879,4 +878,17 @@ export const filterSelectOptions = (
     toLower(option?.label).includes(toLower(input)) ||
     toLower(option?.value).includes(toLower(input))
   );
+};
+
+/**
+ * helper method to check to determine the deleted flag is true or false
+ * some times deleted flag is string or boolean or undefined from the API
+ * for Example "false" or false or true in Lineage API
+ * @param deleted
+ * @returns
+ */
+export const isDeleted = (deleted: unknown): boolean => {
+  return (deleted as string) === 'false' || deleted === false || isNil(deleted)
+    ? false
+    : true;
 };

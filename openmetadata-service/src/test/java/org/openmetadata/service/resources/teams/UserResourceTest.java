@@ -305,13 +305,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Update the user information using PUT
     String oldEmail = create.getEmail();
+    // Even with new field being updated, this shouuld not take effect
     CreateUser update = create.withEmail("user.xyz@email.com").withDisplayName("displayName1");
 
     ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
     fieldAdded(change, "displayName", "displayName1");
-    fieldUpdated(change, "email", oldEmail, "user.xyz@email.com");
     user = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
+    assertEquals(oldEmail, user.getEmail());
     // Update the user information using PUT as the logged-in user
     update = create.withDisplayName("displayName2");
     change = getChangeDescription(user, MINOR_UPDATE);
@@ -1316,7 +1316,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
+  void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a user term, carry it forward from the parent team
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam =
@@ -1329,7 +1329,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   public User assertDomainInheritance(CreateUser createRequest, EntityReference expectedDomain)
-      throws IOException, InterruptedException {
+      throws IOException {
     User entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);

@@ -84,7 +84,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.Metrics;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
@@ -206,7 +206,7 @@ public interface CollectionDAO {
   UsageDAO usageDAO();
 
   @CreateSqlObject
-  MetricsDAO metricsDAO();
+  MetricDAO metricDAO();
 
   @CreateSqlObject
   ChartDAO chartDAO();
@@ -703,6 +703,18 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(
         @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
+            + "LIKE CONCAT (:extensionPrefix, '.%') "
+            + "ORDER BY extension DESC "
+            + "LIMIT :limit OFFSET :offset")
+    List<ExtensionRecord> getExtensionsWithOffset(
+        @BindUUID("id") UUID id,
+        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
     void delete(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
@@ -1008,13 +1020,13 @@ public interface CollectionDAO {
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source AND toId = :toId AND toEntity = :toEntity "
-                + "AND relation = :relation ORDER BY fromId",
+                + "AND relation = :relation",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE  json->>'source' = :source AND (toId = :toId AND toEntity = :toEntity) "
-                + "AND relation = :relation ORDER BY fromId",
+                + "AND relation = :relation",
         connectionType = POSTGRES)
     void deleteLineageBySource(
         @BindUUID("toId") UUID toId,
@@ -2051,15 +2063,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface MetricsDAO extends EntityDAO<Metrics> {
+  interface MetricDAO extends EntityDAO<Metric> {
     @Override
     default String getTableName() {
       return "metric_entity";
     }
 
     @Override
-    default Class<Metrics> getEntityClass() {
-      return Metrics.class;
+    default Class<Metric> getEntityClass() {
+      return Metric.class;
     }
 
     @Override
@@ -3734,6 +3746,13 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     int checkEmailExists(@Bind("email") String email);
+
+    @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(name) = LOWER(:name)")
+    int checkUserNameExists(@Bind("name") String name);
+
+    @SqlQuery(
+        "SELECT json FROM user_entity WHERE LOWER(name) = LOWER(:name) AND LOWER(email) = LOWER(:email)")
+    String findUserByNameAndEmail(@Bind("name") String name, @Bind("email") String email);
 
     @SqlQuery("SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     String findUserByEmail(@Bind("email") String email);

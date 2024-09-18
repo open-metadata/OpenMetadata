@@ -28,6 +28,8 @@ export const CustomPropertySupportedEntityList = [
   EntityTypeEndpoint.DataModel,
   EntityTypeEndpoint.API_COLLECTION,
   EntityTypeEndpoint.API_ENDPOINT,
+  EntityTypeEndpoint.DATA_PRODUCT,
+  EntityTypeEndpoint.METRIC,
 ];
 
 export const ENTITY_REFERENCE_PROPERTIES = [
@@ -267,6 +269,57 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'apiEndpoints',
+  },
+  entity_dataProduct: {
+    name: 'dataProduct',
+    description: 'This is Data Product custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-MM-dd',
+    dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
+    timeFormatConfig: 'HH:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'dataProducts',
+  },
+  entity_dashboardDataModel: {
+    name: 'dataModel',
+    description: 'This is Data Model custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-MM-dd',
+    dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
+    timeFormatConfig: 'HH:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'dashboardDataModels',
+  },
+  entity_metric: {
+    name: 'metric',
+    description: 'This is Metric custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-MM-dd',
+    dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
+    timeFormatConfig: 'HH:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'metrics',
   },
 };
 

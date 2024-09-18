@@ -17,6 +17,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -26,6 +27,7 @@ import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -70,6 +72,11 @@ const AddNotificationPage = () => {
   >([]);
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
+
+  const isSystemProvider = useMemo(
+    () => alert?.provider === ProviderType.System,
+    [alert]
+  );
 
   const breadcrumb = useMemo(
     () => [
@@ -192,6 +199,18 @@ const AddNotificationPage = () => {
 
   if (loadingCount > 0) {
     return <Loader />;
+  }
+
+  if (isSystemProvider) {
+    return (
+      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph
+          className="tw-max-w-md"
+          style={{ marginBottom: '0' }}>
+          {t('message.system-alert-edit-message')}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
   }
 
   return (

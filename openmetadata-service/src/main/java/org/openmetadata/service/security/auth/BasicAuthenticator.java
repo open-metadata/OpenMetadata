@@ -37,9 +37,17 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRY_ERROR;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
-import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getUser;
+import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
+import static org.openmetadata.service.util.email.EmailUtil.sendAccountStatus;
+import static org.openmetadata.service.util.email.TemplateConstants.APPLICATION_LOGIN_LINK;
+import static org.openmetadata.service.util.email.TemplateConstants.ENTITY;
+import static org.openmetadata.service.util.email.TemplateConstants.INVITE_CREATE_PASSWORD_TEMPLATE;
+import static org.openmetadata.service.util.email.TemplateConstants.INVITE_RANDOM_PASSWORD_TEMPLATE;
+import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD;
+import static org.openmetadata.service.util.email.TemplateConstants.SUPPORT_URL;
+import static org.openmetadata.service.util.email.TemplateConstants.USERNAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -70,7 +78,6 @@ import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
@@ -82,12 +89,12 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.TokenUtil;
+import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 public class BasicAuthenticator implements AuthenticatorHandler {
@@ -97,7 +104,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private TokenRepository tokenRepository;
   private LoginAttemptCache loginAttemptCache;
   private AuthorizerConfiguration authorizerConfiguration;
-  private boolean isEmailServiceEnabled;
   private boolean isSelfSignUpAvailable;
 
   @Override
@@ -106,8 +112,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     this.tokenRepository = Entity.getTokenRepository();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.loginAttemptCache = new LoginAttemptCache();
-    SmtpSettings smtpSettings = config.getSmtpSettings();
-    this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
   }
 
@@ -173,7 +177,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void sendEmailVerification(UriInfo uriInfo, User user) throws IOException {
-    if (isEmailServiceEnabled) {
+    if (getSmtpSettings().getEnableSmtpServer()) {
       UUID mailVerificationToken = UUID.randomUUID();
       EmailVerificationToken emailVerificationToken =
           TokenUtil.getEmailVerificationToken(user.getId(), mailVerificationToken);
@@ -257,7 +261,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // Update user about Password Change
     try {
-      EmailUtil.sendAccountStatus(storedUser, "Update Password", "Change Successful");
+      sendAccountStatus(storedUser, "Update Password", "Change Successful");
     } catch (TemplateException ex) {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage(), ex);
       throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
@@ -310,12 +314,12 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     loginAttemptCache.recordSuccessfulLogin(userName);
 
     // in case admin updates , send email to user
-    if (request.getRequestType() == USER && isEmailServiceEnabled) {
+    if (request.getRequestType() == USER && getSmtpSettings().getEnableSmtpServer()) {
       // Send mail
       sendInviteMailToUser(
           uriInfo,
           response.getEntity(),
-          String.format("%s: Password Update", EmailUtil.getEmailingEntity()),
+          String.format("%s: Password Update", getSmtpSettings().getEmailingEntity()),
           ADMIN_CREATE,
           request.getNewPassword());
     }
@@ -332,14 +336,14 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     switch (requestType) {
       case ADMIN_CREATE -> {
         Map<String, Object> templatePopulator = new HashMap<>();
-        templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getEmailingEntity());
-        templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getSupportUrl());
-        templatePopulator.put(EmailUtil.USERNAME, user.getName());
-        templatePopulator.put(EmailUtil.PASSWORD, pwd);
-        templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getOMUrl());
+        templatePopulator.put(ENTITY, getSmtpSettings().getEmailingEntity());
+        templatePopulator.put(SUPPORT_URL, getSmtpSettings().getSupportUrl());
+        templatePopulator.put(USERNAME, user.getName());
+        templatePopulator.put(PASSWORD, pwd);
+        templatePopulator.put(APPLICATION_LOGIN_LINK, getSmtpSettings().getOpenMetadataUrl());
         try {
           EmailUtil.sendMail(
-              subject, templatePopulator, user.getEmail(), EmailUtil.INVITE_RANDOM_PWD, true);
+              subject, templatePopulator, user.getEmail(), INVITE_RANDOM_PASSWORD_TEMPLATE, true);
         } catch (TemplateException ex) {
           LOG.error(
               "Failed in sending Mail to user [{}]. Reason : {}",
@@ -349,7 +353,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         }
       }
       case USER_CREATE -> sendPasswordResetLink(
-          uriInfo, user, subject, EmailUtil.INVITE_CREATE_PWD);
+          uriInfo, user, subject, INVITE_CREATE_PASSWORD_TEMPLATE);
       default -> LOG.error("Invalid Password Create Type");
     }
   }
@@ -482,7 +486,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     loginAttemptCache.recordFailedLogin(providedIdentity);
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
     if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
-      EmailUtil.sendAccountStatus(
+      sendAccountStatus(
           storedUser,
           "Multiple Failed Login Attempts.",
           String.format(

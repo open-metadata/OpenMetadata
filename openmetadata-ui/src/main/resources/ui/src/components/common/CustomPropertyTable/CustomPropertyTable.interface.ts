@@ -20,12 +20,14 @@ import { DashboardDataModel } from '../../../generated/entity/data/dashboardData
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { CustomProperty } from '../../../generated/type/customProperty';
 
@@ -44,6 +46,8 @@ export type ExtentionEntities = {
   [EntityType.DASHBOARD_DATA_MODEL]: DashboardDataModel;
   [EntityType.API_COLLECTION]: APICollection;
   [EntityType.API_ENDPOINT]: APIEndpoint;
+  [EntityType.DATA_PRODUCT]: DataProduct;
+  [EntityType.METRIC]: Metric;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;

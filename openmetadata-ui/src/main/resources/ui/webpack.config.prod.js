@@ -20,6 +20,7 @@ const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const BundleAnalyzerPlugin =
   require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const Dotenv = require('dotenv-webpack');
 
 const outputPath = path.join(__dirname, 'dist/assets');
 
@@ -35,7 +36,7 @@ module.exports = {
     path: outputPath,
     filename: 'openmetadata.[fullhash].js',
     chunkFilename: '[name].[fullhash].js',
-    publicPath: '/', // Ensures bundle is served from absolute path as opposed to relative
+    publicPath: `${process.env.APP_SUB_PATH ?? ''}/`, // Ensures bundle is served from absolute path as opposed to relative
   },
 
   // Loaders
@@ -97,6 +98,8 @@ module.exports = {
           path.resolve(__dirname, 'node_modules/quill-emoji'),
           path.resolve(__dirname, 'node_modules/react-awesome-query-builder'),
           path.resolve(__dirname, 'node_modules/katex'),
+          path.resolve(__dirname, 'node_modules/react-resizable'),
+          path.resolve(__dirname, 'node_modules/react-antd-column-resize'),
         ],
         // May need to handle files outside the source code
         // (from node_modules)
@@ -197,6 +200,14 @@ module.exports = {
           to: outputPath,
         },
         {
+          from: path.join(__dirname, 'public/favicons/favicon-16x16.png'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/favicons/favicon-32x32.png'),
+          to: outputPath,
+        },
+        {
           from: path.join(__dirname, 'public/logo192.png'),
           to: outputPath,
         },
@@ -236,5 +247,6 @@ module.exports = {
       ),
       openAnalyzer: false,
     }),
+    new Dotenv(),
   ],
 };

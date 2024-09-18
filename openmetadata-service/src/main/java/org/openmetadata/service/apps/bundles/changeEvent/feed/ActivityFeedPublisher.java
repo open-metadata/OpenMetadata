@@ -36,7 +36,7 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class ActivityFeedPublisher implements Destination<ChangeEvent> {
   private final FeedMessageDecorator feedMessageFormatter = new FeedMessageDecorator();
-  FeedRepository feedRepository = new FeedRepository();
+  final FeedRepository feedRepository = new FeedRepository();
 
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -78,7 +78,7 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
-  public void sendTestMessage() throws EventPublisherException {}
+  public void sendTestMessage() {}
 
   @Override
   public EventSubscription getEventSubscriptionForDestination() {

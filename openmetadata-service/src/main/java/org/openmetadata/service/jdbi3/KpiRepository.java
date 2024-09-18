@@ -99,7 +99,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     Kpi kpi = getEntityByName(KPI, fqn, UPDATE_FIELDS, null);
     DataInsightCustomChart dataInsightCustomChart =
         getEntity(kpi.getDataInsightChart(), null, Include.NON_DELETED);
-    DataInsightCustomChartResultList resultList = null;
+    DataInsightCustomChartResultList resultList;
     try {
       resultList =
           searchRepository.getSearchClient().buildDIChart(dataInsightCustomChart, start, end);
@@ -127,11 +127,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     Kpi kpi = getEntityByName(KPI, fqn, UPDATE_FIELDS, null);
     DataInsightCustomChart dataInsightCustomChart =
         getEntity(kpi.getDataInsightChart(), null, Include.NON_DELETED);
-    DataInsightCustomChartResultList resultList =
-        searchRepository
-            .getSearchClient()
-            .buildDIChart(dataInsightCustomChart, startTs.longValue(), endTs.longValue());
-    return resultList;
+    return searchRepository.getSearchClient().buildDIChart(dataInsightCustomChart, startTs, endTs);
   }
 
   @Override

@@ -84,6 +84,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -116,12 +117,10 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -156,7 +155,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
@@ -206,6 +204,7 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 @Repository()
 public abstract class EntityRepository<T extends EntityInterface> {
+  public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
       CacheBuilder.newBuilder()
@@ -443,32 +442,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final List<T> getEntitiesFromSeedData() throws IOException {
-    List<T> entitiesFromSeedData = new ArrayList<>();
-
-    if (entityType.equals(Entity.DOCUMENT)) {
-      SmtpSettings emailConfig =
-          SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
-
-      switch (emailConfig.getTemplates()) {
-        case COLLATE -> {
-          entitiesFromSeedData.addAll(
-              getEntitiesFromSeedData(
-                  String.format(".*json/data/%s/emailTemplates/collate/.*\\.json$", entityType)));
-        }
-        default -> {
-          entitiesFromSeedData.addAll(
-              getEntitiesFromSeedData(
-                  String.format(
-                      ".*json/data/%s/emailTemplates/openmetadata/.*\\.json$", entityType)));
-        }
-      }
-
-      entitiesFromSeedData.addAll(
-          getEntitiesFromSeedData(String.format(".*json/data/%s/docs/.*\\.json$", entityType)));
-      return entitiesFromSeedData;
-    }
-
+  public List<T> getEntitiesFromSeedData() throws IOException {
     return getEntitiesFromSeedData(String.format(".*json/data/%s/.*\\.json$", entityType));
   }
 
@@ -805,6 +779,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CatalogExceptionMessage.entityVersionNotFound(entityType, id, requestedVersion));
   }
 
+  public final EntityHistoryWithOffset listVersionsWithOffset(UUID id, int limit, int offset) {
+    T latest = setFieldsInternal(find(id, ALL), putFields);
+    setInheritedFields(latest, putFields);
+    String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
+    List<ExtensionRecord> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsWithOffset(id, extensionPrefix, limit, offset);
+    List<EntityVersionPair> oldVersions = new ArrayList<>();
+    records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
+    oldVersions.sort(EntityUtil.compareVersion.reversed());
+
+    final List<Object> versions = new ArrayList<>();
+
+    if (offset == 0) {
+      versions.add(JsonUtils.pojoToJson(latest));
+    }
+
+    oldVersions.forEach(version -> versions.add(version.getEntityJson()));
+    return new EntityHistoryWithOffset(
+        new EntityHistory().withEntityType(entityType).withVersions(versions), offset + limit);
+  }
+
   public final EntityHistory listVersions(UUID id) {
     T latest = setFieldsInternal(find(id, ALL), putFields);
     setInheritedFields(latest, putFields);
@@ -1125,7 +1122,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String q)
       throws IOException {
     List<T> entityList = new ArrayList<>();
-    Long total = 0L;
+    Long total;
 
     if (limit > 0) {
       SearchClient.SearchResultListMapper results =
@@ -1424,7 +1421,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
       String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-      DateTimeFormatter formatter = null;
+      DateTimeFormatter formatter;
       try {
         if ("date-cp".equals(customPropertyType)) {
           DateTimeFormatter inputFormatter =
@@ -1981,6 +1978,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // populate owner entityRefs with all fields
     List<EntityReference> refs = validateOwners(owners);
+    if (nullOrEmpty(refs)) {
+      return;
+    }
+    refs.sort(Comparator.comparing(EntityReference::getName));
+    owners.sort(Comparator.comparing(EntityReference::getName));
+
     for (int i = 0; i < owners.size(); i++) {
       EntityUtil.copy(refs.get(i), owners.get(i));
     }
@@ -2938,8 +2941,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         addRelationship(
             fromId, ref.getId(), fromEntityType, toEntityType, relationshipType, bidirectional);
       }
-      updatedToRefs.sort(EntityUtil.compareEntityReference);
-      origToRefs.sort(EntityUtil.compareEntityReference);
+      if (!nullOrEmpty(updatedToRefs)) {
+        updatedToRefs.sort(EntityUtil.compareEntityReference);
+      }
+      if (!nullOrEmpty(origToRefs)) {
+        origToRefs.sort(EntityUtil.compareEntityReference);
+      }
     }
 
     public final void updateToRelationship(

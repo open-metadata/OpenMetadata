@@ -72,16 +72,7 @@ export enum EntityType {
   API_SERVICE = 'apiService',
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
-}
-
-export enum AssetsType {
-  TABLE = 'table',
-  TOPIC = 'topic',
-  DASHBOARD = 'dashboard',
-  PIPELINE = 'pipeline',
-  MLMODEL = 'mlmodel',
-  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
-  STORED_PROCEDURE = 'storedProcedure',
+  METRIC = 'metric',
 }
 
 export enum EntityLineageDirection {
@@ -164,6 +155,7 @@ export enum TabSpecificField {
   METRIC_TYPE = 'metricType',
   CUSTOM_PROPERTIES = 'customProperties',
   LOCATION = 'location',
+  RELATED_METRICS = 'relatedMetrics',
 }
 
 export enum FqnPart {
@@ -210,6 +202,7 @@ export enum EntityTabs {
   CODE = 'code',
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
+  OVERVIEW = 'overview',
 }
 
 export enum EntityAction {

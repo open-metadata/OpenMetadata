@@ -42,6 +42,9 @@ from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
 )
 from metadata.generated.schema.entity.services.metadataService import MetadataConnection
+from metadata.generated.schema.metadataIngestion.apiServiceMetadataPipeline import (
+    ApiServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
 )
@@ -131,6 +134,10 @@ class TestWorkflowParse(TestCase):
         source_config_type = "DashboardMetadata"
         connection = get_source_config_class(source_config_type)
         self.assertEqual(connection, DashboardServiceMetadataPipeline)
+
+        source_config_type = "ApiMetadata"
+        connection = get_source_config_class(source_config_type)
+        self.assertEqual(connection, ApiServiceMetadataPipeline)
 
     def test_parsing_ok(self):
         """
@@ -313,6 +320,68 @@ class TestWorkflowParse(TestCase):
 
         self.assertIn(
             "We encountered an error parsing the configuration of your PipelineServiceMetadataPipeline.\nYou might need to review your config based on the original cause of this failure:\n\t - Extra parameter 'random'",
+            str(err.exception),
+        )
+
+    def test_parsing_matillion_pipeline(self):
+        """
+        Test Matillion JSON Config parsing OK
+        """
+
+        config_dict = {
+            "source": {
+                "type": "Matillion",
+                "serviceName": "local_Matillion_123",
+                "serviceConnection": {
+                    "config": {
+                        "type": "Matillion",
+                        "connection": {
+                            "type": "MatillionETL",
+                            "hostPort": "hostport",
+                            "username": "username",
+                            "password": "password",
+                            "sslConfig": {
+                                "caCertificate": "-----BEGIN CERTIFICATE-----\nsample certificate\n-----END CERTIFICATE-----\n"
+                            },
+                        },
+                    }
+                },
+                "sourceConfig": {
+                    "config": {"type": "PipelineMetadata", "includeLineage": True}
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "loggerLevel": "DEBUG",
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {
+                        "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+                    },
+                },
+            },
+        }
+        self.assertTrue(parse_workflow_config_gracefully(config_dict))
+
+        del config_dict["source"]["serviceConnection"]["config"]["connection"][
+            "sslConfig"
+        ]
+        self.assertTrue(parse_workflow_config_gracefully(config_dict))
+        del config_dict["source"]["serviceConnection"]["config"]["connection"][
+            "username"
+        ]
+        del config_dict["source"]["serviceConnection"]["config"]["connection"][
+            "hostPort"
+        ]
+        del config_dict["source"]["serviceConnection"]["config"]["connection"][
+            "password"
+        ]
+        with self.assertRaises(ParsingConfigurationError) as err:
+            parse_workflow_config_gracefully(config_dict)
+
+        self.assertIn(
+            "We encountered an error parsing the configuration of your MatillionConnection.\nYou might need to review your config based on the original cause of this failure:\n\t - Missing parameter in ('connection', 'hostPort')\n\t - Missing parameter in ('connection', 'username')\n\t - Missing parameter in ('connection', 'password')",
             str(err.exception),
         )
 

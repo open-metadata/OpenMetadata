@@ -20,7 +20,7 @@ setup.use({
 });
 
 setup.describe.configure({
-  timeout: process.env.PLAYWRIGHT_IS_OSS ? 150000 : 3600000,
+  timeout: process.env.PLAYWRIGHT_IS_OSS ? 150000 : 5600000,
 });
 
 setup(
@@ -33,17 +33,51 @@ setup(
 
     await table.create(apiContext);
 
-    apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id ?? ''}`, {
+    await apiContext.patch(
+      `/api/v1/tables/${table.entityResponseData?.id ?? ''}`,
+      {
+        data: [
+          {
+            op: 'add',
+            path: '/tags/0',
+            value: {
+              name: 'Tier2',
+              tagFQN: 'Tier.Tier2',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    await apiContext.patch(`/api/v1/apps/trigger/DataInsightsApplication`, {
       data: [
         {
-          op: 'add',
-          path: '/tags/0',
-          value: {
-            name: 'Tier2',
-            tagFQN: 'Tier.Tier2',
-            labelType: 'Manual',
-            state: 'Confirmed',
-          },
+          op: 'remove',
+          path: '/appConfiguration/backfillConfiguration/startDate',
+        },
+        {
+          op: 'remove',
+          path: '/appConfiguration/backfillConfiguration/endDate',
+        },
+        {
+          op: 'replace',
+          path: '/batchSize',
+          value: 1000,
+        },
+        {
+          op: 'replace',
+          path: '/recreateDataAssetsIndex',
+          value: false,
+        },
+        {
+          op: 'replace',
+          path: '/backfillConfiguration/enabled',
+          value: false,
         },
       ],
       headers: {

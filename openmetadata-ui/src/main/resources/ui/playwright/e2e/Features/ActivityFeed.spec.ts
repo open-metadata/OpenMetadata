@@ -11,20 +11,33 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
+import {
+  PolicyClass,
+  PolicyRulesType,
+} from '../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../support/access-control/RolesClass';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
+  addMentionCommentInFeed,
   checkDescriptionInEditModal,
   deleteFeedComments,
+  FIRST_FEED_SELECTOR,
+  REACTION_EMOJIS,
+  reactOnFeed,
 } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
   descriptionBox,
   redirectToHomePage,
+  removeLandingBanner,
   toastNotification,
-  visitUserProfilePage,
+  uuid,
+  visitOwnProfilePage,
 } from '../../utils/common';
-import { updateDescription } from '../../utils/entity';
+import { addOwner, updateDescription } from '../../utils/entity';
 import { clickOnLogo } from '../../utils/sidebar';
 import {
   checkTaskCount,
@@ -38,6 +51,7 @@ import { performUserLogin } from '../../utils/user';
 const entity = new TableClass();
 const entity2 = new TableClass();
 const entity3 = new TableClass();
+const entity4 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
 const adminUser = new UserClass();
@@ -61,7 +75,9 @@ test.describe('Activity feed', () => {
     await entity.create(apiContext);
     await entity2.create(apiContext);
     await entity3.create(apiContext);
+    await entity4.create(apiContext);
     await user1.create(apiContext);
+    await user2.create(apiContext);
 
     await afterAction();
   });
@@ -71,10 +87,57 @@ test.describe('Activity feed', () => {
     await entity.delete(apiContext);
     await entity2.delete(apiContext);
     await entity3.delete(apiContext);
+    await entity4.delete(apiContext);
     await user1.delete(apiContext);
+    await user2.delete(apiContext);
     await adminUser.delete(apiContext);
 
     await afterAction();
+  });
+
+  test('Feed widget should be visible', async ({ page }) => {
+    await removeLandingBanner(page);
+    // Locate the feed widget
+    const feedWidget = page.locator('[data-testid="activity-feed-widget"]');
+
+    // Check if the feed widget is visible
+    await expect(feedWidget).toBeVisible();
+
+    // Check if the feed widget contains specific text
+    await expect(feedWidget).toContainText('All');
+    await expect(feedWidget).toContainText('@Mentions');
+    await expect(feedWidget).toContainText('Tasks');
+  });
+
+  test('Emoji reaction on feed should be working fine', async ({ page }) => {
+    await removeLandingBanner(page);
+
+    await test.step('Add Emoji reaction', async () => {
+      // Assign reaction for latest feed
+      await reactOnFeed(page);
+
+      // Verify if reaction is working or not
+      for (const emoji of REACTION_EMOJIS) {
+        await expect(
+          page.locator(
+            '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child [data-testid="feed-reaction-container"]'
+          )
+        ).toContainText(emoji);
+      }
+    });
+
+    await test.step('Remove Emoji reaction from feed', async () => {
+      // Remove reaction for latest feed
+      await reactOnFeed(page);
+
+      // Verify if reaction is removed or not
+      const feedReactionContainer = page
+        .locator('[data-testid="message-container"]')
+        .nth(1)
+        .locator('[data-testid="feed-reaction-container"]');
+
+      await expect(feedReactionContainer).toHaveCount(1);
+    });
   });
 
   test('Assigned task should appear to task tab', async ({ page }) => {
@@ -156,7 +219,7 @@ test.describe('Activity feed', () => {
   }) => {
     await redirectToHomePage(page);
 
-    await visitUserProfilePage(page);
+    await visitOwnProfilePage(page);
 
     const secondFeedConversation = page
       .locator('#center-container [data-testid="message-container"]')
@@ -245,22 +308,22 @@ test.describe('Activity feed', () => {
 
   test('Update Description Task on Columns', async ({ page }) => {
     const firstTaskValue: TaskDetails = {
-      term: entity.entity.name,
+      term: entity4.entity.name,
       assignee: user1.responseData.name,
       description: 'Column Description 1',
-      columnName: entity.entity.columns[0].name,
-      oldDescription: entity.entity.columns[0].description,
+      columnName: entity4.entity.columns[0].name,
+      oldDescription: entity4.entity.columns[0].description,
     };
     const secondTaskValue: TaskDetails = {
       ...firstTaskValue,
       description: 'Column Description 2',
-      columnName: entity.entity.columns[1].name,
-      oldDescription: entity.entity.columns[1].description,
+      columnName: entity4.entity.columns[1].name,
+      oldDescription: entity4.entity.columns[1].description,
     };
 
     await redirectToHomePage(page);
 
-    await entity.visitEntityPage(page);
+    await entity4.visitEntityPage(page);
 
     await page
       .getByRole('cell', { name: 'The ID of the store. This' })
@@ -370,7 +433,7 @@ test.describe('Activity feed', () => {
     await checkTaskCount(page, 0, 1);
   });
 
-  test('Open and Closed Task tab', async ({ page }) => {
+  test('Open and Closed Task Tab', async ({ page }) => {
     const value: TaskDetails = {
       term: entity3.entity.name,
       assignee: user1.responseData.name,
@@ -439,18 +502,127 @@ test.describe('Activity feed', () => {
       'Closing the task with comment'
     );
   });
+
+  test('Assignee field should not be disabled for owned entity tasks', async ({
+    page,
+  }) => {
+    const value: TaskDetails = {
+      term: entity4.entity.name,
+      assignee: user1.responseData.name,
+    };
+    await redirectToHomePage(page);
+
+    await entity4.visitEntityPage(page);
+
+    await addOwner({
+      page,
+      owner: user2.responseData.displayName,
+      type: 'Users',
+      endpoint: EntityTypeEndpoint.Table,
+      dataTestId: 'data-assets-header',
+    });
+
+    await page.getByTestId('request-description').click();
+
+    // create description task
+    await createDescriptionTask(page, value);
+  });
+
+  test('Mention should work for the feed reply', async ({ page }) => {
+    await addMentionCommentInFeed(page, adminUser.responseData.name);
+
+    // Close drawer
+    await page.locator('[data-testid="closeDrawer"]').click();
+
+    // Get the feed text
+    const feedText = await page
+      .locator(`${FIRST_FEED_SELECTOR} [data-testid="headerText"]`)
+      .innerText();
+
+    // Click on @Mentions tab
+    const fetchMentionsFeedResponse = page.waitForResponse(
+      '/api/v1/feed?filterType=MENTIONS&userId=*'
+    );
+    await page
+      .locator('[data-testid="activity-feed-widget"]')
+      .locator('text=@Mentions')
+      .click();
+
+    await fetchMentionsFeedResponse;
+
+    const mentionedText = await page
+      .locator(`${FIRST_FEED_SELECTOR} [data-testid="headerText"]`)
+      .innerText();
+
+    expect(mentionedText).toContain(feedText);
+  });
+
+  test('Mention should work for the feed reply in case of users having dot in their name', async ({
+    page,
+  }) => {
+    await addMentionCommentInFeed(page, 'aaron.warren5');
+
+    await expect(
+      page.locator(
+        `#feed-panel [data-testid="message-container"] [data-testid="feed-replies"] [data-testid="viewer-container"] [data-testid="markdown-parser"]`
+      )
+    ).toContainText('Can you resolve this thread for me? @aaron.warren5');
+
+    // Close drawer
+    await page.locator('[data-testid="closeDrawer"]').click();
+
+    expect(
+      page.locator(`${FIRST_FEED_SELECTOR} [data-testid="reply-count"]`)
+    ).toContainText('01 Reply');
+  });
 });
 
-base.describe('Activity feed with Data Steward User', () => {
+base.describe('Activity feed with Data Consumer User', () => {
   base.slow(true);
+
+  const id = uuid();
+  const rules: PolicyRulesType[] = [
+    {
+      name: 'viewRuleAllowed',
+      resources: ['All'],
+      operations: ['ViewAll'],
+      effect: 'allow',
+    },
+    {
+      effect: 'deny',
+      name: 'editNotAllowed',
+      operations: ['EditAll'],
+      resources: ['All'],
+    },
+  ];
+  const viewAllUser = new UserClass();
+  const viewAllPolicy = new PolicyClass();
+  const viewAllRoles = new RolesClass();
+  let viewAllTeam: TeamClass;
 
   base.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
     await entity.create(apiContext);
     await entity2.create(apiContext);
+    await entity3.create(apiContext);
     await user1.create(apiContext);
     await user2.create(apiContext);
+    await viewAllUser.create(apiContext);
+    await viewAllPolicy.create(apiContext, rules);
+    await viewAllRoles.create(apiContext, [viewAllPolicy.responseData.name]);
+    viewAllTeam = new TeamClass({
+      name: `PW%team-${id}`,
+      displayName: `PW Team ${id}`,
+      description: 'playwright team description',
+      teamType: 'Group',
+      users: [viewAllUser.responseData.id],
+      defaultRoles: viewAllRoles.responseData.id
+        ? [viewAllRoles.responseData.id]
+        : [],
+    });
+    await viewAllTeam.create(apiContext);
+
     await afterAction();
   });
 
@@ -458,8 +630,13 @@ base.describe('Activity feed with Data Steward User', () => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await entity.delete(apiContext);
     await entity2.delete(apiContext);
+    await entity3.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
+    await viewAllUser.delete(apiContext);
+    await viewAllPolicy.delete(apiContext);
+    await viewAllRoles.delete(apiContext);
+    await viewAllTeam.delete(apiContext);
 
     await afterAction();
   });
@@ -749,4 +926,53 @@ base.describe('Activity feed with Data Steward User', () => {
       }
     );
   });
+
+  base(
+    'Accepting task should throw error for not having edit permission',
+    async ({ browser }) => {
+      const { page: page1, afterAction: afterActionUser1 } =
+        await performUserLogin(browser, user1);
+      const { page: page2, afterAction: afterActionUser2 } =
+        await performUserLogin(browser, viewAllUser);
+
+      const value: TaskDetails = {
+        term: entity3.entity.name,
+        assignee: viewAllUser.responseData.name,
+      };
+
+      await base.step('Create and Assign Task to user 3', async () => {
+        await redirectToHomePage(page1);
+        await entity3.visitEntityPage(page1);
+
+        await page1.getByTestId('request-description').click();
+
+        await createDescriptionTask(page1, value);
+
+        await afterActionUser1();
+      });
+
+      await base.step(
+        'Accept Task By user 2 should throw error for since it has only viewAll permission',
+        async () => {
+          await redirectToHomePage(page2);
+
+          await entity3.visitEntityPage(page2);
+
+          await page2.getByTestId('activity_feed').click();
+
+          await page2.getByRole('menuitem', { name: 'Tasks' }).click();
+
+          await page2.getByText('Accept Suggestion').click();
+
+          await toastNotification(
+            page2,
+            // eslint-disable-next-line max-len
+            `Principal: CatalogPrincipal{name='${viewAllUser.responseData.name}'} operation EditDescription denied by role ${viewAllRoles.responseData.name}, policy ${viewAllPolicy.responseData.name}, rule editNotAllowed`
+          );
+
+          await afterActionUser2();
+        }
+      );
+    }
+  );
 });

@@ -395,6 +395,7 @@ public class TableRepository extends EntityRepository<Table> {
   public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);
+    validateProfilerTimestamps(createTableProfile);
     daoCollection
         .profilerDataTimeSeriesDao()
         .insert(
@@ -446,6 +447,26 @@ public class TableRepository extends EntityRepository<Table> {
 
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withProfile(createTableProfile.getTableProfile());
+  }
+
+  private void validateProfilerTimestamps(CreateTableProfile createTableProfile) {
+    if (createTableProfile.getTableProfile() != null) {
+      RestUtil.validateTimestampMilliseconds(createTableProfile.getTableProfile().getTimestamp());
+    }
+    if (createTableProfile.getColumnProfile() != null) {
+      createTableProfile
+          .getColumnProfile()
+          .forEach(
+              columnProfile ->
+                  RestUtil.validateTimestampMilliseconds(columnProfile.getTimestamp()));
+    }
+    if (createTableProfile.getSystemProfile() != null) {
+      createTableProfile
+          .getSystemProfile()
+          .forEach(
+              systemProfile ->
+                  RestUtil.validateTimestampMilliseconds(systemProfile.getTimestamp()));
+    }
   }
 
   public void deleteTableProfile(String fqn, String entityType, Long timestamp) {
@@ -598,7 +619,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
-    Table table = find(tableId, NON_DELETED);
+    Table table = get(null, tableId, getFields(FIELD_OWNERS), NON_DELETED, false);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -618,7 +639,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.withDataModel(dataModel);
 
     // Carry forward the table owners from the model to table entity, if empty
-    if (table.getOwners() == null) {
+    if (nullOrEmpty(table.getOwners())) {
       storeOwners(table, dataModel.getOwners());
     }
 
