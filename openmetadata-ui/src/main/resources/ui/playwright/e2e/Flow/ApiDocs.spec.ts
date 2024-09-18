@@ -25,13 +25,14 @@ test.describe('API docs should work properly', () => {
     await page.locator('[data-testid="help-icon"]').click();
     await page.getByRole('link', { name: 'API', exact: true }).click();
 
+    await page.getByTestId('loader').waitFor({ state: 'detached' });
+
     await expect(
       page.getByRole('link', {
         name: 'openmetadata-dev@googlegroups.com',
         exact: true,
       })
     ).toBeVisible();
-
     await expect(
       page.getByRole('link', {
         name: 'https://open-metadata.org',
