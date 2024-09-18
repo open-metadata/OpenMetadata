@@ -41,7 +41,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
@@ -57,7 +57,6 @@ import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
@@ -115,7 +114,7 @@ const NavBar = ({
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
-  const location = useCustomLocation();
+  const location = useLocation();
   const history = useHistory();
   const {
     domainOptions,
