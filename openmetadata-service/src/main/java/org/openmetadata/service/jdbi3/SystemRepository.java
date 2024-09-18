@@ -18,6 +18,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.settings.Settings;
@@ -35,6 +36,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -432,11 +435,13 @@ public class SystemRepository {
 
   private StepValidation getJWKsValidation(
       OpenMetadataApplicationConfig applicationConfig, JwtFilter jwtFilter) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(applicationConfig).build();
+    OpenMetadataJWTClientConfig realJWTConfig =
+        secretsManager.decryptJWTConfig(openMetadataServerConnection.getSecurityConfig());
     try {
-      jwtFilter.validateJwtAndGetClaims(
-          openMetadataServerConnection.getSecurityConfig().getJwtToken());
+      jwtFilter.validateJwtAndGetClaims(realJWTConfig.getJwtToken());
       return new StepValidation()
           .withDescription(ValidationStepDescription.JWT_TOKEN.key)
           .withPassed(Boolean.TRUE)

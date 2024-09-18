@@ -180,6 +180,20 @@ public abstract class SecretsManager {
     return null;
   }
 
+  public OpenMetadataJWTClientConfig decryptJWTConfig(OpenMetadataJWTClientConfig jwtConfig) {
+    if (jwtConfig != null) {
+      try {
+        OpenMetadataJWTClientConfig decrypted =
+            (OpenMetadataJWTClientConfig) decryptPasswordFields(jwtConfig);
+        return (OpenMetadataJWTClientConfig) getSecretFields(decrypted);
+      } catch (Exception e) {
+        throw new SecretsManagerException(
+            Response.Status.BAD_REQUEST, "Failed to decrypt JWT Client Config instance.");
+      }
+    }
+    return null;
+  }
+
   public void encryptIngestionPipeline(IngestionPipeline ingestionPipeline) {
     OpenMetadataConnection openMetadataConnection =
         encryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection(), true);
