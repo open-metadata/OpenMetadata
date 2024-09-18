@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime
 
 import pytest
 from pydantic import BaseModel
@@ -67,6 +68,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=0,
                     passedRows=599,
@@ -85,6 +87,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     failedRows=321,
                     passedRows=278,
@@ -99,6 +102,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     failedRows=321,
                     passedRows=278,
@@ -114,6 +118,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=321,
                 ),
@@ -128,6 +133,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     failedRows=321,
                 ),
@@ -146,6 +152,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                 ),
             ),
@@ -158,6 +165,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     testResultValue=[
                         TestResultValue(name="removedColumns", value="1"),
@@ -179,6 +187,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                 ),
             ),
@@ -208,6 +217,7 @@ class TestParameters(BaseModel):
                 ),
                 "MYSQL_SERVICE.default.test.customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                 ),
             ),
@@ -220,6 +230,7 @@ class TestParameters(BaseModel):
                 ),
                 "MYSQL_SERVICE.default.test.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                 ),
             ),
@@ -290,6 +301,9 @@ def test_happy_paths(
         fields=["*"],
     )
     assert "ERROR: Unexpected error" not in test_case_entity.testCaseResult.result
+    parameters.expected.timestamp = (
+        test_case_entity.testCaseResult.timestamp
+    )  # timestamp is not deterministic
     assert_equal_pydantic_objects(parameters.expected, test_case_entity.testCaseResult)
 
 
@@ -313,6 +327,7 @@ def test_happy_paths(
                 ],
             ),
             TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Aborted,
                 result="Unsupported dialect in param table2.serviceUrl: mongodb",
             ),
@@ -331,6 +346,7 @@ def test_happy_paths(
                 ],
             ),
             TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Failed,
                 result="Tables have 1 different columns:"
                 "\n  Changed columns:"
@@ -405,6 +421,9 @@ def test_error_paths(
     test_case_entity: TestCase = metadata.get_or_create_test_case(
         f"{table1.fullyQualifiedName.root}.{parameters.name}"
     )
+    expected.timestamp = (
+        test_case_entity.testCaseResult.timestamp
+    )  # timestamp is not deterministic
     assert_equal_pydantic_objects(expected, test_case_entity.testCaseResult)
 
 
