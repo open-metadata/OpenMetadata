@@ -16,15 +16,14 @@ from copy import deepcopy
 
 import pytest
 
+from ingestion.src._openmetadata_testutils.containers import (
+    MinioContainerConfigs,
+    get_minio_container,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
-
-from ingestion.src._openmetadata_testutils.containers import (
-    get_minio_container,
-    MinioContainerConfigs,
-)
 
 BUCKET_NAME = "my-bucket"
 

@@ -161,7 +161,8 @@ integration_test_envs += [
             if os.path.isdir(os.path.join(integration_test_dir, path))
             and os.path.join(integration_test_dir, path)
             not in chain(
-                *["tests/integration/sources"], *[env.paths for env in integration_test_envs]
+                *["tests/integration/sources"],
+                *[env.paths for env in integration_test_envs],
             )
             and "__pycache__" not in path
         ],
