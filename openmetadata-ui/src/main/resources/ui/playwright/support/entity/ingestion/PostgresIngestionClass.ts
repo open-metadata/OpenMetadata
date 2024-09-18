@@ -131,6 +131,13 @@ class PostgresIngestionClass extends ServiceBaseClass {
           )
           .then((res) => res.json());
 
+        
+        // Re-deploy before running the ingestion
+        await page.click(
+          `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
+        );
+        await page.getByTestId('re-deploy-button').click();
+
         // need manual wait to settle down the deployed pipeline, before triggering the pipeline
         await page.waitForTimeout(2000);
         await page.click(
