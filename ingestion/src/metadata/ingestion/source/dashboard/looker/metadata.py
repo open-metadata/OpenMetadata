@@ -28,6 +28,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Set, Type, Union, c
 
 import giturlparse
 import lkml
+from liquid import Template
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import (
@@ -450,11 +451,11 @@ class LookerSource(DashboardServiceSource):
                                 view.name, "Data model (View) filtered out."
                             )
                             continue
-
+                        view_name = view.from_ if view.from_ else view.name
                         yield from self._process_view(
-                            view_name=ViewName(view.name), explore=model
+                            view_name=ViewName(view_name), explore=model
                         )
-                    if len(model.joins) == 0 and model.sql_table_name:
+                    if model.view_name:
                         yield from self._process_view(
                             view_name=ViewName(model.view_name), explore=model
                         )
@@ -570,7 +571,12 @@ class LookerSource(DashboardServiceSource):
             db_service_names = self.get_db_service_names()
 
             if view.sql_table_name:
-                source_table_name = self._clean_table_name(view.sql_table_name)
+                try:
+                    template = Template(view.sql_table_name)
+                    sql_table_name = template.render()
+                except Exception:
+                    sql_table_name = view.sql_table_name
+                source_table_name = self._clean_table_name(sql_table_name)
 
                 # View to the source is only there if we are informing the dbServiceNames
                 for db_service_name in db_service_names or []:
