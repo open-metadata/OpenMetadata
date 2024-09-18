@@ -36,6 +36,11 @@ const mockCustomBarChartProp: CustomBarChartProps = {
   },
   name: 'testChart',
 };
+jest.mock('../../../utils/DataInsightUtils', () => {
+  return jest.fn().mockImplementation(() => {
+    return <div>CustomTooltip</div>;
+  });
+});
 
 describe('CustomBarChart component test', () => {
   it('Component should render', async () => {

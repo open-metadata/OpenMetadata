@@ -48,7 +48,11 @@ import {
   axisTickFormatter,
   tooltipFormatter,
 } from '../../../../../utils/ChartUtils';
-import { getRandomHexColor } from '../../../../../utils/DataInsightUtils';
+import {
+  CustomTooltip,
+  getRandomHexColor,
+} from '../../../../../utils/DataInsightUtils';
+import { formatDateTime } from '../../../../../utils/date-time/DateTimeUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -260,9 +264,16 @@ const CustomMetricGraphs = ({
                           tickFormatter={(props) => axisTickFormatter(props)}
                           type="number"
                         />
+
                         <Tooltip
-                          formatter={(value: number | string) =>
-                            tooltipFormatter(value)
+                          content={
+                            <CustomTooltip
+                              dateTimeFormatter={formatDateTime}
+                              timeStampKey="timestamp"
+                              valueFormatter={(value) =>
+                                tooltipFormatter(value)
+                              }
+                            />
                           }
                         />
 

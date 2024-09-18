@@ -30,6 +30,8 @@ import {
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
+import { CustomTooltip } from '../../../utils/DataInsightUtils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
 
@@ -77,8 +79,12 @@ const CustomBarChart = ({
           tickFormatter={(props) => axisTickFormatter(props, tickFormatter)}
         />
         <Tooltip
-          formatter={(value: number | string) =>
-            tooltipFormatter(value, tickFormatter)
+          content={
+            <CustomTooltip
+              dateTimeFormatter={formatDateTime}
+              timeStampKey="timestamp"
+              valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
+            />
           }
         />
         {information.map((info) => (
