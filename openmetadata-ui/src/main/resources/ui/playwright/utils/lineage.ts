@@ -116,9 +116,7 @@ export const connectEdgeBetweenNodes = async (
   const toNodeName = get(toNode, 'entityResponseData.name');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const dragElement = await page.locator(
-    `[data-testid="${type}-draggable-icon"]`
-  );
+  const dragElement = page.locator(`[data-testid="${type}-draggable-icon"]`);
 
   await dragElement.scrollIntoViewIfNeeded();
   const dragBox: BoundingBox = (await dragElement.boundingBox()) as BoundingBox;
