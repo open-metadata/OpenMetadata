@@ -935,7 +935,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     prepareInternal(updated, true);
     // Validate and populate owners
-    List<EntityReference> validateOwners = validateAndGetOwners(updated.getOwners());
+    List<EntityReference> validateOwners = getValidatedOwners(updated.getOwners());
     updated.setOwners(validateOwners);
 
     restorePatchAttributes(original, updated);
@@ -970,7 +970,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     prepareInternal(updated, true);
     // Validate and populate owners
-    List<EntityReference> validateOwners = validateAndGetOwners(updated.getOwners());
+    List<EntityReference> validateOwners = getValidatedOwners(updated.getOwners());
     updated.setOwners(validateOwners);
     restorePatchAttributes(original, updated);
 
@@ -1977,7 +1977,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  protected List<EntityReference> validateAndGetOwners(List<EntityReference> owners) {
+  protected List<EntityReference> getValidatedOwners(List<EntityReference> owners) {
     if (nullOrEmpty(owners)) {
       return owners;
     }
