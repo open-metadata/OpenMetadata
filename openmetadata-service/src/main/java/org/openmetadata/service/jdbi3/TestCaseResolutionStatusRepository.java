@@ -396,7 +396,7 @@ public class TestCaseResolutionStatusRepository
     }
     return condition;
   }
-  
+
   protected static UUID getOrCreateIncident(TestCase testCase, String updatedBy) {
     CollectionDAO daoCollection = Entity.getCollectionDAO();
     TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
