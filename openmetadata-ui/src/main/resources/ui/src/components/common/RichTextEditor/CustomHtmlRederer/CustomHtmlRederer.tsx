@@ -260,6 +260,21 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
       { type: 'closeTag', tagName: 'div', outerNewLine: true },
     ];
   },
+
+  htmlBlock: {
+    iframe(node) {
+      return [
+        {
+          type: 'openTag',
+          tagName: 'iframe',
+          outerNewLine: true,
+          attributes: node.attrs,
+        },
+        { type: 'html', content: node.childrenHTML! },
+        { type: 'closeTag', tagName: 'iframe', outerNewLine: true },
+      ];
+    },
+  },
 };
 
 export const replaceLatex = (content: string) => {
