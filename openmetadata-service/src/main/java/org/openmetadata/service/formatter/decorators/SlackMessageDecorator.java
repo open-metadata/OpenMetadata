@@ -24,12 +24,15 @@ import com.slack.api.model.block.composition.PlainTextObject;
 import com.slack.api.model.block.composition.TextObject;
 import com.slack.api.model.block.element.ImageElement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -187,8 +190,16 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   private List<LayoutBlock> createMessage(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
 
-    Set<String> entityList = Entity.getEntityList();
-    System.out.println(entityList);
+    EntityInterface entityInterface = getEntity(event);
+    if (entityInterface instanceof IngestionPipeline) {
+      return createIngestionPipelineMessage(publisherName, event, outgoingMessage);
+    } else {
+      return createDefaultMessage(publisherName, event, outgoingMessage);
+    }
+  }
+
+  private List<LayoutBlock> createDefaultMessage(
+      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
     List<LayoutBlock> blocks = new ArrayList<>();
 
     // Header
@@ -251,6 +262,116 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                         BlockCompositions.markdownText("Change Event provided by OpenMetadata")))));
 
     return blocks;
+  }
+
+  private List<LayoutBlock> createIngestionPipelineMessage(
+      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+    List<LayoutBlock> blocks = new ArrayList<>();
+
+    IngestionPipeline entityInterface = (IngestionPipeline) getEntity(event);
+
+    // Header
+    blocks.add(
+        Blocks.header(
+            header -> header.text(BlockCompositions.plainText("Change Event Details :memo:"))));
+
+    // Info about the event
+    List<TextObject> first_field = new ArrayList<>();
+    first_field.add(BlockCompositions.markdownText("*Event Type:*  " + event.getEventType()));
+    first_field.add(BlockCompositions.markdownText("*Updated By:*  " + event.getUserName()));
+    first_field.add(BlockCompositions.markdownText("*Entity Type:*  " + event.getEntityType()));
+    first_field.add(BlockCompositions.markdownText("*Publisher:*  " + publisherName));
+
+    // Split fields into multiple sections to avoid block limits
+    for (int i = 0; i < first_field.size(); i += 10) {
+      List<TextObject> sublist = first_field.subList(i, Math.min(i + 10, first_field.size()));
+      blocks.add(Blocks.section(section -> section.fields(sublist)));
+    }
+
+    // Divider
+    blocks.add(Blocks.divider());
+
+    List<TextObject> pipelineFields =
+        Arrays.asList(
+            BlockCompositions.markdownText("*Pipeline ID*\n" + entityInterface.getId()),
+            BlockCompositions.markdownText("*Pipeline Name*\n" + entityInterface.getDisplayName()),
+            BlockCompositions.markdownText("*Pipeline Type*\n" + entityInterface.getPipelineType()),
+            BlockCompositions.markdownText(
+                "*Status*\n" + buildPipelineStatusMessage(entityInterface.getPipelineStatuses())),
+            BlockCompositions.markdownText("*Provider*\n" + entityInterface.getProvider()));
+    blocks.add(Blocks.section(section -> section.fields(pipelineFields)));
+
+    blocks.add(Blocks.divider());
+
+    String fqnForChangeEventEntity = getFQNForChangeEventEntity(event);
+
+    blocks.add(
+        Blocks.section(
+            section ->
+                section.text(
+                    BlockCompositions.markdownText("*FQN: * " + fqnForChangeEventEntity))));
+
+    // divider
+    blocks.add(Blocks.divider());
+
+    // desc about the event
+    List<String> thread_messages = outgoingMessage.getMessages();
+    thread_messages.forEach(
+        (message) -> {
+          blocks.add(
+              Blocks.section(
+                  section -> section.text(BlockCompositions.markdownText("> " + message))));
+        });
+
+    // Divider
+    blocks.add(Blocks.divider());
+
+    // View event link
+    String entityUrl = buildClickableEntityUrl(outgoingMessage.getEntityUrl());
+
+    blocks.add(Blocks.section(section -> section.text(BlockCompositions.markdownText(entityUrl))));
+
+    // Context Block
+    blocks.add(
+        Blocks.context(
+            context ->
+                context.elements(
+                    List.of(
+                        ImageElement.builder()
+                            .imageUrl("https://i.postimg.cc/0jYLNmM1/image.png")
+                            .altText("oss icon")
+                            .build(),
+                        BlockCompositions.markdownText("Change Event provided by OpenMetadata")))));
+
+    return blocks;
+  }
+
+  private String buildPipelineStatusMessage(PipelineStatus pipelineStatus) {
+    StringBuilder statusString = new StringBuilder();
+
+    PipelineStatusType pipelineState = pipelineStatus.getPipelineState();
+    switch (pipelineState) {
+      case QUEUED:
+        statusString.append("Queued :hourglass_flowing_sand: \n");
+        break;
+      case RUNNING:
+        statusString.append("Running :gear: \n");
+        break;
+      case SUCCESS:
+        statusString.append("Success :white_check_mark: \n");
+        break;
+      case PARTIAL_SUCCESS:
+        statusString.append("Partial Success :warning: \n");
+        break;
+      case FAILED:
+        statusString.append("Failed :x:\n");
+        break;
+      default:
+        statusString.append("Unknown :grey_question:\n");
+        break;
+    }
+
+    return statusString.toString();
   }
 
   private String getFQNForChangeEventEntity(ChangeEvent event) {
