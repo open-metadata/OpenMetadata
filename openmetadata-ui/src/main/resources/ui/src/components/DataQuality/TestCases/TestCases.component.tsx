@@ -49,6 +49,7 @@ import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
   TIER_CATEGORY,
 } from '../../../constants/constants';
 import {
@@ -211,6 +212,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       setIsOptionsLoading(true);
       const { data } = await getTags({
         parent: 'Tier',
+        limit: PAGE_SIZE_LARGE,
       });
 
       const options = data.map((hit) => {
@@ -581,6 +583,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 name="tier">
                 <Select
                   allowClear
+                  showSearch
                   data-testid="tier-select-filter"
                   options={tierOptions}
                   placeholder={t('label.tier')}
