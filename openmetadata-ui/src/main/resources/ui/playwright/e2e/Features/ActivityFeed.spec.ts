@@ -159,7 +159,9 @@ test.describe('Activity feed', () => {
 
     await page.getByText('Accept Suggestion').click();
 
+    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, /Task resolved successfully/);
+    await waitForCountFetch;
 
     await checkTaskCount(page, 0, 2);
   });
@@ -316,7 +318,9 @@ test.describe('Activity feed', () => {
 
     await page.getByText('Accept Suggestion').click();
 
+    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, /Task resolved successfully/);
+    await waitForCountFetch;
 
     await checkTaskCount(page, 0, 2);
   });
@@ -378,7 +382,9 @@ test.describe('Activity feed', () => {
     await page.getByRole('menuitem', { name: 'close' }).click();
     await commentWithCloseTask;
 
+    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, 'Task closed successfully.');
+    await waitForCountFetch;
 
     await checkTaskCount(page, 0, 1);
   });
@@ -410,9 +416,11 @@ test.describe('Activity feed', () => {
     await page.getByTestId('request-entity-tags').click();
 
     // create tag task
+    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
     const openTaskAfterTagResponse = page.waitForResponse(TASK_OPEN_FETCH_LINK);
     await createTagTask(page, { ...value, tag: 'PII.None' });
     await openTaskAfterTagResponse;
+    await waitForCountFetch;
 
     // open task count after description
     await checkTaskCount(page, 2, 0);
@@ -432,11 +440,9 @@ test.describe('Activity feed', () => {
     await page.getByRole('menuitem', { name: 'close' }).click();
     await commentWithCloseTask;
 
-    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?*');
-
+    const waitForCountFetch2 = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, 'Task closed successfully.');
-
-    await waitForCountFetch;
+    await waitForCountFetch2;
 
     // open task count after closing one task
     await checkTaskCount(page, 1, 1);
@@ -660,7 +666,9 @@ base.describe('Activity feed with Data Consumer User', () => {
 
       await page2.getByText('Accept Suggestion').click();
 
+      const waitForCountFetch = page2.waitForResponse('/api/v1/feed/count?**');
       await toastNotification(page2, /Task resolved successfully/);
+      await waitForCountFetch;
 
       // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
       //   const openTask = await page2.getByTestId('open-task').textContent();
