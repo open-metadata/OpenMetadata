@@ -781,6 +781,8 @@ test('TestCase filters', async ({ page }) => {
     // Test case filter by Tier
 
     await page.click('#tier');
+    await page.fill('#tier', 'Tier2');
+    await page.waitForLoadState('domcontentloaded');
     const getTestCaseByTier = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*tier=Tier.Tier2*'
     );
