@@ -4411,10 +4411,13 @@ public interface CollectionDAO {
         outerFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
         outerFilter.addQueryParam("assignee", assignee);
 
+        String condition = filter.getCondition();
+        condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+
         return listWithOffset(
             getTimeSeriesTableName(),
             filter.getQueryParams(),
-            filter.getCondition(),
+            condition,
             getPartitionFieldName(),
             limit,
             offset,
@@ -4423,14 +4426,31 @@ public interface CollectionDAO {
             filter.getQueryParams(),
             outerFilter.getCondition());
       }
+      String condition = filter.getCondition();
+      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
       return listWithOffset(
           getTimeSeriesTableName(),
           filter.getQueryParams(),
-          filter.getCondition(),
+          condition,
           limit,
           offset,
           startTs,
           endTs);
+    }
+
+    @Override
+    default int listCount(ListFilter filter, Long startTs, Long endTs, boolean latest) {
+      String condition = filter.getCondition();
+      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      return latest
+          ? listCount(
+              getTimeSeriesTableName(),
+              getPartitionFieldName(),
+              filter.getQueryParams(),
+              condition,
+              startTs,
+              endTs)
+          : listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
     }
   }
 
