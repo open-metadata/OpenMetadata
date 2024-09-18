@@ -70,11 +70,7 @@ import {
 } from '../rest/DataInsightAPI';
 import { axisTickFormatter } from './ChartUtils';
 import { pluralize } from './CommonUtils';
-import {
-  customFormatDateTime,
-  formatDate,
-  formatDateTime,
-} from './date-time/DateTimeUtils';
+import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
 
 export const renderLegend = (
   legendData: LegendProps,
@@ -149,15 +145,13 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
     active,
     payload = [],
     valueFormatter,
-    showFullTimestamp = false,
+    dateTimeFormatter = formatDate,
     isPercentage,
     timeStampKey = 'timestampValue',
   } = props;
 
   if (active && payload && payload.length) {
-    const timestamp = showFullTimestamp
-      ? formatDateTime(payload[0].payload[timeStampKey] || 0)
-      : formatDate(payload[0].payload[timeStampKey] || 0);
+    const timestamp = dateTimeFormatter(payload[0].payload[timeStampKey] || 0);
     const payloadValue = uniqBy(payload, 'dataKey');
 
     return (

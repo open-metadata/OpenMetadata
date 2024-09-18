@@ -31,6 +31,7 @@ import {
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
 import { CustomTooltip } from '../../../utils/DataInsightUtils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
 
@@ -80,7 +81,7 @@ const CustomBarChart = ({
         <Tooltip
           content={
             <CustomTooltip
-              showFullTimestamp
+              dateTimeFormatter={formatDateTime}
               timeStampKey="timestamp"
               valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
             />

@@ -41,7 +41,7 @@ export interface ChartFilter {
 export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
   isPercentage?: boolean;
   isTier?: boolean;
-  showFullTimestamp?: boolean;
+  dateTimeFormatter?: (date?: number) => string;
   valueFormatter?: (value: number | string, key?: string) => string | number;
   timeStampKey?: string;
 }
