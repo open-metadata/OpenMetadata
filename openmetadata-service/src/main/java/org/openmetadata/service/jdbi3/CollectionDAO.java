@@ -176,6 +176,9 @@ public interface CollectionDAO {
   TestCaseResolutionStatusTimeSeriesDAO testCaseResolutionStatusTimeSeriesDao();
 
   @CreateSqlObject
+  TestCaseResultTimeSeriesDAO testCaseResultTimeSeriesDao();
+
+  @CreateSqlObject
   RoleDAO roleDAO();
 
   @CreateSqlObject
@@ -4448,6 +4451,47 @@ public interface CollectionDAO {
               startTs,
               endTs)
           : listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+    }
+  }
+
+  interface TestCaseResultTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "data_quality_data_time_series";
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, :json, :incidentStateId)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, (:json :: jsonb), :incidentStateId)",
+        connectionType = POSTGRES)
+    void insert(
+        @Define("table") String table,
+        @BindFQN("testCaseFQNHash") String testCaseFQNHash,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json,
+        @Bind("incidentStateId") String incidentStateId);
+
+    default void insert(
+        String testCaseFQN,
+        String extension,
+        String jsonSchema,
+        String json,
+        UUID incidentStateId) {
+
+      insert(
+          getTimeSeriesTableName(),
+          testCaseFQN,
+          extension,
+          jsonSchema,
+          json,
+          incidentStateId != null ? incidentStateId.toString() : null);
     }
   }
 
