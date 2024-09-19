@@ -1,6 +1,6 @@
-package org.openmetadata.service.migration.postgres.v154;
+package org.openmetadata.service.migration.mysql.v155;
 
-import static org.openmetadata.service.migration.utils.v154.MigrationUtil.updateUserNameToEmailPrefixForLdapAuthProvider;
+import static org.openmetadata.service.migration.utils.v155.MigrationUtil.updateUserNameToEmailPrefixForLdapAuthProvider;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -16,6 +16,6 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     updateUserNameToEmailPrefixForLdapAuthProvider(
-        handle, collectionDAO, authenticationConfiguration, true);
+        handle, collectionDAO, authenticationConfiguration, false);
   }
 }
