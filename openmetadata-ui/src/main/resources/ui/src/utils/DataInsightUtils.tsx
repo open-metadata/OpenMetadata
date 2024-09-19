@@ -26,6 +26,7 @@ import {
   startCase,
   sumBy,
   toNumber,
+  uniqBy,
 } from 'lodash';
 import moment from 'moment';
 import React from 'react';
@@ -144,19 +145,21 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
     active,
     payload = [],
     valueFormatter,
+    dateTimeFormatter = formatDate,
     isPercentage,
     timeStampKey = 'timestampValue',
   } = props;
 
   if (active && payload && payload.length) {
-    const timestamp = formatDate(payload[0].payload[timeStampKey] || 0);
+    const timestamp = dateTimeFormatter(payload[0].payload[timeStampKey] || 0);
+    const payloadValue = uniqBy(payload, 'dataKey');
 
     return (
       <Card
         className="custom-data-insight-tooltip"
         title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
         <ul className="custom-data-insight-tooltip-container">
-          {payload.map((entry, index) => (
+          {payloadValue.map((entry, index) => (
             <li
               className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
               key={`item-${index}`}>

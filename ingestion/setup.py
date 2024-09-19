@@ -214,7 +214,10 @@ plugins: Dict[str, Set[str]] = {
         "s3fs[boto3]",
         *COMMONS["datalake"],
     },
-    "deltalake": {"delta-spark<=2.3.0", "deltalake~=0.17"},
+    "deltalake": {
+        "delta-spark<=2.3.0",
+        "deltalake~=0.17,<0.20",
+    },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
     "deltalake-storage": {"deltalake~=0.17"},
     "deltalake-spark": {"delta-spark<=2.3.0"},
     "domo": {VERSIONS["pydomo"]},
