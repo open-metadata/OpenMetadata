@@ -32,12 +32,11 @@ def get_connection(connection: SalesforceConnection):
     """
     return Salesforce(
         username=connection.username,
-        password=connection.password.get_secret_value()
-        if connection.password
-        else None,
+        password=connection.password.get_secret_value(),
         security_token=connection.securityToken.get_secret_value()
         if connection.securityToken
-        else None,
+        else "",
+        organizationId=connection.organizationId if connection.organizationId else "",
         domain=connection.salesforceDomain,
         version=connection.salesforceApiVersion,
         **connection.connectionArguments.root if connection.connectionArguments else {},
