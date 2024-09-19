@@ -14,8 +14,11 @@ import json
 import uuid
 
 import pytest
-from _openmetadata_testutils.containers import get_mysql_container, MySqlContainerConfigs
 
+from _openmetadata_testutils.containers import (
+    MySqlContainerConfigs,
+    get_mysql_container,
+)
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
