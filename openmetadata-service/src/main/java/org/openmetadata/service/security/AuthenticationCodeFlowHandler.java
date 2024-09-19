@@ -660,7 +660,7 @@ public class AuthenticationCodeFlowHandler {
     String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
 
-    String redirectUri = (String) request.getSession().getAttribute(REDIRECT_URI_KEY);
+    String redirectUri = (String) request.getSession().getAttribute(SESSION_REDIRECT_URI);
 
     String url =
         String.format(
