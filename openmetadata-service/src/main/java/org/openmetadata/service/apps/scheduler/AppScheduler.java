@@ -271,6 +271,7 @@ public class AppScheduler {
       JobDetail jobDetailScheduled =
           scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
       if (jobDetailScheduled != null) {
+        LOG.debug("Stopping Scheduled Execution for App : {}", application.getName());
         scheduler.interrupt(jobDetailScheduled.getKey());
       }
 
@@ -281,12 +282,11 @@ public class AppScheduler {
                   String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP));
 
       if (jobDetailOnDemand != null) {
+        LOG.debug("Stopping On Demand Execution for App : {}", application.getName());
         scheduler.interrupt(jobDetailOnDemand.getKey());
       }
-    } catch (ObjectAlreadyExistsException ex) {
-      throw new UnhandledServerException("Job is already running, please wait for it to complete.");
-    } catch (SchedulerException ex) {
-      LOG.error("Failed in running job", ex);
+    } catch (Exception ex) {
+      LOG.error("Failed to stop job execution.", ex);
     }
   }
 }
