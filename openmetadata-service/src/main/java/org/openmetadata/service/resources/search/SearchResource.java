@@ -171,7 +171,13 @@ public class SearchResource {
                   "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched. Currently only supported for glossary_term_search_index.")
           @DefaultValue("false")
           @QueryParam("getHierarchy")
-          boolean getHierarchy)
+          boolean getHierarchy,
+      @Parameter(
+              description =
+                  "Explain the results of the query. Defaults to false. Only for debugging purposes.")
+          @DefaultValue("false")
+          @QueryParam("explain")
+          boolean explain)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -202,6 +208,7 @@ public class SearchResource {
             .applyDomainFilter(
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .searchAfter(searchAfter)
+            .explain(explain)
             .build();
     return searchRepository.search(request);
   }
