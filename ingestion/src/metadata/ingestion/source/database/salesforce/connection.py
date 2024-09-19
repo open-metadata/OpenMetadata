@@ -26,7 +26,7 @@ from metadata.ingestion.connections.test_connections import test_connection_step
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-def get_connection(connection: SalesforceConnection):
+def get_connection(connection: SalesforceConnection) -> Salesforce:
     """
     Create connection
     """

@@ -33,6 +33,12 @@ Salesforce Security Token is required to access the metadata through APIs. You c
 $$
 
 $$section
+### Organization ID $(id="organizationId")
+
+Salesforce Organization ID is the unique identifier for your Salesforce identity. You can check out [this doc](https://help.salesforce.com/s/articleView?id=000385215&type=1) on how to get the your Salesforce Organization ID.
+$$
+
+$$section
 ### Object Name $(id="sobjectName")
 
 Specify the Salesforce Object Name in case you want to ingest a specific object. If left blank, we will ingest all the Objects.
