@@ -571,11 +571,7 @@ class LookerSource(DashboardServiceSource):
             db_service_names = self.get_db_service_names()
 
             if view.sql_table_name:
-                try:
-                    template = Template(view.sql_table_name)
-                    sql_table_name = template.render()
-                except Exception:
-                    sql_table_name = view.sql_table_name
+                sql_table_name = self._render_table_name(view.sql_table_name)
                 source_table_name = self._clean_table_name(sql_table_name)
 
                 # View to the source is only there if we are informing the dbServiceNames
@@ -731,6 +727,33 @@ class LookerSource(DashboardServiceSource):
         """
 
         return table_name.lower().split(" as ")[0].strip()
+
+    @staticmethod
+    def _render_table_name(table_name: str) -> str:
+        """
+        sql_table_names might contain Liquid templates
+        when defining an explore. e.g,:
+        sql_table_name:
+            {% if openmetadata %}
+                event
+            {% elsif event.created_week._in_query %}
+                event_by_week
+            {% else %}
+                event
+            {% endif %} ;;
+        we should render the template and give the option
+        to render a specific value during metadata ingestion
+        using the "openmetadata" context argument
+        :param table_name: table name with possible templating
+        :return: rendered table name
+        """
+        try:
+            context = {"openmetadata": True}
+            template = Template(table_name)
+            sql_table_name = template.render(context)
+        except Exception:
+            sql_table_name = table_name
+        return sql_table_name
 
     @staticmethod
     def get_dashboard_sources(dashboard_details: LookerDashboard) -> Set[str]:
