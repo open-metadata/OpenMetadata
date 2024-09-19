@@ -22,12 +22,15 @@ import {
   ResponsiveContainer,
   Scatter,
   Tooltip,
-  TooltipProps,
   XAxis,
 } from 'recharts';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
-import { updateActiveChartFilter } from '../../../utils/ChartUtils';
-import { formatNumberWithComma } from '../../../utils/CommonUtils';
+import {
+  tooltipFormatter,
+  updateActiveChartFilter,
+} from '../../../utils/ChartUtils';
+import { CustomTooltip } from '../../../utils/DataInsightUtils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
 
@@ -37,14 +40,6 @@ const OperationDateBarChart = ({
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
-
-  const tooltipFormatter: TooltipProps<number | string, string>['formatter'] = (
-    _value,
-    _label,
-    data
-  ) => {
-    return formatNumberWithComma(data.payload.data);
-  };
 
   const handleClick: LegendProps['onClick'] = (event) => {
     setActiveKeys((prevActiveKeys) =>
@@ -75,7 +70,16 @@ const OperationDateBarChart = ({
           tick={{ fontSize: 12 }}
         />
         <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
-        <Tooltip formatter={tooltipFormatter} />
+        <Tooltip
+          content={
+            <CustomTooltip
+              dateTimeFormatter={formatDateTime}
+              timeStampKey="timestamp"
+              valueFormatter={(value) => tooltipFormatter(value)}
+            />
+          }
+        />
+
         {information.map((info) => (
           <Bar
             barSize={1}
