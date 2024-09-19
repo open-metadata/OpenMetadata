@@ -18,6 +18,7 @@ import Loader from '../Loader/Loader';
 
 interface TableComponentProps<T> extends TableProps<T> {
   resizableColumns?: boolean;
+  isTableDraggable?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
@@ -72,7 +73,13 @@ const Table = <T extends object = any>({
   const resizingTableProps = rest.resizableColumns
     ? {
         columns: resizableColumns,
-        components,
+        components: {
+          ...rest.components,
+          header: {
+            row: rest.components?.header?.row,
+            cell: components.header.cell,
+          },
+        },
         scroll: { x: tableWidth },
       }
     : {};
