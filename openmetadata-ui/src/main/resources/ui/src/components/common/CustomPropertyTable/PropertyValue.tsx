@@ -18,6 +18,7 @@ import {
   Form,
   Input,
   Select,
+  Tag,
   TimePicker,
   Tooltip,
   Typography,
@@ -43,11 +44,12 @@ import {
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
+import { ENUM_WITH_DESCRIPTION } from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { EnumConfig } from '../../../generated/type/customProperty';
+import { EnumConfig, ValueClass } from '../../../generated/type/customProperty';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -90,14 +92,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
   const onInputSave = async (updatedValue: PropertyValueType) => {
     const isEnum = propertyType.name === 'enum';
+    const isEnumWithDescription = propertyType.name === ENUM_WITH_DESCRIPTION;
 
     const isArrayType = isArray(updatedValue);
 
     const enumValue = isArrayType ? updatedValue : [updatedValue];
 
-    const propertyValue = isEnum
-      ? (enumValue as string[]).filter(Boolean)
-      : updatedValue;
+    const propertyValue =
+      isEnum || isEnumWithDescription
+        ? (enumValue as string[]).filter(Boolean)
+        : updatedValue;
 
     try {
       // Omit undefined and empty values
@@ -214,6 +218,60 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 <Select
                   allowClear
                   data-testid="enum-select"
+                  disabled={isLoading}
+                  mode={isMultiSelect ? 'multiple' : undefined}
+                  options={options}
+                  placeholder={t('label.enum-value-plural')}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+
+      case ENUM_WITH_DESCRIPTION: {
+        const enumConfig = property.customPropertyConfig?.config as EnumConfig;
+
+        const isMultiSelect = Boolean(enumConfig?.multiSelect);
+
+        const values = (enumConfig?.values as ValueClass[]) ?? [];
+
+        const options = values.map((option) => ({
+          label: (
+            <Tooltip title={option.description}>
+              <span>{option.key}</span>
+            </Tooltip>
+          ),
+          value: option.key,
+        }));
+
+        const initialValues = {
+          enumWithDescriptionValues: (isArray(value) ? value : [value]).filter(
+            Boolean
+          ),
+        };
+
+        return (
+          <InlineEdit
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: 'enum-with-description-form',
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id="enum-with-description-form"
+              initialValues={initialValues}
+              layout="vertical"
+              onFinish={(values: {
+                enumWithDescriptionValues: string | string[];
+              }) => onInputSave(values.enumWithDescriptionValues)}>
+              <Form.Item name="enumWithDescriptionValues" style={commonStyle}>
+                <Select
+                  allowClear
+                  data-testid="enum-with-description-select"
                   disabled={isLoading}
                   mode={isMultiSelect ? 'multiple' : undefined}
                   options={options}
@@ -660,6 +718,34 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             {isArray(value) ? value.join(', ') : value}
           </Typography.Text>
         );
+
+      case ENUM_WITH_DESCRIPTION: {
+        const enumWithDescriptionValues = (value as ValueClass[]) ?? [];
+
+        return (
+          <div
+            className="d-flex gap-2"
+            data-testid="enum-with-description-value">
+            {enumWithDescriptionValues.map((value) => (
+              <Tooltip
+                key={value.key}
+                title={value.description}
+                trigger="hover">
+                <Tag
+                  style={{
+                    width: 'max-content',
+                    margin: '0px',
+                    border: 'none',
+                    padding: '4px',
+                    background: 'rgba(0, 0, 0, 0.03)',
+                  }}>
+                  {value.key}
+                </Tag>
+              </Tooltip>
+            ))}
+          </div>
+        );
+      }
 
       case 'sqlQuery':
         return (
