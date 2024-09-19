@@ -56,7 +56,9 @@ const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
         ({ constraintType, columns, referredColumns }) => {
           if (constraintType === ConstraintType.PrimaryKey) {
             return (
-              <div className="d-flex constraint-columns">
+              <div
+                className="d-flex constraint-columns"
+                key={`${constraintType}-${columns?.[0]}-${referredColumns?.[0]}`}>
                 <Space
                   className="constraint-icon-container"
                   direction="vertical"
@@ -85,7 +87,9 @@ const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
           }
           if (constraintType === ConstraintType.ForeignKey) {
             return (
-              <Space className="constraint-columns">
+              <Space
+                className="constraint-columns"
+                key={`${constraintType}-${columns?.[0]}-${referredColumns?.[0]}`}>
                 <ForeignKeyConstraint />
                 <Space direction="vertical" size={16}>
                   <Typography.Text>{columns?.join(', ')}</Typography.Text>
