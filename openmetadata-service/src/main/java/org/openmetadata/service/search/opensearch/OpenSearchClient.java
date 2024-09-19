@@ -183,6 +183,7 @@ import os.org.opensearch.search.aggregations.bucket.terms.Terms;
 import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
+import os.org.opensearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -652,24 +653,7 @@ public class OpenSearchClient implements SearchClient {
     }
 
     List<Map<String, Object>> results = new ArrayList<>();
-    if (!filter.isEmpty()) {
-      try {
-        XContentParser queryParser = createXContentParser(filter);
-        XContentParser sourceParser = createXContentParser(filter);
-        QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(queryParser).query();
-        FetchSourceContext sourceFromXContent =
-            SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
-        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-        boolQuery =
-            nullOrEmpty(q)
-                ? boolQuery.filter(queryFromXContent)
-                : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
-        searchSourceBuilder.query(boolQuery);
-        searchSourceBuilder.fetchSource(sourceFromXContent);
-      } catch (Exception e) {
-        throw new IOException("Failed to parse query filter: %s", e);
-      }
-    }
+    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(q));
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchSourceBuilder.from(offset);
@@ -1073,6 +1057,25 @@ public class OpenSearchClient implements SearchClient {
             }
             aggregationBuilders.add(nestedAggregationBuilder);
             break;
+          case "date_histogram":
+            JsonObject dateHistogramAggregation = aggregation.getJsonObject(aggregationType);
+            String calendarInterval = dateHistogramAggregation.getString("calendar_interval");
+            DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
+                AggregationBuilders.dateHistogram(key)
+                    .field(dateHistogramAggregation.getString("field"))
+                    .calendarInterval(new DateHistogramInterval(calendarInterval));
+            aggregationBuilders.add(dateHistogramAggregationBuilder);
+            break;
+          case "top_hits":
+            JsonObject topHitsAggregation = aggregation.getJsonObject(aggregationType);
+            TopHitsAggregationBuilder topHitsAggregationBuilder =
+                AggregationBuilders.topHits(key)
+                    .size(topHitsAggregation.getInt("size"))
+                    .sort(
+                        topHitsAggregation.getString("sort_field"),
+                        SortOrder.fromString(topHitsAggregation.getString("sort_order")));
+            aggregationBuilders.add(topHitsAggregationBuilder);
+            break;
           case "aggs":
             // Sub aggregation logic
             if (!keySet.contains("nested")) {
@@ -1136,7 +1139,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+  public JsonObject aggregate(String query, String index, JsonObject aggregationJson, String filter)
       throws IOException {
     JsonObject aggregations = aggregationJson.getJsonObject("aggregations");
     if (aggregations == null) {
@@ -1157,6 +1160,7 @@ public class OpenSearchClient implements SearchClient {
       BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
       searchSourceBuilder.query(boolQueryBuilder);
     }
+    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(query));
 
     searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
 
@@ -2250,6 +2254,28 @@ public class OpenSearchClient implements SearchClient {
     } catch (IOException e) {
       LOG.error("Failed to create XContentParser", e);
       throw e;
+    }
+  }
+
+  private void getSearchFilter(
+      String filter, SearchSourceBuilder searchSourceBuilder, boolean hasQuery) throws IOException {
+    if (!filter.isEmpty()) {
+      try {
+        XContentParser queryParser = createXContentParser(filter);
+        XContentParser sourceParser = createXContentParser(filter);
+        QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(queryParser).query();
+        FetchSourceContext sourceFromXContent =
+            SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        boolQuery =
+            !hasQuery
+                ? boolQuery.filter(queryFromXContent)
+                : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
+        searchSourceBuilder.query(boolQuery);
+        searchSourceBuilder.fetchSource(sourceFromXContent);
+      } catch (Exception e) {
+        throw new IOException("Failed to parse query filter: %s", e);
+      }
     }
   }
 
