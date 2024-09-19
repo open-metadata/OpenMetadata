@@ -23,8 +23,21 @@ def test_ingest_metadata(
         f"{db_service.fullyQualifiedName.root}.{db_name}.SalesLT.Customer",
     )
     assert table is not None
-    assert table.columns[0].name.root == "DepartmentID"
+    assert [c.name.root for c in table.columns] == [
+        "CustomerID",
+        "NameStyle",
+        "Title",
+        "FirstName",
+        "MiddleName",
+        "LastName",
+        "Suffix",
+        "CompanyName",
+        "SalesPerson",
+        "EmailAddress",
+        "Phone",
+        "PasswordHash",
+        "PasswordSalt",
+        "rowguid",
+        "ModifiedDate",
+    ]
     assert table.columns[0].constraint == Constraint.PRIMARY_KEY
-    assert table.columns[1].name.root == "Name"
-    assert table.columns[2].name.root == "GroupName"
-    assert table.columns[3].name.root == "ModifiedDate"
