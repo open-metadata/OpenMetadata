@@ -60,7 +60,7 @@ import {
   axisTickFormatter,
   updateActiveChartFilter,
 } from '../../../../utils/ChartUtils';
-import { formatTimeFromMilliseconds } from '../../../../utils/CommonUtils';
+import { formatTimeFromSeconds } from '../../../../utils/CommonUtils';
 import { prepareChartData } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -178,7 +178,7 @@ function TestSummaryGraph({
   const formatYAxis = (value: number) => {
     // table freshness will always have output value in milliseconds
     return testDefinitionName === TABLE_DATA_TO_BE_FRESH || isFreshnessTest
-      ? formatTimeFromMilliseconds(value)
+      ? formatTimeFromSeconds(value)
       : axisTickFormatter(value);
   };
 

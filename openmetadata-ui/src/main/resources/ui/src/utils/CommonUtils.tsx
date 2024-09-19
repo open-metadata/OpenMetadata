@@ -607,21 +607,22 @@ export const digitFormatter = (value: number) => {
 };
 
 /**
- * Converts a duration in milliseconds to a human-readable format.
+ * Converts a duration in seconds to a human-readable format.
  * The function returns the largest time unit (years, months, days, hours, minutes, or seconds)
  * that is greater than or equal to one, rounded to the nearest whole number.
  *
- * @param {number} milliseconds - The duration in milliseconds to be converted.
+ * @param {number} seconds - The duration in seconds to be converted.
  * @returns {string} A string representing the duration in a human-readable format,
  *                  e.g., "1 hour", "2 days", "3 months", etc.
  *
  * @example
- * formatTimeFromMilliseconds(500); // returns "1 second"
- * formatTimeFromMilliseconds(60000); // returns "1 minute"
- * formatTimeFromMilliseconds(86400000); // returns "1 day"
+ * formatTimeFromSeconds(1); // returns "1 second"
+ * formatTimeFromSeconds(60); // returns "1 minute"
+ * formatTimeFromSeconds(3600); // returns "1 hour"
+ * formatTimeFromSeconds(86400); // returns "1 day"
  */
-export const formatTimeFromMilliseconds = (milliseconds: number): string => {
-  const duration = Duration.fromMillis(milliseconds);
+export const formatTimeFromSeconds = (seconds: number): string => {
+  const duration = Duration.fromObject({ seconds });
   let unit: keyof Duration;
 
   if (duration.as('years') >= 1) {

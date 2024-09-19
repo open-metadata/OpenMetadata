@@ -27,7 +27,7 @@ import {
 } from '../generated/type/tagLabel';
 import {
   digitFormatter,
-  formatTimeFromMilliseconds,
+  formatTimeFromSeconds,
   getBase64EncodedString,
   getIngestionFrequency,
   getIsErrorMatch,
@@ -159,7 +159,7 @@ describe('Tests for CommonUtils', () => {
       ];
 
       values.map(({ input, expected }) => {
-        expect(formatTimeFromMilliseconds(input)).toEqual(expected);
+        expect(formatTimeFromSeconds(input)).toEqual(expected);
       });
     });
 
