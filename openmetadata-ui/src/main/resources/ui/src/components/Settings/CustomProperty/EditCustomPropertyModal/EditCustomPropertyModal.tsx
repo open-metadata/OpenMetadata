@@ -323,6 +323,12 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
                                       rules={[
                                         {
                                           required: true,
+                                          message: `${t(
+                                            'message.field-text-is-required',
+                                            {
+                                              fieldText: t('label.description'),
+                                            }
+                                          )}`,
                                         },
                                       ]}
                                       trigger="onTextChange"
@@ -335,6 +341,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
                               {!isExisting && (
                                 <Col span={1}>
                                   <Button
+                                    data-testid={`remove-enum-description-config-${index}`}
                                     icon={<DeleteIcon width={16} />}
                                     size="small"
                                     type="text"

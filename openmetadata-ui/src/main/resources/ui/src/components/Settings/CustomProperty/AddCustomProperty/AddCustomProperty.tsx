@@ -441,7 +441,7 @@ const AddCustomProperty = () => {
 
                   {fields.map((field, index) => (
                     <Row gutter={[8, 0]} key={field.key}>
-                      <Col span={22}>
+                      <Col span={23}>
                         <Row gutter={[8, 0]}>
                           <Col span={24}>
                             <Form.Item
@@ -469,6 +469,12 @@ const AddCustomProperty = () => {
                               rules={[
                                 {
                                   required: true,
+                                  message: `${t(
+                                    'message.field-text-is-required',
+                                    {
+                                      fieldText: t('label.description'),
+                                    }
+                                  )}`,
                                 },
                               ]}
                               trigger="onTextChange"
@@ -478,8 +484,9 @@ const AddCustomProperty = () => {
                           </Col>
                         </Row>
                       </Col>
-                      <Col span={2}>
+                      <Col span={1}>
                         <Button
+                          data-testid={`remove-enum-description-config-${index}`}
                           icon={<DeleteIcon width={16} />}
                           size="small"
                           type="text"
