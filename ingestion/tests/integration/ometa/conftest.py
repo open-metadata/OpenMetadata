@@ -14,6 +14,7 @@ import json
 import uuid
 
 import pytest
+from _openmetadata_testutils.containers import get_mysql_container, MySqlContainerConfigs
 
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -24,7 +25,6 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..containers import MySqlContainerConfigs, get_mysql_container
 from ..integration_base import (
     METADATA_INGESTION_CONFIG_TEMPLATE,
     generate_name,
