@@ -22,10 +22,10 @@ from metadata.generated.schema.entity.services.databaseService import (
 from ..conftest import ingestion_config as base_ingestion_config
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def mssql_container(tmp_path_factory):
     container = SqlServerContainer(
-        "mcr.microsoft.com/mssql/server:2017-CU31-GDR2-ubuntu-18.04", dbname="AdventureWorks"
+        "mcr.microsoft.com/mssql/server:2022-latest", dbname="AdventureWorks"
     )
     data_dir = tmp_path_factory.mktemp("data")
     shutil.copy(
