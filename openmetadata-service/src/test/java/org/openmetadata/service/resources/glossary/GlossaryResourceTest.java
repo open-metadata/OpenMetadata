@@ -501,7 +501,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     // Create glossaryTerm with invalid name (due to ::)
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(GlossaryCsv.HEADERS));
-    String record = ",g::1,dsp1,dsc1,,,,,,,";
+    String record = ",g::1,dsp1,dsc1,,,,,,,,";
     String csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(glossaryName, csv, false);
     Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
@@ -512,7 +512,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     assertRows(result, expectedRows);
 
     // Create glossaryTerm with invalid parent
-    record = "invalidParent,g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,,,";
+    record = "invalidParent,g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,,,,";
     csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     result = importCsv(glossaryName, csv, false);
     Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
@@ -525,7 +525,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     assertRows(result, expectedRows);
 
     // Create glossaryTerm with invalid tags field
-    record = ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tag.invalidTag,,,";
+    record = ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tag.invalidTag,,,,";
     csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     result = importCsv(glossaryName, csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
@@ -551,31 +551,31 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<String> createRecords =
         listOf(
             String.format(
-                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s",
+                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s,",
                 reviewerRef.get(0), user1, "Approved"),
             String.format(
-                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,,user:%s,%s",
+                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,,user:%s,%s,",
                 user1, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,user:%s,team:%s,%s",
+                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,",
                 reviewerRef.get(0), team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s",
+                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s,",
                 reviewerRef.get(0), user1, "Approved"),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s",
+                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,",
                 user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s",
+                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,",
                 reviewerRef.get(0), team11, "Draft"));
 
     // Add new row to existing rows
     List<String> newRecords =
-        listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,PII.Sensitive,,,Approved");
+        listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,PII.Sensitive,,,Approved,");
     testImportExport(
         glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
   }

@@ -17,11 +17,15 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
@@ -38,6 +42,8 @@ public final class CsvUtil {
 
   public static final String ENTITY_TYPE_SEPARATOR = ":";
   public static final String LINE_SEPARATOR = "\r\n";
+
+  public static final String INTERNAL_ARRAY_SEPARATOR = "|";
 
   private CsvUtil() {
     // Utility class hides the constructor
@@ -92,6 +98,80 @@ public final class CsvUtil {
   public static List<String> fieldToEntities(String field) {
     // Split a field that contains multiple strings separated by FIELD_SEPARATOR
     return field == null ? null : listOf(field.split(ENTITY_TYPE_SEPARATOR));
+  }
+
+  public static List<String> fieldToInternalArray(String field) {
+    // Split a fieldValue that contains multiple elements of an array separated by
+    // INTERNAL_ARRAY_SEPARATOR
+    if (field == null || field.isBlank()) {
+      return Collections.emptyList();
+    }
+    return listOf(field.split(Pattern.quote(INTERNAL_ARRAY_SEPARATOR)));
+  }
+
+  /**
+   * Parses a field containing key-value pairs separated by semicolons, correctly handling quotes.
+   * Each key-value pair may also be enclosed in quotes, especially if it contains delimiter like (SEPARATOR , FIELD_SEPARATOR).
+   *
+   * Input Example:
+   * "key1:value1;key2:value2;\"key3:value;with;semicolon\""
+   * Output: ["key1:value1", "key2:value2", "key3:value;with;semicolon"]
+   *
+   * @param field The input string with key-value pairs.
+   * @return A list of key-value pairs, handling quotes and semicolons correctly.
+   */
+  public static List<String> fieldToExtensionStrings(String field) throws IOException {
+    if (field == null || field.isBlank()) {
+      return List.of(); // Return empty list if input is null or blank
+    }
+
+    List<String> result = new ArrayList<>();
+    StringBuilder currentField = new StringBuilder();
+    boolean inQuotes = false; // Track whether we are inside quotes
+
+    // Iterate through each character in the field
+    for (int i = 0; i < field.length(); i++) {
+      char c = field.charAt(i);
+
+      if (c == '"') {
+        if (inQuotes && i + 1 < field.length() && field.charAt(i + 1) == '"') {
+          currentField.append('"'); // Handle escaped quote ("" -> ")
+          i++; // Skip the next character
+        } else {
+          inQuotes = !inQuotes; // Toggle quote state
+          currentField.append(c); // Keep the quote as part of the field
+        }
+      } else if (c == FIELD_SEPARATOR.charAt(0) && !inQuotes) {
+        addFieldToResult(result, currentField); // Add the field when semicolon is outside quotes
+        currentField.setLength(0); // Reset buffer for next field
+      } else {
+        currentField.append(c); // Continue building the field
+      }
+    }
+
+    // Add the last field
+    addFieldToResult(result, currentField);
+
+    return result;
+  }
+
+  /**
+   * Adds the processed field to the result list, removing surrounding quotes if present.
+   *
+   * @param result List to hold parsed fields.
+   * @param currentField The current field being processed.
+   */
+  private static void addFieldToResult(List<String> result, StringBuilder currentField) {
+    String fieldStr = currentField.toString();
+
+    // Remove surrounding quotes if field contains special characters and is quoted
+    if ((fieldStr.contains(SEPARATOR) || fieldStr.contains(FIELD_SEPARATOR))
+        && fieldStr.startsWith("\"")
+        && fieldStr.endsWith("\"")) {
+      fieldStr = fieldStr.substring(1, fieldStr.length() - 1);
+    }
+
+    result.add(fieldStr);
   }
 
   public static String quote(String field) {
@@ -204,5 +284,87 @@ public final class CsvUtil {
       return quote(str);
     }
     return str;
+  }
+
+  public static void addExtension(List<String> csvRecord, Object extension) {
+    if (extension == null) {
+      csvRecord.add(null);
+      return;
+    }
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    Map<String, Object> extensionMap = objectMapper.convertValue(extension, Map.class);
+
+    String extensionString =
+        extensionMap.entrySet().stream()
+            .map(
+                entry -> {
+                  String key = entry.getKey();
+                  Object value = entry.getValue();
+                  return CsvUtil.quoteCsvField(key + ENTITY_TYPE_SEPARATOR + formatValue(value));
+                })
+            .collect(Collectors.joining(FIELD_SEPARATOR));
+
+    csvRecord.add(extensionString);
+  }
+
+  private static String formatValue(Object value) {
+    // Handle Map (e.g., entity reference or date interval)
+    if (value instanceof Map) {
+      return formatMapValue((Map<String, Object>) value);
+    }
+
+    // Handle List (e.g., Entity Reference List or multi-select Enum List)
+    if (value instanceof List) {
+      return formatListValue((List<?>) value);
+    }
+
+    // Fallback for simple types
+    return value != null ? value.toString() : "";
+  }
+
+  private static String formatMapValue(Map<String, Object> valueMap) {
+    if (isEntityReference(valueMap)) {
+      return formatEntityReference(valueMap);
+    } else if (isTimeInterval(valueMap)) {
+      return formatTimeInterval(valueMap);
+    }
+
+    // If no specific format, return the raw map string
+    return valueMap.toString();
+  }
+
+  private static String formatListValue(List<?> list) {
+    if (list.isEmpty()) {
+      return "";
+    }
+
+    if (list.get(0) instanceof Map) {
+      // Handle a list of entity references or maps
+      return list.stream()
+          .map(item -> formatMapValue((Map<String, Object>) item))
+          .collect(Collectors.joining(INTERNAL_ARRAY_SEPARATOR));
+    } else {
+      // Handle a simple list of strings or numbers
+      return list.stream()
+          .map(Object::toString)
+          .collect(Collectors.joining(INTERNAL_ARRAY_SEPARATOR));
+    }
+  }
+
+  private static boolean isEntityReference(Map<String, Object> valueMap) {
+    return valueMap.containsKey("type") && valueMap.containsKey("fullyQualifiedName");
+  }
+
+  private static boolean isTimeInterval(Map<String, Object> valueMap) {
+    return valueMap.containsKey("start") && valueMap.containsKey("end");
+  }
+
+  private static String formatEntityReference(Map<String, Object> valueMap) {
+    return valueMap.get("type") + ENTITY_TYPE_SEPARATOR + valueMap.get("fullyQualifiedName");
+  }
+
+  private static String formatTimeInterval(Map<String, Object> valueMap) {
+    return valueMap.get("start") + ENTITY_TYPE_SEPARATOR + valueMap.get("end");
   }
 }
