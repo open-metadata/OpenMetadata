@@ -27,6 +27,7 @@ import {
   toLower,
   toNumber,
 } from 'lodash';
+import { Duration } from 'luxon';
 import {
   CurrentState,
   ExtraInfo,
@@ -603,6 +604,44 @@ export const digitFormatter = (value: number) => {
     notation: 'compact',
     maximumFractionDigits: 2,
   }).format(value);
+};
+
+/**
+ * Converts a duration in milliseconds to a human-readable format.
+ * The function returns the largest time unit (years, months, days, hours, minutes, or seconds)
+ * that is greater than or equal to one, rounded to the nearest whole number.
+ *
+ * @param {number} milliseconds - The duration in milliseconds to be converted.
+ * @returns {string} A string representing the duration in a human-readable format,
+ *                  e.g., "1 hour", "2 days", "3 months", etc.
+ *
+ * @example
+ * formatTimeFromMilliseconds(500); // returns "1 second"
+ * formatTimeFromMilliseconds(60000); // returns "1 minute"
+ * formatTimeFromMilliseconds(86400000); // returns "1 day"
+ */
+export const formatTimeFromMilliseconds = (milliseconds: number): string => {
+  const duration = Duration.fromMillis(milliseconds);
+  let unit: keyof Duration;
+
+  if (duration.as('years') >= 1) {
+    unit = 'years';
+  } else if (duration.as('months') >= 1) {
+    unit = 'months';
+  } else if (duration.as('days') >= 1) {
+    unit = 'days';
+  } else if (duration.as('hours') >= 1) {
+    unit = 'hours';
+  } else if (duration.as('minutes') >= 1) {
+    unit = 'minutes';
+  } else {
+    unit = 'seconds';
+  }
+
+  const value = Math.round(duration.as(unit));
+  const unitSingular = unit.slice(0, -1);
+
+  return `${value} ${value === 1 ? unitSingular : unit}`;
 };
 
 export const getTeamsUser = (

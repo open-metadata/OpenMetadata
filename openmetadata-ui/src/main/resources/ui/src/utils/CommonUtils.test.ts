@@ -27,6 +27,7 @@ import {
 } from '../generated/type/tagLabel';
 import {
   digitFormatter,
+  formatTimeFromMilliseconds,
   getBase64EncodedString,
   getIngestionFrequency,
   getIsErrorMatch,
@@ -135,6 +136,30 @@ describe('Tests for CommonUtils', () => {
 
       values.map(({ value, result }) => {
         expect(digitFormatter(value)).toEqual(result);
+      });
+    });
+
+    // formatTimeFromMilliseconds test
+    it('formatTimeFromMilliseconds formatter should format mills to human readable value', () => {
+      const values = [
+        { input: 500, expected: '1 second' },
+        { input: 1000, expected: '1 second' },
+        { input: 30000, expected: '30 seconds' },
+        { input: 60000, expected: '1 minute' },
+        { input: 120000, expected: '2 minutes' },
+        { input: 3600000, expected: '1 hour' },
+        { input: 7200000, expected: '2 hours' },
+        { input: 86400000, expected: '1 day' },
+        { input: 172800000, expected: '2 days' },
+        { input: 2592000000, expected: '1 month' },
+        { input: 5184000000, expected: '2 months' },
+        { input: 31536000000, expected: '1 year' },
+        { input: 63072000000, expected: '2 years' },
+        { input: 4111694735, expected: '2 months' },
+      ];
+
+      values.map(({ input, expected }) => {
+        expect(formatTimeFromMilliseconds(input)).toEqual(expected);
       });
     });
 
