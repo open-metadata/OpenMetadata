@@ -65,9 +65,6 @@ from metadata.ingestion.source.database.external_table_lineage_mixin import (
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
-from metadata.ingestion.source.database.life_cycle_query_mixin import (
-    LifeCycleQueryMixin,
-)
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
@@ -148,7 +145,6 @@ SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
 class SnowflakeSource(
-    LifeCycleQueryMixin,
     StoredProcedureMixin,
     ExternalTableLineageMixin,
     CommonDbSourceService,
