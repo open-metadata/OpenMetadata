@@ -16,6 +16,10 @@ Config builder classes
 
 from copy import deepcopy
 
+from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
+    TestSuiteConfigType,
+)
+
 from ..e2e_types import E2EType
 
 
@@ -67,6 +71,34 @@ class ProfilerConfigBuilder(BaseBuilder):
             }
 
         self.config["processor"] = {"type": "orm-profiler", "config": {}}
+        return self.config
+
+
+class DataQualityConfigBuilder(BaseBuilder):
+    """Builder class for the data quality config"""
+
+    # pylint: disable=invalid-name
+    def __init__(self, config: dict, config_args: dict) -> None:
+        super().__init__(config, config_args)
+        self.test_case_defintions = self.config_args.get("test_case_definitions", [])
+        self.entity_fqn = self.config_args.get("entity_fqn", [])
+
+    # pylint: enable=invalid-name
+
+    def build(self) -> dict:
+        """build profiler config"""
+        del self.config["source"]["sourceConfig"]["config"]
+        self.config["source"]["sourceConfig"] = {
+            "config": {
+                "type": TestSuiteConfigType.TestSuite.value,
+                "entityFullyQualifiedName": self.entity_fqn,
+            },
+        }
+
+        self.config["processor"] = {
+            "type": "orm-test-runner",
+            "config": {"testCases": self.test_case_defintions},
+        }
         return self.config
 
 
@@ -147,6 +179,7 @@ def builder_factory(builder, config: dict, config_args: dict):
     """Factory method to return the builder class"""
     builder_classes = {
         E2EType.PROFILER.value: ProfilerConfigBuilder,
+        E2EType.DATA_QUALITY.value: DataQualityConfigBuilder,
         E2EType.INGEST_DB_FILTER_SCHEMA.value: SchemaConfigBuilder,
         E2EType.INGEST_DB_FILTER_TABLE.value: TableConfigBuilder,
         E2EType.INGEST_DB_FILTER_MIX.value: MixConfigBuilder,
