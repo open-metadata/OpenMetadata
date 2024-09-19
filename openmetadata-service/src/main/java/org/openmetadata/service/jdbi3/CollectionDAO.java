@@ -176,6 +176,9 @@ public interface CollectionDAO {
   TestCaseResolutionStatusTimeSeriesDAO testCaseResolutionStatusTimeSeriesDao();
 
   @CreateSqlObject
+  TestCaseResultTimeSeriesDAO testCaseResultTimeSeriesDao();
+
+  @CreateSqlObject
   RoleDAO roleDAO();
 
   @CreateSqlObject
@@ -4408,10 +4411,13 @@ public interface CollectionDAO {
         outerFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
         outerFilter.addQueryParam("assignee", assignee);
 
+        String condition = filter.getCondition();
+        condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+
         return listWithOffset(
             getTimeSeriesTableName(),
             filter.getQueryParams(),
-            filter.getCondition(),
+            condition,
             getPartitionFieldName(),
             limit,
             offset,
@@ -4420,14 +4426,72 @@ public interface CollectionDAO {
             filter.getQueryParams(),
             outerFilter.getCondition());
       }
+      String condition = filter.getCondition();
+      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
       return listWithOffset(
           getTimeSeriesTableName(),
           filter.getQueryParams(),
-          filter.getCondition(),
+          condition,
           limit,
           offset,
           startTs,
           endTs);
+    }
+
+    @Override
+    default int listCount(ListFilter filter, Long startTs, Long endTs, boolean latest) {
+      String condition = filter.getCondition();
+      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      return latest
+          ? listCount(
+              getTimeSeriesTableName(),
+              getPartitionFieldName(),
+              filter.getQueryParams(),
+              condition,
+              startTs,
+              endTs)
+          : listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+    }
+  }
+
+  interface TestCaseResultTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "data_quality_data_time_series";
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, :json, :incidentStateId)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, (:json :: jsonb), :incidentStateId)",
+        connectionType = POSTGRES)
+    void insert(
+        @Define("table") String table,
+        @BindFQN("testCaseFQNHash") String testCaseFQNHash,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json,
+        @Bind("incidentStateId") String incidentStateId);
+
+    default void insert(
+        String testCaseFQN,
+        String extension,
+        String jsonSchema,
+        String json,
+        UUID incidentStateId) {
+
+      insert(
+          getTimeSeriesTableName(),
+          testCaseFQN,
+          extension,
+          jsonSchema,
+          json,
+          incidentStateId != null ? incidentStateId.toString() : null);
     }
   }
 
