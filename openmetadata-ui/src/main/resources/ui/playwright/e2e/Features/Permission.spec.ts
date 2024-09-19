@@ -252,7 +252,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
     await userPage.getByTestId('profiler').click();
     const testCaseResponse = userPage.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/dataQuality/testCases/') &&
+        response.url().includes('/api/v1/dataQuality/testCases') &&
         response.request().method() === 'GET'
     );
     await userPage
