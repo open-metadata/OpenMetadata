@@ -17,6 +17,7 @@ import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { ENUM_WITH_DESCRIPTION } from '../../../constants/CustomProperty.constants';
 import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -69,7 +70,9 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
     const updatedProperties = customProperties.map((property) => {
       if (property.name === selectedProperty.name) {
         const config = data.customPropertyConfig;
-        const isEnumType = selectedProperty.propertyType.name === 'enum';
+        const isEnumType =
+          selectedProperty.propertyType.name === 'enum' ||
+          selectedProperty.propertyType.name === ENUM_WITH_DESCRIPTION;
 
         return {
           ...property,
@@ -82,7 +85,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                         multiSelect: Boolean(data?.multiSelect),
                         values: config,
                       }
-                    : config,
+                    : (config as string[]),
                 },
               }
             : {}),
@@ -141,7 +144,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
 
           // If config is an object, then it is a enum config
           if (!isString(config) && !isArray(config)) {
-            if (record.propertyType.name === 'enumWithDescriptions') {
+            if (record.propertyType.name === ENUM_WITH_DESCRIPTION) {
               const values =
                 (config?.values as EnumWithDescriptionsConfig['values']) ?? [];
 

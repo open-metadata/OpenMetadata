@@ -27,6 +27,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import {
   ENTITY_REFERENCE_OPTIONS,
+  ENUM_WITH_DESCRIPTION,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
   SUPPORTED_FORMAT_MAP,
@@ -121,7 +122,7 @@ const AddCustomProperty = () => {
     const hasEnumConfig = watchedOptionKey === 'enum';
 
     const hasEnumWithDescriptionConfig =
-      watchedOptionKey === 'enumWithDescriptions';
+      watchedOptionKey === ENUM_WITH_DESCRIPTION;
 
     const hasFormatConfig =
       PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
