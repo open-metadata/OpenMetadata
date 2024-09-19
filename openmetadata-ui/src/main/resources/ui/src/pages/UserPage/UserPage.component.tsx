@@ -24,7 +24,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import Users from '../../components/Settings/Users/Users.component';
 import { ROUTES } from '../../constants/constants';
@@ -38,7 +38,7 @@ import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
@@ -91,7 +91,7 @@ const UserPage = () => {
   );
 
   const handleEntityPaginate = (page: string | number) => {
-    history.push({
+    navigate({
       search: Qs.stringify({ page }),
     });
   };
@@ -170,7 +170,7 @@ const UserPage = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push(ROUTES.HOME),
+      isSoftDelete ? handleToggleDelete() : navigate(ROUTES.HOME),
     [handleToggleDelete]
   );
 

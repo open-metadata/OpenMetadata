@@ -19,7 +19,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   DISABLED,
   getServiceDetailsPath,
@@ -75,9 +75,9 @@ const Services = ({ serviceName }: ServicesProps) => {
   const { t } = useTranslation();
   const { isFetchingStatus, platform } = useAirflowStatus();
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const handleAddServiceClick = () => {
-    history.push(getAddServicePath(serviceName));
+    navigate(getAddServicePath(serviceName));
   };
 
   const [isLoading, setIsLoading] = useState(true);

@@ -154,7 +154,7 @@ const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn(() => MOCK_PARAMS),
-  useHistory: jest.fn(() => ({
+  useNavigate: jest.fn(() => ({
     push: mockPush,
   })),
 }));

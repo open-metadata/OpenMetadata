@@ -24,7 +24,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
 import {
@@ -181,7 +181,7 @@ const PopoverTitle = React.memo(
     profilePicture: JSX.Element;
     type: OwnerType;
   }) => {
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const [, , userData] = useUserProfile({
       permission: true,
@@ -190,7 +190,7 @@ const PopoverTitle = React.memo(
     });
 
     const onTitleClickHandler = (path: string) => {
-      history.push(path);
+      navigate(path);
     };
     const name = userData?.name ?? '';
     const displayName = getEntityName(userData as unknown as EntityReference);

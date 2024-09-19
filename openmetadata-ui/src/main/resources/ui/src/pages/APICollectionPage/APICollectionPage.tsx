@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -102,7 +102,7 @@ const APICollectionPage: FunctionComponent = () => {
   const { tab: activeTab = EntityTabs.API_ENDPOINT } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -216,7 +216,7 @@ const APICollectionPage: FunctionComponent = () => {
     } catch (err) {
       // Error
       if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsAPICollectionLoading(false);
@@ -300,7 +300,7 @@ const APICollectionPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (activeKey: string) => {
       if (activeKey !== activeTab) {
-        history.push({
+        navigate({
           pathname: getEntityDetailsPath(
             EntityType.API_COLLECTION,
             decodedAPICollectionFQN,
@@ -464,7 +464,7 @@ const APICollectionPage: FunctionComponent = () => {
 
   const versionHandler = useCallback(() => {
     currentVersion &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.API_COLLECTION,
           decodedAPICollectionFQN,
@@ -476,7 +476,7 @@ const APICollectionPage: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : navigate('/'),
     []
   );
 

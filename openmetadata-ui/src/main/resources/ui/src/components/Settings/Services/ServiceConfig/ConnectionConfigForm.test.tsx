@@ -106,7 +106,7 @@ const formData = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../../../utils/DatabaseServiceUtils', () => ({

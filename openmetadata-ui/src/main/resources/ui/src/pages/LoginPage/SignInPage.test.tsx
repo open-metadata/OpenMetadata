@@ -26,7 +26,7 @@ import SignInPage from './SignInPage';
 const mockuseApplicationStore = useApplicationStore as unknown as jest.Mock;
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../hooks/useApplicationStore', () => ({

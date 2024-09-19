@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -52,7 +52,7 @@ const breadcrumb = [
 ];
 
 const AddRolePage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -75,7 +75,7 @@ const AddRolePage = () => {
   };
 
   const handleCancel = () => {
-    history.push(rolesPath);
+    navigate(rolesPath);
   };
 
   const handleSubmit = async () => {
@@ -90,7 +90,7 @@ const AddRolePage = () => {
     try {
       const dataResponse = await addRole(data);
       if (dataResponse) {
-        history.push(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
+        navigate(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
       }
     } catch (error) {
       showErrorToast(

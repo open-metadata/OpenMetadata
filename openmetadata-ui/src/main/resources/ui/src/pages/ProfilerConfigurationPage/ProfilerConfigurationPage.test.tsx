@@ -31,7 +31,7 @@ jest.mock('../../components/PageHeader/PageHeader.component', () =>
   jest.fn().mockReturnValue(<div>PageHeader.component</div>)
 );
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockHistory),
 }));
 jest.mock('../../rest/settingConfigAPI', () => ({
   getSettingsConfigFromConfigType: jest.fn().mockResolvedValue({}),

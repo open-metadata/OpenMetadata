@@ -12,7 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter, Route, Switch } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ClassificationRouter from './ClassificationRouter';
 
 jest.mock('./AdminProtectedRoute', () => {
@@ -42,11 +42,11 @@ describe('ClassificationRouter', () => {
   it('should render TagsPage component when route matches "/tags" or "/tags/:tagId"', async () => {
     render(
       <MemoryRouter initialEntries={['/tags']}>
-        <Switch>
+        <Routes>
           <Route path="/tags">
             <ClassificationRouter />
           </Route>
-        </Switch>
+        </Routes>
       </MemoryRouter>
     );
 
@@ -56,11 +56,11 @@ describe('ClassificationRouter', () => {
   it('should render ClassificationVersionPage component when route matches "/tags/version"', async () => {
     render(
       <MemoryRouter initialEntries={['/tags/testTag/versions/123']}>
-        <Switch>
+        <Routes>
           <Route path="/tags">
             <ClassificationRouter />
           </Route>
-        </Switch>
+        </Routes>
       </MemoryRouter>
     );
 

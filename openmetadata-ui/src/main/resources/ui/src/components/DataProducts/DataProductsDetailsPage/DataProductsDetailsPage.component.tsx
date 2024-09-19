@@ -25,7 +25,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -100,7 +100,7 @@ const DataProductsDetailsPage = ({
   onDelete,
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
@@ -367,7 +367,7 @@ const DataProductsDetailsPage = ({
             activeKey
           );
 
-      history.push(path);
+      navigate(path);
     }
   };
 
@@ -380,7 +380,7 @@ const DataProductsDetailsPage = ({
           toString(dataProduct.version)
         );
 
-    history.push(path);
+    navigate(path);
   };
 
   const handleAssetClick = useCallback((asset) => {

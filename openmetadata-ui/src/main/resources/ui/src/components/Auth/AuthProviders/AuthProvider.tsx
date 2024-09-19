@@ -37,7 +37,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   DEFAULT_DOMAIN_VALUE,
   ES_MAX_PAGE_SIZE,
@@ -140,7 +140,7 @@ export const AuthProvider = ({
   const tokenService = useRef<TokenService>();
 
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const [timeoutId, setTimeoutId] = useState<number>();
@@ -206,7 +206,7 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!isProtectedRoute(location.pathname)) {
-      history.push(ROUTES.HOME);
+      navigate(ROUTES.HOME);
     }
   };
 
@@ -233,7 +233,7 @@ export const AuthProvider = ({
       onLogoutHandler();
       showInfoToast(t('message.session-expired'));
     } else {
-      history.push(ROUTES.SIGNIN);
+      navigate(ROUTES.SIGNIN);
     }
   };
 
@@ -379,7 +379,7 @@ export const AuthProvider = ({
     setIsSigningUp(false);
     setIsAuthenticated(false);
     setApplicationLoading(false);
-    history.push(ROUTES.SIGNIN);
+    navigate(ROUTES.SIGNIN);
   };
 
   const handleSuccessfulLogin = useCallback(
@@ -416,19 +416,19 @@ export const AuthProvider = ({
         if (err?.response?.status === 404) {
           if (!authConfig?.enableSelfSignup) {
             resetUserDetails();
-            history.push(ROUTES.UNAUTHORISED);
+            navigate(ROUTES.UNAUTHORISED);
           } else {
             setNewUserProfile(user.profile);
             setCurrentUser({} as User);
             setIsSigningUp(true);
-            history.push(ROUTES.SIGNUP);
+            navigate(ROUTES.SIGNUP);
           }
         } else {
           // eslint-disable-next-line no-console
           console.error(err);
           showErrorToast(err);
           resetUserDetails();
-          history.push(ROUTES.SIGNIN);
+          navigate(ROUTES.SIGNIN);
         }
       } finally {
         setApplicationLoading(false);

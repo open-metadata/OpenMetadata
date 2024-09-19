@@ -60,7 +60,7 @@ jest.mock('../../context/TourProvider/TourProvider', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
 }));

@@ -43,7 +43,7 @@ const mockProps = {
   onFocus: mockOnFocus,
 };
 
-const mockUseHistory = {
+const mockuseNavigate = {
   push: jest.fn(),
   goBack: jest.fn(),
 };
@@ -68,7 +68,7 @@ jest.mock('./ConnectionConfigForm', () => {
 
 jest.mock('react-router-dom', () => {
   return {
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+    useNavigate: jest.fn().mockImplementation(() => mockuseNavigate),
   };
 });
 
@@ -102,7 +102,7 @@ describe('ServiceConfig', () => {
       jest.runAllTimers();
     });
 
-    expect(mockUseHistory.push).toHaveBeenCalledWith('/test-path');
+    expect(mockuseNavigate.push).toHaveBeenCalledWith('/test-path');
   });
 
   it('should call goBack when cancel button is clicked', async () => {
@@ -112,6 +112,6 @@ describe('ServiceConfig', () => {
       userEvent.click(cancelButton);
     });
 
-    expect(mockUseHistory.goBack).toHaveBeenCalled();
+    expect(mockuseNavigate.goBack).toHaveBeenCalled();
   });
 });

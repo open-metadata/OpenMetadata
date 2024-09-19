@@ -64,7 +64,6 @@ import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
-import { history } from './HistoryUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
@@ -687,9 +686,6 @@ export const getLoadingStatus = (
   return children;
 };
 
-export const refreshPage = () => {
-  history.go(0);
-};
 // return array of id as  strings
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);

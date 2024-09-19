@@ -50,7 +50,7 @@ function ServiceVersionMainTabContent({
   const { fqn: serviceFQN } = useFqn();
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
-    () => getServiceMainTabColumns(serviceCategory),
+    () => getServiceMainTabColumns(serviceCategory as ServiceTypes),
     [serviceCategory]
   );
 

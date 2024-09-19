@@ -28,7 +28,7 @@ import { KPI_CHARTS, KPI_DATA, KPI_LIST } from './KPIMock.mock';
 const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
+  useNavigate: jest.fn().mockReturnValue({
     push: mockPush,
   }),
 }));

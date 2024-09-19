@@ -40,7 +40,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn(),
 }));
 
 describe('Test Kill Ingestion Modal component', () => {

@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -66,10 +66,10 @@ const TestSuiteDetailsPage = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
   const { isAdminUser } = useAuth();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const afterDeleteAction = () => {
-    history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
+    navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);

@@ -21,7 +21,7 @@ import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import {
   DATA_ASSET_ICON_DIMENSION,
@@ -98,7 +98,7 @@ const PipelineDetails = ({
   onExtensionUpdate,
   handleToggleDelete,
 }: PipeLineDetailsProp) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const { currentUser, theme } = useApplicationStore();
@@ -526,7 +526,7 @@ const PipelineDetails = ({
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
-      history.push({
+      navigate({
         pathname: getEntityDetailsPath(
           EntityType.PIPELINE,
           pipelineFQN,
@@ -561,7 +561,7 @@ const PipelineDetails = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : navigate('/'),
     []
   );
 

@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { getGlossaryTermDetailsPath } from '../../constants/constants';
@@ -72,7 +72,7 @@ const GlossaryV1 = ({
   const { action, tab } =
     useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -243,7 +243,7 @@ const GlossaryV1 = ({
   const onTermModalSuccess = useCallback(() => {
     loadGlossaryTerms(true);
     if (!isGlossaryActive && tab !== 'terms') {
-      history.push(
+      navigate(
         getGlossaryTermDetailsPath(
           selectedData.fullyQualifiedName || '',
           'terms'

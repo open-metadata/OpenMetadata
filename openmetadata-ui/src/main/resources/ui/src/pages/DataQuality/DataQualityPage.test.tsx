@@ -20,7 +20,7 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
   tab?: DataQualityPageTabs;
 };
-const mockUseHistory = {
+const mockuseNavigate = {
   push: jest.fn(),
 };
 
@@ -48,7 +48,7 @@ jest.mock('../../components/DataQuality/TestCases/TestCases.component', () => {
 jest.mock('react-router-dom', () => {
   return {
     useParams: jest.fn().mockImplementation(() => mockUseParam),
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+    useNavigate: jest.fn().mockImplementation(() => mockuseNavigate),
   };
 });
 
@@ -96,7 +96,7 @@ describe('DataQualityPage', () => {
       fireEvent.click(tabs[1]);
     });
 
-    expect(mockUseHistory.push).toHaveBeenCalledWith(
+    expect(mockuseNavigate.push).toHaveBeenCalledWith(
       getDataQualityPagePath(DataQualityPageTabs.TEST_CASES)
     );
   });

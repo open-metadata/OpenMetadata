@@ -137,7 +137,7 @@ jest.mock('../../common/EntityDescription/DescriptionV1', () => {
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => ({ tab: 'tasks' })),
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
+  useNavigate: jest.fn().mockReturnValue({ push: jest.fn() }),
 }));
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => {

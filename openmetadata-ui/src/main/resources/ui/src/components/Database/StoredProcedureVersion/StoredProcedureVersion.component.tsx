@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -53,7 +53,7 @@ const StoredProcedureVersion = ({
   entityPermissions,
 }: StoredProcedureVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
@@ -89,7 +89,7 @@ const StoredProcedureVersion = ({
   );
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.STORED_PROCEDURE,
         currentVersionData.fullyQualifiedName ?? '',

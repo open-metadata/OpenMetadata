@@ -104,7 +104,7 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
     .mockImplementation(() => ({ search: 'search', pathname: '/my-data' }));
 });
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../common/CmdKIcon/CmdKIcon.component', () => {

@@ -30,7 +30,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -64,7 +64,7 @@ function AlertDetailsPage({
 }: Readonly<AlertDetailsPageProps>) {
   const { t } = useTranslation();
   const { fqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
   const [loading, setLoading] = useState<boolean>(true);
@@ -129,12 +129,12 @@ function AlertDetailsPage({
 
   const handleAlertDelete = useCallback(async () => {
     isNotificationAlert
-      ? history.push(ROUTES.NOTIFICATION_ALERTS)
-      : history.push(ROUTES.OBSERVABILITY_ALERTS);
+      ? navigate(ROUTES.NOTIFICATION_ALERTS)
+      : navigate(ROUTES.OBSERVABILITY_ALERTS);
   }, [history]);
 
   const handleAlertEdit = useCallback(async () => {
-    history.push(
+    navigate(
       isNotificationAlert
         ? getNotificationAlertsEditPath(fqn)
         : getObservabilityAlertsEditPath(fqn)

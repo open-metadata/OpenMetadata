@@ -34,7 +34,7 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
 
 // mock library imports
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: jest.fn(),
   })),
   Link: jest

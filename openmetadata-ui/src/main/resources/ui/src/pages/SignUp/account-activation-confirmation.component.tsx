@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { confirmRegistration } from '../../rest/auth-API';
@@ -25,7 +25,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 const AccountActivationConfirmation = () => {
   const [isAccountVerified, setIsAccountVerified] = useState(false);
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const searchParam = new URLSearchParams(location.search);
 
@@ -35,14 +35,14 @@ const AccountActivationConfirmation = () => {
       if (!isEmpty(res)) {
         setIsAccountVerified(true);
         showSuccessToast(t('server. account-verify-success'));
-        history.push(ROUTES.SIGNIN);
+        navigate(ROUTES.SIGNIN);
       }
     } catch (err) {
       showErrorToast(err as AxiosError, t('server.unexpected-response'));
     }
   };
 
-  const handleBackToLogin = () => history.push(ROUTES.SIGNIN);
+  const handleBackToLogin = () => navigate(ROUTES.SIGNIN);
 
   useEffect(() => {
     confirmUserRegistration();

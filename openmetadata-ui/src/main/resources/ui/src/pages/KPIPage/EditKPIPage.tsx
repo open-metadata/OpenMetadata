@@ -33,7 +33,7 @@ import { isUndefined } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
@@ -64,7 +64,7 @@ const EditKPIPage = () => {
   const { fqn: kpiName } = useFqn();
 
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = useForm<KPIFormValues>();
 
   const [kpiData, setKpiData] = useState<Kpi>();
@@ -135,7 +135,7 @@ const EditKPIPage = () => {
     }
   };
 
-  const handleCancel = () => history.goBack();
+  const handleCancel = () => navigate(-1);
 
   const handleFormValuesChange = (
     changedValues: Partial<KPIFormValues>,
@@ -183,7 +183,7 @@ const EditKPIPage = () => {
       setIsUpdatingKPI(true);
       try {
         await patchKPI(kpiData.id ?? '', patch);
-        history.push(ROUTES.KPI_LIST);
+        navigate(ROUTES.KPI_LIST);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {

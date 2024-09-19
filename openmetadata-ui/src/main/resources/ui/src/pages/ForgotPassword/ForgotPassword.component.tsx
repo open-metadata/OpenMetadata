@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -25,7 +25,7 @@ import './forgot-password.styles.less';
 const ForgotPassword = () => {
   const { t } = useTranslation();
   const { handleForgotPassword } = useBasicAuth();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const [showResetLinkSentAlert, setShowResetLinkSentAlert] = useState(false);
@@ -122,7 +122,7 @@ const ForgotPassword = () => {
               className="w-full"
               data-testid="go-back-button"
               type="primary"
-              onClick={() => history.push(ROUTES.SIGNIN)}>
+              onClick={() => navigate(ROUTES.SIGNIN)}>
               {t('message.go-back-to-login-page')}
             </Button>
           </Col>

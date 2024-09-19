@@ -17,7 +17,7 @@ import { MemoryRouter } from 'react-router-dom';
 import AddPolicyPage from './AddPolicyPage';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
+  useNavigate: jest.fn().mockReturnValue({
     push: jest.fn(),
   }),
 }));

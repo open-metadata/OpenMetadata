@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -59,7 +59,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   dataProducts,
 }: TopicVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
@@ -93,7 +93,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   }, [currentVersionData]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.TOPIC,
         currentVersionData.fullyQualifiedName ?? '',

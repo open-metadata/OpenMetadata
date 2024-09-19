@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -64,7 +64,7 @@ import './policies-list.less';
 
 const PoliciesListPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -256,7 +256,7 @@ const PoliciesListPage = () => {
   }, [fetchPolicies]);
 
   const handleAddPolicy = () => {
-    history.push(ROUTES.ADD_POLICY);
+    navigate(ROUTES.ADD_POLICY);
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {

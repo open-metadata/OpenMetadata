@@ -20,7 +20,7 @@ import { get, isEmpty, isEqual, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -122,7 +122,7 @@ const TableDetailsPageV1: React.FC = () => {
     useParams<{ tab: EntityTabs }>();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const USERId = currentUser?.id ?? '';
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -199,7 +199,7 @@ const TableDetailsPageV1: React.FC = () => {
       });
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setLoading(false);
@@ -353,9 +353,7 @@ const TableDetailsPageV1: React.FC = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.push(
-          getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey)
-        );
+        navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey));
       }
     }
   };
@@ -964,12 +962,12 @@ const TableDetailsPageV1: React.FC = () => {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
+      navigate(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : navigate('/'),
     []
   );
 

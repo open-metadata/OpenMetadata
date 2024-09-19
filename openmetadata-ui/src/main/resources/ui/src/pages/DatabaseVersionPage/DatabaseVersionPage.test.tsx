@@ -33,7 +33,7 @@ jest.mock('react-router-dom', () => ({
     version: '1.2',
     tab: EntityTabs.SCHEMA,
   })),
-  useHistory: jest.fn(() => ({
+  useNavigate: jest.fn(() => ({
     push: mockPush,
   })),
 }));

@@ -43,7 +43,7 @@ jest.mock('lodash', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({

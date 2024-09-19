@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import _ from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
@@ -41,7 +41,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { getUserCreationErrorMessage } from '../../utils/Users.util';
 
 const CreateUserPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { setInlineAlertDetails } = useApplicationStore();
   const { getResourceLimit } = useLimitStore();
@@ -52,9 +52,9 @@ const CreateUserPage = () => {
 
   const goToUserListPage = () => {
     if (bot) {
-      history.push(getSettingPath(GlobalSettingOptions.BOTS));
+      navigate(getSettingPath(GlobalSettingOptions.BOTS));
     } else {
-      history.goBack();
+      navigate(-1);
     }
   };
 

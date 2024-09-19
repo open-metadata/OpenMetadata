@@ -18,7 +18,7 @@ import { isEmpty, isEqual, isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -90,7 +90,7 @@ function SearchIndexDetailsPage() {
   const { tab: activeTab = EntityTabs.FIELDS } = useParams<{ tab: string }>();
   const { fqn: decodedSearchIndexFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
@@ -231,7 +231,7 @@ function SearchIndexDetailsPage() {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
@@ -690,7 +690,7 @@ function SearchIndexDetailsPage() {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
@@ -701,7 +701,7 @@ function SearchIndexDetailsPage() {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : navigate('/'),
     []
   );
 

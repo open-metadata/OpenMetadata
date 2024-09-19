@@ -50,7 +50,7 @@ const mockPush = jest.fn();
 const mockShowErrorToast = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(() => ({
+  useNavigate: jest.fn(() => ({
     push: mockPush,
   })),
 }));

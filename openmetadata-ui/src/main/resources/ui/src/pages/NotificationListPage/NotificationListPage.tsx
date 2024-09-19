@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -56,7 +56,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const NotificationListPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
@@ -229,7 +229,7 @@ const NotificationListPage = () => {
                 data-testid="create-notification"
                 type="primary"
                 onClick={() =>
-                  history.push(
+                  navigate(
                     getSettingPath(
                       GlobalSettingsMenuCategory.NOTIFICATIONS,
                       GlobalSettingOptions.ADD_NOTIFICATION
@@ -256,7 +256,7 @@ const NotificationListPage = () => {
                   heading={t('label.alert')}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() =>
-                    history.push(
+                    navigate(
                       getSettingPath(
                         GlobalSettingsMenuCategory.NOTIFICATIONS,
                         GlobalSettingOptions.ADD_NOTIFICATION

@@ -85,7 +85,7 @@ const mockHistory = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockHistory),
 }));
 
 describe('Entity Task component', () => {

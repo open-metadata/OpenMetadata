@@ -87,12 +87,12 @@ jest.mock('../../../rest/PersonaAPI', () => {
 jest.mock('../../../hooks/useFqn', () => {
   return { useFqn: jest.fn().mockReturnValue({ fqn: 'fqn' }) };
 });
-const mockUseHistory = {
+const mockuseNavigate = {
   push: jest.fn(),
 };
 jest.mock('react-router-dom', () => {
   return {
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+    useNavigate: jest.fn().mockImplementation(() => mockuseNavigate),
   };
 });
 jest.mock(
@@ -184,7 +184,7 @@ describe('PersonaDetailsPage', () => {
 
     fireEvent.click(deleteBtn);
 
-    expect(mockUseHistory.push).toHaveBeenCalledWith(
+    expect(mockuseNavigate.push).toHaveBeenCalledWith(
       '/settings/members/persona'
     );
   });

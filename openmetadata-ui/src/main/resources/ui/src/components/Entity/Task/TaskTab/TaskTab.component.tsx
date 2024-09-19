@@ -45,7 +45,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
@@ -120,7 +120,7 @@ export const TaskTab = ({
   ...rest
 }: TaskTabProps) => {
   const editorRef = useRef<EditorContentRef>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
   const markdownRef = useRef<MarkdownEditorContentRef>();
@@ -283,7 +283,7 @@ export const TaskTab = ({
   };
 
   const handleTaskLinkClick = () => {
-    history.push({
+    navigate({
       pathname: getTaskDetailPath(taskThread),
     });
   };

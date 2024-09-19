@@ -24,7 +24,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
@@ -91,7 +91,7 @@ export const ActivityFeedTab = ({
   onUpdateFeedCount,
   onUpdateEntityDetails,
 }: ActivityFeedTabProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
@@ -140,7 +140,7 @@ export const ActivityFeedTab = ({
   );
 
   const handleTabChange = (subTab: string) => {
-    history.push(
+    navigate(
       entityUtilClassBase.getEntityLink(
         entityType,
         fqn,

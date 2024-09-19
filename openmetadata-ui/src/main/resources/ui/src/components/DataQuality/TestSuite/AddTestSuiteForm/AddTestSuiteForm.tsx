@@ -14,7 +14,7 @@
 import { Button, Form, Input, Space } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   PAGE_SIZE_MEDIUM,
   VALIDATION_MESSAGES,
@@ -37,7 +37,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
   const [form] = Form.useForm();
   const [testSuites, setTestSuites] = useState<Array<TestSuite>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const fetchTestSuites = async () => {
     try {
@@ -55,7 +55,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
   };
 
   const handleCancelClick = () => {
-    history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
+    navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
 
   useEffect(() => {

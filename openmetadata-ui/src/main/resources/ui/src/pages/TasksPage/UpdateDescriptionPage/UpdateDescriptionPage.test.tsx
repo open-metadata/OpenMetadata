@@ -16,7 +16,7 @@ import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { postThread } from '../../../rest/feedsAPI';
 import UpdateDescription from './UpdateDescriptionPage';
 
-const mockUseHistory = {
+const mockuseNavigate = {
   push: jest.fn(),
   goBack: jest.fn(),
 };
@@ -29,7 +29,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockReturnValue({ entityType: 'table' }),
-  useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockuseNavigate),
 }));
 jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
@@ -139,7 +139,7 @@ describe('UpdateDescriptionPage', () => {
       fireEvent.click(cancelBtn);
     });
 
-    expect(mockUseHistory.goBack).toHaveBeenCalled();
+    expect(mockuseNavigate.goBack).toHaveBeenCalled();
   });
 
   it('should submit form when submit button is clicked', async () => {

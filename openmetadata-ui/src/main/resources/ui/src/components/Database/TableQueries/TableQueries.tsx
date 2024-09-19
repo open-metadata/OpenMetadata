@@ -33,7 +33,7 @@ import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
@@ -94,7 +94,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   const { t } = useTranslation();
   const location = useCustomLocation();
   const { fqn: datasetFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const searchParams = useMemo(() => {
     const searchData = parseSearchParams(location.search);
@@ -217,7 +217,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     if (query.id !== selectedQuery?.id) {
       setIsLoading((pre) => ({ ...pre, rightPanel: true }));
       setSelectedQuery(query);
-      history.push({
+      navigate({
         search: Qs.stringify({
           ...searchParams,
           query: query.id,
@@ -268,7 +268,7 @@ const TableQueries: FC<TableQueriesProp> = ({
             queries[0]
           : queries[0];
         setSelectedQuery(selectedQueryData);
-        history.push({
+        navigate({
           search: stringifySearchParams({
             tableId,
             query: selectedQueryData.id,
@@ -472,7 +472,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   }, [tableId, pageSize]);
 
   const handleAddQueryClick = () => {
-    history.push(getAddQueryPath(datasetFQN));
+    navigate(getAddQueryPath(datasetFQN));
   };
 
   const addButton = (

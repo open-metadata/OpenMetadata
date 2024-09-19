@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -44,7 +44,7 @@ import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
 const DomainPage = () => {
   const { t } = useTranslation();
   const { fqn: domainFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { permissions } = usePermissionProvider();
   const { domains, updateDomains, domainLoading, updateDomainLoading } =
     useDomainStore();
@@ -83,7 +83,7 @@ const DomainPage = () => {
   }, [permissions]);
 
   const handleAddDomainClick = () => {
-    history.push(ROUTES.ADD_DOMAIN);
+    navigate(ROUTES.ADD_DOMAIN);
   };
 
   const handleDomainUpdate = async (updatedData: Domain) => {
@@ -105,7 +105,7 @@ const DomainPage = () => {
         updateDomains(updatedDomains, false);
 
         if (activeDomain?.name !== updatedData.name) {
-          history.push(getDomainPath(response.fullyQualifiedName));
+          navigate(getDomainPath(response.fullyQualifiedName));
           refreshDomains();
         }
       } catch (error) {
@@ -121,7 +121,7 @@ const DomainPage = () => {
       : getDomainPath();
 
     refreshDomains();
-    history.push(domainPath);
+    navigate(domainPath);
   };
 
   const fetchDomainByName = async (domainFqn: string) => {
@@ -172,7 +172,7 @@ const DomainPage = () => {
 
   useEffect(() => {
     if (rootDomains.length > 0 && !domainFqn && !domainLoading) {
-      history.push(getDomainPath(rootDomains[0].fullyQualifiedName));
+      navigate(getDomainPath(rootDomains[0].fullyQualifiedName));
     }
   }, [rootDomains, domainFqn]);
 

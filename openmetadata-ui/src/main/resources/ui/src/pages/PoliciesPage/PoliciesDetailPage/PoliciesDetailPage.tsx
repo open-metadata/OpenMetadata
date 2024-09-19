@@ -31,7 +31,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
@@ -72,7 +72,7 @@ type Attribute = 'roles' | 'teams';
 
 const PoliciesDetailPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
@@ -247,9 +247,7 @@ const PoliciesDetailPage = () => {
                       type="text"
                       onClick={(e) => {
                         e.stopPropagation();
-                        history.push(
-                          getEditPolicyRulePath(fqn, rule.name || '')
-                        );
+                        navigate(getEditPolicyRulePath(fqn, rule.name || ''));
                       }}>
                       <Space align="center">
                         <EditIcon width="16px" />
@@ -334,7 +332,7 @@ const PoliciesDetailPage = () => {
                 <Button
                   size="small"
                   type="primary"
-                  onClick={() => history.push(policiesPath)}>
+                  onClick={() => navigate(policiesPath)}>
                   {t('label.go-back')}
                 </Button>
               </div>
@@ -372,7 +370,7 @@ const PoliciesDetailPage = () => {
                       <Button
                         data-testid="add-rule"
                         type="primary"
-                        onClick={() => history.push(getAddPolicyRulePath(fqn))}>
+                        onClick={() => navigate(getAddPolicyRulePath(fqn))}>
                         {t('label.add-entity', {
                           entity: t('label.rule'),
                         })}

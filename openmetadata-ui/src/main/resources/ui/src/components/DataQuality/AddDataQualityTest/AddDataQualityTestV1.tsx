@@ -24,7 +24,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import {
@@ -73,7 +73,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const { fqn } = useFqn();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const isTableFqn = dashboardType === ProfilerDashboardType.TABLE;
-  const history = useHistory();
+  const navigate = useNavigate();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testCaseData, setTestCaseData] = useState<CreateTestCase>();
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
@@ -116,7 +116,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   );
 
   const handleRedirection = () => {
-    history.push({
+    navigate({
       pathname: getEntityDetailsPath(
         EntityType.TABLE,
         table.fullyQualifiedName ?? '',

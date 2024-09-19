@@ -23,7 +23,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -69,7 +69,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { t } = useTranslation();
   const { tab = DataQualityPageTabs.TABLES } =
     useParams<{ tab: DataQualityPageTabs }>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
 
   const params = useMemo(() => {
@@ -235,7 +235,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     value: string,
     key: keyof TestSuiteSearchParams
   ) => {
-    history.push({
+    navigate({
       search: QueryString.stringify({
         ...params,
         [key]: isEmpty(value) ? undefined : value,

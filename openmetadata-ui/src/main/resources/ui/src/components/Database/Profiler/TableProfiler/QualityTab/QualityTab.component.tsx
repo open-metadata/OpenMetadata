@@ -15,7 +15,7 @@ import { Button, Col, Dropdown, Form, Row, Select, Space, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getEntityDetailsPath } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
@@ -71,7 +71,7 @@ export const QualityTab = () => {
 
   const editTest = permissions.EditAll || permissions.EditTests;
   const { fqn: datasetFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
@@ -210,7 +210,7 @@ export const QualityTab = () => {
   };
 
   const handleAddTestClick = (type: ProfilerDashboardType) => {
-    history.push(getAddDataQualityTableTestPath(type, datasetFQN));
+    navigate(getAddDataQualityTableTestPath(type, datasetFQN));
   };
 
   const addButtonContent = useMemo(

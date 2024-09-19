@@ -41,7 +41,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
@@ -66,7 +66,6 @@ import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
-import { refreshPage } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
@@ -116,7 +115,7 @@ const NavBar = ({
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const {
     domainOptions,
     activeDomain,
@@ -289,7 +288,7 @@ const NavBar = ({
       if (isChrome > -1) {
         window.open(path);
       } else {
-        history.push(path);
+        navigate(path);
       }
     };
   };
@@ -369,12 +368,12 @@ const NavBar = ({
 
   const handleDomainChange = useCallback(({ key }) => {
     updateActiveDomain(key);
-    refreshPage();
+    navigate(0);
   }, []);
 
   const handleLanguageChange = useCallback(({ key }) => {
     i18next.changeLanguage(key);
-    refreshPage();
+    navigate(0);
   }, []);
 
   const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);
@@ -609,7 +608,7 @@ const NavBar = ({
               size="small"
               type="link"
               onClick={() => {
-                history.go(0);
+                navigate(0);
               }}>
               {t('label.refresh')}
             </Button>

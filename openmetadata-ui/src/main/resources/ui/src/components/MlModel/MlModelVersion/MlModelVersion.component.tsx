@@ -24,7 +24,7 @@ import {
 import classNames from 'classnames';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -68,7 +68,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   entityPermissions,
 }: MlModelVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab } = useParams<{ tab: EntityTabs }>();
 
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
@@ -94,7 +94,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
 
   const handleTabChange = useCallback(
     (activeKey: string) => {
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.MLMODEL,
           currentVersionData.fullyQualifiedName ?? '',

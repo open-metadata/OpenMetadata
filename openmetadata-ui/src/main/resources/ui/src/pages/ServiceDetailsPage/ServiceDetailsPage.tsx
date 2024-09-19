@@ -28,7 +28,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -162,7 +162,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN]
   );
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { isAdminUser } = useAuth();
   const ingestionPagingInfo = usePaging(PAGE_SIZE);
   const pagingInfo = usePaging(PAGE_SIZE);
@@ -204,7 +204,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       return EntityTabs.INGESTIONS;
     }
 
-    return getCountLabel(serviceCategory).toLowerCase();
+    return getCountLabel(serviceCategory as ServiceTypes).toLowerCase();
   }, [tab, serviceCategory, isMetadataService]);
 
   const handleSearchChange = useCallback(
@@ -250,7 +250,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const allowTestConn = useMemo(() => {
-    return shouldTestConnection(serviceCategory);
+    return shouldTestConnection(serviceCategory as ServiceTypes);
   }, [serviceCategory]);
 
   const { version: currentVersion, deleted } = useMemo(
@@ -262,7 +262,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     setIsLoading(true);
     try {
       const response = await getEntityPermissionByFqn(
-        getResourceEntityFromServiceCategory(serviceCategory),
+        getResourceEntityFromServiceCategory(serviceCategory as ServiceTypes),
         decodedServiceFQN
       );
       setServicePermission(response);
@@ -272,7 +272,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceCategory, decodedServiceFQN]);
 
   const goToEditConnection = useCallback(() => {
-    history.push(
+    navigate(
       getEditConnectionPath(serviceCategory ?? '', decodedServiceFQN ?? '')
     );
   }, [serviceCategory, decodedServiceFQN]);
@@ -280,10 +280,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (key: string) => {
       if (key !== activeTab) {
-        history.push({
+        navigate({
           pathname: getServiceDetailsPath(
             decodedServiceFQN,
-            serviceCategory,
+            serviceCategory as ServiceTypes,
             key
           ),
         });
@@ -302,7 +302,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
             TabSpecificField.PIPELINE_STATUSES,
           ],
           serviceFilter: decodedServiceFQN,
-          serviceType: getEntityTypeFromServiceCategory(serviceCategory),
+          serviceType: getEntityTypeFromServiceCategory(
+            serviceCategory as ServiceTypes
+          ),
           paging,
           pipelineType: SERVICE_INGESTION_PIPELINE_TYPES,
           limit,
@@ -569,7 +571,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     try {
       setIsLoading(true);
       const response = await getServiceByFQN(
-        serviceCategory,
+        serviceCategory as ServiceTypes,
         decodedServiceFQN,
         {
           fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${
@@ -585,7 +587,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } catch (error) {
       // Error
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);
@@ -606,7 +608,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
       try {
         const response = await patchService(
-          serviceCategory,
+          serviceCategory as ServiceTypes,
           serviceDetails.id,
           jsonPatch
         );
@@ -636,7 +638,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
         try {
           const response = await patchService(
-            serviceCategory,
+            serviceCategory as ServiceTypes,
             serviceDetails.id,
             jsonPatch
           );
@@ -659,7 +661,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       const jsonPatch = compare(serviceDetails, updatedData);
       try {
         const res = await patchService(
-          serviceCategory,
+          serviceCategory as ServiceTypes,
           serviceDetails?.id ?? '',
           jsonPatch
         );
@@ -685,7 +687,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         }
 
         const response = await patchService(
-          serviceCategory,
+          serviceCategory as ServiceTypes,
           serviceDetails.id ?? '',
           jsonPatch
         );
@@ -746,9 +748,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const versionHandler = useCallback(() => {
     currentVersion &&
-      history.push(
+      navigate(
         getServiceVersionPath(
-          serviceCategory,
+          serviceCategory as ServiceTypes,
           decodedServiceFQN,
           toString(currentVersion)
         )
@@ -756,7 +758,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [currentVersion, serviceCategory, decodedServiceFQN]);
 
   const entityType = useMemo(
-    () => getEntityTypeFromServiceCategory(serviceCategory),
+    () => getEntityTypeFromServiceCategory(serviceCategory as ServiceTypes),
     [serviceCategory]
   );
 
@@ -791,14 +793,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.goBack(),
+      isSoftDelete ? handleToggleDelete(version) : navigate(-1),
     [handleToggleDelete]
   );
 
   const handleRestoreService = useCallback(async () => {
     try {
       const { version: newVersion } = await restoreService(
-        serviceCategory,
+        serviceCategory as ServiceTypes,
         serviceDetails.id
       );
       showSuccessToast(
@@ -961,7 +963,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         <Col className="p-x-lg" span={24}>
           <ServiceConnectionDetails
             connectionDetails={connectionDetails ?? {}}
-            serviceCategory={serviceCategory}
+            serviceCategory={serviceCategory as ServiceTypes}
             serviceFQN={serviceDetails?.serviceType || ''}
           />
         </Col>
@@ -990,8 +992,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     if (!isMetadataService) {
       tabs.push({
-        name: getCountLabel(serviceCategory),
-        key: getCountLabel(serviceCategory).toLowerCase(),
+        name: getCountLabel(serviceCategory as ServiceTypes),
+        key: getCountLabel(serviceCategory as ServiceTypes).toLowerCase(),
         count: paging.total,
         children: (
           <ServiceMainTabContent
@@ -1002,7 +1004,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             pagingHandler={pagingHandler}
             saveUpdatedServiceData={saveUpdatedServiceData}
             serviceDetails={serviceDetails}
-            serviceName={serviceCategory}
+            serviceName={serviceCategory as ServiceTypes}
             servicePermission={servicePermission}
             showDeleted={showDeleted}
             onDescriptionUpdate={handleDescriptionUpdate}

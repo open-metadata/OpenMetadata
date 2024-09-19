@@ -17,7 +17,7 @@ import { ServiceCategory } from '../../../../enums/service.enum';
 import AddService from './AddService.component';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../AddIngestion/AddIngestion.component', () => () => (

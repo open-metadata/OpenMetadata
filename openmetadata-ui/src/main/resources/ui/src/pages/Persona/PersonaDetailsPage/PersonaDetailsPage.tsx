@@ -17,7 +17,7 @@ import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -47,7 +47,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 export const PersonaDetailsPage = () => {
   const { fqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const [isLoading, setIsLoading] = useState(true);
   const [isEdit, setIsEdit] = useState(false);
@@ -164,7 +164,7 @@ export const PersonaDetailsPage = () => {
   );
 
   const handleAfterDeleteAction = () => {
-    history.push(
+    navigate(
       getSettingPath(
         GlobalSettingsMenuCategory.MEMBERS,
         GlobalSettingOptions.PERSONA

@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -54,7 +54,7 @@ const GlossaryDetails = ({
   onThreadLinkSelect,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { activeGlossary: glossary } = useGlossaryStore();
   const { tab: activeTab } = useParams<{ tab: string }>();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -134,7 +134,7 @@ const GlossaryDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getGlossaryTermDetailsPath(glossary.fullyQualifiedName ?? '', activeKey)
       );
     }

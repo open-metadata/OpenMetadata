@@ -17,7 +17,7 @@ import { isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
@@ -64,7 +64,7 @@ const TagsContainerV2 = ({
   defaultLabelType,
   defaultState,
 }: TagsContainerV2Props) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = Form.useForm();
   const { t } = useTranslation();
 
@@ -207,7 +207,7 @@ const TagsContainerV2 = ({
   ]);
 
   const handleTagsTask = (hasTags: boolean) => {
-    history.push(
+    navigate(
       (hasTags ? getUpdateTagsPath : getRequestTagsPath)(
         entityType as string,
         entityFqn as string

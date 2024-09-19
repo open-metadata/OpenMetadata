@@ -51,7 +51,6 @@ function CommonEntitySummaryInfo({
                   <Col span={16}>
                     {info.isLink ? (
                       <Link
-                        component={Typography.Link}
                         data-testid={`${info.name}-value`}
                         target={info.isExternal ? '_blank' : '_self'}
                         to={{ pathname: info.url }}>

@@ -16,7 +16,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, filter, isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -52,7 +52,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
 const TeamsPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useFqn();
@@ -468,7 +468,7 @@ const TeamsPage = () => {
   const afterDeleteAction = (isSoftDelete?: boolean) => {
     isSoftDelete
       ? handleToggleDelete()
-      : history.push(getTeamsWithFqnPath(TeamType.Organization));
+      : navigate(getTeamsWithFqnPath(TeamType.Organization));
   };
 
   const toggleShowDeletedTeam = () => {

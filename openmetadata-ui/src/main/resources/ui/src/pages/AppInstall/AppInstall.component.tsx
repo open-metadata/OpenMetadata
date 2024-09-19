@@ -18,7 +18,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getWeekCron } from '../../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
@@ -58,7 +58,7 @@ import './app-install.less';
 
 const AppInstall = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
@@ -125,11 +125,11 @@ const AppInstall = () => {
   }, [fqn]);
 
   const onCancel = () => {
-    history.push(getMarketPlaceAppDetailsPath(fqn));
+    navigate(getMarketPlaceAppDetailsPath(fqn));
   };
 
   const goToAppPage = () => {
-    history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
+    navigate(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
   const onSubmit = async (updatedValue: TestSuiteIngestionDataType) => {

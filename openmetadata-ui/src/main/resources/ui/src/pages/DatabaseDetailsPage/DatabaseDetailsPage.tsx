@@ -25,7 +25,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -126,7 +126,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const isMounting = useRef(true);
 
   const { version: currentVersion, deleted } = useMemo(
@@ -221,7 +221,7 @@ const DatabaseDetails: FunctionComponent = () => {
         if (
           (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
         ) {
-          history.replace(ROUTES.FORBIDDEN);
+          navigate(ROUTES.FORBIDDEN, { replace: true });
         }
       })
       .finally(() => {
@@ -273,7 +273,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
-      history.push({
+      navigate({
         pathname: getEntityDetailsPath(
           EntityType.DATABASE,
           decodedDatabaseFQN,
@@ -338,7 +338,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   useEffect(() => {
     if (withinPageSearch && serviceType) {
-      history.push(
+      navigate(
         getExplorePath({
           search: withinPageSearch,
           isPersistFilters: false,
@@ -459,7 +459,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const versionHandler = useCallback(() => {
     currentVersion &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.DATABASE,
           decodedDatabaseFQN,
@@ -492,7 +492,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : navigate('/'),
     []
   );
 

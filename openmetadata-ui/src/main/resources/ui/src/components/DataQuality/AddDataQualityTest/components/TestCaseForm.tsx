@@ -18,7 +18,7 @@ import { t } from 'i18next';
 import { isEmpty, isEqual, snakeCase } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import {
@@ -67,7 +67,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   onCancel,
   table,
 }) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { dashboardType } = useParams<{ dashboardType: string }>();
 
   const { fqn: decodedEntityFQN } = useFqn();
@@ -250,7 +250,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       setCurrentColumnType(selectedColumn?.dataType);
     }
     if (selectedColumn) {
-      history.push({
+      navigate({
         search: Qs.stringify({
           activeColumnFqn: selectedColumn?.fullyQualifiedName,
         }),

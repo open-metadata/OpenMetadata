@@ -16,7 +16,7 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
@@ -29,7 +29,7 @@ export const GenericAuthenticator = forwardRef(
       removeOidcToken,
       setOidcToken,
     } = useApplicationStore();
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const handleLogin = () => {
       setIsAuthenticated(false);
@@ -40,7 +40,7 @@ export const GenericAuthenticator = forwardRef(
     const handleLogout = async () => {
       await logoutUser();
 
-      history.push(ROUTES.SIGNIN);
+      navigate(ROUTES.SIGNIN);
       removeOidcToken();
       setIsAuthenticated(false);
     };

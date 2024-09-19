@@ -14,7 +14,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { AddTestSuitePipelineProps } from '../AddDataQualityTest.interface';
 import AddTestSuitePipeline from './AddTestSuitePipeline';
-const mockUseHistory = {
+const mockuseNavigate = {
   goBack: jest.fn(),
 };
 jest.mock('../../../../hooks/useFqn', () => ({
@@ -26,7 +26,7 @@ jest.mock('../../AddTestCaseList/AddTestCaseList.component', () => ({
     .mockImplementation(() => <div>AddTestCaseList.component</div>),
 }));
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockuseNavigate),
 }));
 
 const mockProps: AddTestSuitePipelineProps = {
@@ -92,7 +92,7 @@ describe('AddTestSuitePipeline', () => {
       await fireEvent.click(screen.getByTestId('cancel'));
     });
 
-    expect(mockUseHistory.goBack).toHaveBeenCalled();
+    expect(mockuseNavigate.goBack).toHaveBeenCalled();
   });
 
   it('Hide AddTestCaseList after clicking on select-all-test-cases switch', async () => {

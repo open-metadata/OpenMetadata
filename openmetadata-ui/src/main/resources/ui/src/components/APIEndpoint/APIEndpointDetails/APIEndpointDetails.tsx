@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
@@ -75,7 +75,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedApiEndpointFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -161,7 +161,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.API_ENDPOINT,
           decodedApiEndpointFqn,
@@ -249,7 +249,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? onToggleDelete(version) : history.push('/'),
+      isSoftDelete ? onToggleDelete(version) : navigate('/'),
     []
   );
 

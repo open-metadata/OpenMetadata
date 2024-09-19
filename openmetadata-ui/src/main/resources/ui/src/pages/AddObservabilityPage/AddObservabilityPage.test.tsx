@@ -80,7 +80,7 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: mockPush,
     goBack: mockGoBack,
   })),

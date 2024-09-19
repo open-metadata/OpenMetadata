@@ -18,7 +18,7 @@ import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
@@ -76,7 +76,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
 
@@ -152,7 +152,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey)
       );
     }
@@ -352,7 +352,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : navigate('/'),
     []
   );
 

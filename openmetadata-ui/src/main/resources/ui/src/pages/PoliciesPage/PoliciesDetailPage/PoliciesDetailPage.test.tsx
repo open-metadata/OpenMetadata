@@ -19,7 +19,7 @@ import { POLICY_DATA } from '../PoliciesData.mock';
 import PoliciesDetailPage from './PoliciesDetailPage';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn(),
   useParams: jest.fn().mockReturnValue({ fqn: 'policy' }),
 }));
 

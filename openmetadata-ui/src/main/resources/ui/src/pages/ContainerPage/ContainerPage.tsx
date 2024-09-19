@@ -17,7 +17,7 @@ import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -89,7 +89,7 @@ import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const ContainerPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -153,7 +153,7 @@ const ContainerPage = () => {
       showErrorToast(error as AxiosError);
       setHasError(true);
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);
@@ -275,7 +275,7 @@ const ContainerPage = () => {
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
-      history.push({
+      navigate({
         pathname: getEntityDetailsPath(
           EntityType.CONTAINER,
           decodedContainerName,
@@ -424,7 +424,7 @@ const ContainerPage = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : navigate('/'),
     []
   );
 
@@ -524,7 +524,7 @@ const ContainerPage = () => {
   };
 
   const versionHandler = () =>
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.CONTAINER,
         decodedContainerName,

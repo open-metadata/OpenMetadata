@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -67,7 +67,7 @@ const UserListPageV1 = () => {
   const { t } = useTranslation();
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
   const { isAdminUser } = useAuth();
@@ -237,7 +237,7 @@ const UserListPageV1 = () => {
     handlePageChange(INITIAL_PAGING_VALUE);
     const params = new URLSearchParams({ user: value });
     // This function is called onChange in the search input with debouncing
-    // Hence using history.replace instead of history.push to avoid adding multiple routes in history
+    // Hence using history.replace instead of navigate to avoid adding multiple routes in history
     history.replace({
       search: value && params.toString(),
     });
@@ -253,7 +253,7 @@ const UserListPageV1 = () => {
   }, [tab]);
 
   useEffect(() => {
-    if (teamsAndUsers.includes(tab)) {
+    if (teamsAndUsers.includes(tab as GlobalSettingOptions)) {
       // Checking if the path has search query present in it
       // if present fetch userlist with the query
       // else get list of all users
@@ -276,7 +276,7 @@ const UserListPageV1 = () => {
   }, [pageSize, isAdminPage]);
 
   const handleAddNewUser = () => {
-    history.push(ROUTES.CREATE_USER);
+    navigate(ROUTES.CREATE_USER);
   };
 
   const handleReactiveUser = async () => {

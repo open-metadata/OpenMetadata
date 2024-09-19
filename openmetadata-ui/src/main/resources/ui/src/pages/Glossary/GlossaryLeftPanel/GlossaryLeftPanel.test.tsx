@@ -21,7 +21,7 @@ const mockHistory = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockHistory),
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
   }),

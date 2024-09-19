@@ -20,7 +20,7 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
@@ -87,14 +87,14 @@ const GlossaryHeader = ({
   isVersionView,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
 
   const { version } = useParams<{
     version: string;
   }>();
   const { fqn } = useFqn();
-  const { id } = useParams<{ id: string }>();
+  const { id = '' } = useParams<{ id: string }>();
   const { showModal } = useEntityExportModalProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -207,7 +207,7 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    history.push(
+    navigate(
       getGlossaryPathWithAction(
         selectedData.fullyQualifiedName ?? '',
         EntityAction.IMPORT
@@ -230,7 +230,7 @@ const GlossaryHeader = ({
           );
     }
 
-    history.push(path);
+    navigate(path);
   };
 
   const handleDelete = async () => {
@@ -282,7 +282,7 @@ const GlossaryHeader = ({
         selectedData.id,
         jsonPatch
       );
-      history.push(getGlossaryPath(fullyQualifiedName ?? name));
+      navigate(getGlossaryPath(fullyQualifiedName ?? name));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

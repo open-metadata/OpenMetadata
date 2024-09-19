@@ -43,7 +43,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -82,7 +82,7 @@ import { TestCaseSearchParams } from '../DataQuality.interface';
 
 export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const [form] = useForm();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: DataQualityPageTabs }>();
@@ -126,7 +126,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     key: K,
     value?: TestCaseSearchParams[K]
   ) => {
-    history.push({
+    navigate({
       search: QueryString.stringify({ ...params, [key]: value || undefined }),
     });
   };

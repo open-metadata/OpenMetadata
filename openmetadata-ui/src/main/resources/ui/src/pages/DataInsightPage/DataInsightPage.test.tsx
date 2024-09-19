@@ -27,7 +27,7 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }) => (
       <div data-testid="route">{children}</div>
     )),
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
+  useNavigate: jest.fn().mockReturnValue({ push: jest.fn() }),
   useParams: jest.fn().mockImplementation(() => ({ tab: activeTab })),
 }));
 

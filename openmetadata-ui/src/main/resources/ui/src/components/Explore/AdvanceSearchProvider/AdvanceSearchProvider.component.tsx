@@ -27,7 +27,7 @@ import {
   Utils as QbUtils,
   ValueSource,
 } from 'react-awesome-query-builder';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -64,7 +64,7 @@ export const AdvanceSearchProvider = ({
     [searchClassBase]
   );
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab } = useParams<UrlParams>();
   const [loading, setLoading] = useState(true);
   const getSearchIndexFromTabInfo = useCallback(() => {
@@ -164,7 +164,7 @@ export const AdvanceSearchProvider = ({
 
   const handleTreeUpdate = useCallback(
     (tree?: ImmutableTree) => {
-      history.push({
+      navigate({
         pathname: location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
@@ -194,7 +194,7 @@ export const AdvanceSearchProvider = ({
   const handleResetAllFilters = useCallback(() => {
     setQueryFilter(undefined);
     setSQLQuery('');
-    history.push({
+    navigate({
       pathname: location.pathname,
       search: Qs.stringify({
         quickFilter: undefined,

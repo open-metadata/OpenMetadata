@@ -179,7 +179,7 @@ const mockPropertyTypes = [
 ];
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({ goBack: mockGoBack })),
+  useNavigate: jest.fn().mockImplementation(() => ({ goBack: mockGoBack })),
   useParams: jest.fn().mockReturnValue({
     entityTypeFQN: 'entityTypeFQN',
   }),

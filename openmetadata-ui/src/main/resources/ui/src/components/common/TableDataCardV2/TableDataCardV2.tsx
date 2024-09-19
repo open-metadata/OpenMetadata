@@ -75,7 +75,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
   ) => {
     const { theme } = useApplicationStore();
     const { t } = useTranslation();
-    const { tab } = useParams<{ tab: string }>();
+    const { tab = '' } = useParams<{ tab: string }>();
 
     const otherDetails = useMemo(() => {
       const _otherDetails: ExtraInfo[] = [

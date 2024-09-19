@@ -13,7 +13,7 @@
 import { Button, Col, Row, Space, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import DataInsightSummary from '../../../components/DataInsight/DataInsightSummary';
 import KPIChart from '../../../components/DataInsight/KPIChart';
@@ -39,12 +39,12 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   } = useDataInsightProvider();
 
   const { tab } = useParams<{ tab: DataInsightTabs }>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
 
   const { showDataInsightSummary, showKpiChart } =
-    getOptionalDataInsightTabFlag(tab);
+    getOptionalDataInsightTabFlag(tab as DataInsightTabs);
 
   const viewKPIPermission = useMemo(
     () => checkPermission(Operation.ViewAll, ResourceEntity.KPI, permissions),
@@ -57,7 +57,7 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   );
 
   const handleAddKPI = () => {
-    history.push(ROUTES.ADD_KPI);
+    navigate(ROUTES.ADD_KPI);
   };
 
   return (

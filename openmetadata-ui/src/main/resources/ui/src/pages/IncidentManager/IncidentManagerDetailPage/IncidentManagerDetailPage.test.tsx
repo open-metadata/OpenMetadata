@@ -100,7 +100,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: () => mockHistory,
+  useNavigate: () => mockHistory,
   useParams: () => ({
     fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
     tab: IncidentManagerTabs.TEST_CASE_RESULTS,

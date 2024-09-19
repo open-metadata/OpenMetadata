@@ -15,7 +15,7 @@ import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -38,7 +38,7 @@ const BasicSignUp = () => {
   const { t } = useTranslation();
   const { authConfig } = useApplicationStore();
   const { handleRegister } = useBasicAuth();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [form] = Form.useForm();
   const password = Form.useWatch('password', form);
@@ -63,7 +63,7 @@ const BasicSignUp = () => {
     }
   };
 
-  const handleLogin = () => history.push(ROUTES.SIGNIN);
+  const handleLogin = () => navigate(ROUTES.SIGNIN);
 
   return (
     <Row className="h-full" data-testid="signin-page">

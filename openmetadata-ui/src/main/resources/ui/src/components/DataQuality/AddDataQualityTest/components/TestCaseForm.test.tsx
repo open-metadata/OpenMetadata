@@ -75,10 +75,10 @@ const mockTestDefinition = {
     },
   ],
 };
-const mockUseHistory = { push: jest.fn() };
+const mockuseNavigate = { push: jest.fn() };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockuseNavigate),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => {
@@ -235,7 +235,7 @@ describe('TestCaseForm', () => {
       userEvent.click(await screen.findByText('last_name'));
     });
 
-    expect(mockUseHistory.push).toHaveBeenCalledWith({
+    expect(mockuseNavigate.push).toHaveBeenCalledWith({
       search:
         'activeColumnFqn=sample_data.ecommerce_db.shopify.dim_address.last_name',
     });

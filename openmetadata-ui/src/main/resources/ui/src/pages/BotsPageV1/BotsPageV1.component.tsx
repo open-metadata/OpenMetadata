@@ -13,18 +13,18 @@
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import BotListV1 from '../../components/Settings/Bot/BotListV1/BotListV1.component';
 import { getCreateUserPath } from '../../constants/constants';
 
 export const BotsPageV1 = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [showDeleted, setShowDeleted] = useState(false);
 
   const handleAddBotClick = () => {
-    history.push(getCreateUserPath(true));
+    navigate(getCreateUserPath(true));
   };
 
   const handleShowDeleted = (checked: boolean) => {

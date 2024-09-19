@@ -22,7 +22,7 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 
 jest.mock('react-router-dom', () => {
   return {
-    useHistory: jest.fn(),
+    useNavigate: jest.fn(),
   };
 });
 const mockHandleResetPassword = jest.fn();

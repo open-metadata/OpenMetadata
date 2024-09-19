@@ -16,7 +16,7 @@ import React from 'react';
 import AddGlossaryPage from './AddGlossaryPage.component';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>

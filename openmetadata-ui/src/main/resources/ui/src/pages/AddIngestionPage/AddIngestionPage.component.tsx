@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -55,13 +55,13 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddIngestionPage = () => {
   const { fetchAirflowStatus } = useAirflowStatus();
-  const { ingestionType, serviceCategory } = useParams<{
+  const { ingestionType = '', serviceCategory = '' } = useParams<{
     serviceCategory: string;
     ingestionType: string;
   }>();
   const { fqn: serviceFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [serviceData, setServiceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [isLoading, setIsloading] = useState(true);
@@ -198,13 +198,11 @@ const AddIngestionPage = () => {
   };
 
   const goToSettingsPage = () => {
-    history.push(getSettingsPathFromPipelineType(ingestionType));
+    navigate(getSettingsPathFromPipelineType(ingestionType));
   };
 
   const goToService = () => {
-    history.push(
-      getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
-    );
+    navigate(getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions'));
   };
 
   const handleCancelClick = isSettingsPipeline ? goToSettingsPage : goToService;

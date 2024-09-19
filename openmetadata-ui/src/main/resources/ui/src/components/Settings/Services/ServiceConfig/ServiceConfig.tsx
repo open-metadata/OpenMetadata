@@ -14,7 +14,7 @@
 import { IChangeEvent } from '@rjsf/core';
 import { LoadingState, ServicesData } from 'Models';
 import React, { useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { DashboardService } from '../../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../../generated/entity/services/databaseService';
@@ -46,7 +46,7 @@ const ServiceConfig = ({
   disableTestConnection,
   onFocus,
 }: ServiceConfigProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<LoadingState>('initial');
 
   const handleOnSaveClick = async (e: IChangeEvent<ConfigData>) => {
@@ -58,7 +58,7 @@ const ServiceConfig = ({
       await handleUpdate(e.formData, serviceCategory);
       setTimeout(() => {
         setStatus('success');
-        history.push(getPathByServiceFQN(serviceCategory, serviceFQN));
+        navigate(getPathByServiceFQN(serviceCategory, serviceFQN));
       }, 200);
     } catch (err) {
       // Nothing here
@@ -70,7 +70,7 @@ const ServiceConfig = ({
   };
 
   const onCancel = () => {
-    history.goBack();
+    navigate(-1);
   };
 
   const getDynamicFields = () => {

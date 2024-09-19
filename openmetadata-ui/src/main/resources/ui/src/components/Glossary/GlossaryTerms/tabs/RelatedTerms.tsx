@@ -16,7 +16,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
 import { isArray, isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
@@ -61,7 +61,7 @@ const RelatedTerms = ({
   permissions,
   onGlossaryTermUpdate,
 }: RelatedTermsProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<EntityReference[]>([]);
 
@@ -78,7 +78,7 @@ const RelatedTerms = ({
   }, [selectedOption]);
 
   const handleRelatedTermClick = (fqn: string) => {
-    history.push(getGlossaryPath(fqn));
+    navigate(getGlossaryPath(fqn));
   };
 
   const handleRelatedTermsSave = async (

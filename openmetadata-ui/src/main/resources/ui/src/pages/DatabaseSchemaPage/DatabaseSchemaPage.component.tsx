@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -102,7 +102,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -232,7 +232,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } catch (err) {
       // Error
       if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsSchemaDetailsLoading(false);
@@ -311,7 +311,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (activeKey: string) => {
       if (activeKey !== activeTab) {
-        history.push({
+        navigate({
           pathname: getEntityDetailsPath(
             EntityType.DATABASE_SCHEMA,
             decodedDatabaseSchemaFQN,
@@ -469,7 +469,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const versionHandler = useCallback(() => {
     currentVersion &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.DATABASE_SCHEMA,
           decodedDatabaseSchemaFQN,
@@ -481,7 +481,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : navigate('/'),
     []
   );
 

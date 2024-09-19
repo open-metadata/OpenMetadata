@@ -14,7 +14,7 @@ import { Col, Row, Space, Tag, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import {
@@ -47,7 +47,7 @@ const DataProductsContainer = ({
   onSave,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isEditMode, setIsEditMode] = useState(false);
 
   const handleAddClick = () => {
@@ -75,7 +75,7 @@ const DataProductsContainer = ({
   );
 
   const redirectLink = useCallback((fqn) => {
-    history.push(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
+    navigate(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
   }, []);
 
   const handleSave = async (dataProducts: DataProduct[]) => {

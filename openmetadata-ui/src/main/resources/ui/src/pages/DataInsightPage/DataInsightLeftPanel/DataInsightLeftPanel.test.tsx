@@ -18,7 +18,7 @@ import DataInsightLeftPanel from './DataInsightLeftPanel';
 const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
   useParams: jest.fn().mockReturnValue({ tab: 'data-assets' }),

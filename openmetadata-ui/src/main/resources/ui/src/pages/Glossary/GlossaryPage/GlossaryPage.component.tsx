@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
@@ -60,7 +60,7 @@ const GlossaryPage = () => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { action } = useParams<{ action: EntityAction }>();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -130,7 +130,7 @@ const GlossaryPage = () => {
   );
 
   const handleAddGlossaryClick = () => {
-    history.push(ROUTES.ADD_GLOSSARY);
+    navigate(ROUTES.ADD_GLOSSARY);
   };
 
   const fetchGlossaryList = async () => {
@@ -195,7 +195,9 @@ const GlossaryPage = () => {
         );
         !glossaryFqn &&
           glossaries[0].fullyQualifiedName &&
-          history.replace(getGlossaryPath(glossaries[0].fullyQualifiedName));
+          navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
+            replace: true,
+          });
         setIsRightPanelLoading(false);
       }
     }
@@ -213,7 +215,7 @@ const GlossaryPage = () => {
       updateActiveGlossary({ ...updatedData, ...response });
 
       if (activeGlossary?.name !== updatedData.name) {
-        history.push(getGlossaryPath(response.fullyQualifiedName));
+        navigate(getGlossaryPath(response.fullyQualifiedName));
         fetchGlossaryList();
       }
     } catch (error) {
@@ -261,7 +263,7 @@ const GlossaryPage = () => {
           ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
           : getGlossaryPath();
 
-      history.push(glossaryPath);
+      navigate(glossaryPath);
       fetchGlossaryList();
     } catch (error) {
       showErrorToast(
@@ -287,7 +289,7 @@ const GlossaryPage = () => {
         if (response) {
           setActiveGlossary(response as ModifiedGlossary);
           if (activeGlossary?.name !== updatedData.name) {
-            history.push(getGlossaryPath(response.fullyQualifiedName));
+            navigate(getGlossaryPath(response.fullyQualifiedName));
             fetchGlossaryList();
           }
         } else {
@@ -318,7 +320,7 @@ const GlossaryPage = () => {
         fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
       }
       setIsLoading(true);
-      history.push(getGlossaryPath(fqn));
+      navigate(getGlossaryPath(fqn));
       fetchGlossaryList();
     } catch (err) {
       showErrorToast(

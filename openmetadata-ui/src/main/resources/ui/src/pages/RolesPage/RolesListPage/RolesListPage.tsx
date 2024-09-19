@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -64,7 +64,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import './roles-list.less';
 
 const RolesListPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -254,7 +254,7 @@ const RolesListPage = () => {
   }, [fetchRoles]);
 
   const handleAddRole = () => {
-    history.push(ROUTES.ADD_ROLE);
+    navigate(ROUTES.ADD_ROLE);
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {

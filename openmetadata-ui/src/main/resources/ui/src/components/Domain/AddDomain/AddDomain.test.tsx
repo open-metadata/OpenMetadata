@@ -77,7 +77,7 @@ jest.mock('../AddDomainForm/AddDomainForm.component', () => {
 const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
 }));

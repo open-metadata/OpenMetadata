@@ -17,7 +17,7 @@ import { isEmpty, toString } from 'lodash';
 import { PagingResponse } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -65,9 +65,9 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 
 function DatabaseSchemaVersionPage() {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { version, tab } = useParams<{
+  const { version = '', tab } = useParams<{
     version: string;
     tab: EntityTabs;
   }>();
@@ -199,7 +199,7 @@ function DatabaseSchemaVersionPage() {
   const { versionHandler, backHandler } = useMemo(
     () => ({
       versionHandler: (newVersion = version) => {
-        history.push(
+        navigate(
           getVersionPath(
             EntityType.DATABASE_SCHEMA,
             decodedEntityFQN,
@@ -209,7 +209,7 @@ function DatabaseSchemaVersionPage() {
         );
       },
       backHandler: () => {
-        history.push(
+        navigate(
           getEntityDetailsPath(
             EntityType.DATABASE_SCHEMA,
             decodedEntityFQN,
@@ -222,7 +222,7 @@ function DatabaseSchemaVersionPage() {
   );
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.DATABASE_SCHEMA,
         decodedEntityFQN,

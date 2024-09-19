@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -52,7 +52,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
 
   const { permissions } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(true);
   const [testSuitePipelines, setTestSuitePipelines] = useState<
@@ -195,7 +195,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               icon={<PlusOutlined />}
               type="primary"
               onClick={() => {
-                history.push(getTestSuiteIngestionPath(testSuiteFQN));
+                navigate(getTestSuiteIngestionPath(testSuiteFQN));
               }}>
               {t('label.add')}
             </Button>
@@ -226,7 +226,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
             data-testid="add-pipeline-button"
             type="primary"
             onClick={() => {
-              history.push(getTestSuiteIngestionPath(testSuiteFQN));
+              navigate(getTestSuiteIngestionPath(testSuiteFQN));
             }}>
             {t('label.add-entity', { entity: t('label.pipeline') })}
           </Button>

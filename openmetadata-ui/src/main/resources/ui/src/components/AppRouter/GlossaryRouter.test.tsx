@@ -12,7 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter, Switch } from 'react-router-dom';
+import { MemoryRouter, Routes } from 'react-router-dom';
 import GlossaryRouter from './GlossaryRouter';
 
 jest.mock('../../pages/AddGlossary/AddGlossaryPage.component', () => {
@@ -63,9 +63,9 @@ describe('GlossaryRouter', () => {
           '/glossary/terms/versions/tab',
           '/glossary/terms/versions',
         ]}>
-        <Switch>
+        <Routes>
           <GlossaryRouter />
-        </Switch>
+        </Routes>
       </MemoryRouter>
     );
 
@@ -80,9 +80,9 @@ describe('GlossaryRouter', () => {
           '/glossary/testGlossary',
           '/glossary/testGlossary/action/import',
         ]}>
-        <Switch>
+        <Routes>
           <GlossaryRouter />
-        </Switch>
+        </Routes>
       </MemoryRouter>
     );
 
@@ -96,9 +96,9 @@ describe('GlossaryRouter', () => {
           '/glossary/testGlossary/tab',
           '/glossary/testGlossary/subtab',
         ]}>
-        <Switch>
+        <Routes>
           <GlossaryRouter />
-        </Switch>
+        </Routes>
       </MemoryRouter>
     );
 

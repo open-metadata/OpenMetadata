@@ -16,7 +16,7 @@ import { compare, Operation as PatchOperation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import ActivityFeedProvider from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -49,7 +49,7 @@ import { useTestCaseStore } from './useTestCase.store';
 
 const IncidentManagerDetailPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location =
     useLocation<{ breadcrumbData: TitleBreadcrumbProps['titleLinks'] }>();
 
@@ -139,7 +139,7 @@ const IncidentManagerDetailPage = () => {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getIncidentManagerDetailPagePath(
           testCaseFQN,
           activeKey as IncidentManagerTabs
@@ -245,9 +245,7 @@ const IncidentManagerDetailPage = () => {
               <Col className="d-flex justify-end" span={1}>
                 <ManageButton
                   isRecursiveDelete
-                  afterDeleteAction={() =>
-                    history.push(ROUTES.INCIDENT_MANAGER)
-                  }
+                  afterDeleteAction={() => navigate(ROUTES.INCIDENT_MANAGER)}
                   allowSoftDelete={false}
                   canDelete={hasDeletePermission}
                   displayName={testCase.displayName}

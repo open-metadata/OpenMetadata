@@ -20,7 +20,7 @@ import CustomEntityDetailV1 from './CustomPropertiesPageV1';
 const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
   useParams: jest.fn().mockReturnValue({

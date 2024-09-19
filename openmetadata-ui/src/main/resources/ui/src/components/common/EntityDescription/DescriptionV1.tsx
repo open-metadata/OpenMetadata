@@ -16,7 +16,7 @@ import { Card, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { useCallback, useMemo } from 'react';
-import { useHistory } from 'react-router';
+import { useNavigate } from 'react-router';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
@@ -59,18 +59,18 @@ const DescriptionV1 = ({
   showSuggestions = false,
   isDescriptionExpanded,
 }: DescriptionProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { suggestions = [], selectedUserSuggestions = [] } =
     useSuggestionsContext();
 
   const handleRequestDescription = useCallback(() => {
-    history.push(
+    navigate(
       getRequestDescriptionPath(entityType as string, entityFqn as string)
     );
   }, [entityType, entityFqn]);
 
   const handleUpdateDescription = useCallback(() => {
-    history.push(
+    navigate(
       getUpdateDescriptionPath(entityType as string, entityFqn as string)
     );
   }, [entityType, entityFqn]);

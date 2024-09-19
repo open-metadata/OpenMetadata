@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { omit, startCase } from 'lodash';
 import React, { FocusEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -38,7 +38,7 @@ import { generateFormFields } from '../../../utils/formUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const AddMetricPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -246,7 +246,7 @@ const AddMetricPage = () => {
       };
 
       const response = await createMetric(createMetricPayload);
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.METRIC,
           response.fullyQualifiedName ?? ''
@@ -304,7 +304,7 @@ const AddMetricPage = () => {
                       <Button
                         data-testid="back-button"
                         type="link"
-                        onClick={() => history.push(ROUTES.METRICS)}>
+                        onClick={() => navigate(ROUTES.METRICS)}>
                         {t('label.back')}
                       </Button>
                     </Col>

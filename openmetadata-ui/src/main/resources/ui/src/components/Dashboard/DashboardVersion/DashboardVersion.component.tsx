@@ -17,7 +17,7 @@ import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import {
   DATA_ASSET_ICON_DIMENSION,
@@ -63,7 +63,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   dataProducts,
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
@@ -82,7 +82,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     );
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.DASHBOARD,
         currentVersionData.fullyQualifiedName ?? '',

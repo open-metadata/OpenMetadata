@@ -74,7 +74,7 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
   useParams: jest.fn().mockReturnValue({

@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
@@ -160,7 +160,7 @@ export const DataAssetsHeader = ({
   const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
-  const history = useHistory();
+  const navigate = useNavigate();
   const icon = useMemo(
     () =>
       'serviceType' in dataAsset ? (
@@ -286,7 +286,7 @@ export const DataAssetsHeader = ({
       return;
     }
 
-    history.push(
+    navigate(
       entityUtilClassBase.getEntityLink(
         entityType,
         dataAsset.fullyQualifiedName,

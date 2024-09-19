@@ -15,10 +15,10 @@ import { Col, Row } from 'antd';
 import { t } from 'i18next';
 import React, { useLayoutEffect, useMemo, useState } from 'react';
 import {
-  Redirect,
+  Navigate,
   Route,
-  Switch,
-  useHistory,
+  Routes,
+  useNavigate,
   useParams,
 } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -43,7 +43,7 @@ const DataInsightPage = () => {
   const { tab } = useParams<{ tab: DataInsightTabs }>();
 
   const { permissions } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const LeftPanel = dataInsightClassBase.getLeftPanel();
   const isHeaderVisible = useMemo(
     () =>
@@ -52,7 +52,7 @@ const DataInsightPage = () => {
         DataInsightTabs.KPIS,
         DataInsightTabs.APP_ANALYTICS,
         'dashboard',
-      ].includes(tab),
+      ].includes(tab as DataInsightTabs),
     [tab]
   );
 
@@ -79,9 +79,9 @@ const DataInsightPage = () => {
     chartType: SystemChartType | DataInsightChartType
   ) => {
     if (ENTITIES_CHARTS.includes(chartType as SystemChartType)) {
-      history.push(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
+      navigate(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
     } else {
-      history.push(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));
+      navigate(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));
     }
     setSelectedChart(chartType);
   };
@@ -147,20 +147,26 @@ const DataInsightPage = () => {
                 </Col>
               )}
               <Col span={24}>
-                <Switch>
-                  {dataInsightTabs.map((tab) => (
-                    <Route
-                      exact
-                      component={tab.component}
-                      key={tab.key}
-                      path={tab.path}
-                    />
-                  ))}
+                <Routes>
+                  {dataInsightTabs.map((tab) => {
+                    const Component = tab.component;
 
-                  <Route exact path={ROUTES.DATA_INSIGHT}>
-                    <Redirect to={getDataInsightPathWithFqn()} />
-                  </Route>
-                </Switch>
+                    return (
+                      <Route
+                        element={<Component />}
+                        key={tab.key}
+                        path={tab.path}
+                      />
+                    );
+                  })}
+
+                  <Route
+                    element={
+                      <Navigate replace to={getDataInsightPathWithFqn()} />
+                    }
+                    path={ROUTES.DATA_INSIGHT}
+                  />
+                </Routes>
               </Col>
             </Row>
           </DataInsightProvider>

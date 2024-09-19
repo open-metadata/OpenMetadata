@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -56,7 +56,7 @@ const breadcrumb = [
 ];
 
 const AddPolicyPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -71,7 +71,7 @@ const AddPolicyPage = () => {
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
 
   const handleCancel = () => {
-    history.push(policiesPath);
+    navigate(policiesPath);
   };
 
   const handleSubmit = async () => {
@@ -87,9 +87,7 @@ const AddPolicyPage = () => {
     try {
       const dataResponse = await addPolicy(data);
       if (dataResponse) {
-        history.push(
-          getPolicyWithFqnPath(dataResponse.fullyQualifiedName || '')
-        );
+        navigate(getPolicyWithFqnPath(dataResponse.fullyQualifiedName || ''));
       }
     } catch (error) {
       showErrorToast(

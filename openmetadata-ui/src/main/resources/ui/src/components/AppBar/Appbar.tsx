@@ -14,7 +14,7 @@
 import { isString } from 'lodash';
 import Qs from 'qs';
 import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getExplorePath, TOUR_SEARCH_TERM } from '../../constants/constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
@@ -33,7 +33,7 @@ import './app-bar.style.less';
 const Appbar: React.FC = (): JSX.Element => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { isTourOpen, updateTourPage, updateTourSearch, tourSearchValue } =
     useTourProvider();
 
@@ -71,7 +71,7 @@ const Appbar: React.FC = (): JSX.Element => {
       const defaultTab: string =
         searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
 
-      history.push(
+      navigate(
         getExplorePath({
           tab: defaultTab,
           search: value,

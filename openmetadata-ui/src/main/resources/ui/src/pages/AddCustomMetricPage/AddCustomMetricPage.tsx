@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -47,7 +47,7 @@ const AddCustomMetricPage = () => {
     useParams<{ dashboardType: ProfilerDashboardType }>();
   const { fqn } = useFqn();
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const isColumnMetric = dashboardType === ProfilerDashboardType.COLUMN;
   const { t } = useTranslation();
@@ -101,7 +101,7 @@ const AddCustomMetricPage = () => {
   );
 
   const handleBackClick = () => {
-    history.push({
+    navigate({
       pathname: getEntityDetailsPath(
         EntityType.TABLE,
         entityFqn,
@@ -161,7 +161,7 @@ const AddCustomMetricPage = () => {
       (column) => column.name === columnName
     );
     if (selectedColumn) {
-      history.push({
+      navigate({
         search: QueryString.stringify({
           activeColumnFqn: selectedColumn?.fullyQualifiedName,
         }),

@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { JwtPayload } from 'jwt-decode';
 import React, { createContext, ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   HTTP_STATUS_CODE,
   LOGIN_FAILED_ERROR,
@@ -98,7 +98,7 @@ const BasicAuthProvider = ({
     getRefreshToken,
   } = useApplicationStore();
   const [loginError, setLoginError] = useState<string | null>(null);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const handleLogin = async (email: string, password: string) => {
     try {
@@ -148,7 +148,7 @@ const BasicAuthProvider = ({
           t('server.create-entity-success', { entity: t('label.user-account') })
         );
         showInfoToast(t('server.email-confirmation'));
-        history.push(ROUTES.SIGNIN);
+        navigate(ROUTES.SIGNIN);
       } else {
         return showErrorToast(t('server.email-found'));
       }
@@ -161,7 +161,7 @@ const BasicAuthProvider = ({
           t('server.create-entity-success', { entity: t('label.user-account') })
         );
         showErrorToast(err as AxiosError, t('server.email-verification-error'));
-        history.push(ROUTES.SIGNIN);
+        navigate(ROUTES.SIGNIN);
       } else {
         showErrorToast(err as AxiosError, t('server.unexpected-response'));
       }
@@ -197,7 +197,7 @@ const BasicAuthProvider = ({
       try {
         await logoutUser({ token, refreshToken });
         removeOidcToken();
-        history.push(ROUTES.SIGNIN);
+        navigate(ROUTES.SIGNIN);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }

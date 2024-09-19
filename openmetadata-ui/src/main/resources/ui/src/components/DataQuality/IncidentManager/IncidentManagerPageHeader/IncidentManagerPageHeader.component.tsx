@@ -65,7 +65,7 @@ const IncidentManagerPageHeader = ({
     useState<TestCaseResolutionStatus>();
   const [isLoading, setIsLoading] = useState(true);
 
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn = '' } = useParams<{ fqn: string }>();
   const decodedFqn = getDecodedFqn(fqn);
   const {
     setActiveThread,

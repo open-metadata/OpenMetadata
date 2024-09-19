@@ -16,7 +16,7 @@ import Card from 'antd/lib/card/Card';
 import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as PersonaIcon } from '../../../assets/svg/ic-personas.svg';
 import { getUserPath, ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
@@ -63,7 +63,7 @@ const Users = ({
   const { fqn: decodedUsername } = useFqn();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { currentUser } = useApplicationStore();
 
@@ -101,7 +101,7 @@ const Users = ({
     // To reset search params appends from other page for proper navigation
     location.search = '';
     if (activeKey !== activeTab) {
-      history.push({
+      navigate({
         pathname: getUserPath(decodedUsername, activeKey),
         search: location.search,
       });
@@ -114,7 +114,7 @@ const Users = ({
 
   const handleTabRedirection = useCallback(() => {
     if (!isLoggedInUser && activeTab === UserPageTabs.ACCESS_TOKEN) {
-      history.push({
+      navigate({
         pathname: getUserPath(decodedUsername, UserPageTabs.ACTIVITY),
         search: location.search,
       });
@@ -145,7 +145,7 @@ const Users = ({
             isSummaryPanelOpen
             assetCount={assetCount}
             permissions={{ ...DEFAULT_ENTITY_PERMISSION, Create: true }}
-            onAddAsset={() => history.push(ROUTES.EXPLORE)}
+            onAddAsset={() => navigate(ROUTES.EXPLORE)}
             onAssetClick={handleAssetClick}
             {...props}
           />

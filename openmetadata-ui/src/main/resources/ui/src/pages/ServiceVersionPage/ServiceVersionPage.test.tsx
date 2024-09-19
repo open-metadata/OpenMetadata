@@ -31,7 +31,7 @@ const mockPush = jest.fn();
 const mockOtherData = { data: [], paging: {} };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({ push: mockPush })),
+  useNavigate: jest.fn().mockImplementation(() => ({ push: mockPush })),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 

@@ -26,7 +26,7 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   })),
 }));
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
   Link: jest

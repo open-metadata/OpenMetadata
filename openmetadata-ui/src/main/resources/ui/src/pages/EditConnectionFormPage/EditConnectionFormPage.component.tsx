@@ -84,7 +84,7 @@ function EditConnectionFormPage() {
 
     try {
       const response = await patchService(
-        serviceCategory,
+        serviceCategory as ServiceCategory,
         serviceDetails.id,
         jsonPatch
       );
@@ -100,9 +100,13 @@ function EditConnectionFormPage() {
   const fetchServiceDetail = async () => {
     setIsLoading(true);
     try {
-      const response = await getServiceByFQN(serviceCategory, serviceFQN, {
-        fields: TabSpecificField.OWNERS,
-      });
+      const response = await getServiceByFQN(
+        serviceCategory as ServiceCategory,
+        serviceFQN,
+        {
+          fields: TabSpecificField.OWNERS,
+        }
+      );
       setServiceDetails(response);
       setSlashedBreadcrumb([
         {
@@ -117,7 +121,10 @@ function EditConnectionFormPage() {
           imgSrc: serviceUtilClassBase.getServiceTypeLogo(
             response as SearchSourceAlias
           ),
-          url: getPathByServiceFQN(serviceCategory, serviceFQN),
+          url: getPathByServiceFQN(
+            serviceCategory as ServiceCategory,
+            serviceFQN
+          ),
         },
         {
           name: t('label.edit-entity', { entity: t('label.connection') }),
@@ -157,7 +164,7 @@ function EditConnectionFormPage() {
   if (isError && !isLoading) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError(serviceCategory, serviceFQN)}
+        {getEntityMissingError(serviceCategory as ServiceCategory, serviceFQN)}
       </ErrorPlaceHolder>
     );
   }
@@ -177,7 +184,7 @@ function EditConnectionFormPage() {
             OPEN_METADATA === serviceFQN
           }
           handleUpdate={handleConfigUpdate}
-          serviceCategory={serviceCategory}
+          serviceCategory={serviceCategory as ServiceCategory}
           serviceFQN={serviceFQN}
           serviceType={serviceDetails?.serviceType || ''}
           onFocus={handleFieldFocus}
@@ -202,7 +209,7 @@ function EditConnectionFormPage() {
           <ServiceDocPanel
             activeField={activeField}
             serviceName={serviceDetails?.serviceType ?? ''}
-            serviceType={getServiceType(serviceCategory)}
+            serviceType={getServiceType(serviceCategory as ServiceCategory)}
           />
         ),
         className: 'service-doc-panel content-resizable-panel-container',

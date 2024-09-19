@@ -21,7 +21,7 @@ import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import {
   DATA_ASSET_ICON_DIMENSION,
@@ -94,7 +94,7 @@ const DashboardDetails = ({
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser, theme } = useApplicationStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab = EntityTabs.DETAILS } =
     useParams<{ tab: EntityTabs }>();
 
@@ -228,7 +228,7 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.DASHBOARD,
           decodedDashboardFQN,
@@ -415,7 +415,7 @@ const DashboardDetails = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : navigate('/'),
     []
   );
 

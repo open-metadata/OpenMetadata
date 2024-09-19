@@ -23,7 +23,7 @@ const mockFQN = 'testFQN';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ fqn: mockFQN })),
-  useHistory: jest.fn(),
+  useNavigate: jest.fn(),
 }));
 jest.mock('../../../../../rest/tableAPI');
 jest.mock('../../ProfilerLatestValue/ProfilerLatestValue', () => {

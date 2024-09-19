@@ -12,7 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter, Route, Switch } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import DomainRouter from './DomainRouter';
 
@@ -40,9 +40,9 @@ describe('DomainRouter', () => {
   it('should render AddDomain component for the ADD_DOMAIN route', async () => {
     render(
       <MemoryRouter initialEntries={[ROUTES.ADD_DOMAIN]}>
-        <Switch>
+        <Routes>
           <DomainRouter />
-        </Switch>
+        </Routes>
       </MemoryRouter>
     );
 
@@ -52,9 +52,9 @@ describe('DomainRouter', () => {
   it('should render DomainPage component for the DOMAIN route when user has domain view permission', async () => {
     render(
       <MemoryRouter initialEntries={[ROUTES.DOMAIN]}>
-        <Switch>
+        <Routes>
           <DomainRouter />
-        </Switch>
+        </Routes>
       </MemoryRouter>
     );
 
@@ -64,9 +64,9 @@ describe('DomainRouter', () => {
   it('should render DomainPage component for the DOMAIN_DETAILS and DOMAIN_DETAILS_WITH_TAB routes when user has domain view permission', async () => {
     render(
       <MemoryRouter initialEntries={[ROUTES.DOMAIN_DETAILS]}>
-        <Switch>
+        <Routes>
           <DomainRouter />
-        </Switch>
+        </Routes>
       </MemoryRouter>
     );
 

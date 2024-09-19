@@ -14,7 +14,7 @@ import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
@@ -34,7 +34,7 @@ const DomainsLeftPanel = ({ domains }: DomainLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { fqn: domainFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const createDomainsPermission = useMemo(
     () => checkPermission(Operation.Create, ResourceEntity.DOMAIN, permissions),
@@ -62,10 +62,10 @@ const DomainsLeftPanel = ({ domains }: DomainLeftPanelProps) => {
   }, [domains]);
 
   const handleAddDomain = () => {
-    history.push(ROUTES.ADD_DOMAIN);
+    navigate(ROUTES.ADD_DOMAIN);
   };
   const handleMenuClick: MenuProps['onClick'] = (event) => {
-    history.push(getDomainPath(event.key));
+    navigate(getDomainPath(event.key));
   };
 
   return (

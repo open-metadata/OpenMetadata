@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -56,7 +56,7 @@ const MetricDetailsPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: metricFqn } = useFqn();
@@ -150,7 +150,7 @@ const MetricDetailsPage = () => {
       } else if (
         (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
       ) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       } else {
         showErrorToast(
           error as AxiosError,
@@ -205,7 +205,7 @@ const MetricDetailsPage = () => {
 
   const versionHandler = () => {
     currentVersion &&
-      history.push(
+      navigate(
         getVersionPath(EntityType.METRIC, metricFqn, toString(currentVersion))
       );
   };

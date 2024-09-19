@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import React, { useMemo } from 'react';
-import { Route, Switch } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
+import { Route, Routes } from 'react-router-dom';
+
+import { ROUTES_RELATIVE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import AddGlossaryPage from '../../pages/AddGlossary/AddGlossaryPage.component';
@@ -23,7 +24,6 @@ import AdminProtectedRoute from './AdminProtectedRoute';
 
 const GlossaryRouter = () => {
   const { permissions } = usePermissionProvider();
-
   const glossaryPermission = useMemo(
     () =>
       userPermissions.hasViewPermissions(ResourceEntity.GLOSSARY, permissions),
@@ -31,43 +31,44 @@ const GlossaryRouter = () => {
   );
 
   return (
-    <Switch>
-      <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
+    <Routes>
       <Route
-        exact
-        component={() => <GlossaryVersion isGlossary />}
-        path={ROUTES.GLOSSARY_VERSION}
+        element={<AdminProtectedRoute hasPermission={glossaryPermission} />}>
+        <Route
+          element={<GlossaryPage />}
+          path={ROUTES_RELATIVE.GLOSSARY_DETAILS_WITH_SUBTAB}
+        />
+        <Route
+          element={<GlossaryPage />}
+          path={ROUTES_RELATIVE.GLOSSARY_DETAILS_WITH_TAB}
+        />
+        <Route
+          element={<GlossaryPage />}
+          path={ROUTES_RELATIVE.GLOSSARY_DETAILS_WITH_ACTION}
+        />
+        <Route
+          element={<GlossaryPage />}
+          path={ROUTES_RELATIVE.GLOSSARY_DETAILS}
+        />
+        <Route element={<GlossaryPage />} path="/" />
+      </Route>
+      <Route
+        element={<AddGlossaryPage />}
+        path={ROUTES_RELATIVE.ADD_GLOSSARY}
       />
       <Route
-        exact
-        component={GlossaryVersion}
-        path={[
-          ROUTES.GLOSSARY_TERMS_VERSION_TAB,
-          ROUTES.GLOSSARY_TERMS_VERSION,
-        ]}
+        element={<GlossaryVersion isGlossary />}
+        path={ROUTES_RELATIVE.GLOSSARY_VERSION}
       />
-
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={[
-          ROUTES.GLOSSARY,
-          ROUTES.GLOSSARY_DETAILS,
-          ROUTES.GLOSSARY_DETAILS_WITH_ACTION,
-        ]}
+      <Route
+        element={<GlossaryVersion />}
+        path={ROUTES_RELATIVE.GLOSSARY_TERMS_VERSION_TAB}
       />
-
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={[
-          ROUTES.GLOSSARY_DETAILS_WITH_TAB,
-          ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB,
-        ]}
+      <Route
+        element={<GlossaryVersion />}
+        path={ROUTES_RELATIVE.GLOSSARY_TERMS_VERSION}
       />
-    </Switch>
+    </Routes>
   );
 };
 

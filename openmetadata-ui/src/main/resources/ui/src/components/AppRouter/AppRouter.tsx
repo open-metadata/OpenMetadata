@@ -13,7 +13,7 @@
 
 import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect } from 'react';
-import { Redirect, Route, Switch } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
@@ -82,18 +82,27 @@ const AppRouter = () => {
   }
 
   return (
-    <Switch>
-      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+    <Routes>
+      <Route element={<PageNotFound />} path={ROUTES.NOT_FOUND} />
+      <Route element={<AccessNotAllowedPage />} path={ROUTES.UNAUTHORISED} />
       <Route
-        exact
-        component={AccessNotAllowedPage}
-        path={ROUTES.UNAUTHORISED}
+        element={
+          !isEmpty(currentUser) ? (
+            <Navigate replace to={ROUTES.HOME} />
+          ) : (
+            <SignUpPage />
+          )
+        }
+        path={ROUTES.SIGNUP}
       />
-      <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
-        {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
-      </Route>
-      {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
-    </Switch>
+
+      <Route
+        element={
+          isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />
+        }
+        path="/*"
+      />
+    </Routes>
   );
 };
 

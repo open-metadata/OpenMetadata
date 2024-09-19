@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -53,7 +53,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const MlModelPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn: mlModelFqn } = useFqn();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
@@ -109,7 +109,7 @@ const MlModelPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsDetailLoading(false);
@@ -276,7 +276,7 @@ const MlModelPage = () => {
   };
 
   const versionHandler = () => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.MLMODEL,
         mlModelFqn,

@@ -17,7 +17,7 @@ import { isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -71,7 +71,7 @@ const DataModelDetails = ({
   onUpdateVote,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
 
@@ -125,7 +125,7 @@ const DataModelDetails = ({
   };
 
   const versionHandler = () => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.DASHBOARD_DATA_MODEL,
         decodedDataModelFQN,
@@ -144,7 +144,7 @@ const DataModelDetails = ({
 
   const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== activeTab) {
-      history.push({
+      navigate({
         pathname: getEntityDetailsPath(
           EntityType.DASHBOARD_DATA_MODEL,
           decodedDataModelFQN,
@@ -183,7 +183,7 @@ const DataModelDetails = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : navigate('/'),
     []
   );
 

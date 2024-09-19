@@ -41,12 +41,12 @@ jest.mock('../../hooks/useFqn', () => {
     }),
   };
 });
-const mockUseHistory = {
+const mockuseNavigate = {
   goBack: jest.fn(),
 };
 jest.mock('react-router-dom', () => {
   return {
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+    useNavigate: jest.fn().mockImplementation(() => mockuseNavigate),
   };
 });
 jest.mock('../../rest/testAPI', () => {

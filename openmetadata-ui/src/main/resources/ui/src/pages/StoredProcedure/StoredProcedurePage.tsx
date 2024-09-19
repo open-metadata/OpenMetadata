@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -93,7 +93,7 @@ const StoredProcedurePage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();
 
   const { fqn: decodedStoredProcedureFQN } = useFqn();
@@ -201,7 +201,7 @@ const StoredProcedurePage = () => {
       });
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);
@@ -210,7 +210,7 @@ const StoredProcedurePage = () => {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.STORED_PROCEDURE,
           decodedStoredProcedureFQN,
@@ -391,7 +391,7 @@ const StoredProcedurePage = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : navigate('/'),
     []
   );
 
@@ -406,7 +406,7 @@ const StoredProcedurePage = () => {
 
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.STORED_PROCEDURE,
           decodedStoredProcedureFQN,

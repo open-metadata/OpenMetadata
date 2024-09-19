@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 import React, { useMemo } from 'react';
-import { Switch } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
+import { Route, Routes } from 'react-router-dom';
+import {
+  PLACEHOLDER_ROUTE_FQN,
+  PLACEHOLDER_ROUTE_VERSION,
+} from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import ClassificationVersionPage from '../../pages/ClassificationVersionPage/ClassificationVersionPage';
@@ -33,20 +36,17 @@ const ClassificationRouter = () => {
   );
 
   return (
-    <Switch>
-      <AdminProtectedRoute
-        exact
-        component={TagsPage}
-        hasPermission={tagCategoryPermission}
-        path={[ROUTES.TAGS, ROUTES.TAG_DETAILS]}
-      />
-      <AdminProtectedRoute
-        exact
-        component={ClassificationVersionPage}
-        hasPermission={tagCategoryPermission}
-        path={ROUTES.TAG_VERSION}
-      />
-    </Switch>
+    <Routes>
+      <Route
+        element={<AdminProtectedRoute hasPermission={tagCategoryPermission} />}>
+        <Route element={<TagsPage />} path="/" />
+        <Route element={<TagsPage />} path={`/${PLACEHOLDER_ROUTE_FQN}`} />
+        <Route
+          element={<ClassificationVersionPage />}
+          path={`/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`}
+        />
+      </Route>
+    </Routes>
   );
 };
 

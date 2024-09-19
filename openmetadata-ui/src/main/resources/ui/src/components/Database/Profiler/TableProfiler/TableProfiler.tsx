@@ -14,7 +14,7 @@ import { Col, Menu, MenuProps, Row, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -24,7 +24,7 @@ import { TableProfilerProvider } from './TableProfilerProvider';
 
 const TableProfiler = (props: TableProfilerProps) => {
   const { isTourOpen } = useTourProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
 
   const { activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
@@ -74,7 +74,7 @@ const TableProfiler = (props: TableProfilerProps) => {
   }, [activeTab]);
 
   const handleTabChange: MenuProps['onClick'] = (value) => {
-    history.push({ search: Qs.stringify({ activeTab: value.key }) });
+    navigate({ search: Qs.stringify({ activeTab: value.key }) });
   };
 
   return (

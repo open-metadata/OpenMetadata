@@ -160,7 +160,6 @@ export const UserProfileIcon = () => {
     (item) => (
       <Link
         className="ant-typography-ellipsis-custom text-sm m-b-0 p-0"
-        component={Typography.Link}
         to={getTeamAndUserDetailsPath(item.name as string)}>
         {getEntityName(item)}
       </Link>

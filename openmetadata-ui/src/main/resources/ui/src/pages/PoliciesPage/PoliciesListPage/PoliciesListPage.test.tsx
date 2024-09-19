@@ -20,7 +20,7 @@ import PoliciesListPage from './PoliciesListPage';
 const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
   Link: jest.fn().mockImplementation(({ children, to, ...res }) => (

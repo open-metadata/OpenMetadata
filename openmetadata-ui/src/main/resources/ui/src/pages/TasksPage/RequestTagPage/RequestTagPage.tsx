@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -60,7 +60,7 @@ const RequestTag = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = useForm();
   const { entityType } = useParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
@@ -76,7 +76,7 @@ const RequestTag = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const entityFQN = useMemo(
-    () => getTaskEntityFQN(entityType, fqn),
+    () => getTaskEntityFQN(entityType as EntityType, fqn),
     [fqn, entityType]
   );
 
@@ -84,7 +84,7 @@ const RequestTag = () => {
     () =>
       getTaskMessage({
         value,
-        entityType,
+        entityType: entityType as EntityType,
         entityData,
         field,
         startMessage: 'Request tags',
@@ -92,7 +92,7 @@ const RequestTag = () => {
     [value, entityType, field, entityData]
   );
 
-  const back = () => history.goBack();
+  const back = () => navigate(-1);
 
   const onSearch = (query: string) => {
     const data = {
@@ -134,9 +134,9 @@ const RequestTag = () => {
             entity: t('label.task'),
           })
         );
-        history.push(
+        navigate(
           entityUtilClassBase.getEntityLink(
-            entityType,
+            entityType as EntityType,
             entityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
@@ -148,7 +148,7 @@ const RequestTag = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(entityType, entityFQN, setEntityData);
+    fetchEntityDetail(entityType as EntityType, entityFQN, setEntityData);
   }, [entityFQN, entityType]);
 
   useEffect(() => {
@@ -179,7 +179,7 @@ const RequestTag = () => {
           <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType),
+                ...getBreadCrumbList(entityData, entityType as EntityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),

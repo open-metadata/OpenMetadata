@@ -36,7 +36,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -122,7 +122,7 @@ const DomainDetailsPage = ({
   const { t } = useTranslation();
   const [form] = useForm();
   const { getEntityPermission } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
   const { fqn: domainFqn } = useFqn();
@@ -281,7 +281,7 @@ const DomainDetailsPage = ({
 
       try {
         const res = await addDataProducts(data as CreateDataProduct);
-        history.push(
+        navigate(
           getEntityDetailsPath(
             EntityType.DATA_PRODUCT,
             res.fullyQualifiedName ?? ''
@@ -312,7 +312,7 @@ const DomainDetailsPage = ({
       ? getDomainPath(domainFqn)
       : getDomainVersionsPath(domainFqn, toString(domain.version));
 
-    history.push(path);
+    navigate(path);
   };
 
   const fetchDataProducts = async () => {
@@ -373,7 +373,7 @@ const DomainDetailsPage = ({
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(getDomainDetailsPath(domainFqn, activeKey));
+      navigate(getDomainDetailsPath(domainFqn, activeKey));
     }
   };
 

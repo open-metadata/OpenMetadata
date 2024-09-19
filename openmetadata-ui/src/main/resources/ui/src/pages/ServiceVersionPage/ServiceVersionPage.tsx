@@ -17,7 +17,7 @@ import { isEmpty, toString } from 'lodash';
 import { PagingWithoutTotal, ServiceTypes } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -73,10 +73,10 @@ import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 
 function ServiceVersionPage() {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { serviceCategory, version } = useParams<{
-    serviceCategory: ServiceTypes;
+  const { serviceCategory = '', version = '' } = useParams<{
+    serviceCategory: string;
     version: string;
   }>();
 
@@ -100,7 +100,7 @@ function ServiceVersionPage() {
 
   const [entityType, resourceEntity] = useMemo(
     () => [
-      getEntityTypeFromServiceCategory(serviceCategory),
+      getEntityTypeFromServiceCategory(serviceCategory as ServiceTypes),
       getResourceEntityFromServiceCategory(serviceCategory),
     ],
     [serviceCategory]
@@ -372,7 +372,7 @@ function ServiceVersionPage() {
 
   const versionHandler = useCallback(
     (newVersion = version) => {
-      history.push(
+      navigate(
         getServiceVersionPath(
           serviceCategory,
           decodedServiceFQN,
@@ -384,7 +384,7 @@ function ServiceVersionPage() {
   );
 
   const backHandler = useCallback(() => {
-    history.push(getServiceDetailsPath(decodedServiceFQN, serviceCategory));
+    navigate(getServiceDetailsPath(decodedServiceFQN, serviceCategory));
   }, [decodedServiceFQN, serviceCategory]);
 
   const pagingHandler = useCallback(
@@ -404,8 +404,8 @@ function ServiceVersionPage() {
       serviceCategory !== ServiceCategory.METADATA_SERVICES
         ? [
             {
-              name: getCountLabel(serviceCategory),
-              key: getCountLabel(serviceCategory).toLowerCase(),
+              name: getCountLabel(serviceCategory as ServiceTypes),
+              key: getCountLabel(serviceCategory as ServiceTypes).toLowerCase(),
               count: paging.total,
               children: (
                 <ServiceVersionMainTabContent

@@ -22,7 +22,7 @@ import {
 import GlossaryPage from './GlossaryPage.component';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: () => ({
+  useNavigate: () => ({
     push: jest.fn(),
     replace: jest.fn(),
   }),

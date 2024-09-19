@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import React, { useMemo } from 'react';
-import { Route, Switch } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
+import { Route, Routes } from 'react-router-dom';
+import { ROUTES_RELATIVE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { userPermissions } from '../../utils/PermissionsUtils';
@@ -29,21 +29,17 @@ const DomainRouter = () => {
   );
 
   return (
-    <Switch>
-      <Route exact component={AddDomain} path={ROUTES.ADD_DOMAIN} />
-      <AdminProtectedRoute
-        exact
-        component={DomainPage}
-        hasPermission={domainPermission}
-        path={ROUTES.DOMAIN}
-      />
-      <AdminProtectedRoute
-        exact
-        component={DomainPage}
-        hasPermission={domainPermission}
-        path={[ROUTES.DOMAIN_DETAILS, ROUTES.DOMAIN_DETAILS_WITH_TAB]}
-      />
-    </Switch>
+    <Routes>
+      <Route element={<AddDomain />} path={ROUTES_RELATIVE.ADD_DOMAIN} />
+      <Route element={<AdminProtectedRoute hasPermission={domainPermission} />}>
+        <Route element={<DomainPage />} path="/" />
+        <Route element={<DomainPage />} path={ROUTES_RELATIVE.DOMAIN_DETAILS} />
+        <Route
+          element={<DomainPage />}
+          path={ROUTES_RELATIVE.DOMAIN_DETAILS_WITH_TAB}
+        />
+      </Route>
+    </Routes>
   );
 };
 

@@ -27,7 +27,7 @@ jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
 }));

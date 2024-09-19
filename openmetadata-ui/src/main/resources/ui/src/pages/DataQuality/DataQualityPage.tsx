@@ -15,7 +15,7 @@ import { Col, Row, Tabs, TabsProps, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { SummaryPanel } from '../../components/DataQuality/SummaryPannel/SummaryPanel.component';
 import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
@@ -32,7 +32,7 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 const DataQualityPage = () => {
   const { t } = useTranslation();
   const { tab: activeTab } = useParams<{ tab: DataQualityPageTabs }>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [summary, setSummary] = useState<TestSummary>(INITIAL_TEST_SUMMARY);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
   const { permissions } = usePermissionProvider();
@@ -84,7 +84,7 @@ const DataQualityPage = () => {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getDataQualityPagePath(activeKey as DataQualityPageTabs));
+      navigate(getDataQualityPagePath(activeKey as DataQualityPageTabs));
     }
   };
 

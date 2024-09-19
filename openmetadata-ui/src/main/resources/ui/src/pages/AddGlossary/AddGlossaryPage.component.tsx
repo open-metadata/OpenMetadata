@@ -20,7 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import AddGlossary from '../../components/Glossary/AddGlossary/AddGlossary.component';
 import { ERROR_MESSAGE } from '../../constants/constants';
@@ -36,7 +36,7 @@ import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { permissions } = usePermissionProvider();
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
@@ -53,7 +53,7 @@ const AddGlossaryPage: FunctionComponent = () => {
   );
 
   const goToGlossary = (name = '') => {
-    history.push(getGlossaryPath(name));
+    navigate(getGlossaryPath(name));
   };
 
   const handleCancel = useCallback(() => {

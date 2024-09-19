@@ -18,7 +18,7 @@ import { ROLE_DATA } from '../Roles.mock';
 import RolesDetailPage from './RolesDetailPage';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
+  useNavigate: jest.fn().mockReturnValue({
     push: jest.fn(),
   }),
   useParams: jest.fn().mockReturnValue({ fqn: 'data-consumer' }),

@@ -62,7 +62,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     ref
   ) => {
     const { t } = useTranslation();
-    const { tab } = useParams<{ tab: string }>();
+    const { tab = '' } = useParams<{ tab: string }>();
     const { isTourOpen } = useTourProvider();
     const otherDetails = useMemo(() => {
       const tierValue = isString(source.tier)

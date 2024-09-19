@@ -344,7 +344,7 @@ const LogsViewerPage = () => {
         <Space align="center">
           <TitleBreadcrumb
             titleLinks={logsClassBase.getLogBreadCrumbs(
-              logEntityType,
+              logEntityType as string,
               ingestionName,
               ingestionDetails
             )}

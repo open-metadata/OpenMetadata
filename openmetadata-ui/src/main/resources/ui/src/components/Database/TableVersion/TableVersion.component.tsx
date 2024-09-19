@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { cloneDeep, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -62,7 +62,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
   entityPermissions,
 }: TableVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
@@ -92,7 +92,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(EntityType.TABLE, entityFqn, String(version), activeKey)
     );
   };

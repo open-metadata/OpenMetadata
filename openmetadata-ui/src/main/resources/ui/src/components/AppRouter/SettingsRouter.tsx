@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import React from 'react';
-import { Redirect, Route, Switch } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { ROUTES_RELATIVE } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -65,251 +65,188 @@ const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
 
   return (
-    <Switch>
-      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
+    <Routes>
+      <Route element={<GlobalSettingPage />} path="/" />
 
-      {/* keep these route above the setting route always */}
-      <AdminProtectedRoute
-        exact
-        component={AddRolePage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.ROLE,
-          permissions
-        )}
-        path={ROUTES.ADD_ROLE}
-      />
-      <AdminProtectedRoute
-        exact
-        component={AddPolicyPage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.POLICY,
-          permissions
-        )}
-        path={ROUTES.ADD_POLICY}
-      />
-      <Route exact component={AddRulePage} path={ROUTES.ADD_POLICY_RULE} />
-      <AdminProtectedRoute
-        exact
-        component={EditEmailConfigPage}
-        hasPermission={false}
-        path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
-      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={checkPermission(
+              Operation.Create,
+              ResourceEntity.ROLE,
+              permissions
+            )}
+          />
+        }>
+        <Route element={<AddRolePage />} path={ROUTES_RELATIVE.ADD_ROLE} />
+      </Route>
 
-      <AdminProtectedRoute
-        exact
-        component={EditLoginConfiguration}
-        hasPermission={false}
-        path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG}
-      />
-      <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={checkPermission(
+              Operation.Create,
+              ResourceEntity.POLICY,
+              permissions
+            )}
+          />
+        }>
+        <Route element={<AddPolicyPage />} path={ROUTES_RELATIVE.ADD_POLICY} />
+      </Route>
 
-      {/*  Setting routes without any category will be places here */}
-      <AdminProtectedRoute
-        exact
-        component={NotificationListPage}
-        hasPermission={false}
-        path={getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS)}
+      <Route element={<AddRulePage />} path={ROUTES_RELATIVE.ADD_POLICY_RULE} />
+      <Route
+        element={<EditRulePage />}
+        path={ROUTES_RELATIVE.EDIT_POLICY_RULE}
       />
 
-      <AdminProtectedRoute
-        exact
-        component={() => <AlertDetailsPage isNotificationAlert />}
-        path={ROUTES.NOTIFICATION_ALERT_DETAILS}
+      <Route
+        element={<GlobalSettingCategoryPage />}
+        path={ROUTES_RELATIVE.SETTINGS_WITH_CATEGORY}
       />
-      <AdminProtectedRoute
-        exact
-        component={AddNotificationPage}
-        hasPermission={false}
-        path={[
-          getSettingPath(
+
+      <Route
+        element={
+          <Navigate replace to={getTeamsWithFqnPath(TeamType.Organization)} />
+        }
+        path={getSettingPath()}
+      />
+
+      <Route element={<AdminProtectedRoute />}>
+        <Route
+          element={<EditEmailConfigPage />}
+          path={ROUTES_RELATIVE.SETTINGS_EDIT_EMAIL_CONFIG}
+        />
+        <Route
+          element={<EditLoginConfiguration />}
+          path={ROUTES_RELATIVE.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG}
+        />
+        <Route
+          element={<NotificationListPage />}
+          path={getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS)}
+        />
+        <Route
+          element={<AlertDetailsPage isNotificationAlert />}
+          path={ROUTES_RELATIVE.NOTIFICATION_ALERT_DETAILS}
+        />
+        <Route
+          element={<AddNotificationPage />}
+          path={getSettingPath(
             GlobalSettingsMenuCategory.NOTIFICATIONS,
             GlobalSettingOptions.EDIT_NOTIFICATION,
             true
-          ),
-          getSettingPath(
+          )}
+        />
+        <Route
+          element={<AddNotificationPage />}
+          path={getSettingPath(
             GlobalSettingsMenuCategory.NOTIFICATIONS,
             GlobalSettingOptions.ADD_NOTIFICATION
-          ),
-        ]}
-      />
+          )}
+        />
 
-      <AdminProtectedRoute
-        exact
-        component={BotsPageV1}
-        hasPermission={false}
-        path={getSettingPath(GlobalSettingOptions.BOTS)}
-      />
-      <AdminProtectedRoute
-        exact
-        component={ApplicationPage}
-        hasPermission={false}
-        path={getSettingPath(GlobalSettingOptions.APPLICATIONS)}
-      />
-      <AdminProtectedRoute
-        exact
-        component={AppDetails}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingOptions.APPLICATIONS,
-          undefined,
-          true
-        )}
-      />
+        <Route
+          element={<BotsPageV1 />}
+          path={getSettingPath(GlobalSettingOptions.BOTS)}
+        />
+        <Route
+          element={<ApplicationPage />}
+          path={getSettingPath(GlobalSettingOptions.APPLICATIONS)}
+        />
+        <Route
+          element={<AppDetails />}
+          path={getSettingPath(
+            GlobalSettingOptions.APPLICATIONS,
+            undefined,
+            true
+          )}
+        />
+        <Route
+          element={<RolesListPage />}
+          path={getSettingPath(
+            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingOptions.ROLES
+          )}
+        />
 
-      {/* Setting Page Routes with categories */}
+        <Route
+          element={<PersonaPage />}
+          path={getSettingPath(
+            GlobalSettingsMenuCategory.MEMBERS,
+            GlobalSettingOptions.PERSONA
+          )}
+        />
+
+        <Route
+          element={<PersonaDetailsPage />}
+          path={getSettingPath(
+            GlobalSettingsMenuCategory.MEMBERS,
+            GlobalSettingOptions.PERSONA,
+            true
+          )}
+        />
+
+        <Route
+          element={<RolesDetailPage />}
+          path={getSettingPath(
+            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingOptions.ROLES,
+            true
+          )}
+        />
+
+        <Route
+          element={<PoliciesListPage />}
+          path={getSettingPath(
+            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingOptions.POLICIES
+          )}
+        />
+
+        <Route
+          element={<PoliciesDetailPage />}
+          path={getSettingPath(
+            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingOptions.POLICIES,
+            true
+          )}
+        />
+
+        <Route
+          element={<EmailConfigSettingsPage />}
+          path={getSettingPath(
+            GlobalSettingsMenuCategory.PREFERENCES,
+            GlobalSettingOptions.EMAIL
+          )}
+        />
+
+        <Route
+          element={<AppearanceConfigSettingsPage />}
+          path={getSettingPath(
+            GlobalSettingsMenuCategory.PREFERENCES,
+            GlobalSettingOptions.APPEARANCE
+          )}
+        />
+
+        <Route
+          element={<ProfilerConfigurationPage />}
+          path={getSettingPath(
+            GlobalSettingsMenuCategory.PREFERENCES,
+            GlobalSettingOptions.PROFILER_CONFIGURATION
+          )}
+        />
+      </Route>
 
       <Route
-        exact
-        component={GlobalSettingCategoryPage}
-        path={ROUTES.SETTINGS_WITH_CATEGORY}
-      />
-
-      <Route exact path={getSettingPath()}>
-        <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
-      </Route>
-      <AdminProtectedRoute
-        exact
-        component={TeamsPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEAM,
-          permissions
-        )}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.TEAMS,
-          true
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={ImportTeamsPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEAM,
-          permissions
-        )}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.TEAMS,
-          true,
-          true
-        )}
-      />
-      <Route
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.TEAMS
-        )}>
-        <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
-      </Route>
-      <AdminProtectedRoute
-        exact
-        component={PersonaPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.PERSONA
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={PersonaDetailsPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.PERSONA,
-          true
-        )}
-      />
-      {/* Roles route start
-       * Do not change the order of these route
-       */}
-      <AdminProtectedRoute
-        exact
-        component={RolesListPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
-          GlobalSettingOptions.ROLES
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
-        component={RolesDetailPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
-          GlobalSettingOptions.ROLES,
-          true
-        )}
-      />
-      {/* Roles route end
-       * Do not change the order of these route
-       */}
-
-      <AdminProtectedRoute
-        exact
-        component={PoliciesListPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
-          GlobalSettingOptions.POLICIES
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={PoliciesDetailPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
-          GlobalSettingOptions.POLICIES,
-          true
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={UserListPageV1}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.USER,
-          permissions
-        )}
-        path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}
-      />
-      <AdminProtectedRoute
-        exact
-        component={EmailConfigSettingsPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.EMAIL
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={AppearanceConfigSettingsPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.APPEARANCE
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={ProfilerConfigurationPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.PROFILER_CONFIGURATION
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={LoginConfigurationPage}
-        hasPermission={false}
+        element={<LoginConfigurationPage />}
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
-      <AdminProtectedRoute
-        exact
-        component={CustomPageSettings}
+
+      <Route
+        element={<CustomPageSettings />}
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
@@ -317,39 +254,91 @@ const SettingsRouter = () => {
       />
 
       <Route
-        exact
-        component={ServicesPage}
-        path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
-      />
-
-      <AdminProtectedRoute
-        exact
-        component={AlertsActivityFeedPage}
-        hasPermission={false}
+        element={<AlertsActivityFeedPage />}
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.ACTIVITY_FEED
         )}
       />
 
-      <AdminProtectedRoute
-        exact
-        component={CustomPropertiesPageV1}
-        hasPermission={false}
+      <Route
+        element={<CustomPropertiesPageV1 />}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
         )}
       />
-      <AdminProtectedRoute
-        exact
-        component={OmHealthPage}
-        hasPermission={false}
+
+      <Route
+        element={<OmHealthPage />}
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.OM_HEALTH
         )}
       />
-    </Switch>
+
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEAM,
+              permissions
+            )}
+          />
+        }
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS,
+          true
+        )}>
+        <TeamsPage />
+      </Route>
+
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEAM,
+              permissions
+            )}
+          />
+        }
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS,
+          true,
+          true
+        )}>
+        <ImportTeamsPage />
+      </Route>
+
+      <Route
+        element={
+          <Navigate replace to={getTeamsWithFqnPath(TeamType.Organization)} />
+        }
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS
+        )}
+      />
+
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.USER,
+              permissions
+            )}
+          />
+        }
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}>
+        <UserListPageV1 />
+      </Route>
+
+      <Route
+        element={<ServicesPage />}
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
+      />
+    </Routes>
   );
 };
 

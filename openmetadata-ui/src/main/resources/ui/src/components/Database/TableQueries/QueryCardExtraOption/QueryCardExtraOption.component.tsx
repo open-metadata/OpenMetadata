@@ -26,7 +26,7 @@ import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 
 import { AxiosError } from 'axios';
 import Qs from 'qs';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { deleteQuery } from '../../../../rest/queryAPI';
@@ -45,7 +45,7 @@ const QueryCardExtraOption = ({
 }: QueryCardExtraOptionProps) => {
   const { EditAll, EditQueries, Delete } = permission;
   const { fqn: datasetFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const QueryHeaderButton = queryClassBase.getQueryHeaderActionsButtons();
   const { currentUser } = useApplicationStore();
   const { t } = useTranslation();
@@ -66,7 +66,7 @@ const QueryCardExtraOption = ({
   };
 
   const onExpandClick = useCallback(() => {
-    history.push({
+    navigate({
       search: Qs.stringify({ query: query.id }),
       pathname: getQueryPath(datasetFQN, query.id ?? ''),
     });

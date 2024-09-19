@@ -129,12 +129,12 @@ function ServiceMainTabContent({
   };
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
-    () => getServiceMainTabColumns(serviceCategory),
+    () => getServiceMainTabColumns(serviceCategory as ServiceTypes),
     [serviceCategory]
   );
 
   const entityType = useMemo(
-    () => getEntityTypeFromServiceCategory(serviceCategory),
+    () => getEntityTypeFromServiceCategory(serviceCategory as ServiceTypes),
     [serviceCategory]
   );
 

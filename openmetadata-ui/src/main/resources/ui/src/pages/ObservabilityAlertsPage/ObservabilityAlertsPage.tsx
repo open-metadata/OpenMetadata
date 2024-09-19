@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -48,7 +48,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const ObservabilityAlertsPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
@@ -209,7 +209,7 @@ const ObservabilityAlertsPage = () => {
               <Button
                 data-testid="create-observability"
                 type="primary"
-                onClick={() => history.push(ROUTES.ADD_OBSERVABILITY_ALERTS)}>
+                onClick={() => navigate(ROUTES.ADD_OBSERVABILITY_ALERTS)}>
                 {t('label.add-entity', { entity: t('label.alert') })}
               </Button>
             </LimitWrapper>
@@ -229,7 +229,7 @@ const ObservabilityAlertsPage = () => {
                   doc={ALERTS_DOCS}
                   heading={t('label.alert')}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={() => history.push(ROUTES.ADD_OBSERVABILITY_ALERTS)}
+                  onClick={() => navigate(ROUTES.ADD_OBSERVABILITY_ALERTS)}
                 />
               ),
             }}

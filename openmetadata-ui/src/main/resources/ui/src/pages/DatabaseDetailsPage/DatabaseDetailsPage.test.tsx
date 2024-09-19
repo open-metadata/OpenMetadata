@@ -147,7 +147,7 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <p data-testid="link">{children}</p>
     )),
-  useHistory: () => ({
+  useNavigate: () => ({
     push: jest.fn(),
     replace: jest.fn(),
   }),

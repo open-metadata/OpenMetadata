@@ -17,7 +17,7 @@ import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
@@ -50,7 +50,7 @@ const InitialData: Rule = {
 
 const EditRulePage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn, ruleName } = useFqn();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
@@ -101,7 +101,7 @@ const EditRulePage = () => {
   };
 
   const handleBack = () => {
-    history.push(getPolicyWithFqnPath(fqn));
+    navigate(getPolicyWithFqnPath(fqn));
   };
 
   const handleSubmit = async () => {

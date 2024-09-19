@@ -18,7 +18,7 @@ import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remove.svg';
@@ -69,7 +69,7 @@ export const UserTab = ({
   onRemoveUser,
 }: UserTabProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [deletingUser, setDeletingUser] = useState<EntityReference>();
   const { showModal } = useEntityExportModalProvider();
@@ -233,7 +233,7 @@ export const UserTab = ({
   }, [currentTeam, exportUserOfTeam]);
 
   const handleImportClick = useCallback(async () => {
-    history.push({
+    navigate({
       pathname: getSettingsPathWithFqn(
         GlobalSettingsMenuCategory.MEMBERS,
         GlobalSettingOptions.TEAMS,

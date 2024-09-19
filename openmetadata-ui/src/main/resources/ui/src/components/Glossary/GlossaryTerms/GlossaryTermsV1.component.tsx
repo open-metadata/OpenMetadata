@@ -21,7 +21,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -76,7 +76,7 @@ const GlossaryTermsV1 = ({
 }: GlossaryTermsV1Props) => {
   const { tab, version } = useParams<{ tab: string; version: string }>();
   const { fqn: glossaryFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModalVisible] = useState(false);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -99,7 +99,7 @@ const GlossaryTermsV1 = ({
   }, [tab]);
 
   const activeTabHandler = (tab: string) => {
-    history.push({
+    navigate({
       pathname: version
         ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
         : getGlossaryTermDetailsPath(glossaryFqn, tab),

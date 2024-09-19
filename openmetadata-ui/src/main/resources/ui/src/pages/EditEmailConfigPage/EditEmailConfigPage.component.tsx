@@ -21,7 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -46,7 +46,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 function EditEmailConfigPage() {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
@@ -97,7 +97,7 @@ function EditEmailConfigPage() {
   }, []);
 
   const handleRedirectionToSettingsPage = useCallback(() => {
-    history.push(
+    navigate(
       getSettingPath(
         GlobalSettingsMenuCategory.PREFERENCES,
         GlobalSettingOptions.EMAIL

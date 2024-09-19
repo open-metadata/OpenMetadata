@@ -13,7 +13,7 @@
 
 import { Button, Dropdown } from 'antd';
 import React, { useCallback, useMemo } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { MetadataServiceType } from '../../../../generated/api/services/createMetadataService';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -34,7 +34,7 @@ function AddIngestionButton({
   serviceName,
   ingestionList,
 }: Readonly<AddIngestionButtonProps>) {
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const isOpenMetadataService = useMemo(
     () =>
@@ -50,7 +50,7 @@ function AddIngestionButton({
 
   const handleAddIngestionClick = useCallback(
     (type: PipelineType) => {
-      history.push(getAddIngestionPath(serviceCategory, serviceName, type));
+      navigate(getAddIngestionPath(serviceCategory, serviceName, type));
     },
     [serviceCategory, serviceName]
   );

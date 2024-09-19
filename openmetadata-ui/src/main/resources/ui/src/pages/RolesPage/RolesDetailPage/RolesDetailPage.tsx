@@ -17,7 +17,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -52,7 +52,7 @@ interface AddAttribute {
 }
 
 const RolesDetailPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { fqn } = useFqn();
 
@@ -246,7 +246,7 @@ const RolesDetailPage = () => {
                   ghost
                   className="m-t-sm"
                   type="primary"
-                  onClick={() => history.push(rolesPath)}>
+                  onClick={() => navigate(rolesPath)}>
                   {t('label.go-back')}
                 </Button>
               </div>

@@ -24,7 +24,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import DataModelDetails from '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component';
@@ -66,7 +66,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const DataModelsPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -149,7 +149,7 @@ const DataModelsPage = () => {
       showErrorToast(error as AxiosError);
       setHasError(true);
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);

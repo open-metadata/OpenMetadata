@@ -60,7 +60,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     tab: 'tabValue',
   }),
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
 }));

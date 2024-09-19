@@ -17,7 +17,7 @@ import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
 import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
 import {
@@ -67,7 +67,7 @@ function CustomizeMyData({
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
   const { currentUser, theme } = useApplicationStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn: decodedPersonaFQN } = useFqn();
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(
@@ -209,7 +209,7 @@ function CustomizeMyData({
   }, [layout]);
 
   const handleCancel = useCallback(() => {
-    history.push(
+    navigate(
       getSettingPath(
         GlobalSettingsMenuCategory.PREFERENCES,
         GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE

@@ -14,7 +14,7 @@ import { Button, Col, Form, FormProps, Row, Space } from 'antd';
 import { isString } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
@@ -36,7 +36,7 @@ const AddTestSuitePipeline = ({
   testSuiteFQN,
 }: AddTestSuitePipelineProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const [form] = Form.useForm();
   const selectAllTestCases = Form.useWatch('selectAllTestCases', form);
@@ -98,7 +98,7 @@ const AddTestSuitePipeline = ({
   ];
 
   const handleCancelBtn = () => {
-    history.goBack();
+    navigate(-1);
   };
 
   const onFinish: FormProps['onFinish'] = (values) => {

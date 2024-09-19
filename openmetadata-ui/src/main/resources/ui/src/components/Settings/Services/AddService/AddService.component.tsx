@@ -17,7 +17,7 @@ import { t } from 'i18next';
 import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getServiceDetailsPath } from '../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import {
@@ -67,7 +67,7 @@ const AddService = ({
   addIngestion,
   handleAddIngestion,
 }: AddServiceProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser, setInlineAlertDetails } = useApplicationStore();
   const { fetchAirflowStatus } = useAirflowStatus();
 
@@ -98,12 +98,12 @@ const AddService = ({
   const handleServiceCategoryChange = (category: ServiceCategory) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
     setSelectServiceType('');
-    history.push(getAddServicePath(category));
+    navigate(getAddServicePath(category));
   };
 
   // Select service
   const handleSelectServiceCancel = () => {
-    history.push(
+    navigate(
       getSettingPath(
         GlobalSettingsMenuCategory.SERVICES,
         getServiceRouteFromServiceType(serviceCategory)
@@ -171,7 +171,7 @@ const AddService = ({
   // View new service
   const handleViewServiceClick = () => {
     if (!isUndefined(newServiceData)) {
-      history.push(getServiceDetailsPath(newServiceData.name, serviceCategory));
+      navigate(getServiceDetailsPath(newServiceData.name, serviceCategory));
     }
   };
 

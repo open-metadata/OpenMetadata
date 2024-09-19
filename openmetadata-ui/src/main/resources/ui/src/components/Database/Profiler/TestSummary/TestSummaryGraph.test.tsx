@@ -114,7 +114,7 @@ jest.mock('recharts', () => ({
 jest.mock('react-router-dom', () => {
   return {
     ...jest.requireActual('react-router-dom'),
-    useHistory: jest.fn().mockImplementation(() => mockHistory),
+    useNavigate: jest.fn().mockImplementation(() => mockHistory),
   };
 });
 

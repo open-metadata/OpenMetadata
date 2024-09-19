@@ -15,7 +15,7 @@ import { Button, Dropdown, DropdownProps } from 'antd';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as KillIcon } from '../../../../../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as DeployIcon } from '../../../../../../assets/svg/deploy.svg';
 import { ReactComponent as EditIcon } from '../../../../../../assets/svg/edit-new.svg';
@@ -51,7 +51,7 @@ function PipelineActionsDropdown({
   onIngestionWorkflowsUpdate,
   ingestionPipelinePermissions,
 }: Readonly<PipelineActionsDropdownProps>) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
@@ -107,7 +107,7 @@ function PipelineActionsDropdown({
         : ingestion.fullyQualifiedName;
 
       if (ingestion.pipelineType === PipelineType.TestSuite) {
-        history.push(
+        navigate(
           getTestSuiteIngestionPath(
             getTestSuiteFQN(fullyQualifiedName),
             fullyQualifiedName
@@ -118,7 +118,7 @@ function PipelineActionsDropdown({
       }
 
       if (isUndefined(handleEditClick)) {
-        history.push(
+        navigate(
           getEditIngestionPath(
             serviceCategory ?? '',
             serviceName ?? '',

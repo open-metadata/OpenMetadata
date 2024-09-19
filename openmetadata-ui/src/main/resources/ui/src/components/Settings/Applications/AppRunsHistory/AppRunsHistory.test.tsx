@@ -116,7 +116,7 @@ jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
+  useNavigate: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
 }));
@@ -232,7 +232,7 @@ describe('AppRunsHistory component', () => {
     });
   });
 
-  it('onclick of logs button should call history.push method of external apps', async () => {
+  it('onclick of logs button should call navigate method of external apps', async () => {
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
