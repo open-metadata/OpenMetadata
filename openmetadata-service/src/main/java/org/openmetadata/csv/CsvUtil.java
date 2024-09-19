@@ -120,14 +120,15 @@ public final class CsvUtil {
    * @param field The input string with key-value pairs.
    * @return A list of key-value pairs, handling quotes and semicolons correctly.
    */
-  public static List<String> fieldToExtensionStrings(String field) throws IOException {
+  public static List<String> fieldToExtensionStrings(String field) {
     if (field == null || field.isBlank()) {
-      return List.of(); // Return empty list if input is null or blank
+      return List.of();
     }
 
     List<String> result = new ArrayList<>();
     StringBuilder currentField = new StringBuilder();
-    boolean inQuotes = false; // Track whether we are inside quotes
+    // Track whether we are inside quotes
+    boolean inQuotes = false;
 
     // Iterate through each character in the field
     for (int i = 0; i < field.length(); i++) {
@@ -135,17 +136,23 @@ public final class CsvUtil {
 
       if (c == '"') {
         if (inQuotes && i + 1 < field.length() && field.charAt(i + 1) == '"') {
-          currentField.append('"'); // Handle escaped quote ("" -> ")
-          i++; // Skip the next character
+          // Handle escaped quote ("" -> ")
+          currentField.append('"');
+          i++;
         } else {
-          inQuotes = !inQuotes; // Toggle quote state
-          currentField.append(c); // Keep the quote as part of the field
+          // Toggle quote state
+          inQuotes = !inQuotes;
+          // Keep the quote as part of the field
+          currentField.append(c);
         }
       } else if (c == FIELD_SEPARATOR.charAt(0) && !inQuotes) {
-        addFieldToResult(result, currentField); // Add the field when semicolon is outside quotes
-        currentField.setLength(0); // Reset buffer for next field
+        // Add the field when semicolon is outside quotes
+        addFieldToResult(result, currentField);
+        // Reset buffer for next field
+        currentField.setLength(0);
       } else {
-        currentField.append(c); // Continue building the field
+        // Continue building the field
+        currentField.append(c);
       }
     }
 
