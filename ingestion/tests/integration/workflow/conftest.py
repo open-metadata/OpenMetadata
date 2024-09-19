@@ -14,7 +14,10 @@ import uuid
 
 import pytest
 
-from ..containers import MySqlContainerConfigs, get_mysql_container
+from _openmetadata_testutils.containers import (
+    MySqlContainerConfigs,
+    get_mysql_container,
+)
 
 MYSQL_CONFIG = """
 source:
