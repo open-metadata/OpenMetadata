@@ -16,9 +16,9 @@ We need to define this class as we end up having
 multiple profilers per table and columns.
 """
 
-from typing import List, Optional, Type, Union
+from typing import Annotated, List, Optional, Type, Union
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 )
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.processor.models import ProfilerDef
@@ -109,6 +110,15 @@ class ProfilerProcessorConfig(ConfigModel):
     databaseConfig: Optional[List[DatabaseAndSchemaConfig]] = []
 
 
+class SampleData(BaseModel):
+    """TableData wrapper to handle ephemeral SampleData"""
+
+    data: Annotated[TableData, Field(None, description="Table Sample Data")]
+    store: Annotated[
+        bool, Field(False, description="Is the sample data should be stored or not")
+    ]
+
+
 class ProfilerResponse(ConfigModel):
     """
     ORM Profiler processor response.
@@ -119,7 +129,7 @@ class ProfilerResponse(ConfigModel):
 
     table: Table
     profile: CreateTableProfileRequest
-    sample_data: Optional[TableData] = None
+    sample_data: Optional[SampleData] = None
     column_tags: Optional[List[ColumnTag]] = None
 
     def __str__(self):
