@@ -3,6 +3,9 @@ import shutil
 import tempfile
 
 import pytest
+from sqlalchemy import create_engine, text
+from testcontainers.mssql import SqlServerContainer
+
 from _openmetadata_testutils.helpers.docker import copy_dir_to_container, try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -16,8 +19,6 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
-from sqlalchemy import create_engine, text
-from testcontainers.mssql import SqlServerContainer
 
 from ..conftest import ingestion_config as base_ingestion_config
 

@@ -52,7 +52,8 @@ def test_lineage(
     lineage_config,
     db_service,
     metadata,
-db_name):
+    db_name,
+):
     search_cache.clear()
     run_workflow(MetadataWorkflow, ingestion_config)
     run_workflow(MetadataWorkflow, lineage_config)

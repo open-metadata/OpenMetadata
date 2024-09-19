@@ -15,7 +15,8 @@ def test_ingest_metadata(
     ingestion_config,
     db_service,
     metadata,
-db_name):
+    db_name,
+):
     run_workflow(MetadataWorkflow, ingestion_config)
     table: Table = metadata.get_by_name(
         Table,
