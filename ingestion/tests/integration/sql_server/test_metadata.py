@@ -15,11 +15,11 @@ def test_ingest_metadata(
     ingestion_config,
     db_service,
     metadata,
-):
+db_name):
     run_workflow(MetadataWorkflow, ingestion_config)
     table: Table = metadata.get_by_name(
         Table,
-        f"{db_service.fullyQualifiedName.root}.AdventureWorks.HumanResources.Department",
+        f"{db_service.fullyQualifiedName.root}.{db_name}.SalesLT.Customer",
     )
     assert table is not None
     assert table.columns[0].name.root == "DepartmentID"
