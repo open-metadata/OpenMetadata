@@ -4,7 +4,7 @@ source:
   serviceConnection:
     config:
       type: Sigma
-      hostPort: https://aws-api.sigmacomputing.com
+      hostPort: https://api.sigmacomputing.com
       clientId: client_id
       clientSecret: client_secret
       apiVersion: v2
