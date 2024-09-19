@@ -18,7 +18,6 @@ import Loader from '../Loader/Loader';
 
 interface TableComponentProps<T> extends TableProps<T> {
   resizableColumns?: boolean;
-  isTableDraggable?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types

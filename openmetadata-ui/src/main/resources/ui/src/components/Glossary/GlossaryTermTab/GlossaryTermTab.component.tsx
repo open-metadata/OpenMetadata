@@ -474,7 +474,6 @@ const GlossaryTermTab = ({
           <DndProvider backend={HTML5Backend}>
             <Table
               bordered
-              isTableDraggable
               resizableColumns
               className={classNames('drop-over-background', {
                 'drop-over-table': isTableHovered,
