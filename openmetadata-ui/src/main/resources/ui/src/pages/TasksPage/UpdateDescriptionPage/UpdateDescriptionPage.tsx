@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -20,12 +21,14 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { LIST_SIZE, VALIDATION_MESSAGES } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -35,6 +38,7 @@ import {
   ThreadType,
 } from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
+import { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
@@ -46,7 +50,6 @@ import {
 } from '../../../utils/EntityUtils';
 import {
   fetchEntityDetail,
-  fetchOptions,
   getBreadCrumbList,
   getColumnObject,
   getEntityColumnsDetails,
@@ -55,10 +58,9 @@ import {
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import Assignees from '../shared/Assignees';
 import { DescriptionTabs } from '../shared/DescriptionTabs';
 import '../task-page.style.less';
-import { EntityData, Option } from '../TasksPage.interface';
+import { EntityData } from '../TasksPage.interface';
 
 const UpdateDescription = () => {
   const { t } = useTranslation();
@@ -75,10 +77,16 @@ const UpdateDescription = () => {
   const value = queryParams.get('value');
 
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
-  const [options, setOptions] = useState<Option[]>([]);
-  const [assignees, setAssignees] = useState<Array<Option>>([]);
+  const [assignees, setAssignees] = useState<EntityReference[]>([]);
   const [currentDescription, setCurrentDescription] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const selectedAssignees =
+    Form.useWatch<EntityReference | EntityReference[]>('assignees', form) ?? [];
+
+  const assigneesList = Array.isArray(selectedAssignees)
+    ? selectedAssignees
+    : [selectedAssignees];
 
   const entityFQN = useMemo(
     () => getTaskEntityFQN(entityType, fqn),
@@ -122,14 +130,6 @@ const UpdateDescription = () => {
     }
   };
 
-  const onSearch = (query: string) => {
-    const data = {
-      query,
-      setOptions,
-    };
-    fetchOptions(data);
-  };
-
   const getTaskAbout = () => {
     if (field && value) {
       return `${field}${ENTITY_LINK_SEPARATOR}${value}${ENTITY_LINK_SEPARATOR}description`;
@@ -146,7 +146,7 @@ const UpdateDescription = () => {
       about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
-          id: assignee.value,
+          id: assignee.id,
           type: assignee.type,
         })),
         suggestion: value.description,
@@ -184,7 +184,6 @@ const UpdateDescription = () => {
 
     if (defaultAssignee) {
       setAssignees(defaultAssignee);
-      setOptions(defaultAssignee);
     }
     form.setFieldsValue({
       title: taskMessage.trimEnd(),
@@ -248,18 +247,43 @@ const UpdateDescription = () => {
                     })}
                   />
                 </Form.Item>
-                <Form.Item
-                  data-testid="assignees"
-                  label={`${t('label.assignee-plural')}:`}
-                  name="assignees"
-                  rules={[{ required: true }]}>
-                  <Assignees
-                    options={options}
-                    value={assignees}
-                    onChange={setAssignees}
-                    onSearch={onSearch}
-                  />
-                </Form.Item>
+                <div className="m-b-lg">
+                  <Form.Item
+                    className="form-item-horizontal m-b-sm"
+                    data-testid="assignees"
+                    label={`${t('label.assignee-plural')}:`}
+                    name="assignees"
+                    rules={[{ required: true }]}>
+                    <UserTeamSelectableList
+                      hasPermission
+                      selectBoth
+                      multiple={{ user: true, team: true }}
+                      owner={assignees}
+                      onUpdate={(values) =>
+                        form.setFieldValue(['assignees'], values)
+                      }>
+                      <Button
+                        data-testid="add-owner"
+                        icon={
+                          <PlusOutlined
+                            style={{ color: 'white', fontSize: '12px' }}
+                          />
+                        }
+                        size="small"
+                        type="primary"
+                      />
+                    </UserTeamSelectableList>
+                  </Form.Item>
+
+                  {Boolean(assigneesList.length) && (
+                    <Space wrap data-testid="assignees-container" size={[8, 8]}>
+                      <OwnerLabel
+                        maxVisibleOwners={LIST_SIZE}
+                        owners={assigneesList}
+                      />
+                    </Space>
+                  )}
+                </div>
 
                 {currentDescription && (
                   <Form.Item
