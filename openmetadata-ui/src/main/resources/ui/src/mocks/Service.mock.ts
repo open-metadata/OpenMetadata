@@ -23,7 +23,6 @@ import {
   LabelType,
   State,
   TagSource,
-  TypeEnum,
 } from '../generated/entity/services/databaseService';
 import {
   MessagingService,
@@ -80,7 +79,7 @@ export const MOCK_DATABASE_SERVICE: DatabaseService = {
       hostPort: 'localhost:1234',
       credentials: {
         gcpConfig: {
-          type: TypeEnum.ServiceAccount,
+          type: 'service_account',
           projectId: ['projectID'],
           privateKeyId: 'privateKeyId',
           privateKey: '*********',
