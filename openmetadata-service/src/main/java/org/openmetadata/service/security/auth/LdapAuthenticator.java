@@ -139,9 +139,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   @Override
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
     checkIfLoginBlocked(loginRequest.getEmail());
-    User storedUser = lookUserInProvider(loginRequest.getEmail());
-    validatePassword(storedUser.getEmail(), storedUser, loginRequest.getPassword());
-    User omUser = checkAndCreateUser(storedUser.getEmail(), storedUser.getName());
+    User storedUserInLdap = lookUserInProvider(loginRequest.getEmail());
+    validatePassword(storedUserInLdap.getEmail(), storedUserInLdap, loginRequest.getPassword());
+    User omUser = checkAndCreateUser(storedUserInLdap.getEmail(), storedUserInLdap.getName());
     return getJwtResponse(omUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
@@ -237,8 +237,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         Attribute emailAttr =
             searchResultEntry.getAttribute(ldapConfiguration.getMailAttributeName());
 
-        if (!CommonUtil.nullOrEmpty(userDN) && emailAttr != null) {
-          return getUserForLdap(email).withName(userDN.toLowerCase());
+        if (!CommonUtil.nullOrEmpty(userDN)
+            && emailAttr != null
+            && email.equalsIgnoreCase(emailAttr.getValue())) {
+          return getUserForLdap(email);
         } else {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
