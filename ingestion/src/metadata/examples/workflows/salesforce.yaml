@@ -7,6 +7,7 @@ source:
       username: username
       password: password
       securityToken: securityToken
+      organizationId: organizationId
       sobjectName: sobjectName
       # sslConfig:
       #   caCertificate: |
