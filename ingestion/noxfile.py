@@ -74,6 +74,8 @@ def pytest_run(session: Session, env: TestEnv):
         "--branch",
         "--rcfile",
         "pyproject.toml",
+        "--source",
+        f"{session.virtualenv.location}/lib/**/site-packages/metadata",
         "--data-file",
         f"coverage/{session.python}/.coverage.{env.name}",
         "-a",
@@ -83,6 +85,7 @@ def pytest_run(session: Session, env: TestEnv):
         "pyproject.toml",
         f"--junitxml=junit/{session.python}/test-results-{env.name}.xml",
         *[path for path in env.paths],
+        "-k", "metadata"
     )
 
 

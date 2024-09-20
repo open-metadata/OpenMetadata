@@ -130,7 +130,7 @@ jobs:
       if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
       uses: actions/upload-artifact@v3
       with:
-        name: coverage-${{ matrix.e2e-test }}
+        name: coverage-${{ matrix.session }}
         path: ingestion/converage/**/.coverage.*
     
     - name: Clean Up
@@ -175,15 +175,17 @@ jobs:
       - name: Generate report
         run: |
           for folder in artifacts/coverage/3.9/coverage-*; do
-            cp -rT $folder/ . ;
+            cp -rT $folder/ coverage/ ;
           done
           mkdir ingestion/junit
           for folder in artifacts/junit/3.9/tests-*; do
             cp -rT $folder/ ingestion/junit ;
           done
           source env/bin/activate
-          coverage combine --rcfile=ingestion/pyproject.toml --keep -a ingestion/coverage/3.9/
-          coverage xml --rcfile=ingestion/pyproject.toml --data-file=.coverage -o ingestion/coverage.xml
+          python scripts/rewrite_coverage_files.py coverage env/lib/python3.9/site-packages/metadata
+          coverage combine --rcfile=ingestion/pyproject.toml --keep -a coverage/
+          coverage report --rcfile=ingestion/pyproject.toml
+          coverage xml --rcfile=ingestion/pyproject.toml -o ingestion/coverage.xml
           sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
           sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
         shell: bash
