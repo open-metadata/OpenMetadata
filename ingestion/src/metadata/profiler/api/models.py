@@ -16,11 +16,12 @@ We need to define this class as we end up having
 multiple profilers per table and columns.
 """
 
-from typing import Annotated, List, Optional, Type, Union
+from typing import List, Optional, Type, Union
 
 from pydantic import ConfigDict, Field
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
+from typing_extensions import Annotated
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
