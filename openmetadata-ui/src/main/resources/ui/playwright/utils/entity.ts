@@ -348,6 +348,11 @@ export const assignTag = async (
   await searchTags;
   await page.getByTestId(`tag-${tag}`).click();
 
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
@@ -393,6 +398,11 @@ export const assignTagToChildren = async ({
     (response) => response.request().method() === 'PATCH'
   );
 
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
@@ -423,6 +433,11 @@ export const removeTag = async (page: Page, tags: string[]) => {
 
     const patchRequest = page.waitForResponse(
       (response) => response.request().method() === 'PATCH'
+    );
+
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
     );
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
@@ -467,6 +482,11 @@ export const removeTagsFromChildren = async ({
       (response) => response.request().method() === 'PATCH'
     );
 
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
+    );
+
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
     await page.getByTestId('saveAssociatedTag').click();
@@ -506,6 +526,11 @@ export const assignGlossaryTerm = async (
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
   await searchGlossaryTerm;
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
+
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
 
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
@@ -549,6 +574,11 @@ export const assignGlossaryTermToChildren = async ({
     (response) => response.request().method() === 'PATCH'
   );
 
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
@@ -583,6 +613,11 @@ export const removeGlossaryTerm = async (
 
     const patchRequest = page.waitForResponse(
       (response) => response.request().method() === 'PATCH'
+    );
+
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
     );
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
@@ -626,6 +661,11 @@ export const removeGlossaryTermFromChildren = async ({
 
     const patchRequest = page.waitForResponse(
       (response) => response.request().method() === 'PATCH'
+    );
+
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
     );
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
