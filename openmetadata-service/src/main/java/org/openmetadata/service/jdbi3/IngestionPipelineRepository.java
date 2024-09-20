@@ -17,7 +17,6 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
@@ -93,12 +92,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         fields.contains("pipelineStatuses")
             ? getLatestPipelineStatus(ingestionPipeline)
             : ingestionPipeline.getPipelineStatuses());
-
-    JSONObject sourceConfigJson =
-        new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
-    Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
-        .map(appConfig -> appConfig.optString("type", null))
-        .ifPresent(ingestionPipeline::setApplicationType);
   }
 
   @Override

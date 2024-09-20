@@ -31,6 +31,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
@@ -55,6 +56,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONObject;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -83,6 +85,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 
@@ -939,6 +942,12 @@ public class IngestionPipelineResource
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+
+    JSONObject sourceConfigJson =
+        new JSONObject(JsonUtils.pojoToJson(create.getSourceConfig().getConfig()));
+    Optional<String> appTypeString =
+        Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
+            .map(appConfig -> appConfig.optString("type", null));
     return repository
         .copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
@@ -946,7 +955,8 @@ public class IngestionPipelineResource
         .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withSourceConfig(create.getSourceConfig())
         .withLoggerLevel(create.getLoggerLevel())
-        .withService(create.getService());
+        .withService(create.getService())
+        .withApplicationType(appTypeString.orElse(null));
   }
 
   private void unmask(IngestionPipeline ingestionPipeline) {
