@@ -1,5 +1,6 @@
 import os
 import shutil
+import tempfile
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -22,24 +23,55 @@ from metadata.generated.schema.entity.services.databaseService import (
 from ..conftest import ingestion_config as base_ingestion_config
 
 
-@pytest.fixture(scope="module")
-def mssql_container(tmp_path_factory):
-    container = SqlServerContainer(
-        "mcr.microsoft.com/mssql/server:2017-latest", dbname="AdventureWorks"
+@pytest.fixture(scope="session")
+def db_name():
+    return "AdventureWorksLT2022"
+
+
+class CustomSqlServerContainer(SqlServerContainer):
+    def start(self) -> "DbContainer":
+        dockerfile = f"""
+            FROM {self.image}
+            USER root
+            RUN mkdir -p /data
+            RUN chown mssql /data
+            USER mssql
+            """
+        temp_dir = os.path.join(tempfile.gettempdir(), "mssql")
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_dockerfile_path = os.path.join(temp_dir, "Dockerfile")
+        with open(temp_dockerfile_path, "w") as temp_dockerfile:
+            temp_dockerfile.write(dockerfile)
+        self.get_docker_client().build(temp_dir, tag=self.image)
+        return super().start()
+
+    def _configure(self) -> None:
+        super()._configure()
+        self.with_env("SQL_SA_PASSWORD", self.password)
+
+
+@pytest.fixture(scope="session")
+def mssql_container(tmp_path_factory, db_name):
+    container = CustomSqlServerContainer(
+        "mcr.microsoft.com/mssql/server:2022-latest", dbname="master"
     )
     data_dir = tmp_path_factory.mktemp("data")
     shutil.copy(
-        os.path.join(os.path.dirname(__file__), "data", "AdventureWorks2017.bak"),
+        os.path.join(os.path.dirname(__file__), "data", f"{db_name}.bak"),
         str(data_dir),
     )
     with open(data_dir / "install.sql", "w") as f:
         f.write(
-            """
+            f"""
 USE [master]
-RESTORE DATABASE [AdventureWorks]
-    FROM DISK = '/data/AdventureWorks2017.bak'
-        WITH MOVE 'AdventureWorks2017' TO '/var/opt/mssql/data/AdventureWorks.mdf',
-        MOVE 'AdventureWorks2017_log' TO '/var/opt/mssql/data/AdventureWorks_log.ldf'
+RESTORE FILELISTONLY
+    FROM DISK = '/data/{db_name}.bak';
+GO
+
+RESTORE DATABASE [{db_name}]
+    FROM DISK = '/data/{db_name}.bak'
+    WITH MOVE '{db_name}_Data' TO '/var/opt/mssql/data/{db_name}.mdf',
+         MOVE '{db_name}_Log' TO '/var/opt/mssql/data/{db_name}.ldf';
 GO
         """
         )
@@ -49,17 +81,22 @@ GO
         copy_dir_to_container(str(data_dir), docker_container, "/data")
         res = docker_container.exec_run(
             [
-                "/opt/mssql-tools/bin/sqlcmd",
-                "-S",
-                "localhost",
-                "-U",
-                container.username,
-                "-P",
-                container.password,
-                "-d",
-                "master",
-                "-i",
-                "/data/install.sql",
+                "bash",
+                "-c",
+                " ".join(
+                    [
+                        "/opt/mssql-tools*/bin/sqlcmd",
+                        "-U",
+                        container.username,
+                        "-P",
+                        f"'{container.password}'",
+                        "-d",
+                        "master",
+                        "-i",
+                        "/data/install.sql",
+                        "-C",
+                    ]
+                ),
             ]
         )
         if res[0] != 0:
@@ -72,7 +109,7 @@ GO
             transaciton = conn.begin()
             conn.execute(
                 text(
-                    "SELECT * INTO AdventureWorks.HumanResources.DepartmenCopy FROM AdventureWorks.HumanResources.Department;"
+                    f"SELECT * INTO {db_name}.SalesLT.CustomerCopy FROM {db_name}.SalesLT.Customer;"
                 )
             )
             transaciton.commit()
@@ -91,7 +128,7 @@ def scheme(request):
 
 
 @pytest.fixture(scope="module")
-def create_service_request(mssql_container, scheme, tmp_path_factory):
+def create_service_request(mssql_container, scheme, tmp_path_factory, db_name):
     return CreateDatabaseServiceRequest(
         name="docker_test_" + tmp_path_factory.mktemp("mssql").name + "_" + scheme.name,
         serviceType=DatabaseServiceType.Mssql,
@@ -101,7 +138,7 @@ def create_service_request(mssql_container, scheme, tmp_path_factory):
                 password=mssql_container.password,
                 hostPort="localhost:"
                 + mssql_container.get_exposed_port(mssql_container.port),
-                database="AdventureWorks",
+                database=db_name,
                 scheme=scheme,
                 ingestAllDatabases=True,
                 connectionOptions={
@@ -115,12 +152,17 @@ def create_service_request(mssql_container, scheme, tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def ingestion_config(
-    db_service, tmp_path_factory, workflow_config, sink_config, base_ingestion_config
+    db_service,
+    tmp_path_factory,
+    workflow_config,
+    sink_config,
+    base_ingestion_config,
+    db_name,
 ):
     base_ingestion_config["source"]["sourceConfig"]["config"][
         "databaseFilterPattern"
     ] = {
-        "includes": ["TestDB", "AdventureWorks"],
+        "includes": ["TestDB", db_name],
     }
     return base_ingestion_config
 

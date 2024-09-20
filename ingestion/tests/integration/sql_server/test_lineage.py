@@ -27,7 +27,7 @@ def language_config(mssql_container, request):
 
 
 @pytest.fixture()
-def lineage_config(language_config, db_service, workflow_config, sink_config):
+def lineage_config(language_config, db_service, workflow_config, sink_config, db_name):
     return {
         "source": {
             "type": "mssql-lineage",
@@ -35,7 +35,7 @@ def lineage_config(language_config, db_service, workflow_config, sink_config):
             "sourceConfig": {
                 "config": {
                     "type": "DatabaseLineage",
-                    "databaseFilterPattern": {"includes": ["TestDB", "AdventureWorks"]},
+                    "databaseFilterPattern": {"includes": ["TestDB", db_name]},
                 },
             },
         },
@@ -52,13 +52,14 @@ def test_lineage(
     lineage_config,
     db_service,
     metadata,
+    db_name,
 ):
     search_cache.clear()
     run_workflow(MetadataWorkflow, ingestion_config)
     run_workflow(MetadataWorkflow, lineage_config)
     department_table = metadata.get_by_name(
         Table,
-        f"{db_service.fullyQualifiedName.root}.AdventureWorks.HumanResources.Department",
+        f"{db_service.fullyQualifiedName.root}.{db_name}.SalesLT.Customer",
         nullable=False,
     )
     lineage = metadata.get_lineage_by_id(Table, department_table.id.root)
