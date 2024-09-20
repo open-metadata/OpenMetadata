@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.source.connections import get_connection
+from metadata.profiler.orm.registry import Dialects
 from metadata.utils import fqn
 
 
@@ -168,7 +169,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             table_fqn
         )
         # path needs to include the database AND schema in some of the connectors
-        if kwargs["scheme"] in ["mssql"]:
+        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake}:
             kwargs["path"] = f"/{database}/{schema}"
         return url._replace(**kwargs).geturl()
 
