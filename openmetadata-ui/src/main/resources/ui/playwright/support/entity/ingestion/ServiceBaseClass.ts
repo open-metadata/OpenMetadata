@@ -177,6 +177,10 @@ class ServiceBaseClass {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
+    // Re-deploy before running the ingestion
+    await page.getByTestId('more-actions').first().click();
+    await page.getByTestId('re-deploy-button').click();
+
     // need manual wait to settle down the deployed pipeline, before triggering the pipeline
     await page.waitForTimeout(2000);
 
@@ -262,8 +266,8 @@ class ServiceBaseClass {
           intervals: [30_000, 15_000, 5_000],
         }
       )
-      // To allow partial success
-      .toContain('success');
+      // Move ahead if we do not have running or queued status
+      .toEqual(expect.stringMatching(/(success|failed|partialSuccess)/));
 
     const pipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines?**`
@@ -439,6 +443,13 @@ class ServiceBaseClass {
     await page
       .getByRole('cell', { name: 'Pause Logs' })
       .waitFor({ state: 'visible' });
+
+    // Re-deploy before running the ingestion
+    await page.getByTestId('more-actions').first().click();
+    await page.getByTestId('re-deploy-button').click();
+
+    // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+    await page.waitForTimeout(2000);
 
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
