@@ -1567,13 +1567,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create Entity with Null Owner
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T createdEntity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    T entity = getEntity(createdEntity.getId(), "id", ADMIN_AUTH_HEADERS);
+    T entity = getEntity(createdEntity.getId(), allFields, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> previousOwners = entity.getOwners();
+    if (nullOrEmpty(previousOwners)) {
+      entity.setOwners(null);
+    }
 
     // Check if the Owner is update to user1 and user 2
     List<EntityReference> updateOwners =
         List.of(
             new EntityReference().withId(USER1.getId()).withType(USER),
-            new EntityReference().withId(USER1.getId()).withType(USER));
+            new EntityReference().withId(USER2.getId()).withType(USER));
 
     String json = JsonUtils.pojoToJson(entity);
     entity.setOwners(updateOwners);
