@@ -83,7 +83,10 @@ import Severity from '../DataQuality/IncidentManager/Severity/Severity.component
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { IncidentManagerProps } from './IncidentManager.interface';
 
-const IncidentManager = ({ isIncidentPage = true }: IncidentManagerProps) => {
+const IncidentManager = ({
+  isIncidentPage = true,
+  tableDetails,
+}: IncidentManagerProps) => {
   const defaultRange = useMemo(
     () => ({
       key: 'last30days',
@@ -135,6 +138,7 @@ const IncidentManager = ({ isIncidentPage = true }: IncidentManagerProps) => {
         const { data, paging } = await getListTestCaseIncidentStatus({
           limit: pageSize,
           latest: true,
+          originEntityFQN: tableDetails?.fullyQualifiedName,
           ...params,
         });
         const assigneeOptions = data.reduce((acc, curr) => {
