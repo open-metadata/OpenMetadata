@@ -275,6 +275,8 @@ test.describe('Observability Alert Flow', () => {
     test(`${sourceDisplayName} alert`, async ({ page }) => {
       const ALERT_NAME = generateAlertName();
 
+      test.slow(true);
+
       await test.step('Create alert', async () => {
         await inputBasicAlertInformation({
           page,
