@@ -138,7 +138,8 @@ test.describe('Add Nested Teams and Test TeamsSelectable', () => {
 
     await toastNotification(
       page,
-      `"${businessTeamName}" deleted successfully!`
+      `"${businessTeamName}" deleted successfully!`,
+      'success'
     );
   });
 });

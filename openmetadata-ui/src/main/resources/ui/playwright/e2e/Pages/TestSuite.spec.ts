@@ -219,7 +219,8 @@ test('Logical TestSuite', async ({ page }) => {
     await deleteResponse;
     await toastNotification(
       page,
-      `"${NEW_TEST_SUITE.name}" deleted successfully!`
+      `"${NEW_TEST_SUITE.name}" deleted successfully!`,
+      'success'
     );
   });
 });

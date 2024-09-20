@@ -147,7 +147,7 @@ test('Table test case', async ({ page }) => {
     );
     await page.locator('button').filter({ hasText: 'Submit' }).click();
     await updateTestCaseResponse;
-    await toastNotification(page, 'Test case updated successfully.');
+    await toastNotification(page, 'Test case updated successfully.', 'success');
     await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
 
     await page.waitForSelector('#tableTestForm_params_columnName');
@@ -231,7 +231,7 @@ test('Column test case', async ({ page }) => {
     );
     await page.locator('button').getByText('Submit').click();
     await updateTestCaseResponse;
-    await toastNotification(page, 'Test case updated successfully.');
+    await toastNotification(page, 'Test case updated successfully.', 'success');
 
     await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
     await page.waitForSelector('#tableTestForm_params_minLength');
@@ -454,7 +454,11 @@ test('TestCase with Array params value', async ({ page }) => {
       await page.locator('#tableTestForm_displayName').clear();
       await page.fill('#tableTestForm_displayName', 'Updated display name');
       await page.click('.ant-modal-footer >> text=Submit');
-      await toastNotification(page, 'Test case updated successfully.');
+      await toastNotification(
+        page,
+        'Test case updated successfully.',
+        'success'
+      );
 
       await expect(page.locator(`[data-testid="${testCaseName}"]`)).toHaveText(
         'Updated display name'

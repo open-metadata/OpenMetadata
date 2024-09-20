@@ -203,14 +203,14 @@ test.describe('Activity feed', () => {
 
     await page.getByText('Accept Suggestion').click();
 
-    await toastNotification(page, /Task resolved successfully/);
+    await toastNotification(page, /Task resolved successfully/, 'success');
 
     // Task 1 - Request to update tag to be resolved
 
     await page.getByText('Accept Suggestion').click();
 
     const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
-    await toastNotification(page, /Task resolved successfully/);
+    await toastNotification(page, /Task resolved successfully/, 'success');
     await waitForCountFetch;
 
     await checkTaskCount(page, 0, 2);
@@ -362,14 +362,14 @@ test.describe('Activity feed', () => {
 
     await page.getByText('OK').click();
 
-    await toastNotification(page, /Task resolved successfully/);
+    await toastNotification(page, /Task resolved successfully/, 'success');
 
     // Task 1 - Resolved the task
 
     await page.getByText('Accept Suggestion').click();
 
     const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
-    await toastNotification(page, /Task resolved successfully/);
+    await toastNotification(page, /Task resolved successfully/, 'success');
     await waitForCountFetch;
 
     await checkTaskCount(page, 0, 2);
@@ -415,7 +415,11 @@ test.describe('Activity feed', () => {
 
     await page.getByRole('menuitem', { name: 'close' }).click();
 
-    await toastNotification(page, 'Task cannot be closed without a comment.');
+    await toastNotification(
+      page,
+      'Task cannot be closed without a comment.',
+      'warning'
+    );
 
     // Close the task from the Button.Group, with comment is added.
     await page.fill(
@@ -433,7 +437,7 @@ test.describe('Activity feed', () => {
     await commentWithCloseTask;
 
     const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
-    await toastNotification(page, 'Task closed successfully.');
+    await toastNotification(page, 'Task closed successfully.', 'success');
     await waitForCountFetch;
 
     await checkTaskCount(page, 0, 1);
@@ -491,7 +495,7 @@ test.describe('Activity feed', () => {
     await commentWithCloseTask;
 
     const waitForCountFetch2 = page.waitForResponse('/api/v1/feed/count?**');
-    await toastNotification(page, 'Task closed successfully.');
+    await toastNotification(page, 'Task closed successfully.', 'success');
     await waitForCountFetch2;
 
     // open task count after closing one task
@@ -698,7 +702,8 @@ base.describe('Activity feed with Data Consumer User', () => {
       //   await toastNotification(page1, 'Task closed successfully.');
       await toastNotification(
         page1,
-        'An exception with message [Cannot invoke "java.util.List.stream()" because "owners" is null] was thrown while processing request.'
+        'An exception with message [Cannot invoke "java.util.List.stream()" because "owners" is null] was thrown while processing request.',
+        'error'
       );
 
       // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
@@ -765,7 +770,7 @@ base.describe('Activity feed with Data Consumer User', () => {
       await page2.getByText('Accept Suggestion').click();
 
       const waitForCountFetch = page2.waitForResponse('/api/v1/feed/count?**');
-      await toastNotification(page2, /Task resolved successfully/);
+      await toastNotification(page2, /Task resolved successfully/, 'success');
       await waitForCountFetch;
 
       // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
@@ -906,7 +911,7 @@ base.describe('Activity feed with Data Consumer User', () => {
 
         await page2.getByText('OK').click();
 
-        await toastNotification(page2, /Task resolved successfully/);
+        await toastNotification(page2, /Task resolved successfully/, 'success');
 
         // Accept the description task
 
@@ -928,7 +933,7 @@ base.describe('Activity feed with Data Consumer User', () => {
 
         await page2.getByText('OK').click();
 
-        await toastNotification(page2, /Task resolved successfully/);
+        await toastNotification(page2, /Task resolved successfully/, 'success');
 
         await afterActionUser2();
       }
@@ -975,7 +980,8 @@ base.describe('Activity feed with Data Consumer User', () => {
           await toastNotification(
             page2,
             // eslint-disable-next-line max-len
-            `Principal: CatalogPrincipal{name='${viewAllUser.responseData.name}'} operation EditDescription denied by role ${viewAllRoles.responseData.name}, policy ${viewAllPolicy.responseData.name}, rule editNotAllowed`
+            `Principal: CatalogPrincipal{name='${viewAllUser.responseData.name}'} operation EditDescription denied by role ${viewAllRoles.responseData.name}, policy ${viewAllPolicy.responseData.name}, rule editNotAllowed`,
+            'error'
           );
 
           await afterActionUser2();

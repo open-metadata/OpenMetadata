@@ -124,7 +124,7 @@ export const deleteAlertSteps = async (page: Page, name: string) => {
   await page.click('[data-testid="confirm-button"]');
   await deleteAlert;
 
-  await toastNotification(page, `"${name}" deleted successfully!`);
+  await toastNotification(page, `"${name}" deleted successfully!`, 'success');
 };
 
 export const addOwnerFilter = async ({
@@ -762,7 +762,7 @@ export const saveAlertAndVerifyResponse = async (page: Page) => {
 
     expect(response.status()).toEqual(201);
   });
-  await toastNotification(page, 'Alerts created successfully.');
+  await toastNotification(page, 'Alerts created successfully.', 'success');
 
   // Check if the alert details page is visible
   await getAlertDetails;

@@ -139,7 +139,11 @@ class MysqlIngestionClass extends ServiceBaseClass {
       );
       await page.getByTestId('run-button').click();
 
-      await toastNotification(page, `Pipeline triggered successfully!`);
+      await toastNotification(
+        page,
+        `Pipeline triggered successfully!`,
+        'success'
+      );
 
       await this.handleIngestionRetry('profiler', page);
     });

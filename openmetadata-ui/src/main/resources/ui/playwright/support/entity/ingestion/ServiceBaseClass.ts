@@ -187,7 +187,11 @@ class ServiceBaseClass {
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
 
-    await toastNotification(page, `Pipeline triggered successfully!`);
+    await toastNotification(
+      page,
+      `Pipeline triggered successfully!`,
+      'success'
+    );
 
     await this.handleIngestionRetry('metadata', page);
   }
@@ -454,7 +458,11 @@ class ServiceBaseClass {
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
 
-    await toastNotification(page, `Pipeline triggered successfully!`);
+    await toastNotification(
+      page,
+      `Pipeline triggered successfully!`,
+      'success'
+    );
 
     // Wait for success
     await this.handleIngestionRetry('metadata', page);

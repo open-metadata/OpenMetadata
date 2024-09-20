@@ -80,7 +80,7 @@ export const createDescriptionTask = async (
   }
   await page.click('button[type="submit"]');
 
-  await toastNotification(page, /Task created successfully./);
+  await toastNotification(page, /Task created successfully./, 'success');
 };
 
 export const createTagTask = async (
@@ -148,7 +148,7 @@ export const createTagTask = async (
 
   await page.click('button[type="submit"]');
 
-  await toastNotification(page, /Task created successfully./);
+  await toastNotification(page, /Task created successfully./, 'success');
 };
 
 export const checkTaskCount = async (

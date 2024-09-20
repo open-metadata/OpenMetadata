@@ -65,7 +65,11 @@ test.describe.serial('Data Insight Report Application', () => {
     await page.click('[data-value="5"]');
     await page.click('[data-testid="deploy-button"]');
 
-    await toastNotification(page, 'Application installed successfully');
+    await toastNotification(
+      page,
+      'Application installed successfully',
+      'success'
+    );
 
     await expect(
       page.locator('[data-testid="data-insights-report-application-card"]')
@@ -83,7 +87,7 @@ test.describe.serial('Data Insight Report Application', () => {
     await page.click('[data-testid="hour-options"]');
     await page.click('[title="01"]');
     await page.click('.ant-modal-body [data-testid="deploy-button"]');
-    await toastNotification(page, 'Schedule saved successfully');
+    await toastNotification(page, 'Schedule saved successfully', 'success');
 
     // Validate update config in the application
     await expect(page.locator('[data-testid="cron-string"]')).toContainText(
@@ -95,7 +99,11 @@ test.describe.serial('Data Insight Report Application', () => {
     await page.click('#root\\/sendToTeams');
     await page.click('[data-testid="submit-btn"]');
 
-    await toastNotification(page, 'Configuration saved successfully');
+    await toastNotification(
+      page,
+      'Configuration saved successfully',
+      'success'
+    );
 
     // Validate update config in the application
 
@@ -109,7 +117,11 @@ test.describe.serial('Data Insight Report Application', () => {
     );
 
     await page.click('[data-testid="run-now-button"]');
-    await toastNotification(page, 'Application triggered successfully');
+    await toastNotification(
+      page,
+      'Application triggered successfully',
+      'success'
+    );
 
     const { apiContext } = await getApiContext(page);
 
@@ -149,7 +161,11 @@ test.describe.serial('Data Insight Report Application', () => {
     await page.click('[data-testid="uninstall-button-title"]');
     await page.click('[data-testid="save-button"]');
 
-    await toastNotification(page, 'Application uninstalled successfully');
+    await toastNotification(
+      page,
+      'Application uninstalled successfully',
+      'success'
+    );
 
     await expect(
       page.locator('[data-testid="data-insights-report-application-card"]')
