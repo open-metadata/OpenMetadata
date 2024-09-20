@@ -85,7 +85,6 @@ def pytest_run(session: Session, env: TestEnv):
         "pyproject.toml",
         f"--junitxml=junit/{session.python}/test-results-{env.name}.xml",
         *[path for path in env.paths],
-        "-k", "metadata"
     )
 
 
