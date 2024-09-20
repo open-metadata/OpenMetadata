@@ -20,9 +20,12 @@ import pytest
 
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.status import Status
 
+from ...src.metadata.data_quality.api.models import TestCaseDefinition
 from .base.e2e_types import E2EType
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -65,7 +68,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     insert_data_queries: List[str] = [
         "INSERT INTO E2E_DB.e2e_test.persons (person_id, full_name) VALUES (1,'Peter Parker');",
-        "INSERT INTO E2E_DB.e2e_test.persons (person_id, full_name) VALUES (1, 'Clark Kent');",
+        "INSERT INTO E2E_DB.e2e_test.persons (person_id, full_name) VALUES (2, 'Clark Kent');",
         "INSERT INTO e2e_test.e2e_table (varchar_column, int_column) VALUES ('e2e_test.e2e_table', 1);",
         "INSERT INTO public.e2e_table (varchar_column, int_column) VALUES ('public.e2e_table', 1);",
         "INSERT INTO e2e_table (varchar_column, int_column) VALUES ('e2e_table', 1);",
@@ -316,3 +319,28 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             )
             if (datetime.now().timestamp() - start) > timeout:
                 raise TimeoutError(f"Query log not updated for {timeout} seconds")
+
+    def get_data_quality_table(self):
+        return "e2e_snowflake.E2E_DB.E2E_TEST.PERSONS"
+
+    def get_test_case_definitions(self) -> List[TestCaseDefinition]:
+        return [
+            TestCaseDefinition(
+                name="snowflake_data_diff",
+                testDefinitionName="tableDiff",
+                computePassedFailedRowCount=True,
+                parameterValues=[
+                    TestCaseParameterValue(
+                        name="table2",
+                        value=self.get_data_quality_table(),
+                    ),
+                    TestCaseParameterValue(
+                        name="keyColumns",
+                        value='["PERSON_ID"]',
+                    ),
+                ],
+            )
+        ]
+
+    def get_expected_test_case_results(self):
+        return [TestCaseResult(testCaseStatus=TestCaseStatus.Success)]

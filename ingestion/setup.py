@@ -211,7 +211,10 @@ plugins: Dict[str, Set[str]] = {
         "s3fs[boto3]",
         *COMMONS["datalake"],
     },
-    "deltalake": {"delta-spark<=2.3.0", "deltalake~=0.17"},
+    "deltalake": {
+        "delta-spark<=2.3.0",
+        "deltalake~=0.17,<0.20",
+    },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
     "deltalake-storage": {"deltalake~=0.17"},
     "deltalake-spark": {"delta-spark<=2.3.0"},
     "domo": {VERSIONS["pydomo"]},
@@ -367,7 +370,7 @@ test = {
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
     "testcontainers==3.7.1;python_version<'3.9'",
-    "testcontainers==4.8.0;python_version>='3.9'",
+    "testcontainers==4.8.1;python_version>='3.9'",
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
