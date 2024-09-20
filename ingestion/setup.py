@@ -218,7 +218,7 @@ plugins: Dict[str, Set[str]] = {
         "delta-spark<=2.3.0",
         "deltalake~=0.17,<0.20",
     },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
-    "deltalake-storage": {"deltalake~=0.17"},
+    "deltalake-storage": {"deltalake~=0.17,<0.20"},
     "deltalake-spark": {"delta-spark<=2.3.0"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {"pydoris==1.0.2"},

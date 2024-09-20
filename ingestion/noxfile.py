@@ -93,7 +93,7 @@ def pytest_run(session: Session, env: TestEnv):
 integration_test_envs = [
     # these tests are not supported on 3.8 because the test containers module requires python 3.9+
     simple_integration_env(x, python_versions=["3.9", "3.10", "3.11"])
-    for x in ("postgres", "mysql", "kafka", "mssql", "trino")
+    for x in ("postgres", "mysql", "kafka", "mssql", "trino", "datalake-s3")
 ]
 integration_test_envs += [
     TestEnv(
@@ -102,17 +102,18 @@ integration_test_envs += [
         paths=[os.path.join(integration_test_dir, "sources/mlmodels/mlflow")],
         python_versions=["3.9", "3.10", "3.11"],
     ),
-    simple_integration_env("datalake-s3"),
     simple_integration_env("powerbi"),
     TestEnv(
         name="storage-s3",
         extras=["test", "datalake-s3"],
         paths=[os.path.join(integration_test_dir, "storage-s3")],
+        python_versions=["3.9", "3.10", "3.11"],
     ),
     TestEnv(
         name="delta_lake",
         extras=["test", "deltalake-storage"],
         paths=[os.path.join(integration_test_dir, "sources/database/delta_lake")],
+        python_versions=["3.9", "3.10", "3.11"],
     ),
     TestEnv(
         name="data_quality",
