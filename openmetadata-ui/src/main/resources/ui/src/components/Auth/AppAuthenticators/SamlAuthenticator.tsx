@@ -33,6 +33,7 @@ import { SamlSSOClientConfig } from '../../../generated/configuration/authentica
 import { postSamlLogout } from '../../../rest/miscAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
+import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AccessTokenResponse, refreshSAMLToken } from '../../../rest/auth-API';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -69,7 +70,8 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const login = async () => {
       if (config.idp.authorityUrl) {
-        window.location.href = config.idp.authorityUrl;
+        const redirectUri = `${window.location.origin}${ROUTES.SAML_CALLBACK}`;
+        window.location.href = `${config.idp.authorityUrl}?redirectUri=${redirectUri}`;
       } else {
         showErrorToast('SAML IDP Authority URL is not configured.');
       }
