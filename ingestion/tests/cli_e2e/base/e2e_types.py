@@ -24,6 +24,7 @@ class E2EType(Enum):
     INGEST = "ingest"
     PROFILER = "profiler"
     PROFILER_PROCESSOR = "profiler-processor"
+    DATA_QUALITY = "test"
     INGEST_DB_FILTER_SCHEMA = "ingest-db-filter-schema"
     INGEST_DB_FILTER_TABLE = "ingest-db-filter-table"
     INGEST_DB_FILTER_MIX = "ingest-db-filter-mix"
