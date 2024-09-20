@@ -119,6 +119,8 @@ public class AuthenticationCodeFlowHandler {
 
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
+  public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
+  public static final String REDIRECT_URI_KEY = "redirectUri";
   private final OidcClient client;
   private final List<String> claimsOrder;
   private final Map<String, String> claimsMapping;
@@ -247,11 +249,12 @@ public class AuthenticationCodeFlowHandler {
   // Login
   public void handleLogin(HttpServletRequest req, HttpServletResponse resp) {
     try {
+      checkAndStoreRedirectUriInSession(req);
       LOG.debug("Performing Auth Login For User Session: {} ", req.getSession().getId());
       Optional<OidcCredentials> credentials = getUserCredentialsFromSession(req);
       if (credentials.isPresent()) {
         LOG.debug("Auth Tokens Located from Session: {} ", req.getSession().getId());
-        sendRedirectWithToken(resp, credentials.get());
+        sendRedirectWithToken(req, resp, credentials.get());
       } else {
         LOG.debug("Performing Auth Code Flow to Idp: {} ", req.getSession().getId());
         Map<String, String> params = buildLoginParams();
@@ -276,6 +279,15 @@ public class AuthenticationCodeFlowHandler {
     } catch (Exception e) {
       getErrorMessage(resp, new TechnicalException(e));
     }
+  }
+
+  private void checkAndStoreRedirectUriInSession(HttpServletRequest request) {
+    String redirectUri = request.getParameter(REDIRECT_URI_KEY);
+    if (nullOrEmpty(redirectUri)) {
+      throw new TechnicalException("Redirect URI is required");
+    }
+
+    request.getSession().setAttribute(SESSION_REDIRECT_URI, redirectUri);
   }
 
   // Callback
@@ -322,7 +334,7 @@ public class AuthenticationCodeFlowHandler {
       req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
 
       // Redirect
-      sendRedirectWithToken(resp, credentials);
+      sendRedirectWithToken(req, resp, credentials);
     } catch (Exception e) {
       getErrorMessage(resp, e);
     }
@@ -371,7 +383,7 @@ public class AuthenticationCodeFlowHandler {
         LOG.debug(
             "Credentials Not Found For User Session: {}, Redirect to Logout ",
             httpServletRequest.getSession().getId());
-        httpServletResponse.sendRedirect(String.format("%s/logout", serverUrl));
+        this.handleLogout(httpServletRequest, httpServletResponse);
       }
     } catch (Exception e) {
       getErrorMessage(httpServletResponse, new TechnicalException(e));
@@ -638,7 +650,8 @@ public class AuthenticationCodeFlowHandler {
                 "<p> [Auth Callback Servlet] Failed in Auth Login : %s </p>", e.getMessage()));
   }
 
-  private void sendRedirectWithToken(HttpServletResponse response, OidcCredentials credentials)
+  private void sendRedirectWithToken(
+      HttpServletRequest request, HttpServletResponse response, OidcCredentials credentials)
       throws ParseException, IOException {
     JWT jwt = credentials.getIdToken();
     Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -647,10 +660,12 @@ public class AuthenticationCodeFlowHandler {
     String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
 
+    String redirectUri = (String) request.getSession().getAttribute(SESSION_REDIRECT_URI);
+
     String url =
         String.format(
-            "%s/auth/callback?id_token=%s&email=%s&name=%s",
-            serverUrl, credentials.getIdToken().getParsedString(), email, userName);
+            "%s?id_token=%s&email=%s&name=%s",
+            redirectUri, credentials.getIdToken().getParsedString(), email, userName);
     response.sendRedirect(url);
   }
 
