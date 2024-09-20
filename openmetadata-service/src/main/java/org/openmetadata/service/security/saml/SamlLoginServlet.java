@@ -13,9 +13,7 @@
 
 package org.openmetadata.service.security.saml;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.REDIRECT_URI_KEY;
-import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.SESSION_REDIRECT_URI;
+import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.checkAndStoreRedirectUriInSession;
 
 import com.onelogin.saml2.Auth;
 import java.io.IOException;
@@ -24,7 +22,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.pac4j.core.exception.TechnicalException;
 
 /**
  * This Servlet initiates a login and sends a login request to the IDP. After a successful processing it redirects user
@@ -49,14 +46,5 @@ public class SamlLoginServlet extends HttpServlet {
               String.format(
                   "<p> [SamlLoginServlet] Failed in Auth Login : %s </p>", e.getMessage()));
     }
-  }
-
-  private void checkAndStoreRedirectUriInSession(HttpServletRequest request) {
-    String redirectUri = request.getParameter(REDIRECT_URI_KEY);
-    if (nullOrEmpty(redirectUri)) {
-      throw new TechnicalException("Redirect URI is required");
-    }
-
-    request.getSession().setAttribute(SESSION_REDIRECT_URI, redirectUri);
   }
 }
