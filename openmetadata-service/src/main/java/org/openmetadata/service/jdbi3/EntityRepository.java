@@ -934,7 +934,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepareInternal(updated, true);
-    populateOwners(updated.getOwners());
+    // Validate and populate owners
+    List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
+    updated.setOwners(validatedOwners);
+
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -966,7 +969,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepareInternal(updated, true);
-    populateOwners(updated.getOwners());
+    // Validate and populate owners
+    List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
+    updated.setOwners(validatedOwners);
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -1972,21 +1977,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  protected void populateOwners(List<EntityReference> owners) {
+  protected List<EntityReference> getValidatedOwners(List<EntityReference> owners) {
     if (nullOrEmpty(owners)) {
-      return;
+      return owners;
     }
     // populate owner entityRefs with all fields
     List<EntityReference> refs = validateOwners(owners);
     if (nullOrEmpty(refs)) {
-      return;
+      return owners;
     }
     refs.sort(Comparator.comparing(EntityReference::getName));
-    owners.sort(Comparator.comparing(EntityReference::getName));
-
-    for (int i = 0; i < owners.size(); i++) {
-      EntityUtil.copy(refs.get(i), owners.get(i));
-    }
+    return refs;
   }
 
   @Transaction
