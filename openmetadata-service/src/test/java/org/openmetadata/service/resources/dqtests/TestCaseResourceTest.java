@@ -724,7 +724,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.clear();
     queryParams.put("owner", USER2_REF.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(2, allEntities.getData().size()); // we have 2 test cases with USER2_REF as owner
+    assertEquals(3, allEntities.getData().size()); // we have 3 test cases with USER2_REF as owner ,
+    // patch_entityUpdateOwnerFromNull_200 also adds owner
 
     queryParams.put("owner", USER_TEAM21.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
