@@ -350,6 +350,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
     if (catalogConfig.getAuthenticationConfiguration() != null
         && catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)) {
+
+      // Set up a Session Manager
+      MutableServletContextHandler contextHandler = environment.getApplicationContext();
+      if (contextHandler.getSessionHandler() == null) {
+        contextHandler.setSessionHandler(new SessionHandler());
+      }
+
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
       ServletRegistration.Dynamic samlRedirectServlet =
           environment.servlets().addServlet("saml_login", new SamlLoginServlet());
