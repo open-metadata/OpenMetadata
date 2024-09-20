@@ -49,6 +49,9 @@ jest.mock('../../../../utils/TasksUtils', () => ({
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockReturnValue(<div>OwnerLabel</div>),
 }));
+jest.mock('../../../../utils/CommonUtils', () => ({
+  formatTimeFromSeconds: jest.fn().mockReturnValue('1 hour'),
+}));
 
 describe('Test AddServicePage component', () => {
   it('AddServicePage component should render', async () => {
