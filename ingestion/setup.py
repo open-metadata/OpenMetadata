@@ -328,7 +328,7 @@ dev = {
     "isort",
     "pre-commit",
     "pycln",
-    "pylint~=3.2.0", # 3.3.0+ breaks our current linting
+    "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
     # For publishing
     "twine",
     "build",
