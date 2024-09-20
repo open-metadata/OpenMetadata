@@ -312,7 +312,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
                                       ]}>
                                       <Input
                                         disabled={isExisting}
-                                        id={`name-${index}`}
+                                        id={`key-${index}`}
                                         placeholder={t('label.key')}
                                       />
                                     </Form.Item>
