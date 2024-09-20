@@ -139,8 +139,8 @@ describe('Tests for CommonUtils', () => {
       });
     });
 
-    // formatTimeFromMilliseconds test
-    it('formatTimeFromMilliseconds formatter should format mills to human readable value', () => {
+    // formatTimeFromSeconds test
+    it('formatTimeFromSeconds formatter should format mills to human readable value', () => {
       const values = [
         { input: 1, expected: '1 second' },
         { input: 2, expected: '2 seconds' },

@@ -80,7 +80,7 @@ const TestSummaryCustomTooltip = (
           {startCase(key)}
         </span>
         <span className="font-medium" data-testid={key}>
-          {/* freshness will always be in millisecond  */}
+          {/* freshness will always be in seconds  */}
           {key === TABLE_FRESHNESS_KEY && isNumber(value)
             ? formatTimeFromSeconds(value)
             : value}

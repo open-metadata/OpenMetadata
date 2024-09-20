@@ -176,7 +176,7 @@ function TestSummaryGraph({
 
   // Todo: need to find better approach to create dynamic scale for graph, need to work with @TeddyCr for the same!
   const formatYAxis = (value: number) => {
-    // table freshness will always have output value in milliseconds
+    // table freshness will always have output value in seconds
     return testDefinitionName === TABLE_DATA_TO_BE_FRESH || isFreshnessTest
       ? formatTimeFromSeconds(value)
       : axisTickFormatter(value);
