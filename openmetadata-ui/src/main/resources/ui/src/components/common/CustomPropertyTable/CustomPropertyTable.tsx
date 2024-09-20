@@ -13,6 +13,7 @@
 
 import { Divider, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React, {
   Fragment,
@@ -23,6 +24,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { INLINE_PROPERTY_TYPES } from '../../../constants/CustomProperty.constants';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -177,6 +179,14 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     maxDataCap,
   ]);
 
+  const dataSource = useMemo(() => {
+    const customProperties = entityTypeDetail?.customProperties ?? [];
+
+    return Array.isArray(customProperties)
+      ? customProperties.slice(0, maxDataCap)
+      : [];
+  }, [maxDataCap, entityTypeDetail?.customProperties]);
+
   useEffect(() => {
     if (typePermission?.ViewAll || typePermission?.ViewBasic) {
       fetchTypeDetail();
@@ -245,32 +255,34 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           </div>
 
           <div data-testid="custom-properties-card">
-            {entityTypeDetail?.customProperties
-              ?.slice(0, maxDataCap)
-              .map((record, index) => (
-                <Fragment key={record.name}>
-                  <div className="w-full d-flex gap-2 flex-column">
-                    <Typography.Text
-                      className="font-medium text-base text-grey-body"
-                      data-testid="rule-name">
-                      {getEntityName(record)}
-                    </Typography.Text>
-                    <PropertyValue
-                      extension={extensionObject.extensionObject}
-                      hasEditPermissions={hasEditAccess}
-                      isRenderedInRightPanel={isRenderedInRightPanel}
-                      isVersionView={isVersionView}
-                      property={record}
-                      versionDataKeys={extensionObject.addedKeysList}
-                      onExtensionUpdate={onExtensionUpdate}
-                    />
-                  </div>
-                  {index !==
-                    (entityTypeDetail.customProperties ?? []).length - 1 && (
-                    <Divider className="m-y-xs" />
-                  )}
-                </Fragment>
-              ))}
+            {dataSource.map((record, index) => (
+              <Fragment key={record.name}>
+                <div
+                  className={classNames('w-full d-flex gap-2 items-center', {
+                    'flex-column items-start': !INLINE_PROPERTY_TYPES.includes(
+                      record.propertyType.name ?? ''
+                    ),
+                  })}>
+                  <Typography.Text
+                    className="text-base text-grey-body"
+                    data-testid="rule-name">
+                    {getEntityName(record)}
+                  </Typography.Text>
+                  <PropertyValue
+                    extension={extensionObject.extensionObject}
+                    hasEditPermissions={hasEditAccess}
+                    isRenderedInRightPanel={isRenderedInRightPanel}
+                    isVersionView={isVersionView}
+                    property={record}
+                    versionDataKeys={extensionObject.addedKeysList}
+                    onExtensionUpdate={onExtensionUpdate}
+                  />
+                </div>
+                {index !== dataSource.length - 1 && (
+                  <Divider className="m-y-md" />
+                )}
+              </Fragment>
+            ))}
           </div>
         </>
       )}
