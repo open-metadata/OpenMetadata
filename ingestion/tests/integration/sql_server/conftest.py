@@ -28,7 +28,7 @@ def db_name():
     return "AdventureWorksLT2022"
 
 
-class CustomSqlServerConainer(SqlServerContainer):
+class CustomSqlServerContainer(SqlServerContainer):
     def start(self) -> "DbContainer":
         dockerfile = f"""
             FROM {self.image}
@@ -52,7 +52,7 @@ class CustomSqlServerConainer(SqlServerContainer):
 
 @pytest.fixture(scope="session")
 def mssql_container(tmp_path_factory, db_name):
-    container = SqlServerContainer(
+    container = CustomSqlServerContainer(
         "mcr.microsoft.com/mssql/server:2022-latest", dbname="master"
     )
     data_dir = tmp_path_factory.mktemp("data")
