@@ -258,8 +258,11 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             {dataSource.map((record, index) => (
               <Fragment key={record.name}>
                 <div
-                  className={classNames('w-full d-flex gap-2 items-center', {
-                    'flex-column items-start': !INLINE_PROPERTY_TYPES.includes(
+                  className={classNames('w-full d-flex gap-2', {
+                    'flex-column': !INLINE_PROPERTY_TYPES.includes(
+                      record.propertyType.name ?? ''
+                    ),
+                    'items-center': INLINE_PROPERTY_TYPES.includes(
                       record.propertyType.name ?? ''
                     ),
                   })}>
