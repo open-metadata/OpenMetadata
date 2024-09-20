@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Divider, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
@@ -28,11 +33,10 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription, Type } from '../../../generated/entity/type';
-import { CustomProperty } from '../../../generated/type/customProperty';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
@@ -40,7 +44,6 @@ import {
 } from '../../../utils/EntityVersionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../Table/Table';
 import {
   CustomPropertyProps,
   ExtentionEntities,
@@ -146,44 +149,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return { extensionObject: entityDetails?.extension };
   }, [isVersionView, entityDetails?.extension]);
 
-  const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
-    return [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        ellipsis: true,
-        width: isRenderedInRightPanel ? 150 : 400,
-        render: (_, record) => getEntityName(record),
-        sorter: columnSorter,
-      },
-      {
-        title: t('label.value'),
-        dataIndex: 'value',
-        key: 'value',
-        render: (_, record) => (
-          <PropertyValue
-            extension={extensionObject.extensionObject}
-            hasEditPermissions={hasEditAccess}
-            isRenderedInRightPanel={isRenderedInRightPanel}
-            isVersionView={isVersionView}
-            property={record}
-            versionDataKeys={extensionObject.addedKeysList}
-            onExtensionUpdate={onExtensionUpdate}
-          />
-        ),
-      },
-    ];
-  }, [
-    entityDetails,
-    entityDetails?.extension,
-    hasEditAccess,
-    extensionObject,
-    isVersionView,
-    onExtensionUpdate,
-    isRenderedInRightPanel,
-  ]);
-
   const viewAllBtn = useMemo(() => {
     const customProp = entityTypeDetail.customProperties ?? [];
 
@@ -278,21 +243,35 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             </Typography.Text>
             {viewAllBtn}
           </div>
-          <Table
-            bordered
-            resizableColumns
-            columns={tableColumn}
-            data-testid="custom-properties-table"
-            dataSource={entityTypeDetail?.customProperties?.slice(
-              0,
-              maxDataCap
-            )}
-            loading={entityTypeDetailLoading}
-            pagination={false}
-            rowKey="name"
-            scroll={isRenderedInRightPanel ? { x: true } : undefined}
-            size="small"
-          />
+
+          <div data-testid="custom-properties-card">
+            {entityTypeDetail?.customProperties
+              ?.slice(0, maxDataCap)
+              .map((record, index) => (
+                <Fragment key={record.name}>
+                  <div className="w-full d-flex gap-2 flex-column">
+                    <Typography.Text
+                      className="font-medium text-base text-grey-body"
+                      data-testid="rule-name">
+                      {getEntityName(record)}
+                    </Typography.Text>
+                    <PropertyValue
+                      extension={extensionObject.extensionObject}
+                      hasEditPermissions={hasEditAccess}
+                      isRenderedInRightPanel={isRenderedInRightPanel}
+                      isVersionView={isVersionView}
+                      property={record}
+                      versionDataKeys={extensionObject.addedKeysList}
+                      onExtensionUpdate={onExtensionUpdate}
+                    />
+                  </div>
+                  {index !==
+                    (entityTypeDetail.customProperties ?? []).length - 1 && (
+                    <Divider className="m-y-xs" />
+                  )}
+                </Fragment>
+              ))}
+          </div>
         </>
       )}
     </>

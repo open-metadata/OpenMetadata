@@ -18,11 +18,11 @@ import {
   Form,
   Input,
   Select,
-  Tag,
   TimePicker,
   Tooltip,
   Typography,
 } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import {
@@ -61,6 +61,7 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import Table from '../Table/Table';
 import {
   PropertyValueProps,
   PropertyValueType,
@@ -722,28 +723,36 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case ENUM_WITH_DESCRIPTION: {
         const enumWithDescriptionValues = (value as ValueClass[]) ?? [];
 
+        const columns: ColumnsType<ValueClass> = [
+          {
+            title: 'Key',
+            dataIndex: 'key',
+            key: 'key',
+            render: (key: string) => <Typography>{key}</Typography>,
+          },
+          {
+            title: 'Description',
+            dataIndex: 'description',
+            key: 'description',
+            render: (description: string) => (
+              <RichTextEditorPreviewer markdown={description || ''} />
+            ),
+          },
+        ];
+
         return (
-          <div
-            className="d-flex gap-2"
-            data-testid="enum-with-description-value">
-            {enumWithDescriptionValues.map((value) => (
-              <Tooltip
-                key={value.key}
-                title={value.description}
-                trigger="hover">
-                <Tag
-                  style={{
-                    width: 'max-content',
-                    margin: '0px',
-                    border: 'none',
-                    padding: '4px',
-                    background: 'rgba(0, 0, 0, 0.03)',
-                  }}>
-                  {value.key}
-                </Tag>
-              </Tooltip>
-            ))}
-          </div>
+          <Table
+            bordered
+            resizableColumns
+            className="w-full"
+            columns={columns}
+            data-testid="enum-with-description-table"
+            dataSource={enumWithDescriptionValues}
+            pagination={false}
+            rowKey="name"
+            scroll={isRenderedInRightPanel ? { x: true } : undefined}
+            size="small"
+          />
         );
       }
 
@@ -909,7 +918,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         getPropertyInput()
       ) : (
         <Fragment>
-          <div className="d-flex gap-2 items-center">
+          <div className="d-flex gap-2 items-center w-full">
             {getValueElement()}
             {hasEditPermissions && (
               <Tooltip
