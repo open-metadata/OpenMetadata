@@ -851,8 +851,6 @@ site_menu:
     url: /how-to-guides/data-insights/kpi
   - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
     url: /how-to-guides/data-insights/airflow-sdk
-  - category: How-to Guides / Data Insights / Run Data Insights using Metadata CLI
-    url: /how-to-guides/data-insights/metadata-cli   
   - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
     url: /how-to-guides/data-insights/elasticsearch-reindex 
   - category: How-to Guides / Data Insights / Data Insights Report
@@ -919,6 +917,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.3 Release
+    url: /releases/all-releases/#1.5.3-release
   - category: Releases / All Releases / 1.5.2 Release
     url: /releases/all-releases/#1.5.2-release
   - category: Releases / All Releases / 1.5.1 Release
