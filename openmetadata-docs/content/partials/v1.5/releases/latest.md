@@ -1,7 +1,7 @@
-# 1.5.3 Release 🎉
+# 1.5.4 Release 🎉
 
 {% note noteType="Tip" %}
-**Sep 9th, 2024**
+**Sep 13th, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,28 +10,28 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.3!
+Learn how to upgrade your OpenMetadata instance to 1.5.4!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.3-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.4-release).
 
 # What's Changed
 
 ## OpenMetadata
-- Added resizable columns for custom properties
-- Added support for automated ingestion of Tableau data source tags and description
-- Improved "follow data" landing page module performance
-- Improved search result suggestion by showing display name instead of FQN
-- Fixed Cost Analysis issue when service has no connection
-- Improved PII classification for JSON data types
-- Fixed issue with expand all operation on terms page
-- Fixed feed freezing when large images are part of the feed results
-- Fixed dbt run_results file name with dbt cloud connection
+- Hotfix to the Term Aggregation size on Data Insights
+- ES pagination with error handling
+- Updated Domain in Docker Compose & Docs
+- Fix Classification API returns Table class for restore
+- Fix Redshift View Def regex_replace Error
+- Make ingestion pipeline APIs public
+- Updating the domain PRINCIPAL DOMAIN
+- Glossary list selector for bulk import
+- Unable to access the import glossary page
 
 ## Collate
-- Cleaned Argo logs artifacts
-- Shipped VertexAI Connector
-- Fixed automator lineage propagation issues with possible None entities
+- Fix token limitations using config
+- Fix Automator pagination
+- Fix MetaPilot push for no constraint
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.2-release...1.5.3-release
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.3-release...1.5.4-release

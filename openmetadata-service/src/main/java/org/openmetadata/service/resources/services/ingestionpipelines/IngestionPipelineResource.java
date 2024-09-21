@@ -939,6 +939,7 @@ public class IngestionPipelineResource
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+
     return repository
         .copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
