@@ -360,7 +360,9 @@ test.describe('Activity feed', () => {
 
     await checkDescriptionInEditModal(page, secondTaskValue);
 
+    const resolveTask = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
     await page.getByText('OK').click();
+    await resolveTask;
 
     await toastNotification(page, /Task resolved successfully/);
 
