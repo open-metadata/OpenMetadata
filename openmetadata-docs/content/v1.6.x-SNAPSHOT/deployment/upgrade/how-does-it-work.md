@@ -50,7 +50,7 @@ Now that we understand what is being backed up and how it looks like, when (and 
   - We start with a clean database (no tables in it).
   - We run the migrations ([docs](/deployment/bare-metal#4.-prepare-the-openmetadata-database-and-indexes))
      or we start the OpenMetadata server, which will automatically run the migrations.
-  - With the server stopped, we [restore](/deployment/backup-restore-metadata#restore-metadata) the data.
+  - With the server stopped, we [restore](/deployment/backup-restore-metadata) the data.
 
 {% note %}
 
