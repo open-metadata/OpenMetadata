@@ -186,9 +186,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
                   "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
     }
 
-    if (testSuiteId != null) {
-      conditions.add(String.format("{\"term\": {\"testSuite.id\": \"%s\"}}", testSuiteId));
-    }
+    if (testSuiteId != null) conditions.add(getTestSuiteIdCondition(testSuiteId));
 
     if (status != null) {
       conditions.add(
@@ -250,12 +248,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (testCaseStatus != null) {
       conditions.add(String.format("{\"term\": {\"testCaseStatus\": \"%s\"}}", testCaseStatus));
     }
-    if (testSuiteId != null) {
-      conditions.add(
-          String.format(
-              "{\"nested\":{\"path\":\"testSuites\",\"query\":{\"term\":{\"testSuites.id\":\"%s\"}}}}",
-              testSuiteId));
-    }
+    if (testSuiteId != null) conditions.add(getTestSuiteIdCondition(testSuiteId));
     return addCondition(conditions);
   }
 
@@ -287,5 +280,11 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
   private String escapeDoubleQuotes(String str) {
     return str.replace("\"", "\\\"");
+  }
+
+  private String getTestSuiteIdCondition(String testSuiteId) {
+    return String.format(
+        "{\"nested\":{\"path\":\"testSuites\",\"query\":{\"term\":{\"testSuites.id\":\"%s\"}}}}",
+        testSuiteId);
   }
 }
