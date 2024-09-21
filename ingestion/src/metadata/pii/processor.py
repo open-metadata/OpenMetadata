@@ -171,7 +171,7 @@ class PIIProcessor(Processor):
                 col_tags = self.process_column(
                     idx=idx,
                     column=column,
-                    table_data=record.sample_data,
+                    table_data=record.sample_data.data,
                     confidence_threshold=self.confidence_threshold,
                 )
                 if col_tags:
