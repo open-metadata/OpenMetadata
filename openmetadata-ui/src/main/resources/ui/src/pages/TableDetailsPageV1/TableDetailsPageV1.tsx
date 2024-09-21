@@ -748,11 +748,11 @@ const TableDetailsPageV1: React.FC = () => {
       {
         label: (
           <TabsLabel
-            id={EntityTabs.INCIDENT}
+            id={EntityTabs.INCIDENTS}
             name={t('label.incident-plural')}
           />
         ),
-        key: EntityTabs.INCIDENT,
+        key: EntityTabs.INCIDENTS,
         children:
           tablePermissions.ViewAll || tablePermissions.ViewTests ? (
             <div className="p-x-lg p-b-lg p-t-md">

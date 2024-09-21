@@ -203,7 +203,7 @@ export enum EntityTabs {
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
   OVERVIEW = 'overview',
-  INCIDENT = 'incident',
+  INCIDENTS = 'incidents',
 }
 
 export enum EntityAction {

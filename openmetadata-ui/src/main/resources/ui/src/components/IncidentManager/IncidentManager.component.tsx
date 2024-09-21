@@ -303,18 +303,6 @@ const IncidentManager = ({
     }
   };
 
-  const getInitialOptions = async () => {
-    try {
-      const option = await searchTestCases();
-      setTestCaseInitialOptions(option);
-    } catch (error) {
-      setTestCaseInitialOptions([]);
-    }
-  };
-  useEffect(() => {
-    getInitialOptions();
-  }, []);
-
   const fetchInitialAssign = useCallback(async () => {
     try {
       const { data } = await getUsers({
