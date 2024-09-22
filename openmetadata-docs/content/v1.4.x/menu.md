@@ -1686,7 +1686,7 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtbucketdetails
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / dbtconfig / dbtcloudConfig
     url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtcloudconfig
-  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / dbtconfig / dbtGCSConfig
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / dbtconfig / DbtGCSConfig
     url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtgcsconfig
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / DbtHttpConfig
     url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbthttpconfig
