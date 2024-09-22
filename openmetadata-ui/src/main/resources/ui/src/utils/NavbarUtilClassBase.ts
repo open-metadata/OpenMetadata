@@ -10,17 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { HELP_ITEMS } from '../constants/Navbar.constants';
 
-import {
-  TestCaseParameterValue,
-  TestCaseResult,
-} from '../../../../generated/tests/testCase';
-
-export interface TestSummaryGraphProps {
-  testCaseParameterValue?: TestCaseParameterValue[];
-  testCaseName: string;
-  testCaseResults: TestCaseResult[];
-  selectedTimeRange: string;
-  minHeight?: number;
-  testDefinitionName?: string;
+class NavbarUtilClassBase {
+  public getHelpItems() {
+    return HELP_ITEMS;
+  }
 }
+
+const navbarUtilClassBase = new NavbarUtilClassBase();
+
+export default navbarUtilClassBase;
+export { NavbarUtilClassBase };
