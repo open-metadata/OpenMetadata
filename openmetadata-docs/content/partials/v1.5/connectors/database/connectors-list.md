@@ -6,7 +6,7 @@
 {% connectorInfoCard name="BigTable" stage="BETA" href="/connectors/database/bigtable" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Clickhouse" stage="PROD" href="/connectors/database/clickhouse" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Couchbase" stage="BETA" href="/connectors/database/couchbase" platform="OpenMetadata" / %}
-{% connectorInfoCard name="Datalake" stage="PROD" href="/connectors/database/datalake" platform="OpenMetadata" / %}
+{% connectorInfoCard name="S3 Datalake" stage="PROD" href="/connectors/database/datalake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Databricks" stage="PROD" href="/connectors/database/databricks" platform="OpenMetadata" / %}
 {% connectorInfoCard name="DB2" stage="PROD" href="/connectors/database/db2" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Delta Lake" stage="PROD" href="/connectors/database/deltalake" platform="OpenMetadata" / %}

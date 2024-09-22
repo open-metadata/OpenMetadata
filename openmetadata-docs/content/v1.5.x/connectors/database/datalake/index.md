@@ -1,10 +1,10 @@
 ---
-title: Datalake
+title: S3 Datalake
 slug: /connectors/database/datalake
 ---
 
 {% connectorDetailsHeader
-name="Datalake"
+name="S3 Datalake"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Data Profiler", "Data Quality"]

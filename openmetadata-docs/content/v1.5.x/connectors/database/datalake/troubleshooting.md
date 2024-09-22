@@ -1,5 +1,5 @@
 ---
-title: Datalake Connector Troubleshooting
+title: S3 Datalake Connector Troubleshooting
 slug: /connectors/database/datalake/troubleshooting
 ---
 

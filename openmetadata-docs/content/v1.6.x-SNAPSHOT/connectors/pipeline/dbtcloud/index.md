@@ -1,10 +1,10 @@
 ---
-title: DBTCloud
+title: dbt Cloud
 slug: /connectors/pipeline/dbtcloud
 ---
 
 {% connectorDetailsHeader
-name="DBTCloud"
+name="dbt Cloud"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
@@ -12,12 +12,12 @@ unavailableFeatures=["Owners", "Tags"]
 / %}
 
 
-In this section, we provide guides and references to use the DBTCloud connector.
+In this section, we provide guides and references to use the dbt Cloud connector.
 
-Configure and schedule DBTCloud metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule dbt Cloud metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
-    - [DBTCloud Versions](#dbtcloud-versions)
+    - [dbt Cloud Versions](#dbtcloud-versions)
 - [Metadata Ingestion](#metadata-ingestion)
     - [Service Name](#service-name)
     - [Connection Details](#connection-details)
@@ -29,18 +29,18 @@ Configure and schedule DBTCloud metadata and profiler workflows from the OpenMet
 
 ## Requirements
 
-### DBTCloud Versions
+### dbt Cloud Versions
 
 OpenMetadata is integrated with DBT cloud up to version [1.8](https://docs.getdbt.com/docs/get-started-dbt) and will continue to work for future DBT cloud versions.
 
 The Ingestion framework uses [DBT Cloud APIs](https://docs.getdbt.com/dbt-cloud/api-v2#/) to connect to the dbtcloud  and fetch metadata.
 
-### DBTCloud Permissions
+### dbt Cloud Permissions
 
 The DBT Clous API User token or Service account token must have the permission to fetch Metadata.
 To know more about permissions required refer [here](https://docs.getdbt.com/docs/dbt-cloud-apis/service-tokens#permissions-for-service-account-tokens).
 
-### DBTCloud Account
+### dbt Cloud Account
 
 - DBT Cloud [multi-tenant](https://docs.getdbt.com/docs/cloud/about-cloud/tenancy#multi-tenant) or [single tenant](https://docs.getdbt.com/docs/cloud/about-cloud/tenancy#single-tenant) account is required.
 - You must be on a [Team or Enterprise plan](https://www.getdbt.com/pricing/).
@@ -52,9 +52,9 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
     file="/v1.5/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "DBTCloud", 
-        selectServicePath: "/images/v1.5/connectors/dbtcloud/select-service.webp",
-        addNewServicePath: "/images/v1.5/connectors/dbtcloud/add-new-service.webp",
-        serviceConnectionPath: "/images/v1.5/connectors/dbtcloud/service-connection.webp",
+        selectServicePath: "/images/v1.5/connectors/dbtcloud/select-service.png",
+        addNewServicePath: "/images/v1.5/connectors/dbtcloud/add-new-service.png",
+        serviceConnectionPath: "/images/v1.5/connectors/dbtcloud/service-connection.png",
     } 
 /%}
 

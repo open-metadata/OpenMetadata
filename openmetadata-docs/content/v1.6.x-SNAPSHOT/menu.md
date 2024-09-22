@@ -262,11 +262,11 @@ site_menu:
     url: /connectors/database/databricks/yaml
   - category: Connectors / Database / Databricks / Troubleshooting
     url: /connectors/database/databricks/troubleshooting
-  - category: Connectors / Database / Datalake
+  - category: Connectors / Database / S3 Datalake
     url: /connectors/database/datalake
-  - category: Connectors / Database / Datalake / Run Externally
+  - category: Connectors / Database / S3 Datalake / Run Externally
     url: /connectors/database/datalake/yaml
-  - category: Connectors / Database / Datalake / Troubleshooting
+  - category: Connectors / Database / S3 Datalake / Troubleshooting
     url: /connectors/database/datalake/troubleshooting
   - category: Connectors / Database / DB2
     url: /connectors/database/db2
@@ -505,9 +505,9 @@ site_menu:
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
-  - category: Connectors / Pipeline / DBTCloud
+  - category: Connectors / Pipeline / dbt Cloud
     url: /connectors/pipeline/dbtcloud
-  - category: Connectors / Pipeline / DBTCloud / Run Externally
+  - category: Connectors / Pipeline / dbt Cloud / Run Externally
     url: /connectors/pipeline/dbtcloud/yaml
   - category: Connectors / Pipeline / KafkaConnect
     url: /connectors/pipeline/kafkaconnect
@@ -568,8 +568,8 @@ site_menu:
 
   - category: Connectors / Storage
     url: /connectors/storage
-  - category: Connectors / Storage / S3
-    url: /connectors/storage/s3
+  - category: Connectors / Storage / S3 Storage
+    url: /connectors/storage/s3 Storage
   - category: Connectors / Storage / S3 / Run Externally
     url: /connectors/storage/s3/yaml
   - category: Connectors / Storage / GCS
@@ -1613,7 +1613,7 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/custompipelineconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / DagsterConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/dagsterconnection
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / DBTCloudConnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / dbtCloudConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/dbtcloudconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / DatabricksPipelineConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/databrickspipelineconnection
@@ -1741,7 +1741,7 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtazureconfig
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / DbtBucketDetails
     url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtbucketdetails
-  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / DbtCloudConfig
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / dbtCloudConfig
     url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtcloudconfig
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / DbtGCSConfig
     url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtgcsconfig

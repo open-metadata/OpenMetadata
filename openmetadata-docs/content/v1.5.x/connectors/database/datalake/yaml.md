@@ -1,10 +1,10 @@
 ---
-title: Run the Datalake Connector Externally
+title: Run the S3 Datalake Connector Externally
 slug: /connectors/database/datalake/yaml
 ---
 
 {% connectorDetailsHeader
-name="Datalake"
+name="S3 Datalake"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
