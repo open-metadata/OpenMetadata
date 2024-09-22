@@ -891,7 +891,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     // Add new team x3 to existing rows
     String record3 = getRecord(3, GROUP, team.getName(), null, true, null, (List<Policy>) null);
-    List<String> newRecords = listOf(record3);
+    // Add new team containing dot character in name
+    String teamNameWithDotRecord =
+        getRecord("team.with.dot", GROUP, team.getName(), null, true, null, (List<Policy>) null);
+    List<String> newRecords = listOf(record3, teamNameWithDotRecord);
     testImportExport(team.getName(), TeamCsv.HEADERS, createRecords, updateRecords, newRecords);
 
     // Import to team111 a user with parent team1 - since team1 is not under team111 hierarchy,
@@ -1214,6 +1217,56 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         index,
         index,
         index,
+        teamType.value(),
+        parent,
+        owner,
+        isJoinable == null ? "" : isJoinable,
+        defaultRoles,
+        policies);
+  }
+
+  private String getRecord(
+      String teamName,
+      TeamType teamType,
+      String parent,
+      User owner,
+      Boolean isJoinable,
+      List<Role> defaultRoles,
+      List<Policy> policies) {
+    return getRecord(
+        teamName,
+        teamType,
+        parent != null ? parent : "",
+        owner != null ? "user:" + owner.getName() : "",
+        isJoinable,
+        defaultRoles != null
+            ? defaultRoles.stream()
+                .flatMap(r -> Stream.of(r.getName()))
+                .collect(Collectors.joining(";"))
+            : "",
+        policies != null
+            ? policies.stream()
+                .flatMap(p -> Stream.of(p.getName()))
+                .collect(Collectors.joining(";"))
+            : "");
+  }
+
+  private String getRecord(
+      String teamName,
+      TeamType teamType,
+      String parent,
+      String owner,
+      Boolean isJoinable,
+      String defaultRoles,
+      String policies) {
+    // CSV Header
+    // "name", "displayName", "description", "teamType", "parents", "owners", "isJoinable",
+    // "defaultRoles", & "policies"
+    return String.format(
+        "x%s,displayName%s,description%s,%s,%s,%s,%s,%s,%s",
+        teamName,
+        teamName,
+        teamName,
         teamType.value(),
         parent,
         owner,

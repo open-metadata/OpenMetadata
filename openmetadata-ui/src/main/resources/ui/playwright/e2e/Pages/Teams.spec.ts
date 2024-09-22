@@ -25,7 +25,12 @@ import {
 } from '../../utils/common';
 import { addMultiOwner } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
-import { createTeam, hardDeleteTeam, softDeleteTeam } from '../../utils/team';
+import {
+  createTeam,
+  hardDeleteTeam,
+  searchTeam,
+  softDeleteTeam,
+} from '../../utils/team';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -405,5 +410,84 @@ test.describe('Teams Page', () => {
 
     await hardDeleteTeam(page);
     await afterAction();
+  });
+
+  test('Team search should work properly', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const id = uuid();
+    const team1 = new TeamClass();
+    const team2 = new TeamClass({
+      name: `pw team space-${id}`,
+      displayName: `pw team space ${id}`,
+      description: 'playwright team with space description',
+      teamType: 'Group',
+    });
+    const team3 = new TeamClass({
+      name: `pw.team.dot-${id}`,
+      displayName: `pw.team.dot ${id}`,
+      description: 'playwright team with dot description',
+      teamType: 'Group',
+    });
+
+    await team1.create(apiContext);
+    await team2.create(apiContext);
+    await team3.create(apiContext);
+
+    try {
+      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await page.waitForLoadState('networkidle');
+
+      for (const team of [team1, team2, team3]) {
+        await searchTeam(page, team.responseData?.['displayName']);
+      }
+    } finally {
+      await team1.delete(apiContext);
+      await team2.delete(apiContext);
+      await team3.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Export team', async ({ page }) => {
+    const { apiContext } = await getApiContext(page);
+    const id = uuid();
+    const team = new TeamClass({
+      name: `pw%team.export-${id}`,
+      displayName: `pw team export ${id}`,
+      description: 'playwright team export description',
+      teamType: 'Department',
+    });
+
+    await team.create(apiContext);
+
+    try {
+      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await page.waitForLoadState('networkidle');
+
+      await searchTeam(page, team.responseData?.['displayName']);
+
+      await page
+        .locator(`[data-row-key="${team.data.name}"]`)
+        .getByRole('link')
+        .click();
+
+      await page.waitForLoadState('networkidle');
+
+      await expect(page.getByTestId('team-heading')).toHaveText(
+        team.data.displayName
+      );
+
+      const downloadPromise = page.waitForEvent('download');
+
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('export-details-container').click();
+      await page.fill('#fileName', team.data.name);
+      await page.click('#submit-button');
+      const download = await downloadPromise;
+      // Wait for the download process to complete and save the downloaded file somewhere.
+      await download.saveAs('downloads/' + download.suggestedFilename());
+    } finally {
+      await team.delete(apiContext);
+    }
   });
 });
