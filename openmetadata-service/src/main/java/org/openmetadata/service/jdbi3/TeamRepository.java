@@ -738,7 +738,7 @@ public class TeamRepository extends EntityRepository<Team> {
       }
       teams.addAll(list);
       for (Team teamEntry : list) {
-        listTeams(repository, teamEntry.getName(), teams, fields);
+        listTeams(repository, teamEntry.getFullyQualifiedName(), teams, fields);
       }
       return teams;
     }
@@ -746,7 +746,8 @@ public class TeamRepository extends EntityRepository<Team> {
     public String exportCsv() throws IOException {
       TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = repository.getFields("owners,defaultRoles,parents,policies");
-      return exportCsv(listTeams(repository, team.getName(), new ArrayList<>(), fields));
+      return exportCsv(
+          listTeams(repository, team.getFullyQualifiedName(), new ArrayList<>(), fields));
     }
   }
 

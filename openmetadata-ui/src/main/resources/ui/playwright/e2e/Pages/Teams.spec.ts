@@ -447,4 +447,47 @@ test.describe('Teams Page', () => {
       await afterAction();
     }
   });
+
+  test('Export team', async ({ page }) => {
+    const { apiContext } = await getApiContext(page);
+    const id = uuid();
+    const team = new TeamClass({
+      name: `pw%team.export-${id}`,
+      displayName: `pw team export ${id}`,
+      description: 'playwright team export description',
+      teamType: 'Department',
+    });
+
+    await team.create(apiContext);
+
+    try {
+      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await page.waitForLoadState('networkidle');
+
+      await searchTeam(page, team.responseData?.['displayName']);
+
+      await page
+        .locator(`[data-row-key="${team.data.name}"]`)
+        .getByRole('link')
+        .click();
+
+      await page.waitForLoadState('networkidle');
+
+      await expect(page.getByTestId('team-heading')).toHaveText(
+        team.data.displayName
+      );
+
+      const downloadPromise = page.waitForEvent('download');
+
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('export-details-container').click();
+      await page.fill('#fileName', team.data.name);
+      await page.click('#submit-button');
+      const download = await downloadPromise;
+      // Wait for the download process to complete and save the downloaded file somewhere.
+      await download.saveAs('downloads/' + download.suggestedFilename());
+    } finally {
+      await team.delete(apiContext);
+    }
+  });
 });
