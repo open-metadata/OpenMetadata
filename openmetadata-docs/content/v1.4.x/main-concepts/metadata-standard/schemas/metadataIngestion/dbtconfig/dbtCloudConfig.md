@@ -1,5 +1,5 @@
 ---
-title: dbtcloudConfig
+title: dbtCloudConfig
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtcloudconfig
 ---
 
