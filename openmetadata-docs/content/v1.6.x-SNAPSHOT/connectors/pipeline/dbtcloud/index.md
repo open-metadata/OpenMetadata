@@ -52,9 +52,9 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
     file="/v1.5/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "DBTCloud", 
-        selectServicePath: "/images/v1.5/connectors/dbtcloud/select-service.png",
-        addNewServicePath: "/images/v1.5/connectors/dbtcloud/add-new-service.png",
-        serviceConnectionPath: "/images/v1.5/connectors/dbtcloud/service-connection.png",
+        selectServicePath: "/images/v1.6/connectors/dbtcloud/select-service.webp",
+        addNewServicePath: "/images/v1.6/connectors/dbtcloud/add-new-service.webp",
+        serviceConnectionPath: "/images/v1.6/connectors/dbtcloud/service-connection.webp",
     } 
 /%}
 
@@ -65,7 +65,7 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
 
 - **Host**: DBT cloud Access URL eg.`https://abc12.us1.dbt.com`. Go to your dbt cloud account settings to know your Access URL.
 
-- **Discovery API URL** : DBT cloud Access URL eg. `https://metadata.cloud.getdbt.com/graphql`. Go to your dbt cloud account settings to know your Discovery API url.
+- **Discovery API URL** : DBT cloud Access URL eg. `https://metadata.cloud.getdbt.com/graphql`. Go to your dbt cloud account settings to know your Discovery API url. Make sure you have `/graphql` at the end of your URL.
 
 - **Account Id** : The Account ID of your DBT cloud Project. Go to your dbt cloud account settings to know your Account Id. This will be a numeric value but in openmetadata we parse it as a string.
 
@@ -92,7 +92,7 @@ Steps to retrieve and display the lineage information for a DBT Cloud service. N
 By successfully completing these steps, the lineage information for the service will be displayed.
 
 {% image
-  src="/images/v1.5/connectors/dbtcloud/lineage.webp"
+  src="/images/v1.6/connectors/dbtcloud/lineage.png"
   alt="DBT Cloud Lineage" /%}
 
 
