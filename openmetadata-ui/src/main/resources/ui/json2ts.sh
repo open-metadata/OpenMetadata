@@ -62,7 +62,7 @@ getTypes(){
     for file_with_dir in $(find $tmp_dir  -name "*.json" | sed -e "s/${escaped_tmp_dir}//g")
     do
         joblist=$(jobs | wc -l)
-        while [ ${joblist} -ge 30 ]
+        while [ ${joblist} -ge 10 ]
             do
                 sleep 1
                 joblist=$(jobs | wc -l)

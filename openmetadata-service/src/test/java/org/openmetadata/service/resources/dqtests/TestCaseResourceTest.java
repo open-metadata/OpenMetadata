@@ -609,6 +609,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     int testCasesNum = 5;
     TableResourceTest tableResourceTest = new TableResourceTest();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(testInfo);
+    TestSuite logicalTestSuite =
+        testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
 
     List<Table> tables = new ArrayList<>();
     Map<String, TestSuite> testSuites = new HashMap<>();
@@ -677,6 +680,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
     }
     TestCase testCaseForEL = testCases.get(0);
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(
+        logicalTestSuite, List.of(testCaseForEL.getId()));
 
     Map queryParams = new HashMap<>();
     ResultList<TestCase> allEntities =
@@ -719,7 +724,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.clear();
     queryParams.put("owner", USER2_REF.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(2, allEntities.getData().size()); // we have 2 test cases with USER2_REF as owner
+    assertEquals(3, allEntities.getData().size()); // we have 3 test cases with USER2_REF as owner ,
+    // patch_entityUpdateOwnerFromNull_200 also adds owner
 
     queryParams.put("owner", USER_TEAM21.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
@@ -800,6 +806,34 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("dataQualityDimension", "Completeness");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertNotEquals(0, allEntities.getData().size());
+
+    // Test return only the specified test suite ID (Executable)
+    queryParams.clear();
+    TestSuite testSuite = testSuites.get(tables.get(0).getFullyQualifiedName());
+    queryParams.put("testSuiteId", testSuite.getId());
+    queryParams.put("fields", "testSuites");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    testCases = allEntities.getData();
+    assertNotEquals(0, testCases.size());
+    assertTrue(
+        testCases.stream()
+            .allMatch(
+                tc ->
+                    tc.getTestSuites().stream()
+                        .anyMatch(ts -> ts.getId().equals(testSuite.getId()))));
+
+    // Test return only the specified test suite ID (Logical)
+    queryParams.put("testSuiteId", logicalTestSuite.getId());
+    queryParams.put("fields", "testSuites");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    testCases = allEntities.getData();
+    assertNotEquals(0, testCases.size());
+    assertTrue(
+        testCases.stream()
+            .allMatch(
+                tc ->
+                    tc.getTestSuites().stream()
+                        .anyMatch(ts -> ts.getId().equals(logicalTestSuite.getId()))));
   }
 
   @Test
