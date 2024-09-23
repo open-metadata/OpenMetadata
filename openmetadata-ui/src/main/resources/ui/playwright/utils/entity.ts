@@ -953,7 +953,15 @@ export const updateDisplayNameForEntity = async (
   ).toHaveText(displayName);
 };
 
-export const checkForEditActions = async ({ entityType, deleted, page }) => {
+export const checkForEditActions = async ({
+  page,
+  entityType,
+  deleted = false,
+}: {
+  page: Page;
+  entityType: string;
+  deleted?: boolean;
+}) => {
   for (const {
     containerSelector,
     elementSelector,
@@ -1325,4 +1333,11 @@ export const getEncodedFqn = (fqn: string, spaceAsPlus = false) => {
   }
 
   return uri;
+};
+
+export const getEntityDisplayName = (entity?: {
+  name?: string;
+  displayName?: string;
+}) => {
+  return entity?.displayName || entity?.name || '';
 };
