@@ -30,6 +30,10 @@ module.exports = {
 
   // Input configuration
   entry: ['@babel/polyfill', path.join(__dirname, 'src/index.tsx')],
+  
+  cache: {
+    type: 'filesystem', // Enable caching on filesystem
+  },  
 
   // Output configuration
   output: {
