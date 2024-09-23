@@ -12,6 +12,11 @@
 name: py-tests
 on:
   workflow_dispatch:
+    inputs:
+      debug:
+        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered"
+        required: False
+        default: "false"
   push:
     branches:
       - main
@@ -20,7 +25,7 @@ on:
       - 'openmetadata-docs/**'
       - 'openmetadata-docs-v1/**'
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types: [ labeled, opened, synchronize, reopened ]
     paths:
       - "ingestion/**"
       - "openmetadata-service/**"
@@ -35,6 +40,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  DEBUG: ${{ inputs.debug || 'false' }}
+
 jobs:
   # Needed since env is not available on the job context: https://github.com/actions/runner/issues/2372
   check-debug:
@@ -42,7 +50,7 @@ jobs:
     outputs:
       DEBUG: ${{ env.DEBUG }}
     steps:
-      - run: echo "null"
+      - run: echo "setting DEBUG=$DEBUG"
   generate-jobs:
     runs-on: ubuntu-latest
     outputs:
@@ -55,7 +63,7 @@ jobs:
         run: echo session=$(nox -f ingestion/noxfile.py --json -l -k 'not e2e' | jq -c '[.[].session]') | tee --append $GITHUB_OUTPUT
   py-run-tests:
     name: Session ${{ matrix.session }}
-    needs: 
+    needs:
       - generate-jobs
     runs-on: ubuntu-latest
     strategy:
@@ -63,83 +71,83 @@ jobs:
       matrix:
         session: ${{ fromJson(needs.generate-jobs.outputs.session) }}
     steps:
-    - name: Free Disk Space (Ubuntu)
-      uses: jlumbroso/free-disk-space@main
-      with:
-        tool-cache: false
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: false
-        swap-storage: true
-        docker-images: false
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
 
-    - name: Wait for the labeler
-      uses: lewagon/wait-on-check-action@v1.3.3
-      if: ${{ github.event_name == 'pull_request_target' }}
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        check-name: Team Label
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        wait-interval: 90
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.3
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
 
-    - name: Verify PR labels
-      uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-      if: ${{ github.event_name == 'pull_request_target' }}
-      with:
-        github-token: '${{ secrets.GITHUB_TOKEN }}'
-        valid-labels: 'safe to test'
-        pull-request-number: '${{ github.event.pull_request.number }}'
-        disable-reviews: true  # To not auto approve changes
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
 
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
-    - name: Extract Python Version from Session
-      id: extract-python-version
-      run: |
-        session_name="${{ matrix.session }}"
-        python_version=$(echo "$session_name" | grep -oE '[0-9]+\.[0-9]+')
-        echo "py-version=$python_version" >> $GITHUB_ENV
+      - name: Extract Python Version from Session
+        id: extract-python-version
+        run: |
+          session_name="${{ matrix.session }}"
+          python_version=$(echo "$session_name" | grep -oE '[0-9]+\.[0-9]+')
+          echo "py-version=$python_version" >> $GITHUB_ENV
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ env.py-version }}
+          args: "-m no-ui"
+          ingestion_dependency: "mysql,elasticsearch,sample-data"
+
+      - name: Run Python Tests & record coverage
+        run: |
+          source env/bin/activate
+          make NOX_FLAGS='-s "${{ matrix.session }}"' run_python_tests
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+
+      - name: Upload tests artifact
+        if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
+        uses: actions/upload-artifact@v3
+        with:
+          name: tests-${{ matrix.e2e-test }}
+          path: ingestion/junit/**/test-results-*.xml
+
+      - name: Upload coverage artifact for Python tests
+        if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-${{ matrix.session }}
+          path: ingestion/converage/**/.coverage.*
+
+      - name: Clean Up
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
         
-    - name: Setup Openmetadata Test Environment
-      uses: ./.github/actions/setup-openmetadata-test-environment
-      with:
-        python-version: ${{ env.py-version }}
-        args: "-m no-ui"
-        ingestion_dependency: "mysql,elasticsearch,sample-data"
-
-    - name: Run Python Tests & record coverage
-      run: |
-        source env/bin/activate
-        make NOX_FLAGS='-s "${{ matrix.session }}"' run_python_tests
-      env:
-        TESTCONTAINERS_RYUK_DISABLED: true
-
-    - name: Upload tests artifact
-      if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v3
-      with:
-        name: tests-${{ matrix.e2e-test }}
-        path: ingestion/junit/**/test-results-*.xml
-
-    - name: Upload coverage artifact for Python tests
-      if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v3
-      with:
-        name: coverage-${{ matrix.session }}
-        path: ingestion/converage/**/.coverage.*
-    
-    - name: Clean Up
-      run: |
-        cd ./docker/development
-        docker compose down --remove-orphans
-        sudo rm -rf ${PWD}/docker-volume
-
-      # we have to pass these args values since we are working with the 'pull_request_target' trigger
+        # we have to pass these args values since we are working with the 'pull_request_target' trigger
   sonar-cloud-coverage-upload:
     runs-on: ubuntu-latest
     needs:
