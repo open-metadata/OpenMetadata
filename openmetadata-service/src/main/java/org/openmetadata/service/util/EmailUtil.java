@@ -135,23 +135,23 @@ public class EmailUtil {
     return null;
   }
 
-  public static void sendAccountStatus(User user, String action, String status)
+  public static void sendAccountStatus(String userName, String email, String action, String status)
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(ENTITY, getEmailingEntity());
       templatePopulator.put(SUPPORT_URL, getSupportUrl());
-      templatePopulator.put(USERNAME, user.getName());
+      templatePopulator.put(USERNAME, userName);
       templatePopulator.put(ACTION_KEY, action);
       templatePopulator.put(ACTION_STATUS_KEY, status);
       sendMail(
           getAccountStatusChangeSubject(),
           templatePopulator,
-          user.getEmail(),
+              email,
           ACCOUNT_STATUS_TEMPLATE_FILE,
           true);
     } else {
-      LOG.warn(EMAIL_IGNORE_MSG, user.getEmail());
+      LOG.warn(EMAIL_IGNORE_MSG, email);
     }
   }
 

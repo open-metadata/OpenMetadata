@@ -83,6 +83,7 @@ import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EmailUtil;
+import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
@@ -261,7 +262,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // Update user about Password Change
     try {
-      EmailUtil.sendAccountStatus(storedUser, "Update Password", "Change Successful");
+      EmailUtil.sendAccountStatus(storedUser.getName(), storedUser.getEmail(), "Update Password", "Change Successful");
     } catch (TemplateException ex) {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage(), ex);
       throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
@@ -466,28 +467,29 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
-    String userName = loginRequest.getEmail();
-    checkIfLoginBlocked(userName);
-    User storedUser = lookUserInProvider(userName);
-    validatePassword(userName, storedUser, loginRequest.getPassword());
+    String email = loginRequest.getEmail();
+    checkIfLoginBlocked(email);
+    User storedUser = lookUserInProvider(email, loginRequest.getPassword());
+    validatePassword(email, loginRequest.getPassword(), storedUser);
     return getJwtResponse(storedUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
   @Override
-  public void checkIfLoginBlocked(String userName) {
-    if (loginAttemptCache.isLoginBlocked(userName)) {
+  public void checkIfLoginBlocked(String email) {
+    if (loginAttemptCache.isLoginBlocked(email)) {
       throw new AuthenticationException(MAX_FAILED_LOGIN_ATTEMPT);
     }
   }
 
   @Override
-  public void recordFailedLoginAttempt(String providedIdentity, User storedUser)
+  public void recordFailedLoginAttempt(String email, String userName)
       throws TemplateException, IOException {
-    loginAttemptCache.recordFailedLogin(providedIdentity);
-    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
+    loginAttemptCache.recordFailedLogin(email);
+    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(email);
     if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
-      EmailUtil.sendAccountStatus(
-          storedUser,
+        EmailUtil.sendAccountStatus(
+          userName,
+          email,
           "Multiple Failed Login Attempts.",
           String.format(
               "Someone is trying to access your account. Login is Blocked for %s minutes. Please change your password.",
@@ -495,35 +497,35 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  public void validatePassword(String providedIdentity, User storedUser, String reqPassword)
+  public void validatePassword(String providedIdentity, String reqPassword, User omUser)
       throws TemplateException, IOException {
     // when basic auth is enabled and the user is created through the API without password, the
     // stored auth mechanism
     // for the user is null
-    if (storedUser.getAuthenticationMechanism() == null) {
+    if (omUser.getAuthenticationMechanism() == null) {
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
     @SuppressWarnings("unchecked")
     LinkedHashMap<String, String> storedData =
-        (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();
+        (LinkedHashMap<String, String>) omUser.getAuthenticationMechanism().getConfig();
     String storedHashPassword = storedData.get("password");
     if (!BCrypt.verifyer().verify(reqPassword.toCharArray(), storedHashPassword).verified) {
       // record Failed Login Attempts
-      recordFailedLoginAttempt(providedIdentity, storedUser);
+      recordFailedLoginAttempt(omUser.getEmail(), omUser.getName());
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
   }
 
   @Override
-  public User lookUserInProvider(String userName) {
+  public User lookUserInProvider(String email, String pwd) {
     User storedUser = null;
     try {
-      if (userName.contains("@")) {
+      if (email.contains("@")) {
         // lookup by User Email
         storedUser =
             userRepository.getByEmail(
                 null,
-                userName,
+                email,
                 new EntityUtil.Fields(
                     Set.of(USER_PROTECTED_FIELDS, "roles"), "authenticationMechanism,roles"));
       }
