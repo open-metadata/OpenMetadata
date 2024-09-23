@@ -33,6 +33,16 @@ Salesforce Security Token is required to access the metadata through APIs. You c
 $$
 
 $$section
+### Organization ID $(id="organizationId")
+
+Salesforce Organization ID is the unique identifier for your Salesforce identity. You can check out [this doc](https://help.salesforce.com/s/articleView?id=000385215&type=1) on how to get the your Salesforce Organization ID.
+
+**Note**: You need to provide `15` digit organization id in this section. for e.g. `00DIB000004nDEq`, which you can find by following the steps mentioned in above doc (`Salesforce dashboard->Setup->Company Profile->Company Information->Salesforce.com Organization Id`).
+
+**Note**: If you want to access salesforce metadata without token(only by using organization id), you will need to setup your ip in trusted ip ranges. You can go (`Salesforce dashboard->Setup->Security->Network Access->Trusted IP Ranges`) to configure this. You can check [here](https://help.salesforce.com/s/articleView?id=sf.security_networkaccess.htm&type=5) to configure your ip in trusted ip ranges.
+$$
+
+$$section
 ### Object Name $(id="sobjectName")
 
 Specify the Salesforce Object Name in case you want to ingest a specific object. If left blank, we will ingest all the Objects.

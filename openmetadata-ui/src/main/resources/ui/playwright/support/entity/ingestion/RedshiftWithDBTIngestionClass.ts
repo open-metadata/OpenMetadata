@@ -195,7 +195,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       // Verify DBT in table entity
       await visitEntityPage({
         page,
-        searchTerm: REDSHIFT.DBTTable,
+        searchTerm: this.dbtEntityFqn,
         dataTestId: `${REDSHIFT.serviceName}-${REDSHIFT.DBTTable}`,
       });
 

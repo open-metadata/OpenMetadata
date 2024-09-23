@@ -328,7 +328,7 @@ dev = {
     "isort",
     "pre-commit",
     "pycln",
-    "pylint~=3.0",
+    "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
     # For publishing
     "twine",
     "build",
@@ -370,7 +370,7 @@ test = {
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
     "testcontainers==3.7.1;python_version<'3.9'",
-    "testcontainers==4.8.0;python_version>='3.9'",
+    "testcontainers==4.8.1;python_version>='3.9'",
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
