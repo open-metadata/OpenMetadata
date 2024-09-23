@@ -83,7 +83,6 @@ import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EmailUtil;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
@@ -262,7 +261,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // Update user about Password Change
     try {
-      EmailUtil.sendAccountStatus(storedUser.getName(), storedUser.getEmail(), "Update Password", "Change Successful");
+      EmailUtil.sendAccountStatus(
+          storedUser.getName(), storedUser.getEmail(), "Update Password", "Change Successful");
     } catch (TemplateException ex) {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage(), ex);
       throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
@@ -487,7 +487,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     loginAttemptCache.recordFailedLogin(email);
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(email);
     if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
-        EmailUtil.sendAccountStatus(
+      EmailUtil.sendAccountStatus(
           userName,
           email,
           "Multiple Failed Login Attempts.",

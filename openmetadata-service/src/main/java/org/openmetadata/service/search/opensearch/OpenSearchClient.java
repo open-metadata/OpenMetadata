@@ -1450,7 +1450,6 @@ public class OpenSearchClient implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
-
   private static QueryStringQueryBuilder buildSearchQueryBuilder(
       String query, Map<String, Float> fields) {
     return QueryBuilders.queryStringQuery(query)

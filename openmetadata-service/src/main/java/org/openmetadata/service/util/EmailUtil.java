@@ -147,7 +147,7 @@ public class EmailUtil {
       sendMail(
           getAccountStatusChangeSubject(),
           templatePopulator,
-              email,
+          email,
           ACCOUNT_STATUS_TEMPLATE_FILE,
           true);
     } else {
