@@ -335,10 +335,21 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   void post_trigger_app_200() throws HttpResponseException {
     String appName = "SearchIndexingApplication";
     postTriggerApp(appName, ADMIN_AUTH_HEADERS);
-    assertAppRanAfterTrigger(appName);
+    assertAppStatusAvailableAfterTrigger(appName);
+    assertAppRanAfterTriggerWithStatus(appName, AppRunRecord.Status.SUCCESS);
   }
 
-  private void assertAppRanAfterTrigger(String appName) {
+  @Test
+  void post_trigger_app_and_interrupt_200() throws HttpResponseException {
+    String appName = "SearchIndexingApplication";
+    postTriggerApp(appName, ADMIN_AUTH_HEADERS);
+    assertAppStatusAvailableAfterTrigger(appName);
+    postAppStop(appName, ADMIN_AUTH_HEADERS);
+    // TODO: I don't have a way to assert the STOPPED status , by the time API for stop is called
+    // the app is already done running
+  }
+
+  private void assertAppStatusAvailableAfterTrigger(String appName) {
     assertEventually(
         "appIsRunning",
         () -> {
@@ -349,12 +360,13 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
           }
         },
         APP_TRIGGER_RETRY);
+  }
+
+  private void assertAppRanAfterTriggerWithStatus(String appName, AppRunRecord.Status status) {
     assertEventually(
-        "appSuccess",
+        "appStatus",
         () -> {
-          assert getLatestAppRun(appName, ADMIN_AUTH_HEADERS)
-              .getStatus()
-              .equals(AppRunRecord.Status.SUCCESS);
+          assert getLatestAppRun(appName, ADMIN_AUTH_HEADERS).getStatus().equals(status);
         },
         APP_TRIGGER_RETRY);
   }
@@ -402,6 +414,13 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   private void postTriggerApp(String appName, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("apps/trigger").path(appName);
+    Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
+    readResponse(response, OK.getStatusCode());
+  }
+
+  private void postAppStop(String appName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("apps/stop").path(appName);
     Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
     readResponse(response, OK.getStatusCode());
   }
