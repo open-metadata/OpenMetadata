@@ -111,7 +111,7 @@ export const setValueForProperty = async (data: {
       await page.click('#enumValues');
       await page.fill('#enumValues', value);
       await page.press('#enumValues', 'Enter');
-      await page.mouse.click(0, 0);
+      await page.click('body'); // Equivalent to clicking outside
       await page.click('[data-testid="inline-save-btn"]');
 
       break;
@@ -543,8 +543,8 @@ export const addCustomPropertiesForEntity = async ({
       await page.click('#root\\/enumConfig');
       await page.fill('#root\\/enumConfig', val);
       await page.press('#root\\/enumConfig', 'Enter');
-      await page.mouse.click(0, 0);
     }
+    await page.click('body'); // Equivalent to clicking outside
 
     if (enumConfig.multiSelect) {
       await page.click('#root\\/multiSelect');
@@ -621,14 +621,14 @@ export const editCreatedProperty = async (
     await page.click('#root\\/customPropertyConfig');
     await page.fill('#root\\/customPropertyConfig', 'updatedValue');
     await page.press('#root\\/customPropertyConfig', 'Enter');
-    await page.mouse.click(0, 0);
+    await page.click('body'); // Equivalent to clicking outside
   }
 
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
     await page.click('#root\\/customPropertyConfig');
     await page.fill('#root\\/customPropertyConfig', 'Table');
     await page.press('#root\\/customPropertyConfig', 'Enter');
-    await page.mouse.click(0, 0);
+    await page.click('body'); // Equivalent to clicking outside
   }
 
   const patchRequest = page.waitForResponse('/api/v1/metadata/types/*');
