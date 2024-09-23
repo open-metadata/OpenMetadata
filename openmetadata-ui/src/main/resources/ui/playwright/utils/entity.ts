@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { lowerCase } from 'lodash';
+import { isEmpty, lowerCase } from 'lodash';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -325,9 +325,13 @@ export const updateDescription = async (page: Page, description: string) => {
   await page.locator('.ProseMirror').first().fill(description);
   await page.getByTestId('save').click();
 
-  await expect(
-    page.getByTestId('asset-description-container').getByRole('paragraph')
-  ).toContainText(description);
+  isEmpty(description)
+    ? await expect(
+        page.getByTestId('asset-description-container')
+      ).toContainText('No description')
+    : await expect(
+        page.getByTestId('asset-description-container').getByRole('paragraph')
+      ).toContainText(description);
 };
 
 export const assignTag = async (
