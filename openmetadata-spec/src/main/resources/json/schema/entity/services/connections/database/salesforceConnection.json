@@ -37,6 +37,11 @@
       "type": "string",
       "format": "password"
     },
+    "organizationId": {
+      "title": "Salesforce Organization ID",
+      "description": "Salesforce Organization ID is the unique identifier for your Salesforce identity",
+      "type": "string"
+    },
     "sobjectName": {
       "title": "Object Name",
       "description": "Salesforce Object Name.",
