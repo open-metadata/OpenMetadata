@@ -281,7 +281,7 @@ public class AuthenticationCodeFlowHandler {
     }
   }
 
-  private void checkAndStoreRedirectUriInSession(HttpServletRequest request) {
+  public static void checkAndStoreRedirectUriInSession(HttpServletRequest request) {
     String redirectUri = request.getParameter(REDIRECT_URI_KEY);
     if (nullOrEmpty(redirectUri)) {
       throw new TechnicalException("Redirect URI is required");
