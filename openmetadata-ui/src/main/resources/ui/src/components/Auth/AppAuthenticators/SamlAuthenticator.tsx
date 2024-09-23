@@ -80,7 +80,7 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
     const logout = () => {
       const token = getOidcToken();
       if (token) {
-        postSamlLogout({ token })
+        postSamlLogout()
           .then(() => {
             setIsAuthenticated(false);
             try {
