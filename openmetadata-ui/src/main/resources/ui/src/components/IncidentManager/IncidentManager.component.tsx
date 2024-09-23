@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Row, Select, Space } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -110,8 +109,7 @@ const IncidentManager = ({
     options: [],
     selected: [],
   });
-  const [testCaseInitialOptions, setTestCaseInitialOptions] =
-    useState<DefaultOptionType[]>();
+
   const [initialAssignees, setInitialAssignees] = useState<EntityReference[]>(
     []
   );
@@ -486,7 +484,6 @@ const IncidentManager = ({
             api={searchTestCases}
             className="w-min-20"
             data-testid="test-case-select"
-            options={testCaseInitialOptions}
             placeholder={t('label.test-case')}
             suffixIcon={undefined}
             onChange={(value) =>
