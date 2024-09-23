@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.saml;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.getErrorMessage;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 
@@ -83,12 +84,12 @@ public class SamlLogoutServlet extends HttpServlet {
         session.invalidate();
 
         // Redirect to server
-        httpServletResponse.sendRedirect(getBaseUrl(httpServletRequest));
+        writeJsonResponse(httpServletResponse, "Logout successful");
       } else {
         LOG.error("No session store available for this web context");
       }
     } catch (Exception e) {
-      writeJsonResponse(httpServletResponse, e.getMessage());
+      getErrorMessage(httpServletResponse, e);
     }
   }
 
