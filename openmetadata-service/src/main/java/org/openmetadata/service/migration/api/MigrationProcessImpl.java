@@ -9,6 +9,7 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -24,6 +25,7 @@ public class MigrationProcessImpl implements MigrationProcess {
   protected CollectionDAO collectionDAO;
   protected Handle handle;
   protected PipelineServiceClientInterface pipelineServiceClient;
+  protected AuthenticationConfiguration authenticationConfiguration;
   private final MigrationFile migrationFile;
 
   public @Getter MigrationContext context;
@@ -40,6 +42,7 @@ public class MigrationProcessImpl implements MigrationProcess {
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             this.migrationFile.pipelineServiceClientConfiguration);
+    this.authenticationConfiguration = migrationFile.authenticationConfiguration;
   }
 
   @Override

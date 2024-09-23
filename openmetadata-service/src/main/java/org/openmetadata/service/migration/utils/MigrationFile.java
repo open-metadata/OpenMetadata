@@ -14,6 +14,7 @@ import org.flywaydb.core.internal.resource.filesystem.FileSystemResource;
 import org.flywaydb.core.internal.sqlscript.SqlStatementIterator;
 import org.flywaydb.database.mysql.MySQLParser;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.EntityUtil;
@@ -23,6 +24,8 @@ public class MigrationFile implements Comparable<MigrationFile> {
   public final String version;
   public final ConnectionType connectionType;
   public final PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
+  public final AuthenticationConfiguration authenticationConfiguration;
+
   public final File dir;
   public final Boolean isExtension;
   public final String dbPackageName;
@@ -38,6 +41,7 @@ public class MigrationFile implements Comparable<MigrationFile> {
       MigrationDAO migrationDAO,
       ConnectionType connectionType,
       PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
+      AuthenticationConfiguration authenticationConfiguration,
       Boolean isExtension) {
     this.dir = dir;
     this.isExtension = isExtension;
@@ -45,6 +49,7 @@ public class MigrationFile implements Comparable<MigrationFile> {
     this.connectionType = connectionType;
     this.migrationDAO = migrationDAO;
     this.pipelineServiceClientConfiguration = pipelineServiceClientConfiguration;
+    this.authenticationConfiguration = authenticationConfiguration;
     this.dbPackageName = connectionType == ConnectionType.MYSQL ? "mysql" : "postgres";
     versionNumbers = convertToNumber(version);
     schemaChanges = new ArrayList<>();
