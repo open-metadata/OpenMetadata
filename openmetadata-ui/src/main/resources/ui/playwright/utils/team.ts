@@ -250,3 +250,12 @@ export const removeOrganizationPolicyAndRole = async (
     },
   });
 };
+
+export const searchTeam = async (page: Page, teamName: string) => {
+  const searchResponse = page.waitForResponse('/api/v1/search/suggest?q=**');
+
+  await page.fill('[data-testid="searchbar"]', teamName);
+  await searchResponse;
+
+  await expect(page.locator('table')).toContainText(teamName);
+};
