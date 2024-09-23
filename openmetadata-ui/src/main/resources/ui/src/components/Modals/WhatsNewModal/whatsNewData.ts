@@ -1001,6 +1001,9 @@ To continue pursuing this objective, the application was completely refactored t
 -   **Fix**: Resolved team export issue.
 -   **Fix**: Updated Python lineage SDK to work with UUID and FQN models.
 -   **Fix**: Fixed LDAP login issue.
+-   **Fix**: Column sizing of data quality and pipeline widget ${CollateIconWithLinkMD}
+-   **Fix**: Export with new line in description ${CollateIconWithLinkMD}
+-   **Minor**: Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
 `,
     },
   },
