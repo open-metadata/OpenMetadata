@@ -140,9 +140,9 @@ site_menu:
     url: /deployment/security/keycloak/kubernetes
   - category: Deployment / Enable Security / Saml
     url: /deployment/security/saml
-  - category: Deployment / Enable Security / Saml / Docker 
+  - category: Deployment / Enable Security / Saml / Docker
     url: /deployment/security/saml/docker
-  - category: Deployment / Enable Security / Saml / Bare Metal 
+  - category: Deployment / Enable Security / Saml / Bare Metal
     url: /deployment/security/saml/bare-metal
   - category: Deployment / Enable Security / Saml / Kubernetes
     url: /deployment/security/saml/kubernetes
@@ -687,7 +687,7 @@ site_menu:
   - category: How-to Guides / Admin Guide / How to Add Custom Logo
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
   - category: How-to Guides / Admin Guide / Reindexing Search
-    url: /how-to-guides/admin-guide/Reindexing-Search  
+    url: /how-to-guides/admin-guide/Reindexing-Search
 
   - category: How-to Guides / Guide for Data Users
     url: /how-to-guides/guide-for-data-users
@@ -712,7 +712,7 @@ site_menu:
   - category: How-to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
     url: /how-to-guides/guide-for-data-users/custom
   - category: How-to Guides / Guide for Data Users / How to Customize OpenMetadata
-    url: /how-to-guides/guide-for-data-users/theme  
+    url: /how-to-guides/guide-for-data-users/theme
   - category: How-to Guides / Guide for Data Users / Overview of Announcements
     url: /how-to-guides/guide-for-data-users/announcements
   - category: How-to Guides / Guide for Data Users / How to Create an Announcement
@@ -818,9 +818,9 @@ site_menu:
   - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
     url: /how-to-guides/data-insights/airflow-sdk
   - category: How-to Guides / Data Insights / Run Data Insights using Metadata CLI
-    url: /how-to-guides/data-insights/metadata-cli   
+    url: /how-to-guides/data-insights/metadata-cli
   - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
-    url: /how-to-guides/data-insights/elasticsearch-reindex 
+    url: /how-to-guides/data-insights/elasticsearch-reindex
   - category: How-to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
   - category: How-to Guides / Data Insights / Cost Analysis
@@ -1926,8 +1926,6 @@ site_menu:
     url: /developers/contribute/developing-a-new-connector/test-it
   - category: Developers / Contribute / Developing a New Connector / 6. Update the Documentation
     url: /developers/contribute/developing-a-new-connector/update-documentation
-  - category: Developers / Contribute / UX Style Guide
-    url: /developers/contribute/ux-style-guide
   - category: Developers / Bots
     url: /developers/bots
   - category: Developers / Add Language Support
