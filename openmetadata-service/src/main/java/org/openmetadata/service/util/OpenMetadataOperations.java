@@ -618,6 +618,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             connType,
             extensionSQLScriptRootPath,
             config.getPipelineServiceClientConfiguration(),
+            config.getAuthenticationConfiguration(),
             force);
     workflow.loadMigrations();
     workflow.printMigrationInfo();
