@@ -10,19 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LoginCallback } from '@okta/okta-react';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
-import SamlCallback from '../../pages/SamlCallback';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
-import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
-import CallbackRouter from './CallbackRouter';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const SigninPage = withSuspenseFallback(
@@ -52,20 +48,6 @@ export const UnAuthenticatedAppRouter = () => {
     (authConfig.provider === AuthProvider.Basic ||
       authConfig.provider === AuthProvider.LDAP);
 
-  const callbackComponent = useMemo(() => {
-    switch (authConfig?.provider) {
-      case AuthProvider.Okta: {
-        return LoginCallback;
-      }
-      case AuthProvider.Auth0: {
-        return Auth0Callback;
-      }
-      default: {
-        return null;
-      }
-    }
-  }, [authConfig?.provider]);
-
   if (isProtectedRoute(location.pathname)) {
     return <Redirect to={ROUTES.SIGNIN} />;
   }
@@ -74,13 +56,6 @@ export const UnAuthenticatedAppRouter = () => {
     <Switch>
       <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
 
-      {callbackComponent && (
-        <Route component={callbackComponent} path={ROUTES.CALLBACK} />
-      )}
-      <Route
-        component={SamlCallback}
-        path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
-      />
       {!isSigningUp && (
         <Route exact path={ROUTES.HOME}>
           <Redirect to={ROUTES.SIGNIN} />
@@ -89,8 +64,6 @@ export const UnAuthenticatedAppRouter = () => {
 
       {/* keep this route before any conditional JSX.Element rendering */}
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-
-      <CallbackRouter />
 
       {isBasicAuthProvider && (
         <>

@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { LoginCallback } from '@okta/okta-react';
 import { isEmpty, isNil } from 'lodash';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { ROUTES } from '../../constants/constants';
@@ -23,16 +24,34 @@ import AccessNotAllowedPage from '../../pages/AccessNotAllowedPage/AccessNotAllo
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
 import AppContainer from '../AppContainer/AppContainer';
+import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
 import Loader from '../common/Loader/Loader';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
+
+import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';
+import SamlCallback from '../../pages/SamlCallback';
 
 const AppRouter = () => {
   const location = useCustomLocation();
 
   // web analytics instance
   const analytics = useAnalytics();
-  const { currentUser, isAuthenticated, isApplicationLoading } =
+  const { authConfig, currentUser, isAuthenticated, isApplicationLoading } =
     useApplicationStore();
+
+  const callbackComponent = useMemo(() => {
+    switch (authConfig?.provider) {
+      case AuthProvider.Okta: {
+        return LoginCallback;
+      }
+      case AuthProvider.Auth0: {
+        return Auth0Callback;
+      }
+      default: {
+        return null;
+      }
+    }
+  }, [authConfig?.provider]);
 
   useEffect(() => {
     const { pathname } = location;
@@ -92,6 +111,15 @@ const AppRouter = () => {
       <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
         {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
       </Route>
+
+      {callbackComponent && (
+        <Route component={callbackComponent} path={ROUTES.CALLBACK} />
+      )}
+      <Route
+        component={SamlCallback}
+        path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
+      />
+
       {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
     </Switch>
   );
