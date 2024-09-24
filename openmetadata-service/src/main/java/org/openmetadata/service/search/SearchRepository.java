@@ -747,8 +747,14 @@ public class SearchRepository {
         Map<String, Object> doc = JsonUtils.getMap(entity);
         fieldAddParams.put("newPipelineStatus", doc.get("pipelineStatus"));
       }
+      if (fieldChange.getName().equalsIgnoreCase("testSuites")) {
+        scriptTxt.append(
+                "ctx._source.testSuites = params.testSuites;");
+        Map<String, Object> doc = JsonUtils.getMap(entity);
+        fieldAddParams.put("testSuites", doc.get("testSuites"));
+      }
     }
-    return scriptTxt.toString();
+      return scriptTxt.toString();
   }
 
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
