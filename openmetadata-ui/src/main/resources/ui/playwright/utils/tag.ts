@@ -21,7 +21,8 @@ import { sidebarClick } from './sidebar';
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
-  MAX_LENGTH: 'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890ab',
+  MAX_LENGTH:
+    'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5',
   WITH_SPECIAL_CHARS: '!@#$%^&*()',
 };
 
@@ -64,26 +65,27 @@ export async function validateForm(page: Page) {
   await page.locator('[data-testid="name"]').scrollIntoViewIfNeeded();
   await page.locator('[data-testid="name"]').clear();
   await page.locator('[data-testid="name"]').fill(TAG_INVALID_NAMES.MIN_LENGTH);
+  await page.waitForLoadState('domcontentloaded');
 
-  await expect(page.locator('#tags_name_help')).toContainText(
-    NAME_MIN_MAX_LENGTH_VALIDATION_ERROR
-  );
+  await expect(
+    page.getByText(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR)
+  ).toBeVisible();
 
   // max length validation
   await page.locator('[data-testid="name"]').clear();
   await page.locator('[data-testid="name"]').fill(TAG_INVALID_NAMES.MAX_LENGTH);
+  await page.waitForLoadState('domcontentloaded');
 
-  await expect(page.locator('#tags_name_help')).toContainText(
-    NAME_MIN_MAX_LENGTH_VALIDATION_ERROR
-  );
+  await expect(
+    page.getByText(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR)
+  ).toBeVisible();
 
   // with special char validation
   await page.locator('[data-testid="name"]').clear();
   await page
     .locator('[data-testid="name"]')
     .fill(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
+  await page.waitForLoadState('domcontentloaded');
 
-  await expect(page.locator('#tags_name_help')).toContainText(
-    NAME_VALIDATION_ERROR
-  );
+  await expect(page.getByText(NAME_VALIDATION_ERROR)).toBeVisible();
 }
