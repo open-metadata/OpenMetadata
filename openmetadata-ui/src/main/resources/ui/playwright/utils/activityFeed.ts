@@ -63,7 +63,12 @@ export const checkDescriptionInEditModal = async (
 };
 
 export const deleteFeedComments = async (page: Page, feed: Locator) => {
-  await feed.click();
+  await feed.locator('.feed-reply-card-v2').click();
+
+  await page.waitForSelector('[data-testid="feed-actions"]', {
+    state: 'visible',
+  });
+
   await page.locator('[data-testid="delete-message"]').click();
 
   await page.waitForSelector('[role="dialog"].ant-modal');
@@ -88,14 +93,21 @@ export const reactOnFeed = async (page: Page) => {
     await page
       .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
       .waitFor({ state: 'visible' });
+
+    const waitForReactionResponse = page.waitForResponse('/api/v1/feed/*');
     await page
       .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
       .click();
+    await waitForReactionResponse;
   }
 };
 
 export const addMentionCommentInFeed = async (page: Page, user: string) => {
+  const fetchFeedResponse = page.waitForResponse(
+    '/api/v1/feed?type=Conversation*'
+  );
   await removeLandingBanner(page);
+  await fetchFeedResponse;
 
   // Click on add reply
   const feedResponse = page.waitForResponse('/api/v1/feed/*');
