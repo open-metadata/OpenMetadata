@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Builder;
@@ -3237,7 +3238,8 @@ public interface CollectionDAO {
       }
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
-      beforeName = FullyQualifiedName.unquoteName(beforeName);
+      beforeName =
+          Optional.ofNullable(beforeName).map(FullyQualifiedName::unquoteName).orElse(null);
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
@@ -3281,7 +3283,7 @@ public interface CollectionDAO {
       }
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
-      afterName = FullyQualifiedName.unquoteName(afterName);
+      afterName = Optional.ofNullable(afterName).map(FullyQualifiedName::unquoteName).orElse(null);
       return listAfter(
           getTableName(),
           filter.getQueryParams(),

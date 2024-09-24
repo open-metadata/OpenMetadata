@@ -21,7 +21,7 @@ import {
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
-import { descriptionBox, uuid } from './common';
+import { clickOutside, descriptionBox, uuid } from './common';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -111,7 +111,7 @@ export const setValueForProperty = async (data: {
       await page.click('#enumValues');
       await page.fill('#enumValues', value);
       await page.press('#enumValues', 'Enter');
-      await page.mouse.click(0, 0);
+      await clickOutside(page);
       await page.click('[data-testid="inline-save-btn"]');
 
       break;
@@ -540,8 +540,11 @@ export const addCustomPropertiesForEntity = async ({
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
     for (const val of enumConfig.values) {
-      await page.fill('#root\\/enumConfig', `${val}{Enter}`);
+      await page.click('#root\\/enumConfig');
+      await page.fill('#root\\/enumConfig', val);
+      await page.press('#root\\/enumConfig', 'Enter');
     }
+    await clickOutside(page);
 
     if (enumConfig.multiSelect) {
       await page.click('#root\\/multiSelect');
@@ -615,16 +618,17 @@ export const editCreatedProperty = async (
   await page.locator(descriptionBox).fill('This is new description');
 
   if (type === 'Enum') {
-    await page
-      .locator('#root\\/customPropertyConfig')
-      .fill(`updatedValue{Enter}`);
-    await page.click('body'); // Equivalent to clicking outside
+    await page.click('#root\\/customPropertyConfig');
+    await page.fill('#root\\/customPropertyConfig', 'updatedValue');
+    await page.press('#root\\/customPropertyConfig', 'Enter');
+    await clickOutside(page);
   }
 
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
-    await page.locator('#root\\/customPropertyConfig').click();
-    await page.locator('#root\\/customPropertyConfig').fill(`Table{Enter}`);
-    await page.click('body'); // Equivalent to clicking outside
+    await page.click('#root\\/customPropertyConfig');
+    await page.fill('#root\\/customPropertyConfig', 'Table');
+    await page.press('#root\\/customPropertyConfig', 'Enter');
+    await clickOutside(page);
   }
 
   const patchRequest = page.waitForResponse('/api/v1/metadata/types/*');
