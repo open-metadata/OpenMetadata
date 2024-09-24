@@ -109,7 +109,7 @@ export const setValueForProperty = async (data: {
 
     case 'enum':
       await page.click('#enumValues');
-      await page.fill('#enumValues', value);
+      await page.fill('#enumValues', value, { force: true });
       await page.press('#enumValues', 'Enter');
       await clickOutside(page);
       await page.click('[data-testid="inline-save-btn"]');
@@ -343,12 +343,15 @@ export const createCustomPropertyForEntity = async (
     '/api/v1/metadata/types?category=field&limit=20'
   );
   const properties = await propertiesResponse.json();
-  const propertyList = properties.data.filter((item) =>
-    Object.values(CustomPropertyTypeByName).includes(item.name)
+  const propertyList = properties.data.filter(
+    (item: { name: CustomPropertyTypeByName }) =>
+      Object.values(CustomPropertyTypeByName).includes(item.name)
   );
 
   const entitySchemaResponse = await apiContext.get(
-    `/api/v1/metadata/types/name/${ENTITY_PATH[endpoint]}`
+    `/api/v1/metadata/types/name/${
+      ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH]
+    }`
   );
   const entitySchema = await entitySchemaResponse.json();
 
@@ -373,7 +376,7 @@ export const createCustomPropertyForEntity = async (
     acc[`user${index + 1}`] = user.getUserName();
 
     return acc;
-  }, {});
+  }, {} as Record<string, string>);
 
   // Define an asynchronous function to clean up (delete) all users in the users array
   const cleanupUser = async (apiContext: APIRequestContext) => {
@@ -441,17 +444,23 @@ export const createCustomPropertyForEntity = async (
     const customProperty = await customPropertyResponse.json();
 
     // Process the custom properties
-    customProperties = customProperty.customProperties.reduce((prev, curr) => {
-      const propertyTypeName = curr.propertyType.name;
+    customProperties = customProperty.customProperties.reduce(
+      (
+        prev: Record<string, string>,
+        curr: Record<string, Record<string, string>>
+      ) => {
+        const propertyTypeName = curr.propertyType.name;
 
-      return {
-        ...prev,
-        [propertyTypeName]: {
-          ...getPropertyValues(propertyTypeName, userNames),
-          property: curr,
-        },
-      };
-    }, {});
+        return {
+          ...prev,
+          [propertyTypeName]: {
+            ...getPropertyValues(propertyTypeName, userNames),
+            property: curr,
+          },
+        };
+      },
+      {}
+    );
   }
 
   return { customProperties, cleanupUser };

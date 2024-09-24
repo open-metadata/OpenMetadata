@@ -142,7 +142,7 @@ test.describe('Activity feed', () => {
 
   test('Assigned task should appear to task tab', async ({ page }) => {
     const value: TaskDetails = {
-      term: entity.entity.name,
+      term: entity.entity.displayName,
       assignee: user1.responseData.name,
     };
     await redirectToHomePage(page);
@@ -310,7 +310,7 @@ test.describe('Activity feed', () => {
 
   test('Update Description Task on Columns', async ({ page }) => {
     const firstTaskValue: TaskDetails = {
-      term: entity4.entity.name,
+      term: entity4.entity.displayName,
       assignee: user1.responseData.name,
       description: 'Column Description 1',
       columnName: entity4.entity.columns[0].name,
@@ -379,7 +379,7 @@ test.describe('Activity feed', () => {
 
   test('Comment and Close Task should work in Task Flow', async ({ page }) => {
     const value: TaskDetails = {
-      term: entity2.entity.name,
+      term: entity2.entity.displayName,
       assignee: user1.responseData.name,
     };
     await redirectToHomePage(page);
@@ -441,7 +441,7 @@ test.describe('Activity feed', () => {
 
   test('Open and Closed Task Tab', async ({ page }) => {
     const value: TaskDetails = {
-      term: entity3.entity.name,
+      term: entity3.entity.displayName,
       assignee: user1.responseData.name,
     };
     await redirectToHomePage(page);
@@ -515,7 +515,7 @@ test.describe('Activity feed', () => {
     page,
   }) => {
     const value: TaskDetails = {
-      term: entity4.entity.name,
+      term: entity4.entity.displayName,
       assignee: user1.responseData.name,
     };
     await redirectToHomePage(page);
@@ -634,7 +634,7 @@ base.describe('Activity feed with Data Consumer User', () => {
       await performUserLogin(browser, user2);
 
     const value: TaskDetails = {
-      term: entity.entity.name,
+      term: entity.entity.displayName,
       assignee: user2.responseData.name,
     };
 
@@ -767,7 +767,7 @@ base.describe('Activity feed with Data Consumer User', () => {
       await performUserLogin(browser, user2);
 
     const value: TaskDetails = {
-      term: entity2.entity.name,
+      term: entity2.entity.displayName,
       assignee: user2.responseData.name,
     };
 
@@ -946,7 +946,7 @@ base.describe('Activity feed with Data Consumer User', () => {
         await performUserLogin(browser, viewAllUser);
 
       const value: TaskDetails = {
-        term: entity3.entity.name,
+        term: entity3.entity.displayName,
         assignee: viewAllUser.responseData.name,
       };
 

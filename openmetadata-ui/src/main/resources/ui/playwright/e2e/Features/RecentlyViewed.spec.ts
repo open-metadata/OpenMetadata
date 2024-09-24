@@ -23,6 +23,7 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { getEntityDisplayName } from '../../utils/entity';
 
 const entities = [
   new ApiEndpointClass(),
@@ -79,7 +80,9 @@ test.describe('Recently viewed data assets', () => {
 
           await page.waitForSelector(`[data-testid="recently-viewed-widget"]`);
 
-          const selector = `[data-testid="recently-viewed-widget"] [title="${entity.entity.name}"]`;
+          const selector = `[data-testid="recently-viewed-widget"] [title="${getEntityDisplayName(
+            entity.entity
+          )}"]`;
 
           await expect(page.locator(selector)).toBeVisible();
         }

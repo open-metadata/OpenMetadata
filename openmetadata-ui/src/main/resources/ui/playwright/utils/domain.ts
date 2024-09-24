@@ -77,7 +77,7 @@ export const removeDomain = async (page: Page) => {
   await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
 };
 
-export const validateDomainForm = async (page) => {
+export const validateDomainForm = async (page: Page) => {
   // Error messages
   await expect(page.locator('#name_help')).toHaveText('Name is required');
   await expect(page.locator('#description_help')).toHaveText(
@@ -408,7 +408,7 @@ export const createDataProduct = async (
   page: Page,
   dataProduct: DataProduct['data']
 ) => {
-  await page.getByTestId('domain-details-add-button').click();
+  await page.getByTestId('domain-details-add-button').click({ force: true });
   await page.getByRole('menuitem', { name: 'Data Products' }).click();
 
   await expect(page.getByText('Add Data Product')).toBeVisible();
