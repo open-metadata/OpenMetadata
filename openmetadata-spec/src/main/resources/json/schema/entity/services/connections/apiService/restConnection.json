@@ -32,6 +32,12 @@
       "description": "Generated Token to connect to OpenAPI Schema.",
       "type": "string",
       "format": "password"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false,
