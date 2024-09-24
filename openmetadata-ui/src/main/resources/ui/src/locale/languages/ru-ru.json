@@ -575,6 +575,7 @@
     "inactive-announcement-plural": "Неактивные объявления",
     "incident": "Incident",
     "incident-manager": "Incident Manager",
+    "incident-plural": "Incidents",
     "incident-status": "Incident Status",
     "include": "Включать",
     "include-entity": "Включить {{entity}}",

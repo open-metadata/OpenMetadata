@@ -23,6 +23,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../../../constants/constants';
 import { mockTablePermission } from '../../../../constants/mockTourData.constants';
+import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -33,9 +34,14 @@ import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../../utils/date-time/DateTimeUtils';
 import {
   getFormattedEntityData,
   getSortedTagsWithHighlight,
@@ -69,6 +75,7 @@ function TableSummary({
   const { getEntityPermission } = usePermissionProvider();
 
   const [profileData, setProfileData] = useState<TableProfileDetails>();
+  const [incidentCount, setIncidentCount] = useState(0);
   const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -96,6 +103,26 @@ function TableSummary({
         setTestSuiteSummary(res);
       } catch (error) {
         // Error
+      }
+    }
+  };
+
+  const fetchIncidentCount = async () => {
+    if (tableDetails?.fullyQualifiedName) {
+      try {
+        const { paging } = await getListTestCaseIncidentStatus({
+          limit: 0,
+          latest: true,
+          originEntityFQN: tableDetails?.fullyQualifiedName,
+          startTs: getEpochMillisForPastDays(
+            PROFILER_FILTER_RANGE.last30days.days
+          ),
+          endTs: getCurrentMillis(),
+        });
+
+        setIncidentCount(paging.total);
+      } catch (error) {
+        setIncidentCount(0);
       }
     }
   };
@@ -165,8 +192,11 @@ function TableSummary({
   }, [tableDetails, testSuiteSummary, viewProfilerPermission]);
 
   const entityInfo = useMemo(
-    () => getEntityOverview(ExplorePageTabs.TABLES, tableDetails),
-    [tableDetails]
+    () =>
+      getEntityOverview(ExplorePageTabs.TABLES, tableDetails, {
+        incidentCount,
+      }),
+    [tableDetails, incidentCount]
   );
 
   const formattedColumnsData: BasicEntityInfo[] = useMemo(
@@ -196,6 +226,7 @@ function TableSummary({
       if (shouldFetchProfilerData) {
         fetchProfilerData();
         fetchAllTests();
+        fetchIncidentCount();
       }
     } else {
       setTablePermissions(mockTablePermission as OperationPermission);

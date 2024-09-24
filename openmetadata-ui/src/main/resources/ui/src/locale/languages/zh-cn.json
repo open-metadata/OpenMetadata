@@ -575,6 +575,7 @@
     "inactive-announcement-plural": "不活动的公告",
     "incident": "事件",
     "incident-manager": "事件管理",
+    "incident-plural": "Incidents",
     "incident-status": "事件状态",
     "include": "包括",
     "include-entity": "包括{{entity}}",

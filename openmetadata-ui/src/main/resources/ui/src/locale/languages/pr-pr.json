@@ -575,6 +575,7 @@
     "inactive-announcement-plural": "اطلاعیه‌های غیرفعال",
     "incident": "حادثه",
     "incident-manager": "مدیر حادثه",
+    "incident-plural": "Incidents",
     "incident-status": "وضعیت حادثه",
     "include": "شامل",
     "include-entity": "شامل {{entity}}",
