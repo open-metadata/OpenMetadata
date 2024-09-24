@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useDomainStore } from '../../hooks/useDomainStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
@@ -32,7 +31,6 @@ const AppContainer = () => {
   const { Header, Sider, Content } = Layout;
   const { currentUser } = useApplicationStore();
   const { alert } = useAlertStore();
-  const { updateDomains, updateDomainLoading } = useDomainStore();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
