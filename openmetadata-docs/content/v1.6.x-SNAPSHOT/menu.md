@@ -145,9 +145,9 @@ site_menu:
     url: /deployment/security/saml/aws
   - category: Deployment / Enable Security / Saml / Azure
     url: /deployment/security/saml/azure
-  - category: Deployment / Enable Security / Saml / Docker 
+  - category: Deployment / Enable Security / Saml / Docker
     url: /deployment/security/saml/docker
-  - category: Deployment / Enable Security / Saml / Bare Metal 
+  - category: Deployment / Enable Security / Saml / Bare Metal
     url: /deployment/security/saml/bare-metal
   - category: Deployment / Enable Security / Saml / Kubernetes
     url: /deployment/security/saml/kubernetes
@@ -517,7 +517,7 @@ site_menu:
     url: /connectors/pipeline/matillion
     isCollateOnly: true
   - category: Connectors / Pipeline / Matillion / Run Externally
-    url: /connectors/pipeline/matillion/yaml    
+    url: /connectors/pipeline/matillion/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -727,7 +727,7 @@ site_menu:
   - category: How-to Guides / Admin Guide / How to Add Custom Logo
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
   - category: How-to Guides / Admin Guide / Reindexing Search
-    url: /how-to-guides/admin-guide/Reindexing-Search  
+    url: /how-to-guides/admin-guide/Reindexing-Search
 
   - category: How-to Guides / Guide for Data Users
     url: /how-to-guides/guide-for-data-users
@@ -752,7 +752,7 @@ site_menu:
   - category: How-to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
     url: /how-to-guides/guide-for-data-users/custom
   - category: How-to Guides / Guide for Data Users / How to Customize OpenMetadata
-    url: /how-to-guides/guide-for-data-users/theme  
+    url: /how-to-guides/guide-for-data-users/theme
   - category: How-to Guides / Guide for Data Users / Overview of Announcements
     url: /how-to-guides/guide-for-data-users/announcements
   - category: How-to Guides / Guide for Data Users / How to Create an Announcement
@@ -1985,8 +1985,6 @@ site_menu:
     url: /developers/contribute/developing-a-new-connector/test-it
   - category: Developers / Contribute / Developing a New Connector / 6. Update the Documentation
     url: /developers/contribute/developing-a-new-connector/update-documentation
-  - category: Developers / Contribute / UX Style Guide
-    url: /developers/contribute/ux-style-guide
   - category: Developers / Webhooks
     url: /developers/webhooks
   - category: Developers / Bots
