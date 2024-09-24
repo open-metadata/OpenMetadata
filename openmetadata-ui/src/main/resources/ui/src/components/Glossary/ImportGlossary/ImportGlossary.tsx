@@ -12,17 +12,16 @@
  */
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import { EntityType } from '../../../enums/entity.enum';
 import { importGlossaryInCSVFormat } from '../../../rest/glossaryAPI';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { EntityImport } from '../../common/EntityImport/EntityImport.component';
+import BulkEntityImport from '../../BulkImport/BulkEntityImport.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { GlossaryImportResult } from '../ImportResult/GlossaryImportResult.component';
 import './import-glossary.less';
 
 interface Props {
@@ -32,7 +31,6 @@ interface Props {
 const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const [csvImportResult, setCsvImportResult] = useState<CSVImportResult>();
 
   const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => [
@@ -53,10 +51,13 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
     history.push(getGlossaryPath(glossaryName));
   };
 
-  const handleImportCsv = async (name: string, data: string, dryRun = true) => {
+  const handleImportCsv = async (data: string, dryRun = true) => {
     try {
-      const response = await importGlossaryInCSVFormat(name, data, dryRun);
-      setCsvImportResult(response);
+      const response = await importGlossaryInCSVFormat(
+        glossaryName,
+        data,
+        dryRun
+      );
 
       return response;
     } catch (error) {
@@ -67,7 +68,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   };
 
   return (
-    <Row className="import-glossary p-x-md" gutter={[16, 8]}>
+    <Row className="import-glossary p-x-md p-b-md" gutter={[16, 8]}>
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbList} />
       </Col>
@@ -79,17 +80,13 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
         </Typography.Title>
       </Col>
       <Col span={24}>
-        <EntityImport
-          entityName={glossaryName}
-          onCancel={handleGlossaryRedirection}
-          onImport={handleImportCsv}
-          onSuccess={handleGlossaryRedirection}>
-          {csvImportResult ? (
-            <GlossaryImportResult csvImportResult={csvImportResult} />
-          ) : (
-            <></>
-          )}
-        </EntityImport>
+        <BulkEntityImport
+          hideAddButton
+          entityType={EntityType.GLOSSARY}
+          fqn={glossaryName}
+          onSuccess={handleGlossaryRedirection}
+          onValidateCsvString={handleImportCsv}
+        />
       </Col>
     </Row>
   );
