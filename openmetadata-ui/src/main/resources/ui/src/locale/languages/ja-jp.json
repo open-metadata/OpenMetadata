@@ -575,6 +575,7 @@
     "inactive-announcement-plural": "お知らせを非表示にする",
     "incident": "Incident",
     "incident-manager": "Incident Manager",
+    "incident-plural": "Incidents",
     "incident-status": "Incident Status",
     "include": "Include",
     "include-entity": "{{entity}}を含める",
