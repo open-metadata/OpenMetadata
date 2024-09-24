@@ -246,7 +246,10 @@ const getTableFieldsFromTableDetails = (tableDetails: Table) => {
   };
 };
 
-const getTableOverview = (tableDetails: Table) => {
+const getTableOverview = (
+  tableDetails: Table,
+  additionalInfo?: Record<string, number | string>
+) => {
   const {
     fullyQualifiedName,
     owners,
@@ -346,6 +349,20 @@ const getTableOverview = (tableDetails: Table) => {
         !isUndefined(profile) && profile?.rowCount ? profile.rowCount : NO_DATA,
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.incident-plural'),
+      value: additionalInfo?.incidentCount ?? 0,
+      isLink: true,
+      url: getEntityDetailsPath(
+        EntityType.TABLE,
+        fullyQualifiedName ?? '',
+        EntityTabs.INCIDENTS
+      ),
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
     },
   ];
 
@@ -1046,11 +1063,12 @@ const getMetricOverview = (metric: Metric) => {
 
 export const getEntityOverview = (
   type: string,
-  entityDetail: EntityUnion
+  entityDetail: EntityUnion,
+  additionalInfo?: Record<string, number | string>
 ): Array<BasicEntityOverviewInfo> => {
   switch (type) {
     case ExplorePageTabs.TABLES: {
-      return getTableOverview(entityDetail as Table);
+      return getTableOverview(entityDetail as Table, additionalInfo);
     }
 
     case ExplorePageTabs.PIPELINES: {
