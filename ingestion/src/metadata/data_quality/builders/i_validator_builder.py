@@ -15,7 +15,7 @@ Validators are test classes (e.g. columnValuesToBeBetween, etc.)
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Optional, Type, Union
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -23,6 +23,7 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter import 
     RuntimeParameterSetter,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.importer import import_test_case_class
 
@@ -91,7 +92,7 @@ class IValidatorBuilder(ABC):
         self._validator = self.validator_cls(
             self.runner,
             test_case=self.test_case,
-            execution_date=int(datetime.now().timestamp() * 1000),
+            execution_date=Timestamp(int(datetime.now(tz=UTC).timestamp() * 1000)),
         )
 
     @abstractmethod
