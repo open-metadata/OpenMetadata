@@ -23,7 +23,6 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -113,9 +112,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("dataQualityConfiguration")
   private DataQualityConfiguration dataQualityConfiguration;
-
-  @JsonProperty("applications")
-  private AppsPrivateConfiguration appsPrivateConfiguration;
 
   @JsonProperty("limits")
   private LimitsConfiguration limitsConfiguration;
