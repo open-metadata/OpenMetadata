@@ -65,7 +65,7 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
-test.describe.fixme('Activity feed', () => {
+test.describe('Activity feed', () => {
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -209,7 +209,9 @@ test.describe.fixme('Activity feed', () => {
 
     await page.getByText('Accept Suggestion').click();
 
+    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, /Task resolved successfully/);
+    await waitForCountFetch;
 
     await checkTaskCount(page, 0, 2);
   });
@@ -358,7 +360,9 @@ test.describe.fixme('Activity feed', () => {
 
     await checkDescriptionInEditModal(page, secondTaskValue);
 
+    const resolveTask = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
     await page.getByText('OK').click();
+    await resolveTask;
 
     await toastNotification(page, /Task resolved successfully/);
 
@@ -366,7 +370,9 @@ test.describe.fixme('Activity feed', () => {
 
     await page.getByText('Accept Suggestion').click();
 
+    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, /Task resolved successfully/);
+    await waitForCountFetch;
 
     await checkTaskCount(page, 0, 2);
   });
@@ -390,17 +396,15 @@ test.describe.fixme('Activity feed', () => {
     expect(descriptionTask).toContain('Request to update description');
 
     // Check the editor send button is not visible and comment button is disabled when no text is added
-    expect(page.locator('[data-testid="send-button"]')).not.toBeVisible();
-    expect(
-      await page.locator('[data-testid="comment-button"]').isDisabled()
-    ).toBeTruthy();
+    await expect(page.locator('[data-testid="send-button"]')).not.toBeVisible();
+    await expect(page.locator('[data-testid="comment-button"]')).toBeDisabled();
 
     await page.fill(
       '[data-testid="editor-wrapper"] .ql-editor',
       'Test comment added'
     );
     const addComment = page.waitForResponse('/api/v1/feed/*/posts');
-    await page.getByTestId('comment-button').click({ force: true });
+    await page.getByTestId('comment-button').click();
     await addComment;
 
     // Close the task from the Button.Group, should throw error when no comment is added.
@@ -428,7 +432,9 @@ test.describe.fixme('Activity feed', () => {
     await page.getByRole('menuitem', { name: 'close' }).click();
     await commentWithCloseTask;
 
+    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, 'Task closed successfully.');
+    await waitForCountFetch;
 
     await checkTaskCount(page, 0, 1);
   });
@@ -445,10 +451,12 @@ test.describe.fixme('Activity feed', () => {
     await page.getByTestId('request-description').click();
 
     // create description task
+    const waitForCountFetch1 = page.waitForResponse('/api/v1/feed/count?**');
     const openTaskAfterDescriptionResponse =
       page.waitForResponse(TASK_OPEN_FETCH_LINK);
     await createDescriptionTask(page, value);
     await openTaskAfterDescriptionResponse;
+    await waitForCountFetch1;
 
     // open task count after description
     const openTask1 = await page.getByTestId('open-task').textContent();
@@ -460,9 +468,11 @@ test.describe.fixme('Activity feed', () => {
     await page.getByTestId('request-entity-tags').click();
 
     // create tag task
+    const waitForCountFetch2 = page.waitForResponse('/api/v1/feed/count?**');
     const openTaskAfterTagResponse = page.waitForResponse(TASK_OPEN_FETCH_LINK);
     await createTagTask(page, { ...value, tag: 'PII.None' });
     await openTaskAfterTagResponse;
+    await waitForCountFetch2;
 
     // open task count after description
     await checkTaskCount(page, 2, 0);
@@ -482,11 +492,9 @@ test.describe.fixme('Activity feed', () => {
     await page.getByRole('menuitem', { name: 'close' }).click();
     await commentWithCloseTask;
 
-    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?*');
-
+    const waitForCountFetch3 = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, 'Task closed successfully.');
-
-    await waitForCountFetch;
+    await waitForCountFetch3;
 
     // open task count after closing one task
     await checkTaskCount(page, 1, 1);
@@ -595,10 +603,6 @@ base.describe('Activity feed with Data Consumer User', () => {
       resources: ['All'],
     },
   ];
-  const viewAllUser = new UserClass();
-  const viewAllPolicy = new PolicyClass();
-  const viewAllRoles = new RolesClass();
-  let viewAllTeam: TeamClass;
 
   base.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
@@ -608,20 +612,6 @@ base.describe('Activity feed with Data Consumer User', () => {
     await entity3.create(apiContext);
     await user1.create(apiContext);
     await user2.create(apiContext);
-    await viewAllUser.create(apiContext);
-    await viewAllPolicy.create(apiContext, rules);
-    await viewAllRoles.create(apiContext, [viewAllPolicy.responseData.name]);
-    viewAllTeam = new TeamClass({
-      name: `PW%team-${id}`,
-      displayName: `PW Team ${id}`,
-      description: 'playwright team description',
-      teamType: 'Group',
-      users: [viewAllUser.responseData.id],
-      defaultRoles: viewAllRoles.responseData.id
-        ? [viewAllRoles.responseData.id]
-        : [],
-    });
-    await viewAllTeam.create(apiContext);
 
     await afterAction();
   });
@@ -633,10 +623,6 @@ base.describe('Activity feed with Data Consumer User', () => {
     await entity3.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
-    await viewAllUser.delete(apiContext);
-    await viewAllPolicy.delete(apiContext);
-    await viewAllRoles.delete(apiContext);
-    await viewAllTeam.delete(apiContext);
 
     await afterAction();
   });
@@ -758,7 +744,9 @@ base.describe('Activity feed with Data Consumer User', () => {
 
       await page2.getByText('Accept Suggestion').click();
 
+      const waitForCountFetch = page2.waitForResponse('/api/v1/feed/count?**');
       await toastNotification(page2, /Task resolved successfully/);
+      await waitForCountFetch;
 
       // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
       //   const openTask = await page2.getByTestId('open-task').textContent();
@@ -929,7 +917,29 @@ base.describe('Activity feed with Data Consumer User', () => {
 
   base(
     'Accepting task should throw error for not having edit permission',
+
     async ({ browser }) => {
+      const { afterAction, apiContext } = await performAdminLogin(browser);
+
+      const viewAllUser = new UserClass();
+      const viewAllPolicy = new PolicyClass();
+      const viewAllRoles = new RolesClass();
+
+      await viewAllUser.create(apiContext);
+      await viewAllPolicy.create(apiContext, rules);
+      await viewAllRoles.create(apiContext, [viewAllPolicy.responseData.name]);
+      const viewAllTeam = new TeamClass({
+        name: `PW%team-${id}`,
+        displayName: `PW Team ${id}`,
+        description: 'playwright team description',
+        teamType: 'Group',
+        users: [viewAllUser.responseData.id],
+        defaultRoles: viewAllRoles.responseData.id
+          ? [viewAllRoles.responseData.id]
+          : [],
+      });
+      await viewAllTeam.create(apiContext);
+
       const { page: page1, afterAction: afterActionUser1 } =
         await performUserLogin(browser, user1);
       const { page: page2, afterAction: afterActionUser2 } =
@@ -940,39 +950,52 @@ base.describe('Activity feed with Data Consumer User', () => {
         assignee: viewAllUser.responseData.name,
       };
 
-      await base.step('Create and Assign Task to user 3', async () => {
-        await redirectToHomePage(page1);
-        await entity3.visitEntityPage(page1);
+      try {
+        await base.step('Create and Assign Task to user 3', async () => {
+          await redirectToHomePage(page1);
+          await entity3.visitEntityPage(page1);
 
-        await page1.getByTestId('request-description').click();
+          await page1.getByTestId('request-description').click();
 
-        await createDescriptionTask(page1, value);
+          await createDescriptionTask(page1, value);
 
-        await afterActionUser1();
-      });
+          await afterActionUser1();
+        });
 
-      await base.step(
-        'Accept Task By user 2 should throw error for since it has only viewAll permission',
-        async () => {
-          await redirectToHomePage(page2);
+        await base.step(
+          'Accept Task By user 2 should throw error for since it has only viewAll permission',
+          async () => {
+            await redirectToHomePage(page2);
 
-          await entity3.visitEntityPage(page2);
+            await entity3.visitEntityPage(page2);
 
-          await page2.getByTestId('activity_feed').click();
+            await page2.getByTestId('activity_feed').click();
 
-          await page2.getByRole('menuitem', { name: 'Tasks' }).click();
+            const taskResponse = page2.waitForResponse(
+              '/api/v1/feed?entityLink=**type=Task&taskStatus=Open'
+            );
+            await page2.getByRole('menuitem', { name: 'Tasks' }).click();
+            await taskResponse;
 
-          await page2.getByText('Accept Suggestion').click();
+            await page2.getByText('Accept Suggestion').click();
 
-          await toastNotification(
-            page2,
-            // eslint-disable-next-line max-len
-            `Principal: CatalogPrincipal{name='${viewAllUser.responseData.name}'} operation EditDescription denied by role ${viewAllRoles.responseData.name}, policy ${viewAllPolicy.responseData.name}, rule editNotAllowed`
-          );
+            await toastNotification(
+              page2,
+              // eslint-disable-next-line max-len
+              `Principal: CatalogPrincipal{name='${viewAllUser.responseData.name}'} operation EditDescription denied by role ${viewAllRoles.responseData.name}, policy ${viewAllPolicy.responseData.name}, rule editNotAllowed`
+            );
 
-          await afterActionUser2();
-        }
-      );
+            await afterActionUser2();
+          }
+        );
+      } finally {
+        await viewAllUser.delete(apiContext);
+        await viewAllPolicy.delete(apiContext);
+        await viewAllRoles.delete(apiContext);
+        await viewAllTeam.delete(apiContext);
+
+        await afterAction();
+      }
     }
   );
 });

@@ -31,11 +31,11 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
-test.describe('My Data page', () => {
+test.describe.serial('My Data page', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
-    for (const table of TableEntities) {
+    const tablePromises = TableEntities.map(async (table) => {
       await table.create(apiContext);
       await table.patch({
         apiContext,
@@ -56,16 +56,18 @@ test.describe('My Data page', () => {
         ],
       });
       await table.followTable(apiContext, user.responseData.id);
-    }
+    });
+
+    await Promise.all(tablePromises);
+
     await afterAction();
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.delete(apiContext);
-    for (const table of TableEntities) {
-      await table.delete(apiContext);
-    }
+
+    await Promise.all(TableEntities.map((table) => table.delete(apiContext)));
     await afterAction();
   });
 

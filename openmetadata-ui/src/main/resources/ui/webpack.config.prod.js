@@ -31,6 +31,10 @@ module.exports = {
   // Input configuration
   entry: ['@babel/polyfill', path.join(__dirname, 'src/index.tsx')],
 
+  cache: {
+    type: 'filesystem', // Enable caching on filesystem
+  },
+
   // Output configuration
   output: {
     path: outputPath,
@@ -197,6 +201,14 @@ module.exports = {
       patterns: [
         {
           from: path.join(__dirname, 'public/favicon.png'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/favicons/favicon-16x16.png'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/favicons/favicon-32x32.png'),
           to: outputPath,
         },
         {
