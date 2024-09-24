@@ -206,7 +206,6 @@ class GlobalSettingsClassBase {
             ),
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
             icon: IconAPI,
-            isBeta: true,
           },
           {
             label: t('label.data-observability'),
