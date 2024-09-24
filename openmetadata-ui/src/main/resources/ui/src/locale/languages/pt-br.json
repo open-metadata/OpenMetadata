@@ -575,6 +575,7 @@
     "inactive-announcement-plural": "Anúncios Inativos",
     "incident": "Incidente",
     "incident-manager": "Gestão de Incidente",
+    "incident-plural": "Incidents",
     "incident-status": "Status do Incidente",
     "include": "Incluir",
     "include-entity": "Incluir {{entity}}",
