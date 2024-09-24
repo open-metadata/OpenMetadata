@@ -112,6 +112,8 @@ const AppRouter = () => {
         {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
       </Route>
 
+      {/* When authenticating from an SSO provider page (e.g., SAML Apps), if the user is already logged in, 
+          the callbacks should be available. This ensures consistent behavior across different authentication scenarios. */}
       {callbackComponent && (
         <Route component={callbackComponent} path={ROUTES.CALLBACK} />
       )}
