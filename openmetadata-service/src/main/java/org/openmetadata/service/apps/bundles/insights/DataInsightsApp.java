@@ -24,6 +24,7 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
@@ -32,10 +33,12 @@ import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataQuality.DataQualityWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.WebAnalyticsWorkflow;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobExecutionContext;
@@ -61,6 +64,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
           "storedProcedure",
           "databaseSchema",
           "database",
+          "testSuite",
           "chart",
           "dashboard",
           "dashboardDataModel",
@@ -72,6 +76,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
           "dataProduct",
           "glossaryTerm",
           "tag");
+
+  public final Set<String> dataQualityEntities =
+      Set.of(Entity.TEST_CASE_RESULT, Entity.TEST_CASE_RESOLUTION_STATUS);
 
   public DataInsightsApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -97,6 +104,42 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
   public static String getDataStreamName(String dataAssetType) {
     return String.format("%s-%s", DATA_ASSET_INDEX_PREFIX, dataAssetType).toLowerCase();
+  }
+
+  private void createIndexInternal(String entityType) throws IOException {
+    IndexMapping resultIndexType = searchRepository.getIndexMapping(entityType);
+    if (!searchRepository.indexExists(resultIndexType)) {
+      searchRepository.createIndex(resultIndexType);
+    }
+    DataInsightsSearchInterface searchInterface = getSearchInterface();
+    if (!searchInterface.dataAssetDataStreamExists(getDataStreamName(entityType))) {
+      searchRepository
+          .getSearchClient()
+          .addIndexAlias(resultIndexType, getDataStreamName(entityType));
+    }
+  }
+
+  private void deleteIndexInternal(String entityType) {
+    IndexMapping resultIndexType = searchRepository.getIndexMapping(entityType);
+    if (searchRepository.indexExists(resultIndexType)) {
+      searchRepository.deleteIndex(resultIndexType);
+    }
+  }
+
+  private void createDataQualityDataIndex() {
+    try {
+      createIndexInternal(Entity.TEST_CASE_RESULT);
+      createIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
+    } catch (IOException ex) {
+      LOG.error(
+          "Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index for DataQuality.",
+          ex);
+    }
+  }
+
+  private void deleteDataQualityDataIndex() {
+    deleteIndexInternal(Entity.TEST_CASE_RESULT);
+    deleteIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
   private void createDataAssetsDataStream() {
@@ -133,6 +176,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   public void init(App app) {
     super.init(app);
     createDataAssetsDataStream();
+    createDataQualityDataIndex();
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
 
@@ -176,6 +220,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
       if (recreateDataAssetsIndex.isPresent() && recreateDataAssetsIndex.get().equals(true)) {
         deleteDataAssetsDataStream();
         createDataAssetsDataStream();
+        deleteDataQualityDataIndex();
+        createDataQualityDataIndex();
       }
 
       WorkflowStats webAnalyticsStats = processWebAnalytics();
@@ -186,6 +232,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
       WorkflowStats dataAssetsStats = processDataAssets();
       updateJobStatsWithWorkflowStats(dataAssetsStats);
+
+      WorkflowStats dataQualityStats = processDataQuality();
+      updateJobStatsWithWorkflowStats(dataQualityStats);
 
       if (webAnalyticsStats.hasFailed()
           || costAnalysisStats.hasFailed()
@@ -273,6 +322,23 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
 
     return workflowStats;
+  }
+
+  private WorkflowStats processDataQuality() {
+    for (String entityType : dataQualityEntities) {
+      DataQualityWorkflow workflow =
+          new DataQualityWorkflow(
+              timestamp, batchSize, backfill, entityType, collectionDAO, searchRepository);
+
+      try {
+        workflow.process();
+      } catch (SearchIndexException ex) {
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setFailure(ex.getIndexingError());
+      }
+    }
+
+    return DataQualityWorkflow.getWorkflowStats();
   }
 
   private void updateJobStatsWithWorkflowStats(WorkflowStats workflowStats) {
