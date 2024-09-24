@@ -22,6 +22,7 @@ import SamlCallback from '../../pages/SamlCallback';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
+import CallbackRouter from './CallbackRouter';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const SigninPage = withSuspenseFallback(
@@ -88,6 +89,8 @@ export const UnAuthenticatedAppRouter = () => {
 
       {/* keep this route before any conditional JSX.Element rendering */}
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+
+      <CallbackRouter />
 
       {isBasicAuthProvider && (
         <>
