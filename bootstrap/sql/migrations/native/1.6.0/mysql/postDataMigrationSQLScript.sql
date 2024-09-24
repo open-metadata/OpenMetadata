@@ -1,3 +1,9 @@
+-- Delete data quality records with no linked test case FQN in the test_case table
+DELETE dqdts
+FROM data_quality_data_time_series dqdts
+LEFT JOIN test_case tc ON dqdts.entityFQNHash = tc.fqnHash
+WHERE tc.fqnHash IS NULL;
+
 -- Add FQN and UUID to data_quality_data_time_series records
 UPDATE data_quality_data_time_series dqdts
 INNER JOIN test_case tc ON dqdts.entityFQNHash = tc.fqnHash

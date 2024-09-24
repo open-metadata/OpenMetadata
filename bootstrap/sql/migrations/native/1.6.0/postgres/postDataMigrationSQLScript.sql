@@ -1,3 +1,11 @@
+-- Delete data quality records with no linked test case FQN in the test_case table
+DELETE FROM data_quality_data_time_series dqdts
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM test_case tc
+    WHERE dqdts.entityFQNHash = tc.fqnHash
+);
+
 -- Add FQN and UUID to data_quality_data_time_series records
 UPDATE data_quality_data_time_series dqdts
 SET json = jsonb_set(
