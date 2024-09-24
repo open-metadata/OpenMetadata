@@ -4,7 +4,7 @@ slug: /connectors/pipeline/dbtcloud
 ---
 
 {% connectorDetailsHeader
-name="DBTCloud"
+name="dbt Cloud"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]

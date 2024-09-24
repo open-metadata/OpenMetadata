@@ -1,30 +1,30 @@
 ---
-title: Datalake
-slug: /connectors/database/datalake
+title: S3 Datalake
+slug: /connectors/database/s3-datalake
 ---
 
 {% connectorDetailsHeader
-name="Datalake"
+name="S3 Datalake"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "dbt", "Tags", "Stored Procedures"]
 / %}
 
-In this section, we provide guides and references to use the Datalake connector.
+In this section, we provide guides and references to use the S3 Datalake connector.
 
-Configure and schedule Datalake metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule S3 Datalake metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/datalake/yaml"} /%}
+{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/s3-datalake/yaml"} /%}
 
 ## Requirements
 
 {% note %}
-The Datalake connector supports extracting metadata from file types `JSON`, `CSV`, `TSV` & `Parquet`.
+The S3 Datalake connector supports extracting metadata from file types `JSON`, `CSV`, `TSV` & `Parquet`.
 {% /note %}
 
 ### S3 Permissions
@@ -49,13 +49,6 @@ To execute metadata extraction AWS account should have enough access to fetch re
     ]
 }
 ```
-
-### ADLS Permissions
-
-To extract metadata from Azure ADLS (Storage Account - StorageV2), you will need an **App Registration** with the following
-permissions on the Storage Account:
-- Storage Blob Data Contributor
-- Storage Queue Data Contributor
 
 ## Metadata Ingestion
 
@@ -134,45 +127,6 @@ Find more information about the [Role Session Name](https://docs.aws.amazon.com/
 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 
-#### Connection Details for GCS
-
-- **Bucket Name**: A bucket name in DataLake is a unique identifier used to organize and store data objects.
-  It's similar to a folder name, but it's used for object storage rather than file storage.
-
-- **Prefix**: The prefix of a data source in datalake refers to the first part of the data path that identifies the source or origin of the data. It's used to organize and categorize data within the datalake, and can help users easily locate and access the data they need.
-
-**GCS Credentials**
-
-We support two ways of authenticating to GCS:
-
-1. Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
-   1. Credentials type, e.g. `service_account`.
-   2. Project ID
-   3. Private Key ID
-   4. Private Key
-   5. Client Email
-   6. Client ID
-   7. Auth URI, [https://accounts.google.com/o/oauth2/auth](https://accounts.google.com/o/oauth2/auth) by default
-   8. Token URI, [https://oauth2.googleapis.com/token](https://oauth2.googleapis.com/token) by default
-   9. Authentication Provider X509 Certificate URL, [https://www.googleapis.com/oauth2/v1/certs](https://www.googleapis.com/oauth2/v1/certs) by default
-   10. Client X509 Certificate URL
-
-#### Connection Details for Azure
-
-- **Azure Credentials**
-
-  - **Client ID** : Client ID of the data storage account
-  - **Client Secret** : Client Secret of the account
-  - **Tenant ID** : Tenant ID under which the data storage account falls
-  - **Account Name** : Account Name of the data Storage
-
-- **Required Roles**
-
-  Please make sure the following roles associated with the data storage account.
-   - `Storage Blob Data Contributor`
-   - `Storage Queue Data Contributor`
-
-The current approach for authentication is based on `app registration`, reach out to us on [slack](https://slack.open-metadata.org/) if you find the need for another auth system
 
 {% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
 
