@@ -298,10 +298,10 @@ class GlobalSettingsClassBase {
             icon: PoliciesIcon,
           },
           {
-            label: t('label.rbac-Search'),
-            description: t('message.page-sub-header-for-rbac-search'),
+            label: t('label.search-rbac'),
+            description: t('message.page-sub-header-for-search-rbac'),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.RBAC_SEARCH}`,
+            key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.SEARCH_RBAC}`,
             icon: PoliciesIcon,
           },
         ],

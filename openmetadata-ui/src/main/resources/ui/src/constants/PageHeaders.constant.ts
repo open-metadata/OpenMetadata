@@ -198,6 +198,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.login'),
     subHeader: i18n.t('message.page-sub-header-for-login-configuration'),
   },
+  SEARCH_RBAC: {
+    header: i18n.t('label.search-rbac'),
+    subHeader: i18n.t('message.page-sub-header-for-search-rbac'),
+  },
   OM_HEALTH: {
     header: i18n.t('label.health-check'),
     subHeader: i18n.t('message.page-sub-header-for-om-health-configuration'),

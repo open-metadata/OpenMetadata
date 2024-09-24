@@ -61,18 +61,10 @@ export const testEmailConnection = async (data: { email: string }) => {
   return response;
 };
 
-export const getSearchSettings = async () => {
-  const response = await axiosClient.get<SearchSettings>(
-    `/system/settings/search`
+export const getSearchSettings = async (): Promise<SearchSettings> => {
+  const response = await axiosClient.get<Settings>(
+    `/system/settings/${SettingType.SearchSettings}`
   );
 
-  return response.data;
-};
-
-export const updateSearchSettings = async () => {
-  const response = await axiosClient.get<SearchSettings>(
-    `/system/settings/searchSettings`
-  );
-
-  return response.data;
+  return response.data.config_value as SearchSettings;
 };
