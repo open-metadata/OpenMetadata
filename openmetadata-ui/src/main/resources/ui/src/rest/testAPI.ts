@@ -111,17 +111,6 @@ const testSuiteUrl = '/dataQuality/testSuites';
 const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
-export const getListTestCase = async (params?: ListTestCaseParams) => {
-  const response = await APIClient.get<PagingResponse<TestCase[]>>(
-    testCaseUrl,
-    {
-      params,
-    }
-  );
-
-  return response.data;
-};
-
 export const getListTestCaseBySearch = async (
   params?: ListTestCaseParamsBySearch
 ) => {
