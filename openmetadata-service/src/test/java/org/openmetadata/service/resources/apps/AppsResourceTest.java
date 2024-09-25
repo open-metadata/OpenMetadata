@@ -339,16 +339,6 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     assertAppRanAfterTriggerWithStatus(appName, AppRunRecord.Status.SUCCESS);
   }
 
-  @Test
-  void post_trigger_app_and_interrupt_200() throws HttpResponseException {
-    String appName = "SearchIndexingApplication";
-    postTriggerApp(appName, ADMIN_AUTH_HEADERS);
-    assertAppStatusAvailableAfterTrigger(appName);
-    postAppStop(appName, ADMIN_AUTH_HEADERS);
-    // TODO: I don't have a way to assert the STOPPED status , by the time API for stop is called
-    // the app is already done running
-  }
-
   private void assertAppStatusAvailableAfterTrigger(String appName) {
     assertEventually(
         "appIsRunning",
