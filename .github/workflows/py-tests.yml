@@ -111,21 +111,15 @@ jobs:
           ingestion_dependency: "mysql,elasticsearch,sample-data"
 
       - name: Run Python Tests & record coverage
+        id: test
         run: |
           source env/bin/activate
           make NOX_FLAGS='-s "${{ matrix.session }}"' run_python_tests
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
 
-      - name: Upload tests artifact
-        if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-${{ matrix.session }}
-          path: ingestion/coverage/**/.coverage.*
-
       - name: Upload coverage artifact for Python tests
-        if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
+        if: steps.test.outcome == 'success' && env.DEBUG == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.session }}
@@ -164,37 +158,25 @@ jobs:
           make install_all install_test
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       - name: Generate report
         run: |
-          if [ -d "artifacts/coverage/3.9" ] && [ "$(ls -A artifacts/coverage/3.9/.coverage.*)" ]; then
-            mkdir -p coverage/3.9
-            for file in artifacts/coverage/3.9/.coverage.*; do
-              cp $file coverage/3.9/ ;
-            done
-          else
+          if [ ! -d "artifacts/coverage/3.9" ] || [ -z "$(ls -A artifacts/coverage/3.9/.coverage.*)" ]; then
             echo "No coverage files found in artifacts/coverage/3.9"
             exit 1
           fi
       
-          mkdir -p ingestion/junit
-          if [ -d "artifacts/junit/3.9" ]; then
-            for folder in artifacts/junit/3.9/tests-*; do
-              cp -rT $folder/ ingestion/junit ;
-            done
-          fi
-      
           source env/bin/activate
-          python scripts/rewrite_coverage_files.py coverage env/lib/python3.9/site-packages/metadata
-          coverage combine --rcfile=ingestion/pyproject.toml --keep -a coverage/
+          python scripts/rewrite_coverage_files.py artifacts/coverage/3.9 env/lib/python3.9/site-packages/metadata
+          coverage combine --rcfile=ingestion/pyproject.toml --keep -a artifacts/coverage/3.9
           coverage report --rcfile=ingestion/pyproject.toml
           coverage xml --rcfile=ingestion/pyproject.toml -o ingestion/coverage.xml
           sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
           sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
-        shell: bash
+             shell: bash
 
       - name: Push Results to Sonar
         uses: sonarsource/sonarcloud-github-action@master
