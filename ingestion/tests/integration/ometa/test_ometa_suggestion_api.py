@@ -154,6 +154,14 @@ class OMetaSuggestionTest(TestCase):
             ),
         )
 
+        self.metadata.patch_description(
+            entity=Table,
+            source=self.metadata.get_by_name(
+                entity=Table, fqn=self.table.fullyQualifiedName.root
+            ),
+            description="I come from a patch",
+        )
+
         # Suggestions only support POST (not PUT)
         suggestion = self.metadata.create(suggestion_request)
 
@@ -162,7 +170,7 @@ class OMetaSuggestionTest(TestCase):
         updated_table: Table = self.metadata.get_by_name(
             entity=Table, fqn=self.table.fullyQualifiedName.root
         )
-        assert not updated_table.description
+        assert updated_table.description.root == "I come from a patch"
 
         # We create a new suggestion and accept it this time
         suggestion_request = CreateSuggestionRequest(

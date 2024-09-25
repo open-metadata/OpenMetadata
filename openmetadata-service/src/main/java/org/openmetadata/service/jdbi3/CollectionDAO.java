@@ -5107,7 +5107,8 @@ public interface CollectionDAO {
     void deleteByFQN(@BindUUID("fqnHash") String fullyQualifiedName);
 
     @ConnectionAwareSqlUpdate(
-        value = "DELETE FROM suggestions suggestions WHERE JSON_EXTRACT(json, '$.createdBy.id') = :createdBy",
+        value =
+            "DELETE FROM suggestions suggestions WHERE JSON_EXTRACT(json, '$.createdBy.id') = :createdBy",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value = "DELETE FROM suggestions suggestions WHERE json #> '{createdBy,id}') = :createdBy",
