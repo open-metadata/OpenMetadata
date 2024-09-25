@@ -115,9 +115,7 @@ function FeedCardFooter({
               {postLength <= 1
                 ? t('label.one-reply')
                 : t('label.number-reply-plural', {
-                    number: postLength.toLocaleString(undefined, {
-                      minimumIntegerDigits: 2,
-                    }),
+                    number: postLength,
                   })}
             </Typography.Text>
             {latestReplyTimeStamp && (
