@@ -37,8 +37,8 @@ const queryData = {
   tagFqn: 'PersonalData.Personal',
   tagName: 'Personal',
   queryUsedIn: {
-    table1: table2.entity.name,
-    table2: table3.entity.name,
+    table1: table2.entity.displayName,
+    table2: table3.entity.displayName,
   },
 };
 
