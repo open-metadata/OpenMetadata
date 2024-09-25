@@ -7,7 +7,7 @@ slug: /how-to-guides/guide-for-data-users/data-ownership
 
 ## Data Asset Ownership
 
-In OpenMetadata, either a **team** or an **individual user** can be the owner of a data asset. Owners have access to perform all the operations on a data asset. For example, edit description, tags, glossary terms, etc.
+In OpenMetadata, either a **team** or **multiple user** can be the owner of a data asset. Owners have access to perform all the operations on a data asset. For example, edit description, tags, glossary terms, etc.
 
 ## Assign Data Ownership
 

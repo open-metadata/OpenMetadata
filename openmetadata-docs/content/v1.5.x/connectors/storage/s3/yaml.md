@@ -1,10 +1,10 @@
 ---
-title: Run the S3 Connector Externally
+title: Run the S3 Storage Connector Externally
 slug: /connectors/storage/s3/yaml
 ---
 
 {% connectorDetailsHeader
-name="S3"
+name="S3 Storage"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]

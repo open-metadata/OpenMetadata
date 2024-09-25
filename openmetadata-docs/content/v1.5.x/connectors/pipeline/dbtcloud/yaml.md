@@ -4,7 +4,7 @@ slug: /connectors/pipeline/dbtcloud/yaml
 ---
 
 {% connectorDetailsHeader
-name="DBTCloud"
+name="dbt Cloud"
 stage="PROD"
 platform="Collate"
 availableFeatures=["Pipelines", "Pipeline Status", "Tags"]
