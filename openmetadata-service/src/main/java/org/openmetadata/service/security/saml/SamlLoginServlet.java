@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.security.saml;
 
+import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.checkAndStoreRedirectUriInSession;
+
 import com.onelogin.saml2.Auth;
 import java.io.IOException;
 import javax.servlet.annotation.WebServlet;
@@ -33,6 +35,7 @@ public class SamlLoginServlet extends HttpServlet {
       throws IOException {
     Auth auth;
     try {
+      checkAndStoreRedirectUriInSession(req);
       auth = new Auth(SamlSettingsHolder.getInstance().getSaml2Settings(), req, resp);
       auth.login(SamlSettingsHolder.getInstance().getRelayState());
     } catch (Exception e) {
