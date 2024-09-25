@@ -4,7 +4,7 @@ slug: /connectors/pipeline/dbtcloud
 ---
 
 {% connectorDetailsHeader
-name="DBTCloud"
+name="dbt Cloud"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
@@ -52,9 +52,9 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
     file="/v1.5/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "DBTCloud", 
-        selectServicePath: "/images/v1.5/connectors/dbtcloud/select-service.webp",
-        addNewServicePath: "/images/v1.5/connectors/dbtcloud/add-new-service.webp",
-        serviceConnectionPath: "/images/v1.5/connectors/dbtcloud/service-connection.webp",
+        selectServicePath: "/images/v1.5/connectors/dbtcloud/select-service.png",
+        addNewServicePath: "/images/v1.5/connectors/dbtcloud/add-new-service.png",
+        serviceConnectionPath: "/images/v1.5/connectors/dbtcloud/service-connection.png",
     } 
 /%}
 
