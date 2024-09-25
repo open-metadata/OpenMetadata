@@ -591,13 +591,6 @@ export const getStatisticsDisplayValue = (
   return formatNumberWithComma(displayValue);
 };
 
-export const formTwoDigitNumber = (number: number) => {
-  return number.toLocaleString('en-US', {
-    minimumIntegerDigits: 2,
-    useGrouping: false,
-  });
-};
-
 export const digitFormatter = (value: number) => {
   // convert 1000 to 1k
   return Intl.NumberFormat('en', {

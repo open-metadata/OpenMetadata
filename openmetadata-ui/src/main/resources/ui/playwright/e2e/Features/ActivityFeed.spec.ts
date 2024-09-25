@@ -281,7 +281,7 @@ test.describe('Activity feed', () => {
       page.locator(
         '[data-testid="message-container"] .active [data-testid="reply-count"]'
       )
-    ).toContainText('04 Replies');
+    ).toContainText('4 Replies');
 
     // Deleting last 2 comments from the Feed
     const feedReplies = page.locator(
@@ -305,7 +305,7 @@ test.describe('Activity feed', () => {
       page.locator(
         '[data-testid="message-container"] .active [data-testid="reply-count"]'
       )
-    ).toContainText('02 Replies');
+    ).toContainText('2 Replies');
   });
 
   test('Update Description Task on Columns', async ({ page }) => {
@@ -581,7 +581,7 @@ test.describe('Activity feed', () => {
 
     expect(
       page.locator(`${FIRST_FEED_SELECTOR} [data-testid="reply-count"]`)
-    ).toContainText('01 Reply');
+    ).toContainText('1 Reply');
   });
 });
 

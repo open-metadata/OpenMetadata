@@ -193,9 +193,9 @@ describe('TableSummary component tests', () => {
     expect(testsPassedLabel).toBeInTheDocument();
     expect(testsAbortedLabel).toBeInTheDocument();
     expect(testsFailedLabel).toBeInTheDocument();
-    expect(testsPassedValue.textContent).toBe('00');
-    expect(testsAbortedValue.textContent).toBe('00');
-    expect(testsFailedValue.textContent).toBe('00');
+    expect(testsPassedValue.textContent).toBe('0');
+    expect(testsAbortedValue.textContent).toBe('0');
+    expect(testsFailedValue.textContent).toBe('0');
   });
 
   it('column test case count should appear', async () => {
@@ -221,8 +221,8 @@ describe('TableSummary component tests', () => {
     const testsAbortedValue = screen.getByTestId('test-aborted-value');
     const testsFailedValue = screen.getByTestId('test-failed-value');
 
-    expect(testsPassedValue.textContent).toBe('03');
-    expect(testsAbortedValue.textContent).toBe('01');
-    expect(testsFailedValue.textContent).toBe('01');
+    expect(testsPassedValue.textContent).toBe('3');
+    expect(testsAbortedValue.textContent).toBe('1');
+    expect(testsFailedValue.textContent).toBe('1');
   });
 });
