@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as setup } from '@playwright/test';
+import { expect, test as setup } from '@playwright/test';
 import { JWT_EXPIRY_TIME_MAP } from '../constant/login';
+import { GlobalSettingOptions } from '../constant/settings';
 import { AdminClass } from '../support/user/AdminClass';
 import { getApiContext } from '../utils/common';
 import { updateJWTTokenExpiryTime } from '../utils/login';
+import { settingClick } from '../utils/sidebar';
 import { removeOrganizationPolicyAndRole } from '../utils/team';
 const adminFile = 'playwright/.auth/admin.json';
 
@@ -32,6 +34,12 @@ setup('authenticate as admin', async ({ page }) => {
   await page.waitForURL('**/signin');
   await admin.login(page);
   await page.waitForURL('**/my-data');
+
+  await settingClick(page, GlobalSettingOptions.SEARCH_RBAC);
+
+  await page.getByRole('switch').click();
+
+  await expect(page.getByText('Search RBAC updated')).toBeVisible();
 
   // End of authentication steps.
   await page.context().storageState({ path: adminFile });

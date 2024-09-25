@@ -74,11 +74,13 @@ test.describe.serial('Persona operations', () => {
 
     await page.locator(descriptionBox).fill(PERSONA_DETAILS.description);
 
-    const userResponse = page.waitForResponse('/api/v1/users?*');
+    const userListResponse = page.waitForResponse(
+      '/api/v1/users?limit=*&isBot=false*'
+    );
     await page.getByTestId('add-users').click();
-    await userResponse;
+    await userListResponse;
 
-    await page.waitForSelector('[data-testid="selectable-list"]');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     const searchUser = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(
@@ -86,8 +88,8 @@ test.describe.serial('Persona operations', () => {
       )}*`
     );
     await page.getByTestId('searchbar').fill(user.responseData.displayName);
-
     await searchUser;
+
     await page
       .getByRole('listitem', { name: user.responseData.displayName })
       .click();
