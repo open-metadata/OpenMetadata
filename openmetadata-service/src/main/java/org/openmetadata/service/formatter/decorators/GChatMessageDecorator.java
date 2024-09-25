@@ -16,10 +16,12 @@ package org.openmetadata.service.formatter.decorators;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
+import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage.*;
 import org.openmetadata.service.exception.UnhandledServerException;
 
 public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
@@ -72,7 +74,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
   @Override
   public GChatMessage buildEntityMessage(String publisherName, ChangeEvent event) {
-    return getGChatMessage(createEntityMessage(publisherName, event));
+    return getGChatMessage(publisherName, event, createEntityMessage(publisherName, event));
   }
 
   @Override
@@ -82,62 +84,79 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
   @Override
   public GChatMessage buildThreadMessage(String publisherName, ChangeEvent event) {
-    return getGChatMessage(createThreadMessage(publisherName, event));
+    return getGChatMessage(publisherName, event, createThreadMessage(publisherName, event));
   }
 
-  private GChatMessage getGChatMessage(OutgoingMessage outgoingMessage) {
-    if (!outgoingMessage.getMessages().isEmpty()) {
-      GChatMessage gChatMessage = new GChatMessage();
-      GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
-      GChatMessage.Card card = new GChatMessage.Card();
-      GChatMessage.Section section = new GChatMessage.Section();
-
-      // Header
-      gChatMessage.setText("Change Event from OpenMetadata");
-      GChatMessage.CardHeader cardHeader = new GChatMessage.CardHeader();
-      cardHeader.setTitle(outgoingMessage.getHeader());
-      card.setHeader(cardHeader);
-
-      // Attachments
-      List<GChatMessage.Widget> widgets = new ArrayList<>();
-      outgoingMessage.getMessages().forEach(m -> widgets.add(getGChatWidget(m)));
-      section.setWidgets(widgets);
-      card.setSections(List.of(section));
-      cardsV2.setCard(card);
-      gChatMessage.setCardsV2(List.of(cardsV2));
-
-      return gChatMessage;
+  private GChatMessage getGChatMessage(
+      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+    if (outgoingMessage.getMessages().isEmpty()) {
+      throw new UnhandledServerException("No messages found for the event");
     }
-    throw new UnhandledServerException("No messages found for the event");
+
+    return createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
   }
 
   private GChatMessage getGChatTestMessage(String publisherName) {
-    if (!publisherName.isEmpty()) {
-      GChatMessage gChatMessage = new GChatMessage();
-      GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
-      GChatMessage.Card card = new GChatMessage.Card();
-      GChatMessage.Section section = new GChatMessage.Section();
-
-      // Header
-      gChatMessage.setText(
-          "This is a test message from OpenMetadata to confirm your GChat destination is configured correctly.");
-      GChatMessage.CardHeader cardHeader = new GChatMessage.CardHeader();
-      cardHeader.setTitle("Alert: " + publisherName);
-      cardHeader.setSubtitle("GChat destination test successful.");
-
-      card.setHeader(cardHeader);
-      card.setSections(List.of(section));
-      cardsV2.setCard(card);
-      gChatMessage.setCardsV2(List.of(cardsV2));
-
-      return gChatMessage;
+    if (publisherName.isEmpty()) {
+      throw new UnhandledServerException("Publisher name not found.");
     }
-    throw new UnhandledServerException("Publisher name not found.");
+
+    return createConnectionTestMessage(publisherName);
   }
 
-  private GChatMessage.Widget getGChatWidget(String message) {
-    GChatMessage.Widget widget = new GChatMessage.Widget();
-    widget.setTextParagraph(new GChatMessage.TextParagraph(message));
-    return widget;
+  public GChatMessage createGeneralChangeEventMessage(
+      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+    Header header = new Header("Change Event Details", "https://imgur.com/kOOPEG4.png", "IMAGE");
+
+    List<Widget> detailsWidgets =
+        List.of(
+            createWidget("Event Type:", event.getEventType().value()),
+            createWidget("Updated By:", event.getUserName()),
+            createWidget("Entity Type:", event.getEntityType()),
+            createWidget("Publisher:", publisherName),
+            createWidget("Time:", new Date(event.getTimestamp()).toString()));
+
+    List<Widget> additionalMessageWidgets =
+        outgoingMessage.getMessages().stream()
+            .map(message -> new Widget(new TextParagraph(message)))
+            .toList();
+
+    Section detailsSection = new Section(detailsWidgets);
+    Section messageSection = new Section(additionalMessageWidgets);
+    Section fqnSection =
+        new Section(List.of(createWidget("FQN:", getFQNForChangeEventEntity(event))));
+    Section footerSection =
+        new Section(List.of(new Widget(new TextParagraph("Change Event By OpenMetadata"))));
+
+    Card card =
+        new Card(header, List.of(detailsSection, fqnSection, messageSection, footerSection));
+    return new GChatMessage(List.of(card));
+  }
+
+  public GChatMessage createConnectionTestMessage(String publisherName) {
+    Header header =
+        new Header("Connection Successful \u2705", "https://imgur.com/kOOPEG4.png", "IMAGE");
+
+    Widget publisherWidget = createWidget("Publisher:", publisherName);
+
+    Widget descriptionWidget =
+        new Widget(
+            new TextParagraph(
+                "This is a Test Message, receiving this message confirms that you have successfully configured OpenMetadata to receive alerts."));
+
+    Widget footerWidget = new Widget(new TextParagraph("Change Event By OpenMetadata."));
+
+    Section publisherSection = new Section(List.of(publisherWidget));
+    Section descriptionSection = new Section(List.of(descriptionWidget));
+    Section footerSection = new Section(List.of(footerWidget));
+
+    Card card =
+        new Card(header, Arrays.asList(publisherSection, descriptionSection, footerSection));
+
+    return new GChatMessage(List.of(card));
+  }
+
+  private Widget createWidget(String label, String content) {
+    return new Widget(new TextParagraph(String.format(getBoldWithSpace(), label) + content));
   }
 }

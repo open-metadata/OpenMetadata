@@ -27,15 +27,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackAttachment;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -410,25 +406,6 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     }
 
     return statusString.toString();
-  }
-
-  private String getFQNForChangeEventEntity(ChangeEvent event) {
-    return Optional.ofNullable(event.getEntityFullyQualifiedName())
-        .filter(fqn -> !CommonUtil.nullOrEmpty(fqn))
-        .orElseGet(
-            () -> {
-              EntityInterface entityInterface = getEntity(event);
-              String fqn = entityInterface.getFullyQualifiedName();
-
-              if (CommonUtil.nullOrEmpty(fqn)) {
-                EntityInterface result =
-                    Entity.getEntity(
-                        event.getEntityType(), entityInterface.getId(), "id", Include.NON_DELETED);
-                fqn = result.getFullyQualifiedName();
-              }
-
-              return fqn;
-            });
   }
 
   private String buildClickableEntityUrl(String entityUrl) {

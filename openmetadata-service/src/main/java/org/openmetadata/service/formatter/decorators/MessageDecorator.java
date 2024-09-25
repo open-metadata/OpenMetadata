@@ -27,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.common.utils.CommonUtil;
@@ -105,6 +106,25 @@ public interface MessageDecorator<T> {
     }
 
     return getEntityUrl(entityType, fqn, "");
+  }
+
+  default String getFQNForChangeEventEntity(ChangeEvent event) {
+    return Optional.ofNullable(event.getEntityFullyQualifiedName())
+        .filter(fqn -> !CommonUtil.nullOrEmpty(fqn))
+        .orElseGet(
+            () -> {
+              EntityInterface entityInterface = getEntity(event);
+              String fqn = entityInterface.getFullyQualifiedName();
+
+              if (CommonUtil.nullOrEmpty(fqn)) {
+                EntityInterface result =
+                    Entity.getEntity(
+                        event.getEntityType(), entityInterface.getId(), "id", Include.NON_DELETED);
+                fqn = result.getFullyQualifiedName();
+              }
+
+              return fqn;
+            });
   }
 
   default String buildThreadUrl(

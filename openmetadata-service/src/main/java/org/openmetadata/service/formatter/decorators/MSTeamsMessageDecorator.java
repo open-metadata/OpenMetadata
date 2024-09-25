@@ -14,18 +14,12 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
-import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.AdaptiveCardContent;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.Attachment;
@@ -260,6 +254,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
                         .size("Small")
                         .horizontalAlignment("Center")
                         .spacing("Medium")
+                        .separator(true)
                         .build()))
             .build();
 
@@ -273,25 +268,6 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         TeamsMessage.builder().type("message").attachments(List.of(attachment)).build();
 
     return messagePayload;
-  }
-
-  private String getFQNForChangeEventEntity(ChangeEvent event) {
-    return Optional.ofNullable(event.getEntityFullyQualifiedName())
-        .filter(fqn -> !CommonUtil.nullOrEmpty(fqn))
-        .orElseGet(
-            () -> {
-              EntityInterface entityInterface = getEntity(event);
-              String fqn = entityInterface.getFullyQualifiedName();
-
-              if (CommonUtil.nullOrEmpty(fqn)) {
-                EntityInterface result =
-                    Entity.getEntity(
-                        event.getEntityType(), entityInterface.getId(), "id", Include.NON_DELETED);
-                fqn = result.getFullyQualifiedName();
-              }
-
-              return fqn;
-            });
   }
 
   private TeamsMessage.Fact createFact(String title, String value) {
