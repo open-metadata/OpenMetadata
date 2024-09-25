@@ -165,7 +165,6 @@ import os.org.opensearch.index.query.QueryStringQueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
 import os.org.opensearch.index.query.ScriptQueryBuilder;
 import os.org.opensearch.index.query.TermQueryBuilder;
-import os.org.opensearch.index.query.TermsQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
@@ -336,22 +335,6 @@ public class OpenSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder =
         getSearchSourceBuilder(
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
-
-    // Add Domain filter
-    if (request.isApplyDomainFilter()) {
-      if (!nullOrEmpty(request.getDomains())) {
-        TermsQueryBuilder domainFilter =
-            QueryBuilders.termsQuery("domain.fullyQualifiedName", request.getDomains());
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(domainFilter));
-      } else {
-        // Else condition to list entries where domain field is null
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery()
-                .must(searchSourceBuilder.query())
-                .mustNot(QueryBuilders.existsQuery("domain.fullyQualifiedName")));
-      }
-    }
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
@@ -2293,6 +2276,7 @@ public class OpenSearchClient implements SearchClient {
                 .getEnableAccessControl())
         && subjectContext != null
         && !subjectContext.isAdmin()
+        && !subjectContext.isBot()
         && rbacConditionEvaluator != null) {
       OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQuery != null) {
