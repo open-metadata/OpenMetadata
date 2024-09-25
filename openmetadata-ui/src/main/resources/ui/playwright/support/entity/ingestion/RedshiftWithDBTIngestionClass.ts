@@ -51,6 +51,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     const redshiftDatabase = process.env.PLAYWRIGHT_REDSHIFT_DATABASE ?? '';
 
     this.filterPattern = 'sales';
+    this.entityFQN = `${REDSHIFT.serviceName}.${redshiftDatabase}.${this.schemaFilterPattern}.${REDSHIFT.tableName}`;
     this.dbtEntityFqn = `${REDSHIFT.serviceName}.${redshiftDatabase}.${this.schemaFilterPattern}.${REDSHIFT.DBTTable}`;
   }
 
