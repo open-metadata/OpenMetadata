@@ -68,3 +68,17 @@ class OMetaSuggestionsMixin:
             f"entityFQN={model_str(fqn)}&"
             f"suggestionType={suggestion_type.value}",
         )
+
+    def reject_all_suggestions(
+        self,
+        fqn: Union[str, FullyQualifiedEntityName],
+        user_id: Union[str, basic.Uuid],
+        suggestion_type: SuggestionType = SuggestionType.SuggestDescription,
+    ) -> None:
+        """Accept all suggestions"""
+        self.client.put(
+            f"{self.get_suffix(Suggestion)}/reject-all?"
+            f"userId={model_str(user_id)}&"
+            f"entityFQN={model_str(fqn)}&"
+            f"suggestionType={suggestion_type.value}",
+        )
