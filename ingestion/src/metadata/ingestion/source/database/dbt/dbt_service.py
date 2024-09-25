@@ -160,7 +160,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         # This step is necessary as the manifest file may not always adhere to the schema definition
         # and the presence of other nodes can hinder the ingestion process from progressing any further.
         # Therefore, we are only retaining the essential data for further processing.
-        required_manifest_keys = ["nodes", "sources", "metadata"]
+        required_manifest_keys = {"nodes", "sources", "metadata"}
         manifest_dict.update(
             {
                 key: {}
@@ -168,6 +168,38 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                 if key.lower() not in required_manifest_keys
             }
         )
+
+        required_nodes_keys = {
+            "schema_",
+            "schema",
+            "name",
+            "resource_type",
+            "path",
+            "unique_id",
+            "fqn",
+            "alias",
+            "checksum",
+            "config",
+            "column_name",
+            "test_metadata",
+            "original_file_path",
+            "root_path",
+            "database",
+            "tags",
+            "description",
+            "columns",
+            "meta",
+            "package_name",
+        }
+
+        for node, value in manifest_dict.get(
+            "nodes"
+        ).items():  # pylint: disable=unused_variable
+            keys_to_delete = [
+                key for key in value if key.lower() not in required_nodes_keys
+            ]
+            for key in keys_to_delete:
+                del value[key]
 
     def get_dbt_files(self) -> Iterable[DbtFiles]:
         dbt_files = get_dbt_details(self.source_config.dbtConfigSource)
