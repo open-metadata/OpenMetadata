@@ -52,12 +52,9 @@ export interface CronValue {
 }
 
 export interface Combination {
-  minute: RegExp;
   hour: RegExp;
   day: RegExp;
   week: RegExp;
-  month: RegExp;
-  year: RegExp;
 }
 export interface StateValue {
   selectedPeriod: string;
@@ -70,12 +67,9 @@ export interface StateValue {
 }
 
 export interface ToDisplay {
-  minute: Array<string>;
   hour: Array<string>;
   day: Array<string>;
   week: Array<string>;
-  month: Array<string>;
-  year: Array<string>;
 }
 
 export interface CronOption {

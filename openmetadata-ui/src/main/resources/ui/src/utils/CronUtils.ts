@@ -102,7 +102,7 @@ const getCronType = (cronStr: string) => {
     }
   }
 
-  return undefined;
+  return 'custom';
 };
 
 export const getStateValue = (valueStr: string) => {
@@ -148,7 +148,7 @@ export const getStateValue = (valueStr: string) => {
 
   stateVal.selectedPeriod = cronType || stateVal.selectedPeriod;
 
-  if (!isEmpty(cronType)) {
+  if (!isEmpty(cronType) && cronType !== 'custom') {
     const stateIndex =
       SELECTED_PERIOD_OPTIONS[(cronType as CronType) || 'hour'];
     const selectedPeriodObj = stateVal[

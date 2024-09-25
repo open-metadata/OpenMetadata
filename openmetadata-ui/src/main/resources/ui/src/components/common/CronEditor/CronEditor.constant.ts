@@ -18,11 +18,6 @@ import { Combination, ToDisplay } from './CronEditor.interface';
 export const getPeriodOptions = () => {
   return [
     {
-      label: i18n.t('label.none'),
-      value: '',
-      prep: '',
-    },
-    {
       label: i18n.t('label.hour'),
       value: 'hour',
       prep: 'at',
@@ -41,36 +36,19 @@ export const getPeriodOptions = () => {
       label: i18n.t('label.custom'),
       value: 'custom',
     },
-    /* ,
-    {
-      label: 'month',
-      value: 'month',
-      prep: 'on the'
-    },
-    {
-      label: 'year',
-      value: 'year',
-      prep: 'on the'
-    }*/
   ];
 };
 
 export const toDisplay: ToDisplay = {
-  minute: [],
   hour: ['min'],
   day: ['time'],
   week: ['dow', 'time'],
-  month: ['dom', 'time'],
-  year: ['dom', 'mon', 'time'],
 };
 
 export const combinations: Combination = {
-  minute: /^(\*\/\d{1,2})\s(\*\s){3}\*$/, // "*/? * * * *"
   hour: /^\d{1,2}\s(\*\s){3}\*$/, // "? * * * *"
   day: /^(\d{1,2}\s){2}(\*\s){2}\*$/, // "? ? * * *"
   week: /^(\d{1,2}\s){2}(\*\s){2}\d{1,2}$/, // "? ? * * ?"
-  month: /^(\d{1,2}\s){3}\*\s\*$/, // "? ? ? * *"
-  year: /^(\d{1,2}\s){4}\*$/, // "? ? ? ? *"
 };
 
 export const getRange = (n: number) => {

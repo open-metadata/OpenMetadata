@@ -15,8 +15,9 @@ import { Col, Form, Input, Row, Select } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { isEmpty } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import React, { ChangeEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_SCHEDULE_CRON } from '../../../constants/Ingestions.constant';
 import { pluralize } from '../../../utils/CommonUtils';
 import {
   getCron,
@@ -41,11 +42,18 @@ import {
   StateValue,
 } from './CronEditor.interface';
 
-const CronEditor: FC<CronEditorProp> = (props) => {
+const CronEditor = ({
+  value,
+  includePeriodOptions,
+  className,
+  disabled,
+  disabledCronChange,
+  onChange,
+  isQuartzCron,
+}: CronEditorProp) => {
   const { t } = useTranslation();
 
-  const [value, setCronValue] = useState(props.value ?? '');
-  const [state, setState] = useState(getStateValue(props.value ?? ''));
+  const [state, setState] = useState(getStateValue(value ?? ''));
   const [periodOptions] = useState(getPeriodOptions());
   const [minuteSegmentOptions] = useState(getMinuteSegmentOptions());
   const [minuteOptions] = useState(getMinuteOptions());
@@ -55,7 +63,6 @@ const CronEditor: FC<CronEditorProp> = (props) => {
   const [monthOptions] = useState(getMonthOptions());
 
   const filteredPeriodOptions = useMemo(() => {
-    const { includePeriodOptions } = props;
     if (includePeriodOptions) {
       return periodOptions.filter((option) =>
         includePeriodOptions.includes(option.value)
@@ -63,32 +70,33 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     } else {
       return periodOptions;
     }
-  }, [props, periodOptions]);
+  }, [includePeriodOptions, periodOptions]);
 
-  const { className, disabled, disabledCronChange } = props;
   const { selectedPeriod } = state;
+
+  const handleCronValueChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      onChange(e.target.value);
+    },
+    [onChange]
+  );
 
   const startText = t('label.schedule-to-run-every');
   const cronPeriodString = `${startText} ${selectedPeriod}`;
 
   const changeValue = (state: StateValue) => {
-    const { onChange } = props;
-
-    setCronValue(getCron(state) ?? value);
-    const cronExp = props.isQuartzCron
+    const cronExp = isQuartzCron
       ? getQuartzCronExpression(state)
       : getCron(state);
-    onChange(cronExp ?? value);
+    onChange(cronExp ?? DEFAULT_SCHEDULE_CRON);
   };
 
   const onPeriodSelect = (value: string) => {
     changeValue({ ...state, selectedPeriod: value });
     if (value === 'custom') {
-      setCronValue('0 0 * * *');
-      props.onChange('0 0 * * *');
+      onChange(DEFAULT_SCHEDULE_CRON);
     } else if (value === '') {
-      setCronValue('');
-      props.onChange('');
+      onChange('');
     }
     setState((prev) => ({ ...prev, selectedPeriod: value }));
   };
@@ -175,8 +183,6 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     selectedOption: SelectedDayOption,
     onChangeCB: (value: number) => void
   ) => {
-    const { disabled } = props;
-
     return (
       <Select
         className="w-full"
@@ -193,8 +199,6 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     selectedOption: SelectedHourOption,
     onChangeCB: (value: number) => void
   ) => {
-    const { disabled } = props;
-
     return (
       <Select
         className="w-full"
@@ -216,7 +220,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       <Select
         className="w-full"
         data-testid="minute-segment-options"
-        disabled={props.disabled}
+        disabled={disabled}
         id="minute-segment-select"
         options={minuteSegmentOptions.map(getOptionComponent())}
         value={selectedOption.min}
@@ -242,7 +246,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
         <span
           className={`cron-badge-option ${
             optionValue === value ? 'active' : ''
-          } ${props.disabled || !onClick ? 'disabled' : ''}`}
+          } ${disabled || !onClick ? 'disabled' : ''}`}
           data-value={optionValue}
           key={index}
           onClick={() => {
@@ -500,7 +504,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
 
         break;
       case 'custom':
-        retString = cronstrue.toString(value, {
+        retString = cronstrue.toString(value ?? DEFAULT_SCHEDULE_CRON, {
           throwExceptionOnParseError: false,
         });
 
@@ -521,13 +525,13 @@ const CronEditor: FC<CronEditorProp> = (props) => {
         <Form.Item
           initialValue={selectedPeriod}
           label={t('label.every')}
-          labelCol={{ span: 24 }}
-          name="period">
+          labelCol={{ span: 24 }}>
           <Select
             className="w-full"
             data-testid="cron-type"
             disabled={disabledCronChange || disabled}
             id="cronType"
+            key={`select-${selectedPeriod}`}
             options={filteredPeriodOptions.map(({ label, value }) => ({
               label,
               value,
@@ -542,10 +546,9 @@ const CronEditor: FC<CronEditorProp> = (props) => {
         <Col span={12}>
           <Form.Item
             className="m-b-0"
-            initialValue="0 0 * * *"
+            initialValue={value}
             label={t('label.cron')}
             labelCol={{ span: 24 }}
-            name="cron"
             rules={[
               {
                 required: true,
@@ -559,14 +562,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
                 },
               },
             ]}>
-            <Input
-              type="text"
-              value={value}
-              onChange={(e) => {
-                setCronValue(e.target.value);
-                props.onChange(e.target.value);
-              }}
-            />
+            <Input type="text" value={value} onChange={handleCronValueChange} />
           </Form.Item>
         </Col>
       ) : (
