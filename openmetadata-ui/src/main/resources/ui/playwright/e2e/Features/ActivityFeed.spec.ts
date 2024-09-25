@@ -209,9 +209,9 @@ test.describe('Activity feed', () => {
 
     await page.getByText('Accept Suggestion').click();
 
-    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, /Task resolved successfully/);
-    await waitForCountFetch;
+
+    await page.waitForLoadState('networkidle');
 
     await checkTaskCount(page, 0, 2);
   });
@@ -370,9 +370,9 @@ test.describe('Activity feed', () => {
 
     await page.getByText('Accept Suggestion').click();
 
-    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, /Task resolved successfully/);
-    await waitForCountFetch;
+
+    await page.waitForLoadState('networkidle');
 
     await checkTaskCount(page, 0, 2);
   });
@@ -432,9 +432,9 @@ test.describe('Activity feed', () => {
     await page.getByRole('menuitem', { name: 'close' }).click();
     await commentWithCloseTask;
 
-    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, 'Task closed successfully.');
-    await waitForCountFetch;
+
+    await page.waitForLoadState('networkidle');
 
     await checkTaskCount(page, 0, 1);
   });
@@ -451,12 +451,12 @@ test.describe('Activity feed', () => {
     await page.getByTestId('request-description').click();
 
     // create description task
-    const waitForCountFetch1 = page.waitForResponse('/api/v1/feed/count?**');
     const openTaskAfterDescriptionResponse =
       page.waitForResponse(TASK_OPEN_FETCH_LINK);
     await createDescriptionTask(page, value);
     await openTaskAfterDescriptionResponse;
-    await waitForCountFetch1;
+
+    await page.waitForLoadState('networkidle');
 
     // open task count after description
     const openTask1 = await page.getByTestId('open-task').textContent();
@@ -468,11 +468,11 @@ test.describe('Activity feed', () => {
     await page.getByTestId('request-entity-tags').click();
 
     // create tag task
-    const waitForCountFetch2 = page.waitForResponse('/api/v1/feed/count?**');
     const openTaskAfterTagResponse = page.waitForResponse(TASK_OPEN_FETCH_LINK);
     await createTagTask(page, { ...value, tag: 'PII.None' });
     await openTaskAfterTagResponse;
-    await waitForCountFetch2;
+
+    await page.waitForLoadState('networkidle');
 
     // open task count after description
     await checkTaskCount(page, 2, 0);
@@ -492,10 +492,8 @@ test.describe('Activity feed', () => {
     await page.getByRole('menuitem', { name: 'close' }).click();
     await commentWithCloseTask;
 
-    const waitForCountFetch3 = page.waitForResponse('/api/v1/feed/count?**');
     await toastNotification(page, 'Task closed successfully.');
-    await waitForCountFetch3;
-
+    await page.waitForLoadState('networkidle');
     // open task count after closing one task
     await checkTaskCount(page, 1, 1);
 
@@ -537,51 +535,58 @@ test.describe('Activity feed', () => {
   });
 
   test('Mention should work for the feed reply', async ({ page }) => {
-    await addMentionCommentInFeed(page, adminUser.responseData.name);
+    await test.step('Add Mention in Feed', async () => {
+      await addMentionCommentInFeed(page, adminUser.responseData.name);
 
-    // Close drawer
-    await page.locator('[data-testid="closeDrawer"]').click();
+      // Close drawer
+      await page.locator('[data-testid="closeDrawer"]').click();
 
-    // Get the feed text
-    const feedText = await page
-      .locator(`${FIRST_FEED_SELECTOR} [data-testid="headerText"]`)
-      .innerText();
+      // Get the feed text
+      const feedText = await page
+        .locator(`${FIRST_FEED_SELECTOR} [data-testid="headerText"]`)
+        .innerText();
 
-    // Click on @Mentions tab
-    const fetchMentionsFeedResponse = page.waitForResponse(
-      '/api/v1/feed?filterType=MENTIONS&userId=*'
+      // Click on @Mentions tab
+      const fetchMentionsFeedResponse = page.waitForResponse(
+        '/api/v1/feed?filterType=MENTIONS&userId=*'
+      );
+      await page
+        .locator('[data-testid="activity-feed-widget"]')
+        .locator('text=@Mentions')
+        .click();
+
+      await fetchMentionsFeedResponse;
+
+      const mentionedText = await page
+        .locator(`${FIRST_FEED_SELECTOR} [data-testid="headerText"]`)
+        .innerText();
+
+      expect(mentionedText).toContain(feedText);
+    });
+
+    await test.step(
+      'Add Mention should work if users having dot in their name',
+      async () => {
+        await addMentionCommentInFeed(page, 'aaron.warren5', true);
+
+        const lastFeedContainer = `#feed-panel [data-testid="message-container"] [data-testid="feed-replies"] .feed-card-v2-container:last-child`;
+
+        await expect(
+          page
+            .locator(lastFeedContainer)
+            .locator(
+              '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
+            )
+        ).toContainText('Can you resolve this thread for me? @aaron.warren5');
+
+        // Close drawer
+        await page.locator('[data-testid="closeDrawer"]').click();
+
+        expect(
+          page.locator(`${FIRST_FEED_SELECTOR} [data-testid="reply-count"]`)
+        ).toContainText('2 Replies');
+      }
     );
-    await page
-      .locator('[data-testid="activity-feed-widget"]')
-      .locator('text=@Mentions')
-      .click();
-
-    await fetchMentionsFeedResponse;
-
-    const mentionedText = await page
-      .locator(`${FIRST_FEED_SELECTOR} [data-testid="headerText"]`)
-      .innerText();
-
-    expect(mentionedText).toContain(feedText);
-  });
-
-  test('Mention should work for the feed reply in case of users having dot in their name', async ({
-    page,
-  }) => {
-    await addMentionCommentInFeed(page, 'aaron.warren5');
-
-    await expect(
-      page.locator(
-        `#feed-panel [data-testid="message-container"] [data-testid="feed-replies"] [data-testid="viewer-container"] [data-testid="markdown-parser"]`
-      )
-    ).toContainText('Can you resolve this thread for me? @aaron.warren5');
-
-    // Close drawer
-    await page.locator('[data-testid="closeDrawer"]').click();
-
-    expect(
-      page.locator(`${FIRST_FEED_SELECTOR} [data-testid="reply-count"]`)
-    ).toContainText('1 Reply');
   });
 });
 
@@ -744,9 +749,9 @@ base.describe('Activity feed with Data Consumer User', () => {
 
       await page2.getByText('Accept Suggestion').click();
 
-      const waitForCountFetch = page2.waitForResponse('/api/v1/feed/count?**');
       await toastNotification(page2, /Task resolved successfully/);
-      await waitForCountFetch;
+
+      await page2.waitForLoadState('networkidle');
 
       // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
       //   const openTask = await page2.getByTestId('open-task').textContent();
