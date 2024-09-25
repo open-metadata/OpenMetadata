@@ -5111,7 +5111,7 @@ public interface CollectionDAO {
             "DELETE FROM suggestions suggestions WHERE JSON_EXTRACT(json, '$.createdBy.id') = :createdBy",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "DELETE FROM suggestions suggestions WHERE json #> '{createdBy,id}') = :createdBy",
+        value = "DELETE FROM suggestions suggestions WHERE json #>> '{createdBy,id}' = :createdBy",
         connectionType = POSTGRES)
     void deleteByCreatedBy(@BindUUID("createdBy") UUID id);
 
