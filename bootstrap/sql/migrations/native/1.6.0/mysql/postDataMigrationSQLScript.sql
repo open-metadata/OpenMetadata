@@ -37,3 +37,8 @@ SET json = JSON_REMOVE(json, '$.testCaseResultSummary');
 
 UPDATE test_case
 SET json = JSON_REMOVE(json, '$.testCaseResult');
+
+-- Add supportsSystemProfile for Snowflake, Redshift, and BigQuery
+update dbservice_entity
+set json = JSON_SET(json, '$.connection.config.supportsSystemProfile', true)
+where serviceType in ('Snowflake', 'Redshift', 'BigQuery');

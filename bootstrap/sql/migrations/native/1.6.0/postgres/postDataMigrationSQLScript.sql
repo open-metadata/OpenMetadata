@@ -41,3 +41,8 @@ SET json = json - 'testCaseResultSummary';
 
 UPDATE test_case
 SET json = json - 'testCaseResult';
+
+-- Add supportsSystemProfile for Snowflake, Redshift, and BigQuery
+UPDATE dbservice_entity
+SET json = jsonb_set(json::jsonb, '{connection,config,supportsSystemProfile}', 'true'::jsonb)
+WHERE serviceType IN ('Snowflake', 'Redshift', 'BigQuery');
