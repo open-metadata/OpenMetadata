@@ -29,7 +29,7 @@ import qlikcloudConnection from '../jsons/connectionSchemas/connections/dashboar
 import qliksenseConnection from '../jsons/connectionSchemas/connections/dashboard/qlikSenseConnection.json';
 import quicksightConnection from '../jsons/connectionSchemas/connections/dashboard/quickSightConnection.json';
 import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
-import sigmaConnection from '../jsons/connectionSchemas/connections/dashboard/SigmaConnection.json';
+import sigmaConnection from '../jsons/connectionSchemas/connections/dashboard/sigmaConnection.json';
 import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
 import supersetConnection from './ConnectionSchemas/SupersetConnection.json';
 
