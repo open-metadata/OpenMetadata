@@ -26,7 +26,7 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   constructor() {
     super(
       Services.Dashboard,
-      `pw-Metabase-${uuid()}`,
+      `pw-Metabase-with-%-${uuid()}`,
       'Metabase',
       'jaffle_shop dashboard'
     );

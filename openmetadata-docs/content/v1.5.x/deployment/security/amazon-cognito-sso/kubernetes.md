@@ -1,6 +1,7 @@
 ---
 title: Amazon Cognito SSO for Kubernetes
 slug: /deployment/security/amazon-cognito/kubernetes
+collate: false
 ---
 
 # Amazon Cognito SSO for Kubernetes

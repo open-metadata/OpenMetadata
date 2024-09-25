@@ -15,6 +15,7 @@ import org.openmetadata.schema.analytics.AggregatedCostAnalysisReportData;
 import org.openmetadata.schema.analytics.DataAssetMetrics;
 import org.openmetadata.schema.analytics.RawCostAnalysisReportData;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.system.StepStats;
@@ -33,7 +34,6 @@ import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
@@ -49,14 +49,12 @@ public class CostAnalysisWorkflow {
 
   public record CostAnalysisTableData(
       Table table, Optional<LifeCycle> oLifeCycle, Optional<Double> oSize) {}
-  ;
 
   public record AggregatedCostAnalysisData(
       Double totalSize,
       Double totalCount,
       DataAssetMetrics unusedDataAssets,
       DataAssetMetrics frequentlyUsedDataAssets) {}
-  ;
 
   @Getter private DatabaseServiceTablesProcessor databaseServiceTablesProcessor;
   @Getter private RawCostAnalysisReportDataProcessor rawCostAnalysisReportDataProcessor;
@@ -197,8 +195,7 @@ public class CostAnalysisWorkflow {
 
   private Optional<String> processRawCostAnalysisReportData(
       List<RawCostAnalysisReportData> rawCostAnalysisReportDataList,
-      Map<String, Object> contextData)
-      throws SearchIndexException {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     contextData.put(REPORT_DATA_TYPE_KEY, ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA);
@@ -247,8 +244,7 @@ public class CostAnalysisWorkflow {
   private Optional<String> processAggregatedCostAnalysisReportData(
       Map<String, Map<String, Map<String, AggregatedCostAnalysisData>>>
           aggregatedCostAnalysisDataMap,
-      Map<String, Object> contextData)
-      throws SearchIndexException {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     contextData.put(
@@ -330,8 +326,11 @@ public class CostAnalysisWorkflow {
   }
 
   private boolean databaseServiceSupportsProfilerAndUsage(DatabaseService databaseService) {
-    Map<String, Object> config = JsonUtils.getMap(databaseService.getConnection().getConfig());
-    return config.containsKey("supportsProfiler") && config.containsKey("supportsUsageExtraction");
+    return List.of(
+            CreateDatabaseService.DatabaseServiceType.BigQuery,
+            CreateDatabaseService.DatabaseServiceType.Redshift,
+            CreateDatabaseService.DatabaseServiceType.Snowflake)
+        .contains(databaseService.getServiceType());
   }
 
   private void deleteReportDataRecordsAtDate(

@@ -223,4 +223,10 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.api-endpoint-plural'),
     }),
   },
+  METRIC_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.metric-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.metric-plural'),
+    }),
+  },
 };

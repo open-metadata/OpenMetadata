@@ -55,6 +55,7 @@ export type EntityTypeSearchIndex = Exclude<
   | EntityType.API_SERVICE
   | EntityType.API_COLLECTION
   | EntityType.API_ENDPOINT
+  | EntityType.METRIC
 >;
 
 export type EntityStats = Record<EntityTypeSearchIndex, TotalRecords>;

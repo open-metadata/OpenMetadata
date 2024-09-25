@@ -201,7 +201,7 @@ test.describe('Glossary tests', () => {
         await addMultiOwner({
           page,
           ownerNames: [user3.getUserName()],
-          activatorBtnDataTestId: 'edit-owner',
+          activatorBtnDataTestId: 'add-owner',
           resultTestId: 'glossary-right-panel-owner-link',
           endpoint: EntityTypeEndpoint.Glossary,
           isSelectableInsideForm: false,
@@ -865,6 +865,45 @@ test.describe('Glossary tests', () => {
     // Delete Glossary
     await deleteGlossaryOrGlossaryTerm(page, glossary1.data.name);
     await afterAction();
+  });
+
+  test('Verify Expand All For Nested Glossary Terms', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    await glossary1.create(apiContext);
+    await glossaryTerm1.create(apiContext);
+    const glossaryTerm2 = new GlossaryTerm(
+      glossary1,
+      glossaryTerm1.responseData.fullyQualifiedName
+    );
+    await glossaryTerm2.create(apiContext);
+    const glossaryTerm3 = new GlossaryTerm(
+      glossary1,
+      glossaryTerm2.responseData.fullyQualifiedName
+    );
+    await glossaryTerm3.create(apiContext);
+
+    try {
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+      await page.getByTestId('terms').click();
+      await page.getByTestId('expand-collapse-all-button').click();
+
+      await expect(
+        page.getByRole('cell', { name: glossaryTerm2.data.displayName })
+      ).toBeVisible();
+      await expect(
+        page.getByRole('cell', { name: glossaryTerm3.data.displayName })
+      ).toBeVisible();
+    } finally {
+      await glossaryTerm3.delete(apiContext);
+      await glossaryTerm2.delete(apiContext);
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test.afterAll(async ({ browser }) => {

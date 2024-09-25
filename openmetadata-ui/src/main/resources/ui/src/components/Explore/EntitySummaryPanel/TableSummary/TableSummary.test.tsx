@@ -60,10 +60,9 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <p>SummaryTagsDescription</p>)
 );
 
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useLocation: jest.fn().mockReturnValue({ pathname: '/table' }),
-}));
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '/table' }));
+});
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -76,7 +75,9 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
 describe('TableSummary component tests', () => {
   it('Component should render properly, when loaded in the Explore page.', async () => {
     await act(async () => {
-      render(<TableSummary entityDetails={mockTableEntityDetails} />);
+      render(<TableSummary entityDetails={mockTableEntityDetails} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const profilerHeader = screen.getByTestId('profiler-header');
@@ -177,7 +178,9 @@ describe('TableSummary component tests', () => {
     );
 
     await act(async () => {
-      render(<TableSummary entityDetails={mockTableEntityDetails} />);
+      render(<TableSummary entityDetails={mockTableEntityDetails} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const testsPassedLabel = screen.getByTestId('test-passed');
@@ -210,7 +213,9 @@ describe('TableSummary component tests', () => {
       })
     );
     await act(async () => {
-      render(<TableSummary entityDetails={mockTableEntityDetails} />);
+      render(<TableSummary entityDetails={mockTableEntityDetails} />, {
+        wrapper: MemoryRouter,
+      });
     });
     const testsPassedValue = screen.getByTestId('test-passed-value');
     const testsAbortedValue = screen.getByTestId('test-aborted-value');

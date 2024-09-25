@@ -124,6 +124,8 @@ public final class Entity {
 
   public static final String FIELD_DISABLED = "disabled";
 
+  public static final String FIELD_TEST_SUITES = "testSuites";
+
   //
   // Service entities
   //
@@ -144,7 +146,7 @@ public final class Entity {
   public static final String STORED_PROCEDURE = "storedProcedure";
   public static final String DATABASE = "database";
   public static final String DATABASE_SCHEMA = "databaseSchema";
-  public static final String METRICS = "metrics";
+  public static final String METRIC = "metric";
   public static final String DASHBOARD = "dashboard";
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
@@ -216,6 +218,7 @@ public final class Entity {
   // Time series entities
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
+  public static final String TEST_CASE_RESULT = "testCaseResult";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA =
       "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA =
@@ -513,7 +516,7 @@ public final class Entity {
             TABLE,
             DATABASE,
             DATABASE_SCHEMA,
-            METRICS,
+            METRIC,
             DASHBOARD,
             DASHBOARD_DATA_MODEL,
             PIPELINE,

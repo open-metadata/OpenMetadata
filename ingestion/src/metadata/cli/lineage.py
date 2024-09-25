@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
-from metadata.utils.logger import cli_logger
+from metadata.utils.logger import cli_logger, redacted_config
 from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandler
 
 logger = cli_logger()
@@ -52,6 +52,7 @@ def run_lineage(config_path: Path) -> None:
     config_dict = None
     try:
         config_dict = load_config_file(config_path)
+        logger.debug("Using workflow config:\n%s", redacted_config(config_dict))
         workflow = LineageWorkflow.model_validate(config_dict)
 
     except Exception as exc:

@@ -92,6 +92,12 @@ jest.mock('../../../rest/testAPI', () => ({
 const mockHistory = {
   push: jest.fn(),
 };
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => ({ state: { breadcrumbData: [] } }));
+});
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useHistory: () => mockHistory,
@@ -99,7 +105,6 @@ jest.mock('react-router-dom', () => ({
     fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
     tab: IncidentManagerTabs.TEST_CASE_RESULTS,
   }),
-  useLocation: jest.fn().mockReturnValue({ state: { breadcrumbData: [] } }),
 }));
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
   jest

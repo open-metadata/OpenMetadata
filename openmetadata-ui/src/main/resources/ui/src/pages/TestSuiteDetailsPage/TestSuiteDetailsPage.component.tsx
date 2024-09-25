@@ -47,9 +47,9 @@ import { useFqn } from '../../hooks/useFqn';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
 import {
   addTestCaseToLogicalTestSuite,
-  getListTestCase,
+  getListTestCaseBySearch,
   getTestSuiteByName,
-  ListTestCaseParams,
+  ListTestCaseParamsBySearch,
   updateTestSuiteById,
 } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -141,10 +141,10 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const fetchTestCases = async (param?: ListTestCaseParams) => {
+  const fetchTestCases = async (param?: ListTestCaseParamsBySearch) => {
     setIsTestCaseLoading(true);
     try {
-      const response = await getListTestCase({
+      const response = await getListTestCaseBySearch({
         fields: [
           TabSpecificField.TEST_CASE_RESULT,
           TabSpecificField.TEST_DEFINITION,
@@ -272,14 +272,11 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const handleTestCasePaging = ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => {
-    if (cursorType) {
+  const handleTestCasePaging = ({ currentPage }: PagingHandlerParams) => {
+    if (currentPage) {
       handlePageChange(currentPage);
       fetchTestCases({
-        [cursorType]: paging[cursorType],
+        offset: (currentPage - 1) * pageSize,
       });
     }
   };
@@ -312,6 +309,7 @@ const TestSuiteDetailsPage = () => {
 
   const pagingData: NextPreviousProps = useMemo(
     () => ({
+      isNumberBased: true,
       currentPage,
       pageSize,
       paging,

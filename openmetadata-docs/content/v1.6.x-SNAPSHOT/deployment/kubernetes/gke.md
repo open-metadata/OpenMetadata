@@ -1,6 +1,7 @@
 ---
 title: Kubernetes GKE Deployment
 slug: /deployment/kubernetes/gke
+collate: false
 ---
 
 # GKE on Google Cloud Platform Deployment

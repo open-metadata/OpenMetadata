@@ -1,6 +1,7 @@
 ---
 title: Enable SSL in Airflow
 slug: /deployment/security/enable-ssl/airflow
+collate: false
 ---
 
 # Configure OpenMetadata certificates in Airflow

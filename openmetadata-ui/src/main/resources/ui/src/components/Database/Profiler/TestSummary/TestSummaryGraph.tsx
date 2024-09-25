@@ -45,6 +45,10 @@ import {
   GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
 } from '../../../../constants/constants';
+import {
+  TABLE_DATA_TO_BE_FRESH,
+  TABLE_FRESHNESS_KEY,
+} from '../../../../constants/TestSuite.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import {
   Thread,
@@ -56,6 +60,7 @@ import {
   axisTickFormatter,
   updateActiveChartFilter,
 } from '../../../../utils/ChartUtils';
+import { formatTimeFromSeconds } from '../../../../utils/CommonUtils';
 import { prepareChartData } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -70,6 +75,7 @@ function TestSummaryGraph({
   testCaseResults,
   selectedTimeRange,
   minHeight,
+  testDefinitionName,
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
   const { entityThread = [] } = useActivityFeedProvider();
@@ -92,15 +98,18 @@ function TestSummaryGraph({
       : -200;
   }, [chartRef, chartMouseEvent]);
 
-  const chartData = useMemo(() => {
+  const { chartData, isFreshnessTest } = useMemo(() => {
     const data = prepareChartData({
       testCaseParameterValue: testCaseParameterValue ?? [],
       testCaseResults,
       entityThread,
     });
     setShowAILearningBanner(data.showAILearningBanner);
+    const isFreshnessTest = data.information.some(
+      (value) => value.label === TABLE_FRESHNESS_KEY
+    );
 
-    return data;
+    return { chartData: data, isFreshnessTest };
   }, [testCaseResults, entityThread, testCaseParameterValue]);
 
   const incidentData = useMemo(() => {
@@ -135,6 +144,7 @@ function TestSummaryGraph({
       dataKey: info.label,
       type: 'line',
       color: info.color,
+      inactive: !(activeKeys.length === 0 || activeKeys.includes(info.label)),
     }));
 
     legendPayload.push({
@@ -145,7 +155,7 @@ function TestSummaryGraph({
     } as Payload);
 
     return legendPayload;
-  }, [chartData]);
+  }, [chartData?.information, activeKeys]);
 
   const handleLegendClick: LegendProps['onClick'] = (event) => {
     if (event.dataKey === 'Incident') {
@@ -162,6 +172,14 @@ function TestSummaryGraph({
   };
   const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
     setActiveMouseHoverKey('');
+  };
+
+  // Todo: need to find better approach to create dynamic scale for graph, need to work with @TeddyCr for the same!
+  const formatYAxis = (value: number) => {
+    // table freshness will always have output value in seconds
+    return testDefinitionName === TABLE_DATA_TO_BE_FRESH || isFreshnessTest
+      ? formatTimeFromSeconds(value)
+      : axisTickFormatter(value);
   };
 
   const updatedDot: LineProps['dot'] = (props): ReactElement<SVGElement> => {
@@ -226,7 +244,7 @@ function TestSummaryGraph({
 
   return (
     <ResponsiveContainer
-      className="bg-white"
+      className="bg-white custom-test-summary-graph"
       id={`${testCaseName}_graph`}
       minHeight={minHeight ?? 400}>
       <ComposedChart
@@ -253,7 +271,8 @@ function TestSummaryGraph({
           allowDataOverflow
           domain={['min', 'max']}
           padding={{ top: 8, bottom: 8 }}
-          tickFormatter={(value) => axisTickFormatter(value)}
+          tickFormatter={formatYAxis}
+          width={80}
         />
         <Tooltip
           content={<TestSummaryCustomTooltip />}

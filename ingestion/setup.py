@@ -45,7 +45,7 @@ VERSIONS = {
     "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
     "databricks-sdk": "databricks-sdk>=0.18.0,<0.20.0",
     "trino": "trino[sqlalchemy]",
-    "spacy": "spacy~=3.7",
+    "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableau-api-lib~=0.1",
@@ -207,14 +207,14 @@ plugins: Dict[str, Set[str]] = {
         *COMMONS["datalake"],
     },
     "datalake-s3": {
-        # requires aiobotocore
-        # https://github.com/fsspec/s3fs/blob/9bf99f763edaf7026318e150c4bd3a8d18bb3a00/requirements.txt#L1
-        # however, the latest version of `s3fs` conflicts its `aiobotocore` dep with `boto3`'s dep on `botocore`.
-        # Leaving this marked to the automatic resolution to speed up installation.
-        "s3fs",
+        # vendoring 'boto3' to keep all dependencies aligned (s3fs, boto3, botocore, aiobotocore)
+        "s3fs[boto3]",
         *COMMONS["datalake"],
     },
-    "deltalake": {"delta-spark<=2.3.0", "deltalake~=0.17"},
+    "deltalake": {
+        "delta-spark<=2.3.0",
+        "deltalake~=0.17,<0.20",
+    },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
     "deltalake-storage": {"deltalake~=0.17"},
     "deltalake-spark": {"delta-spark<=2.3.0"},
     "domo": {VERSIONS["pydomo"]},
@@ -316,7 +316,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
         VERSIONS["numpy"],
-        "presidio-analyzer==2.2.32",
+        "presidio-analyzer==2.2.355",
     },
 }
 
@@ -328,7 +328,7 @@ dev = {
     "isort",
     "pre-commit",
     "pycln",
-    "pylint~=3.0",
+    "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
     # For publishing
     "twine",
     "build",
@@ -343,7 +343,6 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "moto~=5.0",
     "basedpyright~=1.14",
     "pytest==7.0.0",
     "pytest-cov",
@@ -371,7 +370,7 @@ test = {
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
     "testcontainers==3.7.1;python_version<'3.9'",
-    "testcontainers==4.8.0;python_version>='3.9'",
+    "testcontainers~=4.8.0;python_version>='3.9'",
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],

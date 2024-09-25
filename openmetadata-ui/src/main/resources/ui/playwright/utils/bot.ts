@@ -16,12 +16,16 @@ import {
   getEpochMillisForFutureDays,
 } from '../../src/utils/date-time/DateTimeUtils';
 import { GlobalSettingOptions } from '../constant/settings';
-import { BotResponseDataType } from '../support/bot/BotClass';
-import { descriptionBox, toastNotification, uuid } from './common';
+import {
+  descriptionBox,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from './common';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
-const botName = `bot-ct-test-${uuid()}`;
+const botName = `pw%bot-test-${uuid()}`;
 
 const BOT_DETAILS = {
   botName: botName,
@@ -35,12 +39,21 @@ const BOT_DETAILS = {
 
 const EXPIRATION_TIME = [1, 7, 30, 60, 90];
 
-export const getCreatedBot = async (page: Page, botName: string) => {
+export const getCreatedBot = async (
+  page: Page,
+  {
+    botName,
+    botDisplayName,
+  }: {
+    botName: string;
+    botDisplayName?: string;
+  }
+) => {
   // Click on created Bot name
   const fetchResponse = page.waitForResponse(
     `/api/v1/bots/name/${encodeURIComponent(botName)}?*`
   );
-  await page.getByTestId(`bot-link-${botName}`).click();
+  await page.getByTestId(`bot-link-${botDisplayName ?? botName}`).click();
   await fetchResponse;
 };
 
@@ -70,7 +83,7 @@ export const createBot = async (page: Page) => {
   await expect(table).toContainText(BOT_DETAILS.description);
 
   // Get created bot
-  await getCreatedBot(page, botName); // Replace with actual function to get created bot
+  await getCreatedBot(page, { botName });
 
   await expect(page.getByTestId('revoke-button')).toContainText('Revoke token');
 
@@ -104,18 +117,11 @@ export const deleteBot = async (page: Page) => {
   await expect(page.getByTestId('page-layout-v1')).not.toContainText(botName);
 };
 
-export const updateBotDetails = async (
-  page: Page,
-  botData: BotResponseDataType
-) => {
-  await getCreatedBot(page, botData.name);
-
+export const updateBotDetails = async (page: Page) => {
   await page.click('[data-testid="edit-displayName"]');
   await page.getByTestId('displayName').fill(BOT_DETAILS.updatedBotName);
 
-  const updateDisplayNameResponse = page.waitForResponse(
-    `api/v1/bots/${botData.id ?? ''}`
-  );
+  const updateDisplayNameResponse = page.waitForResponse(`api/v1/bots/*`);
   await page.getByTestId('save-displayName').click();
   await updateDisplayNameResponse;
 
@@ -128,9 +134,7 @@ export const updateBotDetails = async (
   await page.getByTestId('edit-description').click();
   await page.locator(descriptionBox).fill(BOT_DETAILS.updatedDescription);
 
-  const updateDescriptionResponse = page.waitForResponse(
-    `api/v1/bots/${botData.id ?? ''}`
-  );
+  const updateDescriptionResponse = page.waitForResponse(`api/v1/bots/*`);
   await page.getByTestId('save').click();
   await updateDescriptionResponse;
 
@@ -145,13 +149,15 @@ export const updateBotDetails = async (
   ).toContainText(BOT_DETAILS.updatedBotName);
 
   await expect(
-    page.locator(
-      `[data-row-key="${botData.name}"] [data-testid="markdown-parser"]`
-    )
+    page.locator(`[data-row-key="${botName}"] [data-testid="markdown-parser"]`)
   ).toContainText(BOT_DETAILS.updatedDescription);
 };
 
 export const tokenExpirationForDays = async (page: Page) => {
+  await getCreatedBot(page, {
+    botName,
+    botDisplayName: BOT_DETAILS.updatedBotName,
+  });
   for (const expiryTime of EXPIRATION_TIME) {
     await revokeToken(page, true);
 
@@ -207,4 +213,11 @@ export const tokenExpirationUnlimitedDays = async (page: Page) => {
   const tokenExpiryText = await tokenExpiry.innerText();
 
   expect(tokenExpiryText).toContain(BOT_DETAILS.unlimitedExpiryTime);
+};
+
+export const redirectToBotPage = async (page: Page) => {
+  await redirectToHomePage(page);
+  const fetchResponse = page.waitForResponse('api/v1/bots?*');
+  await settingClick(page, GlobalSettingOptions.BOTS);
+  await fetchResponse;
 };

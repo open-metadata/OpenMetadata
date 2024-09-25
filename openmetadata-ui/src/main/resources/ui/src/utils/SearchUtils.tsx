@@ -12,7 +12,7 @@
  */
 
 import { SearchOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Typography } from 'antd';
 import i18next from 'i18next';
 import { isEmpty } from 'lodash';
 import React from 'react';
@@ -25,14 +25,12 @@ import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
 import { ReactComponent as IconTopic } from '../assets/svg/topic-grey.svg';
-import {
-  FQN_SEPARATOR_CHAR,
-  WILD_CARD_CHAR,
-} from '../constants/char.constants';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
 import {
   Option,
   SearchSuggestions,
@@ -178,6 +176,11 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = IconApiEndpoint;
 
       break;
+    case SearchIndex.METRIC_SEARCH_INDEX:
+      label = i18next.t('label.metric-plural');
+      GroupIcon = MetricIcon;
+
+      break;
 
     default: {
       const { label: indexLabel, GroupIcon: IndexIcon } =
@@ -202,28 +205,17 @@ export const getGroupLabel = (index: string) => {
 
 export const getSuggestionElement = (
   suggestion: SearchSuggestions[number],
-  index: string,
   onClickHandler?: () => void
 ) => {
   const entitySource = suggestion as SearchSourceAlias;
   const { fullyQualifiedName: fqdn = '', name, serviceType = '' } = suggestion;
-  let database;
-  let schema;
-  if (index === SearchIndex.TABLE) {
-    database = getPartialNameFromTableFQN(fqdn, [FqnPart.Database]);
-    schema = getPartialNameFromTableFQN(fqdn, [FqnPart.Schema]);
-  }
-
   const entityLink = searchClassBase.getEntityLink(entitySource);
   const dataTestId = `${getPartialNameFromTableFQN(fqdn, [
     FqnPart.Service,
   ])}-${name}`.replaceAll(`"`, '');
 
-  const displayText =
-    database && schema
-      ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-      : entitySource.fullyQualifiedName ??
-        searchClassBase.getEntityName(entitySource);
+  const displayText = searchClassBase.getEntityName(entitySource);
+  const fqn = `(${entitySource.fullyQualifiedName ?? ''})`;
 
   return (
     <Button
@@ -242,13 +234,16 @@ export const getSuggestionElement = (
       key={fqdn}
       type="text">
       <Link
-        className="text-sm"
+        className="text-sm no-underline"
         data-testid="data-name"
         id={fqdn.replace(/\./g, '')}
         target={searchClassBase.getSearchEntityLinkTarget(entitySource)}
         to={entityLink}
         onClick={onClickHandler}>
         {displayText}
+        <Typography.Text className="m-l-xs text-xs" type="secondary">
+          {fqn}
+        </Typography.Text>
       </Link>
     </Button>
   );
@@ -290,6 +285,7 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
     [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
     [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
+    [SearchIndex.METRIC_SEARCH_INDEX]: EntityType.METRIC,
     [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
   };
 

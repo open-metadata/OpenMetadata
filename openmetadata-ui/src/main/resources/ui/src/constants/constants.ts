@@ -55,6 +55,7 @@ export const REFRESH_TOKEN_KEY = 'refreshToken';
 export const USER_DATA_SIZE = 5;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
+export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
@@ -283,6 +284,10 @@ export const ROUTES = {
   NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
   NOTIFICATION_ALERT_DETAILS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Metric Entity
+  METRICS: '/metrics',
+  ADD_METRIC: '/metrics/add-metric',
 };
 
 export const SOCKET_EVENTS = {
@@ -533,6 +538,7 @@ export const ENTITY_PATH = {
   apiCollections: 'apiCollection',
   apiEndpoints: 'apiEndpoint',
   dataProducts: 'dataProduct',
+  metrics: 'metric',
 };
 
 export const VALIDATION_MESSAGES = {

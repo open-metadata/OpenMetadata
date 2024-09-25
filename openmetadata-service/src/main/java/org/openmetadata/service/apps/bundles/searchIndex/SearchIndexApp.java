@@ -92,7 +92,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "testCaseResolutionStatus",
           "apiService",
           "apiEndpoint",
-          "apiCollection");
+          "apiCollection",
+          "metric");
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
           ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
@@ -227,10 +228,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
   }
 
-  private void performReindex(JobExecutionContext jobExecutionContext) throws SearchIndexException {
+  private void performReindex(JobExecutionContext jobExecutionContext) {
     Map<String, Object> contextData = new HashMap<>();
     for (Source paginatedSource : paginatedSources) {
-      List<String> entityName = new ArrayList<>();
+      List<String> entityName;
       reCreateIndexes(paginatedSource.getEntityType());
       contextData.put(ENTITY_TYPE_KEY, paginatedSource.getEntityType());
       Object resultList;

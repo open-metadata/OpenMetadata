@@ -43,6 +43,12 @@ site_menu:
 
   - category: Connectors / Database
     url: /connectors/database
+  - category: Connectors / Database / ADLS Datalake
+    url: /connectors/database/adls-datalake
+  - category: Connectors / Database / ADLS Datalake / Run Externally
+    url: /connectors/database/adls-datalake/yaml
+  - category: Connectors / Database / ADLS Datalake / Troubleshooting
+    url: /connectors/database/adls-datalake/troubleshooting
   - category: Connectors / Database / Athena
     url: /connectors/database/athena
   - category: Connectors / Database / Athena / Run Externally
@@ -79,12 +85,6 @@ site_menu:
     url: /connectors/database/databricks/yaml
   - category: Connectors / Database / Databricks / Troubleshooting
     url: /connectors/database/databricks/troubleshooting
-  - category: Connectors / Database / Datalake
-    url: /connectors/database/datalake
-  - category: Connectors / Database / Datalake / Run Externally
-    url: /connectors/database/datalake/yaml
-  - category: Connectors / Database / Datalake / Troubleshooting
-    url: /connectors/database/datalake/troubleshooting
   - category: Connectors / Database / DB2
     url: /connectors/database/db2
   - category: Connectors / Database / DB2 / Run Externally
@@ -111,6 +111,10 @@ site_menu:
     url: /connectors/database/dynamodb
   - category: Connectors / Database / DynamoDB / Run Externally
     url: /connectors/database/dynamodb/yaml
+  - category: Connectors / Database / GCS Datalake
+    url: /connectors/database/gcs-datalake
+  - category: Connectors / Database / GCS Datalake / Run Externally
+    url: /connectors/database/gcs-datalake/yaml
   - category: Connectors / Database / Glue
     url: /connectors/database/glue
   - category: Connectors / Database / Glue / Run Externally
@@ -205,6 +209,12 @@ site_menu:
     url: /connectors/database/synapse/yaml
   - category: Connectors / Database / Synapse / Troubleshooting
     url: /connectors/database/synapse/troubleshooting
+  - category: Connectors / Database / S3 Datalake
+    url: /connectors/database/s3-datalake
+  - category: Connectors / Database / S3 Datalake / Run Externally
+    url: /connectors/database/s3-datalake/yaml
+  - category: Connectors / Database / S3 Datalake / Troubleshooting
+    url: /connectors/database/s3-datalake/troubleshooting
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
@@ -318,14 +328,19 @@ site_menu:
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
-  - category: Connectors / Pipeline / DBTCloud
+  - category: Connectors / Pipeline / dbt Cloud
     url: /connectors/pipeline/dbtcloud
-  - category: Connectors / Pipeline / DBTCloud / Run Externally
+  - category: Connectors / Pipeline / dbt Cloud / Run Externally
     url: /connectors/pipeline/dbtcloud/yaml
   - category: Connectors / Pipeline / KafkaConnect
     url: /connectors/pipeline/kafkaconnect
   - category: Connectors / Pipeline / KafkaConnect / Run Externally
     url: /connectors/pipeline/kafkaconnect/yaml
+  - category: Connectors / Pipeline / Matillion
+    url: /connectors/pipeline/matillion
+    isCollateOnly: true
+  - category: Connectors / Pipeline / Matillion / Run Externally
+    url: /connectors/pipeline/matillion/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -372,9 +387,9 @@ site_menu:
 
   - category: Connectors / Storage
     url: /connectors/storage
-  - category: Connectors / Storage / S3
+  - category: Connectors / Storage / S3 Storage
     url: /connectors/storage/s3
-  - category: Connectors / Storage / S3 / Run Externally
+  - category: Connectors / Storage / S3 Storage / Run Externally
     url: /connectors/storage/s3/yaml
   - category: Connectors / Storage / GCS
     url: /connectors/storage/gcs
@@ -717,6 +732,26 @@ site_menu:
     url: /how-to-guides/data-governance/domains-&-data-products/domains
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
     url: /how-to-guides/data-governance/domains-&-data-products/data-products
+
+  - category: Getting Started
+    url: /getting-started
+    color: violet-70
+    icon: openmetadata
+
+  - category: Getting Started / Day 1
+    url: /getting-started/day-1
+  - category: Getting Started / Day 1 / Hybrid SaaS
+    url: /getting-started/day-1/hybrid-saas
+  - category: Getting Started / Day 1 / Hybrid SaaS / Airflow
+    url: /getting-started/day-1/hybrid-saas/airflow
+  - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
+    url: /getting-started/day-1/hybrid-saas/mwaa
+  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
+    url: /getting-started/day-1/hybrid-saas/gcs-composer
+  - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
+    url: /getting-started/day-1/hybrid-saas/github-actions
+  - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
+    url: /getting-started/day-1/hybrid-saas/credentials
 
   - category: Releases
     url: /releases

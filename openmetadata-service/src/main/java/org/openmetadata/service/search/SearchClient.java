@@ -4,7 +4,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 
 import java.io.IOException;
 import java.security.KeyStoreException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -23,6 +22,7 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.SSLUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
@@ -30,7 +30,6 @@ import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
   ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
-
   String UPDATE = "update";
 
   String ADD = "add";
@@ -85,6 +84,8 @@ public interface SearchClient {
           + "ctx._source.owners = params.updatedOwners; "
           + "}";
 
+  String PROPAGATE_TEST_SUITES_SCRIPT = "ctx._source.testSuites = params.testSuites";
+
   String REMOVE_OWNERS_SCRIPT =
       "if (ctx._source.owners != null && !ctx._source.owners.isEmpty()) { "
           + "ctx._source.owners.removeIf(owner -> "
@@ -107,7 +108,7 @@ public interface SearchClient {
 
   void createAliases(IndexMapping indexMapping);
 
-  Response search(SearchRequest request) throws IOException;
+  Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
   Response getDocByID(String indexName, String entityId) throws IOException;
 
@@ -135,6 +136,10 @@ public interface SearchClient {
       String entityType)
       throws IOException;
 
+  /*
+   Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
+  */
+  @SuppressWarnings("unused")
   default Response listPageHierarchy(String parent, String pageType) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
@@ -153,7 +158,8 @@ public interface SearchClient {
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
-  JsonObject aggregate(String query, String index, JsonObject aggregationJson) throws IOException;
+  JsonObject aggregate(String query, String index, JsonObject aggregationJson, String filters)
+      throws IOException;
 
   DataQualityReport genericAggregation(
       String query, String index, Map<String, Object> aggregationMetadata) throws IOException;
@@ -203,10 +209,10 @@ public interface SearchClient {
       Integer from,
       String queryFilter,
       String dataReportIndex)
-      throws IOException, ParseException;
+      throws IOException;
 
   // TODO: Think if it makes sense to have this or maybe a specific deleteByRange
-  public void deleteByQuery(String index, String query) throws IOException;
+  void deleteByQuery(String index, String query);
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(
@@ -217,16 +223,6 @@ public interface SearchClient {
       es.org.elasticsearch.action.bulk.BulkRequest data,
       es.org.elasticsearch.client.RequestOptions options)
       throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default int getSuccessFromBulkResponse(BulkResponse response) {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default int getSuccessFromBulkResponse(es.org.elasticsearch.action.bulk.BulkResponse response) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
