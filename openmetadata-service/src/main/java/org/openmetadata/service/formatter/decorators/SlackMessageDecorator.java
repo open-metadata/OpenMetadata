@@ -223,7 +223,8 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
         BlockCompositions.markdownText(
             String.format(getBoldWithSpace(), "Entity Type:") + event.getEntityType()));
     first_field.add(
-        BlockCompositions.markdownText(String.format(getBoldWithSpace(), "Publisher:") + publisherName));
+        BlockCompositions.markdownText(
+            String.format(getBoldWithSpace(), "Publisher:") + publisherName));
     first_field.add(
         BlockCompositions.markdownText(
             String.format(getBoldWithSpace(), "Time: ") + new Date(event.getTimestamp())));
