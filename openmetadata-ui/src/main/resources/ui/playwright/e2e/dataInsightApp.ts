@@ -21,6 +21,7 @@ setup.use({
 
 setup.describe.configure({
   timeout: process.env.PLAYWRIGHT_IS_OSS ? 150000 : 5600000,
+  retries: 0,
 });
 
 setup(
