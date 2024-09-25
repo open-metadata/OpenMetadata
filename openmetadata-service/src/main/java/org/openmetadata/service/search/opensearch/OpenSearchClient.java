@@ -61,14 +61,12 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.searcg.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -77,7 +75,6 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
@@ -2271,13 +2268,7 @@ public class OpenSearchClient implements SearchClient {
 
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
-    if (Boolean.TRUE.equals(
-            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
-                .getEnableAccessControl())
-        && subjectContext != null
-        && !subjectContext.isAdmin()
-        && !subjectContext.isBot()
-        && rbacConditionEvaluator != null) {
+    if (SearchClient.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQuery != null) {
         searchSourceBuilder.query(
