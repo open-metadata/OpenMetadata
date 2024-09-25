@@ -1,3 +1,11 @@
+-- Delete data quality records with no linked test case FQN in the test_case table
+DELETE FROM data_quality_data_time_series dqdts
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM test_case tc
+    WHERE dqdts.entityFQNHash = tc.fqnHash
+);
+
 -- Add FQN and UUID to data_quality_data_time_series records
 UPDATE data_quality_data_time_series dqdts
 SET json = jsonb_set(
@@ -20,7 +28,10 @@ CREATE INDEX IF NOT EXISTS  data_quality_data_time_series_id_index  ON data_qual
 -- Remove VIRTUAL status column from test_case table and remove
 -- testCaseResult state from testCase; fetch from search repo.
 ALTER TABLE test_case DROP COLUMN status;
-UPDATE test_case SET json = jsonb_set(json, '{testCaseStatus}', json->'testCaseResult'->'testCaseStatus');
+
+UPDATE test_case SET json = jsonb_set(json, '{testCaseStatus}', json->'testCaseResult'->'testCaseStatus')
+WHERE json->'testCaseResult'->'testCaseStatus' IS NOT NULL;
+
 ALTER TABLE test_case ADD COLUMN status VARCHAR(56) GENERATED ALWAYS AS (json ->> 'testCaseStatus') STORED NULL;
 
 
@@ -30,3 +41,20 @@ SET json = json - 'testCaseResultSummary';
 
 UPDATE test_case
 SET json = json - 'testCaseResult';
+
+-- Add Supports interrupts to SearchIndexingApplication
+UPDATE apps_marketplace
+SET json = jsonb_set(
+	json::jsonb,
+	'{supportsInterrupt}',
+	to_jsonb(true)
+)
+where name = 'SearchIndexingApplication';
+
+UPDATE installed_apps
+SET json = jsonb_set(
+	json::jsonb,
+	'{supportsInterrupt}',
+	to_jsonb(true)
+)
+where name = 'SearchIndexingApplication';
