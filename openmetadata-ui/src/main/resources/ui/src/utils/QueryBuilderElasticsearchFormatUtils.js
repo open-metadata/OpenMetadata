@@ -181,6 +181,7 @@ function determineQueryField(fieldDataType, fullFieldName, queryType) {
 function buildRegexpParameters(value) {
   return {
     value: value,
+    case_insensitive: true,
   };
 }
 

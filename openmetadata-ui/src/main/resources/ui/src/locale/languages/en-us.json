@@ -930,6 +930,7 @@
     "regenerate-registration-token": "Regenerate registration token",
     "region-name": "Region Name",
     "registry": "Registry",
+    "regular-expression": "Regular Expression",
     "reject": "Reject",
     "reject-all": "Reject All",
     "rejected": "Rejected",
