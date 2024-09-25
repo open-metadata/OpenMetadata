@@ -25,6 +25,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_QUERY_LOG_QUERY,
 )
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
+from metadata.utils.dict import CustomDict
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.profiler_utils import QueryResult
 
@@ -133,7 +134,7 @@ class SnowflakeQueryLogEntry(BaseModel):
             )
         )
         return TypeAdapter(List[SnowflakeQueryLogEntry]).validate_python(
-            map(dict, rows)
+            [CustomDict(r).lower_case_keys() for r in rows]
         )
 
 
