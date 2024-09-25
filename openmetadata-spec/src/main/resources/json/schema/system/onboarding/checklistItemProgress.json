@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/system/onboarding/checklistItemProgress.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Checklist Item Progress",
+  "type": "object",
+  "description": "Tracks the completion status of a checklist item for a user.",
+  "properties": {
+    "checklistItemId": {
+      "type": "string",
+      "description": "Identifier of the checklist item."
+    },
+    "completed": {
+      "type": "boolean",
+      "description": "Completion status of the item.",
+      "default": false
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when the item was completed."
+    },
+    "subItemProgress": {
+      "type": "array",
+      "items": {
+        "$ref": "checklistItemProgress.json"
+      },
+      "description": "Progress of sub-items if any."
+    }
+  },
+  "required": ["checklistItemId", "completed"]
+}

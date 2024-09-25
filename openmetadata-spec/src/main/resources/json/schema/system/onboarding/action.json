@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/system/onboarding/action.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Action",
+  "type": "object",
+  "description": "Defines an action associated with a checklist item.",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["navigate", "uiPage"],
+      "description": "Type of action to be performed."
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to navigate to or UI Page to call."
+    }
+  },
+  "required": ["type", "url"]
+}

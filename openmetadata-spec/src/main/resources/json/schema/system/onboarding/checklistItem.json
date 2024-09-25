@@ -1,0 +1,59 @@
+{
+  "$id": "https://open-metadata.org/schema/system/onboarding/checklistItem.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Checklist Item",
+  "type": "object",
+  "description": "An individual task or step in the onboarding process.",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the checklist item."
+    },
+    "title": {
+      "type": "string",
+      "description": "Title of the checklist item."
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the checklist item."
+    },
+    "completed": {
+      "type": "boolean",
+      "description": "Completion status of the item, determined dynamically or stored.",
+      "default": false
+    },
+    "completionType": {
+      "type": "string",
+      "enum": ["automatic", "manual", "dynamic"],
+      "description": "How the completion of this item is determined."
+    },
+    "action": {
+      "$ref": "action.json",
+      "description": "Action associated with the checklist item."
+    },
+    "docsUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to documentation or video resources."
+    },
+    "dependsOn": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of checklist item IDs that this item depends on."
+    },
+    "subItems": {
+      "type": "array",
+      "items": {
+        "$ref": "checklistItem.json"
+      },
+      "description": "Nested checklist items representing sub-steps."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata for the checklist item."
+    }
+  },
+  "required": ["id", "title", "description", "completionType"]
+}
