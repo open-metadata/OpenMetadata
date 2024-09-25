@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { lowerCase } from 'lodash';
+import { isEmpty, lowerCase } from 'lodash';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -325,9 +325,13 @@ export const updateDescription = async (page: Page, description: string) => {
   await page.locator('.ProseMirror').first().fill(description);
   await page.getByTestId('save').click();
 
-  await expect(
-    page.getByTestId('asset-description-container').getByRole('paragraph')
-  ).toContainText(description);
+  isEmpty(description)
+    ? await expect(
+        page.getByTestId('asset-description-container')
+      ).toContainText('No description')
+    : await expect(
+        page.getByTestId('asset-description-container').getByRole('paragraph')
+      ).toContainText(description);
 };
 
 export const assignTag = async (
@@ -953,7 +957,15 @@ export const updateDisplayNameForEntity = async (
   ).toHaveText(displayName);
 };
 
-export const checkForEditActions = async ({ entityType, deleted, page }) => {
+export const checkForEditActions = async ({
+  page,
+  entityType,
+  deleted = false,
+}: {
+  page: Page;
+  entityType: string;
+  deleted?: boolean;
+}) => {
   for (const {
     containerSelector,
     elementSelector,
@@ -1315,4 +1327,21 @@ export const escapeESReservedCharacters = (text?: string) => {
   return text && reHasUnescapedHtml.test(text)
     ? text.replace(reUnescapedHtml, getReplacedChar)
     : text ?? '';
+};
+
+export const getEncodedFqn = (fqn: string, spaceAsPlus = false) => {
+  let uri = encodeURIComponent(fqn);
+
+  if (spaceAsPlus) {
+    uri = uri.replaceAll('%20', '+');
+  }
+
+  return uri;
+};
+
+export const getEntityDisplayName = (entity?: {
+  name?: string;
+  displayName?: string;
+}) => {
+  return entity?.displayName || entity?.name || '';
 };

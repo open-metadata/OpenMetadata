@@ -1,5 +1,5 @@
 ---
-title: Datalake Connector Troubleshooting
+title: Domo Database Connector Troubleshooting
 slug: /connectors/database/domo-database/troubleshoot
 ---
 

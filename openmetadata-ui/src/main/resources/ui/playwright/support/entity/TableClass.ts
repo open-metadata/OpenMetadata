@@ -98,6 +98,7 @@ export class TableClass extends EntityClass {
 
   entity = {
     name: `pw-table-${uuid()}`,
+    displayName: `pw table ${uuid()}`,
     description: 'description',
     columns: this.children,
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,

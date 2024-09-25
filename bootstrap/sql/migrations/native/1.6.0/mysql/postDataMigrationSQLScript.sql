@@ -1,3 +1,9 @@
+-- Delete data quality records with no linked test case FQN in the test_case table
+DELETE dqdts
+FROM data_quality_data_time_series dqdts
+LEFT JOIN test_case tc ON dqdts.entityFQNHash = tc.fqnHash
+WHERE tc.fqnHash IS NULL;
+
 -- Add FQN and UUID to data_quality_data_time_series records
 UPDATE data_quality_data_time_series dqdts
 INNER JOIN test_case tc ON dqdts.entityFQNHash = tc.fqnHash
@@ -18,7 +24,10 @@ CREATE INDEX data_quality_data_time_series_id_index ON data_quality_data_time_se
 -- Remove VIRTUAL status column from test_case table and remove
 -- testCaseResult state from testCase; fetch from search repo.
 ALTER TABLE test_case DROP COLUMN status;
-UPDATE test_case SET json = JSON_SET(json, '$.testCaseStatus', JSON_EXTRACT(json, '$.testCaseResult.testCaseStatus'));
+
+UPDATE test_case SET json = JSON_SET(json, '$.testCaseStatus', JSON_EXTRACT(json, '$.testCaseResult.testCaseStatus'))
+WHERE JSON_EXTRACT(json, '$.testCaseResult.testCaseStatus') IS NOT NULL;
+
 ALTER TABLE test_case ADD COLUMN status VARCHAR(56) GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(json, '$.testCaseStatus'))) STORED;
 
 
