@@ -41,6 +41,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
+import org.quartz.UnableToInterruptJobException;
 
 @Getter
 @Slf4j
@@ -48,6 +49,7 @@ public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
+  protected boolean isJobInterrupted = false;
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
@@ -295,5 +297,11 @@ public class AbstractNativeApplication implements NativeApplication {
       JobExecutionContext jobExecutionContext, AppRunRecord appRecord, boolean update) {
     OmAppJobListener listener = getJobListener(jobExecutionContext);
     listener.pushApplicationStatusUpdates(jobExecutionContext, appRecord, update);
+  }
+
+  @Override
+  public void interrupt() throws UnableToInterruptJobException {
+    LOG.info("Interrupting the job for app: {}", this.app.getName());
+    isJobInterrupted = true;
   }
 }

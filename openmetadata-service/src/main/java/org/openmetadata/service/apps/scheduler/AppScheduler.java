@@ -261,4 +261,32 @@ public class AppScheduler {
       LOG.error("Failed in running job", ex);
     }
   }
+
+  public void stopApplicationRun(App application) {
+    if (application.getFullyQualifiedName() == null) {
+      throw new IllegalArgumentException("Application's fullyQualifiedName is null.");
+    }
+    try {
+      // Interrupt any scheduled job
+      JobDetail jobDetailScheduled =
+          scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
+      if (jobDetailScheduled != null) {
+        LOG.debug("Stopping Scheduled Execution for App : {}", application.getName());
+        scheduler.interrupt(jobDetailScheduled.getKey());
+      }
+
+      // Interrupt any on-demand job
+      JobDetail jobDetailOnDemand =
+          scheduler.getJobDetail(
+              new JobKey(
+                  String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP));
+
+      if (jobDetailOnDemand != null) {
+        LOG.debug("Stopping On Demand Execution for App : {}", application.getName());
+        scheduler.interrupt(jobDetailOnDemand.getKey());
+      }
+    } catch (Exception ex) {
+      LOG.error("Failed to stop job execution.", ex);
+    }
+  }
 }
