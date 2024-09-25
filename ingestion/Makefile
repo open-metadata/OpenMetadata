@@ -66,7 +66,6 @@ run_python_tests:  ## Run all Python tests with coverage
 	coverage erase
 	$(MAKE) static-checks
 	nox -f $(INGESTION_DIR)/noxfile.py $(NOX_FLAGS) --report nox-all.json
-	coverage report --rcfile $(INGESTION_DIR)/pyproject.toml || true
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
