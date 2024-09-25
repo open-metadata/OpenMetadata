@@ -107,7 +107,7 @@
         "`\"enumMultiSelectCp:val3|val2|val1|val4|val5;enumSingleSelectCp:singleVal1\"`",
         "`\"timeCp:10:08:45;timeIntervalCp:1726142300000:17261420000;timeStampCp:1726142400000\"`",
         "`\"integerCp:7777;numberCp:123456\"`",
-        "`\"\"\"queryCp:select col,row from table where id ='30';\"\"\";stringcp:sample string content\"`",
+        "`\"\"\"queryCp:select col,row from table where id ='30';\"\";stringcp:sample string content\"`",
         "`markdownCp:# Sample Markdown Text`"
       ]
     }

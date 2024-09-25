@@ -810,7 +810,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     ApiStatus status = ApiStatus.FAILURE;
     if (importResult.getNumberOfRowsPassed().equals(importResult.getNumberOfRowsProcessed())) {
       status = ApiStatus.SUCCESS;
-    } else if (importResult.getNumberOfRowsPassed() > 1) {
+    } else if (importResult.getNumberOfRowsPassed() >= 1) {
       status = ApiStatus.PARTIAL_SUCCESS;
     }
     importResult.setStatus(status);
