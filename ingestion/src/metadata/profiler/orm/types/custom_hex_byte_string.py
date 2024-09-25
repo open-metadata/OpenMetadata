@@ -63,8 +63,9 @@ class HexByteString(TypeDecorator):
         detected_encoding = chardet.detect(bytes_value).get("encoding")
         if detected_encoding:
             try:
-                # Decode the bytes value with the detected encoding and replace errors with "?" if bytes cannot be decoded
-                # e.g. b"\x66\x67\x67\x9c", if detected_encoding="utf-8" will result in 'foo�' (instead of failing)
+                # Decode the bytes value with the detected encoding and replace errors with "?"
+                # if bytes cannot be decoded e.g. b"\x66\x67\x67\x9c", if detected_encoding="utf-8"
+                # will result in 'foo�' (instead of failing)
                 str_value = bytes_value.decode(
                     encoding=detected_encoding, errors="replace"
                 )
