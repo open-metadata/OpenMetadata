@@ -126,7 +126,7 @@ jobs:
 
       - name: Upload coverage artifact for Python tests
         if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.session }}
           path: ingestion/coverage/**/.coverage.*
@@ -170,17 +170,23 @@ jobs:
 
       - name: Generate report
         run: |
-          if [ -d "artifacts/coverage/3.9" ]; then
-            for folder in artifacts/coverage/3.9/coverage-*; do
-              cp -rT $folder/ coverage/ ;
+          if [ -d "artifacts/coverage/3.9" ] && [ "$(ls -A artifacts/coverage/3.9/.coverage.*)" ]; then
+            mkdir -p coverage/3.9
+            for file in artifacts/coverage/3.9/.coverage.*; do
+              cp $file coverage/3.9/ ;
             done
+          else
+            echo "No coverage files found in artifacts/coverage/3.9"
+            exit 1
           fi
+      
           mkdir -p ingestion/junit
           if [ -d "artifacts/junit/3.9" ]; then
             for folder in artifacts/junit/3.9/tests-*; do
               cp -rT $folder/ ingestion/junit ;
             done
           fi
+      
           source env/bin/activate
           python scripts/rewrite_coverage_files.py coverage env/lib/python3.9/site-packages/metadata
           coverage combine --rcfile=ingestion/pyproject.toml --keep -a coverage/
