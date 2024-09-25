@@ -13,7 +13,7 @@
 Time utility functions
 """
 
-from datetime import  datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from math import floor
 from typing import Union
 
