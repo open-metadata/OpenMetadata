@@ -19,6 +19,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,6 +30,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.openmetadata.schema.type.EntityReference;
@@ -112,73 +114,51 @@ public final class CsvUtil {
   /**
    * Parses a field containing key-value pairs separated by semicolons, correctly handling quotes.
    * Each key-value pair may also be enclosed in quotes, especially if it contains delimiter like (SEPARATOR , FIELD_SEPARATOR).
-   *
    * Input Example:
    * "key1:value1;key2:value2;\"key3:value;with;semicolon\""
-   * Output: ["key1:value1", "key2:value2", "key3:value;with;semicolon"]
+   * Output: [key1:value1, key2:value2, key3:value;with;semicolon]
    *
-   * @param field The input string with key-value pairs.
-   * @return A list of key-value pairs, handling quotes and semicolons correctly.
    */
-  public static List<String> fieldToExtensionStrings(String field) {
+  public static List<String> fieldToExtensionStrings(String field) throws IOException {
     if (field == null || field.isBlank()) {
       return List.of();
     }
 
-    List<String> result = new ArrayList<>();
-    StringBuilder currentField = new StringBuilder();
-    // Track whether we are inside quotes
-    boolean inQuotes = false;
+    // Step 1: Replace semicolons within quoted strings with a placeholder
+    String preprocessedField =
+        Pattern.compile("\"([^\"]*)\"") // Matches content inside double quotes
+            .matcher(field)
+            .replaceAll(mr -> "\"" + mr.group(1).replace(";", "__SEMICOLON__") + "\"");
 
-    // Iterate through each character in the field
-    for (int i = 0; i < field.length(); i++) {
-      char c = field.charAt(i);
+    // Step 2: Escape newlines and double quotes for CSV parsing
+    preprocessedField = preprocessedField.replace("\n", "\\n").replace("\"", "\\\"");
 
-      if (c == '"') {
-        if (inQuotes && i + 1 < field.length() && field.charAt(i + 1) == '"') {
-          // Handle escaped quote ("" -> ")
-          currentField.append('"');
-          i++;
-        } else {
-          // Toggle quote state
-          inQuotes = !inQuotes;
-          // Keep the quote as part of the field
-          currentField.append(c);
-        }
-      } else if (c == FIELD_SEPARATOR.charAt(0) && !inQuotes) {
-        // Add the field when semicolon is outside quotes
-        addFieldToResult(result, currentField);
-        // Reset buffer for next field
-        currentField.setLength(0);
-      } else {
-        // Continue building the field
-        currentField.append(c);
-      }
+    // Step 3: Define CSV format with semicolon as the delimiter and proper handling of quotes
+    CSVFormat format =
+        CSVFormat.DEFAULT
+            .withDelimiter(';')
+            .withQuote('"')
+            .withRecordSeparator(null)
+            .withIgnoreSurroundingSpaces(true)
+            .withIgnoreEmptyLines(true)
+            .withEscape('\\'); // Use backslash for escaping special characters
+
+    // Step 4: Parse the CSV and process the records
+    try (CSVParser parser = CSVParser.parse(new StringReader(preprocessedField), format)) {
+      return parser.getRecords().stream()
+          .flatMap(CSVRecord::stream)
+          .map(
+              value ->
+                  value
+                      .replace("__SEMICOLON__", ";")
+                      .replace("\\n", "\n")) // Restore original semicolons and newlines
+          .map(
+              value ->
+                  value.startsWith("\"") && value.endsWith("\"") // Remove outer quotes if present
+                      ? value.substring(1, value.length() - 1)
+                      : value)
+          .toList();
     }
-
-    // Add the last field
-    addFieldToResult(result, currentField);
-
-    return result;
-  }
-
-  /**
-   * Adds the processed field to the result list, removing surrounding quotes if present.
-   *
-   * @param result List to hold parsed fields.
-   * @param currentField The current field being processed.
-   */
-  private static void addFieldToResult(List<String> result, StringBuilder currentField) {
-    String fieldStr = currentField.toString();
-
-    // Remove surrounding quotes if field contains special characters and is quoted
-    if ((fieldStr.contains(SEPARATOR) || fieldStr.contains(FIELD_SEPARATOR))
-        && fieldStr.startsWith("\"")
-        && fieldStr.endsWith("\"")) {
-      fieldStr = fieldStr.substring(1, fieldStr.length() - 1);
-    }
-
-    result.add(fieldStr);
   }
 
   public static String quote(String field) {
