@@ -13,7 +13,7 @@
 Time utility functions
 """
 
-from datetime import UTC, datetime, time, timedelta, timezone
+from datetime import  datetime, time, timedelta, timezone
 from math import floor
 from typing import Union
 
@@ -44,9 +44,9 @@ def datetime_to_timestamp(datetime_value: datetime, milliseconds=False) -> int:
         )
 
     datetime_value = (
-        datetime_value.replace(tzinfo=UTC)
+        datetime_value.replace(tzinfo=timezone.utc)
         if datetime_value.tzinfo is None
-        else datetime_value.astimezone(UTC)
+        else datetime_value.astimezone(timezone.utc)
     )
     tmsap = datetime_value.timestamp()
     if milliseconds:
