@@ -1,0 +1,10 @@
+parameters:
+  key1: value1
+  key2: ${ENV_VAR}
+  emptyKey: ${UNDEFINED_ENV_VAR:-""}
+  defaultKey: ${UNDEFINED_ENV_VAR:-default}
+  nested:
+    nestedKey: ${NESTED_ENV_VAR}
+  list:
+    - elem1
+    - ${LIST_ENV_VAR}
