@@ -192,8 +192,8 @@ export const SETTINGS_OPTIONS_PATH = {
   ],
 
   [GlobalSettingOptions.SEARCH_RBAC]: [
-    GlobalSettingsMenuCategory.ACCESS,
-    `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.SEARCH_RBAC}`,
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
   ],
 };
 

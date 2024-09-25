@@ -297,13 +297,6 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
             icon: PoliciesIcon,
           },
-          {
-            label: t('label.search-rbac'),
-            description: t('message.page-sub-header-for-search-rbac'),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.SEARCH_RBAC}`,
-            icon: PoliciesIcon,
-          },
         ],
       },
       {
@@ -361,6 +354,13 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.PROFILER_CONFIGURATION}`,
             icon: ProfilerConfigIcon,
+          },
+          {
+            label: t('label.search'),
+            description: t('message.page-sub-header-for-search-setting'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
+            icon: PoliciesIcon,
           },
         ],
       },

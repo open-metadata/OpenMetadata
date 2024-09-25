@@ -250,7 +250,7 @@ const SettingsRouter = () => {
         exact
         component={SearchRBACSettingsPage}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.SEARCH_RBAC
         )}
       />

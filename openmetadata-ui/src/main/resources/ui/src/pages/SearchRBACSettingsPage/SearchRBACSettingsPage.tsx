@@ -43,8 +43,8 @@ const SearchRBACSettingsPage = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
-        GlobalSettingsMenuCategory.ACCESS,
-        t('label.search-rbac')
+        GlobalSettingsMenuCategory.PREFERENCES,
+        t('label.search')
       ),
     []
   );
@@ -111,7 +111,7 @@ const SearchRBACSettingsPage = () => {
           <Row align="middle">
             <Col span={24}>
               <Typography.Text className="m-0 text-grey-muted">
-                {t('label.enable-access-control')}
+                {t('label.enable-roles-polices-in-search')}
                 <Tooltip
                   placement="top"
                   title={t('message.enable-access-control-description')}
