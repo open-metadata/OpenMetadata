@@ -41,10 +41,14 @@ import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
-
   @Override
   public String getBold() {
     return "*%s*";
+  }
+
+  @Override
+  public String getBoldWithSpace() {
+    return "*%s* ";
   }
 
   @Override
@@ -211,18 +215,18 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     List<TextObject> first_field = new ArrayList<>();
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBold(), "Event Type: ") + event.getEventType()));
+            String.format(getBoldWithSpace(), "Event Type:") + event.getEventType()));
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBold(), "Updated By: ") + event.getUserName()));
+            String.format(getBoldWithSpace(), "Updated By:") + event.getUserName()));
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBold(), "Entity Type: ") + event.getEntityType()));
+            String.format(getBoldWithSpace(), "Entity Type:") + event.getEntityType()));
     first_field.add(
-        BlockCompositions.markdownText(String.format(getBold(), "Publisher: ") + publisherName));
+        BlockCompositions.markdownText(String.format(getBoldWithSpace(), "Publisher:") + publisherName));
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBold(), "Time: ") + new Date(event.getTimestamp())));
+            String.format(getBoldWithSpace(), "Time: ") + new Date(event.getTimestamp())));
 
     // Split fields into multiple sections to avoid block limits
     for (int i = 0; i < first_field.size(); i += 10) {
@@ -288,19 +292,19 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     List<TextObject> first_field = new ArrayList<>();
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBold(), "Event Type:") + "  " + event.getEventType()));
+            String.format(getBoldWithSpace(), "Event Type:") + event.getEventType()));
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBold(), "Updated By:") + "  " + event.getUserName()));
+            String.format(getBoldWithSpace(), "Updated By:") + event.getUserName()));
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBold(), "Entity Type:") + "  " + event.getEntityType()));
+            String.format(getBoldWithSpace(), "Entity Type:") + event.getEntityType()));
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBold(), "Publisher:") + "  " + publisherName));
+            String.format(getBoldWithSpace(), "Publisher:") + publisherName));
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBold(), "Time:") + "  " + new Date(event.getTimestamp())));
+            String.format(getBoldWithSpace(), "Time:") + new Date(event.getTimestamp())));
 
     // Split fields into multiple sections to avoid block limits
     for (int i = 0; i < first_field.size(); i += 10) {

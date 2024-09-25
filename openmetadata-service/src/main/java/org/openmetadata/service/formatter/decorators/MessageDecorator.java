@@ -44,6 +44,8 @@ import org.openmetadata.service.util.FeedUtils;
 public interface MessageDecorator<T> {
   String getBold();
 
+  String getBoldWithSpace();
+
   String getLineBreak();
 
   String getAddMarker();

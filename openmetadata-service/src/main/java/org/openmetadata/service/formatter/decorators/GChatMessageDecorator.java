@@ -30,6 +30,11 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   @Override
+  public String getBoldWithSpace() {
+    return "<b>%s</b> ";
+  }
+
+  @Override
   public String getLineBreak() {
     return " <br/> ";
   }
