@@ -461,7 +461,9 @@ Integrity
 ```
 
 ### Compare 2 Tables for Differences
-Compare 2 tables for differences. Allows a user to check for integrity.
+Compare 2 tables for differences. Allows a user to check for integrity. 
+Supports comparing tables across different services.
+For example, you can compare a table in Snowflake with a table in Redshift.
 
 Supported connectors:
  - Snowflake
