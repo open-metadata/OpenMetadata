@@ -14,10 +14,14 @@
 import Icon from '@ant-design/icons';
 import {
   Button,
+  Card,
+  Col,
   DatePicker,
   Form,
   Input,
+  Row,
   Select,
+  Tag,
   TimePicker,
   Tooltip,
   Typography,
@@ -36,7 +40,7 @@ import {
   toUpper,
 } from 'lodash';
 import moment, { Moment } from 'moment';
-import React, { CSSProperties, FC, Fragment, useState } from 'react';
+import React, { CSSProperties, FC, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
 import {
@@ -715,9 +719,39 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
       case 'enum':
         return (
-          <Typography.Text className="break-all" data-testid="enum-value">
-            {isArray(value) ? value.join(', ') : value}
-          </Typography.Text>
+          <div data-testid="enum-value">
+            {isArray(value) ? (
+              <div className="w-full d-flex gap-2">
+                {value.map((val) => (
+                  <Tooltip key={val} title={val} trigger="hover">
+                    <Tag
+                      style={{
+                        width: 'max-content',
+                        margin: '0px',
+                        border: 'none',
+                        padding: '4px',
+                        background: 'rgba(0, 0, 0, 0.03)',
+                      }}>
+                      {val}
+                    </Tag>
+                  </Tooltip>
+                ))}
+              </div>
+            ) : (
+              <Tooltip key={value} title={value} trigger="hover">
+                <Tag
+                  style={{
+                    width: 'max-content',
+                    margin: '0px',
+                    border: 'none',
+                    padding: '4px',
+                    background: 'rgba(0, 0, 0, 0.03)',
+                  }}>
+                  {value}
+                </Tag>
+              </Tooltip>
+            )}
+          </div>
         );
 
       case ENUM_WITH_DESCRIPTION: {
@@ -873,7 +907,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <Typography.Text
-            className="break-all"
+            className="break-all text-xl font-semibold text-grey-body"
             data-testid="time-interval-value">
             {`StartTime: ${timeInterval.start}`}
             <br />
@@ -893,7 +927,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'duration':
       default:
         return (
-          <Typography.Text className="break-all" data-testid="value">
+          <Typography.Text
+            className="break-all text-xl font-semibold text-grey-body"
+            data-testid="value">
             {value}
           </Typography.Text>
         );
@@ -913,30 +949,41 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   };
 
   return (
-    <div>
-      {showInput ? (
-        getPropertyInput()
-      ) : (
-        <Fragment>
-          <div className="d-flex gap-2 items-center w-full">
-            {getValueElement()}
-            {hasEditPermissions && (
-              <Tooltip
-                placement="left"
-                title={t('label.edit-entity', { entity: propertyName })}>
-                <Icon
-                  component={EditIconComponent}
-                  data-testid={`edit-icon${
-                    isRenderedInRightPanel ? '-right-panel' : ''
-                  }`}
-                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                  onClick={onShowInput}
-                />
-              </Tooltip>
-            )}
-          </div>
-        </Fragment>
-      )}
-    </div>
+    <Card className="w-full">
+      <Row gutter={[0, 8]}>
+        <Col span={24}>
+          <Row gutter={[0, 2]}>
+            <Col className="d-flex justify-between w-full" span={24}>
+              <Typography.Text
+                className="text-lg font-semibold text-grey-body"
+                data-testid="property-name">
+                {getEntityName(property)}
+              </Typography.Text>
+              {hasEditPermissions && !showInput && (
+                <Tooltip
+                  placement="left"
+                  title={t('label.edit-entity', { entity: propertyName })}>
+                  <Icon
+                    component={EditIconComponent}
+                    data-testid={`edit-icon${
+                      isRenderedInRightPanel ? '-right-panel' : ''
+                    }`}
+                    style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                    onClick={onShowInput}
+                  />
+                </Tooltip>
+              )}
+            </Col>
+            <Col span={24}>
+              <RichTextEditorPreviewer markdown={property.description || ''} />
+            </Col>
+          </Row>
+        </Col>
+
+        <Col span={24}>
+          {showInput ? getPropertyInput() : getValueElement()}
+        </Col>
+      </Row>
+    </Card>
   );
 };

@@ -11,20 +11,12 @@
  *  limitations under the License.
  */
 
-import { Divider, Skeleton, Typography } from 'antd';
+import { Col, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { INLINE_PROPERTY_TYPES } from '../../../constants/CustomProperty.constants';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -38,7 +30,6 @@ import { ChangeDescription, Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
@@ -254,39 +245,21 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             {viewAllBtn}
           </div>
 
-          <div data-testid="custom-properties-card">
-            {dataSource.map((record, index) => (
-              <Fragment key={record.name}>
-                <div
-                  className={classNames('w-full d-flex gap-2', {
-                    'flex-column': !INLINE_PROPERTY_TYPES.includes(
-                      record.propertyType.name ?? ''
-                    ),
-                    'items-center': INLINE_PROPERTY_TYPES.includes(
-                      record.propertyType.name ?? ''
-                    ),
-                  })}>
-                  <Typography.Text
-                    className="text-base text-grey-body"
-                    data-testid="rule-name">
-                    {getEntityName(record)}
-                  </Typography.Text>
-                  <PropertyValue
-                    extension={extensionObject.extensionObject}
-                    hasEditPermissions={hasEditAccess}
-                    isRenderedInRightPanel={isRenderedInRightPanel}
-                    isVersionView={isVersionView}
-                    property={record}
-                    versionDataKeys={extensionObject.addedKeysList}
-                    onExtensionUpdate={onExtensionUpdate}
-                  />
-                </div>
-                {index !== dataSource.length - 1 && (
-                  <Divider className="m-y-md" />
-                )}
-              </Fragment>
+          <Row data-testid="custom-properties-card" gutter={[16, 16]}>
+            {dataSource.map((record) => (
+              <Col key={record.name} span={8}>
+                <PropertyValue
+                  extension={extensionObject.extensionObject}
+                  hasEditPermissions={hasEditAccess}
+                  isRenderedInRightPanel={isRenderedInRightPanel}
+                  isVersionView={isVersionView}
+                  property={record}
+                  versionDataKeys={extensionObject.addedKeysList}
+                  onExtensionUpdate={onExtensionUpdate}
+                />
+              </Col>
             ))}
-          </div>
+          </Row>
         </>
       )}
     </>
