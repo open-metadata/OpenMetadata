@@ -43,6 +43,12 @@ site_menu:
 
   - category: Connectors / Database
     url: /connectors/database
+  - category: Connectors / Database / ADLS Datalake
+    url: /connectors/database/adls-datalake
+  - category: Connectors / Database / ADLS Datalake / Run Externally
+    url: /connectors/database/adls-datalake/yaml
+  - category: Connectors / Database / ADLS Datalake / Troubleshooting
+    url: /connectors/database/adls-datalake/troubleshooting
   - category: Connectors / Database / Athena
     url: /connectors/database/athena
   - category: Connectors / Database / Athena / Run Externally
@@ -79,12 +85,6 @@ site_menu:
     url: /connectors/database/databricks/yaml
   - category: Connectors / Database / Databricks / Troubleshooting
     url: /connectors/database/databricks/troubleshooting
-  - category: Connectors / Database / Datalake
-    url: /connectors/database/datalake
-  - category: Connectors / Database / Datalake / Run Externally
-    url: /connectors/database/datalake/yaml
-  - category: Connectors / Database / Datalake / Troubleshooting
-    url: /connectors/database/datalake/troubleshooting
   - category: Connectors / Database / DB2
     url: /connectors/database/db2
   - category: Connectors / Database / DB2 / Run Externally
@@ -111,6 +111,10 @@ site_menu:
     url: /connectors/database/dynamodb
   - category: Connectors / Database / DynamoDB / Run Externally
     url: /connectors/database/dynamodb/yaml
+  - category: Connectors / Database / GCS Datalake
+    url: /connectors/database/gcs-datalake
+  - category: Connectors / Database / GCS Datalake / Run Externally
+    url: /connectors/database/gcs-datalake/yaml
   - category: Connectors / Database / Glue
     url: /connectors/database/glue
   - category: Connectors / Database / Glue / Run Externally
@@ -205,6 +209,12 @@ site_menu:
     url: /connectors/database/synapse/yaml
   - category: Connectors / Database / Synapse / Troubleshooting
     url: /connectors/database/synapse/troubleshooting
+  - category: Connectors / Database / S3 Datalake
+    url: /connectors/database/s3-datalake
+  - category: Connectors / Database / S3 Datalake / Run Externally
+    url: /connectors/database/s3-datalake/yaml
+  - category: Connectors / Database / S3 Datalake / Troubleshooting
+    url: /connectors/database/s3-datalake/troubleshooting
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
@@ -318,9 +328,9 @@ site_menu:
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
-  - category: Connectors / Pipeline / DBTCloud
+  - category: Connectors / Pipeline / dbt Cloud
     url: /connectors/pipeline/dbtcloud
-  - category: Connectors / Pipeline / DBTCloud / Run Externally
+  - category: Connectors / Pipeline / dbt Cloud / Run Externally
     url: /connectors/pipeline/dbtcloud/yaml
   - category: Connectors / Pipeline / KafkaConnect
     url: /connectors/pipeline/kafkaconnect
@@ -377,9 +387,9 @@ site_menu:
 
   - category: Connectors / Storage
     url: /connectors/storage
-  - category: Connectors / Storage / S3
+  - category: Connectors / Storage / S3 Storage
     url: /connectors/storage/s3
-  - category: Connectors / Storage / S3 / Run Externally
+  - category: Connectors / Storage / S3 Storage / Run Externally
     url: /connectors/storage/s3/yaml
   - category: Connectors / Storage / GCS
     url: /connectors/storage/gcs
@@ -753,6 +763,38 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.4 Release
+    url: /releases/all-releases/#1.5.4-release
+  - category: Releases / All Releases / 1.5.3 Release
+    url: /releases/all-releases/#1.5.3-release
+  - category: Releases / All Releases / 1.5.2 Release
+    url: /releases/all-releases/#1.5.2-release
+  - category: Releases / All Releases / 1.5.1 Release
+    url: /releases/all-releases/#1.5.1-release
+  - category: Releases / All Releases / 1.4.8 Release
+    url: /releases/all-releases/#1.4.8-release
+  - category: Releases / All Releases / 1.4.7 Release
+    url: /releases/all-releases/#1.4.7-release
+  - category: Releases / All Releases / 1.4.6 Release
+    url: /releases/all-releases/#1.4.6-release
+  - category: Releases / All Releases / 1.4.5 Release
+    url: /releases/all-releases/#1.4.5-release
+  - category: Releases / All Releases / 1.4.4 Release
+    url: /releases/all-releases/#1.4.4-release
+  - category: Releases / All Releases / 1.4.3 Release
+    url: /releases/all-releases/#1.4.3-release
+  - category: Releases / All Releases / 1.4.2 Release
+    url: /releases/all-releases/#1.4.2-release
+  - category: Releases / All Releases / 1.4.1 Release
+    url: /releases/all-releases/#1.4.1-release
+  - category: Releases / All Releases / 1.4.0 Release
+    url: /releases/all-releases/#1.4.0-release
+  - category: Releases / All Releases / 1.3.4 Release
+    url: /releases/all-releases/#1.3.4-release
+  - category: Releases / All Releases / 1.3.3 Release
+    url: /releases/all-releases/#1.3.3-release
+  - category: Releases / All Releases / 1.3.2 Release
+    url: /releases/all-releases/#1.3.2-release
   - category: Releases / All Releases / 1.3.1 Release
     url: /releases/all-releases/#1.3.1-release
   - category: Releases / All Releases / 1.3.0 Release

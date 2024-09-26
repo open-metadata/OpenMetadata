@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_4'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_5'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -972,6 +972,39 @@ To continue pursuing this objective, the application was completely refactored t
 -   Fix MetaPilot push for no constraint ${CollateIconWithLinkMD}
 -   Glossary list selector for bulk import
 -   Unable to access import glossary page`,
+    },
+  },
+  {
+    id: 47,
+    version: 'v1.5.5',
+    description: `Released on 23rd September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   **Minor**: Made the type optional in ES Response.
+-   **Feature**: Added support for refresh tokens with multiple tabs open.
+-   **Fix**: Resolved issue of overriding user info after login.
+-   **Minor**: Updated the custom property entities data model, along with the data product and database schema icons.
+-   **Fix**: Ensured Teams and Owner fields are correctly passed in the policy API call.
+-   **Improvement**: Enhanced PII logging information.
+-   **Fix**: Addressed the paginate_es issue in OpenSearch.
+-   **Feature**: Decrypted JWT internally for system health checks.
+-   **Minor**: Implemented multithreading in View Lineage Processing.
+-   **Improvement**: Improved search relevancy.
+-   **Fix**: Resolved issue with owners patch.
+-   **Fix (Data Quality)**: Fixed Snowflake data diff issue.
+-   **Minor**: Updated Presidio Analyzer version and validated support for legal entities.
+-   **Feature**: Added validations for Salesforce connection.
+-   **Feature**: Allowed PII Processor to operate without storing sample data.
+-   **Minor**: Added seconds to the human-readable format scale for test case graphs.
+-   **Fix**: Added missing field in glossary term.
+-   **Fix**: Excluded defaultPersona if not present in personas.
+-   **Fix**: Resolved team export issue.
+-   **Fix**: Updated Python lineage SDK to work with UUID and FQN models.
+-   **Fix**: Fixed LDAP login issue.
+-   **Fix**: Column sizing of data quality and pipeline widget ${CollateIconWithLinkMD}
+-   **Fix**: Export with new line in description ${CollateIconWithLinkMD}
+-   **Minor**: Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
+`,
     },
   },
 ];

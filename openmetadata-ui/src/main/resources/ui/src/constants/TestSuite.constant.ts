@@ -101,6 +101,8 @@ export const TEST_CASE_STATUS: Record<
 };
 
 export const TABLE_DIFF = 'tableDiff';
+export const TABLE_DATA_TO_BE_FRESH = 'tableDataToBeFresh';
+export const TABLE_FRESHNESS_KEY = 'freshness';
 
 export const SUPPORTED_SERVICES_FOR_TABLE_DIFF = [
   DatabaseServiceType.Snowflake,
