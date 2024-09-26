@@ -6,30 +6,44 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.governanceWorkflows.WorkflowInstanceState",
   "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "definitions": {
+    "state": {
+      "title": "State",
+      "description": "Different States a Workflow Instance can be found at.",
+      "type": "string",
+      "enum": [
+        "CREATED",
+        "WAITING_USER"
+      ]
+    }
+  },
   "properties": {
     "id": {
-      "description": "Unique identifier of this workflow instance.",
+      "description": "Unique identifier of this workflow instance state.",
       "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "state": {
+      "$ref": "#/definitions/state"
     },
     "workflowInstanceId": {
       "description": "Unique identifier of this workflow instance.",
+      "type": "string"
+    },
+    "taskId": {
+      "description": "Unique identifier of this workflow instance task, if any.",
       "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "flowableTaskId": {
+      "description": "Unique identifier of this workflow instance task, if any.",
+      "type": "string"
     },
     "workflowDefinitionReference": {
       "description": "Workflow Definition Reference.",
       "$ref": "../type/entityReference.json"
     },
     "timestamp": {
-      "description": "Timestamp on which the failure was created.",
+      "description": "Timestamp on which the workflow instance state was created.",
       "$ref": "../type/basic.json#/definitions/timestamp"
-    },
-    "updatedAt": {
-      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
-      "$ref": "../type/basic.json#/definitions/timestamp"
-    },
-    "updatedBy": {
-      "description": "User who made the update.",
-      "type": "string"
     }
   },
   "required": [],

@@ -4,6 +4,9 @@ import java.util.Map;
 import lombok.Getter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.ExtensionElement;
+import org.flowable.bpmn.model.IntermediateCatchEvent;
+import org.flowable.bpmn.model.Message;
+import org.flowable.bpmn.model.MessageEventDefinition;
 import org.flowable.bpmn.model.Process;
 import org.openmetadata.schema.api.governance.EndEvent;
 import org.openmetadata.schema.governanceWorkflows.WorkflowDefinition;
@@ -37,6 +40,21 @@ public class Workflow {
     // Add StartEvent
     EntityEvent entityEvent = new EntityEvent(workflowDefinition.getStartEvent());
     entityEvent.addToWorkflow(model, process);
+
+    // Add IntermediateCatchEvent to wait until we are ready to continue the processing
+    Message workflowInstanceStateReady = new Message();
+    workflowInstanceStateReady.setId("WorkflowInstanceStateReadyEvent");
+    workflowInstanceStateReady.setName("WorkflowInstanceStateReady");
+    model.addMessage(workflowInstanceStateReady);
+
+    IntermediateCatchEvent waitForWorkflowInstanceState = new IntermediateCatchEvent();
+    waitForWorkflowInstanceState.setId(String.format("%s-waitForWorkflowInstanceState", workflowDefinition.getFullyQualifiedName()));
+    waitForWorkflowInstanceState.setName(String.format("[%s] Wait for Workflow Instance State", workflowDefinition.getDisplayName()));
+
+    MessageEventDefinition messageEventDefinition = new MessageEventDefinition();
+    messageEventDefinition.setMessageRef("WorkflowInstanceStateReadyEvent");
+    waitForWorkflowInstanceState.addEventDefinition(messageEventDefinition);
+    process.addFlowElement(waitForWorkflowInstanceState);
 
     // Add EndEvents
     for (EndEvent endEventConfig : workflowDefinition.getEndEvents()) {
@@ -96,8 +114,19 @@ public class Workflow {
 
     // Add Edges
     for (org.openmetadata.schema.api.governance.Edge edgeConfig : workflowDefinition.getEdges()) {
-      Edge edge = new Edge(edgeConfig);
-      edge.addToWorkflow(model, process);
+      // TODO: Remove this HACK
+      if (edgeConfig.getFrom().equals(workflowDefinition.getStartEvent().getName())) {
+        org.openmetadata.schema.api.governance.Edge startEdgeConfig = new org.openmetadata.schema.api.governance.Edge()
+                .withFrom(edgeConfig.getFrom())
+                .withTo(waitForWorkflowInstanceState.getId());
+        Edge waitEdge = new Edge(edgeConfig.withFrom(waitForWorkflowInstanceState.getId()));
+        Edge startEdge = new Edge(startEdgeConfig);
+        waitEdge.addToWorkflow(model, process);
+        startEdge.addToWorkflow(model, process);
+      } else {
+        Edge edge = new Edge(edgeConfig);
+        edge.addToWorkflow(model, process);
+      }
     }
 
     this.model = model;

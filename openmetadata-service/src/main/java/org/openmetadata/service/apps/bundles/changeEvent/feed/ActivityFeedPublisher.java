@@ -28,6 +28,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FeedUtils;
@@ -53,6 +54,10 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
 
   @Override
   public void sendMessage(ChangeEvent changeEvent) throws EventPublisherException {
+//    String signal =
+//
+//    WorkflowHandler.getInstance().triggerWithSignal();
+    // flowable.send(format(changeEvent))
     try {
       // Thread are created in FeedRepository Directly
       if (!changeEvent.getEntityType().equals(Entity.THREAD)) {

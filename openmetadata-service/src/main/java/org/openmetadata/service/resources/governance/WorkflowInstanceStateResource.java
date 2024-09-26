@@ -145,9 +145,9 @@ public class WorkflowInstanceStateResource
       })
   public ResultList<WorkflowInstanceState> listForStateId(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Workflow Instance ID", schema = @Schema(type = "UUID"))
+      @Parameter(description = "Workflow Instance ID", schema = @Schema(type = "String"))
           @PathParam("workflowInstanceId")
-          UUID workflowInstanceId) {
+          String workflowInstanceId) {
     OperationContext operationContext =
         new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
@@ -184,50 +184,50 @@ public class WorkflowInstanceStateResource
     return repository.getById(workflowInstanceStateId);
   }
 
-  @POST
-  @Operation(
-      operationId = "createWorkflowInstanceState",
-      summary = "Create a new Workflow Instance State",
-      description = "Create a new Workflow Instance State",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The created Workflow Instance State",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = WorkflowInstanceState.class)))
-      })
-  public Response create(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid CreateWorkflowInstanceState createWorkflowInstanceState) {
-    OperationContext operationContext =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    WorkflowDefinition workflowDefinitionEntity =
-        Entity.getEntityByName(
-            Entity.WORKFLOW_DEFINITION,
-            createWorkflowInstanceState.getWorkflowDefinitionReference(),
-            null,
-            Include.ALL);
-    WorkflowInstanceState workflowInstanceState =
-        getWorkflowInstanceState(
-            workflowDefinitionEntity, securityContext.getUserPrincipal().getName());
-
-    return create(workflowInstanceState, workflowDefinitionEntity.getFullyQualifiedName());
-  }
-
-  private WorkflowInstanceState getWorkflowInstanceState(
-      WorkflowDefinition workflowDefinitionEntity, String userName) {
-
-    return new WorkflowInstanceState()
-        .withWorkflowInstanceId(UUID.randomUUID())
-        .withTimestamp(System.currentTimeMillis())
-        .withUpdatedBy(userName)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withWorkflowDefinitionReference(workflowDefinitionEntity.getEntityReference());
-  }
+//  @POST
+//  @Operation(
+//      operationId = "createWorkflowInstanceState",
+//      summary = "Create a new Workflow Instance State",
+//      description = "Create a new Workflow Instance State",
+//      responses = {
+//        @ApiResponse(
+//            responseCode = "200",
+//            description = "The created Workflow Instance State",
+//            content =
+//                @Content(
+//                    mediaType = "application/json",
+//                    schema = @Schema(implementation = WorkflowInstanceState.class)))
+//      })
+//  public Response create(
+//      @Context UriInfo uriInfo,
+//      @Context SecurityContext securityContext,
+//      @Valid CreateWorkflowInstanceState createWorkflowInstanceState) {
+//    OperationContext operationContext =
+//        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
+//    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
+//    authorizer.authorize(securityContext, operationContext, resourceContext);
+//
+//    WorkflowDefinition workflowDefinitionEntity =
+//        Entity.getEntityByName(
+//            Entity.WORKFLOW_DEFINITION,
+//            createWorkflowInstanceState.getWorkflowDefinitionReference(),
+//            null,
+//            Include.ALL);
+//    WorkflowInstanceState workflowInstanceState =
+//        getWorkflowInstanceState(
+//            workflowDefinitionEntity, securityContext.getUserPrincipal().getName());
+//
+//    return create(workflowInstanceState, workflowDefinitionEntity.getFullyQualifiedName());
+//  }
+//
+//  private WorkflowInstanceState getWorkflowInstanceState(
+//      WorkflowDefinition workflowDefinitionEntity, String userName) {
+//
+//    return new WorkflowInstanceState()
+//        .withWorkflowInstanceId()
+//        .withTimestamp(System.currentTimeMillis())
+//        .withUpdatedBy(userName)
+//        .withUpdatedAt(System.currentTimeMillis())
+//        .withWorkflowDefinitionReference(workflowDefinitionEntity.getEntityReference());
+//  }
 }

@@ -4,13 +4,14 @@ import static org.openmetadata.service.governance.workflows.Workflow.getMetadata
 
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
+import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.Process;
-import org.flowable.bpmn.model.ScriptTask;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.openmetadata.service.governance.workflows.elements.processes.automated.impl.UpdateEntityImpl;
+import org.openmetadata.service.util.JsonUtils;
 
 public class UpdateEntity {
   private final SubProcess subProcess;
@@ -30,20 +31,17 @@ public class UpdateEntity {
     startEvent.setName("Start Event");
     subProcess.addFlowElement(startEvent);
 
-    ScriptTask scriptTask = new ScriptTask();
-    scriptTask.setId(String.format("%s-setUpdates", updateEntity.getName()));
-    scriptTask.setName("Set Updates as Variable");
-    scriptTask.setScriptFormat("javascript");
-    scriptTask.setScript(
-        String.format(
-            "execution.setVariableLocal('updates', '%s');", updateEntity.getConfig().getUpdates()));
-    subProcess.addFlowElement(scriptTask);
-
     ServiceTask serviceTask = new ServiceTask();
     serviceTask.setId(String.format("%s-updateEntity", updateEntity.getName()));
     serviceTask.setName(String.format("[%s] Update Entity", updateEntity.getDisplayName()));
     serviceTask.setImplementationType("class");
     serviceTask.setImplementation(UpdateEntityImpl.class.getName());
+
+    FieldExtension updatesExpr = new FieldExtension();
+    updatesExpr.setFieldName("updatesExpr");
+    updatesExpr.setStringValue(JsonUtils.pojoToJson(updateEntity.getConfig().getUpdates()));
+    serviceTask.getFieldExtensions().add(updatesExpr);
+
     subProcess.addFlowElement(serviceTask);
 
     EndEvent endEvent = new EndEvent();
@@ -51,8 +49,7 @@ public class UpdateEntity {
     endEvent.setName("End Event");
     subProcess.addFlowElement(endEvent);
 
-    subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), scriptTask.getId()));
-    subProcess.addFlowElement(new SequenceFlow(scriptTask.getId(), serviceTask.getId()));
+    subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), serviceTask.getId()));
     subProcess.addFlowElement(new SequenceFlow(serviceTask.getId(), endEvent.getId()));
 
     this.subProcess = subProcess;

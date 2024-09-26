@@ -5217,6 +5217,18 @@ public interface CollectionDAO {
       return "workflow_instance_state_time_series";
     }
 
+    @SqlQuery(
+            value =
+                    "SELECT json FROM workflow_instance_state_time_series "
+                            + "WHERE workflowInstanceId = :workflowInstanceId ORDER BY timestamp DESC")
+    List<String> listWorkflowInstanceStatesForWorkflowInstanceId(@Bind("workflowInstanceId") String workflowInstanceId);
+
+    @SqlQuery(
+            value =
+                    "SELECT flowableTaskId FROM workflow_instance_state_time_series "
+                            + "WHERE taskId = :taskId ORDER BY timestamp DESC")
+    String getFlowableTaskIdFromTaskId(@BindUUID("taskId") UUID taskId);
+
     //    @SqlQuery(
     //            value =
     //                    "SELECT json FROM test_case_resolution_status_time_series "

@@ -28,8 +28,10 @@ public class EntityEvent {
 
     for (Event event : entityEvent.getConfig().getEvents()) {
       for (String entityType : entityEvent.getConfig().getEntityTypes()) {
-        String signalId = String.format("%s-%s", entityType, event.toString());
+//        String signalId = String.format("%s-%s", entityType, event.toString());
 
+        // TODO: Remove the hardcoded piece of code made for testing
+        String signalId = "glossaryTerm-entityCreated";
         Signal signal = new Signal();
         signal.setId(signalId);
         signal.setName(signalId);

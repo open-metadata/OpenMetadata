@@ -16,12 +16,16 @@ CREATE TABLE IF NOT EXISTS workflow_definition_entity (
 CREATE TABLE workflow_instance_state_time_series (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.id'))) STORED NOT NULL,
   workflowInstanceId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowInstanceId'))) STORED NOT NULL,
+  taskId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.taskId'))) STORED NULL,
+  flowableTaskId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.flowableTaskId'))) STORED NULL,
+  state varchar(100) GENERATED ALWAYS AS (json_unquote(json_Extract(json, '$.state'))) STORED NOT NULL,
   timestamp bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.timestamp'))) STORED NOT NULL,
   jsonSchema varchar(256) NOT NULL,
   json json NOT NULL,
   entityFQNHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
   CONSTRAINT workflow_instance_time_series_unique_constraint UNIQUE (id,timestamp,entityFQNHash),
-  INDEX (id)
+  INDEX (id),
+  INDEX (taskId)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Flowable Related Tables
@@ -1596,5 +1600,25 @@ INSERT INTO ACT_CO_DATABASECHANGELOG (ID, AUTHOR, FILENAME, DATEEXECUTED, ORDERE
 
 UPDATE ACT_CO_DATABASECHANGELOGLOCK SET `LOCKED` = 0, LOCKEDBY = NULL, LOCKGRANTED = NULL WHERE ID = 1;
 
+update ACT_GE_PROPERTY set VALUE_ = '7.0.1.0' where NAME_ = 'common.schema.version';
 
+
+alter table ACT_RU_TASK add column (
+    STATE_ varchar(255), 
+    IN_PROGRESS_TIME_ datetime(3), 
+    IN_PROGRESS_STARTED_BY_ varchar(255),
+    CLAIMED_BY_ varchar(255), 
+    SUSPENDED_TIME_ datetime(3), 
+    SUSPENDED_BY_ varchar(255), 
+    IN_PROGRESS_DUE_DATE_ datetime(3));
+
+alter table ACT_HI_TASKINST add column (
+    STATE_ varchar(255), 
+    IN_PROGRESS_TIME_ datetime(3), 
+    IN_PROGRESS_STARTED_BY_ varchar(255),
+    CLAIMED_BY_ varchar(255), 
+    SUSPENDED_TIME_ datetime(3), 
+    SUSPENDED_BY_ varchar(255), 
+    COMPLETED_BY_ varchar(255), 
+    IN_PROGRESS_DUE_DATE_ datetime(3));
 -- ------------------------------------
