@@ -125,6 +125,7 @@ jobs:
           name: coverage-${{ matrix.session }}
           path: ingestion/coverage
           if-no-files-found: error
+          include-hidden-files: true
       - name: Clean Up
         run: |
           cd ./docker/development
