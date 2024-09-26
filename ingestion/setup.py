@@ -378,7 +378,7 @@ test = {
     "kafka-python==2.0.2",
     *plugins["pii-processor"],
     "requests==2.31.0",
-    f"{DATA_DIFF['mysql']}==0.11.2",
+    f"{DATA_DIFF['mysql']}",
     *plugins["deltalake"],
     *plugins["datalake-gcs"],
     *plugins["pgspider"],
