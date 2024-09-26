@@ -1,5 +1,5 @@
 ---
-title: Dayabase service setup
+title: Database service setup
 slug: /how-to-guides/getting-started/day-1/database-service-setup
 collate: true
 ---
