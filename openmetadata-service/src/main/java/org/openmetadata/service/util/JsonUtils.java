@@ -160,10 +160,10 @@ public final class JsonUtils {
     }
   }
 
-  public static <T> Optional<T> readJsonAtPath(String json, String path, TypeRef<T> clazz) {
+  public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
     try {
-      JsonElement jsonElement = gson.fromJson(json, JsonElement.class);
-      DocumentContext documentContext = JsonPath.using(JSON_PATH_CONFIGURATION).parse(jsonElement);
+//      JsonElement jsonElement = gson.fromJson(json, JsonElement.class);
+      DocumentContext documentContext = JsonPath.parse(json);
       return Optional.ofNullable(documentContext.read(path, clazz));
     } catch (Exception e) {
       LOG.error("Failed to read value at path {}", path, e);
@@ -171,16 +171,16 @@ public final class JsonUtils {
     }
   }
 
-  public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
-    TypeRef<T> typeRef =
-        new TypeRef<>() {
-          @Override
-          public java.lang.reflect.Type getType() {
-            return clazz;
-          }
-        };
-    return readJsonAtPath(json, path, typeRef);
-  }
+//  public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
+//    TypeRef<T> typeRef =
+//        new TypeRef<>() {
+//          @Override
+//          public java.lang.reflect.Type getType() {
+//            return clazz;
+//          }
+//        };
+//    return readJsonAtPath(json, path, typeRef);
+//  }
 
   public static <T> T readValue(String json, Class<T> clz) {
     if (json == null) {

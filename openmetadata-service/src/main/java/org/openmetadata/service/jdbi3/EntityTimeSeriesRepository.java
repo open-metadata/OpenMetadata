@@ -41,7 +41,6 @@ import org.openmetadata.service.util.ResultList;
 
 @Getter
 @Repository
-@Slf4j
 public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
   protected final String collectionPath;
   protected final EntityTimeSeriesDAO timeSeriesDao;
