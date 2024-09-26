@@ -979,6 +979,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     setIsExpanded(!isExpanded);
   };
 
+  if (isRenderedInRightPanel) {
+    // TODO: Add right panel styles
+    return null;
+  }
+
   return (
     <Card
       className="w-full"
