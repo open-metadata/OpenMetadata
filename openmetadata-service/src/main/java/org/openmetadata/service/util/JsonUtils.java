@@ -27,6 +27,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.github.fge.jsonpatch.diff.JsonDiff;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion.VersionFlag;
@@ -40,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -142,6 +145,16 @@ public final class JsonUtils {
       return (T) readValue(json, Class.forName(clazzName));
     } catch (ClassNotFoundException e) {
       throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
+  }
+
+  public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
+    try {
+      DocumentContext documentContext = JsonPath.parse(json);
+      return Optional.ofNullable(documentContext.read(path, clazz));
+    } catch (Exception e) {
+      LOG.error("Failed to read value at path {}", path, e);
+      return Optional.empty();
     }
   }
 

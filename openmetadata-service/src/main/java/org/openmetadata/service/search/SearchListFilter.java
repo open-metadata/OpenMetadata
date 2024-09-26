@@ -193,15 +193,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           String.format("{\"term\": {\"testCaseResult.testCaseStatus\": \"%s\"}}", status));
     }
 
-    if (type != null) {
-      conditions.add(
-          switch (type) {
-            case Entity
-                .TABLE -> "{\"bool\": {\"must_not\": [{\"regexp\": {\"entityLink\": \".*::columns::.*\"}}]}}";
-            case "column" -> "{\"regexp\": {\"entityLink\": \".*::columns::.*\"}}";
-            default -> "";
-          });
-    }
+    if (type != null) conditions.add(getTestCaseTypeCondition(type, "entityLink"));
 
     if (testPlatform != null) {
       String platforms =
@@ -216,10 +208,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           getTimestampFilter("testCaseResult.timestamp", "lte", Long.parseLong(endTimestamp)));
     }
 
-    if (dataQualityDimension != null) {
+    if (dataQualityDimension != null)
       conditions.add(
-          String.format("{\"term\": {\"dataQualityDimension\": \"%s\"}}", dataQualityDimension));
-    }
+          getDataQualityDimensionCondition(dataQualityDimension, "dataQualityDimension"));
 
     return addCondition(conditions);
   }
@@ -227,6 +218,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private String getTestCaseResultCondition() {
     ArrayList<String> conditions = new ArrayList<>();
 
+    String dataQualityDimension = getQueryParam("dataQualityDimension");
+    String type = getQueryParam("testCaseType");
     String startTimestamp = getQueryParam("startTimestamp");
     String endTimestamp = getQueryParam("endTimestamp");
     String testCaseFQN = getQueryParam("testCaseFQN");
@@ -245,10 +238,14 @@ public class SearchListFilter extends Filter<SearchListFilter> {
                   + "{\"term\": {\"testCase.fullyQualifiedName\": \"%1$s\"}}]}}",
               escapeDoubleQuotes(testCaseFQN)));
     }
-    if (testCaseStatus != null) {
+    if (testCaseStatus != null)
       conditions.add(String.format("{\"term\": {\"testCaseStatus\": \"%s\"}}", testCaseStatus));
-    }
+    if (type != null) conditions.add(getTestCaseTypeCondition(type, "testCase.entityLink"));
     if (testSuiteId != null) conditions.add(getTestSuiteIdCondition(testSuiteId));
+    if (dataQualityDimension != null)
+      conditions.add(
+          getDataQualityDimensionCondition(
+              dataQualityDimension, "testDefinition.dataQualityDimension"));
     return addCondition(conditions);
   }
 
@@ -286,5 +283,18 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return String.format(
         "{\"nested\":{\"path\":\"testSuites\",\"query\":{\"term\":{\"testSuites.id\":\"%s\"}}}}",
         testSuiteId);
+  }
+
+  private String getTestCaseTypeCondition(String type, String field) {
+    return switch (type) {
+      case Entity.TABLE -> String.format(
+          "{\"bool\": {\"must_not\": [{\"regexp\": {\"%s\": \".*::columns::.*\"}}]}}", field);
+      case "column" -> String.format("{\"regexp\": {\"%s\": \".*::columns::.*\"}}", field);
+      default -> "";
+    };
+  }
+
+  private String getDataQualityDimensionCondition(String dataQualityDimension, String field) {
+    return String.format("{\"term\": {\"%s\": \"%s\"}}", field, dataQualityDimension);
   }
 }

@@ -222,10 +222,41 @@ public class TestCaseResultResource
       @Parameter(
               description =
                   "Get the latest test case result for each test case -- requires `testSuiteId`. Offset and limit are ignored",
-              schema = @Schema(type = "boolean", example = "true|false"))
+              schema =
+                  @Schema(
+                      type = "boolean",
+                      example = "false",
+                      allowableValues = {"true", "false"}))
           @QueryParam("latest")
           @DefaultValue("false")
           String latest,
+      @Parameter(
+              description = "Filter for test case result by type (e.g. column, table, all)",
+              schema =
+                  @Schema(
+                      type = "string",
+                      example = "all",
+                      allowableValues = {"column", "table", "all"}))
+          @QueryParam("testCaseType")
+          @DefaultValue("all")
+          String type,
+      @Parameter(
+              description =
+                  "Filter for test case by data quality dimension (e.g. OpenMetadata, dbt, etc.)",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {
+                        "Completeness",
+                        "Accuracy",
+                        "Consistency",
+                        "Validity",
+                        "Uniqueness",
+                        "Integrity",
+                        "SQL"
+                      }))
+          @QueryParam("dataQualityDimension")
+          String dataQualityDimension,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
@@ -235,7 +266,7 @@ public class TestCaseResultResource
     if (latest.equals("true") && testSuiteId == null) {
       throw new IllegalArgumentException("latest=true requires testSuiteId");
     }
-    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of(""), fieldParams);
+    EntityUtil.Fields fields = repository.getFields(fieldParams);
     SearchListFilter searchListFilter = new SearchListFilter();
     Optional.ofNullable(startTimestamp)
         .ifPresent(ts -> searchListFilter.addQueryParam("startTimestamp", ts.toString()));
@@ -247,6 +278,9 @@ public class TestCaseResultResource
         .ifPresent(tcf -> searchListFilter.addQueryParam("testCaseFQN", tcf));
     Optional.ofNullable(testSuiteId)
         .ifPresent(tsi -> searchListFilter.addQueryParam("testSuiteId", tsi));
+    Optional.ofNullable(type).ifPresent(t -> searchListFilter.addQueryParam("testCaseType", t));
+    Optional.ofNullable(dataQualityDimension)
+        .ifPresent(dqd -> searchListFilter.addQueryParam("dataQualityDimension", dqd));
 
     ResourceContextInterface resourceContextInterface = getResourceContext(testCaseFQN);
     // Override OperationContext to change the entity to table
@@ -259,7 +293,7 @@ public class TestCaseResultResource
           securityContext,
           fields,
           searchListFilter,
-          "testSuites.id",
+          "testCaseFQN.keyword",
           q,
           operationContext,
           resourceContextInterface);

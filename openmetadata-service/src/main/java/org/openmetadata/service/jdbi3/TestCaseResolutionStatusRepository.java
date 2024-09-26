@@ -165,7 +165,8 @@ public class TestCaseResolutionStatusRepository
 
   @Override
   @Transaction
-  public void storeInternal(TestCaseResolutionStatus recordEntity, String recordFQN) {
+  public void storeInternal(
+      TestCaseResolutionStatus recordEntity, String recordFQN, String extension) {
 
     TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
 
@@ -212,7 +213,7 @@ public class TestCaseResolutionStatusRepository
     }
     EntityReference testCaseReference = recordEntity.getTestCaseReference();
     recordEntity.withTestCaseReference(null); // we don't want to store the reference in the record
-    super.storeInternal(recordEntity, recordFQN);
+    timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
     recordEntity.withTestCaseReference(testCaseReference);
   }
 
@@ -302,7 +303,10 @@ public class TestCaseResolutionStatusRepository
     EntityReference testCaseReference = newIncidentStatus.getTestCaseReference();
     newIncidentStatus.setTestCaseReference(
         null); // we don't want to store the reference in the record
-    super.storeInternal(newIncidentStatus, testCase.getFullyQualifiedName());
+    timeSeriesDao.insert(
+        testCaseReference.getFullyQualifiedName(),
+        entityType,
+        JsonUtils.pojoToJson(newIncidentStatus));
     newIncidentStatus.setTestCaseReference(testCaseReference);
   }
 
