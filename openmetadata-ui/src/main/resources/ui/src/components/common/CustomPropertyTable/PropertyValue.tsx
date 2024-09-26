@@ -115,6 +115,19 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
   const onHideInput = () => setShowInput(false);
 
+  const findOptionReference = (
+    item: DataAssetOption | string,
+    options: DataAssetOption[]
+  ) => {
+    if (typeof item === 'string') {
+      const option = options.find((option) => option.value === item);
+
+      return option?.reference;
+    }
+
+    return item?.reference;
+  };
+
   const onInputSave = async (updatedValue: PropertyValueType) => {
     const isEnum = propertyType.name === 'enum';
     const isEnumWithDescription = propertyType.name === ENUM_WITH_DESCRIPTION;
@@ -692,13 +705,22 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: {
                 entityReference: DataAssetOption | DataAssetOption[];
               }) => {
-                if (isArray(values.entityReference)) {
-                  onInputSave(
-                    values.entityReference.map((item) => item.reference)
-                  );
-                } else {
-                  onInputSave(values?.entityReference?.reference);
+                const { entityReference } = values;
+
+                if (Array.isArray(entityReference)) {
+                  const references = entityReference
+                    .map((item) => findOptionReference(item, initialOptions))
+                    .filter(Boolean) as EntityReference[];
+                  onInputSave(references);
+
+                  return;
                 }
+
+                const reference = findOptionReference(
+                  entityReference,
+                  initialOptions
+                );
+                onInputSave(reference as EntityReference);
               }}>
               <Form.Item name="entityReference" style={commonStyle}>
                 <DataAssetAsyncSelectList
