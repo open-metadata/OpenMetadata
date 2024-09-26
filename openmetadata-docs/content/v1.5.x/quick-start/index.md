@@ -12,6 +12,8 @@ This section will guide you through the installation process and the initial ste
 
 Before you proceed with the full installation, you have the option to explore OpenMetadata’s features using the sandbox environment. This allows you to try out its capabilities before setting it up.
 
+Get hands-on experience and discover how OpenMetadata can streamline your workflows by trying the sandbox environment today.
+
 {% inlineCalloutContainer %}
 
 {% inlineCallout
@@ -23,7 +25,7 @@ Interact with a sample installation with 0 setup to explore our Discovery, Gover
 
 {% /inlineCalloutContainer %}
 
-When you're ready to install, you can set up using one of the following two approaches:
+Additionally, you can explore the Quick Start by setting up one of the two approaches locally with your own customizations, allowing you to test and experiment with the features.
 
 {% inlineCalloutContainer %}
 
