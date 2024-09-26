@@ -108,7 +108,7 @@ public interface SearchClient {
 
   void createAliases(IndexMapping indexMapping);
 
-  void addIndexAlias(IndexMapping indexMapping, String aliasName);
+  void addIndexAlias(IndexMapping indexMapping, String... aliasName);
 
   Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
 

@@ -64,7 +64,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
           "storedProcedure",
           "databaseSchema",
           "database",
-          "testSuite",
           "chart",
           "dashboard",
           "dashboardDataModel",
