@@ -11,17 +11,34 @@
  *  limitations under the License.
  */
 import { Quill } from 'react-quill';
+// import Quill from 'quill';
+import {
+  MentionBlot as QuillMentionBlot,
+  MentionBlotData,
+} from 'quill-mention';
 
-const MentionBlot = Quill.import('blots/mention');
+const MentionBlot = Quill.import('blots/mention') as typeof QuillMentionBlot;
 
-export class LinkBlot extends MentionBlot {
-  static render(data: { value: string; link: string; id: string }) {
+class LinkBlot extends MentionBlot {
+  static render = (data: MentionBlotData & { link: string; id: string }) => {
     const element = document.createElement('a');
     element.innerText = data.value;
     element.href = data.link;
     element.id = data.id;
 
     return element;
-  }
+  };
 }
+
+// MentionBlot.render = (data: MentionBlotData & { link: string; id: string }) => {
+//   const element = document.createElement('a');
+//   element.innerText = data.value;
+//   element.href = data.link;
+//   element.id = data.id;
+
+//   return element;
+// };
+
 LinkBlot.blotName = 'link-mention';
+
+export { LinkBlot };

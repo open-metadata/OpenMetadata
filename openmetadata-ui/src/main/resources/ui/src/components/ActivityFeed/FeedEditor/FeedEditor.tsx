@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,11 +12,12 @@
  *  limitations under the License.
  */
 
+import { ToolbarEmoji } from '@windmillcode/quill-emoji';
+import '@windmillcode/quill-emoji/quill-emoji.css';
 import classNames from 'classnames';
 import { debounce, isNil } from 'lodash';
-import Emoji from 'quill-emoji';
-import 'quill-emoji/dist/quill-emoji.css';
-import 'quill-mention';
+import { Parchment } from 'quill';
+import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
   forwardRef,
@@ -44,6 +46,8 @@ import {
   suggestions,
   userMentionItemWithAvatar,
 } from '../../../utils/FeedUtils';
+// import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
+import Delta from 'quill-delta';
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
@@ -53,12 +57,18 @@ import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
-Quill.register('modules/emoji', Emoji);
-Quill.register(LinkBlot);
-const Delta = Quill.import('delta');
+Quill.register('modules/emoji-toolbar', ToolbarEmoji, true);
+Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
+const DeltaInternal = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const strikethrough = (_node: any, delta: typeof Delta) => {
-  return delta.compose(new Delta().retain(delta.length(), { strike: true }));
+  // @ts-ignore
+  if ('compose' in delta && delta.compose instanceof Function) {
+    // @ts-ignore
+    return delta.compose(
+      new DeltaInternal().retain(delta.length, { strike: true })
+    );
+  }
 };
 
 export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(

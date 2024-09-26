@@ -39,6 +39,7 @@ describe('LinkBlot', () => {
       value: 'Link Text',
       link: 'https://example.com/',
       id: 'linkId',
+      denotationChar: '@',
     };
 
     const linkElement = LinkBlot.render(data);
