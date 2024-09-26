@@ -51,7 +51,7 @@ export const ModalWithCustomPropertyEditor = ({
       const response = await getTypeByFQN(entityType);
       setCustomPropertyTypes(response);
       setCustomPropertyValue(
-        convertCustomPropertyStringToEntityExtension(value, response)
+        convertCustomPropertyStringToEntityExtension(value ?? '', response)
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
