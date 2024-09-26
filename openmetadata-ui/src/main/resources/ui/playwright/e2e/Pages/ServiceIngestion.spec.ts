@@ -12,7 +12,7 @@
  */
 
 import test, { expect } from '@playwright/test';
-import { INGESTION_DEPENDENCY_TAG } from '../../constant/config';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { MYSQL, POSTGRES, REDSHIFT } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
@@ -63,7 +63,7 @@ services.forEach((ServiceClass) => {
 
   test.describe.serial(
     service.serviceType,
-    INGESTION_DEPENDENCY_TAG,
+    PLAYWRIGHT_INGESTION_TAG_OBJ,
     async () => {
       test.beforeEach('Visit entity details page', async ({ page }) => {
         await redirectToHomePage(page);

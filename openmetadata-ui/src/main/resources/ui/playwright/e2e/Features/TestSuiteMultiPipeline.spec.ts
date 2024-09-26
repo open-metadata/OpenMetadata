@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
-import { INGESTION_DEPENDENCY_TAG } from '../../constant/config';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 
@@ -20,7 +20,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test(
   'TestSuite multi pipeline support',
-  INGESTION_DEPENDENCY_TAG,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page }) => {
     test.slow(true);
 
@@ -181,7 +181,7 @@ test(
 
 test(
   "Edit the pipeline's test case",
-  INGESTION_DEPENDENCY_TAG,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page }) => {
     test.slow(true);
 

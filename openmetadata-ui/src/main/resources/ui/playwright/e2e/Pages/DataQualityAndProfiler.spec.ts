@@ -12,7 +12,7 @@
  */
 import { expect, Page, test } from '@playwright/test';
 import { getCurrentMillis } from '../../../src/utils/date-time/DateTimeUtils';
-import { INGESTION_DEPENDENCY_TAG } from '../../constant/config';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
@@ -66,7 +66,7 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test('Table test case', INGESTION_DEPENDENCY_TAG, async ({ page }) => {
+test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   test.slow();
 
   const NEW_TABLE_TEST_CASE = {
@@ -165,7 +165,7 @@ test('Table test case', INGESTION_DEPENDENCY_TAG, async ({ page }) => {
   });
 });
 
-test('Column test case', INGESTION_DEPENDENCY_TAG, async ({ page }) => {
+test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   test.slow();
 
   const NEW_COLUMN_TEST_CASE = {
@@ -252,7 +252,7 @@ test('Column test case', INGESTION_DEPENDENCY_TAG, async ({ page }) => {
 
 test(
   'Profiler matrix and test case graph should visible',
-  INGESTION_DEPENDENCY_TAG,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page }) => {
     const DATA_QUALITY_TABLE = {
       term: 'dim_address',
@@ -324,7 +324,7 @@ test(
 
 test(
   'TestCase with Array params value',
-  INGESTION_DEPENDENCY_TAG,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page }) => {
     test.slow();
 
@@ -476,7 +476,7 @@ test(
 
 test(
   'Update profiler setting modal',
-  INGESTION_DEPENDENCY_TAG,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page }) => {
     const profilerSetting = {
       profileSample: '60',
@@ -571,7 +571,7 @@ test(
   }
 );
 
-test('TestCase filters', INGESTION_DEPENDENCY_TAG, async ({ page }) => {
+test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   test.setTimeout(360000);
 
   const { apiContext, afterAction } = await getApiContext(page);

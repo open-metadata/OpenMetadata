@@ -11,6 +11,6 @@
  *  limitations under the License.
  */
 
-export const INGESTION_DEPENDENCY_TAG = {
+export const PLAYWRIGHT_INGESTION_TAG_OBJ = {
   tag: '@ingestion',
 };
