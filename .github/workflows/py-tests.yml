@@ -175,10 +175,16 @@ jobs:
           coverage combine --keep -a coverage/3.9
           coverage report
           coverage xml -o ingestion/coverage.xml
+          coverage html
           sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
           sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
         shell: bash
 
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-html-report
+          path: ingestion/htmlcov
       # we have to pass these args values since we are working with the 'pull_request_target' trigger
       - name: Push Results in PR to Sonar
         id: push-to-sonar
