@@ -94,7 +94,10 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     if (jobException == null
         && !(runRecord.getStatus() == AppRunRecord.Status.FAILED
             || runRecord.getStatus() == AppRunRecord.Status.ACTIVE_ERROR)) {
-      runRecord.withStatus(AppRunRecord.Status.SUCCESS);
+      runRecord.withStatus(
+          runRecord.getStatus() == AppRunRecord.Status.PARTIAL_SUCCESS
+              ? AppRunRecord.Status.PARTIAL_SUCCESS
+              : AppRunRecord.Status.SUCCESS);
       SuccessContext context = new SuccessContext();
       if (runRecord.getSuccessContext() != null) {
         context = runRecord.getSuccessContext();
