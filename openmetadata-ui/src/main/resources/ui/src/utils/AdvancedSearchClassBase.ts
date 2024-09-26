@@ -139,7 +139,7 @@ class AdvancedSearchClassBase {
    * Fields specific to tables
    */
   tableQueryBuilderFields: Fields = {
-    'database.displayName.keyword': {
+    [EntityFields.DATABASE]: {
       label: t('label.database'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -152,7 +152,7 @@ class AdvancedSearchClassBase {
       },
     },
 
-    'databaseSchema.displayName.keyword': {
+    [EntityFields.DATABASE_SCHEMA]: {
       label: t('label.database-schema'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
