@@ -54,7 +54,10 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
-import { UrlEntityCharRegEx } from '../constants/regex.constants';
+import {
+  UrlEntityCharRegEx,
+  VALIDATE_ESCAPE_START_END_REGEX,
+} from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -924,4 +927,12 @@ export const isDeleted = (deleted: unknown): boolean => {
   return (deleted as string) === 'false' || deleted === false || isNil(deleted)
     ? false
     : true;
+};
+
+export const removeOuterEscapes = (input: string) => {
+  // Use regex to check if the string starts and ends with escape characters
+  const match = input.match(VALIDATE_ESCAPE_START_END_REGEX);
+
+  // Return the middle part without the outer escape characters or the original input if no match
+  return match ? match[2] : input;
 };

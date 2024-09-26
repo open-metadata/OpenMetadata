@@ -10,15 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../../enums/entity.enum';
-import { CSVImportResult } from '../../generated/type/csvImportResult';
+import { EntityType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
 
-export interface BulkImportProps {
-  entityType: EntityType;
-  fqn: string;
-  onValidateCsvString: (
-    data: string,
-    dryRun?: boolean
-  ) => Promise<CSVImportResult | undefined>;
-  onSuccess: () => void;
+export type ExtensionDataTypes =
+  | string
+  | string[]
+  | EntityReference
+  | EntityReference[]
+  | { start: string; end: string };
+
+export interface ExtensionDataProps {
+  [key: string]: ExtensionDataTypes;
 }
+
+export type ModalWithCustomPropertyEditorProps = {
+  entityType: EntityType;
+  header: string;
+  value: string;
+  onSave: (extension: string) => Promise<void>;
+  onCancel?: () => void;
+  visible: boolean;
+};

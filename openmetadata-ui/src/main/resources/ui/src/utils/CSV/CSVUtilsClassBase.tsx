@@ -20,6 +20,7 @@ import DomainSelectableList from '../../components/common/DomainSelectableList/D
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
 import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { ModalWithCustomPropertyEditor } from '../../components/Modals/ModalWithCustomProperty/ModalWithCustomPropertyEditor.component';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -222,6 +223,27 @@ class CSVUtilsClassBase {
               onUpdate={(domain) => handleChange(domain as EntityReference)}>
               {' '}
             </DomainSelectableList>
+          );
+        };
+      case 'extension':
+        return ({ value, ...props }: EditorProps) => {
+          const handleSave = async (extension: string) => {
+            props.onChange(extension);
+
+            setTimeout(() => {
+              props.onComplete(extension);
+            }, 1);
+          };
+
+          return (
+            <ModalWithCustomPropertyEditor
+              visible
+              entityType={EntityType.GLOSSARY_TERM}
+              header="Edit CustomProperty"
+              value={value}
+              onCancel={props.onCancel}
+              onSave={handleSave}
+            />
           );
         };
       default:
