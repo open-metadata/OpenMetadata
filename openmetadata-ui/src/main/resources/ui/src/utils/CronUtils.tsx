@@ -11,42 +11,44 @@
  *  limitations under the License.
  */
 
+import { Select } from 'antd';
 import { isEmpty, toNumber } from 'lodash';
+import React from 'react';
 import {
   combinations,
   getDayCron,
+  getDayOptions,
   getHourCron,
-  getMinuteCron,
-  getMonthCron,
+  getHourOptions,
+  getMinuteOptions,
+  getPeriodOptions,
   getWeekCron,
-  getYearCron,
   SELECTED_PERIOD_OPTIONS,
   toDisplay,
 } from '../components/common/CronEditor/CronEditor.constant';
 import {
   Combination,
+  CronOption,
   CronType,
   CronValue,
+  SelectedDayOption,
+  SelectedHourOption,
   SelectedYearOption,
   StateValue,
   ToDisplay,
 } from '../components/common/CronEditor/CronEditor.interface';
+import { CronTypes } from '../enums/Cron.enum';
 import { AppType } from '../generated/entity/applications/app';
 
 export const getQuartzCronExpression = (state: StateValue) => {
   const {
     selectedPeriod,
-    selectedMinOption,
     selectedHourOption,
     selectedDayOption,
     selectedWeekOption,
-    selectedMonthOption,
-    selectedYearOption,
   } = state;
 
   switch (selectedPeriod) {
-    case 'minute':
-      return `0 0/${selectedMinOption.min} * * * ?`;
     case 'hour':
       return `0 ${selectedHourOption.min} * * * ?`;
     case 'day':
@@ -57,10 +59,6 @@ export const getQuartzCronExpression = (state: StateValue) => {
         // Ref: https://www.quartz-scheduler.org/api/2.1.7/org/quartz/CronExpression.html
         selectedWeekOption.dow + 1
       }`;
-    case 'month':
-      return `0 ${selectedMonthOption.min} ${selectedMonthOption.hour} ${selectedMonthOption.dom} * ?`;
-    case 'year':
-      return `0 ${selectedYearOption.min} ${selectedYearOption.hour} ${selectedYearOption.dom} ${selectedYearOption.mon} ?`;
     default:
       return null;
   }
@@ -69,27 +67,18 @@ export const getQuartzCronExpression = (state: StateValue) => {
 export const getCron = (state: StateValue) => {
   const {
     selectedPeriod,
-    selectedMinOption,
     selectedHourOption,
     selectedDayOption,
     selectedWeekOption,
-    selectedMonthOption,
-    selectedYearOption,
   } = state;
 
   switch (selectedPeriod) {
-    case 'minute':
-      return getMinuteCron(selectedMinOption);
     case 'hour':
       return getHourCron(selectedHourOption);
     case 'day':
       return getDayCron(selectedDayOption);
     case 'week':
       return getWeekCron(selectedWeekOption);
-    case 'month':
-      return getMonthCron(selectedMonthOption);
-    case 'year':
-      return getYearCron(selectedYearOption);
     default:
       return null;
   }
@@ -108,9 +97,6 @@ const getCronType = (cronStr: string) => {
 export const getStateValue = (valueStr: string) => {
   const stateVal: StateValue = {
     selectedPeriod: '',
-    selectedMinOption: {
-      min: 5,
-    },
     selectedHourOption: {
       min: 0,
     },
@@ -120,17 +106,6 @@ export const getStateValue = (valueStr: string) => {
     },
     selectedWeekOption: {
       dow: 1,
-      hour: 0,
-      min: 0,
-    },
-    selectedMonthOption: {
-      dom: 1,
-      hour: 0,
-      min: 0,
-    },
-    selectedYearOption: {
-      dom: 1,
-      mon: 1,
       hour: 0,
       min: 0,
     },
@@ -190,3 +165,53 @@ export const getCronInitialValue = (appType: AppType, appName: string) => {
 
   return initialValue;
 };
+
+const getOptionComponent = () => {
+  const optionRenderer = (o: CronOption) => {
+    return { label: o.label, value: o.value };
+  };
+
+  return optionRenderer;
+};
+
+export const getCronOptions = () => {
+  const periodOptions = getPeriodOptions();
+  const dayOptions = getDayOptions();
+
+  return {
+    periodOptions,
+    dayOptions,
+  };
+};
+
+export const getHourMinuteSelect = ({
+  cronType,
+  disabled,
+  selectedDayOption,
+  selectedHourOption,
+  onChange,
+}: {
+  cronType: CronTypes.MINUTE | CronTypes.HOUR;
+  disabled: boolean;
+  selectedDayOption?: SelectedDayOption;
+  selectedHourOption?: SelectedHourOption;
+  onChange: (value: number) => void;
+}) => (
+  <Select
+    className="w-full"
+    data-testid={`${cronType}-options`}
+    disabled={disabled}
+    id={`${cronType}-select`}
+    options={
+      cronType === CronTypes.MINUTE
+        ? getMinuteOptions().map(getOptionComponent())
+        : getHourOptions().map(getOptionComponent())
+    }
+    value={
+      cronType === CronTypes.MINUTE
+        ? selectedHourOption?.min
+        : selectedDayOption?.hour
+    }
+    onChange={onChange}
+  />
+);

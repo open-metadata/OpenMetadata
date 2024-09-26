@@ -58,12 +58,9 @@ export interface Combination {
 }
 export interface StateValue {
   selectedPeriod: string;
-  selectedMinOption: SelectedMinOption;
   selectedHourOption: SelectedHourOption;
   selectedDayOption: SelectedDayOption;
   selectedWeekOption: SelectedWeekOption;
-  selectedMonthOption: SelectedMonthOption;
-  selectedYearOption: SelectedYearOption;
 }
 
 export interface ToDisplay {

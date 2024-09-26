@@ -64,10 +64,6 @@ export const getRangeOptions = (n: number) => {
   });
 };
 
-export const getMinuteSegmentOptions = () => {
-  return getRangeOptions(60).filter((v) => v.value !== 0 && v.value % 5 === 0);
-};
-
 export const getMinuteOptions = () => {
   return getRangeOptions(60);
 };
