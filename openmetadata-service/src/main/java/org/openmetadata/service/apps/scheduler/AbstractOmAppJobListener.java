@@ -25,6 +25,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
   private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
   public static final String APP_RUN_STATS = "AppRunStats";
   public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
+  private static final String STATUS_EXTENSION = "status";
 
   protected AbstractOmAppJobListener(CollectionDAO dao) {
     this.collectionDAO = dao;
@@ -147,9 +148,14 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       collectionDAO
           .appExtensionTimeSeriesDao()
           .update(
-              appId.toString(), JsonUtils.pojoToJson(appRunRecord), appRunRecord.getTimestamp());
+              appId.toString(),
+              JsonUtils.pojoToJson(appRunRecord),
+              appRunRecord.getTimestamp(),
+              STATUS_EXTENSION);
     } else {
-      collectionDAO.appExtensionTimeSeriesDao().insert(JsonUtils.pojoToJson(appRunRecord));
+      collectionDAO
+          .appExtensionTimeSeriesDao()
+          .insert(JsonUtils.pojoToJson(appRunRecord), STATUS_EXTENSION);
     }
   }
 

@@ -4245,34 +4245,40 @@ public interface CollectionDAO {
 
   interface AppExtensionTimeSeries {
     @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO apps_extension_time_series(json) VALUES (:json)",
+        value =
+            "INSERT INTO apps_extension_time_series(json, extension) VALUES (:json, :extension)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO apps_extension_time_series(json) VALUES ((:json :: jsonb))",
+        value =
+            "INSERT INTO apps_extension_time_series(json, extension) VALUES ((:json :: jsonb, :extension))",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@Bind("json") String json, @Bind("extension") String extension);
 
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE apps_extension_time_series set json = :json where appId=:appId and timestamp=:timestamp",
+            "UPDATE apps_extension_time_series set json = :json where appId=:appId and timestamp=:timestamp and extension=:extension",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE apps_extension_time_series set json = (:json :: jsonb) where appId=:appId and timestamp=:timestamp",
+            "UPDATE apps_extension_time_series set json = (:json :: jsonb) where appId=:appId and timestamp=:timestamp and extension=:extension",
         connectionType = POSTGRES)
     void update(
-        @Bind("appId") String appId, @Bind("json") String json, @Bind("timestamp") Long timestamp);
+        @Bind("appId") String appId,
+        @Bind("json") String json,
+        @Bind("timestamp") Long timestamp,
+        @Bind("extension") String extension);
 
-    @SqlQuery("SELECT count(*) FROM apps_extension_time_series where appId = :appId")
+    @SqlQuery(
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = 'status'")
     int listAppRunRecordCount(@Bind("appId") String appId);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = 'status' ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     List<String> listAppRunRecord(
         @Bind("appId") String appId, @Bind("limit") int limit, @Bind("offset") int offset);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = 'status' AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     List<String> listAppRunRecordAfterTime(
         @Bind("appId") String appId,
         @Bind("limit") int limit,
