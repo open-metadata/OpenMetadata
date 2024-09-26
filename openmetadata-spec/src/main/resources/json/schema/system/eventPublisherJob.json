@@ -75,7 +75,8 @@
         "active",
         "activeError",
         "stopped",
-        "success"
+        "success",
+        "partialSuccess"
       ]
     },
     "failure": {

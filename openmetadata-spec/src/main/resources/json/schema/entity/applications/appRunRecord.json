@@ -21,7 +21,8 @@
         "active",
         "activeError",
         "stopped",
-        "success"
+        "success",
+        "partialSuccess"
       ]
     },
     "runType": {
