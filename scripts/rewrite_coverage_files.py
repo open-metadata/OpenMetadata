@@ -1,17 +1,16 @@
+import argparse
+import logging
 import os.path
 import re
 import sqlite3
 import sys
-from datetime import datetime
-
 
 FILES_TABLE = "file"
-DEBUG = False
+DEBUG = True
 
-
-def debug_log(msg: str):
-    if DEBUG:
-        print(f"[{datetime.now()}] {msg}")
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler(sys.stderr)
+logger.addHandler(handler)
 
 
 def proces_db(path: str, new_prefix: str):
@@ -24,9 +23,11 @@ def proces_db(path: str, new_prefix: str):
     )
     cur.execute(f"SELECT rowid, path FROM {FILES_TABLE}")
     rows = cur.fetchall()
+    if len(rows) == 0:
+        raise RuntimeError(f"No rows found in {path}, '{FILES_TABLE}'")
     for rowid, old_path in rows:
-        debug_log(f"Updating path from {old_path} to {new_prefix}")
         new_path = re.sub(REGEXP_PATTERN, new_prefix, old_path)
+        logger.debug(f"Updating path from {old_path} to {new_path}")
         cur.execute(
             f"UPDATE {FILES_TABLE} SET path = ? WHERE rowid = ?", (new_path, rowid)
         )
@@ -34,14 +35,19 @@ def proces_db(path: str, new_prefix: str):
     conn.commit()
 
 
-def main(coverage_files_dir: str, new_path: str):
-    for file_ in os.listdir(coverage_files_dir):
-        if file_.startswith(".coverage"):
-            debug_log(f"Processing {file_}")
-            proces_db(os.path.join(coverage_files_dir, file_), new_path)
+def main(path: str, new_path: str):
+    for dirpath, dirnames, files in os.walk(path):
+        for file_ in files:
+            if file_.startswith(".coverage"):
+                logger.debug(f"Processing {file_}")
+                proces_db(os.path.join(dirpath, file_), new_path)
 
 
 if __name__ == "__main__":
-    directory = sys.argv[1]
-    remap_path = [sys.argv[2], ""][0]
-    main(directory, remap_path)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", type=str, help="Path to the directory")
+    parser.add_argument("new_path", type=str, help="New path prefix")
+    parser.add_argument("--debug", action="store_true")
+    args = parser.parse_args()
+    logger.setLevel(logging.DEBUG if args.debug else logging.INFO)
+    main(sys.argv[1], sys.argv[2])

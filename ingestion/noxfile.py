@@ -75,7 +75,7 @@ def pytest_run(session: Session, env: TestEnv):
         "--rcfile",
         "pyproject.toml",
         "--source",
-        f"{session.virtualenv.location}/lib/**/site-packages/metadata",
+        f"{session.virtualenv.location}/lib/python{session.python}/site-packages/metadata",
         "--data-file",
         f"coverage/{session.python}/.coverage.{env.name}",
         "-a",

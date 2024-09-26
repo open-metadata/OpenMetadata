@@ -117,7 +117,7 @@ jobs:
           make NOX_FLAGS='-s "${{ matrix.session }}"' run_python_tests
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
-      
+
       - name: Upload coverage artifact for Python tests
         if: steps.test.outcome == 'success' && env.DEBUG == 'false'
         uses: actions/upload-artifact@v4
@@ -126,6 +126,7 @@ jobs:
           path: ingestion/coverage/**/.coverage.*
           if-no-files-found: error
           include-hidden-files: true
+
       - name: Clean Up
         run: |
           cd ./docker/development
@@ -154,14 +155,12 @@ jobs:
 
       - name: Install coverage dependencies
         run: |
-          python3 -m venv env
-          source env/bin/activate
-          make install_all install_test
+          make install_test
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: coverage
+          path: ingestion/coverage
           merge-multiple: true
 
       - name: Generate report
@@ -170,20 +169,53 @@ jobs:
             echo "No coverage files found in coverage/3.9"
             exit 1
           fi
-      
-          source env/bin/activate
-          python scripts/rewrite_coverage_files.py coverage/3.9 env/lib/python3.9/site-packages/metadata
-          coverage combine --rcfile=ingestion/pyproject.toml --keep -a coverage/3.9
-          coverage report --rcfile=ingestion/pyproject.toml
-          coverage xml --rcfile=ingestion/pyproject.toml -o ingestion/coverage.xml
+          
+          cd ingestion
+          python ../scripts/rewrite_coverage_files.py coverage/3.9 src/
+          coverage combine --keep -a coverage/3.9
+          coverage report
+          coverage xml -o ingestion/coverage.xml
           sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
           sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
-             shell: bash
+        shell: bash
 
-      - name: Push Results to Sonar
-        uses: sonarsource/sonarcloud-github-action@master
+      # we have to pass these args values since we are working with the 'pull_request_target' trigger
+      - name: Push Results in PR to Sonar
+        id: push-to-sonar
+        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' }}
+        continue-on-error: true
+        uses: sonarsource/sonarcloud-github-action@v2.3.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
         with:
           projectBaseDir: ingestion/
+          args: >
+            -Dproject.settings=ingestion/sonar-project.properties
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.branch=${{ github.head_ref }}
+            -Dsonar.pullrequest.github.repository=OpenMetadata
+            -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+            -Dsonar.pullrequest.provider=github
+
+      # next two steps are for retrying "Push Results in PR to Sonar" step in case it fails
+      - name: Wait to retry 'Push Results in PR to Sonar'
+        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
+        run: sleep 20s
+        shell: bash
+
+      - name: Retry 'Push Results in PR to Sonar'
+        uses: sonarsource/sonarcloud-github-action@master
+        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/
+          args: >
+            -Dproject.settings=ingestion/sonar-project.properties
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.branch=${{ github.head_ref }}
+            -Dsonar.pullrequest.github.repository=OpenMetadata
+            -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+            -Dsonar.pullrequest.provider=github

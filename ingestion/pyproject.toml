@@ -46,8 +46,6 @@ branch = true
 omit = [
     "*__init__*",
     "*/generated/*",
-    "tests/*",
-    "ingestion/src/*",
     "*/src/metadata/ingestion/source/database/sample_*"
 ]
 
