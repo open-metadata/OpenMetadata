@@ -21,7 +21,6 @@ import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityTimeSeriesInterface;

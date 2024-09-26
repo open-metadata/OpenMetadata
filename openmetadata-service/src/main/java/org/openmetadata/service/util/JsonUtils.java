@@ -28,11 +28,9 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.TypeRef;
 import com.jayway.jsonpath.spi.json.GsonJsonProvider;
 import com.jayway.jsonpath.spi.mapper.GsonMappingProvider;
 import com.networknt.schema.JsonSchema;
@@ -162,7 +160,7 @@ public final class JsonUtils {
 
   public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
     try {
-//      JsonElement jsonElement = gson.fromJson(json, JsonElement.class);
+      //      JsonElement jsonElement = gson.fromJson(json, JsonElement.class);
       DocumentContext documentContext = JsonPath.parse(json);
       return Optional.ofNullable(documentContext.read(path, clazz));
     } catch (Exception e) {
@@ -171,16 +169,16 @@ public final class JsonUtils {
     }
   }
 
-//  public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
-//    TypeRef<T> typeRef =
-//        new TypeRef<>() {
-//          @Override
-//          public java.lang.reflect.Type getType() {
-//            return clazz;
-//          }
-//        };
-//    return readJsonAtPath(json, path, typeRef);
-//  }
+  //  public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
+  //    TypeRef<T> typeRef =
+  //        new TypeRef<>() {
+  //          @Override
+  //          public java.lang.reflect.Type getType() {
+  //            return clazz;
+  //          }
+  //        };
+  //    return readJsonAtPath(json, path, typeRef);
+  //  }
 
   public static <T> T readValue(String json, Class<T> clz) {
     if (json == null) {
