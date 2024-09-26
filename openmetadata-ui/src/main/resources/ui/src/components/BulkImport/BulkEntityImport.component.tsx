@@ -45,7 +45,6 @@ const BulkEntityImport = ({
   fqn,
   onValidateCsvString,
   onSuccess,
-  hideAddButton,
 }: BulkImportProps) => {
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
@@ -352,7 +351,7 @@ const BulkEntityImport = ({
       </Col>
       {activeStep > 0 && (
         <Col span={24}>
-          {activeStep === 1 && !hideAddButton && (
+          {activeStep === 1 && (
             <Button data-testid="add-row-btn" onClick={handleAddRow}>
               {`+ ${t('label.add-row')}`}
             </Button>

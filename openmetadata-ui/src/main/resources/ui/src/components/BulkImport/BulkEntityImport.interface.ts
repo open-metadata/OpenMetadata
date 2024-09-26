@@ -16,7 +16,6 @@ import { CSVImportResult } from '../../generated/type/csvImportResult';
 export interface BulkImportProps {
   entityType: EntityType;
   fqn: string;
-  hideAddButton?: boolean;
   onValidateCsvString: (
     data: string,
     dryRun?: boolean

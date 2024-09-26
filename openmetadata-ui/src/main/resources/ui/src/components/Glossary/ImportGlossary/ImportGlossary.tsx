@@ -81,7 +81,6 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
       </Col>
       <Col span={24}>
         <BulkEntityImport
-          hideAddButton
           entityType={EntityType.GLOSSARY}
           fqn={glossaryName}
           onSuccess={handleGlossaryRedirection}
