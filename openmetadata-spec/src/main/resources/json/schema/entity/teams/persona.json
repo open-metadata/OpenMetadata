@@ -38,6 +38,10 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
+    "uiCustomization": {
+      "description": "Reference to the UI customization configuration.",
+      "$ref": "../../type/entityReference.json"
+    },
     "users": {
       "description": "Users that are assigned a persona.",
       "$ref": "../../type/entityReferenceList.json",
