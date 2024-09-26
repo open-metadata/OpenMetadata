@@ -194,7 +194,7 @@ const convertCustomPropertyStringToValueExtensionBasedOnType = (
       };
     }
     default:
-      return value.replace(/^["']|["']$/g, '').trim();
+      return value;
   }
 };
 
