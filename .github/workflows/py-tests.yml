@@ -162,6 +162,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: coverage
+          merge-multiple: true
 
       - name: Generate report
         run: |
