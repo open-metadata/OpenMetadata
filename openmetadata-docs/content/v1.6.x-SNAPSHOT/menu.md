@@ -433,6 +433,10 @@ site_menu:
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Run Externally
     url: /connectors/dashboard/metabase/yaml
+  - category: Connectors / Dashboard / Sigma
+    url: /connectors/dashboard/sigma
+  - category: Connectors / Dashboard / Sigma / Run Externally
+    url: /connectors/dashboard/sigma/yaml
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
@@ -868,8 +872,6 @@ site_menu:
     url: /how-to-guides/data-insights/ingestion
   - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
     url: /how-to-guides/data-insights/kpi
-  - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
-    url: /how-to-guides/data-insights/airflow-sdk
   - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
     url: /how-to-guides/data-insights/elasticsearch-reindex
   - category: How-to Guides / Data Insights / Data Insights Report
@@ -936,6 +938,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.4 Release
+    url: /releases/all-releases/#1.5.4-release
   - category: Releases / All Releases / 1.5.3 Release
     url: /releases/all-releases/#1.5.3-release
   - category: Releases / All Releases / 1.5.2 Release
@@ -1475,6 +1479,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/lookerconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard / MetabaseConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/metabaseconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard / SigmaConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/sigmaconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard / ModeConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/modeconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard / PowerBIConnection
