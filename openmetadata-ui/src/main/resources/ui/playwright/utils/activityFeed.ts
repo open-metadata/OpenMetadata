@@ -115,6 +115,8 @@ export const addMentionCommentInFeed = async (
     await fetchFeedResponse;
   }
 
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   // Click on add reply
   const feedResponse = page.waitForResponse('/api/v1/feed/*');
 
@@ -150,7 +152,7 @@ export const addMentionCommentInFeed = async (
     .locator(
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
     )
-    .type(`Can you resolve this thread for me? @${user}`);
+    .fill(`Can you resolve this thread for me? @${user}`);
   await userSuggestionsResponse;
 
   await page.locator(`[data-value="@${user}"]`).click();
