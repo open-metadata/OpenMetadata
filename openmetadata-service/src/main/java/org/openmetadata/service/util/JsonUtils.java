@@ -40,7 +40,6 @@ import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion.VersionFlag;
 import java.io.IOException;
 import java.io.StringReader;
-import java.lang.reflect.ParameterizedType;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -88,7 +87,8 @@ public final class JsonUtils {
       JsonSchemaFactory.getInstance(VersionFlag.V7);
   private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON ";
   private static final Gson gson = new Gson();
-  private static final Configuration JSON_PATH_CONFIGURATION = Configuration.builder()
+  private static final Configuration JSON_PATH_CONFIGURATION =
+      Configuration.builder()
           .jsonProvider(new GsonJsonProvider())
           .mappingProvider(new GsonMappingProvider())
           .build();
@@ -172,12 +172,13 @@ public final class JsonUtils {
   }
 
   public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
-    TypeRef<T> typeRef = new TypeRef<T>() {
-      @Override
-      public java.lang.reflect.Type getType() {
-        return clazz;
-      }
-    };
+    TypeRef<T> typeRef =
+        new TypeRef<>() {
+          @Override
+          public java.lang.reflect.Type getType() {
+            return clazz;
+          }
+        };
     return readJsonAtPath(json, path, typeRef);
   }
 

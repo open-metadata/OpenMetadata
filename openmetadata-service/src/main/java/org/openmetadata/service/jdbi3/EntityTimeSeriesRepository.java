@@ -422,29 +422,30 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
         searchRepository.aggregate(q, entityType, aggregation, searchListFilter);
 
     Optional<List> jsonObjects =
-            JsonUtils.readJsonAtPath(jsonObjResults.toString(), aggregationPath, List.class);
+        JsonUtils.readJsonAtPath(jsonObjResults.toString(), aggregationPath, List.class);
     jsonObjects.ifPresent(
-            jsonObjectList -> {
-              for (Map<String, String> json : (List<Map<String, String>>) jsonObjectList) {
-                String bucketAggregationPath = "top_hits#latest.hits.hits";
-                Optional<List> hits =
-                        JsonUtils.readJsonAtPath(JsonUtils.pojoToJson(json), bucketAggregationPath, List.class);
-                hits.ifPresent(
-                        hitList -> {
-                          for (Map<String, String> hit : (List<Map<String, String>>) hitList) {
-                            JsonObject source = getSourceDocument(JsonUtils.pojoToJson(hit));
-                            T entity =
-                                    setFieldsInternal(JsonUtils.readOrConvertValue(source, entityClass), fields);
-                            if (entity != null) {
-                              setInheritedFields(entity);
-                              clearFieldsInternal(entity, fields);
-                              entityList.add(entity);
-                            }
-                          }
-                        });
-              }
-            }
-    );
+        jsonObjectList -> {
+          for (Map<String, String> json : (List<Map<String, String>>) jsonObjectList) {
+            String bucketAggregationPath = "top_hits#latest.hits.hits";
+            Optional<List> hits =
+                JsonUtils.readJsonAtPath(
+                    JsonUtils.pojoToJson(json), bucketAggregationPath, List.class);
+            hits.ifPresent(
+                hitList -> {
+                  for (Map<String, String> hit : (List<Map<String, String>>) hitList) {
+                    JsonObject source = getSourceDocument(JsonUtils.pojoToJson(hit));
+                    T entity =
+                        setFieldsInternal(
+                            JsonUtils.readOrConvertValue(source, entityClass), fields);
+                    if (entity != null) {
+                      setInheritedFields(entity);
+                      clearFieldsInternal(entity, fields);
+                      entityList.add(entity);
+                    }
+                  }
+                });
+          }
+        });
     return new ResultList<>(entityList, null, null, entityList.size());
   }
 
