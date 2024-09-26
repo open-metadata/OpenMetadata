@@ -220,11 +220,11 @@ class CliDBBase(TestCase):
                 return
             self.delete_table_and_view()
             self.create_table_and_view()
+            self.build_config_file()
+            self.run_command()
             table: Table = self.openmetadata.get_by_name(
                 Table, self.get_data_quality_table(), nullable=False
             )
-            self.build_config_file()
-            self.run_command()
             test_case_definitions = self.get_test_case_definitions()
             self.build_config_file(
                 E2EType.DATA_QUALITY,
@@ -236,26 +236,35 @@ class CliDBBase(TestCase):
                 },
             )
             result = self.run_command("test")
-            sink_status, source_status = self.retrieve_statuses(result)
-            self.assert_status_for_data_quality(source_status, sink_status)
-            test_case_entities = [
-                self.openmetadata.get_by_name(
-                    OMTestCase,
-                    ".".join([table.fullyQualifiedName.root, tcd.name]),
-                    fields=["*"],
-                    nullable=False,
-                )
-                for tcd in test_case_definitions
-            ]
-            expected = self.get_expected_test_case_results()
             try:
-                for test_case, expected in zip(test_case_entities, expected):
-                    assert_equal_pydantic_objects(expected, test_case.testCaseResult)
-            finally:
-                for tc in test_case_entities:
-                    self.openmetadata.delete(
-                        OMTestCase, tc.id, recursive=True, hard_delete=True
+                sink_status, source_status = self.retrieve_statuses(result)
+                self.assert_status_for_data_quality(source_status, sink_status)
+                test_case_entities = [
+                    self.openmetadata.get_by_name(
+                        OMTestCase,
+                        ".".join([table.fullyQualifiedName.root, tcd.name]),
+                        fields=["*"],
+                        nullable=False,
                     )
+                    for tcd in test_case_definitions
+                ]
+                expected = self.get_expected_test_case_results()
+                try:
+                    for test_case, expected in zip(test_case_entities, expected):
+                        assert_equal_pydantic_objects(
+                            expected.model_copy(
+                                update={"timestamp": test_case.testCaseResult.timestamp}
+                            ),
+                            test_case.testCaseResult,
+                        )
+                finally:
+                    for tc in test_case_entities:
+                        self.openmetadata.delete(
+                            OMTestCase, tc.id, recursive=True, hard_delete=True
+                        )
+            except AssertionError:
+                print(result)
+                raise
 
         def retrieve_table(self, table_name_fqn: str) -> Table:
             return self.openmetadata.get_by_name(entity=Table, fqn=table_name_fqn)

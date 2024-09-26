@@ -321,7 +321,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 raise TimeoutError(f"Query log not updated for {timeout} seconds")
 
     def get_data_quality_table(self):
-        return "e2e_snowflake.E2E_DB.E2E_TEST.PERSONS"
+        return self.fqn_created_table()
 
     def get_test_case_definitions(self) -> List[TestCaseDefinition]:
         return [
@@ -343,4 +343,4 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     def get_expected_test_case_results(self):
-        return [TestCaseResult(testCaseStatus=TestCaseStatus.Success)]
+        return [TestCaseResult(testCaseStatus=TestCaseStatus.Success, timestamp=0)]

@@ -195,8 +195,8 @@ jobs:
       with:
         payload: |
           {
-            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
-          }
+            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\nCommit: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"        
+          }          
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
