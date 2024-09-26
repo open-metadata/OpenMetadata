@@ -28,7 +28,8 @@
         "QlikSense",
         "Lightdash",
         "Mstr",
-        "QlikCloud"
+        "QlikCloud",
+        "Sigma"
       ],
       "javaEnums": [
         {
@@ -72,6 +73,9 @@
         },
         {
           "name": "QlikCloud"
+        },
+        {
+          "name": "Sigma"
         }
       ]
     },
@@ -127,6 +131,9 @@
             },
             {
               "$ref": "./connections/dashboard/qlikCloudConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/sigmaConnection.json"
             }
           ]
         }

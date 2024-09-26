@@ -84,6 +84,7 @@ import {
   SAP_HANA,
   SAS,
   SCIKIT,
+  SIGMA,
   SINGLESTORE,
   SNOWFLAKE,
   SPARK,
@@ -404,6 +405,9 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.Lightdash:
         return LIGHT_DASH;
+
+      case this.DashboardServiceTypeSmallCase.Sigma:
+        return SIGMA;
 
       case this.PipelineServiceTypeSmallCase.CustomPipeline:
         return PIPELINE_DEFAULT;
