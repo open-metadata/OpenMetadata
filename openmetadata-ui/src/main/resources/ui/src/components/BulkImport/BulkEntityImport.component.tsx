@@ -22,6 +22,7 @@ import React, { MutableRefObject, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 
+import { capitalize } from 'lodash';
 import {
   ENTITY_IMPORT_STEPS,
   VALIDATION_STEP,
@@ -73,7 +74,8 @@ const BulkEntityImport = ({
     (results: { data: string[][] }) => {
       // results.data is returning data with unknown type
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
-        results.data as string[][]
+        results.data as string[][],
+        entityType
       );
       setDataSource(dataSource);
       setColumns(columns);
@@ -81,7 +83,7 @@ const BulkEntityImport = ({
       setActiveStep(VALIDATION_STEP.EDIT_VALIDATE);
       setTimeout(focusToGrid, 500);
     },
-    [setDataSource, setColumns, setActiveStep, focusToGrid]
+    [entityType, setDataSource, setColumns, setActiveStep, focusToGrid]
   );
 
   const validateCsvString = useCallback(
@@ -157,7 +159,10 @@ const BulkEntityImport = ({
             complete: (results) => {
               // results.data is returning data with unknown type
               setValidateCSVData(
-                getEntityColumnsAndDataSourceFromCSV(results.data as string[][])
+                getEntityColumnsAndDataSourceFromCSV(
+                  results.data as string[][],
+                  entityType
+                )
               );
             },
           });
@@ -165,7 +170,7 @@ const BulkEntityImport = ({
         } else {
           showSuccessToast(
             t('message.entity-details-updated', {
-              entityType,
+              entityType: capitalize(entityType),
               fqn,
             })
           );
@@ -180,7 +185,10 @@ const BulkEntityImport = ({
           complete: (results) => {
             // results.data is returning data with unknown type
             setValidateCSVData(
-              getEntityColumnsAndDataSourceFromCSV(results.data as string[][])
+              getEntityColumnsAndDataSourceFromCSV(
+                results.data as string[][],
+                entityType
+              )
             );
           },
         });

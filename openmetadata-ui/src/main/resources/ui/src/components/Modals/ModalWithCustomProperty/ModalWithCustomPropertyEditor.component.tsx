@@ -85,7 +85,7 @@ export const ModalWithCustomPropertyEditor = ({
       destroyOnClose
       className="description-markdown-editor"
       closable={false}
-      data-testid="markdown-editor"
+      data-testid="custom-property-editor"
       footer={[
         <Button
           data-testid="cancel"
