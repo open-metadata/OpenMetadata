@@ -27,7 +27,7 @@ export interface ExtensionDataProps {
 export type ModalWithCustomPropertyEditorProps = {
   entityType: EntityType;
   header: string;
-  value: string;
+  value?: string;
   onSave: (extension: string) => Promise<void>;
   onCancel?: () => void;
   visible: boolean;
