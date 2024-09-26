@@ -12,6 +12,7 @@
  */
 
 import test, { expect } from '@playwright/test';
+import { INGESTION_DEPENDENCY_TAG } from '../../constant/config';
 import { MYSQL, POSTGRES, REDSHIFT } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
@@ -60,43 +61,49 @@ services.forEach((ServiceClass) => {
     timeout: 11 * 60 * 1000,
   });
 
-  test.describe.serial(service.serviceType, { tag: '@ingestion' }, async () => {
-    test.beforeEach('Visit entity details page', async ({ page }) => {
-      await redirectToHomePage(page);
-      await settingClick(
+  test.describe.serial(
+    service.serviceType,
+    INGESTION_DEPENDENCY_TAG,
+    async () => {
+      test.beforeEach('Visit entity details page', async ({ page }) => {
+        await redirectToHomePage(page);
+        await settingClick(
+          page,
+          service.category as unknown as SettingOptionsType
+        );
+      });
+
+      test(`Create & Ingest ${service.serviceType} service`, async ({
         page,
-        service.category as unknown as SettingOptionsType
-      );
-    });
+      }) => {
+        await service.createService(page);
+      });
 
-    test(`Create & Ingest ${service.serviceType} service`, async ({ page }) => {
-      await service.createService(page);
-    });
+      test(`Update description and verify description after re-run`, async ({
+        page,
+      }) => {
+        await service.updateService(page);
+      });
 
-    test(`Update description and verify description after re-run`, async ({
-      page,
-    }) => {
-      await service.updateService(page);
-    });
+      test(`Update schedule options and verify`, async ({ page }) => {
+        await service.updateScheduleOptions(page);
+      });
 
-    test(`Update schedule options and verify`, async ({ page }) => {
-      await service.updateScheduleOptions(page);
-    });
+      if (
+        [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
+          service.serviceType
+        )
+      ) {
+        test(`Service specific tests`, async ({ page }) => {
+          await service.runAdditionalTests(page, test);
+        });
+      }
 
-    if (
-      [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
-        service.serviceType
-      )
-    ) {
-      test(`Service specific tests`, async ({ page }) => {
-        await service.runAdditionalTests(page, test);
+      test(`Delete ${service.serviceType} service`, async ({ page }) => {
+        await service.deleteService(page);
       });
     }
-
-    test(`Delete ${service.serviceType} service`, async ({ page }) => {
-      await service.deleteService(page);
-    });
-  });
+  );
 });
 
 test.describe('Service form', () => {
