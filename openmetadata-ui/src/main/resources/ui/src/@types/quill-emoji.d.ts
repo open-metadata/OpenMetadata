@@ -10,4 +10,4 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-declare module 'quill-emoji';
+declare module '@windmillcode/quill-emoji';

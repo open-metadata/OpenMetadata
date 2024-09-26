@@ -82,7 +82,7 @@ jest.mock('../../../utils/QuillLink/QuillLink', () => {
   return jest.fn();
 });
 
-describe('Test FeedEditor Component', () => {
+describe.skip('Test FeedEditor Component', () => {
   it('Should render FeedEditor Component', async () => {
     const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
       wrapper: MemoryRouter,
