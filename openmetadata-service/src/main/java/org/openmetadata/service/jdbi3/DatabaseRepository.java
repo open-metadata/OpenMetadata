@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -103,6 +104,18 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public EntityInterface getParentEntity(Database entity, String fields) {
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
+  }
+
+  @Override
+  public void entityRelationshipReindex(Database original, Database updated) {
+    super.entityRelationshipReindex(original, updated);
+
+    // Update search indexes of assets and entity on database displayName change
+    if (!Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
+      searchRepository
+          .getSearchClient()
+          .reindexAcrossIndices("database.fullyQualifiedName", original.getEntityReference());
+    }
   }
 
   @Override
