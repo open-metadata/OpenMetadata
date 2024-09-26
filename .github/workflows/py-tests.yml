@@ -117,19 +117,14 @@ jobs:
           make NOX_FLAGS='-s "${{ matrix.session }}"' run_python_tests
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
-
-      - name: List coverage files for debugging
-        run: |
-          echo "Listing coverage files:"
-          find . -type f -name ".coverage.*"
       
       - name: Upload coverage artifact for Python tests
         if: steps.test.outcome == 'success' && env.DEBUG == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.session }}
-          path: ingestion/coverage/**/.coverage.*
-
+          path: ingestion/coverage
+          if-no-files-found: error
       - name: Clean Up
         run: |
           cd ./docker/development
