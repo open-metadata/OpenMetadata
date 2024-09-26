@@ -17,6 +17,7 @@ import '@windmillcode/quill-emoji/quill-emoji.css';
 import classNames from 'classnames';
 import { debounce, isNil } from 'lodash';
 import { Parchment } from 'quill';
+import Delta from 'quill-delta';
 import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
@@ -46,8 +47,6 @@ import {
   suggestions,
   userMentionItemWithAvatar,
 } from '../../../utils/FeedUtils';
-// import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
-import Delta from 'quill-delta';
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';

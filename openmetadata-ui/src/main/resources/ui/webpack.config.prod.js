@@ -176,6 +176,8 @@ module.exports = {
     },
     alias: {
       process: 'process/browser',
+      Quill: 'quill',
+      quill: 'quill',
     },
   },
 

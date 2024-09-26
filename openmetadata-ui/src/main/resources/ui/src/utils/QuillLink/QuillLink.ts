@@ -30,15 +30,6 @@ class LinkBlot extends MentionBlot {
   };
 }
 
-// MentionBlot.render = (data: MentionBlotData & { link: string; id: string }) => {
-//   const element = document.createElement('a');
-//   element.innerText = data.value;
-//   element.href = data.link;
-//   element.id = data.id;
-
-//   return element;
-// };
-
 LinkBlot.blotName = 'link-mention';
 
 export { LinkBlot };
