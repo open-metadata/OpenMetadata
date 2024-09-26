@@ -102,20 +102,33 @@ export const reactOnFeed = async (page: Page) => {
   }
 };
 
-export const addMentionCommentInFeed = async (page: Page, user: string) => {
-  const fetchFeedResponse = page.waitForResponse(
-    '/api/v1/feed?type=Conversation*'
-  );
-  await removeLandingBanner(page);
-  await fetchFeedResponse;
+export const addMentionCommentInFeed = async (
+  page: Page,
+  user: string,
+  isReply = false
+) => {
+  if (!isReply) {
+    const fetchFeedResponse = page.waitForResponse(
+      '/api/v1/feed?type=Conversation*'
+    );
+    await removeLandingBanner(page);
+    await fetchFeedResponse;
+  }
 
   // Click on add reply
   const feedResponse = page.waitForResponse('/api/v1/feed/*');
-  await page
-    .locator(FIRST_FEED_SELECTOR)
-    .locator('[data-testid="thread-count"]')
-    .click();
 
+  if (isReply) {
+    await page
+      .locator(FIRST_FEED_SELECTOR)
+      .locator('[data-testid="reply-count"]')
+      .click();
+  } else {
+    await page
+      .locator(FIRST_FEED_SELECTOR)
+      .locator('[data-testid="thread-count"]')
+      .click();
+  }
   await feedResponse;
 
   await page.waitForSelector('.ant-drawer-content', {
