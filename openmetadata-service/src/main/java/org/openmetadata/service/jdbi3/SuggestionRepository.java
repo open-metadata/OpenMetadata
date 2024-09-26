@@ -394,6 +394,9 @@ public class SuggestionRepository {
     List<Suggestion> suggestions = getSuggestionList(jsons);
     String beforeCursor = null;
     String afterCursor;
+    if (nullOrEmpty(suggestions)) {
+      return new ResultList<>(suggestions, null, null, total);
+    }
     if (suggestions.size() > limit) {
       suggestions.remove(0);
       beforeCursor = suggestions.get(0).getUpdatedAt().toString();
@@ -415,6 +418,9 @@ public class SuggestionRepository {
     List<Suggestion> suggestions = getSuggestionList(jsons);
     String beforeCursor;
     String afterCursor = null;
+    if (nullOrEmpty(suggestions)) {
+      return new ResultList<>(suggestions, null, null, total);
+    }
     beforeCursor = after == null ? null : suggestions.get(0).getUpdatedAt().toString();
     if (suggestions.size() > limit) {
       suggestions.remove(limit);

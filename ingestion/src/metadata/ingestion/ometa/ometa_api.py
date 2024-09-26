@@ -19,6 +19,7 @@ from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
 )
@@ -172,13 +173,16 @@ class OpenMetadata(
 
         return route
 
-    def get_module_path(self, entity: Type[T]) -> str:
+    def get_module_path(self, entity: Type[T]) -> Optional[str]:
         """
         Based on the entity, return the module path
         it is found inside generated
         """
         if issubclass(entity, CreateIngestionPipelineRequest):
             return "services.ingestionPipelines"
+        if issubclass(entity, CreateBot):
+            # Bots schemas don't live inside any subdirectory
+            return None
         return entity.__module__.split(".")[-2]
 
     def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
