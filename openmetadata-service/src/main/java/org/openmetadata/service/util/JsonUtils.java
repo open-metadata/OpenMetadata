@@ -27,11 +27,20 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.github.fge.jsonpatch.diff.JsonDiff;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.jayway.jsonpath.Configuration;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.TypeRef;
+import com.jayway.jsonpath.spi.json.GsonJsonProvider;
+import com.jayway.jsonpath.spi.mapper.GsonMappingProvider;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion.VersionFlag;
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.ParameterizedType;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -77,6 +87,11 @@ public final class JsonUtils {
   private static final JsonSchemaFactory schemaFactory =
       JsonSchemaFactory.getInstance(VersionFlag.V7);
   private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON ";
+  private static final Gson gson = new Gson();
+  private static final Configuration JSON_PATH_CONFIGURATION = Configuration.builder()
+          .jsonProvider(new GsonJsonProvider())
+          .mappingProvider(new GsonMappingProvider())
+          .build();
 
   static {
     OBJECT_MAPPER = new ObjectMapper();
@@ -143,6 +158,27 @@ public final class JsonUtils {
     } catch (ClassNotFoundException e) {
       throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
     }
+  }
+
+  public static <T> Optional<T> readJsonAtPath(String json, String path, TypeRef<T> clazz) {
+    try {
+      JsonElement jsonElement = gson.fromJson(json, JsonElement.class);
+      DocumentContext documentContext = JsonPath.using(JSON_PATH_CONFIGURATION).parse(jsonElement);
+      return Optional.ofNullable(documentContext.read(path, clazz));
+    } catch (Exception e) {
+      LOG.error("Failed to read value at path {}", path, e);
+      return Optional.empty();
+    }
+  }
+
+  public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
+    TypeRef<T> typeRef = new TypeRef<T>() {
+      @Override
+      public java.lang.reflect.Type getType() {
+        return clazz;
+      }
+    };
+    return readJsonAtPath(json, path, typeRef);
   }
 
   public static <T> T readValue(String json, Class<T> clz) {

@@ -38,7 +38,6 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
-import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
@@ -223,26 +222,41 @@ public class TestCaseResultResource
       @Parameter(
               description =
                   "Get the latest test case result for each test case -- requires `testSuiteId`. Offset and limit are ignored",
-              schema = @Schema(type = "boolean", example = "false", allowableValues = {"true", "false"}))
+              schema =
+                  @Schema(
+                      type = "boolean",
+                      example = "false",
+                      allowableValues = {"true", "false"}))
           @QueryParam("latest")
           @DefaultValue("false")
           String latest,
       @Parameter(
               description = "Filter for test case result by type (e.g. column, table, all)",
               schema =
-              @Schema(
+                  @Schema(
                       type = "string",
                       example = "all",
                       allowableValues = {"column", "table", "all"}))
-      @QueryParam("testCaseType")
-      @DefaultValue("all")
-      String type,
+          @QueryParam("testCaseType")
+          @DefaultValue("all")
+          String type,
       @Parameter(
               description =
-                      "Filter for test case by data quality dimension (e.g. OpenMetadata, dbt, etc.)",
-              schema = @Schema(type = "string", allowableValues = {"Completeness", "Accuracy", "Consistency", "Validity", "Uniqueness", "Integrity", "SQL"}))
-      @QueryParam("dataQualityDimension")
-      String dataQualityDimension,
+                  "Filter for test case by data quality dimension (e.g. OpenMetadata, dbt, etc.)",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {
+                        "Completeness",
+                        "Accuracy",
+                        "Consistency",
+                        "Validity",
+                        "Uniqueness",
+                        "Integrity",
+                        "SQL"
+                      }))
+          @QueryParam("dataQualityDimension")
+          String dataQualityDimension,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))

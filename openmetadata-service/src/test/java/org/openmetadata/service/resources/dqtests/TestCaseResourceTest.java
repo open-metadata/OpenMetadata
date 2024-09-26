@@ -3102,34 +3102,36 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   void test_listTestCaseFromSearch(TestInfo testInfo) throws HttpResponseException, ParseException {
     CreateTestCase create = createRequest(testInfo);
     create
-            .withEntityLink(TABLE_COLUMN_LINK)
-            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
-            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-            .withParameterValues(
-                    List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+        .withEntityLink(TABLE_COLUMN_LINK)
+        .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
     TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
     for (int i = 1; i < 10; i++) {
       CreateTestCaseResult createTestCaseResult =
-              new CreateTestCaseResult()
-                      .withResult("tested")
-                      .withTestCaseStatus(TestCaseStatus.Success)
-                      .withTimestamp(TestUtils.dateToTimestamp("2021-09-0%s".formatted(i)));
+          new CreateTestCaseResult()
+              .withResult("tested")
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(TestUtils.dateToTimestamp("2021-09-0%s".formatted(i)));
       postTestCaseResult(
-              testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+          testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
     }
-
 
     Map<String, String> queryParams = new HashMap<>();
 
     queryParams.put("fields", "testCase,testDefinition");
-    ResultList<TestCaseResult> testCaseResultResultList = listTestCaseResultsFromSearch(queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    ResultList<TestCaseResult> testCaseResultResultList =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
     assertNotEquals(testCaseResultResultList.getData().size(), 0);
-    testCaseResultResultList.getData().forEach(
+    testCaseResultResultList
+        .getData()
+        .forEach(
             testCaseResult -> {
               assertNotNull(testCaseResult.getTestCase());
               assertNotNull(testCaseResult.getTestDefinition());
-            }
-    );
+            });
 
     queryParams.clear();
     Long ts = TestUtils.dateToTimestamp("2021-09-01");
@@ -3138,38 +3140,48 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("latest", "true");
     queryParams.put("testSuiteId", TEST_SUITE1.getId().toString());
 
-    testCaseResultResultList = listTestCaseResultsFromSearch(queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    testCaseResultResultList =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
     assertNotEquals(testCaseResultResultList.getData().size(), 0);
-    testCaseResultResultList.getData().forEach(
+    testCaseResultResultList
+        .getData()
+        .forEach(
             testCaseResult -> {
               assertEquals(testCaseResult.getTimestamp(), ts);
-            }
-    );
+            });
 
     queryParams.clear();
     queryParams.put("dataQualityDimension", "Completeness");
     queryParams.put("fields", "testDefinition");
-    testCaseResultResultList = listTestCaseResultsFromSearch(queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    testCaseResultResultList =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
     assertNotEquals(testCaseResultResultList.getData().size(), 0);
-    testCaseResultResultList.getData().forEach(
+    testCaseResultResultList
+        .getData()
+        .forEach(
             testCaseResult -> {
               EntityReference testDefinition = testCaseResult.getTestDefinition();
-                TestDefinition td = Entity.getEntity(TEST_DEFINITION, testDefinition.getId(), "", Include.ALL);
-                assertEquals(td.getDataQualityDimension(), DataQualityDimensions.COMPLETENESS);
-            }
-    );
+              TestDefinition td =
+                  Entity.getEntity(TEST_DEFINITION, testDefinition.getId(), "", Include.ALL);
+              assertEquals(td.getDataQualityDimension(), DataQualityDimensions.COMPLETENESS);
+            });
 
     queryParams.clear();
     queryParams.put("testCaseType", "column");
-    testCaseResultResultList = listTestCaseResultsFromSearch(queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    testCaseResultResultList =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
     assertNotEquals(testCaseResultResultList.getData().size(), 0);
-    testCaseResultResultList.getData().forEach(
+    testCaseResultResultList
+        .getData()
+        .forEach(
             testCaseResult -> {
               EntityReference testDefinition = testCaseResult.getTestCase();
               TestCase tc = Entity.getEntity(TEST_CASE, testCase.getId(), "", Include.ALL);
               assertTrue(tc.getEntityLink().contains("columns"));
-            }
-    );
+            });
   }
 
   private void putInspectionQuery(TestCase testCase, String sql) throws IOException {

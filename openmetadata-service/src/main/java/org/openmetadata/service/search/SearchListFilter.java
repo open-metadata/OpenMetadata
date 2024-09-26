@@ -208,7 +208,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           getTimestampFilter("testCaseResult.timestamp", "lte", Long.parseLong(endTimestamp)));
     }
 
-    if (dataQualityDimension != null) conditions.add(getDataQualityDimensionCondition(dataQualityDimension, "dataQualityDimension"));
+    if (dataQualityDimension != null)
+      conditions.add(
+          getDataQualityDimensionCondition(dataQualityDimension, "dataQualityDimension"));
 
     return addCondition(conditions);
   }
@@ -236,10 +238,14 @@ public class SearchListFilter extends Filter<SearchListFilter> {
                   + "{\"term\": {\"testCase.fullyQualifiedName\": \"%1$s\"}}]}}",
               escapeDoubleQuotes(testCaseFQN)));
     }
-    if (testCaseStatus != null) conditions.add(String.format("{\"term\": {\"testCaseStatus\": \"%s\"}}", testCaseStatus));
+    if (testCaseStatus != null)
+      conditions.add(String.format("{\"term\": {\"testCaseStatus\": \"%s\"}}", testCaseStatus));
     if (type != null) conditions.add(getTestCaseTypeCondition(type, "testCase.entityLink"));
     if (testSuiteId != null) conditions.add(getTestSuiteIdCondition(testSuiteId));
-    if (dataQualityDimension != null) conditions.add(getDataQualityDimensionCondition(dataQualityDimension, "testDefinition.dataQualityDimension"));
+    if (dataQualityDimension != null)
+      conditions.add(
+          getDataQualityDimensionCondition(
+              dataQualityDimension, "testDefinition.dataQualityDimension"));
     return addCondition(conditions);
   }
 
@@ -282,7 +288,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private String getTestCaseTypeCondition(String type, String field) {
     return switch (type) {
       case Entity.TABLE -> String.format(
-              "{\"bool\": {\"must_not\": [{\"regexp\": {\"%s\": \".*::columns::.*\"}}]}}", field);
+          "{\"bool\": {\"must_not\": [{\"regexp\": {\"%s\": \".*::columns::.*\"}}]}}", field);
       case "column" -> String.format("{\"regexp\": {\"%s\": \".*::columns::.*\"}}", field);
       default -> "";
     };
