@@ -123,7 +123,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.session }}
-          path: ingestion/coverage
+          path: ingestion/coverage/**/.coverage.*
           if-no-files-found: error
           include-hidden-files: true
       - name: Clean Up
@@ -166,7 +166,7 @@ jobs:
       - name: Generate report
         run: |
           if [ ! -d "coverage/3.9" ] || [ -z "$(ls -A coverage/3.9/.coverage.*)" ]; then
-            echo "No coverage files found in artifacts/coverage/3.9"
+            echo "No coverage files found in coverage/3.9"
             exit 1
           fi
       
