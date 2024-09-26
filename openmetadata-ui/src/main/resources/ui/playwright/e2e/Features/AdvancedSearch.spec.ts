@@ -96,14 +96,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         tierTag2.responseData.fullyQualifiedName,
       ],
       'service.displayName.keyword': [table1.service.name, table2.service.name],
-      'database.displayName.keyword': [
-        table1.database.name,
-        table2.database.name,
-      ],
-      'databaseSchema.displayName.keyword': [
-        table1.schema.name,
-        table2.schema.name,
-      ],
+      'database.displayName': [table1.database.name, table2.database.name],
+      'databaseSchema.displayName': [table1.schema.name, table2.schema.name],
       'columns.name.keyword': ['email', 'shop_id'],
     };
 
