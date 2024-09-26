@@ -27,12 +27,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.github.fge.jsonpatch.diff.JsonDiff;
-import com.google.gson.Gson;
-import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.spi.json.GsonJsonProvider;
-import com.jayway.jsonpath.spi.mapper.GsonMappingProvider;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion.VersionFlag;
@@ -84,12 +80,6 @@ public final class JsonUtils {
   private static final JsonSchemaFactory schemaFactory =
       JsonSchemaFactory.getInstance(VersionFlag.V7);
   private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON ";
-  private static final Gson gson = new Gson();
-  private static final Configuration JSON_PATH_CONFIGURATION =
-      Configuration.builder()
-          .jsonProvider(new GsonJsonProvider())
-          .mappingProvider(new GsonMappingProvider())
-          .build();
 
   static {
     OBJECT_MAPPER = new ObjectMapper();
@@ -160,7 +150,6 @@ public final class JsonUtils {
 
   public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
     try {
-      //      JsonElement jsonElement = gson.fromJson(json, JsonElement.class);
       DocumentContext documentContext = JsonPath.parse(json);
       return Optional.ofNullable(documentContext.read(path, clazz));
     } catch (Exception e) {
@@ -168,17 +157,6 @@ public final class JsonUtils {
       return Optional.empty();
     }
   }
-
-  //  public static <T> Optional<T> readJsonAtPath(String json, String path, Class<T> clazz) {
-  //    TypeRef<T> typeRef =
-  //        new TypeRef<>() {
-  //          @Override
-  //          public java.lang.reflect.Type getType() {
-  //            return clazz;
-  //          }
-  //        };
-  //    return readJsonAtPath(json, path, typeRef);
-  //  }
 
   public static <T> T readValue(String json, Class<T> clz) {
     if (json == null) {

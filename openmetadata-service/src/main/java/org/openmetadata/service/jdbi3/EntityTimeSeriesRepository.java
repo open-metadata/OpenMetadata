@@ -66,17 +66,13 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   @Transaction
   public T createNewRecord(T recordEntity, String recordFQN) {
-    return createNewRecord(recordEntity, recordFQN, null);
+    return createNewRecord(recordEntity, null, recordFQN);
   }
 
   @Transaction
-  public T createNewRecord(T recordEntity, String recordFQN, String extension) {
+  public T createNewRecord(T recordEntity, String extension, String recordFQN) {
     recordEntity.setId(UUID.randomUUID());
-    if (extension != null) {
-      storeInternal(recordEntity, recordFQN, extension);
-    } else {
-      storeInternal(recordEntity, recordFQN);
-    }
+    storeInternal(recordEntity, recordFQN, extension);
     storeRelationshipInternal(recordEntity);
     postCreate(recordEntity);
     return recordEntity;
@@ -228,17 +224,17 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       boolean latest,
       boolean skipErrors) {
     int total = timeSeriesDao.listCount(filter, startTs, endTs, latest);
-    return ListWithOffsetInternal(
+    return listWithOffsetInternal(
         offset, filter, limitParam, startTs, endTs, latest, skipErrors, total);
   }
 
   public ResultList<T> listWithOffset(
       String offset, ListFilter filter, int limitParam, boolean skipErrors) {
     int total = timeSeriesDao.listCount(filter);
-    return ListWithOffsetInternal(offset, filter, limitParam, null, null, false, skipErrors, total);
+    return listWithOffsetInternal(offset, filter, limitParam, null, null, false, skipErrors, total);
   }
 
-  private ResultList<T> ListWithOffsetInternal(
+  private ResultList<T> listWithOffsetInternal(
       String offset,
       ListFilter filter,
       int limitParam,
