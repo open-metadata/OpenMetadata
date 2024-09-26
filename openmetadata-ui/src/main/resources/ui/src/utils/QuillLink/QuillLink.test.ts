@@ -42,7 +42,7 @@ describe('LinkBlot', () => {
       denotationChar: '@',
     };
 
-    const linkElement = LinkBlot.render(data);
+    const linkElement = LinkBlot.render(data) as HTMLAnchorElement;
 
     expect(linkElement.tagName).toBe('A');
     expect(linkElement.innerText).toBe(data.value);

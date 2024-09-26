@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 
-import { ToolbarEmoji } from '@windmillcode/quill-emoji';
+import { EmojiBlot, ToolbarEmoji } from '@windmillcode/quill-emoji';
 import '@windmillcode/quill-emoji/quill-emoji.css';
 import classNames from 'classnames';
 import { debounce, isNil } from 'lodash';
 import { Parchment } from 'quill';
-import Delta from 'quill-delta';
 import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
@@ -58,16 +57,15 @@ import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
 Quill.register('modules/markdownOptions', QuillMarkdown);
 Quill.register('modules/emoji-toolbar', ToolbarEmoji, true);
 Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
-const DeltaInternal = Quill.import('delta');
+Quill.register(EmojiBlot, true);
+const Delta = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const strikethrough = (_node: any, delta: typeof Delta) => {
   // @ts-ignore
-  if ('compose' in delta && delta.compose instanceof Function) {
-    // @ts-ignore
-    return delta.compose(
-      new DeltaInternal().retain(delta.length, { strike: true })
-    );
-  }
+  return 'compose' in delta && delta.compose instanceof Function
+    ? // @ts-ignore
+      delta.compose(new Delta().retain(delta.length, { strike: true }))
+    : null;
 };
 
 export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
