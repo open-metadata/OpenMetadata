@@ -66,12 +66,14 @@ export const setValueForProperty = async (data: {
   const { page, propertyName, value, propertyType, endpoint } = data;
   await page.click('[data-testid="custom_properties"]');
 
-  await expect(page.getByRole('cell', { name: propertyName })).toContainText(
-    propertyName
-  );
+  await expect(
+    page.locator(
+      `[data-testid="custom-property-${propertyName}-card"] [data-testid="property-name"]`
+    )
+  ).toHaveText(propertyName);
 
   const editButton = page.locator(
-    `[data-row-key="${propertyName}"] [data-testid="edit-icon"]`
+    `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
   );
   await editButton.scrollIntoViewIfNeeded();
   await editButton.click({ force: true });
@@ -208,23 +210,31 @@ export const validateValueForProperty = async (data: {
   const { page, propertyName, value, propertyType } = data;
   await page.click('[data-testid="custom_properties"]');
 
+  const container = page.locator(
+    `[data-testid="custom-property-${propertyName}-card"]`
+  );
+
+  const toggleBtnVisibility = await container
+    .locator(`[data-testid="toggle-${propertyName}"]`)
+    .isVisible();
+
+  if (toggleBtnVisibility) {
+    await container.locator(`[data-testid="toggle-${propertyName}"]`).click();
+  }
+
   if (propertyType === 'enum') {
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('enum-value')
-    ).toContainText(value);
+    await expect(container.getByTestId('enum-value')).toContainText(value);
   } else if (propertyType === 'timeInterval') {
     const [startValue, endValue] = value.split(',');
 
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
-    ).toContainText(startValue);
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
-    ).toContainText(endValue);
+    await expect(container.getByTestId('time-interval-value')).toContainText(
+      startValue
+    );
+    await expect(container.getByTestId('time-interval-value')).toContainText(
+      endValue
+    );
   } else if (propertyType === 'sqlQuery') {
-    await expect(
-      page.getByLabel('Custom Properties').locator('.CodeMirror-scroll')
-    ).toContainText(value);
+    await expect(container.locator('.CodeMirror-scroll')).toContainText(value);
   } else if (
     ![
       'entityReference',
@@ -233,9 +243,7 @@ export const validateValueForProperty = async (data: {
       'dateTime-cp',
     ].includes(propertyType)
   ) {
-    await expect(page.getByRole('row', { name: propertyName })).toContainText(
-      value.replace(/\*|_/gi, '')
-    );
+    await expect(container).toContainText(value.replace(/\*|_/gi, ''));
   }
 };
 

@@ -739,9 +739,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
       case 'enum':
         return (
-          <div data-testid="enum-value">
+          <>
             {isArray(value) ? (
-              <div className="w-full d-flex gap-2 flex-wrap">
+              <div
+                className="w-full d-flex gap-2 flex-wrap"
+                data-testid="enum-value">
                 {value.map((val) => (
                   <Tooltip key={val} title={val} trigger="hover">
                     <Tag className="enum-key-tag">{val}</Tag>
@@ -750,10 +752,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               </div>
             ) : (
               <Tooltip key={value} title={value} trigger="hover">
-                <Tag className="enum-key-tag">{value}</Tag>
+                <Tag className="enum-key-tag" data-testid="enum-value">
+                  {value}
+                </Tag>
               </Tooltip>
             )}
-          </div>
+          </>
         );
 
       case ENUM_WITH_DESCRIPTION: {
@@ -976,7 +980,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   };
 
   return (
-    <Card className="w-full">
+    <Card
+      className="w-full"
+      data-testid={`custom-property-${propertyName}-card`}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
           <Row gutter={[0, 2]}>
@@ -1025,6 +1031,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               {isOverflowing && !showInput && (
                 <Button
                   className="custom-property-value-toggle-btn"
+                  data-testid={`toggle-${propertyName}`}
                   size="small"
                   type="text"
                   onClick={toggleExpand}>
