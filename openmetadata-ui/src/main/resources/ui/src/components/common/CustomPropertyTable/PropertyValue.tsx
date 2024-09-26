@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
+import Icon, { DownOutlined, UpOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
   Col,
   DatePicker,
+  Divider,
   Form,
   Input,
   Row,
@@ -40,7 +41,14 @@ import {
   toUpper,
 } from 'lodash';
 import moment, { Moment } from 'moment';
-import React, { CSSProperties, FC, useState } from 'react';
+import React, {
+  CSSProperties,
+  FC,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
 import {
@@ -83,13 +91,25 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const propertyName = property.name;
-  const propertyType = property.propertyType;
+  const { propertyName, propertyType, value } = useMemo(() => {
+    const propertyName = property.name;
+    const propertyType = property.propertyType;
 
-  const value = extension?.[propertyName];
+    const value = extension?.[propertyName];
+
+    return {
+      propertyName,
+      propertyType,
+      value,
+    };
+  }, [property, extension]);
 
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const onShowInput = () => setShowInput(true);
 
@@ -721,34 +741,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         return (
           <div data-testid="enum-value">
             {isArray(value) ? (
-              <div className="w-full d-flex gap-2">
+              <div className="w-full d-flex gap-2 flex-wrap">
                 {value.map((val) => (
                   <Tooltip key={val} title={val} trigger="hover">
-                    <Tag
-                      style={{
-                        width: 'max-content',
-                        margin: '0px',
-                        border: 'none',
-                        padding: '4px',
-                        background: 'rgba(0, 0, 0, 0.03)',
-                      }}>
-                      {val}
-                    </Tag>
+                    <Tag className="enum-key-tag">{val}</Tag>
                   </Tooltip>
                 ))}
               </div>
             ) : (
               <Tooltip key={value} title={value} trigger="hover">
-                <Tag
-                  style={{
-                    width: 'max-content',
-                    margin: '0px',
-                    border: 'none',
-                    padding: '4px',
-                    background: 'rgba(0, 0, 0, 0.03)',
-                  }}>
-                  {value}
-                </Tag>
+                <Tag className="enum-key-tag">{value}</Tag>
               </Tooltip>
             )}
           </div>
@@ -819,7 +821,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                         item.fullyQualifiedName as string
                       )}>
                       <Button
-                        className="entity-button flex-center p-0 m--ml-1"
+                        className="entity-button flex-center p-0"
                         icon={
                           <div className="entity-button-icon m-r-xs">
                             {['user', 'team'].includes(item.type) ? (
@@ -828,7 +830,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                                 isTeam={item.type === 'team'}
                                 name={item.name ?? ''}
                                 type="circle"
-                                width="18"
+                                width="24"
                               />
                             ) : (
                               searchClassBase.getEntityIcon(item.type)
@@ -837,7 +839,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                         }
                         type="text">
                         <Typography.Text
-                          className="text-left text-xs"
+                          className="text-left text-lg"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
@@ -868,18 +870,18 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 item.fullyQualifiedName as string
               )}>
               <Button
-                className="entity-button flex-center p-0 m--ml-1"
+                className="entity-button flex-center p-0"
                 icon={
                   <div
                     className="entity-button-icon m-r-xs"
-                    style={{ width: '18px', display: 'flex' }}>
+                    style={{ width: '24px', display: 'flex' }}>
                     {['user', 'team'].includes(item.type) ? (
                       <ProfilePicture
                         className="d-flex"
                         isTeam={item.type === 'team'}
                         name={item.name ?? ''}
                         type="circle"
-                        width="18"
+                        width="24"
                       />
                     ) : (
                       searchClassBase.getEntityIcon(item.type)
@@ -888,7 +890,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 }
                 type="text">
                 <Typography.Text
-                  className="text-left text-xs"
+                  className="text-left text-lg"
                   data-testid="entityReference-value-name"
                   ellipsis={{ tooltip: true }}>
                   {getEntityName(item)}
@@ -907,11 +909,19 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <Typography.Text
-            className="break-all text-xl font-semibold text-grey-body"
+            className="break-all"
             data-testid="time-interval-value">
-            {`StartTime: ${timeInterval.start}`}
-            <br />
-            {`EndTime: ${timeInterval.end}`}
+            <span>
+              <Typography.Text className="text-xs">{`StartTime: `}</Typography.Text>
+              <Typography.Text className="text-sm font-medium text-grey-body">
+                {timeInterval.start}
+              </Typography.Text>
+              <Divider className="self-center" type="vertical" />
+              <Typography.Text className="text-xs">{`EndTime: `}</Typography.Text>
+              <Typography.Text className="text-sm font-medium text-grey-body">
+                {timeInterval.end}
+              </Typography.Text>
+            </span>
           </Typography.Text>
         );
       }
@@ -948,14 +958,31 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     );
   };
 
+  useEffect(() => {
+    if (!contentRef.current || !property) {
+      return;
+    }
+
+    const isMarkdownWithValue = propertyType.name === 'markdown' && value;
+    const isOverflowing =
+      (contentRef.current.scrollHeight > 30 || isMarkdownWithValue) &&
+      propertyType.name !== 'entityReference';
+
+    setIsOverflowing(isOverflowing);
+  }, [property, extension, contentRef, value]);
+
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
   return (
     <Card className="w-full">
-      <Row gutter={[0, 8]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <Row gutter={[0, 2]}>
             <Col className="d-flex justify-between w-full" span={24}>
               <Typography.Text
-                className="text-lg font-semibold text-grey-body"
+                className="text-md text-grey-body"
                 data-testid="property-name">
                 {getEntityName(property)}
               </Typography.Text>
@@ -975,13 +1002,37 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               )}
             </Col>
             <Col span={24}>
-              <RichTextEditorPreviewer markdown={property.description || ''} />
+              <RichTextEditorPreviewer
+                className="text-grey-muted"
+                markdown={property.description || ''}
+              />
             </Col>
           </Row>
         </Col>
 
         <Col span={24}>
-          {showInput ? getPropertyInput() : getValueElement()}
+          <Row gutter={[6, 0]}>
+            <Col
+              ref={contentRef}
+              span={22}
+              style={{
+                height: isExpanded || showInput ? 'auto' : '30px',
+                overflow: isExpanded ? 'visible' : 'hidden',
+              }}>
+              {showInput ? getPropertyInput() : getValueElement()}
+            </Col>
+            <Col span={2}>
+              {isOverflowing && !showInput && (
+                <Button
+                  className="custom-property-value-toggle-btn"
+                  size="small"
+                  type="text"
+                  onClick={toggleExpand}>
+                  {isExpanded ? <UpOutlined /> : <DownOutlined />}
+                </Button>
+              )}
+            </Col>
+          </Row>
         </Col>
       </Row>
     </Card>
