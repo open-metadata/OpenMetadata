@@ -258,6 +258,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["lkml"],
         "gitpython~=3.1.34",
         VERSIONS["giturlparse"],
+        "python-liquid",
     },
     "mlflow": {"mlflow-skinny>=2.3.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},

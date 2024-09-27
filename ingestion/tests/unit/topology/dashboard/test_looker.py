@@ -300,6 +300,53 @@ class LookerUnitTest(TestCase):
 
         self.assertEqual(self.looker._clean_table_name("TABLE AS ALIAS"), "table")
 
+    def test_render_table_name(self):
+        """
+        Check that table is rendered correctly if "openmetadata" or default condition apply, or no templating is present
+        """
+        tagged_table_name_template = """
+        {%- if openmetadata -%}
+        `BQ-project.dataset.sample_data`
+        {%- elsif prod -%}
+        `BQ-project.dataset.sample_data`
+        {%- elsif dev -%}
+        `BQ-project.{{_user_attributes['dbt_dev_schema']}}.sample_data`
+        {%- endif -%}
+        """
+        default_table_name_template = """
+        {%- if prod -%}
+        `BQ-project.dataset.sample_data`
+        {%- elsif dev -%}
+        `BQ-project.{{_user_attributes['dbt_dev_schema']}}.sample_data`
+        {%- else -%}
+        `BQ-project.dataset.sample_data`
+        {%- endif -%}
+        """
+        untagged_table_name_template = """
+        {%- if prod -%}
+        `BQ-project.dataset.sample_data`
+        {%- elsif dev -%}
+        `BQ-project.{{_user_attributes['dbt_dev_schema']}}.sample_data`
+        {%- endif -%}
+        """
+        table_name_plain = "`BQ-project.dataset.sample_data`"
+        self.assertEqual(
+            self.looker._render_table_name(tagged_table_name_template),
+            "`BQ-project.dataset.sample_data`",
+        )
+        self.assertEqual(
+            self.looker._render_table_name(default_table_name_template),
+            "`BQ-project.dataset.sample_data`",
+        )
+        self.assertNotEqual(
+            self.looker._render_table_name(untagged_table_name_template),
+            "`BQ-project.dataset.sample_data`",
+        )
+        self.assertEqual(
+            self.looker._render_table_name(table_name_plain),
+            "`BQ-project.dataset.sample_data`",
+        )
+
     def test_get_dashboard_sources(self):
         """
         Check how we are building the sources
