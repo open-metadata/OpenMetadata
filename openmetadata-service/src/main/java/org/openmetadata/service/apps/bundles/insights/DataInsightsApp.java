@@ -282,16 +282,16 @@ public class DataInsightsApp extends AbstractNativeApplication {
       updateStats(stepName, stats);
     }
   }
-  private boolean isPartialSuccess(){
-    try{
-      if (jobData.getStats() != null && jobData.getStats().getJobStats() != null){
+
+  private boolean isPartialSuccess() {
+    try {
+      if (jobData.getStats() != null && jobData.getStats().getJobStats() != null) {
         float failure = jobData.getStats().getJobStats().getFailedRecords();
         float success = jobData.getStats().getJobStats().getSuccessRecords();
         // if success % is >= 90%
-        if (success/(success+failure) >= 0.9) return true;
+        if (success / (success + failure) >= 0.9) return true;
       }
-    }
-    catch (ArithmeticException ex){
+    } catch (ArithmeticException ex) {
       // ignore in case there are 0 success and failures
     }
     return false;
@@ -302,10 +302,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
       jobData.setStatus(EventPublisherJob.Status.STOPPED);
     } else {
       if (jobData.getFailure() != null) {
-        if (isPartialSuccess()){
+        if (isPartialSuccess()) {
           jobData.setStatus(EventPublisherJob.Status.PARTIAL_SUCCESS);
-        }
-        else {
+        } else {
           jobData.setStatus(EventPublisherJob.Status.FAILED);
         }
       } else {
