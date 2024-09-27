@@ -203,6 +203,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             "compiled_sql",
             "raw_code",
             "raw_sql",
+            "language",
         }
 
         for node, value in manifest_dict.get(  # pylint: disable=unused-variable
