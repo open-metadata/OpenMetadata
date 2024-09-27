@@ -20,12 +20,12 @@ on:
         required: True
         default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]'
       debug:
-        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered"
+        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered ["default", "true", "false"]"
         required: False
-        default: "false"
+        default: "default"
 
 env:
-  DEBUG: ${{ inputs.debug || 'false' }}
+  DEBUG: ${{ inputs.debug == 'true' || (inputs.debug == 'default' && github.ref != 'refs/heads/main') }}' }}
 
 permissions:
   id-token: write
