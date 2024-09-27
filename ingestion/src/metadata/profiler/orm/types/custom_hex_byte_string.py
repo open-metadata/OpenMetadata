@@ -22,6 +22,7 @@ from sqlalchemy.sql.sqltypes import String, TypeDecorator
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+NULL_BYTE = "\x00"
 
 
 class HexByteString(TypeDecorator):
@@ -68,6 +69,13 @@ class HexByteString(TypeDecorator):
                 # will result in 'foo�' (instead of failing)
                 str_value = bytes_value.decode(
                     encoding=detected_encoding, errors="replace"
+                )
+                # Replace NULL_BYTE with empty string to avoid errors with
+                # the database client (should be O(n))
+                str_value = (
+                    str_value.replace(NULL_BYTE, "")
+                    if NULL_BYTE in str_value
+                    else str_value
                 )
                 return str_value
             except Exception as exc:
