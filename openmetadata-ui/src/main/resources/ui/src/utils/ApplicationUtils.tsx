@@ -36,6 +36,9 @@ export const getStatusTypeForApplication = (status: Status) => {
     case Status.Started:
       return StatusType.Started;
 
+    case Status.PartialSuccess:
+      return StatusType.PartialSuccess;
+
     default:
       return StatusType.Stopped;
   }
