@@ -25,7 +25,7 @@ Interact with a sample installation with 0 setup to explore our Discovery, Gover
 
 {% /inlineCalloutContainer %}
 
-Additionally, you can explore the Quick Start by setting up one of the two approaches locally with your own customizations, allowing you to test and experiment with the features.
+Additionally, you can explore the OpenMetadata by setting up one of the two approaches locally with your own customizations, allowing you to test and experiment with the features.
 
 {% inlineCalloutContainer %}
 
