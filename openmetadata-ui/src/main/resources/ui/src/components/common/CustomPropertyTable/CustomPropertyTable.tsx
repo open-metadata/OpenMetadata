@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Skeleton, Typography } from 'antd';
+import { Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
@@ -245,21 +251,43 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             {viewAllBtn}
           </div>
 
-          <Row data-testid="custom-properties-card" gutter={[16, 16]}>
-            {dataSource.map((record) => (
-              <Col key={record.name} span={8}>
-                <PropertyValue
-                  extension={extensionObject.extensionObject}
-                  hasEditPermissions={hasEditAccess}
-                  isRenderedInRightPanel={isRenderedInRightPanel}
-                  isVersionView={isVersionView}
-                  property={record}
-                  versionDataKeys={extensionObject.addedKeysList}
-                  onExtensionUpdate={onExtensionUpdate}
-                />
-              </Col>
-            ))}
-          </Row>
+          {isRenderedInRightPanel ? (
+            <>
+              {dataSource.map((record, index) => (
+                <Fragment key={record.name}>
+                  <PropertyValue
+                    extension={extensionObject.extensionObject}
+                    hasEditPermissions={hasEditAccess}
+                    isRenderedInRightPanel={isRenderedInRightPanel}
+                    isVersionView={isVersionView}
+                    key={record.name}
+                    property={record}
+                    versionDataKeys={extensionObject.addedKeysList}
+                    onExtensionUpdate={onExtensionUpdate}
+                  />
+                  {index !== dataSource.length - 1 && (
+                    <Divider className="m-y-md" />
+                  )}
+                </Fragment>
+              ))}
+            </>
+          ) : (
+            <Row data-testid="custom-properties-card" gutter={[16, 16]}>
+              {dataSource.map((record) => (
+                <Col key={record.name} span={8}>
+                  <PropertyValue
+                    extension={extensionObject.extensionObject}
+                    hasEditPermissions={hasEditAccess}
+                    isRenderedInRightPanel={isRenderedInRightPanel}
+                    isVersionView={isVersionView}
+                    property={record}
+                    versionDataKeys={extensionObject.addedKeysList}
+                    onExtensionUpdate={onExtensionUpdate}
+                  />
+                </Col>
+              ))}
+            </Row>
+          )}
         </>
       )}
     </>

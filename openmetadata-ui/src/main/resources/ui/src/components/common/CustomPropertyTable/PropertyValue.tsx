@@ -984,6 +984,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     );
   };
 
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
   useEffect(() => {
     if (!contentRef.current || !property) {
       return;
@@ -997,78 +1001,81 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     setIsOverflowing(isOverflowing);
   }, [property, extension, contentRef, value]);
 
-  const toggleExpand = () => {
-    setIsExpanded(!isExpanded);
-  };
+  const customPropertyElement = (
+    <Row gutter={[0, 16]}>
+      <Col span={24}>
+        <Row gutter={[0, 2]}>
+          <Col className="d-flex justify-between w-full" span={24}>
+            <Typography.Text
+              className="text-md text-grey-body"
+              data-testid="property-name">
+              {getEntityName(property)}
+            </Typography.Text>
+            {hasEditPermissions && !showInput && (
+              <Tooltip
+                placement="left"
+                title={t('label.edit-entity', { entity: propertyName })}>
+                <Icon
+                  component={EditIconComponent}
+                  data-testid={`edit-icon${
+                    isRenderedInRightPanel ? '-right-panel' : ''
+                  }`}
+                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                  onClick={onShowInput}
+                />
+              </Tooltip>
+            )}
+          </Col>
+          <Col span={24}>
+            <RichTextEditorPreviewer
+              className="text-grey-muted"
+              markdown={property.description || ''}
+            />
+          </Col>
+        </Row>
+      </Col>
+
+      <Col span={24}>
+        <Row gutter={[6, 0]}>
+          <Col
+            ref={contentRef}
+            span={22}
+            style={{
+              height: isExpanded || showInput ? 'auto' : '30px',
+              overflow: isExpanded ? 'visible' : 'hidden',
+            }}>
+            {showInput ? getPropertyInput() : getValueElement()}
+          </Col>
+          <Col span={2}>
+            {isOverflowing && !showInput && (
+              <Button
+                className="custom-property-value-toggle-btn"
+                data-testid={`toggle-${propertyName}`}
+                size="small"
+                type="text"
+                onClick={toggleExpand}>
+                {isExpanded ? <UpOutlined /> : <DownOutlined />}
+              </Button>
+            )}
+          </Col>
+        </Row>
+      </Col>
+    </Row>
+  );
 
   if (isRenderedInRightPanel) {
-    // TODO: Add right panel styles
-    return null;
+    return (
+      <div data-testid="custom-property-right-panel-card">
+        {customPropertyElement}
+      </div>
+    );
   }
 
   return (
     <Card
       className="w-full"
       data-testid={`custom-property-${propertyName}-card`}>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
-          <Row gutter={[0, 2]}>
-            <Col className="d-flex justify-between w-full" span={24}>
-              <Typography.Text
-                className="text-md text-grey-body"
-                data-testid="property-name">
-                {getEntityName(property)}
-              </Typography.Text>
-              {hasEditPermissions && !showInput && (
-                <Tooltip
-                  placement="left"
-                  title={t('label.edit-entity', { entity: propertyName })}>
-                  <Icon
-                    component={EditIconComponent}
-                    data-testid={`edit-icon${
-                      isRenderedInRightPanel ? '-right-panel' : ''
-                    }`}
-                    style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                    onClick={onShowInput}
-                  />
-                </Tooltip>
-              )}
-            </Col>
-            <Col span={24}>
-              <RichTextEditorPreviewer
-                className="text-grey-muted"
-                markdown={property.description || ''}
-              />
-            </Col>
-          </Row>
-        </Col>
-
-        <Col span={24}>
-          <Row gutter={[6, 0]}>
-            <Col
-              ref={contentRef}
-              span={22}
-              style={{
-                height: isExpanded || showInput ? 'auto' : '30px',
-                overflow: isExpanded ? 'visible' : 'hidden',
-              }}>
-              {showInput ? getPropertyInput() : getValueElement()}
-            </Col>
-            <Col span={2}>
-              {isOverflowing && !showInput && (
-                <Button
-                  className="custom-property-value-toggle-btn"
-                  data-testid={`toggle-${propertyName}`}
-                  size="small"
-                  type="text"
-                  onClick={toggleExpand}>
-                  {isExpanded ? <UpOutlined /> : <DownOutlined />}
-                </Button>
-              )}
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+      {customPropertyElement}
     </Card>
   );
 };
