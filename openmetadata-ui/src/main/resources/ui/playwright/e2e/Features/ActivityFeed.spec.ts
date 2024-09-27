@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   PolicyClass,
   PolicyRulesType,
@@ -43,8 +43,8 @@ import {
   checkTaskCount,
   createDescriptionTask,
   createTagTask,
-  TaskDetails,
   TASK_OPEN_FETCH_LINK,
+  TaskDetails,
 } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
 
@@ -582,7 +582,7 @@ test.describe('Activity feed', () => {
         // Close drawer
         await page.locator('[data-testid="closeDrawer"]').click();
 
-        expect(
+        await expect(
           page.locator(`${FIRST_FEED_SELECTOR} [data-testid="reply-count"]`)
         ).toContainText('2 Replies');
       }
