@@ -349,6 +349,14 @@ const AddKPIPage = () => {
               <Form.Item
                 label={t('label.description')}
                 name="description"
+                rules={[
+                  {
+                    required: true,
+                    message: t('label.field-required', {
+                      field: t('label.description-kpi'),
+                    }),
+                  },
+                ]}
                 trigger="onTextChange"
                 valuePropName="initialValue">
                 <RichTextEditor

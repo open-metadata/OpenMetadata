@@ -219,6 +219,12 @@ const KPIChart: FC<Props> = ({
     }
   }, [kpiList, chartFilter]);
 
+  const hasAtLeastOneData = useMemo(() => {
+    return kpiNames.some(
+      (key) => kpiResults[key] && kpiResults[key].length > 0
+    );
+  }, [kpiNames, kpiResults]);
+
   return (
     <Card
       className="data-insight-card"
@@ -235,7 +241,7 @@ const KPIChart: FC<Props> = ({
       }>
       {kpiList.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-          {!isEmpty(kpiResults) ? (
+          {hasAtLeastOneData ? (
             <>
               <Col span={DI_STRUCTURE.leftContainerSpan}>
                 <ResponsiveContainer
