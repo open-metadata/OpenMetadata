@@ -611,6 +611,8 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());
     }
+    // Remove suggestions
+    daoCollection.suggestionDAO().deleteByCreatedBy(entity.getId());
   }
 
   /** Handles entity updated from PUT and POST operation. */

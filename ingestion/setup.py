@@ -331,7 +331,7 @@ dev = {
     "isort",
     "pre-commit",
     "pycln",
-    "pylint~=3.0",
+    "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
     "nox",
     "coverage",
     "basedpyright",
@@ -349,7 +349,6 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "moto~=5.0",
     "basedpyright~=1.14",
     "pytest==7.0.0",
     "pytest-cov",
@@ -358,7 +357,7 @@ test = {
     "dbt-artifacts-parser",
     "freezegun",
     "testcontainers==3.7.1;python_version<'3.9'",
-    "testcontainers==4.8.1;python_version>='3.9'",
+    "testcontainers~=4.8.0;python_version>='3.9'",
     "minio==7.2.5",
     "kafka-python==2.0.2",
     "requests==2.31.0",
