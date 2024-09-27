@@ -16,10 +16,14 @@ package org.openmetadata.csv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 
@@ -74,6 +78,33 @@ public class CsvUtilTest {
     expectedRecord.add("t1;t2");
     List<TagLabel> tags = listOf(new TagLabel().withTagFQN("t1"), new TagLabel().withTagFQN("t2"));
     assertEquals(expectedRecord, CsvUtil.addTagLabels(actualRecord, tags));
+
+    // Add extension
+    expectedRecord.add(null);
+    assertEquals(expectedRecord, CsvUtil.addExtension(actualRecord, null)); // Null extension
+
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode jsonNode = mapper.createObjectNode();
+
+    // Add new custom property stringCp of type string
+    CustomProperty stringCp =
+        new CustomProperty()
+            .withName("stringCp")
+            .withDescription("string type custom property")
+            .withPropertyType(
+                new EntityReference().withFullyQualifiedName("string").withType("type"));
+    JsonNode stringCpValue =
+        mapper.convertValue("String; input; with; semicolon\n And new line", JsonNode.class);
+    jsonNode.set("stringCp", stringCpValue);
+
+    // Add new custom property queryCp of type sqlQuery
+    JsonNode queryCpValue =
+        mapper.convertValue("SELECT * FROM table WHERE column = 'value';", JsonNode.class);
+    jsonNode.set("queryCp", queryCpValue);
+
+    expectedRecord.add(
+        "\"stringCp:String; input; with; semicolon\n And new line\";\"queryCp:SELECT * FROM table WHERE column = 'value';\"");
+    assertEquals(expectedRecord, CsvUtil.addExtension(actualRecord, jsonNode));
   }
 
   public static void assertCsv(String expectedCsv, String actualCsv) {

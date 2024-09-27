@@ -273,10 +273,10 @@ public final class CsvUtil {
     return str;
   }
 
-  public static void addExtension(List<String> csvRecord, Object extension) {
+  public static List<String> addExtension(List<String> csvRecord, Object extension) {
     if (extension == null) {
       csvRecord.add(null);
-      return;
+      return csvRecord;
     }
 
     ObjectMapper objectMapper = new ObjectMapper();
@@ -293,6 +293,7 @@ public final class CsvUtil {
             .collect(Collectors.joining(FIELD_SEPARATOR));
 
     csvRecord.add(extensionString);
+    return csvRecord;
   }
 
   private static String formatValue(Object value) {
