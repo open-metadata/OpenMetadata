@@ -30,6 +30,7 @@ export const DATATYPES_HAVING_SUBFIELDS = [
   'STRUCT',
   'ARRAY',
   'UNION',
+  'TABLE',
 ];
 
 export const PIPELINE_EDGE_WIDTH = 200;
