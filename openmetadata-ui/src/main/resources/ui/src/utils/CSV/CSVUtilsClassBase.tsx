@@ -32,7 +32,8 @@ import { EditorProps } from './CSV.utils';
 
 class CSVUtilsClassBase {
   public getEditor(
-    column: string
+    column: string,
+    entityType: EntityType
   ): ((props: EditorProps) => ReactNode) | undefined {
     switch (column) {
       case 'owner':
@@ -238,7 +239,7 @@ class CSVUtilsClassBase {
           return (
             <ModalWithCustomPropertyEditor
               visible
-              entityType={EntityType.GLOSSARY_TERM}
+              entityType={entityType}
               header="Edit CustomProperty"
               value={value}
               onCancel={props.onCancel}

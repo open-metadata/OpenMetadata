@@ -81,7 +81,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
       </Col>
       <Col span={24}>
         <BulkEntityImport
-          entityType={EntityType.GLOSSARY}
+          entityType={EntityType.GLOSSARY_TERM}
           fqn={glossaryName}
           onSuccess={handleGlossaryRedirection}
           onValidateCsvString={handleImportCsv}

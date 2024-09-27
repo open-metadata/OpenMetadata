@@ -20,6 +20,7 @@ import {
   ExtensionDataTypes,
 } from '../../components/Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 import { SEMICOLON_SPLITTER } from '../../constants/regex.constants';
+import { EntityType } from '../../enums/entity.enum';
 import {
   CustomProperty,
   EntityReference,
@@ -67,7 +68,10 @@ const statusRenderer = ({
   );
 };
 
-export const getColumnConfig = (column: string): TypeColumn => {
+export const getColumnConfig = (
+  column: string,
+  entityType: EntityType
+): TypeColumn => {
   const colType = column.split('.').pop() ?? '';
 
   return {
@@ -75,16 +79,20 @@ export const getColumnConfig = (column: string): TypeColumn => {
     name: column,
     defaultFlex: 1,
     sortable: false,
-    renderEditor: csvUtilsClassBase.getEditor(colType),
+    renderEditor: csvUtilsClassBase.getEditor(colType, entityType),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
     render: column === 'status' ? statusRenderer : undefined,
   } as TypeColumn;
 };
 
-export const getEntityColumnsAndDataSourceFromCSV = (csv: string[][]) => {
+export const getEntityColumnsAndDataSourceFromCSV = (
+  csv: string[][],
+  entityType: EntityType
+) => {
   const [cols, ...rows] = csv;
 
-  const columns = cols?.map(getColumnConfig) ?? [];
+  const columns =
+    cols?.map((column) => getColumnConfig(column, entityType)) ?? [];
 
   const dataSource =
     rows.map((row, idx) => {
@@ -145,7 +153,7 @@ const convertCustomPropertyStringToValueExtensionBasedOnType = (
   value: string,
   customProperty: CustomProperty
 ) => {
-  switch (customProperty.propertyType.name) {
+  switch (customProperty?.propertyType.name) {
     case 'entityReference': {
       const entity = value.split(':');
 
@@ -186,7 +194,7 @@ const convertCustomPropertyStringToValueExtensionBasedOnType = (
       };
     }
     default:
-      return value.replace(/^["']|["']$/g, '').trim();
+      return value;
   }
 };
 
