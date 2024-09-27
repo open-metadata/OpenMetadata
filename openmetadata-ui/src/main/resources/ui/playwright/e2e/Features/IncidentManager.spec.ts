@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -39,7 +40,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('Incident Manager', () => {
+test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     // since we need to poll for the pipeline status, we need to increase the timeout
     test.setTimeout(90000);
