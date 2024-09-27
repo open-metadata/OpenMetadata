@@ -303,7 +303,7 @@ export const convertEntityExtensionToCustomPropertyString = (
         );
 
       if (
-        ['markdown', 'sqlQuery'].includes(
+        ['markdown', 'sqlQuery', 'string'].includes(
           keyAndValueTypes[key].propertyType.name ?? ''
         )
       ) {

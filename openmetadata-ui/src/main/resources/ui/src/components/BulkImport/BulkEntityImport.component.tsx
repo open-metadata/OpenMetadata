@@ -86,17 +86,12 @@ const BulkEntityImport = ({
     [entityType, setDataSource, setColumns, setActiveStep, focusToGrid]
   );
 
-  const validateCsvString = useCallback(
-    async (csvData: string) => await onValidateCsvString(csvData, true),
-    []
-  );
-
   const handleLoadData = useCallback(
     async (e: ProgressEvent<FileReader>) => {
       try {
         const result = e.target?.result as string;
 
-        const validationResponse = await validateCsvString(result);
+        const validationResponse = await onValidateCsvString(result, true);
 
         if (['failure', 'aborted'].includes(validationResponse?.status ?? '')) {
           setValidationData(validationResponse);
