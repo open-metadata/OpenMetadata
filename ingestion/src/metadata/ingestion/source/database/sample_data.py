@@ -242,6 +242,41 @@ class SampleDataSource(
             entity=DatabaseService,
             config=WorkflowSource(**self.glue_database_service_json),
         )
+
+        # MYSQL service for er diagrams
+        self.mysql_database_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/mysql/database_service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.mysql_database = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/mysql/database.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.mysql_database_schema = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/mysql/database_schema.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.mysql_tables = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/mysql/tables.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.mysql_database_service = self.metadata.get_service_or_create(
+            entity=DatabaseService,
+            config=WorkflowSource(**self.mysql_database_service_json),
+        )
+        
         self.database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/service.json",
@@ -615,6 +650,7 @@ class SampleDataSource(
         yield from self.ingest_users()
         yield from self.ingest_tables()
         yield from self.ingest_glue()
+        yield from self.ingest_mysql()
         yield from self.ingest_stored_procedures()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
@@ -665,6 +701,55 @@ class SampleDataSource(
                 team_to_ingest.parents = parent_list_id
 
             yield Either(right=team_to_ingest)
+
+    def ingest_mysql(self) -> Iterable[Either[Entity]]:
+        """Ingest Sample Data for mysql database source including ER diagrams metadata"""
+
+        db = CreateDatabaseRequest(
+            name=self.mysql_database["name"],
+            service=self.mysql_database_service.fullyQualifiedName,
+        )
+
+        yield Either(right=db)
+
+        database_entity = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.mysql_database_service.fullyQualifiedName.root,
+            database_name=db.name.root,
+        )
+
+        database_object = self.metadata.get_by_name(
+            entity=Database, fqn=database_entity
+        )
+        schema = CreateDatabaseSchemaRequest(
+            name=self.mysql_database_schema["name"],
+            database=database_object.fullyQualifiedName,
+        )
+        yield Either(right=schema)
+
+        database_schema_entity = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.mysql_database_service.fullyQualifiedName.root,
+            database_name=db.name.root,
+            schema_name=schema.name.root,
+        )
+
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
+        )
+
+        for table in self.mysql_tables["tables"]:
+            table_request = CreateTableRequest(
+                name=table["name"],
+                description=table["description"],
+                columns=table["columns"],
+                databaseSchema=database_schema_object.fullyQualifiedName,
+                tableConstraints=table.get("tableConstraints"),
+                tableType=table["tableType"],
+            )
+            yield Either(right=table_request)
 
     def ingest_glue(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Data for glue database source"""

@@ -771,6 +771,123 @@ public class ElasticSearchClient implements SearchClient {
     return Response.status(OK).entity(responseMap).build();
   }
 
+  private void getEntityRelationship(
+      String fqn,
+      int depth,
+      Set<Map<String, Object>> edges,
+      Set<Map<String, Object>> nodes,
+      String queryFilter,
+      String direction,
+      boolean deleted)
+      throws IOException {
+    if (depth <= 0) {
+      return;
+    }
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn))));
+    if (CommonUtil.nullOrEmpty(deleted)) {
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery()
+              .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn)))
+              .must(QueryBuilders.termQuery("deleted", deleted)));
+    }
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
+        es.org.elasticsearch.index.query.QueryBuilder filter =
+            SearchSourceBuilder.fromXContent(filterParser).query();
+        es.org.elasticsearch.index.query.BoolQueryBuilder newQuery =
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        searchSourceBuilder.query(newQuery);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+    searchRequest.source(searchSourceBuilder.size(1000));
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      List<Map<String, Object>> entityRelationship =
+          (List<Map<String, Object>>) hit.getSourceAsMap().get("entityRelationship");
+      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+      nodes.add(tempMap);
+      for (Map<String, Object> er : entityRelationship) {
+        Map<String, String> entity = (HashMap<String, String>) er.get("entity");
+        Map<String, String> relatedEntity = (HashMap<String, String>) er.get("relatedEntity");
+        if (direction.equalsIgnoreCase("entityRelationship.entity.fqnHash.keyword")) {
+          if (!edges.contains(er) && entity.get("fqn").equals(fqn)) {
+            edges.add(er);
+            getEntityRelationship(
+                relatedEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+          }
+        } else {
+          if (!edges.contains(er) && relatedEntity.get("fqn").equals(fqn)) {
+            edges.add(er);
+            getEntityRelationship(
+                entity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+          }
+        }
+      }
+    }
+  }
+
+  public Map<String, Object> searchEntityRelationshipInternal(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    Set<Map<String, Object>> edges = new HashSet<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
+    searchRequest.source(searchSourceBuilder.size(1000));
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      Map<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+      responseMap.put("entity", tempMap);
+    }
+    getEntityRelationship(
+        fqn,
+        downstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        "entityRelationship.entity.fqnHash.keyword",
+        deleted);
+    getEntityRelationship(
+        fqn,
+        upstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        "entityRelationship.relatedEntity.fqnHash.keyword",
+        deleted);
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
+    return responseMap;
+  }
+
+  @Override
+  public Response searchEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap =
+        searchEntityRelationshipInternal(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+    return Response.status(OK).entity(responseMap).build();
+  }
+
   private void getLineage(
       String fqn,
       int depth,
@@ -1780,6 +1897,28 @@ public class ElasticSearchClient implements SearchClient {
       UpdateByQueryRequest updateByQueryRequest =
           new UpdateByQueryRequest(indexName.toArray(new String[0]));
       updateChildren(updateByQueryRequest, fieldAndValue, updates);
+    }
+  }
+
+  public void updateEntityRelationship(
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Map<String, Object> entityRelationshipData) {
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      updateByQueryRequest.setQuery(
+          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
+              .operator(Operator.AND));
+      Map<String, Object> params =
+          Collections.singletonMap("entityRelationshipData", entityRelationshipData);
+      Script script =
+          new Script(
+              ScriptType.INLINE,
+              Script.DEFAULT_SCRIPT_LANG,
+              ADD_UPDATE_ENTITY_RELATIONSHIP,
+              params);
+      updateByQueryRequest.setScript(script);
+      updateElasticSearchByQuery(updateByQueryRequest);
     }
   }
 

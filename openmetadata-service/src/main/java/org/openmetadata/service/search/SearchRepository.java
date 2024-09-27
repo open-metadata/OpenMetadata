@@ -766,6 +766,13 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
+  public Response searchEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchClient.searchEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
   public Map<String, Object> searchLineageForExport(
       String fqn,
       int upstreamDepth,
