@@ -258,6 +258,8 @@ def _(
             }
         )
 
+    return TypeAdapter(List[SystemProfile]).validate_python(metric_results)
+
 
 class System(SystemMetric):
     """System metric class to fetch:
