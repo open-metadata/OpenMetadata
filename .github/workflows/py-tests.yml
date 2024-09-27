@@ -165,8 +165,8 @@ jobs:
 
       - name: Generate report
         run: |
-          if [ ! -d "coverage/3.9" ] || [ -z "$(ls -A coverage/3.9/.coverage.*)" ]; then
-            echo "No coverage files found in coverage/3.9"
+          if [ ! -d "ingestion/coverage/3.9" ] || [ -z "$(ls -A ingestion/coverage/3.9/.coverage.*)" ]; then
+            echo "No coverage files found in ingestion/coverage/3.9"
             exit 1
           fi
           
