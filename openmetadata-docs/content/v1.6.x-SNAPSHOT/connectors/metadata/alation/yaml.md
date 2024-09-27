@@ -1,6 +1,7 @@
 ---
 title: Run the Alation Connector Externally
 slug: /connectors/metadata/alation/yaml
+collate: true
 ---
 
 {% connectorDetailsHeader

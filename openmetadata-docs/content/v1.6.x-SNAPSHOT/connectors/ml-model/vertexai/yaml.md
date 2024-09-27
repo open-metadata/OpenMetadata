@@ -1,6 +1,7 @@
 ---
 title: Run the VertexAI Connector Externally
 slug: /connectors/ml-model/vertexai/yaml
+collate: true
 ---
 
 {% connectorDetailsHeader

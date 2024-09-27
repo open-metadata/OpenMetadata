@@ -1,6 +1,7 @@
 ---
 title: Synapse Connector Troubleshooting
 slug: /connectors/database/synapse/troubleshooting
+collate: true
 ---
 
 # Troubleshooting

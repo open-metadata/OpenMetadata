@@ -1,6 +1,7 @@
 ---
 title: Run the Synapse Connector Externally
 slug: /connectors/database/synapse/yaml
+collate: true
 ---
 
 {% connectorDetailsHeader

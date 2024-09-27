@@ -1,6 +1,7 @@
 ---
 title: Run the ADLS Connector Externally
 slug: /connectors/storage/adls/yaml
+collate: true
 ---
 
 {% connectorDetailsHeader
