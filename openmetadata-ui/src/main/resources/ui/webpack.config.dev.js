@@ -96,7 +96,7 @@ module.exports = {
           path.resolve(__dirname, 'node_modules/reactflow'),
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/react-toastify'),
-          path.resolve(__dirname, 'node_modules/quill-emoji'),
+          path.resolve(__dirname, 'node_modules/@windmillcode/quill-emoji'),
           path.resolve(__dirname, 'node_modules/react-awesome-query-builder'),
           path.resolve(__dirname, 'node_modules/katex'),
           path.resolve(__dirname, 'node_modules/react-resizable'),
@@ -146,7 +146,7 @@ module.exports = {
         ],
         include: [
           path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/quill-emoji'),
+          path.resolve(__dirname, 'node_modules/@windmillcode/quill-emoji'),
         ], // Just the source code
       },
       // Font files to be handled by asset-modules, see https://webpack.js.org/guides/asset-modules/
@@ -177,6 +177,8 @@ module.exports = {
     },
     alias: {
       process: 'process/browser',
+      Quill: 'quill',
+      quill: 'quill',
     },
   },
 
@@ -203,6 +205,14 @@ module.exports = {
       patterns: [
         {
           from: path.join(__dirname, 'public/favicon.png'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/favicons/favicon-16x16.png'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/favicons/favicon-32x32.png'),
           to: outputPath,
         },
         {

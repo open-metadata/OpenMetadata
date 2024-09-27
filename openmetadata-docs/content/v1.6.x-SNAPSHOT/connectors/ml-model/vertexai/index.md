@@ -1,6 +1,7 @@
 ---
 title: VertexAI
 slug: /connectors/ml-model/vertexai
+collate: true
 ---
 
 {% connectorDetailsHeader

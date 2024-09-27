@@ -17,8 +17,13 @@ from typing import List, Optional
 from unittest import TestCase
 
 import pytest
+from pydantic import TypeAdapter
 
+from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
+from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.tests.testCase import TestCase as OMTestCase
 from metadata.ingestion.api.status import Status
 
 from .e2e_types import E2EType
@@ -208,6 +213,59 @@ class CliDBBase(TestCase):
                     sink_status,
                 )
 
+        @pytest.mark.order(12)
+        def test_data_quality(self) -> None:
+            """12. Test data quality for the connector"""
+            if self.get_data_quality_table() is None:
+                return
+            self.delete_table_and_view()
+            self.create_table_and_view()
+            self.build_config_file()
+            self.run_command()
+            table: Table = self.openmetadata.get_by_name(
+                Table, self.get_data_quality_table(), nullable=False
+            )
+            test_case_definitions = self.get_test_case_definitions()
+            self.build_config_file(
+                E2EType.DATA_QUALITY,
+                {
+                    "entity_fqn": table.fullyQualifiedName.root,
+                    "test_case_definitions": TypeAdapter(
+                        List[TestCaseDefinition]
+                    ).dump_python(test_case_definitions),
+                },
+            )
+            result = self.run_command("test")
+            try:
+                sink_status, source_status = self.retrieve_statuses(result)
+                self.assert_status_for_data_quality(source_status, sink_status)
+                test_case_entities = [
+                    self.openmetadata.get_by_name(
+                        OMTestCase,
+                        ".".join([table.fullyQualifiedName.root, tcd.name]),
+                        fields=["*"],
+                        nullable=False,
+                    )
+                    for tcd in test_case_definitions
+                ]
+                expected = self.get_expected_test_case_results()
+                try:
+                    for test_case, expected in zip(test_case_entities, expected):
+                        assert_equal_pydantic_objects(
+                            expected.model_copy(
+                                update={"timestamp": test_case.testCaseResult.timestamp}
+                            ),
+                            test_case.testCaseResult,
+                        )
+                finally:
+                    for tc in test_case_entities:
+                        self.openmetadata.delete(
+                            OMTestCase, tc.id, recursive=True, hard_delete=True
+                        )
+            except AssertionError:
+                print(result)
+                raise
+
         def retrieve_table(self, table_name_fqn: str) -> Table:
             return self.openmetadata.get_by_name(entity=Table, fqn=table_name_fqn)
 
@@ -346,3 +404,15 @@ class CliDBBase(TestCase):
                     "config": {"tableConfig": [config]},
                 }
             }
+
+        def get_data_quality_table(self):
+            return None
+
+        def get_test_case_definitions(self) -> List[TestCaseDefinition]:
+            pass
+
+        def get_expected_test_case_results(self) -> List[TestCaseResult]:
+            pass
+
+        def assert_status_for_data_quality(self, source_status, sink_status):
+            pass

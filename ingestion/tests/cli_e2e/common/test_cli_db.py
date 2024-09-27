@@ -18,9 +18,9 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
-import yaml
 from sqlalchemy.engine import Engine
 
+from metadata.config.common import load_config_file
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -54,7 +54,7 @@ class CliCommonDB:
         @classmethod
         def tearDownClass(cls):
             workflow = OpenMetadataWorkflowConfig.model_validate(
-                yaml.safe_load(open(cls.config_file_path))
+                load_config_file(Path(cls.config_file_path))
             )
             db_service: DatabaseService = cls.openmetadata.get_by_name(
                 DatabaseService, workflow.source.serviceName

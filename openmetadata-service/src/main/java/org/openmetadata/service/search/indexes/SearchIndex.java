@@ -9,7 +9,6 @@ import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.jdbi3.LineageRepository.buildRelationshipDetailsMap;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
@@ -79,6 +78,9 @@ public interface SearchIndex {
   default Map<String, Object> getCommonAttributesMap(EntityInterface entity, String entityType) {
     Map<String, Object> map = new HashMap<>();
     List<SearchSuggest> suggest = getSuggest();
+    map.put(
+        "displayName",
+        entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName());
     map.put("entityType", entityType);
     map.put("owners", getEntitiesWithDisplayName(entity.getOwners()));
     map.put("domain", getEntityWithDisplayName(entity.getDomain()));
@@ -301,12 +303,9 @@ public interface SearchIndex {
 
   static Map<String, Float> getDefaultFields() {
     Map<String, Float> fields = new HashMap<>();
-    fields.put(FIELD_DISPLAY_NAME, 10.0f);
+    fields.put(DISPLAY_NAME_KEYWORD, 10.0f);
     fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
-    fields.put(FIELD_NAME, 10.0f);
-    fields.put(FIELD_NAME_NGRAM, 1.0f);
-    fields.put(DISPLAY_NAME_KEYWORD, 8.0f);
-    fields.put(NAME_KEYWORD, 8.0f);
+    fields.put(FIELD_DISPLAY_NAME, 10.0f);
     fields.put(FIELD_DESCRIPTION, 2.0f);
     fields.put(FULLY_QUALIFIED_NAME, 5.0f);
     fields.put(FULLY_QUALIFIED_NAME_PARTS, 5.0f);
@@ -316,6 +315,7 @@ public interface SearchIndex {
   static Map<String, Float> getAllFields() {
     Map<String, Float> fields = getDefaultFields();
     fields.putAll(TableIndex.getFields());
+    fields.putAll(StoredProcedureIndex.getFields());
     fields.putAll(DashboardIndex.getFields());
     fields.putAll(DashboardDataModelIndex.getFields());
     fields.putAll(PipelineIndex.getFields());

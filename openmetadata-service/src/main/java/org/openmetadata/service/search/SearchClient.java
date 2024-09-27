@@ -86,6 +86,8 @@ public interface SearchClient {
           + "ctx._source.owners = params.updatedOwners; "
           + "}";
 
+  String PROPAGATE_TEST_SUITES_SCRIPT = "ctx._source.testSuites = params.testSuites";
+
   String REMOVE_OWNERS_SCRIPT =
       "if (ctx._source.owners != null && !ctx._source.owners.isEmpty()) { "
           + "ctx._source.owners.removeIf(owner -> "
@@ -162,7 +164,8 @@ public interface SearchClient {
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
-  JsonObject aggregate(String query, String index, JsonObject aggregationJson) throws IOException;
+  JsonObject aggregate(String query, String index, JsonObject aggregationJson, String filters)
+      throws IOException;
 
   DataQualityReport genericAggregation(
       String query, String index, Map<String, Object> aggregationMetadata) throws IOException;
