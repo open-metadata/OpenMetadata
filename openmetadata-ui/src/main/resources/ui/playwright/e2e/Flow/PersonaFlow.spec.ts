@@ -82,6 +82,8 @@ test.describe.serial('Persona operations', () => {
 
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
     const searchUser = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(
         user.responseData.displayName

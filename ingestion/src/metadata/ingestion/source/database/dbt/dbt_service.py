@@ -189,12 +189,25 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             "description",
             "columns",
             "meta",
+            "owner",
+            "created_at",
+            "group",
+            "sources",
+            "compiled",
+            "docs",
+            "version",
+            "latest_version",
             "package_name",
+            "depends_on",
+            "compiled_code",
+            "compiled_sql",
+            "raw_code",
+            "raw_sql",
         }
 
-        for node, value in manifest_dict.get(
+        for node, value in manifest_dict.get(  # pylint: disable=unused-variable
             "nodes"
-        ).items():  # pylint: disable=unused_variable
+        ).items():
             keys_to_delete = [
                 key for key in value if key.lower() not in required_nodes_keys
             ]

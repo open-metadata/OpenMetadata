@@ -5108,6 +5108,15 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM suggestions WHERE fqnHash = :fqnHash")
     void deleteByFQN(@BindUUID("fqnHash") String fullyQualifiedName);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM suggestions suggestions WHERE JSON_EXTRACT(json, '$.createdBy.id') = :createdBy",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM suggestions suggestions WHERE json #>> '{createdBy,id}' = :createdBy",
+        connectionType = POSTGRES)
+    void deleteByCreatedBy(@BindUUID("createdBy") UUID id);
+
     @SqlQuery("SELECT json FROM suggestions <condition> ORDER BY updatedAt DESC LIMIT :limit")
     List<String> list(@Bind("limit") int limit, @Define("condition") String condition);
 
