@@ -69,7 +69,19 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   public void setupTypes() throws HttpResponseException {
     INT_TYPE = getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
     STRING_TYPE = getEntityByName("string", "", ADMIN_AUTH_HEADERS);
+    EMAIL_TYPE = getEntityByName("email", "", ADMIN_AUTH_HEADERS);
     ENUM_TYPE = getEntityByName("enum", "", ADMIN_AUTH_HEADERS);
+    DATECP_TYPE = getEntityByName("date-cp", "", ADMIN_AUTH_HEADERS);
+    DATETIMECP_TYPE = getEntityByName("dateTime-cp", "", ADMIN_AUTH_HEADERS);
+    TIMECP_TYPE = getEntityByName("time-cp", "", ADMIN_AUTH_HEADERS);
+    DURATION_TYPE = getEntityByName("duration", "", ADMIN_AUTH_HEADERS);
+    MARKDOWN_TYPE = getEntityByName("markdown", "", ADMIN_AUTH_HEADERS);
+    ENTITY_REFERENCE_TYPE = getEntityByName("entityReference", "", ADMIN_AUTH_HEADERS);
+    ENTITY_REFERENCE_LIST_TYPE = getEntityByName("entityReferenceList", "", ADMIN_AUTH_HEADERS);
+    TIME_INTERVAL_TYPE = getEntityByName("timeInterval", "", ADMIN_AUTH_HEADERS);
+    NUMBER_TYPE = getEntityByName("number", "", ADMIN_AUTH_HEADERS);
+    SQLQUERY_TYPE = getEntityByName("sqlQuery", "", ADMIN_AUTH_HEADERS);
+    TIMESTAMP_TYPE = getEntityByName("timestamp", "", ADMIN_AUTH_HEADERS);
   }
 
   @Override

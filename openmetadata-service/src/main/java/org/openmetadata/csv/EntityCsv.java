@@ -370,7 +370,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       // Fetch the JSON schema and property type for the given field name
       JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
       if (jsonSchema == null) {
-        importFailure(printer, "Unknown custom field: " + fieldName, csvRecord);
+        importFailure(printer, invalidCustomPropertyKey(fieldNumber, fieldName), csvRecord);
         return;
       }
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
@@ -382,34 +382,52 @@ public abstract class EntityCsv<T extends EntityInterface> {
         case "entityReference", "entityReferenceList" -> {
           boolean isList = "entityReferenceList".equals(customPropertyType);
           fieldValue =
-              parseEntityReferences(fieldValue.toString(), printer, csvRecord, fieldNumber, isList);
+              parseEntityReferences(printer, csvRecord, fieldNumber, fieldValue.toString(), isList);
         }
         case "date-cp", "dateTime-cp", "time-cp" -> fieldValue =
             getFormattedDateTimeField(
-                customPropertyType,
-                fieldValue.toString(),
-                propertyConfig,
-                fieldName,
                 printer,
-                csvRecord);
+                csvRecord,
+                fieldNumber,
+                fieldName,
+                fieldValue.toString(),
+                customPropertyType,
+                propertyConfig);
         case "enum", "enumList" -> {
           List<String> enumKeys = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
           fieldValue = enumKeys.isEmpty() ? null : enumKeys;
         }
         case "timeInterval" -> fieldValue =
-            handleTimeInterval(
-                printer, csvRecord, fieldNumber, fieldName, fieldValue, extensionMap, jsonSchema);
-        case "number", "integer", "timestamp" -> fieldValue = Long.parseLong(fieldValue.toString());
+            handleTimeInterval(printer, csvRecord, fieldNumber, fieldName, fieldValue);
+        case "number", "integer", "timestamp" -> {
+          try {
+            fieldValue = Long.parseLong(fieldValue.toString());
+          } catch (NumberFormatException e) {
+            importFailure(
+                printer,
+                invalidCustomPropertyValue(
+                    fieldNumber, fieldName, customPropertyType, fieldValue.toString()),
+                csvRecord);
+            fieldValue = null;
+          }
+        }
         default -> {}
       }
       // Validate the field against the JSON schema
       validateAndUpdateExtension(
-          printer, csvRecord, fieldNumber, fieldName, fieldValue, extensionMap, jsonSchema);
+          printer,
+          csvRecord,
+          fieldNumber,
+          fieldName,
+          fieldValue,
+          customPropertyType,
+          extensionMap,
+          jsonSchema);
     }
   }
 
   private Object parseEntityReferences(
-      String fieldValue, CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, boolean isList)
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String fieldValue, boolean isList)
       throws IOException {
     List<EntityReference> entityReferences = new ArrayList<>();
 
@@ -439,12 +457,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected String getFormattedDateTimeField(
-      String fieldType,
-      String fieldValue,
-      String propertyConfig,
-      String fieldName,
       CSVPrinter printer,
-      CSVRecord csvRecord)
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      String fieldValue,
+      String fieldType,
+      String propertyConfig)
       throws IOException {
     try {
       DateTimeFormatter formatter = DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
@@ -470,21 +489,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } catch (DateTimeParseException e) {
       importFailure(
           printer,
-          String.format(
-              "Custom field %s value is not as per defined format %s", fieldName, propertyConfig),
+          invalidCustomPropertyFieldFormat(fieldNumber, fieldName, fieldType, propertyConfig),
           csvRecord);
       return null;
     }
   }
 
   private Map<String, Long> handleTimeInterval(
-      CSVPrinter printer,
-      CSVRecord csvRecord,
-      int fieldNumber,
-      String fieldName,
-      Object fieldValue,
-      Map<String, Object> extensionMap,
-      JsonSchema jsonSchema)
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String fieldName, Object fieldValue)
       throws IOException {
     List<String> timestampValues = fieldToEntities(fieldValue.toString());
     Map<String, Long> timestampMap = new HashMap<>();
@@ -494,7 +506,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } else {
       importFailure(
           printer,
-          invalidField(fieldNumber, String.format("Invalid timestamp format in %s", fieldName)),
+          invalidField(
+              fieldNumber,
+              invalidCustomPropertyFieldFormat(
+                  fieldNumber, fieldName, "timeInterval", "start:end")),
           csvRecord);
     }
     return timestampMap;
@@ -506,6 +521,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       int fieldNumber,
       String fieldName,
       Object fieldValue,
+      String customPropertyType,
       Map<String, Object> extensionMap,
       JsonSchema jsonSchema)
       throws IOException {
@@ -518,7 +534,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       if (!validationMessages.isEmpty()) {
         importFailure(
             printer,
-            invalidCustomPropertyValue(fieldNumber, fieldName, validationMessages.toString()),
+            invalidCustomPropertyValue(
+                fieldNumber, fieldName, customPropertyType, validationMessages.toString()),
             csvRecord);
       } else {
         extensionMap.put(fieldName, fieldValue); // Add to extensionMap if valid
@@ -753,13 +770,28 @@ public abstract class EntityCsv<T extends EntityInterface> {
             + key
             + ", Value = "
             + value
-            + " .Extensions should be of format customPropertyName:customPropertyValue";
+            + " . Extensions should be of format customPropertyName:customPropertyValue";
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 
-  public static String invalidCustomPropertyValue(int field, String key, String value) {
+  public static String invalidCustomPropertyKey(int field, String key) {
+    String error = String.format("Unknown custom field: %s", key);
+    return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
+  public static String invalidCustomPropertyValue(
+      int field, String key, String fieldType, String value) {
     String error =
-        "Invalid key-value pair in extension string: Key = " + key + ", Value = " + value;
+        String.format("Invalid value of Key = %s of type %s, Value = %s", key, fieldType, value);
+    return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
+  public static String invalidCustomPropertyFieldFormat(
+      int field, String fieldName, String fieldType, String propertyConfig) {
+    String error =
+        String.format(
+            "Custom field %s value of type %s is not as per defined format %s",
+            fieldName, fieldType, propertyConfig);
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 
