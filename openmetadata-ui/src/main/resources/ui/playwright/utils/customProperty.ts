@@ -66,6 +66,10 @@ export const setValueForProperty = async (data: {
   const { page, propertyName, value, propertyType, endpoint } = data;
   await page.click('[data-testid="custom_properties"]');
 
+  const container = page.locator(
+    `[data-testid="custom-property-${propertyName}-card"]`
+  );
+
   await expect(
     page.locator(
       `[data-testid="custom-property-${propertyName}-card"] [data-testid="property-name"]`
@@ -98,14 +102,14 @@ export const setValueForProperty = async (data: {
     case 'email':
       await page.locator('[data-testid="email-input"]').isVisible();
       await page.locator('[data-testid="email-input"]').fill(value);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'duration':
       await page.locator('[data-testid="duration-input"]').isVisible();
       await page.locator('[data-testid="duration-input"]').fill(value);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
@@ -114,21 +118,21 @@ export const setValueForProperty = async (data: {
       await page.fill('#enumValues', value, { force: true });
       await page.press('#enumValues', 'Enter');
       await clickOutside(page);
-      await page.click('[data-testid="inline-save-btn"]');
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'sqlQuery':
       await page.locator("pre[role='presentation']").last().click();
       await page.keyboard.type(value);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'timestamp':
       await page.locator('[data-testid="timestamp-input"]').isVisible();
       await page.locator('[data-testid="timestamp-input"]').fill(value);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
@@ -138,7 +142,7 @@ export const setValueForProperty = async (data: {
       await page.locator('[data-testid="start-input"]').fill(startValue);
       await page.locator('[data-testid="end-input"]').isVisible();
       await page.locator('[data-testid="end-input"]').fill(endValue);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -148,7 +152,7 @@ export const setValueForProperty = async (data: {
       await page.locator('[data-testid="time-picker"]').click();
       await page.locator('[data-testid="time-picker"]').fill(value);
       await page.getByRole('button', { name: 'OK', exact: true }).click();
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -163,7 +167,7 @@ export const setValueForProperty = async (data: {
       } else {
         await page.getByText('Today', { exact: true }).click();
       }
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -173,7 +177,7 @@ export const setValueForProperty = async (data: {
     case 'number':
       await page.locator('[data-testid="value-input"]').isVisible();
       await page.locator('[data-testid="value-input"]').fill(value);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
@@ -195,7 +199,7 @@ export const setValueForProperty = async (data: {
 
       await clickOutside(page);
 
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
