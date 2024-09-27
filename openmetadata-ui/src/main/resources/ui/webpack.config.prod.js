@@ -164,6 +164,12 @@ module.exports = {
     ],
   },
 
+
+  optimization: {
+    // disable terser plugin
+    minimizer: [],
+  },
+
   // Module resolution
   resolve: {
     // File types to be handled
