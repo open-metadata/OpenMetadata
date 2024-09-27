@@ -10,7 +10,7 @@ description: The easiest way to deploy and use OpenMetadata
 
 This section will guide you through the installation process and the initial steps for using OpenMetadata.
 
-Before you proceed with the full installation, you have the option to explore OpenMetadata’s features using the sandbox environment. This allows you to try out its capabilities before setting it up.
+Before you proceed with the installation, you have the option to explore OpenMetadata’s features using the sandbox environment. This allows you to try out its capabilities before setting it up.
 
 Get hands-on experience and discover how OpenMetadata can streamline your workflows by trying the sandbox environment today.
 
