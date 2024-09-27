@@ -59,7 +59,6 @@ import {
 } from '../rest/feedsAPI';
 import { searchData } from '../rest/miscAPI';
 import {
-  formTwoDigitNumber,
   getEntityPlaceHolder,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
@@ -685,7 +684,7 @@ export const getTestCaseResultCount = (
     <Typography.Text
       className="font-medium text-md"
       data-testid={`test-${status}-value`}>
-      {formTwoDigitNumber(count)}
+      {count}
     </Typography.Text>
   </div>
 );
