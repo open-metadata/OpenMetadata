@@ -18,7 +18,7 @@ import {
 } from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { MutableRefObject, useCallback, useState } from 'react';
+import React, { MutableRefObject, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 
@@ -32,6 +32,7 @@ import {
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
 } from '../../utils/CSV/CSV.utils';
+import csvUtilsClassBase from '../../utils/CSV/CSVUtilsClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
 import Stepper from '../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
@@ -61,6 +62,15 @@ const BulkEntityImport = ({
   const [gridRef, setGridRef] = useState<
     MutableRefObject<TypeComputedProps | null>
   >({ current: null });
+
+  const filterColumns = useMemo(
+    () =>
+      columns?.filter(
+        (col) =>
+          !csvUtilsClassBase.hideImportsColumnList().includes(col.name ?? '')
+      ),
+    [columns]
+  );
 
   const focusToGrid = useCallback(() => {
     setGridRef((ref) => {
@@ -319,7 +329,7 @@ const BulkEntityImport = ({
         {activeStep === 1 && (
           <ReactDataGrid
             editable
-            columns={columns}
+            columns={filterColumns}
             dataSource={dataSource}
             defaultActiveCell={[0, 0]}
             handle={setGridRef}

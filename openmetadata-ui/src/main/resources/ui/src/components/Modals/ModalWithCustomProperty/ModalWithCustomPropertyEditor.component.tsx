@@ -42,7 +42,7 @@ export const ModalWithCustomPropertyEditor = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
   const [customPropertyValue, setCustomPropertyValue] =
-    useState<ExtensionDataProps>({});
+    useState<ExtensionDataProps>();
   const [customPropertyTypes, setCustomPropertyTypes] = useState<Type>();
 
   const fetchTypeDetail = async () => {

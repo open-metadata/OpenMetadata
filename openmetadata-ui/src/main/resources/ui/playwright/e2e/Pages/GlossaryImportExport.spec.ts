@@ -14,8 +14,18 @@ import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { UserClass } from '../../support/user/UserClass';
+import {
+  createNewPage,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { selectActiveGlossary } from '../../utils/glossary';
+import {
+  createGlossaryTermRowDetails,
+  fillGlossaryRowDetails,
+  validateImportStatus,
+} from '../../utils/importUtils';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -23,17 +33,25 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-const glossary = new Glossary();
-const glossaryTerm1 = new GlossaryTerm(glossary);
+const user1 = new UserClass();
+const user2 = new UserClass();
+const glossary1 = new Glossary();
+const glossary2 = new Glossary();
+const glossaryTerm1 = new GlossaryTerm(glossary1);
+const glossaryTerm2 = new GlossaryTerm(glossary2);
 
-test.describe('Bulk Import Export', () => {
-  test.slow();
+test.describe('Glossary Bulk Import Export', () => {
+  test.slow(true);
 
   test.beforeAll('setup pre-test', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    await glossary.create(apiContext);
+    await user1.create(apiContext);
+    await user2.create(apiContext);
+    await glossary1.create(apiContext);
+    await glossary2.create(apiContext);
     await glossaryTerm1.create(apiContext);
+    await glossaryTerm2.create(apiContext);
 
     await afterAction();
   });
@@ -41,7 +59,10 @@ test.describe('Bulk Import Export', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    await glossary.delete(apiContext);
+    await user1.delete(apiContext);
+    await user2.delete(apiContext);
+    await glossary1.delete(apiContext);
+    await glossary2.delete(apiContext);
 
     await afterAction();
   });
@@ -50,16 +71,16 @@ test.describe('Bulk Import Export', () => {
     await redirectToHomePage(page);
   });
 
-  test('Import and Export Glossary', async ({ page }) => {
-    await test.step('Export data', async () => {
+  test('Glossary Bulk Import Export', async ({ page }) => {
+    await test.step('should export data glossary term details', async () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
+      await selectActiveGlossary(page, glossary1.data.displayName);
 
       const downloadPromise = page.waitForEvent('download');
 
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="export-button-description"]');
-      await page.fill('#fileName', glossary.data.displayName);
+      await page.fill('#fileName', glossary1.data.displayName);
       await page.click('#submit-button');
       const download = await downloadPromise;
 
@@ -67,39 +88,84 @@ test.describe('Bulk Import Export', () => {
       await download.saveAs('downloads/' + download.suggestedFilename());
     });
 
-    await test.step('Import data', async () => {
-      await selectActiveGlossary(page, glossary.data.displayName);
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="import-button-description"]');
-      const fileInput = await page.$('[type="file"]');
-      await fileInput?.setInputFiles([
-        'downloads/' + glossary.data.displayName + '.csv',
-      ]);
+    await test.step(
+      'should import and edit with two additional database',
+      async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="import-button-description"]');
+        const fileInput = await page.$('[type="file"]');
+        await fileInput?.setInputFiles([
+          'downloads/' + glossary1.data.displayName + '.csv',
+        ]);
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
+        // Adding manual wait for the file to load
+        await page.waitForTimeout(500);
 
-      await expect(
-        page.getByText('Number of rows: 2 | Passed: 2')
-      ).toBeVisible();
+        // Adding some assertion to make sure that CSV loaded correctly
+        await expect(
+          page.locator('.InovuaReactDataGrid__header-layout')
+        ).toBeVisible();
+        await expect(page.getByTestId('add-row-btn')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Previous' })
+        ).toBeVisible();
 
-      await expect(page.getByTestId('import-result-table')).toBeVisible();
+        await page.click('[data-testid="add-row-btn"]');
 
-      await expect(page.getByTestId('preview-cancel-button')).toBeVisible();
+        // click on last row first cell
+        await page.click(
+          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
+        );
+        // Click on first cell and edit
+        await fillGlossaryRowDetails(
+          {
+            ...createGlossaryTermRowDetails(),
+            owners: [user1.responseData?.['displayName']],
+            reviewers: [user2.responseData?.['displayName']],
+            relatedTerm: {
+              parent: glossary2.data.name,
+              name: glossaryTerm2.data.name,
+            },
+          },
+          page
+        );
 
-      const glossaryImport = page.waitForResponse(
-        '/api/v1/glossaries/name/*/import?dryRun=false'
-      );
-      await page.getByTestId('import-button').click();
-      await glossaryImport;
+        await page.getByRole('button', { name: 'Next' }).click();
+        const loader = page.locator(
+          '.inovua-react-toolkit-load-mask__background-layer'
+        );
 
-      const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms?**');
-      await page.getByTestId('preview-button').click();
-      await glossaryResponse;
+        await loader.waitFor({ state: 'hidden' });
 
-      await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-        glossary.responseData.displayName
-      );
-    });
+        await validateImportStatus(page, {
+          passed: '3',
+          processed: '3',
+          failed: '0',
+        });
+
+        await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
+          state: 'visible',
+        });
+
+        const rowStatus = ['Entity updated', 'Entity created'];
+
+        await expect(page.locator('[data-props-id="details"]')).toHaveText(
+          rowStatus
+        );
+
+        await page.getByRole('button', { name: 'Update' }).click();
+        await page
+          .locator('.inovua-react-toolkit-load-mask__background-layer')
+          .waitFor({ state: 'detached' });
+
+        await toastNotification(
+          page,
+          `Glossaryterm ${glossary1.responseData.fullyQualifiedName} details updated successfully`
+        );
+      }
+    );
   });
 });

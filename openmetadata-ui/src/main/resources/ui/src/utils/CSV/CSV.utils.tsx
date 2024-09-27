@@ -134,12 +134,15 @@ export const getCSVStringFromColumnsAndDataSource = (
             .columnsWithMultipleValuesEscapeNeeded()
             .includes(colName)
         ) {
-          return `"${value.replaceAll(new RegExp('"', 'g'), '""')}"`;
+          return isEmpty(value)
+            ? ''
+            : `"${value.replaceAll(new RegExp('"', 'g'), '""')}"`;
         } else if (
           value.includes(',') ||
           value.includes('\n') ||
           colName.includes('tags') ||
           colName.includes('glossaryTerms') ||
+          colName.includes('relatedTerms') ||
           colName.includes('domain')
         ) {
           return isEmpty(value) ? '' : `"${value}"`;
@@ -277,11 +280,11 @@ export const convertCustomPropertyStringToEntityExtension = (
 };
 
 export const convertEntityExtensionToCustomPropertyString = (
-  value: ExtensionDataProps,
+  value?: ExtensionDataProps,
   customPropertyType?: Type
 ) => {
-  if (isUndefined(customPropertyType)) {
-    return '';
+  if (isUndefined(customPropertyType) || isUndefined(value)) {
+    return;
   }
 
   const keyAndValueTypes: Record<string, CustomProperty> = {};

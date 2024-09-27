@@ -28,7 +28,7 @@ export type ModalWithCustomPropertyEditorProps = {
   entityType: EntityType;
   header: string;
   value?: string;
-  onSave: (extension: string) => Promise<void>;
+  onSave: (extension?: string) => Promise<void>;
   onCancel?: () => void;
   visible: boolean;
 };

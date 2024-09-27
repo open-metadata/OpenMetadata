@@ -32,6 +32,10 @@ import Fqn from '../Fqn';
 import { EditorProps } from './CSV.utils';
 
 class CSVUtilsClassBase {
+  public hideImportsColumnList() {
+    return ['glossaryStatus'];
+  }
+
   public columnsWithMultipleValuesEscapeNeeded() {
     return ['extension', 'synonyms'];
   }
@@ -138,6 +142,7 @@ class CSVUtilsClassBase {
           );
         };
       case 'glossaryTerms':
+      case 'relatedTerms':
         return ({ value, ...props }) => {
           const tags = value ? value?.split(';') : [];
 
@@ -281,7 +286,7 @@ class CSVUtilsClassBase {
         };
       case 'extension':
         return ({ value, ...props }: EditorProps) => {
-          const handleSave = async (extension: string) => {
+          const handleSave = async (extension?: string) => {
             props.onChange(extension);
 
             setTimeout(() => {
