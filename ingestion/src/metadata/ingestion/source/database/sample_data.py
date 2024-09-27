@@ -276,7 +276,7 @@ class SampleDataSource(
             entity=DatabaseService,
             config=WorkflowSource(**self.mysql_database_service_json),
         )
-        
+
         self.database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/service.json",
