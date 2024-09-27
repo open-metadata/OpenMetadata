@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
+import { LoginCallback } from '@okta/okta-react';
+import React, { useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';
@@ -19,6 +20,7 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
+import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const SigninPage = withSuspenseFallback(
@@ -48,6 +50,20 @@ export const UnAuthenticatedAppRouter = () => {
     (authConfig.provider === AuthProvider.Basic ||
       authConfig.provider === AuthProvider.LDAP);
 
+  const callbackComponent = useMemo(() => {
+    switch (authConfig?.provider) {
+      case AuthProvider.Okta: {
+        return LoginCallback;
+      }
+      case AuthProvider.Auth0: {
+        return Auth0Callback;
+      }
+      default: {
+        return null;
+      }
+    }
+  }, [authConfig?.provider]);
+
   if (isProtectedRoute(location.pathname)) {
     return <Redirect to={ROUTES.SIGNIN} />;
   }
@@ -55,6 +71,10 @@ export const UnAuthenticatedAppRouter = () => {
   return (
     <Switch>
       <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+
+      {callbackComponent && (
+        <Route component={callbackComponent} path={ROUTES.CALLBACK} />
+      )}
 
       {!isSigningUp && (
         <Route exact path={ROUTES.HOME}>
