@@ -31,6 +31,10 @@ import Fqn from '../Fqn';
 import { EditorProps } from './CSV.utils';
 
 class CSVUtilsClassBase {
+  public columnsWithMultipleValuesEscapeNeeded() {
+    return ['extension', 'synonyms'];
+  }
+
   public getEditor(
     column: string,
     entityType: EntityType

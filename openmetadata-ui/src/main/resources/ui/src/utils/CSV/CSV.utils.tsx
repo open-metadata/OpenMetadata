@@ -129,7 +129,11 @@ export const getCSVStringFromColumnsAndDataSource = (
       .map((col) => {
         const value = get(row, col.name ?? '', '');
         const colName = col.name ?? '';
-        if (colName === 'extension') {
+        if (
+          csvUtilsClassBase
+            .columnsWithMultipleValuesEscapeNeeded()
+            .includes(colName)
+        ) {
           return `"${value.replaceAll(new RegExp('"', 'g'), '""')}"`;
         } else if (
           value.includes(',') ||
@@ -160,7 +164,7 @@ const convertCustomPropertyStringToValueExtensionBasedOnType = (
       return {
         type: entity[0],
         fullyQualifiedName: entity[1],
-        name: entity[1],
+        name: removeOuterEscapes(entity[1]),
       } as EntityReference;
     }
 
@@ -173,7 +177,7 @@ const convertCustomPropertyStringToValueExtensionBasedOnType = (
         return {
           type: key,
           fullyQualifiedName: itemValue,
-          name: itemValue,
+          name: removeOuterEscapes(itemValue),
         } as EntityReference;
       });
     }
