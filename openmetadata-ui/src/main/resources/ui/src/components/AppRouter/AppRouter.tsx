@@ -26,6 +26,8 @@ import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
 
+import SamlCallback from '../../pages/SamlCallback';
+
 const AppRouter = () => {
   const location = useCustomLocation();
 
@@ -92,6 +94,14 @@ const AppRouter = () => {
       <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
         {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
       </Route>
+
+      {/* When authenticating from an SSO provider page (e.g., SAML Apps), if the user is already logged in, 
+          the callbacks should be available. This ensures consistent behavior across different authentication scenarios. */}
+      <Route
+        component={SamlCallback}
+        path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
+      />
+
       {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
     </Switch>
   );
