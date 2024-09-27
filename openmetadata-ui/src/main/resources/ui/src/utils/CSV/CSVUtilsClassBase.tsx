@@ -13,6 +13,7 @@
 
 import { Form } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
+import { t } from 'i18next';
 import { toString } from 'lodash';
 import React, { ReactNode } from 'react';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -228,6 +229,54 @@ class CSVUtilsClassBase {
               onUpdate={(domain) => handleChange(domain as EntityReference)}>
               {' '}
             </DomainSelectableList>
+          );
+        };
+      case 'reviewers':
+        return ({ value, ...props }: EditorProps) => {
+          const reviewers = value?.split(';') ?? [];
+          const reviewersEntityRef = reviewers.map((reviewer) => {
+            const [type, user] = reviewer.split(':');
+
+            return {
+              type,
+              name: user,
+              id: user,
+            } as EntityReference;
+          });
+
+          const handleChange = (reviewers?: EntityReference[]) => {
+            if (!reviewers || reviewers.length === 0) {
+              props.onChange();
+
+              setTimeout(() => {
+                props.onComplete();
+              }, 1);
+
+              return;
+            }
+            const reviewerText = reviewers
+              .map((reviewer) => `${reviewer.type}:${reviewer.name}`)
+              .join(';');
+            props.onChange(reviewerText);
+
+            setTimeout(() => {
+              props.onComplete(reviewerText);
+            }, 1);
+          };
+
+          return (
+            <UserTeamSelectableList
+              hasPermission
+              previewSelected
+              label={t('label.reviewer-plural')}
+              listHeight={200}
+              multiple={{ user: true, team: false }}
+              owner={reviewersEntityRef}
+              popoverProps={{
+                open: true,
+              }}
+              onUpdate={handleChange}
+            />
           );
         };
       case 'extension':
