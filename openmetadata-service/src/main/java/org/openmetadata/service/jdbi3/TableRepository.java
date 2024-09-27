@@ -17,7 +17,6 @@ import static java.util.stream.Collectors.groupingBy;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
@@ -786,8 +785,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public String exportToCsv(String name, String user) throws IOException {
     // Validate table
-    Table table =
-        getByName(null, name, new Fields(allowedFields, "owners,domain,tags,columns,extension"));
+    Table table = getByName(null, name, new Fields(allowedFields, "owners,domain,tags,columns"));
     return new TableCsv(table, user).exportCsv(listOf(table));
   }
 
@@ -1198,8 +1196,7 @@ public class TableRepository extends EntityRepository<Table> {
               .withTags(tagLabels != null && tagLabels.isEmpty() ? null : tagLabels)
               .withRetentionPeriod(csvRecord.get(7))
               .withSourceUrl(csvRecord.get(8))
-              .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-              .withExtension(getExtension(printer, csvRecord, 10));
+              .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
           ImportResult importResult = updateColumn(printer, csvRecord);
           if (importResult.result().equals(IMPORT_FAILED)) {
             importFailure(printer, importResult.details(), csvRecord);
@@ -1237,7 +1234,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     public ImportResult updateColumn(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
-      String columnFqn = csvRecord.get(11);
+      String columnFqn = csvRecord.get(10);
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;
       if (column == null) {
@@ -1248,22 +1245,22 @@ public class TableRepository extends EntityRepository<Table> {
                 .withFullyQualifiedName(
                     table.getFullyQualifiedName() + Entity.SEPARATOR + columnFqn);
       }
-      column.withDisplayName(csvRecord.get(12));
-      column.withDescription(csvRecord.get(13));
-      column.withDataTypeDisplay(csvRecord.get(14));
+      column.withDisplayName(csvRecord.get(11));
+      column.withDescription(csvRecord.get(12));
+      column.withDataTypeDisplay(csvRecord.get(13));
       column.withDataType(
-          nullOrEmpty(csvRecord.get(15)) ? null : ColumnDataType.fromValue(csvRecord.get(15)));
+          nullOrEmpty(csvRecord.get(14)) ? null : ColumnDataType.fromValue(csvRecord.get(14)));
       column.withArrayDataType(
-          nullOrEmpty(csvRecord.get(16)) ? null : ColumnDataType.fromValue(csvRecord.get(16)));
+          nullOrEmpty(csvRecord.get(15)) ? null : ColumnDataType.fromValue(csvRecord.get(15)));
       column.withDataLength(
-          nullOrEmpty(csvRecord.get(17)) ? null : Integer.parseInt(csvRecord.get(17)));
+          nullOrEmpty(csvRecord.get(16)) ? null : Integer.parseInt(csvRecord.get(16)));
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
               csvRecord,
               List.of(
-                  Pair.of(18, TagLabel.TagSource.CLASSIFICATION),
-                  Pair.of(19, TagLabel.TagSource.GLOSSARY)));
+                  Pair.of(17, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(18, TagLabel.TagSource.GLOSSARY)));
       column.withTags(nullOrEmpty(tagLabels) ? null : tagLabels);
       column.withOrdinalPosition(nullOrEmpty(table.getColumns()) ? 0 : table.getColumns().size());
 
@@ -1325,7 +1322,6 @@ public class TableRepository extends EntityRepository<Table> {
               ? ""
               : entity.getDomain().getFullyQualifiedName();
       addField(recordList, domain);
-      addExtension(recordList, entity.getExtension());
       if (!nullOrEmpty(table.getColumns())) {
         addRecord(csvFile, recordList, table.getColumns().get(0), false);
 
@@ -1334,7 +1330,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
       } else {
         // Create a dummy Entry for the Column
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 9; i++) {
           addField(recordList, (String) null); // Add empty fields for table information
         }
         addRecord(csvFile, recordList);
@@ -1344,7 +1340,7 @@ public class TableRepository extends EntityRepository<Table> {
     private void addRecord(
         CsvFile csvFile, List<String> recordList, Column column, boolean emptyTableDetails) {
       if (emptyTableDetails) {
-        for (int i = 0; i < 11; i++) {
+        for (int i = 0; i < 10; i++) {
           addField(recordList, (String) null); // Add empty fields for table information
         }
       }

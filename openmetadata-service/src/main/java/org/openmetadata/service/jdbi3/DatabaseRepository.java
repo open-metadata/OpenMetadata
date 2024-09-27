@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
@@ -126,7 +125,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
     ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("database", name);
     List<DatabaseSchema> schemas =
-        repository.listAll(repository.getFields("owners,tags,domain,extension"), filter);
+        repository.listAll(repository.getFields("owners,tags,domain"), filter);
     schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseCsv(database, user).exportCsv(schemas);
   }
@@ -283,8 +282,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withTags(tagLabels)
           .withRetentionPeriod(csvRecord.get(7))
           .withSourceUrl(csvRecord.get(8))
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 10));
+          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
       if (processRecord) {
         createEntity(printer, csvRecord, schema);
       }
@@ -308,7 +306,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
               ? ""
               : entity.getDomain().getFullyQualifiedName();
       addField(recordList, domain);
-      addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
   }
