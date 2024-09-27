@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -177,6 +178,18 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         .withDatabase(database.getEntityReference())
         .withService(database.getService())
         .withServiceType(database.getServiceType());
+  }
+
+  @Override
+  public void entityRelationshipReindex(DatabaseSchema original, DatabaseSchema updated) {
+    super.entityRelationshipReindex(original, updated);
+
+    // Update search indexes of assets and entity on databaseSchema displayName change
+    if (!Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
+      searchRepository
+          .getSearchClient()
+          .reindexAcrossIndices("databaseSchema.fullyQualifiedName", original.getEntityReference());
+    }
   }
 
   @Override

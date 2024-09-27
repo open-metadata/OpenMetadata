@@ -112,3 +112,7 @@ jest.mock('react-i18next', () => ({
 jest.mock('./utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+
+jest.mock('./components/ActivityFeed/FeedEditor/FeedEditor.tsx', () => ({
+  FeedEditor: jest.fn().mockImplementation(() => 'FeedEditor'),
+}));
