@@ -193,6 +193,8 @@ export const setValueForProperty = async (data: {
         await page.locator(`[data-testid="${val}"]`).click();
       }
 
+      await clickOutside(page);
+
       await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
