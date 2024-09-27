@@ -207,13 +207,13 @@ jobs:
 
       # next two steps are for retrying "Push Results in PR to Sonar" step in case it fails
       - name: Wait to retry 'Push Results in PR to Sonar'
-        if: ${{ && env.DEBUG == 'false' && steps.push-to-sonar.outcome != 'success' }}
+        if: ${{ env.DEBUG == 'false' && steps.push-to-sonar.outcome != 'success' }}
         run: sleep 20s
         shell: bash
 
       - name: Retry 'Push Results in PR to Sonar'
         uses: sonarsource/sonarcloud-github-action@master
-        if: ${{ && env.DEBUG == 'false' && steps.push-to-sonar.outcome != 'success' }}
+        if: ${{ env.DEBUG == 'false' && steps.push-to-sonar.outcome != 'success' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
