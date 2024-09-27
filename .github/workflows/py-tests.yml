@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       debug:
-        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered ["default", "false", "true"]"
+        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered [default, false or true]"
         required: False
         default: "default"
   push:
