@@ -1,0 +1,21 @@
+{
+    "name": "Sigma",
+    "displayName": "Sigma Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboard.",
+    "steps": [
+        {
+            "name": "GetToken",
+            "description":  "Validate that the API can properly reach the server.",
+            "errorMessage": "Failed to fetch Token please validate the credentials or validate if user has access to generate token",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "GetWorkbooks",
+            "description":  "Validate that the Discovery API can properly reach the server.",
+            "errorMessage": "Failed to fetch Workbooks info please validate the credentials or validate if user has access to fetch workbooks from API",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

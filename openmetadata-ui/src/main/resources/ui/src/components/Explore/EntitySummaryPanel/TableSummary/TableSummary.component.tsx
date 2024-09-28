@@ -37,7 +37,6 @@ import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLoca
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
-import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -161,7 +160,7 @@ function TableSummary({
           <div
             className="font-semibold text-lg"
             data-testid="test-passed-value">
-            {formTwoDigitNumber(testSuiteSummary?.success ?? 0)}
+            {testSuiteSummary?.success ?? 0}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
             'label.test-plural'
@@ -171,7 +170,7 @@ function TableSummary({
           <div
             className="font-semibold text-lg"
             data-testid="test-aborted-value">
-            {formTwoDigitNumber(testSuiteSummary?.aborted ?? 0)}
+            {testSuiteSummary?.aborted ?? 0}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
             'label.test-plural'
@@ -181,7 +180,7 @@ function TableSummary({
           <div
             className="font-semibold text-lg"
             data-testid="test-failed-value">
-            {formTwoDigitNumber(testSuiteSummary?.failed ?? 0)}
+            {testSuiteSummary?.failed ?? 0}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
             'label.test-plural'

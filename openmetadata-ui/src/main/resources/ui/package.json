@@ -14,8 +14,8 @@
   "scripts": {
     "start": "NODE_ENV=development BABEL_ENV=development webpack serve --config ./webpack.config.dev.js --env development",
     "build": "NODE_ENV=production BABEL_ENV=production webpack --config ./webpack.config.prod.js --env production",
-    "preinstall": "cd ../../../../.. && yarn global add node-gyp && yarn install --frozen-lockfile",
     "postinstall": "yarn run build-check",
+    "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile",
     "pre-commit": "lint-staged --concurrent false",
     "test": "jest --passWithNoTests --maxWorkers=3 --silent",
     "prepare": "cd ../../../../.. && husky install openmetadata-ui/src/main/resources/ui/.husky",
@@ -72,6 +72,7 @@
     "@tiptap/suggestion": "^2.3.0",
     "@toast-ui/react-editor": "^3.1.8",
     "@types/turndown": "^5.0.4",
+    "@windmillcode/quill-emoji": "^2.0.1000",
     "analytics": "^0.8.1",
     "antd": "4.24.0",
     "antlr4": "4.9.2",
@@ -101,10 +102,9 @@
     "postcss": "^8.4.31",
     "process": "^0.11.10",
     "qs": "6.10.3",
-    "quill-emoji": "^0.2.0",
-    "quill-mention": "^4.0.0",
-    "quilljs-markdown": "^1.1.10",
-    "rapidoc": "9.3.4",
+    "quill-mention": "^6.0.1",
+    "quilljs-markdown": "^1.2.0",
+    "rapidoc": "9.3.7",
     "react": "^17.0.2",
     "react-antd-column-resize": "1.0.3",
     "react-awesome-query-builder": "5.1.2",
@@ -251,6 +251,7 @@
     "tough-cookie": "4.1.3",
     "clean-css": "4.1.11",
     "path-to-regexp": "1.9.0",
-    "terser-webpack-plugin": "5.1.1"
+    "terser-webpack-plugin": "5.1.1",
+    "quill": "^2.0.2"
   }
 }
