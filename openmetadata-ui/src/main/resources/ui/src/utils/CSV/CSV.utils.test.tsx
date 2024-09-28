@@ -12,6 +12,14 @@
  */
 import { EntityType } from '../../enums/entity.enum';
 import {
+  MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES,
+  MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_CONVERTED_EXTENSION_CSV_STRING,
+  MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_EXTENSION_CSV_STRING,
+  MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_EXTENSION_OBJECT,
+} from '../../mocks/CSV.mock';
+import {
+  convertCustomPropertyStringToEntityExtension,
+  convertEntityExtensionToCustomPropertyString,
   getColumnConfig,
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
@@ -103,6 +111,56 @@ describe('CSVUtils', () => {
 
       expect(csvString).toBe(
         `tags,glossaryTerms,description,domain\n"value,1","value_2",something#new,"domain,1"`
+      );
+    });
+  });
+
+  describe('convertCustomPropertyStringToEntityExtension', () => {
+    it('should return empty object if customProperty type is empty', () => {
+      const convertedCSVEntities =
+        convertCustomPropertyStringToEntityExtension('dateCp:2021-09-01');
+
+      expect(convertedCSVEntities).toStrictEqual({});
+    });
+
+    it('should return object correctly which contains dot and percentage in it', () => {
+      const convertedCSVEntities = convertCustomPropertyStringToEntityExtension(
+        MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_EXTENSION_CSV_STRING,
+        MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES
+      );
+
+      expect(convertedCSVEntities).toStrictEqual(
+        MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_EXTENSION_OBJECT
+      );
+    });
+  });
+
+  describe('convertEntityExtensionToCustomPropertyString', () => {
+    it('should return empty object if customProperty type is empty', () => {
+      const convertedCSVEntities = convertEntityExtensionToCustomPropertyString(
+        MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_EXTENSION_OBJECT
+      );
+
+      expect(convertedCSVEntities).toBeUndefined();
+    });
+
+    it('should return empty object if value is empty', () => {
+      const convertedCSVEntities = convertEntityExtensionToCustomPropertyString(
+        undefined,
+        MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES
+      );
+
+      expect(convertedCSVEntities).toBeUndefined();
+    });
+
+    it('should return object correctly which contains dot and percentage in it', () => {
+      const convertedCSVEntities = convertEntityExtensionToCustomPropertyString(
+        MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_EXTENSION_OBJECT,
+        MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES
+      );
+
+      expect(convertedCSVEntities).toStrictEqual(
+        MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_CONVERTED_EXTENSION_CSV_STRING
       );
     });
   });

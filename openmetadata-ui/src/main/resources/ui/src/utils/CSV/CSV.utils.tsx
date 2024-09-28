@@ -243,7 +243,7 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
 
 export const convertCustomPropertyStringToEntityExtension = (
   value: string,
-  customPropertyType: Type
+  customPropertyType?: Type
 ) => {
   if (isUndefined(customPropertyType)) {
     return {};

@@ -129,5 +129,12 @@ describe('CSV utils ClassBase', () => {
 
       expect(editor).toBeDefined();
     });
+
+    it('should return the editor component for the "relatedTerms" column', () => {
+      const column = 'relatedTerms';
+      const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
+
+      expect(editor).toBeDefined();
+    });
   });
 });
