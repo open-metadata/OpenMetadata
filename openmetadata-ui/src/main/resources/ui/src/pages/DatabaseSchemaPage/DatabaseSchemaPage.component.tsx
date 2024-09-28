@@ -555,7 +555,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleExtensionUpdate = async (schema: DatabaseSchema) => {
-    await saveUpdatedDatabaseSchemaData({
+    const response = await saveUpdatedDatabaseSchemaData({
       ...databaseSchema,
       extension: schema.extension,
     });
@@ -566,7 +566,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
       return {
         ...prev,
-        extension: schema.extension,
+        extension: response.extension,
       };
     });
   };
