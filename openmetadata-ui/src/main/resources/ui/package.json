@@ -104,7 +104,7 @@
     "qs": "6.10.3",
     "quill-mention": "^6.0.1",
     "quilljs-markdown": "^1.2.0",
-    "rapidoc": "9.3.4",
+    "rapidoc": "9.3.7",
     "react": "^17.0.2",
     "react-antd-column-resize": "1.0.3",
     "react-awesome-query-builder": "5.1.2",
