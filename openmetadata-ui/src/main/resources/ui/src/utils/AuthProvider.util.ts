@@ -20,6 +20,7 @@ import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
+import process from 'process';
 import {
   AuthenticationConfigurationWithScope,
   OidcUser,
