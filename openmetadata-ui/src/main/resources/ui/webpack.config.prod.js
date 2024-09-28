@@ -64,6 +64,7 @@ module.exports = {
         test: /\.(css)$/,
         use: ['style-loader', 'css-loader'],
       },
+      // .less files to be handled by less-loader
       {
         test: /\.less$/,
         use: [
@@ -108,7 +109,6 @@ module.exports = {
     extensions: ['.ts', '.tsx', '.js', '.css', '.less', '.svg'],
     fallback: {
       https: require.resolve('https-browserify'),
-      path: require.resolve('path-browserify'),
       fs: false,
       'process/browser': require.resolve('process/browser'),
     },
