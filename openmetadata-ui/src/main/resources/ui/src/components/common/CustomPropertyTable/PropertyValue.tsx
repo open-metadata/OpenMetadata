@@ -1046,8 +1046,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             }}>
             {showInput ? getPropertyInput() : getValueElement()}
           </Col>
-          <Col span={2}>
-            {isOverflowing && !showInput && (
+          {isOverflowing && !showInput && (
+            <Col span={2}>
               <Button
                 className="custom-property-value-toggle-btn"
                 data-testid={`toggle-${propertyName}`}
@@ -1056,8 +1056,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 onClick={toggleExpand}>
                 {isExpanded ? <UpOutlined /> : <DownOutlined />}
               </Button>
-            )}
-          </Col>
+            </Col>
+          )}
         </Row>
       </Col>
     </Row>
