@@ -60,12 +60,24 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
   await test.step('Add Custom Property in Dashboard', async () => {
     await dashboardEntity.visitEntityPage(page);
 
+    const container = page.locator(
+      `[data-testid="custom-property-${propertyName}-card"]`
+    );
+
     await page.getByTestId('custom_properties').click();
 
-    await page
-      .getByRole('row', { name: `${propertyName} No data` })
-      .locator('svg')
-      .click();
+    await expect(
+      page.locator(
+        `[data-testid="custom-property-${propertyName}-card"] [data-testid="property-name"]`
+      )
+    ).toHaveText(propertyName);
+
+    const editButton = page.locator(
+      `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
+    );
+
+    await editButton.scrollIntoViewIfNeeded();
+    await editButton.click({ force: true });
 
     await page.getByTestId('value-input').fill(propertyValue);
 
@@ -75,9 +87,7 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
 
     await saveResponse;
 
-    expect(
-      page.getByLabel('Custom Properties').getByTestId('value')
-    ).toContainText(propertyValue);
+    await expect(container.getByTestId('value')).toContainText(propertyValue);
   });
 
   await test.step(

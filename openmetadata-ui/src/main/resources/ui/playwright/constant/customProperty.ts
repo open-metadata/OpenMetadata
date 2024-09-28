@@ -48,6 +48,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
+      multiSelect: false,
+    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
@@ -64,6 +77,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     markdownValue: 'This is markdown value',
     enumConfig: {
       values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
       multiSelect: false,
     },
     dateFormatConfig: 'yyyy-MM-dd',
@@ -84,6 +110,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
+      multiSelect: false,
+    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
@@ -100,6 +139,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     markdownValue: 'This is markdown value',
     enumConfig: {
       values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
       multiSelect: false,
     },
     dateFormatConfig: 'yyyy-MM-dd',
@@ -120,6 +172,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
+      multiSelect: false,
+    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
@@ -136,6 +201,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     markdownValue: 'This is markdown value',
     enumConfig: {
       values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
       multiSelect: false,
     },
     dateFormatConfig: 'yyyy-MM-dd',
@@ -156,6 +234,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: true,
     },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
+      multiSelect: false,
+    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
@@ -172,6 +263,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     markdownValue: 'This is markdown value',
     enumConfig: {
       values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
       multiSelect: false,
     },
     dateFormatConfig: 'yyyy-MM-dd',
@@ -192,6 +296,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
+      multiSelect: false,
+    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
@@ -208,6 +325,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     markdownValue: 'This is markdown value',
     enumConfig: {
       values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
       multiSelect: false,
     },
     dateFormatConfig: 'yyyy-MM-dd',
@@ -228,6 +358,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
+      multiSelect: false,
+    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
@@ -243,6 +386,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     markdownValue: 'This is markdown value',
     enumConfig: {
       values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
       multiSelect: false,
     },
     dateFormatConfig: 'yyyy-MM-dd',
@@ -263,6 +419,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
+      multiSelect: false,
+    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
@@ -278,6 +447,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     markdownValue: 'This is markdown value',
     enumConfig: {
       values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
       multiSelect: false,
     },
     dateFormatConfig: 'yyyy-MM-dd',
@@ -297,6 +479,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
+      multiSelect: false,
+    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
@@ -312,6 +507,19 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     markdownValue: 'This is markdown value',
     enumConfig: {
       values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    enumWithDescriptionConfig: {
+      values: [
+        {
+          key: 'enumWithDescription1',
+          description: 'This is enumWithDescription1',
+        },
+        {
+          key: 'enumWithDescription2',
+          description: 'This is enumWithDescription2',
+        },
+      ],
       multiSelect: false,
     },
     dateFormatConfig: 'yyyy-MM-dd',

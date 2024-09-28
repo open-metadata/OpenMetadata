@@ -10,17 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Tooltip, Typography } from 'antd';
+import { Button, Space, Tag, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isArray, isEmpty, isString, isUndefined } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { ENUM_WITH_DESCRIPTION } from '../../../constants/CustomProperty.constants';
 import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
+import { EnumWithDescriptionsConfig } from '../../../generated/type/customProperties/enumWithDescriptionsConfig';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -68,7 +70,9 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
     const updatedProperties = customProperties.map((property) => {
       if (property.name === selectedProperty.name) {
         const config = data.customPropertyConfig;
-        const isEnumType = selectedProperty.propertyType.name === 'enum';
+        const isEnumType =
+          selectedProperty.propertyType.name === 'enum' ||
+          selectedProperty.propertyType.name === ENUM_WITH_DESCRIPTION;
 
         return {
           ...property,
@@ -81,7 +85,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                         multiSelect: Boolean(data?.multiSelect),
                         values: config,
                       }
-                    : config,
+                    : (config as string[]),
                 },
               }
             : {}),
@@ -116,7 +120,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         title: t('label.type'),
         dataIndex: 'propertyType',
         key: 'propertyType',
-        render: (text) => getEntityName(text),
+        render: (propertyType) => getEntityName(propertyType),
       },
       {
         title: t('label.config'),
@@ -140,6 +144,41 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
 
           // If config is an object, then it is a enum config
           if (!isString(config) && !isArray(config)) {
+            if (record.propertyType.name === ENUM_WITH_DESCRIPTION) {
+              const values =
+                (config?.values as EnumWithDescriptionsConfig['values']) ?? [];
+
+              return (
+                <div
+                  className="w-full d-flex gap-2 flex-column"
+                  data-testid="enum-with-description-config">
+                  <div className="w-full d-flex gap-2 flex-column">
+                    {values.map((value) => (
+                      <Tooltip
+                        key={value.key}
+                        title={value.description}
+                        trigger="hover">
+                        <Tag
+                          style={{
+                            width: 'max-content',
+                            margin: '0px',
+                            border: 'none',
+                            padding: '4px',
+                            background: 'rgba(0, 0, 0, 0.03)',
+                          }}>
+                          {value.key}
+                        </Tag>
+                      </Tooltip>
+                    ))}
+                  </div>
+                  <Typography.Text>
+                    {t('label.multi-select')}:{' '}
+                    {config?.multiSelect ? t('label.yes') : t('label.no')}
+                  </Typography.Text>
+                </div>
+              );
+            }
+
             return (
               <div
                 className="w-full d-flex gap-2 flex-column"
