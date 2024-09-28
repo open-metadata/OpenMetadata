@@ -34,6 +34,7 @@ import {
   connectEdgeBetweenNodes,
   deleteEdge,
   deleteNode,
+  editLineage,
   performZoomOut,
   removeColumnLineage,
   setupEntitiesForLineage,
@@ -89,7 +90,7 @@ for (const EntityClass of entities) {
       await currentEntity.visitEntityPage(page);
       await visitLineageTab(page);
       await verifyColumnLayerInactive(page);
-      await page.click('[data-testid="edit-lineage"]');
+      await editLineage(page);
       await performZoomOut(page);
       for (const entity of entities) {
         await connectEdgeBetweenNodes(page, currentEntity, entity);
@@ -108,7 +109,7 @@ for (const EntityClass of entities) {
     });
 
     await test.step('Should create pipeline between entities', async () => {
-      await page.click('[data-testid="edit-lineage"]');
+      await editLineage(page);
       await performZoomOut(page);
 
       for (const entity of entities) {
@@ -120,7 +121,7 @@ for (const EntityClass of entities) {
       await redirectToHomePage(page);
       await currentEntity.visitEntityPage(page);
       await visitLineageTab(page);
-      await page.click('[data-testid="edit-lineage"]');
+      await editLineage(page);
       await performZoomOut(page);
 
       for (const entity of entities) {

@@ -37,12 +37,20 @@ export const activateColumnLayer = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-column-btn"]');
 };
 
+export const editLineage = async (page: Page) => {
+  await page.click('[data-testid="edit-lineage"]');
+
+  await expect(
+    page.getByTestId('table_search_index-draggable-icon')
+  ).toBeVisible();
+};
+
 export const performZoomOut = async (page: Page) => {
-  for (let i = 0; i < 8; i++) {
-    const zoomOutBtn = page.locator('.react-flow__controls-zoomout');
-    const enabled = await zoomOutBtn.isEnabled();
-    if (enabled) {
-      zoomOutBtn.dispatchEvent('click');
+  const zoomOutBtn = page.locator('.react-flow__controls-zoomout');
+  const enabled = await zoomOutBtn.isEnabled();
+  if (enabled) {
+    for (const _ of Array.from({ length: 8 })) {
+      await zoomOutBtn.dispatchEvent('click');
     }
   }
 };
@@ -78,6 +86,26 @@ export const deleteEdge = async (
   await deleteRes;
 };
 
+export const dragAndDropNode = async (
+  page: Page,
+  originSelector: string,
+  destinationSelector: string
+) => {
+  const originElement = await page.waitForSelector(originSelector, {
+    state: 'attached',
+  });
+  const destinationElement = await page.waitForSelector(destinationSelector, {
+    state: 'attached',
+  });
+
+  await originElement.hover();
+  await page.mouse.down();
+  const box = (await destinationElement.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await destinationElement.hover();
+  await page.mouse.up();
+};
+
 export const dragConnection = async (
   page: Page,
   sourceId: string,
@@ -99,13 +127,6 @@ export const dragConnection = async (
   await lineageRes;
 };
 
-type BoundingBox = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
 export const connectEdgeBetweenNodes = async (
   page: Page,
   fromNode: EntityClass,
@@ -116,37 +137,10 @@ export const connectEdgeBetweenNodes = async (
   const toNodeName = get(toNode, 'entityResponseData.name');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const dragElement = page.locator(`[data-testid="${type}-draggable-icon"]`);
+  const source = `[data-testid="${type}-draggable-icon"]`;
+  const target = '[data-testid="lineage-details"]';
 
-  await dragElement.scrollIntoViewIfNeeded();
-  const dragBox: BoundingBox = (await dragElement.boundingBox()) as BoundingBox;
-  await page.mouse.move(
-    dragBox.x + dragBox.width / 2,
-    dragBox.y + dragBox.height / 2
-  );
-
-  await page.mouse.down();
-
-  // Move the mouse to the drop target (first move)
-  const dropBox: BoundingBox = (await page
-    .locator('[data-testid="lineage-details"]')
-    .boundingBox()) as BoundingBox;
-
-  await page.mouse.move(
-    dropBox.x + (dropBox.width + 100) / 2,
-    dropBox.y + (dropBox.height + 100) / 2
-  );
-
-  // Added second mouse move as per playwright documentation
-  await page.mouse.move(
-    dropBox.x + dropBox.width / 2,
-    dropBox.y + dropBox.height / 2
-  );
-
-  // Simulate mouse up (to drop the item)
-  await page.mouse.up();
-
-  await page.waitForLoadState('networkidle');
+  await dragAndDropNode(page, source, target);
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
@@ -404,7 +398,7 @@ export const addPipelineBetweenNodes = async (
 ) => {
   await sourceEntity.visitEntityPage(page);
   await page.click('[data-testid="lineage"]');
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineage(page);
 
   await performZoomOut(page);
 
