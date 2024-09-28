@@ -44,6 +44,7 @@ export enum CustomPropertyTypeByName {
   TIME_CP = 'time-cp',
   DATE_CP = 'date-cp',
   DATE_TIME_CP = 'dateTime-cp',
+  ENUM_WITH_DESCRIPTION = 'enumWithDescriptions',
 }
 
 export interface CustomProperty {
@@ -117,6 +118,15 @@ export const setValueForProperty = async (data: {
       await page.click('#enumValues');
       await page.fill('#enumValues', value, { force: true });
       await page.press('#enumValues', 'Enter');
+      await clickOutside(page);
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+
+    case 'enumWithDescriptions':
+      await page.click('#enumWithDescriptionValues');
+      await page.fill('#enumWithDescriptionValues', value, { force: true });
+      await page.press('#enumWithDescriptionValues', 'Enter');
       await clickOutside(page);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -241,6 +251,18 @@ export const validateValueForProperty = async (data: {
     );
   } else if (propertyType === 'sqlQuery') {
     await expect(container.locator('.CodeMirror-scroll')).toContainText(value);
+  } else if (propertyType === 'enumWithDescriptions') {
+    await expect(
+      container.locator('[data-testid="enum-with-description-table"]')
+    ).toBeVisible();
+
+    await expect(
+      container
+        .locator('[data-testid="enum-with-description-table"]')
+        .getByText(value, {
+          exact: true,
+        })
+    ).toBeVisible();
   } else if (
     ![
       'entityReference',
@@ -293,6 +315,11 @@ export const getPropertyValues = (
       return {
         value: 'small',
         newValue: 'medium',
+      };
+    case 'enumWithDescriptions':
+      return {
+        value: 'enumWithDescription1',
+        newValue: 'enumWithDescription2',
       };
     case 'sqlQuery':
       return {
@@ -420,6 +447,25 @@ export const createCustomPropertyForEntity = async (
                 },
               }
             : {}),
+          ...(item.name === 'enumWithDescriptions'
+            ? {
+                customPropertyConfig: {
+                  config: {
+                    multiSelect: true,
+                    values: [
+                      {
+                        key: 'enumWithDescription1',
+                        description: 'This is enumWithDescription1',
+                      },
+                      {
+                        key: 'enumWithDescription2',
+                        description: 'This is enumWithDescription2',
+                      },
+                    ],
+                  },
+                },
+              }
+            : {}),
           ...(['entityReference', 'entityReferenceList'].includes(item.name)
             ? {
                 customPropertyConfig: {
@@ -488,12 +534,17 @@ export const addCustomPropertiesForEntity = async ({
   enumConfig,
   formatConfig,
   entityReferenceConfig,
+  enumWithDescriptionConfig,
 }: {
   page: Page;
   propertyName: string;
   customPropertyData: { description: string };
   customType: string;
   enumConfig?: { values: string[]; multiSelect: boolean };
+  enumWithDescriptionConfig?: {
+    values: { key: string; description: string }[];
+    multiSelect: boolean;
+  };
   formatConfig?: string;
   entityReferenceConfig?: string[];
 }) => {
@@ -573,6 +624,27 @@ export const addCustomPropertiesForEntity = async ({
       await page.click('#root\\/multiSelect');
     }
   }
+  // Enum With Description configuration
+  if (customType === 'Enum With Descriptions' && enumWithDescriptionConfig) {
+    for await (const [
+      index,
+      val,
+    ] of enumWithDescriptionConfig.values.entries()) {
+      await page.locator('[data-testid="add-enum-description-config"]').click();
+      await page.locator(`#key-${index}`).fill(val.key);
+      await page.locator(descriptionBox).nth(index).fill(val.description);
+    }
+    await clickOutside(page);
+
+    if (enumWithDescriptionConfig.multiSelect) {
+      await page.click('#root\\/multiSelect');
+    }
+
+    await page
+      .locator(descriptionBox)
+      .nth(2)
+      .fill(customPropertyData.description);
+  }
 
   // Entity reference configuration
   if (
@@ -600,7 +672,9 @@ export const addCustomPropertiesForEntity = async ({
   }
 
   // Description
-  await page.fill(descriptionBox, customPropertyData.description);
+  if (customType !== 'Enum With Descriptions') {
+    await page.fill(descriptionBox, customPropertyData.description);
+  }
 
   const createPropertyPromise = page.waitForResponse(
     '/api/v1/metadata/types/name/*?fields=customProperties'
@@ -635,16 +709,32 @@ export const editCreatedProperty = async (
     ).toContainText('["enum1","enum2","enum3"]');
   }
 
+  if (type === 'Enum With Descriptions') {
+    await expect(
+      page
+        .getByRole('row', {
+          name: `${propertyName} enumWithDescriptions enumWithDescription1`,
+        })
+        .getByTestId('enum-with-description-config')
+    ).toBeVisible();
+  }
+
   await editButton.click();
 
-  await page.locator(descriptionBox).fill('');
-  await page.locator(descriptionBox).fill('This is new description');
+  if (type !== 'Enum With Descriptions') {
+    await page.locator(descriptionBox).fill('');
+    await page.locator(descriptionBox).fill('This is new description');
+  }
 
   if (type === 'Enum') {
     await page.click('#root\\/customPropertyConfig');
     await page.fill('#root\\/customPropertyConfig', 'updatedValue');
     await page.press('#root\\/customPropertyConfig', 'Enter');
     await clickOutside(page);
+  }
+  if (type === 'Enum With Descriptions') {
+    await page.locator(descriptionBox).nth(0).fill('');
+    await page.locator(descriptionBox).nth(0).fill('This is new description');
   }
 
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
@@ -678,6 +768,17 @@ export const editCreatedProperty = async (
       )
     ).toContainText('["enum1","enum2","enum3","updatedValue"]');
   }
+
+  if (type === 'Enum With Descriptions') {
+    await expect(
+      page
+        .getByRole('row', {
+          name: `${propertyName} enumWithDescriptions enumWithDescription1`,
+        })
+        .getByTestId('enum-with-description-config')
+    ).toBeVisible();
+  }
+
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
     await expect(
       page.locator(
