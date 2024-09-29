@@ -45,6 +45,8 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.customproperties.EnumConfig;
+import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
+import org.openmetadata.schema.type.customproperties.Value;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.types.TypeResource;
@@ -71,6 +73,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     STRING_TYPE = getEntityByName("string", "", ADMIN_AUTH_HEADERS);
     EMAIL_TYPE = getEntityByName("email", "", ADMIN_AUTH_HEADERS);
     ENUM_TYPE = getEntityByName("enum", "", ADMIN_AUTH_HEADERS);
+    ENUM_WITH_DESCRIPTIONS_TYPE = getEntityByName("enumWithDescriptions", "", ADMIN_AUTH_HEADERS);
     DATECP_TYPE = getEntityByName("date-cp", "", ADMIN_AUTH_HEADERS);
     DATETIMECP_TYPE = getEntityByName("dateTime-cp", "", ADMIN_AUTH_HEADERS);
     TIMECP_TYPE = getEntityByName("time-cp", "", ADMIN_AUTH_HEADERS);
@@ -290,6 +293,177 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     assertEquals(2, tableEntity.getCustomProperties().size());
     assertCustomProperties(
         new ArrayList<>(List.of(fieldA, fieldB)), tableEntity.getCustomProperties());*/
+  }
+
+  @Test
+  void put_patch_customProperty_enumWithDescriptions_200() throws IOException {
+    Type databaseEntity = getEntityByName("database", "customProperties", ADMIN_AUTH_HEADERS);
+
+    // Add a custom property of type enumWithDescriptions with PUT
+    CustomProperty enumWithDescriptionsFieldA =
+        new CustomProperty()
+            .withName("enumWithDescriptionsTest")
+            .withDescription("enumWithDescriptionsTest")
+            .withPropertyType(ENUM_WITH_DESCRIPTIONS_TYPE.getEntityReference());
+    ChangeDescription change = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(enumWithDescriptionsFieldA)));
+    Type finalDatabaseEntity = databaseEntity;
+    ChangeDescription finalChange = change;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                finalDatabaseEntity.getId(),
+                enumWithDescriptionsFieldA,
+                ADMIN_AUTH_HEADERS,
+                MINOR_UPDATE,
+                finalChange),
+        Status.BAD_REQUEST,
+        "EnumWithDescriptions Custom Property Type must have customPropertyConfig.");
+    enumWithDescriptionsFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig().withConfig(new EnumWithDescriptionsConfig()));
+    ChangeDescription change1 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    Type databaseEntity1 = databaseEntity;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                databaseEntity1.getId(),
+                enumWithDescriptionsFieldA,
+                ADMIN_AUTH_HEADERS,
+                MINOR_UPDATE,
+                change1),
+        Status.BAD_REQUEST,
+        "EnumWithDescriptions Custom Property Type must have customPropertyConfig populated with values.");
+
+    List<Value> valuesWithDuplicateKey =
+        List.of(
+            new Value().withKey("A").withDescription("Description A"),
+            new Value().withKey("B").withDescription("Description B"),
+            new Value().withKey("C").withDescription("Description C"),
+            new Value().withKey("C").withDescription("Description C"));
+
+    enumWithDescriptionsFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new EnumWithDescriptionsConfig().withValues(valuesWithDuplicateKey)));
+    ChangeDescription change7 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    Type databaseEntity2 = databaseEntity;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                databaseEntity2.getId(),
+                enumWithDescriptionsFieldA,
+                ADMIN_AUTH_HEADERS,
+                MINOR_UPDATE,
+                change7),
+        Status.BAD_REQUEST,
+        "EnumWithDescriptions Custom Property key cannot have duplicates.");
+    List<Value> valuesWithUniqueKey =
+        List.of(
+            new Value().withKey("A").withDescription("Description A"),
+            new Value().withKey("B").withDescription("Description B"),
+            new Value().withKey("C").withDescription("Description C"));
+    enumWithDescriptionsFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new EnumWithDescriptionsConfig().withValues(valuesWithUniqueKey)));
+    databaseEntity =
+        addCustomPropertyAndCheck(
+            databaseEntity.getId(),
+            enumWithDescriptionsFieldA,
+            ADMIN_AUTH_HEADERS,
+            MINOR_UPDATE,
+            change);
+    assertCustomProperties(
+        new ArrayList<>(List.of(enumWithDescriptionsFieldA)), databaseEntity.getCustomProperties());
+    CustomPropertyConfig prevConfig = enumWithDescriptionsFieldA.getCustomPropertyConfig();
+    // Changing custom property description with PUT
+    enumWithDescriptionsFieldA.withDescription("updatedEnumWithDescriptionsTest");
+    ChangeDescription change2 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    fieldUpdated(
+        change2,
+        EntityUtil.getCustomField(enumWithDescriptionsFieldA, "description"),
+        "enumWithDescriptionsTest",
+        "updatedEnumWithDescriptionsTest");
+    databaseEntity =
+        addCustomPropertyAndCheck(
+            databaseEntity.getId(),
+            enumWithDescriptionsFieldA,
+            ADMIN_AUTH_HEADERS,
+            MINOR_UPDATE,
+            change2);
+    assertCustomProperties(
+        new ArrayList<>(List.of(enumWithDescriptionsFieldA)), databaseEntity.getCustomProperties());
+
+    List<Value> valuesWithUniqueKeyAB =
+        List.of(
+            new Value().withKey("A").withDescription("Description A"),
+            new Value().withKey("B").withDescription("Description B"));
+    enumWithDescriptionsFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new EnumWithDescriptionsConfig().withValues(valuesWithUniqueKeyAB)));
+    ChangeDescription change3 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                databaseEntity1.getId(),
+                enumWithDescriptionsFieldA,
+                ADMIN_AUTH_HEADERS,
+                MINOR_UPDATE,
+                change3),
+        Status.BAD_REQUEST,
+        "Existing EnumWithDescriptions Custom Property values cannot be removed.");
+
+    enumWithDescriptionsFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new EnumWithDescriptionsConfig().withValues(valuesWithDuplicateKey)));
+    ChangeDescription change4 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                databaseEntity1.getId(),
+                enumWithDescriptionsFieldA,
+                ADMIN_AUTH_HEADERS,
+                MINOR_UPDATE,
+                change4),
+        Status.BAD_REQUEST,
+        "EnumWithDescriptions Custom Property key cannot have duplicates.");
+    valuesWithUniqueKey =
+        List.of(
+            new Value().withKey("A").withDescription("Description A"),
+            new Value().withKey("B").withDescription("Description B"),
+            new Value().withKey("C").withDescription("Description C"),
+            new Value().withKey("D").withDescription("Description D"));
+    ChangeDescription change5 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    enumWithDescriptionsFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new EnumWithDescriptionsConfig().withValues(valuesWithUniqueKey)));
+    fieldUpdated(
+        change5,
+        EntityUtil.getCustomField(enumWithDescriptionsFieldA, "customPropertyConfig"),
+        prevConfig,
+        enumWithDescriptionsFieldA.getCustomPropertyConfig());
+    databaseEntity =
+        addCustomPropertyAndCheck(
+            databaseEntity.getId(),
+            enumWithDescriptionsFieldA,
+            ADMIN_AUTH_HEADERS,
+            MINOR_UPDATE,
+            change5);
+    assertCustomProperties(
+        new ArrayList<>(List.of(enumWithDescriptionsFieldA)), databaseEntity.getCustomProperties());
+
+    // Changing custom property description with PATCH
+    // Changes from this PATCH is consolidated with the previous changes
+    enumWithDescriptionsFieldA.withDescription("updated2");
+    String json = JsonUtils.pojoToJson(databaseEntity);
+    databaseEntity.setCustomProperties(List.of(enumWithDescriptionsFieldA));
+    change = getChangeDescription(databaseEntity, CHANGE_CONSOLIDATED);
+    fieldUpdated(
+        change5,
+        EntityUtil.getCustomField(enumWithDescriptionsFieldA, "description"),
+        "updatedEnumWithDescriptionsTest",
+        "updated2");
+
+    databaseEntity =
+        patchEntityAndCheck(databaseEntity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change5);
   }
 
   @Test
