@@ -327,8 +327,13 @@ public final class CsvUtil {
       return "";
     }
 
-    if (list.get(0) instanceof Map) {
-      // Handle a list of entity references or maps
+    if (list.get(0) instanceof Map && isEnumWithDescriptions((Map<String, Object>) list.get(0))) {
+      // Handle a list of maps with keys and descriptions
+      return list.stream()
+          .map(item -> ((Map<String, Object>) item).get("key").toString())
+          .collect(Collectors.joining(INTERNAL_ARRAY_SEPARATOR));
+    } else if (list.get(0) instanceof Map) {
+      // Handle a list of entity references or other maps
       return list.stream()
           .map(item -> formatMapValue((Map<String, Object>) item))
           .collect(Collectors.joining(INTERNAL_ARRAY_SEPARATOR));
@@ -346,6 +351,10 @@ public final class CsvUtil {
 
   private static boolean isTimeInterval(Map<String, Object> valueMap) {
     return valueMap.containsKey("start") && valueMap.containsKey("end");
+  }
+
+  private static boolean isEnumWithDescriptions(Map<String, Object> valueMap) {
+    return valueMap.containsKey("key") && valueMap.containsKey("description");
   }
 
   private static String formatEntityReference(Map<String, Object> valueMap) {

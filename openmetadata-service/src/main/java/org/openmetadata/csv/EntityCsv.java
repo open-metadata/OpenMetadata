@@ -578,16 +578,23 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> timestampValues = fieldToEntities(fieldValue.toString());
     Map<String, Long> timestampMap = new HashMap<>();
     if (timestampValues.size() == 2) {
-      timestampMap.put("start", Long.parseLong(timestampValues.get(0)));
-      timestampMap.put("end", Long.parseLong(timestampValues.get(1)));
+      try {
+        timestampMap.put("start", Long.parseLong(timestampValues.get(0)));
+        timestampMap.put("end", Long.parseLong(timestampValues.get(1)));
+      } catch (NumberFormatException e) {
+        importFailure(
+            printer,
+            invalidCustomPropertyValue(
+                fieldNumber, fieldName, "timeInterval", fieldValue.toString()),
+            csvRecord);
+        return null;
+      }
     } else {
       importFailure(
           printer,
-          invalidField(
-              fieldNumber,
-              invalidCustomPropertyFieldFormat(
-                  fieldNumber, fieldName, "timeInterval", "start:end")),
+          invalidCustomPropertyFieldFormat(fieldNumber, fieldName, "timeInterval", "start:end"),
           csvRecord);
+      return null;
     }
     return timestampMap;
   }
