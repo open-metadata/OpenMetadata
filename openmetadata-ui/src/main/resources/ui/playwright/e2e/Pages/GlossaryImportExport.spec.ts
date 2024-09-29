@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
+import { CUSTOM_PROPERTIES_TYPES } from '../../constant/glossaryImportExport';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -19,14 +22,19 @@ import {
   createNewPage,
   redirectToHomePage,
   toastNotification,
+  uuid,
 } from '../../utils/common';
+import {
+  addCustomPropertiesForEntity,
+  deleteCreatedProperty,
+} from '../../utils/customProperty';
 import { selectActiveGlossary } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
   fillGlossaryRowDetails,
   validateImportStatus,
 } from '../../utils/importUtils';
-import { sidebarClick } from '../../utils/sidebar';
+import { settingClick, sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({
@@ -39,6 +47,9 @@ const glossary1 = new Glossary();
 const glossary2 = new Glossary();
 const glossaryTerm1 = new GlossaryTerm(glossary1);
 const glossaryTerm2 = new GlossaryTerm(glossary2);
+const propertiesList = Object.values(CUSTOM_PROPERTIES_TYPES);
+
+const propertyListName: Record<string, string> = {};
 
 test.describe('Glossary Bulk Import Export', () => {
   test.slow(true);
@@ -72,6 +83,24 @@ test.describe('Glossary Bulk Import Export', () => {
   });
 
   test('Glossary Bulk Import Export', async ({ page }) => {
+    await test.step('create custom properties for extension edit', async () => {
+      for (const property of propertiesList) {
+        const entity = CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm;
+        const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
+        propertyListName[property] = propertyName;
+
+        await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
+
+        await addCustomPropertiesForEntity({
+          page,
+          propertyName,
+          customPropertyData: entity,
+          customType: property,
+          enumWithDescriptionConfig: entity.enumWithDescriptionConfig,
+        });
+      }
+    });
+
     await test.step('should export data glossary term details', async () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
@@ -89,7 +118,7 @@ test.describe('Glossary Bulk Import Export', () => {
     });
 
     await test.step(
-      'should import and edit with two additional database',
+      'should import and edit with one additional glossaryTerm',
       async () => {
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, glossary1.data.displayName);
@@ -130,7 +159,8 @@ test.describe('Glossary Bulk Import Export', () => {
               name: glossaryTerm2.data.name,
             },
           },
-          page
+          page,
+          propertyListName
         );
 
         await page.getByRole('button', { name: 'Next' }).click();
@@ -167,5 +197,17 @@ test.describe('Glossary Bulk Import Export', () => {
         );
       }
     );
+
+    await test.step('delete custom properties', async () => {
+      for (const propertyName of Object.values(propertyListName)) {
+        await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
+
+        await page.waitForLoadState('networkidle');
+
+        await page.getByTestId('loader').waitFor({ state: 'detached' });
+
+        await deleteCreatedProperty(page, propertyName);
+      }
+    });
   });
 });

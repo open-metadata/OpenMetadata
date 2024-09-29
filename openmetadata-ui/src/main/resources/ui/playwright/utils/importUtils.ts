@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { uuid } from './common';
+import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
+import {
+  CUSTOM_PROPERTIES_TYPES,
+  FIELD_VALUES_CUSTOM_PROPERTIES,
+} from '../constant/glossaryImportExport';
+import { descriptionBox, uuid } from './common';
 
 export const createGlossaryTermRowDetails = () => {
   return {
@@ -129,6 +134,100 @@ export const fillDomainDetails = async (
   await page.waitForTimeout(100);
 };
 
+const editGlossaryCustomProperty = async (
+  page: Page,
+  propertyName: string,
+  type: string
+) => {
+  await page
+    .locator(
+      `[data-testid=${propertyName}] [data-testid='edit-icon-right-panel']`
+    )
+    .click();
+
+  if (type === CUSTOM_PROPERTIES_TYPES.STRING) {
+    await page
+      .getByTestId('value-input')
+      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.STRING);
+    await page.getByTestId('inline-save-btn').click();
+  }
+
+  if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
+    await page.waitForSelector(descriptionBox, { state: 'visible' });
+
+    await page
+      .locator(descriptionBox)
+      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
+
+    await page.getByTestId('markdown-editor').getByTestId('save').click();
+
+    await page.waitForSelector(descriptionBox, {
+      state: 'detached',
+    });
+  }
+
+  if (type === CUSTOM_PROPERTIES_TYPES.SQL_QUERY) {
+    await page
+      .getByTestId('code-mirror-container')
+      .getByRole('textbox')
+      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
+
+    await page.getByTestId('inline-save-btn').click();
+  }
+
+  if (type === CUSTOM_PROPERTIES_TYPES.ENUM_WITH_DESCRIPTIONS) {
+    await page.getByTestId('enum-with-description-select').click();
+
+    await page.waitForSelector('.ant-select-dropdown', {
+      state: 'visible',
+    });
+
+    // await page
+    //   .getByRole('option', {
+    //     name: CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm
+    //       .enumWithDescriptionConfig.values[0].key,
+    //   })
+    //   .click();
+
+    await page
+      .locator('span')
+      .filter({
+        hasText:
+          CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm
+            .enumWithDescriptionConfig.values[0].key,
+      })
+      .click();
+
+    await page.getByTestId('inline-save-btn').click();
+  }
+};
+
+export const fillCustomPropertyDetails = async (
+  page: Page,
+  propertyListName: Record<string, string>
+) => {
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('Enter', { delay: 100 });
+
+  // Wait for the loader to disappear
+  await page.waitForSelector('.ant-skeleton-content', { state: 'hidden' });
+
+  for (const propertyName of Object.values(CUSTOM_PROPERTIES_TYPES)) {
+    await editGlossaryCustomProperty(
+      page,
+      propertyListName[propertyName],
+      propertyName
+    );
+  }
+
+  await page.getByTestId('save').click();
+
+  await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
+
+  await page.click('.InovuaReactDataGrid__cell--cell-active');
+};
+
 export const fillGlossaryRowDetails = async (
   row: {
     name: string;
@@ -144,7 +243,8 @@ export const fillGlossaryRowDetails = async (
     reviewers: string[];
     owners: string[];
   },
-  page: Page
+  page: Page,
+  propertyListName: Record<string, string>
 ) => {
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')
@@ -200,6 +300,12 @@ export const fillGlossaryRowDetails = async (
     .press('ArrowRight', { delay: 100 });
 
   await fillOwnerDetails(page, row.owners);
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+
+  await fillCustomPropertyDetails(page, propertyListName);
 };
 
 export const validateImportStatus = async (

@@ -934,5 +934,5 @@ export const removeOuterEscapes = (input: string) => {
   const match = input.match(VALIDATE_ESCAPE_START_END_REGEX);
 
   // Return the middle part without the outer escape characters or the original input if no match
-  return match ? match[2] : input;
+  return match && match.length > 3 ? match[2] : input;
 };

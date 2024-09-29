@@ -1002,7 +1002,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   }, [property, extension, contentRef, value]);
 
   const customPropertyElement = (
-    <Row gutter={[0, 16]}>
+    <Row data-testid={propertyName} gutter={[0, 16]}>
       <Col span={24}>
         <Row gutter={[0, 2]}>
           <Col className="d-flex justify-between w-full" span={24}>
