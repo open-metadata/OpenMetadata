@@ -1402,7 +1402,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM thread_entity te "
                 + "    WHERE MATCH(te.taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
-                + ") AS combined "
+                + ") AS combined WHERE combined.type is not NULL "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -1436,7 +1436,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM thread_entity te "
                 + "    WHERE to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
-                + ") AS combined "
+                + ") AS combined WHERE combined.type is not NULL "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = POSTGRES)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
