@@ -40,8 +40,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMetadataService;
-import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -272,7 +270,7 @@ public class MetadataServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseService.class)))
+                    schema = @Schema(implementation = MetadataService.class)))
       })
   public MetadataService addTestConnectionResult(
       @Context UriInfo uriInfo,
@@ -541,13 +539,13 @@ public class MetadataServiceResource
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Successfully restored the Table ",
+            description = "Successfully restored the MetadataService ",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = MetadataService.class)))
       })
-  public Response restoreTable(
+  public Response restoreMetadataService(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
