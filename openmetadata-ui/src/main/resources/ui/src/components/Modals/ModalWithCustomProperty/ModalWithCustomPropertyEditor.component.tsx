@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal } from 'antd';
+import { Button, Modal, Typography } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -32,6 +32,7 @@ import {
 } from './ModalWithMarkdownEditor.interface';
 
 export const ModalWithCustomPropertyEditor = ({
+  header,
   entityType,
   value,
   onSave,
@@ -106,6 +107,7 @@ export const ModalWithCustomPropertyEditor = ({
       ]}
       maskClosable={false}
       open={visible}
+      title={<Typography.Text data-testid="header">{header}</Typography.Text>}
       width="90%"
       onCancel={onCancel}>
       {isLoading ? (
@@ -114,6 +116,7 @@ export const ModalWithCustomPropertyEditor = ({
         <CustomPropertyTable
           hasEditAccess
           hasPermission
+          isRenderedInRightPanel
           entityDetails={{ extension: customPropertyValue } as GlossaryTerm}
           entityType={EntityType.GLOSSARY_TERM}
           handleExtensionUpdate={onExtensionUpdate}
