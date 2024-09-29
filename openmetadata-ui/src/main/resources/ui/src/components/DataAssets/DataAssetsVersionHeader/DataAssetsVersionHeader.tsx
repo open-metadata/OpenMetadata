@@ -95,6 +95,7 @@ function DataAssetsVersionHeader({
 
     return serviceType ? (
       <img
+        alt="service-icon"
         className="h-9"
         src={serviceUtilClassBase.getServiceTypeLogo(
           currentVersionData as SearchSourceAlias

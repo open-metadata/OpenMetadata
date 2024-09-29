@@ -29,7 +29,6 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { SearchSourceAlias } from '../../../interface/search.interface';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DRAWER_NAVIGATION_OPTIONS,
@@ -78,9 +77,7 @@ const EntityInfoDrawer = ({
     return serviceType ? (
       <img
         className="h-9"
-        src={serviceUtilClassBase.getServiceTypeLogo(
-          selectedNode as SearchSourceAlias
-        )}
+        src={serviceUtilClassBase.getServiceTypeLogo(selectedNode)}
       />
     ) : null;
   }, [selectedNode]);
