@@ -157,7 +157,7 @@ export const ModalWithCustomPropertyEditor = ({
       maskClosable={false}
       open={visible}
       title={<Typography.Text data-testid="header">{header}</Typography.Text>}
-      width="90%"
+      width={650}
       onCancel={onCancel}>
       {isLoading ? (
         <Loader />
