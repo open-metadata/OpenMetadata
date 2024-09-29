@@ -222,7 +222,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         // List should have even numbered terms - termName and endPoint
         importFailure(
             printer,
-            invalidField(6, "References should be given in the format referenceName:endpoint url."),
+            invalidField(
+                6, "Term References should be given in the format referenceName:endpoint url."),
             csvRecord);
         processRecord = false;
         return null;
