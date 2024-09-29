@@ -46,6 +46,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -66,6 +68,7 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -393,7 +396,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 fieldValue.toString(),
                 customPropertyType,
                 propertyConfig);
-        case "enum", "enumList" -> {
+        case "enum" -> {
           List<String> enumKeys = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
           fieldValue = enumKeys.isEmpty() ? null : enumKeys;
         }
@@ -410,6 +413,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 csvRecord);
             fieldValue = null;
           }
+        }
+        case "enumWithDescriptions" -> {
+          fieldValue =
+              parseEnumWithDescriptions(
+                  printer,
+                  csvRecord,
+                  fieldNumber,
+                  fieldName,
+                  fieldValue.toString(),
+                  propertyConfig);
         }
         default -> {}
       }
@@ -454,6 +467,70 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     return isList ? entityReferences : entityReferences.isEmpty() ? null : entityReferences.get(0);
+  }
+
+  private Object parseEnumWithDescriptions(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      String fieldValue,
+      String propertyConfig)
+      throws IOException {
+    List<String> enumKeys = listOrEmpty(fieldToInternalArray(fieldValue));
+    List<Object> enumObjects = new ArrayList<>();
+
+    JsonNode propertyConfigNode = JsonUtils.readTree(propertyConfig);
+    if (propertyConfigNode == null) {
+      importFailure(
+          printer,
+          invalidCustomPropertyFieldFormat(
+              fieldNumber,
+              fieldName,
+              "enumWithDescriptions",
+              "Invalid propertyConfig of enumWithDescriptions: " + fieldValue),
+          csvRecord);
+      return null;
+    }
+
+    Map<String, JsonNode> keyToObjectMap =
+        StreamSupport.stream(propertyConfigNode.get("values").spliterator(), false)
+            .collect(Collectors.toMap(node -> node.get("key").asText(), node -> node));
+    EnumWithDescriptionsConfig config =
+        JsonUtils.treeToValue(propertyConfigNode, EnumWithDescriptionsConfig.class);
+    if (!config.getMultiSelect() && enumKeys.size() > 1) {
+      importFailure(
+          printer,
+          invalidCustomPropertyFieldFormat(
+              fieldNumber,
+              fieldName,
+              "enumWithDescriptions",
+              "only one key is allowed for non-multiSelect enumWithDescriptions"),
+          csvRecord);
+      return null;
+    }
+
+    for (String key : enumKeys) {
+      try {
+        JsonNode valueObject = keyToObjectMap.get(key);
+        if (valueObject == null) {
+          importFailure(
+              printer,
+              invalidCustomPropertyValue(
+                  fieldNumber,
+                  fieldName,
+                  "enumWithDescriptions",
+                  key + " not found in propertyConfig of " + fieldName),
+              csvRecord);
+          return null;
+        }
+        enumObjects.add(valueObject);
+      } catch (Exception e) {
+        importFailure(printer, e.getMessage(), csvRecord);
+      }
+    }
+
+    return enumObjects;
   }
 
   protected String getFormattedDateTimeField(
