@@ -116,10 +116,10 @@ describe('Test PropertyValue Component', () => {
       />
     );
 
-    const valueElement = await screen.findByTestId('RichTextPreviewer');
+    const valueElement = await screen.findAllByTestId('RichTextPreviewer');
     const iconElement = await screen.findByTestId('edit-icon');
 
-    expect(valueElement).toBeInTheDocument();
+    expect(valueElement).toHaveLength(2);
     expect(iconElement).toBeInTheDocument();
 
     await act(async () => {
@@ -146,7 +146,7 @@ describe('Test PropertyValue Component', () => {
     const iconElement = await screen.findByTestId('edit-icon');
 
     expect(await screen.findByTestId('enum-value')).toHaveTextContent(
-      'enumValue1, enumValue2'
+      'enumValue1enumValue2'
     );
 
     await act(async () => {
