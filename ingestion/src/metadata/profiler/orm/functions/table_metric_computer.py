@@ -176,6 +176,8 @@ class SnowflakeTableMetricComputer(BaseTableMetricComputer):
         )
 
         rest = self._runner._session.execute(query).first()
+        if not rest:
+            return None
         if rest.rowCount is None:
             # if we don't have any row count, fallback to the base logic
             return super().compute()
