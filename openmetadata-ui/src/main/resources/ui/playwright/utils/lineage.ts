@@ -91,14 +91,8 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
-  const originElement = await page.waitForSelector(originSelector, {
-    state: 'attached',
-  });
-  const destinationElement = await page.waitForSelector(destinationSelector, {
-    state: 'attached',
-  });
-
-  await originElement.hover();
+  const destinationElement = await page.waitForSelector(destinationSelector);
+  await page.hover(originSelector);
   await page.mouse.down();
   const box = (await destinationElement.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
