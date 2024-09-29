@@ -19,11 +19,13 @@ import {
   ExtensionDataProps,
   ExtensionDataTypes,
 } from '../../components/Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { SEMICOLON_SPLITTER } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   CustomProperty,
   EntityReference,
+  EnumConfig,
   Type,
   ValueClass,
 } from '../../generated/entity/type';
@@ -159,7 +161,7 @@ export const getCSVStringFromColumnsAndDataSource = (
 
 const convertCustomPropertyStringToValueExtensionBasedOnType = (
   value: string,
-  customProperty: CustomProperty
+  customProperty?: CustomProperty
 ) => {
   switch (customProperty?.propertyType.name) {
     case 'entityReference': {
@@ -193,11 +195,20 @@ const convertCustomPropertyStringToValueExtensionBasedOnType = (
       }
     }
 
-    case 'enumWithDescriptions':
+    case 'enumWithDescriptions': {
+      const propertyEnumValues =
+        ((customProperty?.customPropertyConfig?.config as EnumConfig)
+          .values as ValueClass[]) ?? [];
+
+      const keyAndValue: Record<string, ValueClass> = {};
+
+      propertyEnumValues.forEach((cp) => (keyAndValue[cp.key] = cp));
+
       return value.split('|').map((item) => ({
         key: item,
-        description: item,
+        description: keyAndValue[item].description ?? NO_DATA_PLACEHOLDER,
       }));
+    }
 
     case 'timeInterval': {
       const [start, end] = value.split(':');
