@@ -25,6 +25,7 @@ import {
   CustomProperty,
   EntityReference,
   Type,
+  ValueClass,
 } from '../../generated/entity/type';
 import { Status } from '../../generated/type/csvImportResult';
 import { removeOuterEscapes } from '../CommonUtils';
@@ -192,6 +193,12 @@ const convertCustomPropertyStringToValueExtensionBasedOnType = (
       }
     }
 
+    case 'enumWithDescriptions':
+      return value.split('|').map((item) => ({
+        key: item,
+        description: item,
+      }));
+
     case 'timeInterval': {
       const [start, end] = value.split(':');
 
@@ -229,6 +236,11 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
     }
     case 'enum':
       return (value as unknown as string[]).map((item) => item).join('|');
+
+    case 'enumWithDescriptions':
+      return (value as unknown as ValueClass[])
+        .map((item) => item.key)
+        .join('|');
 
     case 'timeInterval': {
       const interval = value as { start: string; end: string };
