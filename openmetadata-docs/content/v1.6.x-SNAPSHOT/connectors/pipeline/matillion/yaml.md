@@ -1,6 +1,7 @@
 ---
 title: Run the Matillion Connector Externally
 slug: /connectors/pipeline/matillion/yaml
+collate: true
 ---
 
 {% connectorDetailsHeader

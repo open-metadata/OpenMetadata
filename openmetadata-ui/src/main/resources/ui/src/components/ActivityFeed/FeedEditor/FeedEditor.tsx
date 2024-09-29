@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 
+import { ToolbarEmoji } from '@windmillcode/quill-emoji';
+import '@windmillcode/quill-emoji/quill-emoji.css';
 import classNames from 'classnames';
 import { debounce, isNil } from 'lodash';
-import Emoji from 'quill-emoji';
-import 'quill-emoji/dist/quill-emoji.css';
-import 'quill-mention';
+import { Parchment } from 'quill';
+import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
   forwardRef,
@@ -53,12 +55,16 @@ import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
-Quill.register('modules/emoji', Emoji);
-Quill.register(LinkBlot);
+Quill.register('modules/emoji-toolbar', ToolbarEmoji);
+Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
 const Delta = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const strikethrough = (_node: any, delta: typeof Delta) => {
-  return delta.compose(new Delta().retain(delta.length(), { strike: true }));
+  // @ts-ignore
+  return 'compose' in delta && delta.compose instanceof Function
+    ? // @ts-ignore
+      delta.compose(new Delta().retain(delta.length, { strike: true }))
+    : null;
 };
 
 export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
@@ -181,7 +187,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             insertRef: insertRef,
           },
         },
-        'emoji-toolbar': true,
+        'emoji-toolbar': false,
         mention: {
           allowedChars: MENTION_ALLOWED_CHARS,
           mentionDenotationChars: MENTION_DENOTATION_CHARS,
