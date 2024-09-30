@@ -19,7 +19,6 @@ import javax.ws.rs.core.*;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateStoredProcedure;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -511,18 +510,18 @@ public class StoredProcedureResource
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted database schema.",
-      description = "Restore a soft deleted database schema.",
+      summary = "Restore a soft deleted stored procedure.",
+      description = "Restore a soft deleted stored procedure.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Successfully restored the DatabaseSchema ",
+            description = "Successfully restored the StoredProcedure ",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseSchema.class)))
+                    schema = @Schema(implementation = StoredProcedure.class)))
       })
-  public Response restoreDatabaseSchema(
+  public Response restoreStoredProcedure(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
