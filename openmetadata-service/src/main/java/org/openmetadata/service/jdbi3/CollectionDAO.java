@@ -4253,11 +4253,13 @@ public interface CollectionDAO {
     void insert(@Bind("json") String json);
 
     @ConnectionAwareSqlUpdate(
-            value = "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'stopped') where appId=:appId AND JSON_UNQUOTE(JSON_EXTRACT(json_column_name, '$.status')) = 'running'",
-            connectionType = MYSQL)
+        value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'stopped') where appId=:appId AND JSON_UNQUOTE(JSON_EXTRACT(json_column_name, '$.status')) = 'running'",
+        connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-            value = "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"stopped\"') WHERE appId = :appId AND json->>'status' = 'running'",
-            connectionType = POSTGRES)
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"stopped\"') WHERE appId = :appId AND json->>'status' = 'running'",
+        connectionType = POSTGRES)
     void markStaleEntriesStopped(@Bind("appId") String appId);
 
     @ConnectionAwareSqlUpdate(
