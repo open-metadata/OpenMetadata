@@ -617,6 +617,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="sql-query-custom-property"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -964,7 +965,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       default:
         return (
           <Typography.Text
-            className="break-all text-xl font-semibold text-grey-body"
+            className="break-all text-lg font-medium text-grey-body"
             data-testid="value">
             {value}
           </Typography.Text>
@@ -1030,6 +1031,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             <RichTextEditorPreviewer
               className="text-grey-muted"
               markdown={property.description || ''}
+              maxLength={70}
             />
           </Col>
         </Row>
@@ -1039,7 +1041,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         <Row gutter={[6, 0]}>
           <Col
             ref={contentRef}
-            span={22}
+            span={isOverflowing && !showInput ? 22 : 24}
             style={{
               height: isExpanded || showInput ? 'auto' : '30px',
               overflow: isExpanded ? 'visible' : 'hidden',
