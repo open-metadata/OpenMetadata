@@ -37,7 +37,14 @@ class CSVUtilsClassBase {
   }
 
   public columnsWithMultipleValuesEscapeNeeded() {
-    return ['parent', 'extension', 'synonyms'];
+    return [
+      'parent',
+      'extension',
+      'synonyms',
+      'description',
+      'glossaryTerms',
+      'relatedTerms',
+    ];
   }
 
   public getEditor(
@@ -151,16 +158,10 @@ class CSVUtilsClassBase {
           ) => {
             if (Array.isArray(option)) {
               props.onChange(
-                option
-                  .map((tag) =>
-                    toString(tag.value)?.replace(new RegExp('"', 'g'), '""')
-                  )
-                  .join(';')
+                option.map((tag) => toString(tag.value)).join(';')
               );
             } else {
-              props.onChange(
-                toString(option.value)?.replace(new RegExp('"', 'g'), '""')
-              );
+              props.onChange(toString(option.value));
             }
           };
 
@@ -280,8 +281,9 @@ class CSVUtilsClassBase {
               popoverProps={{
                 open: true,
               }}
-              onUpdate={handleChange}
-            />
+              onUpdate={handleChange}>
+              {' '}
+            </UserTeamSelectableList>
           );
         };
       case 'extension':

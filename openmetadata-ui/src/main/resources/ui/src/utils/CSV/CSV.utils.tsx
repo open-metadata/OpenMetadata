@@ -144,8 +144,6 @@ export const getCSVStringFromColumnsAndDataSource = (
           value.includes(',') ||
           value.includes('\n') ||
           colName.includes('tags') ||
-          colName.includes('glossaryTerms') ||
-          colName.includes('relatedTerms') ||
           colName.includes('domain')
         ) {
           return isEmpty(value) ? '' : `"${value}"`;
