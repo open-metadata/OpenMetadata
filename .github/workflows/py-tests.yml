@@ -175,7 +175,7 @@ jobs:
           python ../scripts/rewrite_coverage_files.py coverage/3.9 src/
           coverage combine --keep -a coverage/3.9
           coverage report
-          coverage xml -o ingestion/coverage.xml
+          coverage xml -o ci-coverage.xml
           coverage html
           sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
           sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
