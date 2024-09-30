@@ -85,7 +85,7 @@ describe('CSVUtils', () => {
       );
 
       expect(csvString).toBe(
-        'tags,glossaryTerms,description,domain\n"value1","value2",something new,"domain1"'
+        'tags,glossaryTerms,description,domain\n"value1","value2","something new","domain1"'
       );
     });
 
@@ -110,7 +110,7 @@ describe('CSVUtils', () => {
       );
 
       expect(csvString).toBe(
-        `tags,glossaryTerms,description,domain\n"value,1","value_2",something#new,"domain,1"`
+        `tags,glossaryTerms,description,domain\n"value,1","value_2","something#new","domain,1"`
       );
     });
   });
