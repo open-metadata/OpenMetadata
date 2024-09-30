@@ -35,6 +35,15 @@
       "description": "Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.",
       "type": "string"
     },
+    "headers": {
+      "description": "Custom headers to be sent with the webhook request.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<String, String>"
+    },
+    "json": {
+      "description": "Optional JSON payload to be sent with the webhook request.",
+      "type": "string"
+    },
     "sendToAdmins": {
       "description": "Send the Event to Admins",
       "type": "boolean",
