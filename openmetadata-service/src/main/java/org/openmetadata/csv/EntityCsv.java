@@ -335,7 +335,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
       return null;
     }
 
-    // Parse the extension string into a map of key-value pairs
     Map<String, Object> extensionMap = new HashMap<>();
 
     for (String extensions : fieldToExtensionStrings(extensionString)) {
@@ -343,19 +342,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
       int separatorIndex = extensions.indexOf(ENTITY_TYPE_SEPARATOR);
 
       if (separatorIndex == -1) {
-        // No separator found, invalid entry
         importFailure(printer, invalidExtension(fieldNumber, extensions, "null"), csvRecord);
         continue;
       }
 
-      String key = extensions.substring(0, separatorIndex); // Get the key part
-      String value = extensions.substring(separatorIndex + 1); // Get the value part
+      String key = extensions.substring(0, separatorIndex);
+      String value = extensions.substring(separatorIndex + 1);
 
-      // Validate that the key and value are present
       if (key.isEmpty() || value.isEmpty()) {
         importFailure(printer, invalidExtension(fieldNumber, key, value), csvRecord);
       } else {
-        extensionMap.put(key, value); // Add to the map
+        extensionMap.put(key, value);
       }
     }
 
@@ -370,7 +367,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
       String fieldName = entry.getKey();
       Object fieldValue = entry.getValue();
 
-      // Fetch the JSON schema and property type for the given field name
       JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
       if (jsonSchema == null) {
         importFailure(printer, invalidCustomPropertyKey(fieldNumber, fieldName), csvRecord);
@@ -378,8 +374,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
       String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-
-      // Validate field based on the custom property type
 
       switch (customPropertyType) {
         case "entityReference", "entityReferenceList" -> {
@@ -444,13 +438,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
     List<EntityReference> entityReferences = new ArrayList<>();
 
-    // Split the field into individual references or handle as single entity
     List<String> entityRefStrings =
         isList
-            ? listOrEmpty(fieldToInternalArray(fieldValue)) // Split by 'INTERNAL_ARRAY_SEPARATOR'
-            : Collections.singletonList(fieldValue); // Single entity reference
+            ? listOrEmpty(fieldToInternalArray(fieldValue))
+            : Collections.singletonList(fieldValue);
 
-    // Process each entity reference string
     for (String entityRefStr : entityRefStrings) {
       List<String> entityRefTypeAndValue = listOrEmpty(fieldToEntities(entityRefStr));
 
@@ -549,17 +541,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
         case "date-cp" -> {
           TemporalAccessor date = formatter.parse(fieldValue);
           yield formatter.format(date);
-          // Parse and format as date
         }
         case "dateTime-cp" -> {
           LocalDateTime dateTime = LocalDateTime.parse(fieldValue, formatter);
           yield dateTime.format(formatter);
-          // Parse and format as LocalDateTime
         }
         case "time-cp" -> {
           LocalTime time = LocalTime.parse(fieldValue, formatter);
           yield time.format(formatter);
-          // Parse and format as LocalTime
         }
         default -> throw new IllegalStateException("Unexpected value: " + fieldType);
       };
@@ -609,11 +598,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Map<String, Object> extensionMap,
       JsonSchema jsonSchema)
       throws IOException {
-    // Convert the field value into a JsonNode
     if (fieldValue != null) {
       JsonNode jsonNodeValue = JsonUtils.convertValue(fieldValue, JsonNode.class);
 
-      // Validate the field value using the JSON schema
       Set<ValidationMessage> validationMessages = jsonSchema.validate(jsonNodeValue);
       if (!validationMessages.isEmpty()) {
         importFailure(
@@ -622,7 +609,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 fieldNumber, fieldName, customPropertyType, validationMessages.toString()),
             csvRecord);
       } else {
-        extensionMap.put(fieldName, fieldValue); // Add to extensionMap if valid
+        extensionMap.put(fieldName, fieldValue);
       }
     }
   }

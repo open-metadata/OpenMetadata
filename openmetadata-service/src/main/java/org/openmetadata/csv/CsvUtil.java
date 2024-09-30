@@ -124,16 +124,14 @@ public final class CsvUtil {
       return List.of();
     }
 
-    // Step 1: Replace semicolons within quoted strings with a placeholder
+    // Replace semicolons within quoted strings with a placeholder
     String preprocessedField =
         Pattern.compile("\"([^\"]*)\"") // Matches content inside double quotes
             .matcher(field)
             .replaceAll(mr -> "\"" + mr.group(1).replace(";", "__SEMICOLON__") + "\"");
 
-    // Step 2: Escape newlines and double quotes for CSV parsing
     preprocessedField = preprocessedField.replace("\n", "\\n").replace("\"", "\\\"");
 
-    // Step 3: Define CSV format with semicolon as the delimiter and proper handling of quotes
     CSVFormat format =
         CSVFormat.DEFAULT
             .withDelimiter(';')
@@ -143,7 +141,6 @@ public final class CsvUtil {
             .withIgnoreEmptyLines(true)
             .withEscape('\\'); // Use backslash for escaping special characters
 
-    // Step 4: Parse the CSV and process the records
     try (CSVParser parser = CSVParser.parse(new StringReader(preprocessedField), format)) {
       return parser.getRecords().stream()
           .flatMap(CSVRecord::stream)
@@ -297,17 +294,14 @@ public final class CsvUtil {
   }
 
   private static String formatValue(Object value) {
-    // Handle Map (e.g., entity reference or date interval)
     if (value instanceof Map) {
       return formatMapValue((Map<String, Object>) value);
     }
 
-    // Handle List (e.g., Entity Reference List or multi-select Enum List)
     if (value instanceof List) {
       return formatListValue((List<?>) value);
     }
 
-    // Fallback for simple types
     return value != null ? value.toString() : "";
   }
 
@@ -318,7 +312,6 @@ public final class CsvUtil {
       return formatTimeInterval(valueMap);
     }
 
-    // If no specific format, return the raw map string
     return valueMap.toString();
   }
 
@@ -328,17 +321,14 @@ public final class CsvUtil {
     }
 
     if (list.get(0) instanceof Map && isEnumWithDescriptions((Map<String, Object>) list.get(0))) {
-      // Handle a list of maps with keys and descriptions
       return list.stream()
           .map(item -> ((Map<String, Object>) item).get("key").toString())
           .collect(Collectors.joining(INTERNAL_ARRAY_SEPARATOR));
     } else if (list.get(0) instanceof Map) {
-      // Handle a list of entity references or other maps
       return list.stream()
           .map(item -> formatMapValue((Map<String, Object>) item))
           .collect(Collectors.joining(INTERNAL_ARRAY_SEPARATOR));
     } else {
-      // Handle a simple list of strings or numbers
       return list.stream()
           .map(Object::toString)
           .collect(Collectors.joining(INTERNAL_ARRAY_SEPARATOR));
