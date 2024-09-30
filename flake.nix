@@ -18,7 +18,7 @@
                 pkgs.starship
                 pkgs.fish
                 pkgs.yarn 
-                pkgs.jre17_minimal
+                pkgs.jdk17
                 pkgs.nodejs_18
                 pkgs.docker
                 pkgs.maven
