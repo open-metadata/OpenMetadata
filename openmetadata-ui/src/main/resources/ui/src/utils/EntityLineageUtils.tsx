@@ -90,7 +90,7 @@ import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
-import { getPartialNameFromTableFQN } from './CommonUtils';
+import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
 import { jsonToCSV } from './StringsUtils';
@@ -727,6 +727,9 @@ export const createNodes = (
       node.type === EntityLineageNodeType.LOAD_MORE
         ? node.type
         : getNodeType(edgesData, node.id);
+
+    // we are getting deleted as a string instead of boolean from API so need to handle it like this
+    node.deleted = isDeleted(node.deleted);
 
     return {
       id: `${node.id}`,
