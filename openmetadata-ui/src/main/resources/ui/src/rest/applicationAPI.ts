@@ -135,3 +135,7 @@ export const restoreApp = async (id: string) => {
 
   return response.data;
 };
+
+export const killApp = async (name: string) => {
+  return await APIClient.post(`${BASE_URL}/stop/${getEncodedFqn(name)}`);
+};
