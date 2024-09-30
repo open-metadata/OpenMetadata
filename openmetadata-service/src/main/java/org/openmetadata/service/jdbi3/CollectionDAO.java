@@ -1403,7 +1403,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM thread_entity te "
                 + "    WHERE MATCH(te.taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
-                + ") AS combined "
+                + ") AS combined WHERE combined.type is not NULL "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -1437,7 +1437,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM thread_entity te "
                 + "    WHERE to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
-                + ") AS combined "
+                + ") AS combined WHERE combined.type is not NULL "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = POSTGRES)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
@@ -4374,6 +4374,12 @@ public interface CollectionDAO {
             "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE stateId = :stateId ORDER BY timestamp DESC")
     List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM test_case_resolution_status_time_series "
+                + "WHERE stateId = :stateId ORDER BY timestamp ASC LIMIT 1")
+    String listFirstTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
 
     @SqlUpdate(
         "DELETE FROM test_case_resolution_status_time_series WHERE entityFQNHash = :entityFQNHash")
