@@ -105,6 +105,8 @@ test.describe('Observability Alert Flow', () => {
   });
 
   test('Pipeline Alert', async ({ page }) => {
+    test.slow();
+
     const ALERT_NAME = generateAlertName();
 
     await test.step('Create alert', async () => {

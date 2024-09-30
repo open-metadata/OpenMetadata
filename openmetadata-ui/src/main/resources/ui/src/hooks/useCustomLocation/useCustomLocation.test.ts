@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react-hooks';
+import process from 'process';
 import { useLocation } from 'react-router-dom';
 import useCustomLocation from './useCustomLocation';
 
