@@ -2231,6 +2231,7 @@ public class ElasticSearchClient implements SearchClient {
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+        restClientBuilder.setCompressionEnabled(true);
         return new RestHighLevelClientBuilder(restClientBuilder.build())
             .setApiCompatibilityMode(true)
             .build();

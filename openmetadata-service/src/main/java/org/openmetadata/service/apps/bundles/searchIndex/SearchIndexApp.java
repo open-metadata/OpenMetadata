@@ -162,7 +162,21 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
+  private void cleanUpStaleJobsFromRuns() {
+    try {
+      collectionDAO
+          .appExtensionTimeSeriesDao()
+          .markStaleEntriesStopped(getApp().getId().toString());
+    } catch (Exception ex) {
+      LOG.error("Failed in Marking Stale Entries Stopped.");
+    }
+  }
+
   private void initializeJob() {
+    // Remove any Stale Jobs
+    cleanUpStaleJobsFromRuns();
+
+    // Initialize New Job
     int totalRecords = getTotalRequestToProcess(jobData.getEntities(), collectionDAO);
     this.jobData.setStats(
         new Stats()
