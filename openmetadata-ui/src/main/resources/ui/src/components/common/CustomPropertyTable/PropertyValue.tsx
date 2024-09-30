@@ -865,7 +865,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                                 isTeam={item.type === 'team'}
                                 name={item.name ?? ''}
                                 type="circle"
-                                width="18"
+                                width="20"
                               />
                             ) : (
                               searchClassBase.getEntityIcon(item.type)
@@ -909,14 +909,14 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 icon={
                   <div
                     className="entity-button-icon m-r-xs"
-                    style={{ width: '18px', display: 'flex' }}>
+                    style={{ width: '20px', display: 'flex' }}>
                     {['user', 'team'].includes(item.type) ? (
                       <ProfilePicture
                         className="d-flex"
                         isTeam={item.type === 'team'}
                         name={item.name ?? ''}
                         type="circle"
-                        width="18"
+                        width="20"
                       />
                     ) : (
                       searchClassBase.getEntityIcon(item.type)
@@ -1111,7 +1111,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   if (isRenderedInRightPanel) {
     return (
       <div
-        className="custom-property-card"
+        className="custom-property-card-right-panel"
         data-testid="custom-property-right-panel-card">
         {isInlineProperty ? customPropertyInlineElement : customPropertyElement}
       </div>
