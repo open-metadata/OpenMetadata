@@ -102,7 +102,7 @@
       "type": "integer"
     },
     "payLoadSize": {
-      "description": "Payload size in bytes depending on config",
+      "description": "Payload size in bytes depending on config.",
       "type": "object",
       "existingJavaType": "java.lang.Long",
       "default": 104857600

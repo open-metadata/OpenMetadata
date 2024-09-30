@@ -51,5 +51,6 @@
     "scheduleTimeline": "Custom",
     "cronExpression": "0 0 * * *"
   },
+  "payLoadSize": "104857600",
   "supportsInterrupt": true
 }

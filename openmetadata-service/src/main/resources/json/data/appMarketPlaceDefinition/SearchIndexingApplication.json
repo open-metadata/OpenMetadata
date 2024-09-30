@@ -60,6 +60,7 @@
     ],
     "recreateIndex": false,
     "batchSize": "100",
+    "payLoadSize": "104857600",
     "searchIndexMappingLanguage": "EN"
   }
 }
