@@ -37,7 +37,7 @@ class CSVUtilsClassBase {
   }
 
   public columnsWithMultipleValuesEscapeNeeded() {
-    return ['extension', 'synonyms'];
+    return ['parent', 'extension', 'synonyms'];
   }
 
   public getEditor(

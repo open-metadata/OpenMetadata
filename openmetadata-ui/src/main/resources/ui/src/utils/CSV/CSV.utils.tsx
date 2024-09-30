@@ -306,18 +306,18 @@ export const convertEntityExtensionToCustomPropertyString = (
   value?: ExtensionDataProps,
   customPropertyType?: Type
 ) => {
-  if (isUndefined(customPropertyType) || isUndefined(value)) {
+  if (isEmpty(customPropertyType) || isEmpty(value)) {
     return;
   }
 
   const keyAndValueTypes: Record<string, CustomProperty> = {};
-  customPropertyType.customProperties?.forEach(
+  customPropertyType?.customProperties?.forEach(
     (cp) => (keyAndValueTypes[cp.name] = cp)
   );
 
   let convertedString = '';
 
-  const objectArray = Object.entries(value);
+  const objectArray = Object.entries(value ?? {});
 
   objectArray.forEach(([key, value], index) => {
     const isLastElement = objectArray.length - 1 === index;
