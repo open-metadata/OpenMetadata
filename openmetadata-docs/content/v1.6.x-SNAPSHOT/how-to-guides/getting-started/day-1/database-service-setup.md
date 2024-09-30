@@ -1,7 +1,6 @@
 ---
 title: Database service setup
 slug: /how-to-guides/getting-started/day-1/database-service-setup
-collate: true
 ---
 
 ## Setting Up a Database Service for Metadata Extraction

@@ -5,6 +5,19 @@ slug: /how-to-guides
 
 # How-to Guides
 
+## Getting Started
+
+Set up and explore OpenMetadata's core features, from basic configuration to advanced functionalities, for a seamless onboarding experience.
+
+{% tilesContainer %}
+{% tile
+    title="Getting Started"
+    description="Unlock metadata insights for informed business decisions."
+    link="/how-to-guides/getting-started"
+    icon="discovery"
+/%}
+{% /tilesContainer %}
+
 The How-to Guides will give you a walk through on accomplishing the basic to the most advanced things in OpenMetadata. These step-by-step guides will help get an overview of the features and also help explore the various functionalities.  
 
 ## Features in OpenMetadata

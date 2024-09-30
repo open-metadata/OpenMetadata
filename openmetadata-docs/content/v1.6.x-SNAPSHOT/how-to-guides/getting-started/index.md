@@ -7,7 +7,7 @@ slug: /how-to-guides/getting-started
 
 Welcome to OpenMetadata's unified platform for data discovery, observability, and governance. Our platform centralizes all data context to help you build high-quality data and AI assets. This guide provides the necessary information to set up your OpenMetadata environment in 30 minutes.
 
-## How Does Collate Work?
+## How Does OpenMetadata Work?
 
 OpenMetadata is designed to support both technical and non-technical data practitioners across various use cases, including data discovery, lineage, observability, quality, collaboration, governance, and insights.
 
@@ -18,7 +18,7 @@ The platform’s native collaboration features support shared workflows, enablin
 
 ## Key Features of OpenMetadata
 
-Before we get started, here’s a quick summary of some of Collate’s main features:
+Before we get started, here’s a quick summary of some of OpenMetadata’s main features:
 
 ### Discovery
 - Integrated catalog, data quality, and glossary
