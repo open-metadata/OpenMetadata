@@ -874,7 +874,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                         }
                         type="text">
                         <Typography.Text
-                          className="text-left text-lg"
+                          className="text-left text-lg truncate w-68"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
@@ -925,7 +925,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 }
                 type="text">
                 <Typography.Text
-                  className="text-left text-lg"
+                  className="text-left text-lg truncate w-68"
                   data-testid="entityReference-value-name"
                   ellipsis={{ tooltip: true }}>
                   {getEntityName(item)}
