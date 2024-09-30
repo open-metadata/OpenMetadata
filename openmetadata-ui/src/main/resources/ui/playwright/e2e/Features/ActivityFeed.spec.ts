@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import {
   PolicyClass,
   PolicyRulesType,
@@ -43,8 +43,8 @@ import {
   checkTaskCount,
   createDescriptionTask,
   createTagTask,
-  TASK_OPEN_FETCH_LINK,
   TaskDetails,
+  TASK_OPEN_FETCH_LINK,
 } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
 
