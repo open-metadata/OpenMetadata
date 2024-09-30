@@ -17,8 +17,8 @@ To run this we need OpenMetadata server up and running.
 No sample data is required beforehand
 """
 import pytest
-from ingestion.tests.integration.datalake.conftest import BUCKET_NAME
 
+from ingestion.tests.integration.datalake.conftest import BUCKET_NAME
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
