@@ -7,7 +7,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTI
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,11 +51,14 @@ public class DataInsightsEntityEnricherProcessor
     try {
       enrichedMaps =
           input.getData().stream()
-              .map(entity -> getEntityVersions(entity, contextData))
-              .flatMap(Collection::stream)
-              .map(entityVersionMap -> enrichEntity(entityVersionMap, contextData))
-              .map(this::generateDailyEntitySnapshots)
-              .flatMap(Collection::stream)
+              .flatMap(
+                  entity ->
+                      getEntityVersions(entity, contextData).stream()
+                          .flatMap(
+                              entityVersionMap ->
+                                  generateDailyEntitySnapshots(
+                                      enrichEntity(entityVersionMap, contextData))
+                                      .stream()))
               .toList();
       updateStats(input.getData().size(), 0);
     } catch (Exception e) {
@@ -216,6 +218,8 @@ public class DataInsightsEntityEnricherProcessor
               .getColumns().stream()
                   .map(column -> CommonUtil.nullOrEmpty(column.getDescription()) ? 0 : 1)
                   .reduce(0, Integer::sum));
+      entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
+    } else {
       entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
     }
 

@@ -60,22 +60,10 @@
           }
         },
         "value": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+          "type": "text"
         },
         "predictedValue": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+          "type": "text"
         }
       },
       "testCase": {
@@ -132,6 +120,15 @@
         "entityFQN": {
           "type": "keyword",
           "normalizer": "lowercase_normalizer"
+        },
+        "entityLink": {
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer",
+          "fields": {
+            "nonNormalized": {
+              "type": "keyword"
+            }
+          }
         },
         "parameterValues": {
           "properties": {
@@ -350,7 +347,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -398,7 +395,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"

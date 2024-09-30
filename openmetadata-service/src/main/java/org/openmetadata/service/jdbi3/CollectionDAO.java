@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Builder;
@@ -84,7 +85,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.Metrics;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
@@ -176,6 +177,9 @@ public interface CollectionDAO {
   TestCaseResolutionStatusTimeSeriesDAO testCaseResolutionStatusTimeSeriesDao();
 
   @CreateSqlObject
+  TestCaseResultTimeSeriesDAO testCaseResultTimeSeriesDao();
+
+  @CreateSqlObject
   RoleDAO roleDAO();
 
   @CreateSqlObject
@@ -206,7 +210,7 @@ public interface CollectionDAO {
   UsageDAO usageDAO();
 
   @CreateSqlObject
-  MetricsDAO metricsDAO();
+  MetricDAO metricDAO();
 
   @CreateSqlObject
   ChartDAO chartDAO();
@@ -1398,7 +1402,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM thread_entity te "
                 + "    WHERE MATCH(te.taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
-                + ") AS combined "
+                + ") AS combined WHERE combined.type is not NULL "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -1432,7 +1436,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM thread_entity te "
                 + "    WHERE to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
-                + ") AS combined "
+                + ") AS combined WHERE combined.type is not NULL "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = POSTGRES)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
@@ -2063,15 +2067,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface MetricsDAO extends EntityDAO<Metrics> {
+  interface MetricDAO extends EntityDAO<Metric> {
     @Override
     default String getTableName() {
       return "metric_entity";
     }
 
     @Override
-    default Class<Metrics> getEntityClass() {
-      return Metrics.class;
+    default Class<Metric> getEntityClass() {
+      return Metric.class;
     }
 
     @Override
@@ -3234,7 +3238,8 @@ public interface CollectionDAO {
       }
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
-      beforeName = FullyQualifiedName.unquoteName(beforeName);
+      beforeName =
+          Optional.ofNullable(beforeName).map(FullyQualifiedName::unquoteName).orElse(null);
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
@@ -3278,7 +3283,7 @@ public interface CollectionDAO {
       }
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
-      afterName = FullyQualifiedName.unquoteName(afterName);
+      afterName = Optional.ofNullable(afterName).map(FullyQualifiedName::unquoteName).orElse(null);
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
@@ -4408,10 +4413,13 @@ public interface CollectionDAO {
         outerFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
         outerFilter.addQueryParam("assignee", assignee);
 
+        String condition = filter.getCondition();
+        condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+
         return listWithOffset(
             getTimeSeriesTableName(),
             filter.getQueryParams(),
-            filter.getCondition(),
+            condition,
             getPartitionFieldName(),
             limit,
             offset,
@@ -4420,14 +4428,72 @@ public interface CollectionDAO {
             filter.getQueryParams(),
             outerFilter.getCondition());
       }
+      String condition = filter.getCondition();
+      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
       return listWithOffset(
           getTimeSeriesTableName(),
           filter.getQueryParams(),
-          filter.getCondition(),
+          condition,
           limit,
           offset,
           startTs,
           endTs);
+    }
+
+    @Override
+    default int listCount(ListFilter filter, Long startTs, Long endTs, boolean latest) {
+      String condition = filter.getCondition();
+      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      return latest
+          ? listCount(
+              getTimeSeriesTableName(),
+              getPartitionFieldName(),
+              filter.getQueryParams(),
+              condition,
+              startTs,
+              endTs)
+          : listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+    }
+  }
+
+  interface TestCaseResultTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "data_quality_data_time_series";
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, :json, :incidentStateId)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, (:json :: jsonb), :incidentStateId)",
+        connectionType = POSTGRES)
+    void insert(
+        @Define("table") String table,
+        @BindFQN("testCaseFQNHash") String testCaseFQNHash,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json,
+        @Bind("incidentStateId") String incidentStateId);
+
+    default void insert(
+        String testCaseFQN,
+        String extension,
+        String jsonSchema,
+        String json,
+        UUID incidentStateId) {
+
+      insert(
+          getTimeSeriesTableName(),
+          testCaseFQN,
+          extension,
+          jsonSchema,
+          json,
+          incidentStateId != null ? incidentStateId.toString() : null);
     }
   }
 
@@ -5039,6 +5105,15 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM suggestions WHERE fqnHash = :fqnHash")
     void deleteByFQN(@BindUUID("fqnHash") String fullyQualifiedName);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM suggestions suggestions WHERE JSON_EXTRACT(json, '$.createdBy.id') = :createdBy",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM suggestions suggestions WHERE json #>> '{createdBy,id}' = :createdBy",
+        connectionType = POSTGRES)
+    void deleteByCreatedBy(@BindUUID("createdBy") UUID id);
 
     @SqlQuery("SELECT json FROM suggestions <condition> ORDER BY updatedAt DESC LIMIT :limit")
     List<String> list(@Bind("limit") int limit, @Define("condition") String condition);

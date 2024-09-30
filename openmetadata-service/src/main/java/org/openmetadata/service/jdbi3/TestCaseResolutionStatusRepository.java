@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.service.Entity.getEntityReferenceByName;
 
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -10,9 +11,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
+import lombok.SneakyThrows;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -90,9 +93,16 @@ public class TestCaseResolutionStatusRepository
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, ENTITY_UPDATED);
   }
 
-  private void validatePatchFields(
-      TestCaseResolutionStatus updated, TestCaseResolutionStatus original)
-      throws IntrospectionException, InvocationTargetException, IllegalAccessException {
+  @Override
+  protected void setUpdatedFields(TestCaseResolutionStatus updated, String user) {
+    updated.setUpdatedAt(System.currentTimeMillis());
+    updated.setUpdatedBy(EntityUtil.getEntityReference("User", user));
+  }
+
+  @SneakyThrows
+  @Override
+  protected void validatePatchFields(
+      TestCaseResolutionStatus updated, TestCaseResolutionStatus original) {
     // Validate that only updatedAt and updatedBy fields are updated
     BeanInfo beanInfo = Introspector.getBeanInfo(TestCaseResolutionStatus.class);
 
@@ -155,7 +165,8 @@ public class TestCaseResolutionStatusRepository
 
   @Override
   @Transaction
-  public void storeInternal(TestCaseResolutionStatus recordEntity, String recordFQN) {
+  public void storeInternal(
+      TestCaseResolutionStatus recordEntity, String recordFQN, String extension) {
 
     TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
 
@@ -202,7 +213,7 @@ public class TestCaseResolutionStatusRepository
     }
     EntityReference testCaseReference = recordEntity.getTestCaseReference();
     recordEntity.withTestCaseReference(null); // we don't want to store the reference in the record
-    super.storeInternal(recordEntity, recordFQN);
+    timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
     recordEntity.withTestCaseReference(testCaseReference);
   }
 
@@ -228,8 +239,7 @@ public class TestCaseResolutionStatusRepository
     switch (incidentStatus.getTestCaseResolutionStatusType()) {
       case Ack -> // If the incident has been acknowledged, the task will be assigned to the user
       // who acknowledged it
-      createTask(
-          incidentStatus, Collections.singletonList(incidentStatus.getUpdatedBy()), "New Incident");
+      createTask(incidentStatus, Collections.singletonList(incidentStatus.getUpdatedBy()));
       case Assigned -> {
         // If no existing task is found (New -> Assigned), we'll create a new one,
         // otherwise (Ack -> Assigned) we'll update the existing
@@ -239,8 +249,7 @@ public class TestCaseResolutionStatusRepository
                 incidentStatus.getTestCaseResolutionStatusDetails(), Assigned.class);
         if (existingTask == null) {
           // New -> Assigned flow
-          createTask(
-              incidentStatus, Collections.singletonList(assigned.getAssignee()), "New Incident");
+          createTask(incidentStatus, Collections.singletonList(assigned.getAssignee()));
         } else {
           // Ack -> Assigned or Assigned -> Assigned flow
           patchTaskAssignee(
@@ -294,12 +303,15 @@ public class TestCaseResolutionStatusRepository
     EntityReference testCaseReference = newIncidentStatus.getTestCaseReference();
     newIncidentStatus.setTestCaseReference(
         null); // we don't want to store the reference in the record
-    super.storeInternal(newIncidentStatus, testCase.getFullyQualifiedName());
+    timeSeriesDao.insert(
+        testCaseReference.getFullyQualifiedName(),
+        entityType,
+        JsonUtils.pojoToJson(newIncidentStatus));
     newIncidentStatus.setTestCaseReference(testCaseReference);
   }
 
   private void createTask(
-      TestCaseResolutionStatus incidentStatus, List<EntityReference> assignees, String message) {
+      TestCaseResolutionStatus incidentStatus, List<EntityReference> assignees) {
 
     TaskDetails taskDetails =
         new TaskDetails()
@@ -316,7 +328,7 @@ public class TestCaseResolutionStatusRepository
         new Thread()
             .withId(UUID.randomUUID())
             .withThreadTs(System.currentTimeMillis())
-            .withMessage(message)
+            .withMessage("New Incident")
             .withCreatedBy(incidentStatus.getUpdatedBy().getName())
             .withAbout(entityLink.getLinkString())
             .withType(ThreadType.Task)
@@ -374,5 +386,56 @@ public class TestCaseResolutionStatusRepository
     TestCaseRepository testCaseRepository =
         (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     testCaseRepository.deleteTestCaseFailedRowsSample(entity.getTestCaseReference().getId());
+  }
+
+  public static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
+    // if originEntityFQN is present, we need to join with test_case table
+    if (filter.getQueryParam("originEntityFQN") != null) {
+      condition =
+          """
+              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash FROM test_case) tc \
+              ON entityFQNHash = testCaseHash
+              """
+              + condition;
+    }
+    return condition;
+  }
+
+  protected static UUID getOrCreateIncident(TestCase testCase, String updatedBy) {
+    CollectionDAO daoCollection = Entity.getCollectionDAO();
+    TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+
+    String json =
+        daoCollection
+            .testCaseResolutionStatusTimeSeriesDao()
+            .getLatestRecord(testCase.getFullyQualifiedName());
+
+    TestCaseResolutionStatus storedTestCaseResolutionStatus =
+        json != null ? JsonUtils.readValue(json, TestCaseResolutionStatus.class) : null;
+
+    // if we already have a non resolve status then we'll simply return it
+    if (Boolean.TRUE.equals(
+        testCaseResolutionStatusRepository.unresolvedIncident(storedTestCaseResolutionStatus))) {
+      // storedTestCaseResolutionStatus != null is checked in unresolvedIncident
+      return Objects.requireNonNull(storedTestCaseResolutionStatus).getStateId();
+    }
+
+    // if the incident is null or resolved then we'll create a new one
+    TestCaseResolutionStatus status =
+        new TestCaseResolutionStatus()
+            .withStateId(UUID.randomUUID())
+            .withTimestamp(System.currentTimeMillis())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+            .withUpdatedBy(getEntityReferenceByName(Entity.USER, updatedBy, Include.ALL))
+            .withUpdatedAt(System.currentTimeMillis())
+            .withTestCaseReference(testCase.getEntityReference());
+
+    testCaseResolutionStatusRepository.createNewRecord(status, testCase.getFullyQualifiedName());
+    TestCaseResolutionStatus incident =
+        testCaseResolutionStatusRepository.getLatestRecord(testCase.getFullyQualifiedName());
+
+    return incident.getStateId();
   }
 }

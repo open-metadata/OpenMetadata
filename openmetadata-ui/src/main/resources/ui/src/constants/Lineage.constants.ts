@@ -30,6 +30,7 @@ export const DATATYPES_HAVING_SUBFIELDS = [
   'STRUCT',
   'ARRAY',
   'UNION',
+  'TABLE',
 ];
 
 export const PIPELINE_EDGE_WIDTH = 200;
@@ -70,6 +71,10 @@ export const entityData = [
   {
     type: SearchIndex.API_ENDPOINT_INDEX,
     label: t('label.api-endpoint-plural'),
+  },
+  {
+    type: SearchIndex.METRIC_SEARCH_INDEX,
+    label: t('label.metric-plural'),
   },
 ];
 

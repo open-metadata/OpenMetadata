@@ -50,7 +50,7 @@ To add a private key, you need to include it in the keystore and update the conf
 
 {% /note %}
 
-SP Metadata XML is available at "http://localhost:8585/api/v1/saml/metadata", `localhost` needs to be updated with the correct URI.
+SP Metadata XML is available at "http://localhost:8585/api/v1/saml/acs", `localhost` needs to be updated with the correct URI.
 
 ### Security Configuration
 

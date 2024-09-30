@@ -10,6 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@btn-bg-color: #00000005;
+@enum-tag-bg-color: #00000008;
+
 .entity-reference-list-item:last-child {
   border-bottom: none;
 }
@@ -21,8 +25,27 @@
     align-items: center;
     justify-content: center;
     svg {
-      height: 18px;
-      width: 18px;
+      height: 24px;
+      width: 24px;
     }
   }
+}
+
+.ant-btn-text.custom-property-value-toggle-btn {
+  border-radius: 100%;
+  background: @btn-bg-color;
+  border-color: transparent;
+  height: 30px;
+  width: 30px;
+  .anticon {
+    vertical-align: middle;
+  }
+}
+
+.enum-key-tag {
+  width: max-content;
+  margin: 0px;
+  border: none;
+  padding: 4px;
+  background: @enum-tag-bg-color;
 }

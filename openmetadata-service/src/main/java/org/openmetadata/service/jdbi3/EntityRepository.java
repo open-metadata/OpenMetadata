@@ -67,6 +67,7 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
@@ -100,6 +101,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.json.JsonPatch;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response.Status;
@@ -143,6 +145,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -934,7 +937,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepareInternal(updated, true);
-    populateOwners(updated.getOwners());
+    // Validate and populate owners
+    List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
+    updated.setOwners(validatedOwners);
+
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -966,7 +972,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepareInternal(updated, true);
-    populateOwners(updated.getOwners());
+    // Validate and populate owners
+    List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
+    updated.setOwners(validatedOwners);
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -1421,38 +1429,113 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
       String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-      DateTimeFormatter formatter;
+
       try {
-        if ("date-cp".equals(customPropertyType)) {
-          DateTimeFormatter inputFormatter =
-              DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig), Locale.ENGLISH);
-
-          // Parse the input string into a TemporalAccessor
-          TemporalAccessor date = inputFormatter.parse(fieldValue.textValue());
-
-          // Create a formatter for the desired output format
-          DateTimeFormatter outputFormatter =
-              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
-          ((ObjectNode) jsonNode).put(fieldName, outputFormatter.format(date));
-        } else if ("dateTime-cp".equals(customPropertyType)) {
-          formatter = DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig));
-          LocalDateTime dateTime = LocalDateTime.parse(fieldValue.textValue(), formatter);
-          ((ObjectNode) jsonNode).put(fieldName, dateTime.format(formatter));
-        } else if ("time-cp".equals(customPropertyType)) {
-          formatter = DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig));
-          LocalTime time = LocalTime.parse(fieldValue.textValue(), formatter);
-          ((ObjectNode) jsonNode).put(fieldName, time.format(formatter));
-        }
+        validateAndUpdateExtensionBasedOnPropertyType(
+            entity,
+            (ObjectNode) jsonNode,
+            fieldName,
+            fieldValue,
+            customPropertyType,
+            propertyConfig);
       } catch (DateTimeParseException e) {
         throw new IllegalArgumentException(
-            CatalogExceptionMessage.dateTimeValidationError(
-                fieldName, TypeRegistry.getCustomPropertyConfig(entityType, fieldName)));
+            CatalogExceptionMessage.dateTimeValidationError(fieldName, propertyConfig));
       }
-      Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
+
+      Set<ValidationMessage> validationMessages = jsonSchema.validate(entry.getValue());
       if (!validationMessages.isEmpty()) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
       }
+    }
+  }
+
+  private void validateAndUpdateExtensionBasedOnPropertyType(
+      T entity,
+      ObjectNode jsonNode,
+      String fieldName,
+      JsonNode fieldValue,
+      String customPropertyType,
+      String propertyConfig) {
+
+    switch (customPropertyType) {
+      case "date-cp", "dateTime-cp", "time-cp" -> {
+        String formattedValue =
+            getFormattedDateTimeField(
+                fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
+        jsonNode.put(fieldName, formattedValue);
+      }
+      case "enumWithDescriptions" -> handleEnumWithDescriptions(
+          fieldName, fieldValue, propertyConfig, jsonNode, entity);
+      default -> {}
+    }
+  }
+
+  private String getFormattedDateTimeField(
+      String fieldValue, String customPropertyType, String propertyConfig, String fieldName) {
+    DateTimeFormatter formatter;
+
+    try {
+      return switch (customPropertyType) {
+        case "date-cp" -> {
+          DateTimeFormatter inputFormatter =
+              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+          TemporalAccessor date = inputFormatter.parse(fieldValue);
+          DateTimeFormatter outputFormatter =
+              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+          yield outputFormatter.format(date);
+        }
+        case "dateTime-cp" -> {
+          formatter = DateTimeFormatter.ofPattern(propertyConfig);
+          LocalDateTime dateTime = LocalDateTime.parse(fieldValue, formatter);
+          yield dateTime.format(formatter);
+        }
+        case "time-cp" -> {
+          formatter = DateTimeFormatter.ofPattern(propertyConfig);
+          LocalTime time = LocalTime.parse(fieldValue, formatter);
+          yield time.format(formatter);
+        }
+        default -> throw new IllegalArgumentException(
+            "Unsupported customPropertyType: " + customPropertyType);
+      };
+    } catch (DateTimeParseException e) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.dateTimeValidationError(fieldName, propertyConfig));
+    }
+  }
+
+  private void handleEnumWithDescriptions(
+      String fieldName, JsonNode fieldValue, String propertyConfig, ObjectNode jsonNode, T entity) {
+    JsonNode propertyConfigNode = JsonUtils.readTree(propertyConfig);
+    EnumWithDescriptionsConfig config =
+        JsonUtils.treeToValue(propertyConfigNode, EnumWithDescriptionsConfig.class);
+
+    if (!config.getMultiSelect() && fieldValue.size() > 1) {
+      throw new IllegalArgumentException(
+          "Only one key is allowed for non-multiSelect enumWithDescriptions");
+    }
+    // Replace each enumWithDescriptions key in the fieldValue with the corresponding object from
+    // the propertyConfig
+    Map<String, JsonNode> keyToObjectMap =
+        StreamSupport.stream(propertyConfigNode.get("values").spliterator(), false)
+            .collect(Collectors.toMap(node -> node.get("key").asText(), node -> node));
+
+    if (fieldValue.isArray()) {
+      ArrayNode newArray = JsonUtils.getObjectNode().arrayNode();
+      fieldValue.forEach(
+          valueNode -> {
+            String key = valueNode.isTextual() ? valueNode.asText() : valueNode.get("key").asText();
+            JsonNode valueObject = keyToObjectMap.get(key);
+
+            if (valueObject == null) {
+              throw new IllegalArgumentException("Key not found in propertyConfig: " + key);
+            }
+            newArray.add(valueNode.isTextual() ? valueObject : valueNode);
+          });
+
+      jsonNode.replace(fieldName, newArray);
+      entity.setExtension(JsonUtils.treeToValue(jsonNode, Object.class));
     }
   }
 
@@ -1972,21 +2055,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  protected void populateOwners(List<EntityReference> owners) {
+  protected List<EntityReference> getValidatedOwners(List<EntityReference> owners) {
     if (nullOrEmpty(owners)) {
-      return;
+      return owners;
     }
     // populate owner entityRefs with all fields
     List<EntityReference> refs = validateOwners(owners);
     if (nullOrEmpty(refs)) {
-      return;
+      return owners;
     }
     refs.sort(Comparator.comparing(EntityReference::getName));
-    owners.sort(Comparator.comparing(EntityReference::getName));
-
-    for (int i = 0; i < owners.size(); i++) {
-      EntityUtil.copy(refs.get(i), owners.get(i));
-    }
+    return refs;
   }
 
   @Transaction
@@ -2941,8 +3020,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         addRelationship(
             fromId, ref.getId(), fromEntityType, toEntityType, relationshipType, bidirectional);
       }
-      updatedToRefs.sort(EntityUtil.compareEntityReference);
-      origToRefs.sort(EntityUtil.compareEntityReference);
+      if (!nullOrEmpty(updatedToRefs)) {
+        updatedToRefs.sort(EntityUtil.compareEntityReference);
+      }
+      if (!nullOrEmpty(origToRefs)) {
+        origToRefs.sort(EntityUtil.compareEntityReference);
+      }
     }
 
     public final void updateToRelationship(

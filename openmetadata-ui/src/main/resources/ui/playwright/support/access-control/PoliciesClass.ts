@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { uuid } from '../../utils/common';
 
 type ResponseDataType = {
@@ -49,6 +50,22 @@ export class PolicyClass {
     const response = await apiContext.post('/api/v1/policies', {
       data: { ...this.data, rules },
     });
+    const data = await response.json();
+    this.responseData = data;
+
+    return data;
+  }
+
+  async patch(apiContext: APIRequestContext, patchData: Operation[]) {
+    const response = await apiContext.patch(
+      `/api/v1/policies/${this.responseData.id}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
     const data = await response.json();
     this.responseData = data;
 

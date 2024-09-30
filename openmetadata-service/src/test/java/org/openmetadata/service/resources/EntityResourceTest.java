@@ -138,6 +138,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -191,6 +192,7 @@ import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
+import org.openmetadata.service.resources.metrics.MetricResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.APIServiceResourceTest;
@@ -333,6 +335,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Glossary GLOSSARY1;
   public static Glossary GLOSSARY2;
 
+  public static Metric Metric1;
+  public static Metric Metric2;
+
   public static GlossaryTerm GLOSSARY1_TERM1;
   public static TagLabel GLOSSARY1_TERM1_LABEL;
 
@@ -386,6 +391,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Type STRING_TYPE;
 
   public static Type ENUM_TYPE;
+
+  public static Type ENUM_WITH_DESCRIPTIONS_TYPE;
 
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
   // evey time junit tests are run to save time. But over the course of development of a release,
@@ -448,6 +455,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     new TagResourceTest().setupTags();
     new GlossaryResourceTest().setupGlossaries();
+    new MetricResourceTest().setupMetrics();
 
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
@@ -1549,6 +1557,37 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         () -> patchEntity(newEntity.getId(), newJson, newEntity, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         CatalogExceptionMessage.invalidOwnerType(TEST_DEFINITION));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void patch_entityUpdateOwnerFromNull_200(TestInfo test) throws IOException {
+    if (!supportsOwners || !supportsPatch) {
+      return; // Entity doesn't support ownership
+    }
+
+    // Create Entity with Null Owner
+    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    T createdEntity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    T entity = getEntity(createdEntity.getId(), allFields, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> previousOwners = entity.getOwners();
+    if (nullOrEmpty(previousOwners)) {
+      entity.setOwners(null);
+    }
+
+    // Check if the Owner is update to user1 and user 2
+    List<EntityReference> updateOwners =
+        List.of(
+            new EntityReference().withId(USER1.getId()).withType(USER),
+            new EntityReference().withId(USER2.getId()).withType(USER));
+
+    String json = JsonUtils.pojoToJson(entity);
+    entity.setOwners(updateOwners);
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    fieldAdded(change, FIELD_OWNERS, updateOwners);
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertEntityReferences(updateOwners, entity.getOwners());
   }
 
   @Test

@@ -64,7 +64,7 @@ Security requirements for your **production** environment:
       authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
       nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"}
     sp:
-      entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}
+      entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/acs"}
       acs: ${SAML_SP_ACS:-"http://localhost:8585/api/v1/saml/acs"}
       spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
       callback: ${SAML_SP_CALLBACK:-"http://localhost:8585/saml/callback"}
@@ -95,7 +95,7 @@ Security requirements for your **production** environment:
     `authorityUrl` -> set as {http}/{https}://{domain}:{port}/api/v1/saml/login
 
 - SP Config
-  `entityId` -> -> set as {http}/{https}://{domain}:{port}/api/v1/saml/metadata
+  `entityId` -> -> set as {http}/{https}://{domain}:{port}/api/v1/saml/acs
   `acs` -> Assertion Consumer Url , set as {http}/{https}://{domain}:{port}/api/v1/saml/acs
   `spX509Certificate` -> set to your X509 Signing Key
   `callback` -> set as {http}/{https}://{domain}/api/v1/saml/callback

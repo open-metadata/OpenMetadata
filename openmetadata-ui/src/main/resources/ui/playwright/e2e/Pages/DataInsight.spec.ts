@@ -169,7 +169,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await redirectToHomePage(page);
 
     await kpiResponse;
-    
+
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
@@ -187,8 +187,13 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     for (const data of KPI_DATA) {
       await page.getByTestId(`delete-action-${data.displayName}`).click();
-      await page.getByTestId('confirmation-text-input').type('DELETE');
+      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      const deleteResponse = page.waitForResponse(
+        `/api/v1/kpi/*?hardDelete=true&recursive=false`
+      );
       await page.getByTestId('confirm-button').click();
+
+      await deleteResponse;
     }
   });
 });

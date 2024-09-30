@@ -39,9 +39,10 @@ describe('LinkBlot', () => {
       value: 'Link Text',
       link: 'https://example.com/',
       id: 'linkId',
+      denotationChar: '@',
     };
 
-    const linkElement = LinkBlot.render(data);
+    const linkElement = LinkBlot.render(data) as HTMLAnchorElement;
 
     expect(linkElement.tagName).toBe('A');
     expect(linkElement.innerText).toBe(data.value);

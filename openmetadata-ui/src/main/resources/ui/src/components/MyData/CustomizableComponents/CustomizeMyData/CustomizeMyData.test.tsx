@@ -106,8 +106,11 @@ jest.mock('../../../../rest/searchAPI', () => {
   };
 });
 
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '/' }));
+});
+
 jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({ pathname: '' })),
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),

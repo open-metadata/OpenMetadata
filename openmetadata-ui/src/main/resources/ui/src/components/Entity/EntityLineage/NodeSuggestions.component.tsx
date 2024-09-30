@@ -13,7 +13,7 @@
 
 import { Button, Select } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, debounce } from 'lodash';
+import { capitalize, debounce, get } from 'lodash';
 import React, {
   FC,
   HTMLAttributes,
@@ -125,7 +125,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
               }}>
               <div className="d-flex items-center w-full overflow-hidden">
                 <img
-                  alt={entity.serviceType}
+                  alt={get(entity, 'serviceType', '') || entity.name}
                   className="m-r-xs"
                   height="16px"
                   src={serviceUtilClassBase.getServiceTypeLogo(entity)}

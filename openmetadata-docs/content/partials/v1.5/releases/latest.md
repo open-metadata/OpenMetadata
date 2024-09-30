@@ -1,7 +1,7 @@
-# 1.5.2 Release 🎉
+# 1.5.5 Release 🎉
 
 {% note noteType="Tip" %}
-**Sep 2nd, 2024**
+**Sep 25th, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,22 +10,37 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.2!
+Learn how to upgrade your OpenMetadata instance to 1.5.5!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.2-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.5-release).
 
-# What's New
+# What's Changed
 
-- Resolved issue with lineage lookup for long Fully Qualified Names (FQNs), ensuring accurate lineage tracking and display.
-- Fixed the 'Edit Reviewers' permission issue, allowing correct permission management for editing reviewers.
-- Addressed email update issues to ensure that email addresses are properly updated throughout the system.
-- Fixed the delete lineage functionality to handle cases where override lineage is enabled, preventing errors and ensuring consistency.
-- Added support for the 'Edit Assign' button in the Incident Manager, allowing for easier assignment changes.
-- Introduced a resizable layout for the glossary page, improving usability and adaptability to different screen sizes.
-- Enhanced the display of tier tags with improved styling for better visibility and distinction.
-- Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
-- Added custom properties support in Data Product.
+- Made the type optional in ES Response.
+- Added support for refresh tokens with multiple tabs open.
+- Resolved issue of overriding user info after login.
+- Updated the custom property entities data model, along with the data product and database schema icons.
+- Ensured Teams and Owner fields are correctly passed in the policy API call.
+- Enhanced PII logging information.
+- Addressed the paginate_es issue in OpenSearch.
+- Decrypted JWT internally for system health checks.
+- Implemented multithreading in View Lineage Processing.
+- Improved search relevancy.
+- Resolved issue with owners patch.
+- Fixed Snowflake data diff issue.
+- Updated Presidio Analyzer version and validated support for legal entities.
+- Added validations for Salesforce connection.
+- Allowed PII Processor to operate without storing sample data.
+- Added seconds to the human-readable format scale for test case graphs.
+- Added missing field in glossary term.
+- Excluded defaultPersona if not present in personas.
+- Resolved team export issue.
+- Updated Python lineage SDK to work with UUID and FQN models.
+- Fixed LDAP login issue.
+- Column sizing of data quality and pipeline widget ${CollateIconWithLinkMD}
+- Export with new line in description ${CollateIconWithLinkMD}
+- Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.1-release...1.5.2-release
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.4-release...1.5.5-release

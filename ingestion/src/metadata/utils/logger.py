@@ -13,10 +13,11 @@ Module centralising logger configs
 """
 
 import logging
+from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
 from types import DynamicClassAttribute
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -36,6 +37,8 @@ BASE_LOGGING_FORMAT = (
     "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 )
 logging.basicConfig(format=BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
+
+REDACTED_KEYS = {"serviceConnection", "securityConfig"}
 
 
 class Loggers(Enum):
@@ -170,10 +173,14 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):
 
 
 def log_ansi_encoded_string(
-    color: Optional[ANSI] = None, bold: bool = False, message: str = ""
+    color: Optional[ANSI] = None,
+    bold: bool = False,
+    message: str = "",
+    level=logging.INFO,
 ):
-    utils_logger().info(
-        f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}"
+    utils_logger().log(
+        level=level,
+        msg=f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}",
     )
 
 
@@ -260,3 +267,21 @@ def _(record: OMetaPipelineStatus) -> str:
 def _(record: PatchRequest) -> str:
     """Get the log of the new entity"""
     return get_log_name(record.new_entity)
+
+
+def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:
+    config_copy = deepcopy(config)
+
+    def traverse_and_modify(obj):
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if key in REDACTED_KEYS:
+                    obj[key] = "REDACTED"
+                else:
+                    traverse_and_modify(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                traverse_and_modify(item)
+
+    traverse_and_modify(config_copy)
+    return config_copy

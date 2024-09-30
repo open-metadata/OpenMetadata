@@ -92,7 +92,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "testCaseResolutionStatus",
           "apiService",
           "apiEndpoint",
-          "apiCollection");
+          "apiCollection",
+          "metric");
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
           ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
@@ -234,7 +235,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       reCreateIndexes(paginatedSource.getEntityType());
       contextData.put(ENTITY_TYPE_KEY, paginatedSource.getEntityType());
       Object resultList;
-      while (!stopped && !paginatedSource.isDone()) {
+      while (!isJobInterrupted && !stopped && !paginatedSource.isDone()) {
         try {
           resultList = paginatedSource.readNext(null);
           if (!TIME_SERIES_ENTITIES.contains(paginatedSource.getEntityType())) {
@@ -263,6 +264,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
           paginatedSource.updateStats(
               rx.getIndexingError().getSuccessCount(), rx.getIndexingError().getFailedCount());
         } finally {
+          if (isJobInterrupted) {
+            LOG.info("Search Indexing will now return since the Job has been interrupted.");
+            jobData.setStatus(EventPublisherJob.Status.STOPPED);
+          }
           updateStats(paginatedSource.getEntityType(), paginatedSource.getStats());
           sendUpdates(jobExecutionContext);
         }

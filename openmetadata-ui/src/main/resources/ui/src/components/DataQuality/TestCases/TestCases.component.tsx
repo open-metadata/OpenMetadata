@@ -43,12 +43,13 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
   TIER_CATEGORY,
 } from '../../../constants/constants';
 import {
@@ -63,6 +64,7 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
@@ -82,7 +84,7 @@ import { TestCaseSearchParams } from '../DataQuality.interface';
 export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const [form] = useForm();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: DataQualityPageTabs }>();
   const { permissions } = usePermissionProvider();
@@ -211,6 +213,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       setIsOptionsLoading(true);
       const { data } = await getTags({
         parent: 'Tier',
+        limit: PAGE_SIZE_LARGE,
       });
 
       const options = data.map((hit) => {
@@ -581,6 +584,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 name="tier">
                 <Select
                   allowClear
+                  showSearch
                   data-testid="tier-select-filter"
                   options={tierOptions}
                   placeholder={t('label.tier')}

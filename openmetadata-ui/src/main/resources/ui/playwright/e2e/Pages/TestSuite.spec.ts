@@ -55,6 +55,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Logical TestSuite', async ({ page }) => {
+  test.slow();
+
   const NEW_TEST_SUITE = {
     name: `mysql_matrix-${uuid()}`,
     description: 'mysql critical matrix',
@@ -125,13 +127,13 @@ test('Logical TestSuite', async ({ page }) => {
 
   await test.step('Add test case to logical test suite', async () => {
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases?fields=*'
+      '/api/v1/search/query?q=*&index=test_case_search_index*'
     );
     await page.click('[data-testid="add-test-case-btn"]');
     await testCaseResponse;
 
     const getTestCase = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=test_case_search_index*'
+      `/api/v1/search/query?q=*${testCaseName2}*&index=test_case_search_index*`
     );
     await page.fill('[data-testid="searchbar"]', testCaseName2);
     await getTestCase;
