@@ -103,8 +103,9 @@
     },
     "payLoadSize": {
       "description": "Payload size in bytes depending on config",
-      "type": "integer",
-      "default": 10485760
+      "type": "object",
+      "existingJavaType": "java.lang.Long",
+      "default": 104857600
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
