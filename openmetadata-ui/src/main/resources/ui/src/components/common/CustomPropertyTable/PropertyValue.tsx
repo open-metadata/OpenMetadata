@@ -1011,37 +1011,39 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   }, [property, extension, contentRef, value]);
 
   const customPropertyInlineElement = (
-    <div className="d-flex justify-between w-full" data-testid={propertyName}>
-      <div className="d-flex flex-column gap-1 w-full">
-        <Typography.Text
-          className="text-md text-grey-body"
-          data-testid="property-name">
-          {getEntityName(property)}
-        </Typography.Text>
-        <RichTextEditorPreviewer
-          className="text-grey-muted"
-          markdown={property.description || ''}
-          maxLength={70}
-        />
-      </div>
+    <div className="d-flex flex-column gap-2" data-testid={propertyName}>
+      <div className="d-flex justify-between w-full">
+        <div className="d-flex flex-column gap-1 w-full">
+          <Typography.Text
+            className="text-md text-grey-body"
+            data-testid="property-name">
+            {getEntityName(property)}
+          </Typography.Text>
+        </div>
 
-      <div className="d-flex gap-2 w-full items-center justify-end">
-        {showInput ? getPropertyInput() : getValueElement()}
-        {hasEditPermissions && !showInput && (
-          <Tooltip
-            placement="left"
-            title={t('label.edit-entity', { entity: propertyName })}>
-            <Icon
-              component={EditIconComponent}
-              data-testid={`edit-icon${
-                isRenderedInRightPanel ? '-right-panel' : ''
-              }`}
-              style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-              onClick={onShowInput}
-            />
-          </Tooltip>
-        )}
+        <div className="d-flex gap-2 w-full items-center justify-end">
+          {showInput ? getPropertyInput() : getValueElement()}
+          {hasEditPermissions && !showInput && (
+            <Tooltip
+              placement="left"
+              title={t('label.edit-entity', { entity: propertyName })}>
+              <Icon
+                component={EditIconComponent}
+                data-testid={`edit-icon${
+                  isRenderedInRightPanel ? '-right-panel' : ''
+                }`}
+                style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                onClick={onShowInput}
+              />
+            </Tooltip>
+          )}
+        </div>
       </div>
+      <RichTextEditorPreviewer
+        className="text-grey-muted"
+        markdown={property.description || ''}
+        maxLength={70}
+      />
     </div>
   );
 
@@ -1081,29 +1083,27 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       </Col>
 
       <Col span={24}>
-        <Row gutter={[6, 0]}>
-          <Col
+        <div className="d-flex justify-between w-full gap-2">
+          <div
+            className="w-full"
             ref={contentRef}
-            span={isOverflowing && !showInput ? 22 : 24}
             style={{
               height: isExpanded || showInput ? 'auto' : '30px',
               overflow: isExpanded || showInput ? 'visible' : 'hidden',
             }}>
             {showInput ? getPropertyInput() : getValueElement()}
-          </Col>
+          </div>
           {isOverflowing && !showInput && (
-            <Col span={2}>
-              <Button
-                className="custom-property-value-toggle-btn"
-                data-testid={`toggle-${propertyName}`}
-                size="small"
-                type="text"
-                onClick={toggleExpand}>
-                {isExpanded ? <UpOutlined /> : <DownOutlined />}
-              </Button>
-            </Col>
+            <Button
+              className="custom-property-value-toggle-btn"
+              data-testid={`toggle-${propertyName}`}
+              size="small"
+              type="text"
+              onClick={toggleExpand}>
+              {isExpanded ? <UpOutlined /> : <DownOutlined />}
+            </Button>
           )}
-        </Row>
+        </div>
       </Col>
     </Row>
   );
