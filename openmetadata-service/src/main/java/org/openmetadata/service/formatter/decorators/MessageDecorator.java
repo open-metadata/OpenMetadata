@@ -25,8 +25,12 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
@@ -422,7 +426,7 @@ public interface MessageDecorator<T> {
       }
     }
     if (nullOrEmpty(headerMessage) || attachmentList.isEmpty()) {
-      throw new UnhandledServerException("Unable to build Slack Message");
+      throw new UnhandledServerException("Unable to build message");
     }
     message.setHeader(headerMessage);
     message.setMessages(attachmentList);
@@ -459,5 +463,78 @@ public interface MessageDecorator<T> {
     // Format LocalDateTime to a specific date and time format
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     return localDateTime.format(formatter);
+  }
+
+  /**
+   * A builder class for creating a map of template data organized by sections and keys.
+   * @param <S> The type of template sections (must be an enum).
+   */
+  class TemplateDataBuilder<S extends Enum<S>> {
+    private final Map<S, Map<Enum<?>, Object>> templateMap = new HashMap<>();
+
+    /**
+     * Adds a key-value pair to a specified template section.
+     *
+     * @param section The section of the template.
+     * @param key     The key for the section, represented as an enum.
+     * @param value   The value associated with the key.
+     * @param <K>     The type of the enum used as the key (must extend Enum).
+     * @return This builder instance for chaining.
+     */
+    @SuppressWarnings("unchecked")
+    public <K extends Enum<K>> TemplateDataBuilder<S> add(S section, K key, Object value) {
+      // Ensure type-safe EnumMap by explicitly specifying EnumMap<K, Object>
+      templateMap
+          .computeIfAbsent(
+              section, k -> (Map<Enum<?>, Object>) new EnumMap<>(key.getDeclaringClass()))
+          .put(key, value);
+      return this;
+    }
+
+    public Map<S, Map<Enum<?>, Object>> build() {
+      return Collections.unmodifiableMap(templateMap);
+    }
+  }
+
+  enum General_Template_Section {
+    EVENT_DETAILS,
+  }
+
+  enum DQ_Template_Section {
+    EVENT_DETAILS,
+    TEST_CASE_DETAILS,
+    TEST_CASE_RESULT,
+    TEST_DEFINITION
+  }
+
+  enum EventDetailsKeys {
+    EVENT_TYPE,
+    UPDATED_BY,
+    ENTITY_TYPE,
+    ENTITY_FQN,
+    PUBLISHER,
+    TIME,
+    OUTGOING_MESSAGE
+  }
+
+  enum DQ_TestCaseDetailsKeys {
+    ID,
+    NAME,
+    OWNERS,
+    TAGS,
+    TEST_CASE_FQN,
+    INSPECTION_QUERY,
+    SAMPLE_DATA
+  }
+
+  enum DQ_TestCaseResultKeys {
+    STATUS,
+    PARAMETER_VALUE,
+    RESULT_MESSAGE
+  }
+
+  enum DQ_TestDefinitionKeys {
+    TEST_DEFINITION_NAME,
+    TEST_DEFINITION_DESCRIPTION
   }
 }
