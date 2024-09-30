@@ -56,7 +56,10 @@ import {
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
-import { ENUM_WITH_DESCRIPTION } from '../../../constants/CustomProperty.constants';
+import {
+  ENUM_WITH_DESCRIPTION,
+  INLINE_PROPERTY_TYPES,
+} from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -91,18 +94,23 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const { propertyName, propertyType, value } = useMemo(() => {
-    const propertyName = property.name;
-    const propertyType = property.propertyType;
+  const { propertyName, propertyType, value, isInlineProperty } =
+    useMemo(() => {
+      const propertyName = property.name;
+      const propertyType = property.propertyType;
+      const isInlineProperty = INLINE_PROPERTY_TYPES.includes(
+        propertyType.name ?? ''
+      );
 
-    const value = extension?.[propertyName];
+      const value = extension?.[propertyName];
 
-    return {
-      propertyName,
-      propertyType,
-      value,
-    };
-  }, [property, extension]);
+      return {
+        propertyName,
+        propertyType,
+        value,
+        isInlineProperty,
+      };
+    }, [property, extension]);
 
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -857,7 +865,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                                 isTeam={item.type === 'team'}
                                 name={item.name ?? ''}
                                 type="circle"
-                                width="24"
+                                width="18"
                               />
                             ) : (
                               searchClassBase.getEntityIcon(item.type)
@@ -901,14 +909,14 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 icon={
                   <div
                     className="entity-button-icon m-r-xs"
-                    style={{ width: '24px', display: 'flex' }}>
+                    style={{ width: '18px', display: 'flex' }}>
                     {['user', 'team'].includes(item.type) ? (
                       <ProfilePicture
                         className="d-flex"
                         isTeam={item.type === 'team'}
                         name={item.name ?? ''}
                         type="circle"
-                        width="24"
+                        width="18"
                       />
                     ) : (
                       searchClassBase.getEntityIcon(item.type)
@@ -1002,6 +1010,41 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     setIsOverflowing(isOverflowing);
   }, [property, extension, contentRef, value]);
 
+  const customPropertyInlineElement = (
+    <div className="d-flex justify-between w-full" data-testid={propertyName}>
+      <div className="d-flex flex-column gap-1 w-full">
+        <Typography.Text
+          className="text-md text-grey-body"
+          data-testid="property-name">
+          {getEntityName(property)}
+        </Typography.Text>
+        <RichTextEditorPreviewer
+          className="text-grey-muted"
+          markdown={property.description || ''}
+          maxLength={70}
+        />
+      </div>
+
+      <div className="d-flex gap-2 w-full items-center justify-end">
+        {showInput ? getPropertyInput() : getValueElement()}
+        {hasEditPermissions && !showInput && (
+          <Tooltip
+            placement="left"
+            title={t('label.edit-entity', { entity: propertyName })}>
+            <Icon
+              component={EditIconComponent}
+              data-testid={`edit-icon${
+                isRenderedInRightPanel ? '-right-panel' : ''
+              }`}
+              style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+              onClick={onShowInput}
+            />
+          </Tooltip>
+        )}
+      </div>
+    </div>
+  );
+
   const customPropertyElement = (
     <Row data-testid={propertyName} gutter={[0, 16]}>
       <Col span={24}>
@@ -1044,7 +1087,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             span={isOverflowing && !showInput ? 22 : 24}
             style={{
               height: isExpanded || showInput ? 'auto' : '30px',
-              overflow: isExpanded ? 'visible' : 'hidden',
+              overflow: isExpanded || showInput ? 'visible' : 'hidden',
             }}>
             {showInput ? getPropertyInput() : getValueElement()}
           </Col>
@@ -1067,15 +1110,17 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
   if (isRenderedInRightPanel) {
     return (
-      <div data-testid="custom-property-right-panel-card">
-        {customPropertyElement}
+      <div
+        className="custom-property-card"
+        data-testid="custom-property-right-panel-card">
+        {isInlineProperty ? customPropertyInlineElement : customPropertyElement}
       </div>
     );
   }
 
   return (
     <Card
-      className="w-full"
+      className="w-full custom-property-card"
       data-testid={`custom-property-${propertyName}-card`}>
       {customPropertyElement}
     </Card>
