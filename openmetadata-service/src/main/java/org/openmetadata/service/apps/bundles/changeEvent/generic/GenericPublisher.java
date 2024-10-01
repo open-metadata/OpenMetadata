@@ -120,38 +120,37 @@ public class GenericPublisher implements Destination<ChangeEvent> {
 
   private void handleException(long attemptTime, ChangeEvent event, Exception ex)
       throws EventPublisherException {
-    Throwable cause = ex.getCause();
-    String message;
-    if (cause != null && cause.getClass() == UnknownHostException.class) {
-      message =
-          String.format(
-              "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
-              subscriptionDestination.getId(), webhook.getEndpoint());
-      LOG.warn(message);
-      setErrorStatus(attemptTime, 400, "UnknownHostException");
-    } else {
-      message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
-      LOG.error(message);
-    }
+    handleCommonException(attemptTime, ex);
+
+    String message =
+        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
+    LOG.error(message);
     throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
   }
 
   private void handleException(long attemptTime, Exception ex) throws EventPublisherException {
+    handleCommonException(attemptTime, ex);
+
+    String message =
+        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
+    LOG.error(message);
+    throw new EventPublisherException(message);
+  }
+
+  private void handleCommonException(long attemptTime, Exception ex)
+      throws EventPublisherException {
     Throwable cause = ex.getCause();
-    String message;
-    if (cause != null && cause.getClass() == UnknownHostException.class) {
-      message =
+
+    if (cause.getClass() == UnknownHostException.class) {
+      String message =
           String.format(
               "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
               subscriptionDestination.getId(), webhook.getEndpoint());
+
       LOG.warn(message);
       setErrorStatus(attemptTime, 400, "UnknownHostException");
-    } else {
-      message = CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
-      LOG.error(message);
+      throw new EventPublisherException(message);
     }
-    throw new EventPublisherException(message);
   }
 
   private Invocation.Builder getTarget() {
