@@ -104,14 +104,14 @@ After metadata has been ingested into OpenMetadata, you can [invite users](/how-
 - Go to **Settings > Team & User Management > Users**.
 
 {% image
-  src="/images/v1.5/getting-started/users.png"
+  src="/images/v1.6/getting-started/users.png"
   alt="Users Navigation"
   caption="Users Navigation" /%}
 
 - Click **Add User**, then enter their email and other required details to grant access to the platform.
 
 {% image
-  src="/images/v1.5/getting-started/add-users.png"
+  src="/images/v1.6/getting-started/add-users.png"
   alt="Adding New User"
   height="750px"
   caption="Adding New User" /%}
@@ -121,7 +121,7 @@ After metadata has been ingested into OpenMetadata, you can [invite users](/how-
 - Admin access can be granted to users who need full access to all settings, including the ability to invite new users.
 
 {% image
-  src="/images/v1.5/getting-started/update-user.png"
+  src="/images/v1.6/getting-started/update-user.png"
   alt="Users Profile"
   caption="Users Profile" /%}
 
