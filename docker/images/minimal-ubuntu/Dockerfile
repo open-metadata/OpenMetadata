@@ -15,7 +15,7 @@
 FROM ubuntu:xenial-20210416
 
 # environment variables
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 # update
 RUN apt update -y && \
