@@ -44,6 +44,12 @@
       "description": "Optional JSON payload to be sent with the webhook request.",
       "type": "string"
     },
+    "httpOperation": {
+      "description": "HTTP operation to send the webhook request. Supports POST or PUT.",
+      "type": "string",
+      "enum": ["POST", "PUT"],
+      "default": "POST"
+    },
     "sendToAdmins": {
       "description": "Send the Event to Admins",
       "type": "boolean",
