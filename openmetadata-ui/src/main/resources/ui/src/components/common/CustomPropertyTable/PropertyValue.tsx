@@ -533,11 +533,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               id="timeInterval-form"
               initialValues={initialValues}
               layout="vertical"
-              validateMessages={{
-                types: {
-                  string: t('message.invalid-number'),
-                },
-              }}
               onFinish={(values: { start: string; end: string }) => {
                 onInputSave(
                   omitBy(
