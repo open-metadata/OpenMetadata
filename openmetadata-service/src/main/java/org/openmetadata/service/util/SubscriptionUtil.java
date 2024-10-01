@@ -417,18 +417,18 @@ public class SubscriptionUtil {
 
   public static void postWebhookMessage(
       Destination<ChangeEvent> destination, Invocation.Builder target, Object message) {
-    postWebhookMessage(destination, target, message, Webhook.HttpOperation.POST);
+    postWebhookMessage(destination, target, message, Webhook.HttpMethod.POST);
   }
 
   public static void postWebhookMessage(
       Destination<ChangeEvent> destination,
       Invocation.Builder target,
       Object message,
-      Webhook.HttpOperation httpOperation) {
+      Webhook.HttpMethod httpMethod) {
     long attemptTime = System.currentTimeMillis();
     Response response;
 
-    if (httpOperation == Webhook.HttpOperation.PUT) {
+    if (httpMethod == Webhook.HttpMethod.PUT) {
       response =
           target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
     } else {
@@ -438,7 +438,7 @@ public class SubscriptionUtil {
 
     LOG.debug(
         "Subscription Destination HTTP Operation {}:{} received response {}",
-        httpOperation,
+        httpMethod,
         destination.getSubscriptionDestination().getId(),
         response.getStatusInfo());
 

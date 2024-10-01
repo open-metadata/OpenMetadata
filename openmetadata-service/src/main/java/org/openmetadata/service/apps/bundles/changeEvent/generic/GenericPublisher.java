@@ -119,7 +119,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
         headers.forEach(target::header);
       }
 
-      Webhook.HttpOperation httpOperation = webhook.getHttpOperation();
+      Webhook.HttpMethod httpOperation = webhook.getHttpMethod();
       postWebhookMessage(this, target, json, httpOperation);
     }
   }

@@ -44,7 +44,7 @@
       "description": "Optional JSON payload to be sent with the webhook request.",
       "type": "string"
     },
-    "httpOperation": {
+    "httpMethod": {
       "description": "HTTP operation to send the webhook request. Supports POST or PUT.",
       "type": "string",
       "enum": ["POST", "PUT"],
