@@ -43,6 +43,8 @@ import org.openmetadata.service.util.RestUtil;
 public class GenericPublisher implements Destination<ChangeEvent> {
   private final Client client;
   private final Webhook webhook;
+  private static final String TEST_MESSAGE_JSON =
+      "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.";
 
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -67,10 +69,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
-      String json =
-          CommonUtil.nullOrEmpty(webhook.getJson())
-              ? JsonUtils.pojoToJson(event)
-              : webhook.getJson();
+      String json = JsonUtils.pojoToJson(event);
 
       prepareAndSendMessage(json, getTarget());
 
@@ -91,12 +90,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   public void sendTestMessage() throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
-      String json =
-          CommonUtil.nullOrEmpty(webhook.getJson())
-              ? "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly."
-              : webhook.getJson();
-
-      prepareAndSendMessage(json, getTarget());
+      prepareAndSendMessage(TEST_MESSAGE_JSON, getTarget());
     } catch (Exception ex) {
       handleException(attemptTime, ex);
     }

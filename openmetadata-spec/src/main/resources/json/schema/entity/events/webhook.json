@@ -40,10 +40,6 @@
       "type": "object",
       "existingJavaType": "java.util.Map<String, String>"
     },
-    "json": {
-      "description": "Optional JSON payload to be sent with the webhook request.",
-      "type": "string"
-    },
     "httpMethod": {
       "description": "HTTP operation to send the webhook request. Supports POST or PUT.",
       "type": "string",
