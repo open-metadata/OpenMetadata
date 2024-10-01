@@ -246,40 +246,45 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     <>
       {!isEmpty(entityTypeDetail.customProperties) && (
         <>
-          <div className="d-flex justify-between m-b-xs">
-            <Typography.Text className="right-panel-label">
-              {t('label.custom-property-plural')}
-            </Typography.Text>
-            {viewAllBtn}
-          </div>
-
           {isRenderedInRightPanel ? (
-            <div className="custom-property-right-panel-container">
-              {dataSource.map((record, index) => (
-                <Fragment key={record.name}>
-                  <div
-                    className={classNames('custom-property-right-panel-card', {
-                      'top-border-radius': index === 0,
-                      'bottom-border-radius': index === dataSource.length - 1,
-                    })}
-                    key={record.name}>
-                    <PropertyValue
-                      extension={extensionObject.extensionObject}
-                      hasEditPermissions={hasEditAccess}
-                      isRenderedInRightPanel={isRenderedInRightPanel}
-                      isVersionView={isVersionView}
-                      key={record.name}
-                      property={record}
-                      versionDataKeys={extensionObject.addedKeysList}
-                      onExtensionUpdate={onExtensionUpdate}
-                    />
-                  </div>
-                  {index !== dataSource.length - 1 && (
-                    <Divider className="m-y-0" />
-                  )}
-                </Fragment>
-              ))}
-            </div>
+            <>
+              <div className="d-flex justify-between m-b-md">
+                <Typography.Text className="right-panel-label">
+                  {t('label.custom-property-plural')}
+                </Typography.Text>
+                {viewAllBtn}
+              </div>
+              <div className="custom-property-right-panel-container">
+                {dataSource.map((record, index) => (
+                  <Fragment key={record.name}>
+                    <div
+                      className={classNames(
+                        'custom-property-right-panel-card',
+                        {
+                          'top-border-radius': index === 0,
+                          'bottom-border-radius':
+                            index === dataSource.length - 1,
+                        }
+                      )}
+                      key={record.name}>
+                      <PropertyValue
+                        extension={extensionObject.extensionObject}
+                        hasEditPermissions={hasEditAccess}
+                        isRenderedInRightPanel={isRenderedInRightPanel}
+                        isVersionView={isVersionView}
+                        key={record.name}
+                        property={record}
+                        versionDataKeys={extensionObject.addedKeysList}
+                        onExtensionUpdate={onExtensionUpdate}
+                      />
+                    </div>
+                    {index !== dataSource.length - 1 && (
+                      <Divider className="m-y-0" />
+                    )}
+                  </Fragment>
+                ))}
+              </div>
+            </>
           ) : (
             <Row data-testid="custom-properties-card" gutter={[16, 16]}>
               {dataSource.map((record) => (

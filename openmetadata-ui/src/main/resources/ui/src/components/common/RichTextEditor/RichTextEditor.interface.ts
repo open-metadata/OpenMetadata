@@ -37,6 +37,7 @@ export interface PreviewerProp {
   showReadMoreBtn?: boolean;
   isDescriptionExpanded?: boolean;
   textVariant?: TextVariant;
+  reducePreviewLineClass?: string;
 }
 
 export type PreviewStyle = 'tab' | 'vertical';
