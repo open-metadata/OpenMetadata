@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage.*;
@@ -129,6 +130,9 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
                 createWidget(
                     "FQN:",
                     String.valueOf(eventDetails.getOrDefault(EventDetailsKeys.ENTITY_FQN, "-")))));
+
+    // todo create clickable entity link in the message
+
     Section footerSection = createFooterSection();
 
     Card card =
@@ -191,10 +195,11 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
     return new GChatMessage(List.of(card));
   }
 
+  // todo call createDQTemplate for test cases
   public GChatMessage createDQTemplate(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
 
-    // todo complete buildDQTemplateData fn
+    //     todo complete buildDQTemplateData fn
     Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData =
         buildDQTemplateData(publisherName, event, outgoingMessage);
 
@@ -202,10 +207,17 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
     Header header = createHeader();
 
     addChangeEventDetailsSection(templateData, sections);
-    addOutgoingMessageSection(templateData, sections);
+
+    List<Widget> additionalMessageWidgets =
+        outgoingMessage.getMessages().stream()
+            .map(message -> new Widget(new TextParagraph(message)))
+            .toList();
+    sections.add(new Section(additionalMessageWidgets));
+
     addTestCaseDetailsSection(templateData, sections);
     addTestCaseFQNSection(templateData, sections);
     addTestCaseResultSection(templateData, sections);
+    addParameterValuesSection(templateData, sections);
     addInspectionQuerySection(templateData, sections);
     addTestDefinitionSection(templateData, sections);
     addSampleDataSection(templateData, sections);
@@ -249,25 +261,6 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
       Map<Enum<?>, Object> eventDetails = templateData.get(DQ_Template_Section.EVENT_DETAILS);
       if (!nullOrEmpty(eventDetails)) {
         sections.add(new Section(createEventDetailsWidgets(eventDetails)));
-      }
-    }
-  }
-
-  private void addOutgoingMessageSection(
-      Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<Section> sections) {
-    if (templateData.containsKey(DQ_Template_Section.EVENT_DETAILS)) {
-      Map<Enum<?>, Object> outgoingMessage = templateData.get(DQ_Template_Section.EVENT_DETAILS);
-
-      if (!nullOrEmpty(outgoingMessage)) {
-        List<Widget> outgoingMessageWidget =
-            List.of(
-                createWidget("Summary:", ""),
-                createWidget(
-                    "",
-                    String.valueOf(
-                        outgoingMessage.getOrDefault(EventDetailsKeys.OUTGOING_MESSAGE, "-"))));
-
-        sections.add(new Section(outgoingMessageWidget));
       }
     }
   }
@@ -336,17 +329,56 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
         statusParameterWidgets.add(
             createWidget(
-                "Parameter Value:",
-                String.valueOf(
-                    testCaseResult.getOrDefault(DQ_TestCaseResultKeys.PARAMETER_VALUE, "-"))));
-
-        statusParameterWidgets.add(
-            createWidget(
                 "Result Message:",
                 String.valueOf(
                     testCaseResult.getOrDefault(DQ_TestCaseResultKeys.RESULT_MESSAGE, "-"))));
 
         sections.add(new Section(statusParameterWidgets));
+      }
+    }
+  }
+
+  private void addParameterValuesSection(
+      Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<Section> sections) {
+
+    // Check if the TEST_CASE_RESULT section is present in the template data
+    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_RESULT)) {
+      Map<Enum<?>, Object> testCaseResult = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
+
+      if (!nullOrEmpty(testCaseResult)) {
+        List<Widget> parameterValueWidget = new ArrayList<>();
+        List<TestCaseParameterValue> parameterValues = null;
+
+        // Retrieve PARAMETER_VALUE from the test case result
+        Object result = testCaseResult.get(DQ_TestCaseResultKeys.PARAMETER_VALUE);
+        if (result instanceof List<?>) {
+          parameterValues = (List<TestCaseParameterValue>) result;
+        }
+
+        if (!nullOrEmpty(parameterValues)) {
+
+          // Build the formatted string for parameter values
+          StringBuilder parameterValuesText = new StringBuilder();
+          for (int i = 0; i < parameterValues.size(); i++) {
+            TestCaseParameterValue parameterValue = parameterValues.get(i);
+            parameterValuesText
+                .append("[")
+                .append(parameterValue.getName())
+                .append(": ")
+                .append(parameterValue.getValue())
+                .append("]");
+
+            // Append a comma if it's not the last item
+            if (i < parameterValues.size() - 1) {
+              parameterValuesText.append(", ");
+            }
+          }
+
+          parameterValueWidget.add(
+              createWidget("Parameter Value:", parameterValuesText.toString()));
+
+          sections.add(new Section(parameterValueWidget));
+        }
       }
     }
   }
@@ -360,13 +392,17 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
       if (!nullOrEmpty(testCaseDetails)
           && testCaseDetails.containsKey(DQ_TestCaseDetailsKeys.INSPECTION_QUERY)) {
-        Widget inspectionQueryWidget =
-            createWidget(
-                "Inspection Query",
-                String.valueOf(
-                    testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.INSPECTION_QUERY, "-")));
 
-        sections.add(new Section(List.of(inspectionQueryWidget)));
+        Widget inspectionQuery = createWidget("Inspection Query", "");
+
+        Widget inspectionQueryWidget =
+            new Widget(
+                new TextParagraph(
+                    String.valueOf(
+                        testCaseDetails.getOrDefault(
+                            DQ_TestCaseDetailsKeys.INSPECTION_QUERY, "-"))));
+
+        sections.add(new Section(List.of(inspectionQuery, inspectionQueryWidget)));
       }
     }
   }
@@ -443,7 +479,11 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
   // Helper Method to create widgets
   private Widget createWidget(String label, String content) {
-    return new Widget(new TextParagraph(String.format(getBoldWithSpace(), label) + content));
+    return new Widget(new TextParagraph(applyBoldFormatWithSpace(label) + content));
+  }
+
+  private Widget createWidgetWithNewLine(String label, String content) {
+    return new Widget(new TextParagraph(applyBoldFormatWithNewLine(label) + content));
   }
 
   // Helper Method to create header section
@@ -454,5 +494,17 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   // Helper Method to create footer section
   private Section createFooterSection() {
     return new Section(List.of(new Widget(new TextParagraph("Change Event By OpenMetadata"))));
+  }
+
+  private String applyBoldFormatWithNewLine(String title) {
+    return applyBoldFormat(title) + "\n";
+  }
+
+  private String applyBoldFormat(String title) {
+    return String.format(getBold(), title);
+  }
+
+  private String applyBoldFormatWithSpace(String title) {
+    return String.format(getBoldWithSpace(), title);
   }
 }
