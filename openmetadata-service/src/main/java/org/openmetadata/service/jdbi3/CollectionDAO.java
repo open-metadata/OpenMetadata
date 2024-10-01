@@ -1363,7 +1363,7 @@ public interface CollectionDAO {
             + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
             + "    FROM thread_entity te "
             + "    WHERE te.entityId = :entityId "
-            + ") AS combined "
+            + ") AS combined WHERE combined.type IS NOT NULL "
             + "GROUP BY type, taskStatus, entityLink")
     @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountByEntityLink(
@@ -1639,7 +1639,7 @@ public interface CollectionDAO {
             + "        AND (:toType2 IS NULL OR fr.toType LIKE CONCAT(:toType2, '.%') OR fr.toType = :toType2) "
             + "        AND fr.relation = 3 "
             + "    ) "
-            + ") AS combined_results "
+            + ") AS combined_results WHERE combined_results.type is not NULL "
             + "GROUP BY entityLink, type, taskStatus ")
     @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountThreadsByGlossaryAndTerms(
