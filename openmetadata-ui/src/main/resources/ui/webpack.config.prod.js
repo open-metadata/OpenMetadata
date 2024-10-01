@@ -15,6 +15,7 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const process = require('process');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
 const outputPath = path.join(__dirname, 'dist/assets');
 const subPath = process.env.APP_SUB_PATH ?? '';
@@ -118,6 +119,10 @@ module.exports = {
   },
 
   plugins: [
+    // Clean webpack output directory
+    new CleanWebpackPlugin({
+      verbose: true,
+    }),
     // Generate index.html from template
     new HtmlWebpackPlugin({
       favicon: path.join(__dirname, 'public/favicon.png'),
