@@ -52,6 +52,13 @@ class CatalogSource(BaseModel):
     table_name: str = Field(alias="Table")
 
 
+class JDBCSource(BaseModel):
+    Name: str
+    schema_name: Optional[str] = Field(default=None, alias="SchemaName")
+    database_name: Optional[str] = None
+    table_name: str = Field(alias="ConnectionTable")
+
+
 class JobNodes(BaseModel):
     config_nodes: Optional[dict] = Field(alias="CodeGenConfigurationNodes")
 

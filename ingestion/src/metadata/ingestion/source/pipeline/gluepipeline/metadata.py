@@ -51,6 +51,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.gluepipeline.models import (
     AmazonRedshift,
     CatalogSource,
+    JDBCSource,
     JobNodeResponse,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -71,6 +72,17 @@ STATUS_MAP = {
     "running": StatusType.Pending,
     "incomplete": StatusType.Failed,
     "pending": StatusType.Pending,
+}
+MODEL_MAP = {
+    "AmazonRedshiftSource": AmazonRedshift,
+    "AmazonRedshiftTarget": AmazonRedshift,
+    "AthenaConnectorSource": JDBCSource,
+    "JDBCConnectorSource": JDBCSource,
+    "JDBCConnectorTarget": JDBCSource,
+    "DirectJDBCSource": CatalogSource,
+    "RedshiftSource": CatalogSource,
+    "RedshiftTarget": CatalogSource,
+    "DirectJDBC": CatalogSource,
 }
 
 
@@ -168,18 +180,9 @@ class GluepipelineSource(PipelineServiceSource):
                 for _, node in nodes.items():
                     for key, entity in node.items():
                         table_model = None
-                        if key in ["AmazonRedshiftSource", "AmazonRedshiftTarget"]:
-                            table_model = AmazonRedshift.model_validate(entity)
-                        if (
-                            key
-                            in [
-                                "DirectJDBCSource",
-                                "RedshiftSource",
-                                "RedshiftTarget",
-                                "DirectJDBC",
-                            ]
-                            or "Catalog" in key
-                        ):
+                        if key in MODEL_MAP:
+                            table_model = MODEL_MAP[key].model_validate(entity)
+                        elif "Catalog" in key:
                             table_model = CatalogSource.model_validate(entity)
                         if table_model:
                             for db_service_name in self.get_db_service_names():
@@ -199,7 +202,7 @@ class GluepipelineSource(PipelineServiceSource):
                                         lineage_details["sources"].append(
                                             (table_entity, "table")
                                         )
-                                    elif key.endswith("Target"):
+                                    else:
                                         lineage_details["targets"].append(
                                             (table_entity, "table")
                                         )
