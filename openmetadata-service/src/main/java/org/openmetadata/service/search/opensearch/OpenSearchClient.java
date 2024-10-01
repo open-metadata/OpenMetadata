@@ -75,6 +75,7 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
+import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
@@ -353,23 +354,7 @@ public class OpenSearchClient implements SearchClient {
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
     // Add Query Filter
-    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(
-                    X_CONTENT_REGISTRY,
-                    LoggingDeprecationHandler.INSTANCE,
-                    request.getQueryFilter());
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
+    buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
 
     if (!nullOrEmpty(request.getPostFilter())) {
       try {
@@ -708,6 +693,7 @@ public class OpenSearchClient implements SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
+      boolean dataQualityOnly,
       String entityType)
       throws IOException {
     if (entityType.equalsIgnoreCase(Entity.PIPELINE)
@@ -717,6 +703,12 @@ public class OpenSearchClient implements SearchClient {
     Map<String, Object> responseMap = new HashMap<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
+    if (dataQualityOnly) {
+      searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
+      responseMap.put("edges", edges);
+      responseMap.put("nodes", nodes);
+      return responseMap;
+    }
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
@@ -752,11 +744,12 @@ public class OpenSearchClient implements SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
+      boolean dataQualityOnly,
       String entityType)
       throws IOException {
     Map<String, Object> responseMap =
         searchLineageInternal(
-            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, dataQualityOnly, entityType);
     return Response.status(OK).entity(responseMap).build();
   }
 
@@ -785,20 +778,8 @@ public class OpenSearchClient implements SearchClient {
               .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn)))
               .must(QueryBuilders.termQuery("deleted", deleted)));
     }
-    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, queryFilter);
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+
     searchRequest.source(searchSourceBuilder.size(1000));
     os.org.opensearch.action.search.SearchResponse searchResponse =
         client.search(searchRequest, RequestOptions.DEFAULT);
@@ -828,6 +809,127 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
+  private void searchDataQualityLineage(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      Set<Map<String, Object>> edges,
+      Set<Map<String, Object>> nodes)
+      throws IOException {
+    Map<String, Map<String, Object>> allNodes = new HashMap<>();
+    Map<String, List<Map<String, Object>>> allEdges = new HashMap<>();
+    Set<String> nodesWithFailures = new HashSet<>();
+
+    collectNodesAndEdges(
+        fqn,
+        upstreamDepth,
+        queryFilter,
+        deleted,
+        allEdges,
+        allNodes,
+        nodesWithFailures,
+        new HashSet<>());
+    for (String nodeWithFailure : nodesWithFailures) {
+      traceBackDQLineage(nodeWithFailure, allEdges, allNodes, nodes, edges, new HashSet<>());
+    }
+  }
+
+  private void collectNodesAndEdges(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      Map<String, List<Map<String, Object>>> allEdges,
+      Map<String, Map<String, Object>> allNodes,
+      Set<String> nodesWithFailure,
+      Set<String> processedNode)
+      throws IOException {
+    TestCaseResultRepository testCaseResultRepository = new TestCaseResultRepository();
+    if (upstreamDepth <= 0 || processedNode.contains(fqn)) {
+      return;
+    }
+    processedNode.add(fqn);
+    SearchResponse searchResponse = performLineageSearch(fqn, queryFilter, deleted);
+    Optional<List> optionalDocs =
+        JsonUtils.readJsonAtPath(searchResponse.toString(), "$.hits.hits[*]._source", List.class);
+
+    if (optionalDocs.isPresent()) {
+      List<Map<String, Object>> docs = (List<Map<String, Object>>) optionalDocs.get();
+      for (Map<String, Object> doc : docs) {
+        String nodeId = doc.get("id").toString();
+        allNodes.put(nodeId, doc);
+        if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
+          nodesWithFailure.add(nodeId);
+        }
+        Optional<List> optionalLineageList =
+            JsonUtils.readJsonAtPath(JsonUtils.pojoToJson(doc), "$.lineage", List.class);
+        if (optionalLineageList.isPresent()) {
+          List<Map<String, Object>> lineageList =
+              (List<Map<String, Object>>) optionalLineageList.get();
+          for (Map<String, Object> lineage : lineageList) {
+            Map<String, String> fromEntity = (Map<String, String>) lineage.get("fromEntity");
+            String fromEntityId = fromEntity.get("id");
+            allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
+            collectNodesAndEdges(
+                fromEntity.get("fqn"),
+                upstreamDepth - 1,
+                queryFilter,
+                deleted,
+                allEdges,
+                allNodes,
+                nodesWithFailure,
+                processedNode);
+          }
+        }
+      }
+    }
+  }
+
+  private void traceBackDQLineage(
+      String nodeFailureId,
+      Map<String, List<Map<String, Object>>> allEdges,
+      Map<String, Map<String, Object>> allNodes,
+      Set<Map<String, Object>> nodes,
+      Set<Map<String, Object>> edges,
+      Set<String> processedNodes) {
+    if (processedNodes.contains(nodeFailureId)) {
+      return;
+    }
+
+    processedNodes.add(nodeFailureId);
+    nodes.add(allNodes.get(nodeFailureId));
+    List<Map<String, Object>> edgesForNode = allEdges.get(nodeFailureId);
+    if (edgesForNode != null) {
+      for (Map<String, Object> edge : edgesForNode) {
+        Map<String, String> fromEntity = (Map<String, String>) edge.get("fromEntity");
+        String fromEntityId = fromEntity.get("id");
+        if (!fromEntityId.equals(nodeFailureId)) continue; // skip if the edge is from the node
+        Map<String, String> toEntity = (Map<String, String>) edge.get("toEntity");
+        edges.add(edge);
+        traceBackDQLineage(toEntity.get("id"), allEdges, allNodes, nodes, edges, processedNodes);
+      }
+    }
+  }
+
+  private SearchResponse performLineageSearch(String fqn, String queryFilter, boolean deleted)
+      throws IOException {
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery()
+            .must(
+                QueryBuilders.termQuery(
+                    "lineage.fromEntity.fqnHash.keyword", FullyQualifiedName.buildHash(fqn)))
+            .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
+
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+    searchRequest.source(searchSourceBuilder.size(1000));
+    return client.search(searchRequest, RequestOptions.DEFAULT);
+  }
+
   private Map<String, Object> searchPipelineLineage(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
@@ -850,20 +952,8 @@ public class OpenSearchClient implements SearchClient {
               .must(boolQueryBuilder)
               .must(QueryBuilders.termQuery("deleted", deleted)));
     }
-    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, queryFilter);
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+
     searchRequest.source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
@@ -1970,20 +2060,7 @@ public class OpenSearchClient implements SearchClient {
 
     searchSourceBuilder.query(searchQueryFiler).fetchSource(false);
 
-    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, queryFilter);
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
 
     return searchSourceBuilder;
   }
@@ -2300,6 +2377,24 @@ public class OpenSearchClient implements SearchClient {
             QueryBuilders.boolQuery()
                 .must(searchSourceBuilder.query())
                 .filter(((OpenSearchQueryBuilder) rbacQuery).build()));
+      }
+    }
+  }
+
+  private static void buildSearchSourceFilter(
+      String queryFilter, SearchSourceBuilder searchSourceBuilder) {
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, queryFilter);
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        BoolQueryBuilder newQuery =
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        searchSourceBuilder.query(newQuery);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
       }
     }
   }

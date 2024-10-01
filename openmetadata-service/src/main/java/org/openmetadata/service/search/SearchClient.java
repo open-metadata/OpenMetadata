@@ -133,6 +133,7 @@ public interface SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
+      boolean dataQualityOnly,
       String entityType)
       throws IOException;
 
@@ -151,6 +152,7 @@ public interface SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
+      boolean dataQualityOnly,
       String entityType)
       throws IOException;
 
