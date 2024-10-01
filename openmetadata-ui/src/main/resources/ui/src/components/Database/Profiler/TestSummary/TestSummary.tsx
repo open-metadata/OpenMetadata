@@ -91,6 +91,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
         testCaseName={data.name}
         testCaseParameterValue={data.parameterValues}
         testCaseResults={results}
+        testDefinitionName={data.testDefinition.name}
       />
     );
   }, [isGraphLoading, data, results, selectedTimeRange]);

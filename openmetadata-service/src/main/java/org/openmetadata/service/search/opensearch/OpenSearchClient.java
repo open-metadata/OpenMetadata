@@ -1291,6 +1291,14 @@ public class OpenSearchClient implements SearchClient {
         AggregationBuilders.terms("databaseSchema.name.keyword")
             .field("databaseSchema.name.keyword")
             .size(MAX_AGGREGATE_SIZE));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("database.displayName")
+            .field("database.displayName")
+            .size(MAX_AGGREGATE_SIZE));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("databaseSchema.displayName")
+            .field("databaseSchema.displayName")
+            .size(MAX_AGGREGATE_SIZE));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -2185,6 +2193,8 @@ public class OpenSearchClient implements SearchClient {
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+        restClientBuilder.setCompressionEnabled(true);
+        restClientBuilder.setChunkedEnabled(true);
         return new RestHighLevelClient(restClientBuilder);
       } catch (Exception e) {
         LOG.error("Failed to create open search client ", e);

@@ -94,8 +94,8 @@ export const getVersion = async () => {
   return response.data;
 };
 
-export const postSamlLogout = async (data: { token: string }) => {
-  const response = await APIClient.post(`/users/logout`, { ...data });
+export const postSamlLogout = async () => {
+  const response = await APIClient.get(`/saml/logout`);
 
   return response.data;
 };

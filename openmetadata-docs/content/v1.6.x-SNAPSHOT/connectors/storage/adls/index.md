@@ -1,6 +1,7 @@
 ---
 title: ADLS
 slug: /connectors/storage/adls
+collate: true
 ---
 
 {% connectorDetailsHeader

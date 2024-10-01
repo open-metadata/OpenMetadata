@@ -51,6 +51,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     const redshiftDatabase = process.env.PLAYWRIGHT_REDSHIFT_DATABASE ?? '';
 
     this.filterPattern = 'sales';
+    this.entityFQN = `${REDSHIFT.serviceName}.${redshiftDatabase}.${this.schemaFilterPattern}.${REDSHIFT.tableName}`;
     this.dbtEntityFqn = `${REDSHIFT.serviceName}.${redshiftDatabase}.${this.schemaFilterPattern}.${REDSHIFT.DBTTable}`;
   }
 
@@ -152,20 +153,17 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         )
         .then((res) => res.json());
 
-      // Re-deploy before running the ingestion
-      await page.click(
-        `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
-      );
-      await page.getByTestId('re-deploy-button').click();
-
       // need manual wait to settle down the deployed pipeline, before triggering the pipeline
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
       await page.click(
         `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
       );
       await page.getByTestId('run-button').click();
 
       await toastNotification(page, `Pipeline triggered successfully!`);
+
+      // need manual wait to make sure we are awaiting on latest run results
+      await page.waitForTimeout(2000);
 
       await this.handleIngestionRetry('dbt', page);
     });
@@ -191,7 +189,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       // Verify DBT in table entity
       await visitEntityPage({
         page,
-        searchTerm: REDSHIFT.DBTTable,
+        searchTerm: this.dbtEntityFqn,
         dataTestId: `${REDSHIFT.serviceName}-${REDSHIFT.DBTTable}`,
       });
 

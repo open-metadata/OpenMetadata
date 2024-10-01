@@ -50,6 +50,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -555,7 +556,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleExtensionUpdate = async (schema: DatabaseSchema) => {
-    await saveUpdatedDatabaseSchemaData({
+    const response = await saveUpdatedDatabaseSchemaData({
       ...databaseSchema,
       extension: schema.extension,
     });
@@ -566,7 +567,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
       return {
         ...prev,
-        extension: schema.extension,
+        extension: response.extension,
       };
     });
   };
@@ -608,8 +609,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     />
                   </div>
                 ),
-                minWidth: 800,
-                flex: 0.87,
+                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
               }}
               secondPanel={{
                 children: (
@@ -633,8 +633,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     />
                   </div>
                 ),
-                minWidth: 320,
-                flex: 0.13,
+                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
                 className:
                   'entity-resizable-right-panel-container entity-resizable-panel-container',
               }}

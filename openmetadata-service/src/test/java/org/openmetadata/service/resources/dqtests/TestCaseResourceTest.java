@@ -14,7 +14,6 @@
 package org.openmetadata.service.resources.dqtests;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -28,6 +27,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.jdbi3.TestCaseRepository.FAILED_ROWS_SAMPLE_EXTENSION;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -80,6 +81,7 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.Assigned;
@@ -95,6 +97,7 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TableData;
@@ -330,7 +333,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         new CreateTestCaseResult()
             .withResult("tested")
             .withTestCaseStatus(TestCaseStatus.Success)
-            .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-11")));
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-11"));
     TestCaseResult testCaseResult =
         postTestCaseResult(
             testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
@@ -355,7 +358,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         new CreateTestCaseResult()
             .withResult("tested")
             .withTestCaseStatus(TestCaseStatus.Success)
-            .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-01")));
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-01"));
     postTestCaseResult(testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
     testCase = getTestCase(testCase.getFullyQualifiedName(), queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(testCaseResult, testCase.getTestCaseResult());
@@ -373,7 +376,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         new CreateTestCaseResult()
             .withResult("tested")
             .withTestCaseStatus(TestCaseStatus.Success)
-            .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-21")));
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-21"));
     TestCaseResult futureTestCaseResult =
         postTestCaseResult(
             testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
@@ -609,6 +612,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     int testCasesNum = 5;
     TableResourceTest tableResourceTest = new TableResourceTest();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(testInfo);
+    TestSuite logicalTestSuite =
+        testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
 
     List<Table> tables = new ArrayList<>();
     Map<String, TestSuite> testSuites = new HashMap<>();
@@ -677,8 +683,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
     }
     TestCase testCaseForEL = testCases.get(0);
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(
+        logicalTestSuite, List.of(testCaseForEL.getId()));
 
-    Map queryParams = new HashMap<>();
+    Map<String, String> queryParams = new HashMap<>();
     ResultList<TestCase> allEntities =
         listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(testCasesNum, allEntities.getData().size());
@@ -690,20 +698,20 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     queryParams.clear();
     queryParams.put("entityLink", testCaseForEL.getEntityLink());
-    queryParams.put("includeAllTests", true);
+    queryParams.put("includeAllTests", "true");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(1, allEntities.getData().size());
     org.assertj.core.api.Assertions.assertThat(allEntities.getData().get(0).getEntityLink())
         .contains(testCaseForEL.getEntityLink());
 
     queryParams.clear();
-    queryParams.put("testPlatforms", TestPlatform.DEEQU);
+    queryParams.put("testPlatforms", TestPlatform.DEEQU.value());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(
         0, allEntities.getData().size()); // we don't have any test cases with DEEQU platform
 
     queryParams.clear();
-    queryParams.put("testPlatforms", TestPlatform.OPEN_METADATA);
+    queryParams.put("testPlatforms", TestPlatform.OPEN_METADATA.value());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(
         testCasesNum,
@@ -719,7 +727,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.clear();
     queryParams.put("owner", USER2_REF.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(2, allEntities.getData().size()); // we have 2 test cases with USER2_REF as owner
+    assertEquals(3, allEntities.getData().size()); // we have 3 test cases with USER2_REF as owner ,
+    // patch_entityUpdateOwnerFromNull_200 also adds owner
 
     queryParams.put("owner", USER_TEAM21.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
@@ -800,6 +809,34 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("dataQualityDimension", "Completeness");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertNotEquals(0, allEntities.getData().size());
+
+    // Test return only the specified test suite ID (Executable)
+    queryParams.clear();
+    TestSuite testSuite = testSuites.get(tables.get(0).getFullyQualifiedName());
+    queryParams.put("testSuiteId", testSuite.getId().toString());
+    queryParams.put("fields", "testSuites");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    testCases = allEntities.getData();
+    assertNotEquals(0, testCases.size());
+    assertTrue(
+        testCases.stream()
+            .allMatch(
+                tc ->
+                    tc.getTestSuites().stream()
+                        .anyMatch(ts -> ts.getId().equals(testSuite.getId()))));
+
+    // Test return only the specified test suite ID (Logical)
+    queryParams.put("testSuiteId", logicalTestSuite.getId().toString());
+    queryParams.put("fields", "testSuites");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    testCases = allEntities.getData();
+    assertNotEquals(0, testCases.size());
+    assertTrue(
+        testCases.stream()
+            .allMatch(
+                tc ->
+                    tc.getTestSuites().stream()
+                        .anyMatch(ts -> ts.getId().equals(logicalTestSuite.getId()))));
   }
 
   @Test
@@ -1131,6 +1168,20 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         getTestCaseFailureStatus(startTs, endTs, null, null);
     assertEquals(4, testCaseFailureStatusResultList.getData().size());
 
+    List<TestCaseResolutionStatus> ackStatuses =
+        testCaseFailureStatusResultList.getData().stream()
+            .filter(
+                status ->
+                    status
+                        .getTestCaseResolutionStatusType()
+                        .equals(TestCaseResolutionStatusTypes.Ack))
+            .toList();
+
+    ackStatuses.stream()
+        .flatMap(status -> status.getMetrics().stream())
+        .filter(metric -> metric.getName().equals("timeToResponse"))
+        .forEach(metric -> assertNotNull(metric.getValue()));
+
     // check we have only 2 distinct sequence IDs, one for each test case
     List<UUID> stateIds =
         testCaseFailureStatusResultList.getData().stream()
@@ -1434,6 +1485,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         mostRecentTestCaseResolutionStatusData.getTestCaseResolutionStatusType());
     assertEquals(
         assignedIncident.getStateId(), mostRecentTestCaseResolutionStatusData.getStateId());
+    mostRecentTestCaseResolutionStatusData.getMetrics().stream()
+        .filter(m -> m.getName().equals("timeToResolution"))
+        .forEach(m -> assertNotNull(m.getValue()));
   }
 
   @Test
@@ -2485,9 +2539,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             assertEquals(offset, 0);
           } else {
             // Make sure scrolling back based on offset - limit cursor returns the correct result
-            backwardPage =
-                listTestCaseResultsFromSearch(
-                    queryParams, limit, (offset - limit), path, ADMIN_AUTH_HEADERS);
+            listTestCaseResultsFromSearch(
+                queryParams, limit, (offset - limit), path, ADMIN_AUTH_HEADERS);
             assertEntityPagination(allEntities.getData(), forwardPage, limit, offset);
           }
           offset = offset + limit;
@@ -2518,13 +2571,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         } while (offset > 0);
       }
     }
-  }
-
-  public void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    data.setTestCaseFQN(fqn);
-    WebTarget target = getResource(testCaseResultsCollectionName).path("/" + fqn);
-    TestUtils.put(target, data, CREATED, authHeaders);
   }
 
   public TestCaseResult postTestCaseResult(
@@ -3044,7 +3090,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void createTestCaseResults_wrongTs(TestInfo testInfo) throws IOException, HttpResponseException {
+  void createTestCaseResults_wrongTs(TestInfo testInfo) throws IOException {
     CreateTestCase create = createRequest(testInfo);
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     CreateTestCaseResult createTestCaseResult =
@@ -3058,6 +3104,88 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Timestamp 1725521153 is not valid, it should be in milliseconds since epoch");
+  }
+
+  @Test
+  void test_listTestCaseFromSearch(TestInfo testInfo) throws HttpResponseException, ParseException {
+    CreateTestCase create = createRequest(testInfo);
+    create
+        .withEntityLink(TABLE_COLUMN_LINK)
+        .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
+    for (int i = 1; i < 10; i++) {
+      CreateTestCaseResult createTestCaseResult =
+          new CreateTestCaseResult()
+              .withResult("tested")
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(TestUtils.dateToTimestamp("2021-09-0%s".formatted(i)));
+      postTestCaseResult(
+          testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+    }
+
+    Map<String, String> queryParams = new HashMap<>();
+
+    queryParams.put("fields", "testCase,testDefinition");
+    ResultList<TestCaseResult> testCaseResultResultList =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    assertNotEquals(testCaseResultResultList.getData().size(), 0);
+    testCaseResultResultList
+        .getData()
+        .forEach(
+            testCaseResult -> {
+              assertNotNull(testCaseResult.getTestCase());
+              assertNotNull(testCaseResult.getTestDefinition());
+            });
+
+    queryParams.clear();
+    Long ts = TestUtils.dateToTimestamp("2021-09-01");
+    queryParams.put("startTimestamp", ts.toString());
+    queryParams.put("endTimestamp", TestUtils.dateToTimestamp("2021-09-01").toString());
+    queryParams.put("latest", "true");
+    queryParams.put("testSuiteId", TEST_SUITE1.getId().toString());
+
+    testCaseResultResultList =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    assertNotEquals(testCaseResultResultList.getData().size(), 0);
+    testCaseResultResultList
+        .getData()
+        .forEach(testCaseResult -> assertEquals(testCaseResult.getTimestamp(), ts));
+
+    queryParams.clear();
+    queryParams.put("dataQualityDimension", "Completeness");
+    queryParams.put("fields", "testDefinition");
+    testCaseResultResultList =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    assertNotEquals(testCaseResultResultList.getData().size(), 0);
+    testCaseResultResultList
+        .getData()
+        .forEach(
+            testCaseResult -> {
+              EntityReference testDefinition = testCaseResult.getTestDefinition();
+              TestDefinition td =
+                  Entity.getEntity(TEST_DEFINITION, testDefinition.getId(), "", Include.ALL);
+              assertEquals(td.getDataQualityDimension(), DataQualityDimensions.COMPLETENESS);
+            });
+
+    queryParams.clear();
+    queryParams.put("testCaseType", "column");
+    testCaseResultResultList =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    assertNotEquals(testCaseResultResultList.getData().size(), 0);
+    testCaseResultResultList
+        .getData()
+        .forEach(
+            testCaseResult -> {
+              TestCase tc = Entity.getEntity(TEST_CASE, testCase.getId(), "", Include.ALL);
+              assertTrue(tc.getEntityLink().contains("columns"));
+            });
   }
 
   private void putInspectionQuery(TestCase testCase, String sql) throws IOException {
