@@ -1,3 +1,10 @@
+---
+title: "Exasol Connector Developer Notes"
+author: [Nicola Coretti]
+date: "2024-10-01"
+keywords: [Open-Metadata, Documentation, Development]
+---
+
 # Exasol Connector Dev Notes
 
 
@@ -11,22 +18,15 @@ nix develop
 
 This nix environment will contain all necessary tools except the required Python interpreter and setup. This was intentionally done to give developers maximum flexibility in choosing how and which Python they want to use (changing and adjusting the Python environment provided by nix can be a bit tricky).
 
-As of writing this, [Rye](https://rye.astral.sh) was used for providing and managing the Python version (`.python-version`). For the development itself, a virtual Python environment was used.
-In any case, make sure you have an appropriate Python environment and have activated it so the path, etc., are set correctly, e.g., via:
+As of writing this, [Rye](https://rye.astral.sh) was used for providing and managing the Python version (`.python-version`). For the development itself, a virt 
 
-```shell
-source .venv/bin/activate.fish
-```
+**Note**, The following things should be removed from the changeset before attempting to make an offical PR into the Open-Metadata repository:
 
-Once you have activated the nix environment and sourced the appropriate Python environment within it, Open-Metadata's `make prerequisites` should pass all checks.
-
-⚠️ Note, The following things should be removed from the changeset before attempting to make an offical PR into the Open-Metadata repository:
-
-    * This Development Notes (`exasol-dev-notes.md`)
-    * The nix falke (`flake.nix`, `flake.lock`) 
-    * Traces of Rye (`.python-version`)
-    * Test file for the connector (`exasol.yaml`) or move to appropriate place
-    * Test file for the connector (`debug_om_connector.py`) or move to appropriate place
+* This Development Notes (`exasol-dev-notes.md`)
+* The nix falke (`flake.nix`, `flake.lock`) 
+* Traces of Rye (`.python-version`)
+* Test file for the connector (`exasol.yaml`) or move to appropriate place
+* Test file for the connector (`debug_om_connector.py`) or move to appropriate place
 
 ### Known Issues
 
@@ -40,13 +40,14 @@ nix-shell -p jdk17
 
 This should fix the issue. 
 
-⚠️ Attention: Be sure you do not source the temporary environment on top of the development environment!
+**Attention:** Be sure you do not source the temporary environment on top of the development environment!
 
 ## Resources
 
 * [Open-Metadata Documentation](https://docs.open-metadata.org/latest)
-* Video tutorials
-    - []()
+    - [Developing a new Connector](https://docs.open-metadata.org/v1.4.x/developers/contribute/developing-a-new-connector)
+* [Video Tutorials](https://www.youtube.com/@OpenMetadataChannel/featured)
+    - [How to Create your Own OpenMetadata Connector](https://www.youtube.com/watch?v=ZvA4wuvINFA)
 * [Doris datasource PR](https://github.com/open-metadata/OpenMetadata/pull/14087/files)
 
 
@@ -76,14 +77,14 @@ docker rm -f $(docker ps -a -q)
 #### Open Metadata
 | Property  | Value                       |
 |-----------|-----------------------------|
-| url       | http://127.0.0.1:8585       |
+| url       | [http://127.0.0.1:8585](https://www.youtube.com/@OpenMetadataChannel/featured) |
 | user      | admin@openmetadata.org      |
 | password  | admin                       |
 
 #### Airflow
 | Property  | Value                     |
 |-----------|---------------------------|
-| url       | http://127.0.0.1:8080/    |
+| url       | [http://127.0.0.1:8080/](https://www.youtube.com/@OpenMetadataChannel/featured) |
 | user      | admin                     |
 | password  | admin                     |
 
