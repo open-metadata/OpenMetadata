@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.exception.AppException.APP_RUN_RECORD_NOT_FOUND;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
 import java.util.ArrayList;
@@ -12,6 +11,7 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
@@ -178,17 +178,39 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public ResultList<AppRunRecord> listAppRuns(UUID appId, int limitParam, int offset) {
-    int total = daoCollection.appExtensionTimeSeriesDao().listAppRunRecordCount(appId.toString());
-    List<AppRunRecord> entities = new ArrayList<>();
+    return listAppExtension(
+        appId, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+  }
+
+  public AppRunRecord getLatestAppRuns(UUID appId) {
+    return getLatestExtension(appId, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+  }
+
+  public AppRunRecord getLatestAppRunsAfterStartTime(UUID appId, long startTime) {
+    return getLatestExtensionAfterStartTime(
+        appId, startTime, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+  }
+
+  public <T> ResultList<T> listAppExtension(
+      UUID appId,
+      int limitParam,
+      int offset,
+      Class<T> clazz,
+      AppExtension.ExtensionType extensionType) {
+    int total =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionCount(appId.toString(), extensionType.toString());
+    List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
       List<String> jsons =
           daoCollection
               .appExtensionTimeSeriesDao()
-              .listAppRunRecord(appId.toString(), limitParam, offset);
+              .listAppExtension(appId.toString(), limitParam, offset, extensionType.toString());
 
       for (String json : jsons) {
-        AppRunRecord entity = JsonUtils.readValue(json, AppRunRecord.class);
+        T entity = JsonUtils.readValue(json, clazz);
         entities.add(entity);
       }
 
@@ -199,6 +221,65 @@ public class AppRepository extends EntityRepository<App> {
     }
   }
 
+  public <T> ResultList<T> listAppExtensionAfterTime(
+      UUID appId,
+      long startTime,
+      int limitParam,
+      int offset,
+      Class<T> clazz,
+      AppExtension.ExtensionType extensionType) {
+    int total =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionCountAfterTime(appId.toString(), startTime, extensionType.toString());
+    List<T> entities = new ArrayList<>();
+    if (limitParam > 0) {
+      // forward scrolling, if after == null then first page is being asked
+      List<String> jsons =
+          daoCollection
+              .appExtensionTimeSeriesDao()
+              .listAppExtensionAfterTime(
+                  appId.toString(), limitParam, offset, startTime, extensionType.toString());
+
+      for (String json : jsons) {
+        T entity = JsonUtils.readValue(json, clazz);
+        entities.add(entity);
+      }
+
+      return new ResultList<>(entities, offset, total);
+    } else {
+      // limit == 0 , return total count of entity.
+      return new ResultList<>(entities, null, total);
+    }
+  }
+
+  public <T> ResultList<T> listAllAppExtension(
+      UUID appId, Class<T> clazz, AppExtension.ExtensionType extensionType) {
+    return listAppExtension(appId, Integer.MAX_VALUE, 0, clazz, extensionType);
+  }
+
+  public <T> T getLatestExtension(
+      UUID appId, Class<T> clazz, AppExtension.ExtensionType extensionType) {
+    String json =
+        daoCollection.appExtensionTimeSeriesDao().getLatestExtension(appId, extensionType);
+    if (json == null) {
+      throw AppException.byExtension(extensionType);
+    }
+    return JsonUtils.readValue(json, clazz);
+  }
+
+  public <T> T getLatestExtensionAfterStartTime(
+      UUID appId, long startTime, Class<T> clazz, AppExtension.ExtensionType extensionType) {
+    String json =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .getLatestExtension(appId, startTime, extensionType);
+    if (json == null) {
+      throw AppException.byExtension(extensionType);
+    }
+    return JsonUtils.readValue(json, clazz);
+  }
+
   @Override
   protected void cleanup(App app) {
     // Remove the Pipelines for Application
@@ -207,22 +288,6 @@ public class AppRepository extends EntityRepository<App> {
         reference ->
             Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
     super.cleanup(app);
-  }
-
-  public AppRunRecord getLatestAppRuns(UUID appId) {
-    String json = daoCollection.appExtensionTimeSeriesDao().getLatestAppRun(appId);
-    if (json == null) {
-      throw new AppException(APP_RUN_RECORD_NOT_FOUND);
-    }
-    return JsonUtils.readValue(json, AppRunRecord.class);
-  }
-
-  public AppRunRecord getLatestAppRunsAfterStartTime(UUID appId, long startTime) {
-    String json = daoCollection.appExtensionTimeSeriesDao().getLatestAppRun(appId, startTime);
-    if (json == null) {
-      throw new AppException(APP_RUN_RECORD_NOT_FOUND);
-    }
-    return JsonUtils.readValue(json, AppRunRecord.class);
   }
 
   @Override

@@ -8,6 +8,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
@@ -25,7 +26,6 @@ public abstract class AbstractOmAppJobListener implements JobListener {
   private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
   public static final String APP_RUN_STATS = "AppRunStats";
   public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
-  private static final String STATUS_EXTENSION = "status";
 
   protected AbstractOmAppJobListener(CollectionDAO dao) {
     this.collectionDAO = dao;
@@ -59,7 +59,9 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       if (jobExecutionContext.isRecovering()) {
         AppRunRecord latestRunRecord =
             JsonUtils.readValue(
-                collectionDAO.appExtensionTimeSeriesDao().getLatestAppRun(jobApp.getId()),
+                collectionDAO
+                    .appExtensionTimeSeriesDao()
+                    .getLatestExtension(jobApp.getId(), AppExtension.ExtensionType.STATUS),
                 AppRunRecord.class);
         if (latestRunRecord != null) {
           runRecord = latestRunRecord;
@@ -151,11 +153,11 @@ public abstract class AbstractOmAppJobListener implements JobListener {
               appId.toString(),
               JsonUtils.pojoToJson(appRunRecord),
               appRunRecord.getTimestamp(),
-              STATUS_EXTENSION);
+              AppExtension.ExtensionType.STATUS.toString());
     } else {
       collectionDAO
           .appExtensionTimeSeriesDao()
-          .insert(JsonUtils.pojoToJson(appRunRecord), STATUS_EXTENSION);
+          .insert(JsonUtils.pojoToJson(appRunRecord), AppExtension.ExtensionType.STATUS.toString());
     }
   }
 

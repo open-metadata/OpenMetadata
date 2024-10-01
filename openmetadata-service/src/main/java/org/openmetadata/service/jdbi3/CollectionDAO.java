@@ -71,6 +71,7 @@ import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
@@ -4269,32 +4270,45 @@ public interface CollectionDAO {
         @Bind("extension") String extension);
 
     @SqlQuery(
-        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = 'status'")
-    int listAppRunRecordCount(@Bind("appId") String appId);
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension")
+    int listAppExtensionCount(@Bind("appId") String appId, @Bind("extension") String extension);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = 'status' ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
-    List<String> listAppRunRecord(
-        @Bind("appId") String appId, @Bind("limit") int limit, @Bind("offset") int offset);
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND timestamp > :startTime")
+    int listAppExtensionCountAfterTime(
+        @Bind("appId") String appId,
+        @Bind("startTime") long startTime,
+        @Bind("extension") String extension);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = 'status' AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
-    List<String> listAppRunRecordAfterTime(
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppExtension(
         @Bind("appId") String appId,
         @Bind("limit") int limit,
         @Bind("offset") int offset,
-        @Bind("startTime") long startTime);
+        @Bind("extension") String extension);
 
-    default String getLatestAppRun(UUID appId) {
-      List<String> result = listAppRunRecord(appId.toString(), 1, 0);
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppExtensionAfterTime(
+        @Bind("appId") String appId,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("startTime") long startTime,
+        @Bind("extension") String extension);
+
+    default String getLatestExtension(UUID appId, AppExtension.ExtensionType extensionType) {
+      List<String> result = listAppExtension(appId.toString(), 1, 0, extensionType.toString());
       if (!nullOrEmpty(result)) {
         return result.get(0);
       }
       return null;
     }
 
-    default String getLatestAppRun(UUID appId, long startTime) {
-      List<String> result = listAppRunRecordAfterTime(appId.toString(), 1, 0, startTime);
+    default String getLatestExtension(
+        UUID appId, long startTime, AppExtension.ExtensionType extensionType) {
+      List<String> result =
+          listAppExtensionAfterTime(appId.toString(), 1, 0, startTime, extensionType.toString());
       if (!nullOrEmpty(result)) {
         return result.get(0);
       }

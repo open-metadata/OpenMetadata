@@ -47,6 +47,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
@@ -306,6 +307,70 @@ public class AppResource extends EntityResource<App, AppRepository> {
           .build();
     }
     throw new IllegalArgumentException("App does not have an associated pipeline.");
+  }
+
+  @GET
+  @Path("/name/{name}/extension")
+  @Operation(
+      operationId = "listAppExtension",
+      summary = "List App Extension data",
+      description =
+          "Get a list of applications Extension data."
+              + " Use cursor-based pagination to limit the number "
+              + "entries in the list using `offset` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Installed Applications Runs",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AppExtension.class)))
+      })
+  public Response listAppExtension(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Limit records. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000000)
+          int limitParam,
+      @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          @Max(1000000)
+          int offset,
+      @Parameter(
+              description = "Filter pipeline status after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Get the extension type", schema = @Schema(type = "string"))
+          @QueryParam("extensionType")
+          AppExtension.ExtensionType extensionType) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
+    if (startTs != null) {
+      return Response.status(Response.Status.OK)
+          .entity(
+              repository.listAppExtensionAfterTime(
+                  installation.getId(),
+                  startTs,
+                  limitParam,
+                  offset,
+                  AppExtension.class,
+                  extensionType))
+          .build();
+    }
+    return Response.status(Response.Status.OK)
+        .entity(
+            repository.listAppExtension(
+                installation.getId(), limitParam, offset, AppExtension.class, extensionType))
+        .build();
   }
 
   @GET
