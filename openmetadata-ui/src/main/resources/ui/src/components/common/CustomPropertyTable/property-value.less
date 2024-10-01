@@ -31,14 +31,17 @@
   }
 }
 
-.ant-btn-text.custom-property-value-toggle-btn {
-  border-radius: 100%;
-  background: @btn-bg-color;
-  border-color: transparent;
-  height: 30px;
-  width: 30px;
-  .anticon {
+.custom-property-value-toggle-btn {
+  svg {
     vertical-align: middle;
+    width: 14px;
+    transition: 0.3s ease-in-out;
+  }
+}
+
+.custom-property-value-toggle-btn.active {
+  svg {
+    transform: rotate(180deg);
   }
 }
 
@@ -48,4 +51,27 @@
   border: none;
   padding: 4px;
   background: @enum-tag-bg-color;
+}
+
+.sql-query-custom-property {
+  .ant-space-item:first-child {
+    width: 100%;
+  }
+}
+.custom-property-card {
+  .ant-card-body {
+    overflow-x: scroll;
+  }
+
+  .property-name {
+    font-weight: 400;
+  }
+
+  .property-value {
+    font-weight: 500;
+  }
+}
+
+.custom-property-card-right-panel {
+  overflow-x: scroll;
 }
