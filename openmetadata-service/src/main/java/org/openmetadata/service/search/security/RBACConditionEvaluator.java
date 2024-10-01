@@ -50,8 +50,20 @@ public class RBACConditionEvaluator {
 
       for (CompiledRule rule : context.getRules()) {
         boolean isDenyRule = rule.getEffect().toString().equalsIgnoreCase("DENY");
+        List<MetadataOperation> mappedOperations =
+            rule.getOperations().stream()
+                .map(
+                    op -> {
+                      if (op.toString().equalsIgnoreCase("Create")
+                          || op.toString().equalsIgnoreCase("Delete")
+                          || op.toString().toLowerCase().startsWith("edit")) {
+                        return MetadataOperation.VIEW_BASIC;
+                      }
+                      return op;
+                    })
+                .collect(Collectors.toList());
 
-        if (isDenyRule && SEARCH_RELEVANT_OPS.stream().noneMatch(rule.getOperations()::contains)) {
+        if (isDenyRule && SEARCH_RELEVANT_OPS.stream().noneMatch(mappedOperations::contains)) {
           continue;
         }
 
@@ -110,7 +122,6 @@ public class RBACConditionEvaluator {
           (SpelExpression) spelParser.parseExpression(rule.getCondition());
       preprocessExpression(parsedExpression.getAST(), ruleCollector);
     } else {
-      // If the condition is empty, treat it as always true
       ruleCollector.addMust(queryBuilderFactory.matchAllQuery());
     }
 
@@ -118,7 +129,6 @@ public class RBACConditionEvaluator {
   }
 
   private void preprocessExpression(SpelNode node, ConditionCollector collector) {
-    // Delay this check until after processing necessary expressions
     if (collector.isMatchNothing()) {
       return;
     }
@@ -133,35 +143,33 @@ public class RBACConditionEvaluator {
     } else if (node instanceof OpOr) {
       List<OMQueryBuilder> orQueries = new ArrayList<>();
       boolean allMatchNothing = true;
-      boolean hasTrueCondition = false; // Track if any condition evaluated to true
+      boolean hasTrueCondition = false;
 
       for (int i = 0; i < node.getChildCount(); i++) {
         ConditionCollector childCollector = new ConditionCollector(queryBuilderFactory);
         preprocessExpression(node.getChild(i), childCollector);
 
         if (childCollector.isMatchNothing()) {
-          continue; // If this child evaluates to match nothing, skip it
+          continue;
         }
 
         if (childCollector.isMatchAllQuery()) {
-          hasTrueCondition = true; // If any condition evaluates to true, mark it
-          break; // Short-circuit: if any condition in OR evaluates to true, the whole OR is true
+          hasTrueCondition = true;
+          break;
         }
 
         OMQueryBuilder childQuery = childCollector.buildFinalQuery();
         if (childQuery != null) {
-          allMatchNothing =
-              false; // If at least one child query is valid, it’s not all match nothing
+          allMatchNothing = false;
           orQueries.add(childQuery);
         }
       }
 
       if (hasTrueCondition) {
-        collector.addMust(queryBuilderFactory.matchAllQuery()); // OR is true, add match_all
+        collector.addMust(queryBuilderFactory.matchAllQuery());
       } else if (allMatchNothing) {
-        collector.setMatchNothing(true); // OR is false
+        collector.setMatchNothing(true);
       } else {
-        // Add the valid OR queries to the collector
         for (OMQueryBuilder orQuery : orQueries) {
           collector.addShould(orQuery);
         }
@@ -177,7 +185,7 @@ public class RBACConditionEvaluator {
       } else {
         OMQueryBuilder subQuery = subCollector.buildFinalQuery();
         if (subQuery != null && !subQuery.isEmpty()) {
-          collector.addMustNot(subQuery); // Add must_not without extra nesting
+          collector.addMustNot(subQuery);
         }
       }
     } else if (node instanceof MethodReference) {
@@ -216,7 +224,7 @@ public class RBACConditionEvaluator {
     List<String> args = new ArrayList<>();
     for (int i = 0; i < methodRef.getChildCount(); i++) {
       SpelNode childNode = methodRef.getChild(i);
-      String value = childNode.toStringAST().replace("'", ""); // Remove single quotes
+      String value = childNode.toStringAST().replace("'", "");
       args.add(value);
     }
     return args;
@@ -232,7 +240,7 @@ public class RBACConditionEvaluator {
   public void matchAllTags(List<String> tags, ConditionCollector collector) {
     for (String tag : tags) {
       OMQueryBuilder tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
-      collector.addMust(tagQuery); // Add directly to the collector's must clause
+      collector.addMust(tagQuery);
     }
   }
 
@@ -247,7 +255,7 @@ public class RBACConditionEvaluator {
     }
 
     for (OMQueryBuilder ownerQuery : ownerQueries) {
-      collector.addShould(ownerQuery); // Add directly to the collector's should clause
+      collector.addShould(ownerQuery);
     }
   }
 
@@ -304,7 +312,7 @@ public class RBACConditionEvaluator {
     List<String> indices =
         resources.stream()
             .map(resource -> Entity.getSearchRepository().getIndexOrAliasName(resource))
-            .collect(Collectors.toList());
+            .toList();
 
     return queryBuilderFactory.termsQuery("_index", indices);
   }
