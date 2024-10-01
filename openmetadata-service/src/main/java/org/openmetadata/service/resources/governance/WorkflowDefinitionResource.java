@@ -33,7 +33,7 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.entity.data.APICollection;
-import org.openmetadata.schema.governanceWorkflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -451,12 +451,11 @@ public class WorkflowDefinitionResource
   }
 
   private WorkflowDefinition getWorkflowDefinition(CreateWorkflowDefinition create, String user) {
+      // TODO: Validate the NodeType and NodeSubType.
     return repository
         .copy(new WorkflowDefinition(), create, user)
         .withFullyQualifiedName(create.getName())
-        .withStartEvent(create.getStartEvent())
-        .withEndEvents(create.getEndEvents())
-        .withProcesses(create.getProcesses())
+        .withNodes(create.getNodes())
         .withEdges(create.getEdges());
   }
 }

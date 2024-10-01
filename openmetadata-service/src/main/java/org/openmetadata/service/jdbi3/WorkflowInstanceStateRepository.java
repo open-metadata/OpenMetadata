@@ -2,11 +2,13 @@ package org.openmetadata.service.jdbi3;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
-import org.openmetadata.schema.governanceWorkflows.WorkflowInstanceState;
-import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowInstanceStateResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -51,5 +53,27 @@ public class WorkflowInstanceStateRepository
     storeInternal(recordEntity, recordFQN);
     storeRelationshipInternal(recordEntity);
     return recordEntity;
+  }
+
+  public void addNewStateToInstance(WorkflowInstanceState.State state, String workflowInstanceId, String workflowDefinitionName) {
+    addNewStateToInstance(state, workflowInstanceId, workflowDefinitionName, null, null);
+  }
+  public void addNewStateToInstance(WorkflowInstanceState.State state, String workflowInstanceId, String workflowDefinitionName, UUID taskId, String flowableTaskId) {
+    WorkflowDefinitionRepository workflowDefinitionRepository = (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    EntityReference workflowDefinitionReference = workflowDefinitionRepository.getByName(null, workflowDefinitionName, new EntityUtil.Fields(Set.of("*"))).getEntityReference();
+
+    createNewRecord(
+        new WorkflowInstanceState()
+                .withState(state)
+                .withWorkflowInstanceId(workflowInstanceId)
+                .withTimestamp(System.currentTimeMillis())
+                .withTaskId(taskId)
+                .withFlowableTaskId(flowableTaskId)
+                .withWorkflowDefinitionReference(workflowDefinitionReference), buildWorkflowInstanceFqn(workflowDefinitionName, workflowInstanceId));
+
+  }
+
+  private String buildWorkflowInstanceFqn(String workflowDefinitionName, String workflowInstanceId) {
+    return String.format("%s.%s", workflowDefinitionName, workflowInstanceId);
   }
 }

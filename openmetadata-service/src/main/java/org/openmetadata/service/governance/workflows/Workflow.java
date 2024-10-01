@@ -1,21 +1,18 @@
 package org.openmetadata.service.governance.workflows;
 
-import java.util.Map;
 import lombok.Getter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.ExtensionElement;
-import org.flowable.bpmn.model.IntermediateCatchEvent;
-import org.flowable.bpmn.model.Message;
-import org.flowable.bpmn.model.MessageEventDefinition;
+import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.Process;
-import org.openmetadata.schema.api.governance.EndEvent;
-import org.openmetadata.schema.governanceWorkflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
+import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.service.governance.workflows.elements.Edge;
-import org.openmetadata.service.governance.workflows.elements.events.start.EntityEvent;
-import org.openmetadata.service.governance.workflows.elements.processes.automated.CheckEntityAttributes;
-import org.openmetadata.service.governance.workflows.elements.processes.automated.UpdateEntity;
-import org.openmetadata.service.governance.workflows.elements.processes.user.Approval;
+import org.openmetadata.service.governance.workflows.elements.WorkflowNodeFactory;
 import org.openmetadata.service.util.JsonUtils;
+
+import java.util.Map;
 
 @Getter
 public class Workflow {
@@ -37,96 +34,23 @@ public class Workflow {
             workflowDefinition.getDescription()));
     model.addProcess(process);
 
-    // Add StartEvent
-    EntityEvent entityEvent = new EntityEvent(workflowDefinition.getStartEvent());
-    entityEvent.addToWorkflow(model, process);
+    // Add Workflow Start Listener
+    FlowableListener startListener = new FlowableListener();
+    startListener.setEvent("start");
+    startListener.setImplementationType("class");
+    startListener.setImplementation(WorkflowStartListener.class.getName());
+    process.getExecutionListeners().add(startListener);
 
-    // Add IntermediateCatchEvent to wait until we are ready to continue the processing
-    Message workflowInstanceStateReady = new Message();
-    workflowInstanceStateReady.setId("WorkflowInstanceStateReadyEvent");
-    workflowInstanceStateReady.setName("WorkflowInstanceStateReady");
-    model.addMessage(workflowInstanceStateReady);
-
-    IntermediateCatchEvent waitForWorkflowInstanceState = new IntermediateCatchEvent();
-    waitForWorkflowInstanceState.setId(String.format("%s-waitForWorkflowInstanceState", workflowDefinition.getFullyQualifiedName()));
-    waitForWorkflowInstanceState.setName(String.format("[%s] Wait for Workflow Instance State", workflowDefinition.getDisplayName()));
-
-    MessageEventDefinition messageEventDefinition = new MessageEventDefinition();
-    messageEventDefinition.setMessageRef("WorkflowInstanceStateReadyEvent");
-    waitForWorkflowInstanceState.addEventDefinition(messageEventDefinition);
-    process.addFlowElement(waitForWorkflowInstanceState);
-
-    // Add EndEvents
-    for (EndEvent endEventConfig : workflowDefinition.getEndEvents()) {
-      org.openmetadata.service.governance.workflows.elements.events.end.EndEvent endEvent =
-          new org.openmetadata.service.governance.workflows.elements.events.end.EndEvent(
-              endEventConfig);
-      endEvent.addToWorkflow(model, process);
-    }
-
-    // Add Processes
-    for (Object processDef : workflowDefinition.getProcesses()) {
-      Map<String, Object> processDefMap = JsonUtils.getMap(processDef);
-      if (processDefMap.get("type").equals("CHECK_ENTITY_ATTRIBUTES")) {
-        CheckEntityAttributes checkEntityAttributes =
-            new CheckEntityAttributes(
-                JsonUtils.readOrConvertValue(
-                    processDefMap,
-                    org.openmetadata
-                        .schema
-                        .governanceWorkflows
-                        .elements
-                        .processes
-                        .automated
-                        .CheckEntityAttributes
-                        .class));
-        checkEntityAttributes.addToWorkflow(model, process);
-      } else if (processDefMap.get("type").equals("UPDATE_ENTITY")) {
-        UpdateEntity updateEntity =
-            new UpdateEntity(
-                JsonUtils.readOrConvertValue(
-                    processDefMap,
-                    org.openmetadata
-                        .schema
-                        .governanceWorkflows
-                        .elements
-                        .processes
-                        .automated
-                        .UpdateEntity
-                        .class));
-        updateEntity.addToWorkflow(model, process);
-      } else {
-        Approval approval =
-            new Approval(
-                JsonUtils.readOrConvertValue(
-                    processDefMap,
-                    org.openmetadata
-                        .schema
-                        .governanceWorkflows
-                        .elements
-                        .processes
-                        .user
-                        .Approval
-                        .class));
-        approval.addToWorkflow(model, process);
-      }
+    // Add Nodes
+    for (Object nodeDefinitionObj : workflowDefinition.getNodes()) {
+//      WorkflowNodeDefinitionInterface nodeDefinition = JsonUtils.readOrConvertValue(nodeDefinitionObj, WorkflowNodeDefinitionInterface.class);
+      WorkflowNodeFactory.createNode(JsonUtils.readOrConvertValue(nodeDefinitionObj, Map.class)).addToWorkflow(model, process);
     }
 
     // Add Edges
-    for (org.openmetadata.schema.api.governance.Edge edgeConfig : workflowDefinition.getEdges()) {
-      // TODO: Remove this HACK
-      if (edgeConfig.getFrom().equals(workflowDefinition.getStartEvent().getName())) {
-        org.openmetadata.schema.api.governance.Edge startEdgeConfig = new org.openmetadata.schema.api.governance.Edge()
-                .withFrom(edgeConfig.getFrom())
-                .withTo(waitForWorkflowInstanceState.getId());
-        Edge waitEdge = new Edge(edgeConfig.withFrom(waitForWorkflowInstanceState.getId()));
-        Edge startEdge = new Edge(startEdgeConfig);
-        waitEdge.addToWorkflow(model, process);
-        startEdge.addToWorkflow(model, process);
-      } else {
-        Edge edge = new Edge(edgeConfig);
+    for (EdgeDefinition edgeDefinition : workflowDefinition.getEdges()) {
+        Edge edge = new Edge(edgeDefinition);
         edge.addToWorkflow(model, process);
-      }
     }
 
     this.model = model;

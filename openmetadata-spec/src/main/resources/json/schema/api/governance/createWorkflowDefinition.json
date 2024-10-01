@@ -24,29 +24,24 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
-    "startEvent": {
-      "description": "Event that triggers the start of the workflow.",
-      "$ref": "../../governanceWorkflows/elements/events/start/entityEvent.json"
-    },
-    "endEvents": {
-      "description": "List of states on which the workflow might end.",
-      "type": "array",
-      "items": {
-        "$ref": "../../governanceWorkflows/workflowDefinition.json#/definitions/endEvent"
-      }
-    },
-    "processes": {
+    "nodes": {
       "description": "List of processes used on the workflow.",
       "type": "array",
       "oneOf": [
         {
-          "$ref": "../../governanceWorkflows/elements/processes/automated/checkEntityAttributes.json"
+          "$ref": "../../governance/workflows/elements/nodes/automatedTasks/checkEntityHasReviewersTask.json"
         },
         {
-          "$ref": "../../governanceWorkflows/elements/processes/automated/updateEntity.json"
+          "$ref": "../../governance/workflows/elements/nodes/automatedTasks/setGlossaryTermStatusTask.json"
         },
         {
-          "$ref": "../../governanceWorkflows/elements/processes/user/approval.json"
+          "$ref": "../../governance/workflows/elements/nodes/userTasks/userApprovalTask.json"
+        },
+        {
+          "$ref": "../../governance/workflows/elements/nodes/triggers/entityEventTrigger.json"
+        },
+        {
+          "$ref": "../../governance/workflows/elements/nodes/endEvents/endEvent.json"
         }
       ]
     },
@@ -54,7 +49,7 @@
       "description": "List of edges that connect the workflow elements and guide its flow.",
       "type": "array",
       "items": {
-        "$ref": "../../governanceWorkflows/workflowDefinition.json#/definitions/edge"
+        "$ref": "../../governance/workflows/elements/edge.json"
       }
     }
 

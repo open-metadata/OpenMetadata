@@ -8,10 +8,10 @@ import org.openmetadata.common.utils.CommonUtil;
 public class Edge {
   private final SequenceFlow edge;
 
-  public Edge(org.openmetadata.schema.api.governance.Edge edgeConfig) {
-    SequenceFlow edge = new SequenceFlow(edgeConfig.getFrom(), edgeConfig.getTo());
-    if (!CommonUtil.nullOrEmpty(edgeConfig.getCondition())) {
-      edge.setConditionExpression(edgeConfig.getCondition());
+  public Edge(org.openmetadata.schema.governance.workflows.elements.EdgeDefinition edgeDefinition) {
+    SequenceFlow edge = new SequenceFlow(edgeDefinition.getFrom(), edgeDefinition.getTo());
+    if (!CommonUtil.nullOrEmpty(edgeDefinition.getCondition())) {
+      edge.setConditionExpression(edgeDefinition.getCondition());
     }
     this.edge = edge;
   }
