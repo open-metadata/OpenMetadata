@@ -495,6 +495,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={commonStyle}>
@@ -532,6 +533,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               id="timeInterval-form"
               initialValues={initialValues}
               layout="vertical"
+              validateMessages={{
+                types: {
+                  string: t('message.invalid-number'),
+                },
+              }}
               onFinish={(values: { start: string; end: string }) => {
                 onInputSave(
                   omitBy(
@@ -550,6 +556,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={{ ...commonStyle, marginBottom: '16px' }}>
@@ -567,6 +574,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={commonStyle}>

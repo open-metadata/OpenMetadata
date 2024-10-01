@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-@btn-bg-color: #00000005;
-@enum-tag-bg-color: #00000008;
+@import (reference) url('../../../styles/variables.less');
 
 .entity-reference-list-item:last-child {
   border-bottom: none;
@@ -45,12 +44,12 @@
   }
 }
 
-.enum-key-tag {
+.ant-tag.enum-key-tag {
   width: max-content;
   margin: 0px;
-  border: none;
-  padding: 4px;
-  background: @enum-tag-bg-color;
+  padding: 2px 8px;
+  border: 1px solid #292929;
+  background: @white;
 }
 
 .sql-query-custom-property {
