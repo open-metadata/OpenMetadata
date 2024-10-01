@@ -33,6 +33,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -157,7 +158,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
             section ->
                 section.text(
                     BlockCompositions.markdownText(
-                        applyBoldFormatWithSpace("Publisher:" + publisherName)))));
+                        applyBoldFormatWithSpace("Publisher :") + publisherName))));
 
     // Section Block 2 (Test Message)
     blocks.add(
@@ -165,7 +166,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
             section ->
                 section.text(
                     BlockCompositions.markdownText(
-                        "This is a Test Message, receiving this message confirms that you have successfully configured OpenMetadata to receive alerts."))));
+                        "This is a test message, receiving this message confirms that you have successfully configured OpenMetadata to receive alerts."))));
 
     // Divider Block
     blocks.add(Blocks.divider());
@@ -208,9 +209,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     List<LayoutBlock> blocks = new ArrayList<>();
 
     // Header
-    blocks.add(
-        Blocks.header(
-            header -> header.text(BlockCompositions.plainText("Change Event Details :memo:"))));
+    addChangeEventDetailsHeader(blocks);
 
     // Info about the event
     List<TextObject> first_field = new ArrayList<>();
@@ -283,9 +282,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     IngestionPipeline entityInterface = (IngestionPipeline) getEntity(event);
 
     // Header
-    blocks.add(
-        Blocks.header(
-            header -> header.text(BlockCompositions.plainText("Change Event Details :memo:"))));
+    addChangeEventDetailsHeader(blocks);
 
     // Info about the event
     List<TextObject> first_field = new ArrayList<>();
@@ -389,9 +386,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
         buildDQTemplateData(publisherName, event, outgoingMessage);
 
     // Header Block
-    blocks.add(
-        Blocks.header(
-            header -> header.text(BlockCompositions.plainText("Change Event Details :memo:"))));
+    addChangeEventDetailsHeader(blocks);
 
     // Section 1 - ID and Name
     addIdAndNameSection(blocks, dqTemplateData);
@@ -402,13 +397,17 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     // Section 3 - Owners and Tags
     addOwnersTagsSection(blocks, dqTemplateData);
 
-    // Section 4 - Test Case FQN
+    // Section 4 - entity link
+    String entityUrl = buildClickableEntityUrl(outgoingMessage.getEntityUrl());
+    blocks.add(Blocks.section(section -> section.text(BlockCompositions.markdownText(entityUrl))));
+
+    // Section 5 - Test Case FQN
     addTestCaseFQNSection(blocks, dqTemplateData);
 
     // Divider
     blocks.add(Blocks.divider());
 
-    // Add Test Case Result and Test Definition sections
+    // Section 6 and 7 - Result and Test Definition
     blocks.addAll(createTestCaseResultAndDefinitionSections(dqTemplateData));
 
     // Context Block - Image and Markdown Text
@@ -597,20 +596,16 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
             Blocks.section(
                 section ->
                     section.text(
-                        BlockCompositions.markdownText(applyBoldFormat("TEST CASE RESULT")))));
+                        BlockCompositions.markdownText(
+                            applyBoldFormat(":mag: TEST CASE RESULT")))));
 
         // Status and Parameter Value
         List<TextObject> statusParameterFields = new ArrayList<>();
 
         statusParameterFields.add(
             BlockCompositions.markdownText(
-                applyBoldFormatWithNewLine("Status")
+                applyBoldFormatWithSpace("Status -")
                     + testCaseResults.getOrDefault(DQ_TestCaseResultKeys.STATUS, "-")));
-
-        statusParameterFields.add(
-            BlockCompositions.markdownText(
-                applyBoldFormatWithNewLine("Parameter Value")
-                    + testCaseResults.getOrDefault(DQ_TestCaseResultKeys.PARAMETER_VALUE, "-")));
 
         blocks.add(Blocks.section(section -> section.fields(statusParameterFields)));
 
@@ -628,6 +623,8 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                             formatWithTripleBackticksForEnumMap(
                                 DQ_TestCaseResultKeys.RESULT_MESSAGE, testCaseResults)))));
 
+        createParameterValueBlocks(templateData, blocks);
+
         addInspectionQuerySection(templateData, blocks);
 
         // Divider
@@ -636,6 +633,61 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     }
 
     return blocks;
+  }
+
+  private void createParameterValueBlocks(
+      Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<LayoutBlock> blocks) {
+
+    // Check if templateData contains the TEST_CASE_RESULT section
+    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_RESULT)) {
+      Map<Enum<?>, Object> testCaseResults = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
+
+      if (!nullOrEmpty(testCaseResults)) {
+        List<TestCaseParameterValue> parameterValues = null;
+
+        // Retrieve parameter values from testCaseResults
+        Object result = testCaseResults.get(DQ_TestCaseResultKeys.PARAMETER_VALUE);
+        if (result instanceof List<?>) {
+          parameterValues = (List<TestCaseParameterValue>) result;
+        }
+
+        // Ensure parameterValues is not null or empty before proceeding
+        if (!nullOrEmpty(parameterValues)) {
+
+          // Add the Parameter Value title block
+          blocks.add(
+              Blocks.section(
+                  section ->
+                      section.text(
+                          BlockCompositions.markdownText(applyBoldFormat("Parameter Value")))));
+
+          // Add the formatted parameter values block
+          StringBuilder parameterValuesText = new StringBuilder();
+          for (int i = 0; i < parameterValues.size(); i++) {
+            TestCaseParameterValue parameterValue = parameterValues.get(i);
+            parameterValuesText
+                .append("[")
+                .append(parameterValue.getName())
+                .append(": ")
+                .append(parameterValue.getValue())
+                .append("]");
+
+            // Append a comma if it's not the last item
+            if (i < parameterValues.size() - 1) {
+              parameterValuesText.append(", ");
+            }
+          }
+
+          // Adding parameter values as a markdown section block
+          blocks.add(
+              Blocks.section(
+                  section ->
+                      section.text(
+                          BlockCompositions.markdownText(
+                              "```" + parameterValuesText.toString() + "```"))));
+        }
+      }
+    }
   }
 
   // Method to add the Inspection Query section to the blocks list
@@ -653,7 +705,9 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
             Blocks.section(
                 section ->
                     section.text(
-                        BlockCompositions.markdownText(applyBoldFormat("Inspection Query")))));
+                        BlockCompositions.markdownText(
+                            applyBoldFormat(":hammer_and_wrench: Inspection Query")))));
+
         blocks.add(
             Blocks.section(
                 section ->
@@ -681,7 +735,8 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
             Blocks.section(
                 section ->
                     section.text(
-                        BlockCompositions.markdownText(applyBoldFormat("TEST DEFINITION")))));
+                        BlockCompositions.markdownText(
+                            applyBoldFormat(":bulb: TEST DEFINITION")))));
         blocks.add(
             Blocks.section(
                 section -> section.text(BlockCompositions.markdownText(applyBoldFormat("Name")))));
@@ -789,6 +844,15 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     attachment.setMarkdownIn(mark);
     attachment.setText(message);
     return attachment;
+  }
+
+  private void addChangeEventDetailsHeader(List<LayoutBlock> blocks) {
+    blocks.add(
+        Blocks.header(
+            header ->
+                header.text(
+                    BlockCompositions.plainText(
+                        ":arrows_counterclockwise: Change Event Details"))));
   }
 
   private String applyBoldFormat(String title) {
