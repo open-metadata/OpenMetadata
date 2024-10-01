@@ -1014,7 +1014,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
   const customPropertyInlineElement = (
     <div className="d-flex flex-column gap-2" data-testid={propertyName}>
-      <div className="d-flex justify-between w-full">
+      <div className="d-flex justify-between w-full items-center">
         <div className="d-flex flex-column gap-1 w-full">
           <Typography.Text
             className="property-name text-grey-body"
@@ -1048,7 +1048,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     <Row data-testid={propertyName} gutter={[0, 16]}>
       <Col span={24}>
         <Row gutter={[0, 2]}>
-          <Col className="d-flex justify-between w-full" span={24}>
+          <Col className="d-flex justify-between items-center w-full" span={24}>
             <Typography.Text
               className="text-grey-body property-name"
               data-testid="property-name">
