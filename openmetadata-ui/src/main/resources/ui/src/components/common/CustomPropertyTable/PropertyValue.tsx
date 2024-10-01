@@ -949,12 +949,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="break-all"
             data-testid="time-interval-value">
             <span>
-              <Typography.Text>{`Start Time: `}</Typography.Text>
+              <Typography.Text>{`${t('label.start-entity', {
+                entity: t('label.time'),
+              })}: `}</Typography.Text>
               <Typography.Text className="text-sm text-grey-body property-value">
                 {timeInterval.start}
               </Typography.Text>
               <Divider className="self-center" type="vertical" />
-              <Typography.Text>{`End Time: `}</Typography.Text>
+              <Typography.Text>{`${t('label.end-entity', {
+                entity: t('label.time'),
+              })}: `}</Typography.Text>
               <Typography.Text className="text-sm text-grey-body property-value">
                 {timeInterval.end}
               </Typography.Text>
