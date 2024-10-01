@@ -83,7 +83,21 @@ to import metadata into OpenMetadata on a regular schedule.
 
 - You can repeat these steps to ingest metadata from other data sources as needed.
 
-## Step 3: Invite Users
+## Step 3: Invite Users After Setting Up SMTP
+
+### SMTP Configuration
+
+To invite users you will need to ensure that you have an SMTP server available. With the information for your SMTP server you can configure OpenMetadata to send email alerts by updating the details from the UI.
+
+To update the details from the UI, navigate to Settings > Preferences > Email
+
+{% image
+src="/images/v1.5/how-to-guides/admin-guide/email.png"
+alt="Email Configuration"
+caption="Email Configuration"
+/%}
+
+### Inviting Users
 
 After metadata has been ingested into OpenMetadata, you can [invite users](/how-to-guides/admin-guide/teams-and-users/invite-users) to collaborate on the data and assign different roles.
 
