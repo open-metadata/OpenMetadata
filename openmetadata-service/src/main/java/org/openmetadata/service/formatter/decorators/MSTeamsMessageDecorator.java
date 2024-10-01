@@ -107,9 +107,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
       throw new UnhandledServerException("No messages found for the event");
     }
 
-    //    return createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
-
-    return createDQMessage(publisherName, event, outgoingMessage);
+    return createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
   }
 
   private TeamsMessage createGeneralChangeEventMessage(
@@ -163,6 +161,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     body.add(columnSet);
     body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(facts).build());
     body.addAll(messageTextBlocks); // Add the containers with message TextBlocks
+    body.add(createEntityLink(outgoingMessage.getEntityUrl()));
     body.add(footerMessage);
 
     Attachment attachment =
@@ -275,6 +274,8 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
     // Add the outgoing message text blocks
     body.addAll(messageTextBlocks);
+
+    body.add(createEntityLink(outgoingMessage.getEntityUrl()));
 
     body.add(footerMessage);
 
@@ -566,6 +567,23 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         .size("Large")
         .weight("Bolder")
         .wrap(true)
+        .build();
+  }
+
+  private TextBlock createEntityLink(String url) {
+    if (nullOrEmpty(url)) {
+      throw new IllegalArgumentException("URL cannot be null or empty");
+    }
+
+    // Replace the text part (if it's in markdown link format [some text](url))
+    String updatedUrl = url.replaceAll("\\[.*?\\]\\((.*?)\\)", "[view data]($1)");
+
+    return TextBlock.builder()
+        .type("TextBlock")
+        .text(updatedUrl)
+        .wrap(true)
+        .spacing("Medium")
+        .separator(false)
         .build();
   }
 
