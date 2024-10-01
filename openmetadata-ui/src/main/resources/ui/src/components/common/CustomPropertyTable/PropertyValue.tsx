@@ -1121,7 +1121,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   if (isRenderedInRightPanel) {
     return (
       <div
-        className="custom-property-card-right-panel"
+        className="custom-property-card custom-property-card-right-panel"
         data-testid="custom-property-right-panel-card">
         {isInlineProperty ? customPropertyInlineElement : customPropertyElement}
       </div>
