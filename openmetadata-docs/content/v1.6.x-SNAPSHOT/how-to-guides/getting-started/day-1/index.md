@@ -92,7 +92,7 @@ To invite users you will need to ensure that you have an SMTP server available. 
 To update the details from the UI, navigate to Settings > Preferences > Email
 
 {% image
-src="/images/v1.5/how-to-guides/admin-guide/email.png"
+src="/images/v1.6/how-to-guides/admin-guide/email.png"
 alt="Email Configuration"
 caption="Email Configuration"
 /%}
