@@ -11,6 +11,7 @@
 
 # Created by .ignore support plugin (hsz.mobi)
 # Maven
+.venv
 __pycache__
 target/
 pom.xml.tag
