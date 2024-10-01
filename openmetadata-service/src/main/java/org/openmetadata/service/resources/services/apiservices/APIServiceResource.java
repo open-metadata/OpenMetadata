@@ -47,11 +47,11 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.api.services.CreateAPIService;
+import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.entity.services.APIService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
-import org.openmetadata.schema.type.APIServiceConnection;
+import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -75,7 +75,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apiServices")
 public class APIServiceResource
-    extends ServiceEntityResource<APIService, APIServiceRepository, APIServiceConnection> {
+    extends ServiceEntityResource<APIService, APIServiceRepository, ApiConnection> {
   public static final String COLLECTION_PATH = "v1/services/apiServices/";
   static final String FIELDS = "pipelines,owners,tags,domain";
 
@@ -328,7 +328,7 @@ public class APIServiceResource
 
   @POST
   @Operation(
-      operationId = "createAPIService",
+      operationId = "createApiService",
       summary = "Create API service",
       description = "Create a new API service.",
       responses = {
@@ -344,7 +344,7 @@ public class APIServiceResource
   public Response create(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateAPIService create) {
+      @Valid CreateApiService create) {
     APIService service = getService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (APIService) response.getEntity());
@@ -369,7 +369,7 @@ public class APIServiceResource
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateAPIService update) {
+      @Valid CreateApiService update) {
     APIService service = getService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (APIService) response.getEntity());
@@ -513,7 +513,7 @@ public class APIServiceResource
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private APIService getService(CreateAPIService create, String user) {
+  private APIService getService(CreateApiService create, String user) {
     return repository
         .copy(new APIService(), create, user)
         .withServiceType(create.getServiceType())

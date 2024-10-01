@@ -17,21 +17,21 @@
       ],
       "type": "string",
       "enum": [
-        "REST",
+        "Rest",
         "WEBHOOK"
       ],
       "javaEnums": [
         {
-          "name": "REST"
+          "name": "Rest"
         },
         {
           "name": "WEBHOOK"
         }
       ]
     },
-    "apiServiceConnection": {
+    "apiConnection": {
       "type": "object",
-      "javaType": "org.openmetadata.schema.type.APIServiceConnection",
+      "javaType": "org.openmetadata.schema.type.ApiConnection",
       "description": "API Service Connection.",
       "javaInterfaces": [
         "org.openmetadata.schema.ServiceConnectionEntityInterface"
@@ -41,7 +41,7 @@
           "mask": true,
           "oneOf": [
             {
-              "$ref": "./connections/apiService/restConnection.json"
+              "$ref": "./connections/api/restConnection.json"
             }
           ]
         }
@@ -75,7 +75,7 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "connection": {
-      "$ref": "#/definitions/apiServiceConnection"
+      "$ref": "#/definitions/apiConnection"
     },
     "pipelines": {
       "description": "References to pipelines deployed for this API service to extract metadata, usage, lineage etc..",

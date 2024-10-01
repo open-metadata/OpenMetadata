@@ -19,7 +19,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.apiService import (
-    ApiServiceConnection,
+    ApiConnection,
     APIServiceType,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
@@ -135,7 +135,7 @@ HAS_INNER_CONNECTION = {"Airflow"}
 # Build a service type map dynamically from JSON Schema covered types
 SERVICE_TYPE_MAP = {
     "Backend": PipelineConnection,  # For Airflow backend
-    **{service: ApiServiceConnection for service in APIServiceType.__members__},
+    **{service: ApiConnection for service in APIServiceType.__members__},
     **{service: DatabaseConnection for service in DatabaseServiceType.__members__},
     **{service: DashboardConnection for service in DashboardServiceType.__members__},
     **{service: MessagingConnection for service in MessagingServiceType.__members__},
@@ -183,7 +183,7 @@ class InvalidWorkflowException(Exception):
 def get_service_type(
     source_type: str,
 ) -> Union[
-    Type[ApiServiceConnection],
+    Type[ApiConnection],
     Type[DashboardConnection],
     Type[DatabaseConnection],
     Type[MessagingConnection],
@@ -233,7 +233,7 @@ def get_source_config_class(
 def get_connection_class(
     source_type: str,
     service_type: Union[
-        Type[ApiServiceConnection],
+        Type[ApiConnection],
         Type[DashboardConnection],
         Type[DatabaseConnection],
         Type[MessagingConnection],

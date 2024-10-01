@@ -21,8 +21,8 @@ from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
 )
 from metadata.generated.schema.entity.services.apiService import (
+    ApiConnection,
     ApiService,
-    ApiServiceConnection,
     APIServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -91,8 +91,8 @@ MOCK_API_SERVICE = ApiService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="openapi_rest",
     fullyQualifiedName=FullyQualifiedEntityName("openapi_rest"),
-    connection=ApiServiceConnection(),
-    serviceType=APIServiceType.REST,
+    connection=ApiConnection(),
+    serviceType=APIServiceType.Rest,
 )
 EXPECTED_COLLECTION_REQUEST = [
     Either(

@@ -22,19 +22,19 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.services.CreateAPIService;
+import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.entity.services.APIService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
-import org.openmetadata.schema.services.connections.api.RESTConnection;
-import org.openmetadata.schema.type.APIServiceConnection;
+import org.openmetadata.schema.services.connections.api.RestConnection;
+import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.apiservices.APIServiceResource;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
-public class APIServiceResourceTest extends ServiceResourceTest<APIService, CreateAPIService> {
+public class APIServiceResourceTest extends ServiceResourceTest<APIService, CreateApiService> {
   public APIServiceResourceTest() {
     super(
         Entity.API_SERVICE,
@@ -47,25 +47,25 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
 
   public void setupAPIService(TestInfo test) throws HttpResponseException {
     APIServiceResourceTest apiServiceResourceTest = new APIServiceResourceTest();
-    CreateAPIService createAPIService =
+    CreateApiService createApiService =
         apiServiceResourceTest
             .createRequest(test)
             .withName("openmetadata")
-            .withServiceType(CreateAPIService.APIServiceType.REST)
+            .withServiceType(CreateApiService.APIServiceType.Rest)
             .withConnection(TestUtils.API_SERVICE_CONNECTION);
 
     APIService omAPIService =
-        new APIServiceResourceTest().createEntity(createAPIService, ADMIN_AUTH_HEADERS);
+        new APIServiceResourceTest().createEntity(createApiService, ADMIN_AUTH_HEADERS);
     OPENMETADATA_API_SERVICE_REFERENCE = omAPIService.getEntityReference();
     APIServiceResourceTest sampleAPIServiceResourceTest = new APIServiceResourceTest();
-    createAPIService =
+    createApiService =
         sampleAPIServiceResourceTest
             .createRequest(test)
             .withName("sampleAPI")
-            .withServiceType(CreateAPIService.APIServiceType.REST)
+            .withServiceType(CreateApiService.APIServiceType.Rest)
             .withConnection(TestUtils.API_SERVICE_CONNECTION);
     APIService sampleAPIService =
-        new APIServiceResourceTest().createEntity(createAPIService, ADMIN_AUTH_HEADERS);
+        new APIServiceResourceTest().createEntity(createApiService, ADMIN_AUTH_HEADERS);
     SAMPLE_API_SERVICE_REFERENCE = sampleAPIService.getEntityReference();
   }
 
@@ -93,10 +93,10 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
 
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
-    APIServiceConnection connection1 =
-        new APIServiceConnection()
+    ApiConnection connection1 =
+        new ApiConnection()
             .withConfig(
-                new RESTConnection()
+                new RestConnection()
                     .withOpenAPISchemaURL(
                         new URI("http://sandbox.open-metadata.org/swagger.json")));
     APIService service =
@@ -104,15 +104,15 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
             createRequest(test).withDescription(null).withConnection(connection1),
             ADMIN_AUTH_HEADERS);
 
-    RESTConnection credentials2 =
-        new RESTConnection()
+    RestConnection credentials2 =
+        new RestConnection()
             .withOpenAPISchemaURL(new URI("https://localhost:9400"))
             .withToken("test");
-    APIServiceConnection connection2 = new APIServiceConnection().withConfig(credentials2);
+    ApiConnection connection2 = new ApiConnection().withConfig(credentials2);
 
     // Update APIService description and connection
 
-    CreateAPIService update =
+    CreateApiService update =
         createRequest(test).withDescription("description1").withConnection(connection2);
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
@@ -150,24 +150,24 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
   }
 
   @Override
-  public CreateAPIService createRequest(String name) {
-    return new CreateAPIService()
+  public CreateApiService createRequest(String name) {
+    return new CreateApiService()
         .withName(name)
-        .withServiceType(CreateAPIService.APIServiceType.REST)
+        .withServiceType(CreateApiService.APIServiceType.Rest)
         .withConnection(
-            new APIServiceConnection()
+            new ApiConnection()
                 .withConfig(
-                    new RESTConnection()
+                    new RestConnection()
                         .withOpenAPISchemaURL(
                             CommonUtil.getUri("http://localhost:8585/swagger.json"))));
   }
 
   @Override
   public void validateCreatedEntity(
-      APIService service, CreateAPIService createRequest, Map<String, String> authHeaders) {
+      APIService service, CreateApiService createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
-    APIServiceConnection expectedConnection = createRequest.getConnection();
-    APIServiceConnection actualConnection = service.getConnection();
+    ApiConnection expectedConnection = createRequest.getConnection();
+    ApiConnection actualConnection = service.getConnection();
     validateConnection(expectedConnection, actualConnection, service.getServiceType());
   }
 
@@ -209,13 +209,13 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
   }
 
   private void validateConnection(
-      APIServiceConnection expectedConnection,
-      APIServiceConnection actualConnection,
-      CreateAPIService.APIServiceType serviceType) {
+      ApiConnection expectedConnection,
+      ApiConnection actualConnection,
+      CreateApiService.APIServiceType serviceType) {
     if (expectedConnection != null && actualConnection != null) {
-      RESTConnection restConnection = (RESTConnection) expectedConnection.getConfig();
-      RESTConnection actualESConnection =
-          JsonUtils.convertValue(actualConnection.getConfig(), RESTConnection.class);
+      RestConnection restConnection = (RestConnection) expectedConnection.getConfig();
+      RestConnection actualESConnection =
+          JsonUtils.convertValue(actualConnection.getConfig(), RestConnection.class);
       assertEquals(restConnection.getOpenAPISchemaURL(), actualESConnection.getOpenAPISchemaURL());
     }
   }
