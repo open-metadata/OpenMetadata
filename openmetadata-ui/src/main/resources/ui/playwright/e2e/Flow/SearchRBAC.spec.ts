@@ -13,7 +13,17 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ContainerClass } from '../../support/entity/ContainerClass';
+import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { MetricClass } from '../../support/entity/MetricClass';
+import { MlModelClass } from '../../support/entity/MlModelClass';
+import { PipelineClass } from '../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, uuid } from '../../utils/common';
@@ -24,17 +34,17 @@ const user = new UserClass();
 const table = new TableClass();
 
 const entities = [
-  //   ApiEndpointClass,
+  ApiEndpointClass,
   TableClass,
-  //   StoredProcedureClass,
-  //   DashboardClass,
-  //   PipelineClass,
-  //   TopicClass,
-  //   MlModelClass,
-  //   ContainerClass,
-  //   SearchIndexClass,
-  //   DashboardDataModelClass,
-  //   MetricClass,
+  StoredProcedureClass,
+  DashboardClass,
+  PipelineClass,
+  TopicClass,
+  MlModelClass,
+  ContainerClass,
+  SearchIndexClass,
+  DashboardDataModelClass,
+  MetricClass,
 ] as const;
 
 const test = base.extend<{
@@ -76,14 +86,20 @@ const searchForEntityShouldWork = async (
 
 const searchForEntityShouldWorkShowNoResult = async (
   fqn: string,
+  displayName: string,
   page: Page
 ) => {
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
   await page.getByTestId('searchBox').press('Enter');
 
-  await expect(page.getByTestId('search-error-placeholder')).toContainText(
-    'No result found.Try adjusting your search or filter to find what you are looking for.'
+  await page.waitForResponse(`api/v1/search/query?**`);
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('loader', { state: 'hidden' });
+
+  await expect(page.getByTestId('entity-header-display-name')).not.toHaveText(
+    displayName
   );
 
   await page
@@ -147,18 +163,18 @@ for (const Entity of entities) {
     const { apiContext } = await getApiContext(userWithPermissionPage);
     try {
       await entityObj.create(apiContext);
-      if (entityObj instanceof TableClass) {
-        // verify service search
-        await searchForEntityShouldWork(
-          entityObj.entityResponseData?.fullyQualifiedName,
-          entityObj.entityResponseData?.displayName,
-          userWithPermissionPage
-        );
-        await searchForEntityShouldWorkShowNoResult(
-          entityObj.entityResponseData?.fullyQualifiedName,
-          userWithoutPermissionPage
-        );
-      }
+
+      // verify service search
+      await searchForEntityShouldWork(
+        entityObj.entityResponseData?.fullyQualifiedName,
+        entityObj.entityResponseData?.displayName,
+        userWithPermissionPage
+      );
+      await searchForEntityShouldWorkShowNoResult(
+        entityObj.entityResponseData?.fullyQualifiedName,
+        entityObj.entityResponseData?.displayName,
+        userWithoutPermissionPage
+      );
     } catch (_e) {
       // remove entity
     } finally {
