@@ -15,7 +15,11 @@ import com.jayway.jsonpath.JsonPath;
 import es.org.elasticsearch.index.query.QueryBuilder;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
@@ -54,6 +58,14 @@ class ElasticSearchRBACConditionEvaluatorTest {
               return resource.toLowerCase();
             });
     Entity.setSearchRepository(mockSearchRepository);
+    mockSubjectContext = mock(SubjectContext.class);
+    mockUser = mock(User.class);
+    EntityReference mockUserReference = mock(EntityReference.class);
+    when(mockUser.getEntityReference()).thenReturn(mockUserReference);
+    when(mockUserReference.getId()).thenReturn(UUID.randomUUID());
+    when(mockUser.getId()).thenReturn(UUID.randomUUID());
+    when(mockUser.getName()).thenReturn("testUser");
+    when(mockSubjectContext.user()).thenReturn(mockUser);
   }
 
   @AfterEach
@@ -66,26 +78,15 @@ class ElasticSearchRBACConditionEvaluatorTest {
       String effect,
       List<List<String>> resourcesList,
       List<List<MetadataOperation>> operationsList) {
-    // Mock the user
-    mockUser = mock(User.class);
-    EntityReference mockUserReference = mock(EntityReference.class);
-    when(mockUser.getEntityReference()).thenReturn(mockUserReference);
-    when(mockUserReference.getId()).thenReturn(UUID.randomUUID());
-    when(mockUser.getId()).thenReturn(UUID.randomUUID());
-    when(mockUser.getName()).thenReturn("testUser");
 
-    // Mock the policy context
     SubjectContext.PolicyContext mockPolicyContext = mock(SubjectContext.PolicyContext.class);
     when(mockPolicyContext.getPolicyName()).thenReturn("TestPolicy");
 
-    // Create a list of mock rules
     List<CompiledRule> mockRules = new ArrayList<>();
     for (int i = 0; i < expressions.size(); i++) {
       CompiledRule mockRule = mock(CompiledRule.class);
       when(mockRule.getOperations()).thenReturn(List.of(MetadataOperation.VIEW_BASIC));
       when(mockRule.getCondition()).thenReturn(expressions.get(i));
-
-      // Use resources from the corresponding index in resourcesList
       List<String> resources = (resourcesList.size() > i) ? resourcesList.get(i) : List.of("All");
       when(mockRule.getResources()).thenReturn(resources);
 
@@ -99,11 +100,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     }
 
     when(mockPolicyContext.getRules()).thenReturn(mockRules);
-
-    // Mock the subject context with this policy
-    mockSubjectContext = mock(SubjectContext.class);
     when(mockSubjectContext.getPolicies(any())).thenReturn(List.of(mockPolicyContext).iterator());
-    when(mockSubjectContext.user()).thenReturn(mockUser);
   }
 
   private void setupMockPolicies(String expression, String effect, List<String> resources) {
@@ -1123,5 +1120,133 @@ class ElasticSearchRBACConditionEvaluatorTest {
     assertFalse(
         generatedQuery.contains("noOwner()"),
         "The query should not contain 'noOwner()' as a string");
+  }
+
+  @Test
+  void testPoliciesProcessing() {
+    List<CompiledRule> compiledRules = new ArrayList<>();
+    List<Map<String, Object>> policies = getPolicies();
+
+    for (Map<String, Object> policy : policies) {
+      CompiledRule rule = createCompiledRule(policy);
+      compiledRules.add(rule);
+    }
+
+    SubjectContext.PolicyContext mockPolicyContext = mock(SubjectContext.PolicyContext.class);
+    when(mockPolicyContext.getRules()).thenReturn(compiledRules);
+    Iterator<SubjectContext.PolicyContext> policyContextIterator =
+        Collections.singletonList(mockPolicyContext).iterator();
+    when(mockSubjectContext.getPolicies(anyList())).thenReturn(policyContextIterator);
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFalse(
+        generatedQuery.contains("Create"), "The query should not contain 'Create' operation");
+    assertFalse(
+        generatedQuery.contains("Delete"), "The query should not contain 'Delete' operation");
+    assertFalse(generatedQuery.contains("Edit"), "The query should not contain 'Edit' operation");
+
+    boolean viewOperationAllowed =
+        generatedQuery.contains("\"operation\":\"ViewBasic\"")
+            || generatedQuery.contains("\"operation\":\"ViewAll\"");
+    assertTrue(viewOperationAllowed, "The query should allow 'ViewBasic' or 'ViewAll' operations");
+
+    List<?> mustNotClauses = jsonContext.read("$.bool.must_not");
+    for (Object clause : mustNotClauses) {
+      String clauseStr = clause.toString();
+      assertFalse(
+          clauseStr.contains("\"operation\":\"ViewBasic\""),
+          "Deny rules should not block 'ViewBasic' when there is an allow rule permitting it");
+      assertFalse(
+          clauseStr.contains("\"operation\":\"ViewAll\""),
+          "Deny rules should not block 'ViewAll' when there is an allow rule permitting it");
+    }
+
+    boolean containsOwnerCondition = generatedQuery.contains("owners.id");
+    boolean containsTagCondition = generatedQuery.contains("tags.tagFQN");
+    assertTrue(
+        containsOwnerCondition || containsTagCondition,
+        "The query should include 'isOwner' or 'matchAnyTag' conditions where applicable");
+  }
+
+  // Helper methods
+  private CompiledRule createCompiledRule(Map<String, Object> policyDef) {
+    CompiledRule rule = mock(CompiledRule.class);
+    when(rule.getName()).thenReturn((String) policyDef.get("name"));
+    when(rule.getDescription()).thenReturn((String) policyDef.get("description"));
+    when(rule.getEffect())
+        .thenReturn(CompiledRule.Effect.valueOf(((String) policyDef.get("effect")).toUpperCase()));
+    when(rule.getOperations())
+        .thenReturn(mapOperations((List<String>) policyDef.get("operations")));
+    when(rule.getResources()).thenReturn((List<String>) policyDef.get("resources"));
+    when(rule.getCondition()).thenReturn((String) policyDef.getOrDefault("condition", ""));
+    return rule;
+  }
+
+  private List<MetadataOperation> mapOperations(List<String> operations) {
+    List<MetadataOperation> mappedOperations = new ArrayList<>();
+    for (String op : operations) {
+      if (op.equalsIgnoreCase("Create")
+          || op.equalsIgnoreCase("Delete")
+          || op.toLowerCase().startsWith("edit")) {
+        mappedOperations.add(MetadataOperation.VIEW_BASIC);
+      } else if (op.equalsIgnoreCase("All")) {
+        mappedOperations.add(MetadataOperation.ALL);
+      } else {
+        mappedOperations.add(MetadataOperation.fromValue(op));
+      }
+    }
+    return mappedOperations;
+  }
+
+  private List<Map<String, Object>> getPolicies() {
+    List<Map<String, Object>> policyDefs = new ArrayList<>();
+
+    Map<String, Object> policy1 = new HashMap<>();
+    policy1.put("name", "APP_ALLOW");
+    policy1.put("description", "APP MARKET PLACE DEFINITION ALLOW AS OWNER");
+    policy1.put("effect", "allow");
+    policy1.put("operations", List.of("ViewAll"));
+    policy1.put("resources", List.of("appMarketPlaceDefinition"));
+    policy1.put("condition", "matchAnyTag('tags.a') && isOwner()");
+    policyDefs.add(policy1);
+
+    Map<String, Object> policy2 = new HashMap<>();
+    policy2.put("name", "APP_ALLOW_2");
+    policy2.put("description", "APP MARKET PLACE DEFINITION ALLOW");
+    policy2.put("effect", "allow");
+    policy2.put("operations", List.of("ViewBasic"));
+    policy2.put("resources", List.of("appMarketPlaceDefinition"));
+    policyDefs.add(policy2);
+
+    Map<String, Object> policy3 = new HashMap<>();
+    policy3.put("name", "APP_DENY");
+    policy3.put("description", "APP MARKET PLACE DEFINITION DENY");
+    policy3.put("effect", "deny");
+    policy3.put("operations", List.of("Create", "Delete", "EditAll"));
+    policy3.put("resources", List.of("appMarketPlaceDefinition"));
+    policyDefs.add(policy3);
+
+    Map<String, Object> policy4 = new HashMap<>();
+    policy4.put("name", "APP_ALLOW_2");
+    policy4.put("description", "APP ALLOW");
+    policy4.put("effect", "allow");
+    policy4.put("operations", List.of("ViewBasic"));
+    policy4.put("resources", List.of("app"));
+    policyDefs.add(policy4);
+
+    Map<String, Object> policy5 = new HashMap<>();
+    policy5.put("name", "APP_ALLOW_3");
+    policy5.put("description", "APP DENY");
+    policy5.put("effect", "deny");
+    policy5.put("operations", List.of("Create", "Delete", "EditAll"));
+    policy5.put("resources", List.of("app"));
+    policyDefs.add(policy5);
+
+    return policyDefs;
   }
 }
