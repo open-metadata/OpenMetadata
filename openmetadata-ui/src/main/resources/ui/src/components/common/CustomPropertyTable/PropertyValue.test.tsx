@@ -317,7 +317,7 @@ describe('Test PropertyValue Component', () => {
     const iconElement = await screen.findByTestId('edit-icon');
 
     expect(await screen.findByTestId('time-interval-value')).toHaveTextContent(
-      'StartTime: 1736255200000EndTime: 1736255200020'
+      'label.start-entity: 1736255200000label.end-entity: 1736255200020'
     );
 
     await act(async () => {

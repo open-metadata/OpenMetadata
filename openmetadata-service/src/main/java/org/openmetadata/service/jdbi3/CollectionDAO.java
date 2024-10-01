@@ -1363,7 +1363,7 @@ public interface CollectionDAO {
             + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
             + "    FROM thread_entity te "
             + "    WHERE te.entityId = :entityId "
-            + ") AS combined "
+            + ") AS combined WHERE combined.type IS NOT NULL "
             + "GROUP BY type, taskStatus, entityLink")
     @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountByEntityLink(
@@ -1639,7 +1639,7 @@ public interface CollectionDAO {
             + "        AND (:toType2 IS NULL OR fr.toType LIKE CONCAT(:toType2, '.%') OR fr.toType = :toType2) "
             + "        AND fr.relation = 3 "
             + "    ) "
-            + ") AS combined_results "
+            + ") AS combined_results WHERE combined_results.type is not NULL "
             + "GROUP BY entityLink, type, taskStatus ")
     @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountThreadsByGlossaryAndTerms(
@@ -4251,6 +4251,16 @@ public interface CollectionDAO {
         value = "INSERT INTO apps_extension_time_series(json) VALUES ((:json :: jsonb))",
         connectionType = POSTGRES)
     void insert(@Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'stopped') where appId=:appId AND JSON_UNQUOTE(JSON_EXTRACT(json_column_name, '$.status')) = 'running'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"stopped\"') WHERE appId = :appId AND json->>'status' = 'running'",
+        connectionType = POSTGRES)
+    void markStaleEntriesStopped(@Bind("appId") String appId);
 
     @ConnectionAwareSqlUpdate(
         value =
