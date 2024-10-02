@@ -290,7 +290,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       return Response.status(Response.Status.OK)
-          .entity(repository.listAppRuns(installation.getId(), limitParam, offset))
+          .entity(repository.listAppRuns(installation, limitParam, offset))
           .build();
     }
     if (!installation.getPipelines().isEmpty()) {
@@ -352,13 +352,20 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Long startTs,
       @Parameter(description = "Get the extension type", schema = @Schema(type = "string"))
           @QueryParam("extensionType")
-          AppExtension.ExtensionType extensionType) {
+          AppExtension.ExtensionType extensionType,
+      @Parameter(
+              description = "List extensions by name instead of id",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("byName")
+          @DefaultValue("false")
+          boolean byName) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
     if (startTs != null) {
       return Response.status(Response.Status.OK)
           .entity(
               repository.listAppExtensionAfterTime(
-                  installation.getId(),
+                  installation,
+                  byName,
                   startTs,
                   limitParam,
                   offset,
@@ -369,7 +376,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return Response.status(Response.Status.OK)
         .entity(
             repository.listAppExtension(
-                installation.getId(), limitParam, offset, AppExtension.class, extensionType))
+                installation, byName, limitParam, offset, AppExtension.class, extensionType))
         .build();
   }
 
@@ -401,7 +408,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation.getId()))
+          .entity(repository.getLatestAppRuns(installation))
           .build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
@@ -450,7 +457,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation.getId()))
+          .entity(repository.getLatestAppRuns(installation))
           .build();
     } else {
       if (!installation.getPipelines().isEmpty()) {

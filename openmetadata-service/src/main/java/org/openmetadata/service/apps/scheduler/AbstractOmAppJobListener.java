@@ -13,6 +13,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobDataMap;
@@ -23,12 +24,14 @@ import org.quartz.JobListener;
 @Slf4j
 public abstract class AbstractOmAppJobListener implements JobListener {
   private final CollectionDAO collectionDAO;
+  private final AppRepository repository;
   private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
   public static final String APP_RUN_STATS = "AppRunStats";
   public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
 
   protected AbstractOmAppJobListener(CollectionDAO dao) {
     this.collectionDAO = dao;
+    this.repository = new AppRepository();
   }
 
   @Override
@@ -49,6 +52,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       AppRunRecord runRecord =
           new AppRunRecord()
               .withAppId(jobApp.getId())
+              .withAppName(jobApp.getName())
               .withStartTime(jobStartTime)
               .withTimestamp(jobStartTime)
               .withRunType(runType)
@@ -58,11 +62,8 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       boolean update = false;
       if (jobExecutionContext.isRecovering()) {
         AppRunRecord latestRunRecord =
-            JsonUtils.readValue(
-                collectionDAO
-                    .appExtensionTimeSeriesDao()
-                    .getLatestExtension(jobApp.getId(), AppExtension.ExtensionType.STATUS),
-                AppRunRecord.class);
+            repository.getLatestExtension(
+                jobApp, false, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
         if (latestRunRecord != null) {
           runRecord = latestRunRecord;
         }

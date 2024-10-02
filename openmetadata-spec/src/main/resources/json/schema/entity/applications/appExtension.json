@@ -33,5 +33,5 @@
     }
   },
   "additionalProperties": true,
-  "required": ["appId", "extension"]
+  "required": ["appId", "appName", "extension"]
 }

@@ -36,27 +36,22 @@ public abstract class AppLimits {
 
   public AppExtension getLatestLimit() {
     return repository.getLatestExtension(
-        this.app.getId(), AppExtension.class, AppExtension.ExtensionType.LIMITS);
+        this.app, true, AppExtension.class, AppExtension.ExtensionType.LIMITS);
   }
 
-  // TODO: FETCH FOR APP NAME, NOT APP ID!!!
   public AppExtension getLatestLimit(long startTime) {
     return repository.getLatestExtensionAfterStartTime(
-        this.app.getId(), startTime, AppExtension.class, AppExtension.ExtensionType.LIMITS);
+        this.app, true, startTime, AppExtension.class, AppExtension.ExtensionType.LIMITS);
   }
 
   public ResultList<AppExtension> listLimits(int limitParam, int offset) {
     return repository.listAppExtension(
-        this.app.getId(),
-        limitParam,
-        offset,
-        AppExtension.class,
-        AppExtension.ExtensionType.LIMITS);
+        this.app, true, limitParam, offset, AppExtension.class, AppExtension.ExtensionType.LIMITS);
   }
 
   public ResultList<AppExtension> listAllLimits() {
     return repository.listAllAppExtension(
-        this.app.getId(), AppExtension.class, AppExtension.ExtensionType.LIMITS);
+        this.app, true, AppExtension.class, AppExtension.ExtensionType.LIMITS);
   }
 
   public void insertLimit(AppExtension limitsExtension) {
