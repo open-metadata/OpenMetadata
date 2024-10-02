@@ -11,6 +11,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 
@@ -55,6 +56,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
     doc.put("followers", SearchIndexUtils.parseFollowers(testCase.getFollowers()));
     doc.put("testCaseType", testDefinition.getEntityType());
+    doc.put("originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
     setParentRelationships(doc, testCase);
     return doc;
   }
