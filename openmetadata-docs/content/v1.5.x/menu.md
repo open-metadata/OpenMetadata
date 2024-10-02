@@ -697,6 +697,12 @@ site_menu:
     color: violet-70
     icon: openmetadata
 
+  - category: How-to Guides / Getting Started  
+    url: /how-to-guides/getting-started
+  - category: How-to Guides / Day 1  
+    url: /how-to-guides/getting-started/day-1
+  - category: How-to Guides / Day 1 / Database Service Setup
+    url: /how-to-guides/getting-started/day-1/database-service-setup
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
   - category: How-to Guides / Admin Guide / How to Ingest Metadata
@@ -859,8 +865,6 @@ site_menu:
     url: /how-to-guides/data-insights/ingestion
   - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
     url: /how-to-guides/data-insights/kpi
-  - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
-    url: /how-to-guides/data-insights/airflow-sdk
   - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
     url: /how-to-guides/data-insights/elasticsearch-reindex
   - category: How-to Guides / Data Insights / Data Insights Report

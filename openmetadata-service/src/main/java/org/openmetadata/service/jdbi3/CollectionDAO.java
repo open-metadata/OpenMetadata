@@ -1363,7 +1363,7 @@ public interface CollectionDAO {
             + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
             + "    FROM thread_entity te "
             + "    WHERE te.entityId = :entityId "
-            + ") AS combined "
+            + ") AS combined WHERE combined.type IS NOT NULL "
             + "GROUP BY type, taskStatus, entityLink")
     @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountByEntityLink(
@@ -1402,7 +1402,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM thread_entity te "
                 + "    WHERE MATCH(te.taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
-                + ") AS combined "
+                + ") AS combined WHERE combined.type is not NULL "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -1436,7 +1436,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM thread_entity te "
                 + "    WHERE to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
-                + ") AS combined "
+                + ") AS combined WHERE combined.type is not NULL "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = POSTGRES)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
@@ -1639,7 +1639,7 @@ public interface CollectionDAO {
             + "        AND (:toType2 IS NULL OR fr.toType LIKE CONCAT(:toType2, '.%') OR fr.toType = :toType2) "
             + "        AND fr.relation = 3 "
             + "    ) "
-            + ") AS combined_results "
+            + ") AS combined_results WHERE combined_results.type is not NULL "
             + "GROUP BY entityLink, type, taskStatus ")
     @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountThreadsByGlossaryAndTerms(
@@ -4256,6 +4256,16 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'stopped') where appId=:appId AND JSON_UNQUOTE(JSON_EXTRACT(json_column_name, '$.status')) = 'running' AND extension = 'status'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"stopped\"') WHERE appId = :appId AND json->>'status' = 'running' AND extension = 'status'",
+        connectionType = POSTGRES)
+    void markStaleEntriesStopped(@Bind("appId") String appId);
+
+    @ConnectionAwareSqlUpdate(
+        value =
             "UPDATE apps_extension_time_series set json = :json where appId=:appId and timestamp=:timestamp and extension=:extension",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
@@ -4410,6 +4420,12 @@ public interface CollectionDAO {
             "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE stateId = :stateId ORDER BY timestamp DESC")
     List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM test_case_resolution_status_time_series "
+                + "WHERE stateId = :stateId ORDER BY timestamp ASC LIMIT 1")
+    String listFirstTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
 
     @SqlUpdate(
         "DELETE FROM test_case_resolution_status_time_series WHERE entityFQNHash = :entityFQNHash")
@@ -5142,6 +5158,15 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM suggestions WHERE fqnHash = :fqnHash")
     void deleteByFQN(@BindUUID("fqnHash") String fullyQualifiedName);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM suggestions suggestions WHERE JSON_EXTRACT(json, '$.createdBy.id') = :createdBy",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM suggestions suggestions WHERE json #>> '{createdBy,id}' = :createdBy",
+        connectionType = POSTGRES)
+    void deleteByCreatedBy(@BindUUID("createdBy") UUID id);
 
     @SqlQuery("SELECT json FROM suggestions <condition> ORDER BY updatedAt DESC LIMIT :limit")
     List<String> list(@Bind("limit") int limit, @Define("condition") String condition);

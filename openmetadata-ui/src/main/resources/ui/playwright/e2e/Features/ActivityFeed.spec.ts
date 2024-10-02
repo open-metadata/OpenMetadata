@@ -582,7 +582,7 @@ test.describe('Activity feed', () => {
         // Close drawer
         await page.locator('[data-testid="closeDrawer"]').click();
 
-        expect(
+        await expect(
           page.locator(`${FIRST_FEED_SELECTOR} [data-testid="reply-count"]`)
         ).toContainText('2 Replies');
       }

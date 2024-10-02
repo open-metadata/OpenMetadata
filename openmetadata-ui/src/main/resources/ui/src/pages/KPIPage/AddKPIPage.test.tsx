@@ -128,6 +128,26 @@ describe('Add KPI page', () => {
     expect(submitButton).toBeInTheDocument();
   });
 
+  it('should show validation error when description is empty', async () => {
+    render(<AddKPIPage />, { wrapper: MemoryRouter });
+
+    const submitButton = await screen.findByTestId('submit-btn');
+
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
+
+    const validationMessages = await screen.findAllByText(
+      'label.field-required'
+    );
+    // we have start date and end date field with the same label, hence we have 3 validation messages
+    // and description is the last field in the form
+    const lastValidationMessage =
+      validationMessages[validationMessages.length - 1];
+
+    expect(lastValidationMessage).toBeInTheDocument();
+  });
+
   it.skip('Should render the proper metric input based on metric type', async () => {
     render(<AddKPIPage />, { wrapper: MemoryRouter });
 

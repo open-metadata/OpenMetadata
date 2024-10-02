@@ -16,7 +16,7 @@ import { EdgeTypeEnum } from '../components/Entity/EntityLineage/EntityLineage.i
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
-import { AddLineage } from '../generated/api/lineage/addLineage';
+import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
 import {
   MOCK_CHILD_MAP,
   MOCK_LINEAGE_DATA_NEW,
@@ -29,6 +29,7 @@ import {
   createNewEdge,
   getAllTracedEdges,
   getChildMap,
+  getColumnFunctionValue,
   getColumnLineageData,
   getColumnSourceTargetHandles,
   getConnectedNodesEdges,
@@ -606,6 +607,76 @@ describe('Test EntityLineageUtils utility', () => {
       expect(result.childrenHeight).toBeGreaterThan(0);
       expect(result.childrenFlatten.length).toBeGreaterThan(0);
       expect(result.childrenHeading).toEqual('label.column-plural');
+    });
+  });
+
+  describe('getColumnFunctionValue', () => {
+    it('should return the correct function value when a matching column is found', () => {
+      const columns = [
+        {
+          toColumn: 'targetColumn',
+          fromColumns: ['sourceColumn'],
+          function: 'SUM',
+        },
+        {
+          toColumn: 'anotherTargetColumn',
+          fromColumns: ['anotherSourceColumn'],
+          function: 'AVG',
+        },
+      ];
+      const sourceFqn = 'sourceColumn';
+      const targetFqn = 'targetColumn';
+
+      const result = getColumnFunctionValue(columns, sourceFqn, targetFqn);
+
+      expect(result).toBe('SUM');
+    });
+
+    it('should return undefined when no matching column is found', () => {
+      const columns = [
+        {
+          toColumn: 'targetColumn',
+          fromColumns: ['sourceColumn'],
+          function: 'SUM',
+        },
+        {
+          toColumn: 'anotherTargetColumn',
+          fromColumns: ['anotherSourceColumn'],
+          function: 'AVG',
+        },
+      ];
+      const sourceFqn = 'nonExistentSourceColumn';
+      const targetFqn = 'nonExistentTargetColumn';
+
+      const result = getColumnFunctionValue(columns, sourceFqn, targetFqn);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when columns array is empty', () => {
+      const columns: ColumnLineage[] = [];
+      const sourceFqn = 'sourceColumn';
+      const targetFqn = 'targetColumn';
+
+      const result = getColumnFunctionValue(columns, sourceFqn, targetFqn);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when fromColumns is undefined', () => {
+      const columns = [
+        {
+          toColumn: 'targetColumn',
+          fromColumns: undefined,
+          function: 'SUM',
+        },
+      ];
+      const sourceFqn = 'sourceColumn';
+      const targetFqn = 'targetColumn';
+
+      const result = getColumnFunctionValue(columns, sourceFqn, targetFqn);
+
+      expect(result).toBeUndefined();
     });
   });
 });
