@@ -1,0 +1,59 @@
+{
+  "$id": "https://open-metadata.org/schema/api/governance/createWorkflowDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateWorkflowDefinitionRequest",
+  "description": "Create Workflow Definition entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.governance.CreateWorkflowDefinition",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this Workflow Definition.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Workflow Definition.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Workflow Definition. What it has and how to use it.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owners": {
+      "description": "Owners of this API Collection",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "nodes": {
+      "description": "List of processes used on the workflow.",
+      "type": "array",
+      "oneOf": [
+        {
+          "$ref": "../../governance/workflows/elements/nodes/automatedTasks/checkEntityHasReviewersTask.json"
+        },
+        {
+          "$ref": "../../governance/workflows/elements/nodes/automatedTasks/setGlossaryTermStatusTask.json"
+        },
+        {
+          "$ref": "../../governance/workflows/elements/nodes/userTasks/userApprovalTask.json"
+        },
+        {
+          "$ref": "../../governance/workflows/elements/nodes/triggers/entityEventTrigger.json"
+        },
+        {
+          "$ref": "../../governance/workflows/elements/nodes/endEvents/endEvent.json"
+        }
+      ]
+    },
+    "edges": {
+      "description": "List of edges that connect the workflow elements and guide its flow.",
+      "type": "array",
+      "items": {
+        "$ref": "../../governance/workflows/elements/edge.json"
+      }
+    }
+
+  },
+  "required": ["name", "description"],
+  "additionalProperties": false
+}

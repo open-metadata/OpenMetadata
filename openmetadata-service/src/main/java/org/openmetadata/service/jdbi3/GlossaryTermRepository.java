@@ -55,6 +55,8 @@ import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
@@ -83,6 +85,7 @@ import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
@@ -535,10 +538,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void postCreate(GlossaryTerm entity) {
     super.postCreate(entity);
-    if (entity.getStatus() == Status.DRAFT) {
-      // Create an approval task for glossary term in draft mode
-      createApprovalTask(entity, entity.getReviewers());
-    }
+//    if (entity.getStatus() == Status.DRAFT) {
+//      // Create an approval task for glossary term in draft mode
+//      createApprovalTask(entity, entity.getReviewers());
+//    }
   }
 
   @Override
@@ -586,23 +589,31 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     @Override
     public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      // NOTE: GlossaryTerm Approval Workflow is a bit weird
+      // Clicking on Approve calls resolve with newValue = approved
+      // Clicking on Reject calls close with a comment.
+      // TODO: Resolve this outside
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put("approved", true);
+      variables.put("user", user);
+      WorkflowHandler.getInstance().resolveTask(taskId, variables);
+      // ---
+
+      // TODO: performTask returns the updated Entity and the flow applies the new value.
+      // This should be changed with the new Governance Workflows.
       GlossaryTerm glossaryTerm = (GlossaryTerm) threadContext.getAboutEntity();
-      glossaryTerm.setStatus(Status.APPROVED);
+//      glossaryTerm.setStatus(Status.APPROVED);
       return glossaryTerm;
     }
 
     @Override
     protected void closeTask(String user, CloseTask closeTask) {
-      // Closing task results in glossary term going from `Draft` to `Rejected`
-      GlossaryTerm term = (GlossaryTerm) threadContext.getAboutEntity();
-      if (term.getStatus() == Status.DRAFT) {
-        String origJson = JsonUtils.pojoToJson(term);
-        term.setStatus(Status.REJECTED);
-        String updatedJson = JsonUtils.pojoToJson(term);
-        JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedJson);
-        EntityRepository<?> repository = threadContext.getEntityRepository();
-        repository.patch(null, term.getId(), user, patch);
-      }
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put("approved", false);
+      variables.put("user", user);
+      WorkflowHandler.getInstance().resolveTask(taskId, variables);
     }
   }
 

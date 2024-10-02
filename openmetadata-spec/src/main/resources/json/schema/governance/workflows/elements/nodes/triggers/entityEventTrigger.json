@@ -1,0 +1,72 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/triggers/entityEventTrigger.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EntityEventTriggerDefinition",
+  "description": "Entity Event Trigger.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.triggers.EntityEventTriggerDefinition",
+  "type": "object",
+  "definitions": {
+    "event": {
+      "description": "Event for which it should be triggered.",
+      "type": "string",
+      "enum": [
+        "Created",
+        "Updated"
+      ]
+    },
+    "config": {
+      "description": "Entity Event Trigger Configuration.",
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "description": "Entity Type for which it should be triggered.",
+          "type": "string"
+        },
+        "event": {
+          "$ref": "#/definitions/event"
+        }
+      },
+      "required": ["entityType", "event"]
+    }
+  },
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "trigger"
+    },
+    "subType": {
+      "type": "string",
+      "default": "entityEventTrigger"
+    },
+    "name": {
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "$ref": "#/definitions/config"
+    },
+    "output": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["entityType", "relatedEntity"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}
