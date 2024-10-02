@@ -4,6 +4,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -221,6 +222,18 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   protected void deleteAllTestCaseResults(String fqn) {
     // Delete all the test case results
     daoCollection.dataQualityDataTimeSeriesDao().deleteAll(fqn);
+  }
+
+  public boolean hasTestCaseFailure(String fqn) throws IOException {
+    ResultList<TestCaseResult> testCaseResultResults =
+        listLatestFromSearch(
+            EntityUtil.Fields.EMPTY_FIELDS,
+            new SearchListFilter().addQueryParam("entityFQN", fqn),
+            "testCaseFQN.keyword",
+            null);
+    return testCaseResultResults.getData().stream()
+        .anyMatch(
+            testCaseResult -> testCaseResult.getTestCaseStatus().equals(TestCaseStatus.Failed));
   }
 
   private TestCaseResult getTestCaseResult(
