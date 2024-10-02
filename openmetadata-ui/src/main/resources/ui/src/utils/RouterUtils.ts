@@ -13,6 +13,7 @@
 
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
+import process from 'process';
 import {
   getServiceDetailsPath,
   IN_PAGE_SEARCH_ROUTES,
