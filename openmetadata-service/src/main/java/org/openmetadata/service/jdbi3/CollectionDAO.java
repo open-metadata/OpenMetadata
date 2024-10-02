@@ -4250,7 +4250,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO apps_extension_time_series(json, extension) VALUES ((:json :: jsonb, :extension))",
+            "INSERT INTO apps_extension_time_series(json, extension) VALUES (:json :: jsonb, :extension)",
         connectionType = POSTGRES)
     void insert(@Bind("json") String json, @Bind("extension") String extension);
 
