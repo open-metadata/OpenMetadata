@@ -792,11 +792,15 @@ public class SearchRepository {
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
-      boolean dataQualityOnly,
       String entityType)
       throws IOException {
     return searchClient.searchLineage(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, dataQualityOnly, entityType);
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+  }
+
+  public Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
+    return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
   }
 
   public Map<String, Object> searchLineageForExport(
@@ -808,7 +812,7 @@ public class SearchRepository {
       String entityType)
       throws IOException {
     return searchClient.searchLineageInternal(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, false, entityType);
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
   public Response searchByField(String fieldName, String fieldValue, String index)

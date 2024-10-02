@@ -691,18 +691,11 @@ public class ElasticSearchClient implements SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
-      boolean dataQualityOnly,
       String entityType)
       throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
-    if (dataQualityOnly) {
-      searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
-      responseMap.put("edges", edges);
-      responseMap.put("nodes", nodes);
-      return responseMap;
-    }
     if (entityType.equalsIgnoreCase(Entity.PIPELINE)
         || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
       return searchPipelineLineage(
@@ -743,12 +736,23 @@ public class ElasticSearchClient implements SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
-      boolean dataQualityOnly,
       String entityType)
       throws IOException {
     Map<String, Object> responseMap =
         searchLineageInternal(
-            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, dataQualityOnly, entityType);
+            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+    return Response.status(OK).entity(responseMap).build();
+  }
+
+  @Override
+  public Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    Set<Map<String, Object>> edges = new HashSet<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
+    searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
     return Response.status(OK).entity(responseMap).build();
   }
 

@@ -133,9 +133,11 @@ public interface SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
-      boolean dataQualityOnly,
       String entityType)
       throws IOException;
+
+  Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException;
 
   /*
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
@@ -152,7 +154,6 @@ public interface SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
-      boolean dataQualityOnly,
       String entityType)
       throws IOException;
 

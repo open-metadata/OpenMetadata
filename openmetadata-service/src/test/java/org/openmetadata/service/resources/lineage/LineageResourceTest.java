@@ -484,11 +484,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     addEdge(TABLES.get(6), TABLES.get(7));
 
     Map<String, String> queryParams =
-        Map.of(
-            "fqn", TABLES.get(7).getFullyQualifiedName(),
-            "upstreamDepth", "3",
-            "dataQualityOnly", "true");
-    Map<String, Object> lineage = getLineage(queryParams, ADMIN_AUTH_HEADERS);
+        Map.of("fqn", TABLES.get(7).getFullyQualifiedName(), "upstreamDepth", "3");
+    Map<String, Object> lineage = getDataQualityLineage(queryParams, ADMIN_AUTH_HEADERS);
 
     // we have no failures in the lineage, hence no
     assertEquals(0, ((List) lineage.get("nodes")).size());
@@ -535,7 +532,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     testCaseResourceTest.postTestCaseResult(
         testCase6.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
 
-    lineage = getLineage(queryParams, ADMIN_AUTH_HEADERS);
+    lineage = getDataQualityLineage(queryParams, ADMIN_AUTH_HEADERS);
     List<Map<String, Object>> edges = ((List<Map<String, Object>>) lineage.get("edges"));
     List<Map<String, Object>> nodes = ((List<Map<String, Object>>) lineage.get("nodes"));
     // We should have 2 nodes (4 and 6) and 3 edges (4->5, 5->6, 6->7)
@@ -773,10 +770,10 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     return lineage;
   }
 
-  public Map<String, Object> getLineage(
+  public Map<String, Object> getDataQualityLineage(
       Map<String, String> queryParams, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("lineage/getLineage");
+    WebTarget target = getResource("lineage/getDataQualityLineage");
     for (Map.Entry<String, String> entry : queryParams.entrySet()) {
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
