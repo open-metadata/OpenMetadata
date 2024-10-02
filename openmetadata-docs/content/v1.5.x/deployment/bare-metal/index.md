@@ -50,7 +50,11 @@ Make sure to configure required databases and users for OpenMetadata.
 You can refer a sample script [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/postgresql/postgres-script.sql).
 
 {%/note%}
+{%note%}
+For Azure Postgres >14.0 the MD5 function is disabled for new clusters since [September 2024](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/release-notes#release-september-2024:~:text=Support%20for%20MD5%20is%20disabled%20in%20favor%20of%20SCRAM%20authentication%20authentication%20for%20new%20PostgreSQL%2014%2B%20new%20server%20deployments.).
 
+If you are facing an error `ERROR: could not compute MD5 hash: disabled for FIPS`, downgrade Postgres to a version <14.0, like 13.16.
+{%/note%}
 
 ## Elasticsearch (version 8.X)
 
