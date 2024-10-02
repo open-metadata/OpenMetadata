@@ -417,14 +417,31 @@ public class SubscriptionUtil {
 
   public static void postWebhookMessage(
       Destination<ChangeEvent> destination, Invocation.Builder target, Object message) {
+    postWebhookMessage(destination, target, message, Webhook.HttpMethod.POST);
+  }
+
+  public static void postWebhookMessage(
+      Destination<ChangeEvent> destination,
+      Invocation.Builder target,
+      Object message,
+      Webhook.HttpMethod httpMethod) {
     long attemptTime = System.currentTimeMillis();
-    Response response =
-        target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+    Response response;
+
+    if (httpMethod == Webhook.HttpMethod.PUT) {
+      response =
+          target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+    } else {
+      response =
+          target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+    }
+
     LOG.debug(
-        "Subscription Destination Posted Message {}:{} received response {}",
+        "Subscription Destination HTTP Operation {}:{} received response {}",
+        httpMethod,
         destination.getSubscriptionDestination().getId(),
-        message,
         response.getStatusInfo());
+
     if (response.getStatus() >= 300 && response.getStatus() < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
       destination.setErrorStatus(

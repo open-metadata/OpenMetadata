@@ -43,6 +43,8 @@ import org.openmetadata.service.util.RestUtil;
 public class GenericPublisher implements Destination<ChangeEvent> {
   private final Client client;
   private final Webhook webhook;
+  private static final String TEST_MESSAGE_JSON =
+      "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.";
 
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -67,43 +69,20 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
-      // Post Message to default
       String json = JsonUtils.pojoToJson(event);
-      if (webhook.getEndpoint() != null) {
-        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-          String hmac =
-              "sha256="
-                  + CommonUtil.calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
-          postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
-        } else {
-          postWebhookMessage(this, getTarget(), json);
-        }
-      }
+
+      prepareAndSendMessage(json, getTarget());
 
       // Post to Generic Webhook with Actions
-      String eventJson = JsonUtils.pojoToJson(event);
       List<Invocation.Builder> targets =
           getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), WEBHOOK, client, event);
+      String eventJson = JsonUtils.pojoToJson(event);
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, eventJson);
       }
     } catch (Exception ex) {
-      Throwable cause = ex.getCause();
-      String message;
-      if (cause != null && cause.getClass() == UnknownHostException.class) {
-        message =
-            String.format(
-                "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
-                subscriptionDestination.getId(), webhook.getEndpoint());
-        LOG.warn(message);
-        setErrorStatus(attemptTime, 400, "UnknownHostException");
-      } else {
-        message =
-            CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
-        LOG.error(message);
-      }
-      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+      handleException(attemptTime, event, ex);
     }
   }
 
@@ -111,33 +90,65 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   public void sendTestMessage() throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
-      // Post Message to default
-      String json =
-          "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.";
-      if (webhook.getEndpoint() != null) {
-        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-          String hmac =
-              "sha256="
-                  + CommonUtil.calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
-          postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
-        } else {
-          postWebhookMessage(this, getTarget(), json);
-        }
-      }
+      prepareAndSendMessage(TEST_MESSAGE_JSON, getTarget());
     } catch (Exception ex) {
-      Throwable cause = ex.getCause();
-      String message;
-      if (cause != null && cause.getClass() == UnknownHostException.class) {
-        message =
-            String.format(
-                "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
-                subscriptionDestination.getId(), webhook.getEndpoint());
-        LOG.warn(message);
-        setErrorStatus(attemptTime, 400, "UnknownHostException");
-      } else {
-        message = CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
-        LOG.error(message);
+      handleException(attemptTime, ex);
+    }
+  }
+
+  private void prepareAndSendMessage(String json, Invocation.Builder target) {
+    if (!CommonUtil.nullOrEmpty(webhook.getEndpoint())) {
+
+      // Add HMAC signature header if secret key is present
+      if (!CommonUtil.nullOrEmpty(webhook.getSecretKey())) {
+        String hmac =
+            "sha256="
+                + CommonUtil.calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
+        target.header(RestUtil.SIGNATURE_HEADER, hmac);
       }
+
+      // Add custom headers if they exist
+      Map<String, String> headers = webhook.getHeaders();
+      if (!CommonUtil.nullOrEmpty(headers)) {
+        headers.forEach(target::header);
+      }
+
+      Webhook.HttpMethod httpOperation = webhook.getHttpMethod();
+      postWebhookMessage(this, target, json, httpOperation);
+    }
+  }
+
+  private void handleException(long attemptTime, ChangeEvent event, Exception ex)
+      throws EventPublisherException {
+    handleCommonException(attemptTime, ex);
+
+    String message =
+        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
+    LOG.error(message);
+    throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+  }
+
+  private void handleException(long attemptTime, Exception ex) throws EventPublisherException {
+    handleCommonException(attemptTime, ex);
+
+    String message =
+        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
+    LOG.error(message);
+    throw new EventPublisherException(message);
+  }
+
+  private void handleCommonException(long attemptTime, Exception ex)
+      throws EventPublisherException {
+    Throwable cause = ex.getCause();
+
+    if (cause.getClass() == UnknownHostException.class) {
+      String message =
+          String.format(
+              "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
+              subscriptionDestination.getId(), webhook.getEndpoint());
+
+      LOG.warn(message);
+      setErrorStatus(attemptTime, 400, "UnknownHostException");
       throw new EventPublisherException(message);
     }
   }
