@@ -495,6 +495,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={commonStyle}>
@@ -550,6 +551,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={{ ...commonStyle, marginBottom: '16px' }}>
@@ -567,6 +569,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={commonStyle}>
@@ -967,11 +970,26 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
+      case 'dateTime-cp': {
+        if (isUndefined(value)) {
+          return null;
+        }
+
+        const [date, time] = value?.split(' ');
+
+        return (
+          <Typography.Text
+            className="break-all text-grey-body property-value"
+            data-testid="value">
+            {`${date} | ${time}`}
+          </Typography.Text>
+        );
+      }
+
       case 'string':
       case 'integer':
       case 'number':
       case 'date-cp':
-      case 'dateTime-cp':
       case 'time-cp':
       case 'email':
       case 'timestamp':

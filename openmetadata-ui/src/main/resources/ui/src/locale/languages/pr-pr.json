@@ -1574,6 +1574,7 @@
     "integration-description": "برنامه‌ها و بات‌ها را پیکربندی کنید تا بهره‌وری را افزایش دهید.",
     "invalid-object-key": "کلید شیء نامعتبر است. باید با یک حرف، زیرخط یا علامت دلار شروع شود و پس از آن حروف، زیرخط‌ها، علامت‌های دلار یا اعداد قرار گیرد.",
     "invalid-property-name": "نام ویژگی نامعتبر است.",
+    "invalid-unix-epoch-time-milliseconds": "Invalid Unix epoch time in milliseconds",
     "jwt-token": "توکنی که ایجاد کرده‌اید و می‌توان از آن برای دسترسی به API OpenMetadata استفاده کرد.",
     "jwt-token-expiry-time-message": "تایمر انقضای توکن JWT به ثانیه.",
     "kill-ingestion-warning": "پس از کشتن این فرآیند Ingestion، تمامی جریان‌های کاری در حال اجرا و در صف متوقف شده و به عنوان ناموفق علامت‌گذاری می‌شوند.",
