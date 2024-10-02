@@ -4,9 +4,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -99,10 +99,14 @@ public class AppUtil {
   }
 
   public static AppExtension buildExtension(
-      Object object, UUID appId, long timestamp, AppExtension.ExtensionType extensionType) {
+      Object object, App app, long timestamp, AppExtension.ExtensionType extensionType) {
     Map<String, Object> jsonData = JsonUtils.getMap(object);
     AppExtension data =
-        new AppExtension().withAppId(appId).withTimestamp(timestamp).withExtension(extensionType);
+        new AppExtension()
+            .withAppId(app.getId())
+            .withAppName(app.getName())
+            .withTimestamp(timestamp)
+            .withExtension(extensionType);
     jsonData.forEach(data::setAdditionalProperty);
     return data;
   }
