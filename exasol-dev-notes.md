@@ -48,6 +48,7 @@ This should fix the issue.
     - [Developing a new Connector](https://docs.open-metadata.org/v1.4.x/developers/contribute/developing-a-new-connector)
 * [Video Tutorials](https://www.youtube.com/@OpenMetadataChannel/featured)
     - [How to Create your Own OpenMetadata Connector](https://www.youtube.com/watch?v=ZvA4wuvINFA)
+* [Sigma Dashboard Connector](https://github.com/open-metadata/OpenMetadata/pull/17855/files)
 * [Doris datasource PR](https://github.com/open-metadata/OpenMetadata/pull/14087/files)
 
 
@@ -67,6 +68,8 @@ docker rm -f $(docker ps -a -q)
 
 ### Services
 
+[see also](https://docs.open-metadata.org/v1.6.x-SNAPSHOT/quick-start/local-docker-deployment#log-in-to-openmetadata)
+
 #### MySQL
 | Property  | Value                   |
 |-----------|-------------------------|
@@ -78,7 +81,7 @@ docker rm -f $(docker ps -a -q)
 | Property  | Value                       |
 |-----------|-----------------------------|
 | url       | [http://127.0.0.1:8585](https://www.youtube.com/@OpenMetadataChannel/featured) |
-| user      | admin@openmetadata.org      |
+| user      | admin@open-metadata.org      |
 | password  | admin                       |
 
 #### Airflow
