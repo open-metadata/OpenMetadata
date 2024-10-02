@@ -1565,6 +1565,7 @@
     "integration-description": "Configure aplicações e bots para melhorar a produtividade.",
     "invalid-object-key": "Chave de objeto inválida. Deve começar com uma letra, sublinhado ou cifrão, seguido por letras, sublinhados, cifrões ou dígitos.",
     "invalid-property-name": "Nome de Propriedade Inválido",
+    "invalid-unix-epoch-time-milliseconds": "Invalid Unix epoch time in milliseconds",
     "jwt-token": "Token que você gerou que pode ser usado para acessar a API do OpenMetadata.",
     "jwt-token-expiry-time-message": "JWT token expiry timer in seconds.",
     "kill-ingestion-warning": "Uma vez que você encerrar esta Ingestão, todos os fluxos de trabalho em execução e na fila serão interrompidos e marcados como Falha.",
