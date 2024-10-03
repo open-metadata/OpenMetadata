@@ -169,8 +169,9 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             table_fqn
         )
         # path needs to include the database AND schema in some of the connectors
+        kwargs["path"] = f"/{database}"
         if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake}:
-            kwargs["path"] = f"/{database}/{schema}"
+            kwargs["path"] += f"/{schema}"
         return url._replace(**kwargs).geturl()
 
     @staticmethod
