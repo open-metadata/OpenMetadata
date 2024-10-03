@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.datamodels;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
@@ -93,7 +93,7 @@ public class DashboardDataModelResourceTest
       queryParams.put("service", service);
       ResultList<DashboardDataModel> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (DashboardDataModel dashboardDataModel : list.getData()) {
-        assertEqual(service, dashboardDataModel.getService().getName());
+        assertEquals(service, dashboardDataModel.getService().getName());
       }
     }
   }
@@ -241,8 +241,8 @@ public class DashboardDataModelResourceTest
       Map<String, String> authHeaders) {
     assertNotNull(dashboardDataModel.getServiceType());
     assertReference(createRequest.getService(), dashboardDataModel.getService());
-    assertEqual(createRequest.getSql(), dashboardDataModel.getSql());
-    assertEqual(createRequest.getDataModelType(), dashboardDataModel.getDataModelType());
+    assertEquals(createRequest.getSql(), dashboardDataModel.getSql());
+    assertEquals(createRequest.getDataModelType(), dashboardDataModel.getDataModelType());
     assertListNotEmpty(dashboardDataModel.getColumns());
   }
 

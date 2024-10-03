@@ -1,6 +1,6 @@
 package org.openmetadata.service.secrets;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -65,13 +65,13 @@ public class SecretsManagerLifecycleTest {
             secretsManager.encryptAuthenticationMechanism("ingestion-bot", authenticationMechanism);
     // Validate that the JWT Token gets properly encrypted
     JWTAuthMechanism encryptedAuth = (JWTAuthMechanism) encrypted.getConfig();
-    assertEqual(ENCRYPTED_VALUE, encryptedAuth.getJWTToken());
+    assertEquals(ENCRYPTED_VALUE, encryptedAuth.getJWTToken());
 
     AuthenticationMechanism decrypted =
         secretsManager.decryptAuthenticationMechanism("ingestion-bot", encrypted);
 
     JWTAuthMechanism decryptedAuth = (JWTAuthMechanism) decrypted.getConfig();
-    assertEqual(DECRYPTED_VALUE, decryptedAuth.getJWTToken());
+    assertEquals(DECRYPTED_VALUE, decryptedAuth.getJWTToken());
   }
 
   @Test
@@ -96,13 +96,13 @@ public class SecretsManagerLifecycleTest {
         (MysqlConnection)
             secretsManager.decryptServiceConnectionConfig(
                 actualConnection, Mysql.value(), ServiceType.DATABASE);
-    assertEqual(
+    assertEquals(
         DECRYPTED_VALUE,
         JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
 
     // SM will have the key stored
     String secretValue = secretsManager.getSecret(secretName);
-    assertEqual(DECRYPTED_VALUE, secretValue);
+    assertEquals(DECRYPTED_VALUE, secretValue);
 
     // Now we delete the service
     secretsManager.deleteSecretsFromServiceConnectionConfig(
@@ -112,7 +112,7 @@ public class SecretsManagerLifecycleTest {
     SecretsManagerException exception =
         assertThrows(SecretsManagerException.class, () -> secretsManager.getSecret(secretName));
 
-    assertEqual(
+    assertEquals(
         exception.getMessage(),
         String.format("Key [%s] not found in in-memory secrets manager", secretName));
   }
@@ -153,13 +153,13 @@ public class SecretsManagerLifecycleTest {
         (TestServiceConnectionRequest) decrypted.getRequest();
     DatabaseConnection decryptedConnection = (DatabaseConnection) decryptedRequest.getConnection();
     MysqlConnection decryptedConfig = (MysqlConnection) decryptedConnection.getConfig();
-    assertEqual(
+    assertEquals(
         DECRYPTED_VALUE,
         JsonUtils.convertValue(decryptedConfig.getAuthType(), basicAuth.class).getPassword());
 
     // SM will have the key stored
     String secretValue = secretsManager.getSecret(secretName);
-    assertEqual(DECRYPTED_VALUE, secretValue);
+    assertEquals(DECRYPTED_VALUE, secretValue);
 
     // Now we delete the service
     secretsManager.deleteSecretsFromWorkflow(workflow);
@@ -168,7 +168,7 @@ public class SecretsManagerLifecycleTest {
     SecretsManagerException exception =
         assertThrows(SecretsManagerException.class, () -> secretsManager.getSecret(secretName));
 
-    assertEqual(
+    assertEquals(
         exception.getMessage(),
         String.format("Key [%s] not found in in-memory secrets manager", secretName));
   }
@@ -176,29 +176,29 @@ public class SecretsManagerLifecycleTest {
   @Test
   void test_buildSecretId() {
     // cluster prefix adds the initial /
-    assertEqual(
+    assertEquals(
         "/prefix/openmetadata/database/test_name",
         secretsManager.buildSecretId(true, "Database", "test_name"));
     // non cluster prefix appends whatever it receives
-    assertEqual(
+    assertEquals(
         "database/test_name", secretsManager.buildSecretId(false, "Database", "test_name"));
-    assertEqual(
+    assertEquals(
         "/something/new/test_name",
         secretsManager.buildSecretId(false, "/something/new", "test_name"));
 
     // keep only alphanumeric characters and /, since we use / to create the FQN in the secrets
     // manager
-    assertEqual(
+    assertEquals(
         "/prefix/openmetadata/database/test_name",
         secretsManager.buildSecretId(true, "Database", "test name"));
-    assertEqual(
+    assertEquals(
         "/something/new/test_name",
         secretsManager.buildSecretId(false, "/something/new", "test name"));
   }
 
   @Test
   void test_getTags() {
-    assertEqual(
+    assertEquals(
         Map.of("key1", "value1", "key2", "value2"),
         SecretsManager.getTags(secretsManager.getSecretsConfig()));
 
@@ -206,6 +206,6 @@ public class SecretsManagerLifecycleTest {
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(
             null, null, List.of("random", "key:value", "random"), null);
-    assertEqual(Map.of("key", "value"), SecretsManager.getTags(secretsConfig));
+    assertEquals(Map.of("key", "value"), SecretsManager.getTags(secretsConfig));
   }
 }

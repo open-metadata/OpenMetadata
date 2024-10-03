@@ -1,6 +1,6 @@
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
@@ -91,7 +91,7 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
             migrationWorkflow.getPipelineServiceClientConfiguration(),
             migrationWorkflow.getAuthenticationConfiguration());
 
-    assertEqual(
+    assertEquals(
         List.of("1.1.0", "1.1.0-collate", "1.2.0", "1.2.1", "1.2.2-collate"),
         foundList.stream().map(f -> f.dir.getName()).collect(Collectors.toList()));
   }
@@ -104,7 +104,7 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
     availableMigrations.addAll(collateMigrationList);
 
     // If we only have executed native migrations, we'll execute the Collate ones
-    assertEqual(
+    assertEquals(
         List.of("1.1.0-collate", "1.2.2-collate"),
         migrationWorkflow
             .getMigrationsToApply(List.of("1.1.0", "1.2.0", "1.2.1"), availableMigrations)
@@ -113,7 +113,7 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
             .collect(Collectors.toList()));
 
     // We might have some native migrations, but not all
-    assertEqual(
+    assertEquals(
         List.of("1.2.1", "1.2.2-collate"),
         migrationWorkflow
             .getMigrationsToApply(List.of("1.1.0", "1.1.0-collate", "1.2.0"), availableMigrations)

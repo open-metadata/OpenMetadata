@@ -9,13 +9,13 @@ import org.junit.jupiter.api.Test;
 class ListFilterTest {
   @Test
   void test_escapeApostrophe() {
-    assertEqual("abcd", ListFilter.escape("abcd"));
-    assertEqual("a''bcd", ListFilter.escape("a'bcd"));
-    assertEqual("a''b''cd", ListFilter.escape("a'b'cd"));
-    assertEqual("a''b''c''d", ListFilter.escape("a'b'c'd"));
-    assertEqual("a''b''c\\_d", ListFilter.escape("a'b'c_d"));
-    assertEqual("a''b\\_c\\_d", ListFilter.escape("a'b_c_d"));
-    assertEqual("a\\_b\\_c\\_d", ListFilter.escape("a_b_c_d"));
+    assertEquals("abcd", ListFilter.escape("abcd"));
+    assertEquals("a''bcd", ListFilter.escape("a'bcd"));
+    assertEquals("a''b''cd", ListFilter.escape("a'b'cd"));
+    assertEquals("a''b''c''d", ListFilter.escape("a'b'c'd"));
+    assertEquals("a''b''c\\_d", ListFilter.escape("a'b'c_d"));
+    assertEquals("a''b\\_c\\_d", ListFilter.escape("a'b_c_d"));
+    assertEquals("a\\_b\\_c\\_d", ListFilter.escape("a_b_c_d"));
   }
 
   @Test
@@ -24,27 +24,27 @@ class ListFilterTest {
     ListFilter filter = new ListFilter();
 
     condition = filter.addCondition(List.of("a", "b"));
-    assertEqual("a AND b", condition);
+    assertEquals("a AND b", condition);
 
     condition = filter.addCondition(List.of("foo=`abcf`", "", ""));
-    assertEqual("foo=`abcf`", condition);
+    assertEquals("foo=`abcf`", condition);
 
     condition = filter.addCondition(List.of("foo=`abcf`", "v in ('A', 'B')", "x > 6"));
-    assertEqual("foo=`abcf` AND v in ('A', 'B') AND x > 6", condition);
+    assertEquals("foo=`abcf` AND v in ('A', 'B') AND x > 6", condition);
 
     condition = filter.addCondition(new ArrayList<>());
-    assertEqual("", condition);
+    assertEquals("", condition);
   }
 
   @Test
   void getCondition() {
     ListFilter filter = new ListFilter();
     String condition = filter.getCondition("foo");
-    assertEqual("WHERE foo.deleted = FALSE", condition);
+    assertEquals("WHERE foo.deleted = FALSE", condition);
 
     filter = new ListFilter();
     filter.addQueryParam("testCaseStatus", "Failed");
     condition = filter.getCondition("foo");
-    assertEqual("WHERE foo.deleted = FALSE AND status = 'Failed'", condition);
+    assertEquals("WHERE foo.deleted = FALSE AND status = 'Failed'", condition);
   }
 }

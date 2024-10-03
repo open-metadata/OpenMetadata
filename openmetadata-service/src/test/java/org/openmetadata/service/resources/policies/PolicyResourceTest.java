@@ -16,7 +16,7 @@ package org.openmetadata.service.resources.policies;
 import static java.util.Collections.emptyList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
@@ -127,13 +127,13 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   public void validateCreatedEntity(
       Policy policy, CreatePolicy createRequest, Map<String, String> authHeaders) {
     if (createRequest.getLocation() != null) {
-      assertEqual(createRequest.getLocation(), policy.getLocation().getId());
+      assertEquals(createRequest.getLocation(), policy.getLocation().getId());
     }
     if (createRequest.getRules().size() > 1) {
       createRequest.getRules().sort(Comparator.comparing(Rule::getName));
     }
     policy.getRules().sort(Comparator.comparing(Rule::getName));
-    assertEqual(createRequest.getRules(), policy.getRules());
+    assertEquals(createRequest.getRules(), policy.getRules());
   }
 
   @Override
@@ -147,20 +147,20 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     if (fieldName.equals("policyUrl")) {
       URI expectedPolicyUrl = (URI) expected;
       URI actualPolicyUrl = URI.create((String) actual);
-      assertEqual(expectedPolicyUrl, actualPolicyUrl);
+      assertEquals(expectedPolicyUrl, actualPolicyUrl);
     } else if (fieldName.equals("location")) {
       assertEntityReferenceFieldChange(expected, actual);
     } else if (fieldName.equals("rules")) {
       @SuppressWarnings("unchecked")
       List<Rule> expectedRule = (List<Rule>) expected;
       List<Rule> actualRule = JsonUtils.readObjects(actual.toString(), Rule.class);
-      assertEqual(expectedRule, actualRule);
+      assertEquals(expectedRule, actualRule);
     } else if (fieldName.startsWith("rules") && (fieldName.endsWith("effect"))) {
       Effect expectedEffect = (Effect) expected;
       Effect actualEffect = Effect.fromValue(actual.toString());
-      assertEqual(expectedEffect, actualEffect);
+      assertEquals(expectedEffect, actualEffect);
     } else if (fieldName.startsWith("rules") && (fieldName.endsWith("operations"))) {
-      assertEqual(expected.toString(), actual.toString());
+      assertEquals(expected.toString(), actual.toString());
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -232,8 +232,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     CreatePolicy create = createAccessControlPolicyWithRules(policyName, rules);
     Policy policy = createEntity(create, ADMIN_AUTH_HEADERS);
 
-    assertEqual(listOf(ALL_RESOURCES), policy.getRules().get(0).getResources());
-    assertEqual(listOf(EDIT_ALL, VIEW_ALL), policy.getRules().get(0).getOperations());
+    assertEquals(listOf(ALL_RESOURCES), policy.getRules().get(0).getResources());
+    assertEquals(listOf(EDIT_ALL, VIEW_ALL), policy.getRules().get(0).getOperations());
   }
 
   @Test
@@ -524,7 +524,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     List<Function> actualFunctions = getPolicyFunctions(ADMIN_AUTH_HEADERS).getData();
     List<Function> expectedFunctions =
         CollectionRegistry.getInstance().getFunctions(RuleEvaluator.class);
-    assertEqual(expectedFunctions, actualFunctions);
+    assertEquals(expectedFunctions, actualFunctions);
   }
 
   @Test

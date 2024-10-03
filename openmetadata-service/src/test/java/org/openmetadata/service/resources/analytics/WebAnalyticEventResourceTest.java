@@ -3,7 +3,7 @@ package org.openmetadata.service.resources.analytics;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -103,7 +103,7 @@ public class WebAnalyticEventResourceTest
             TestUtils.dateToTimestamp("2022-10-11"),
             ADMIN_AUTH_HEADERS);
 
-    assertEqual(1, webAnalyticEventDataResultList.getData().size());
+    assertEquals(1, webAnalyticEventDataResultList.getData().size());
 
     ResultList<WebAnalyticEventData> emptyWebAnalyticEventDataResultList =
         getWebAnalyticEventData(
@@ -112,7 +112,7 @@ public class WebAnalyticEventResourceTest
             TestUtils.dateToTimestamp("2022-10-10"),
             ADMIN_AUTH_HEADERS);
 
-    assertEqual(0, emptyWebAnalyticEventDataResultList.getData().size());
+    assertEquals(0, emptyWebAnalyticEventDataResultList.getData().size());
   }
 
   @Test
@@ -149,16 +149,16 @@ public class WebAnalyticEventResourceTest
       WebAnalyticEvent createdEntity,
       CreateWebAnalyticEvent request,
       Map<String, String> authHeaders) {
-    assertEqual(request.getName(), createdEntity.getName());
-    assertEqual(request.getDescription(), createdEntity.getDescription());
+    assertEquals(request.getName(), createdEntity.getName());
+    assertEquals(request.getDescription(), createdEntity.getDescription());
   }
 
   @Override
   public void compareEntities(
       WebAnalyticEvent expected, WebAnalyticEvent updated, Map<String, String> authHeaders) {
-    assertEqual(expected.getName(), updated.getName());
-    assertEqual(expected.getFullyQualifiedName(), updated.getFullyQualifiedName());
-    assertEqual(expected.getDescription(), updated.getDescription());
+    assertEquals(expected.getName(), updated.getName());
+    assertEquals(expected.getFullyQualifiedName(), updated.getFullyQualifiedName());
+    assertEquals(expected.getDescription(), updated.getDescription());
   }
 
   @Override
@@ -209,7 +209,7 @@ public class WebAnalyticEventResourceTest
       ResultList<WebAnalyticEventData> actualWebAnalyticEventData,
       List<WebAnalyticEventData> expectedWebAnalyticEventData,
       int expectedCount) {
-    assertEqual(expectedCount, actualWebAnalyticEventData.getPaging().getTotal());
-    assertEqual(expectedWebAnalyticEventData.size(), actualWebAnalyticEventData.getData().size());
+    assertEquals(expectedCount, actualWebAnalyticEventData.getPaging().getTotal());
+    assertEquals(expectedWebAnalyticEventData.size(), actualWebAnalyticEventData.getData().size());
   }
 }

@@ -17,7 +17,7 @@ import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -119,7 +119,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
       ResultList<SearchIndex> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (SearchIndex searchIndex : list.getData()) {
-        assertEqual(service, searchIndex.getService().getName());
+        assertEquals(service, searchIndex.getService().getName());
       }
     }
   }
@@ -298,10 +298,10 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
         new SearchIndexSampleData().withMessages(messages);
     SearchIndex searchIndex1 =
         putSampleData(searchIndex.getId(), searchIndexSampleData, ADMIN_AUTH_HEADERS);
-    assertEqual(searchIndexSampleData, searchIndex1.getSampleData());
+    assertEquals(searchIndexSampleData, searchIndex1.getSampleData());
 
     SearchIndex searchIndex2 = getSampleData(searchIndex.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(searchIndex2.getSampleData(), searchIndex1.getSampleData());
+    assertEquals(searchIndex2.getSampleData(), searchIndex1.getSampleData());
     messages =
         Arrays.asList(
             "{\"email\": \"email1@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}",
@@ -309,9 +309,9 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     searchIndexSampleData.withMessages(messages);
     SearchIndex putResponse =
         putSampleData(searchIndex2.getId(), searchIndexSampleData, ADMIN_AUTH_HEADERS);
-    assertEqual(searchIndexSampleData, putResponse.getSampleData());
+    assertEquals(searchIndexSampleData, putResponse.getSampleData());
     searchIndex2 = getSampleData(searchIndex.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(searchIndexSampleData, searchIndex2.getSampleData());
+    assertEquals(searchIndexSampleData, searchIndex2.getSampleData());
   }
 
   @Test
@@ -422,7 +422,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     String expectedAggregationString = "\"my-agg-name\":{\"terms\":{\"field\":\"my-field\"}}";
     Map<String, Object> actualAggregationstring =
         SearchIndexUtils.buildAggregationString(aggregationString);
-    assertEqual(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
 
     // Nested Aggregation (1 level)
     aggregationString =
@@ -430,7 +430,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     expectedAggregationString =
         "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"status_counts\":{\"terms\":{\"field\":\"testCaseResults.testCaseStatus\"}}}}";
     actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
-    assertEqual(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
 
     // Nested Aggregation (2 levels)
     aggregationString =
@@ -438,7 +438,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     expectedAggregationString =
         "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"statusCount\":{\"terms\":{\"field\":\"testCaseResults.testCaseStatus\"},\"aggs\":{\"owner\":{\"terms\":{\"field\":\"testSuite.owner\"}}}}}}";
     actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
-    assertEqual(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
 
     // Metric Aggregation
     aggregationString =
@@ -446,7 +446,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
     expectedAggregationString =
         "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"minPrice\":{\"min\":{\"field\":\"price.adjusted\"}}}}";
-    assertEqual(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
 
     // Date histogram aggregation
     aggregationString =
@@ -454,7 +454,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
     expectedAggregationString =
         "\"dates\":{\"date_histogram\":{\"field\":\"timestamp\",\"calendar_interval\":\"2d\"}}";
-    assertEqual(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
 
     // Date histogram aggregation with sub aggregation
     aggregationString =
@@ -462,7 +462,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
     expectedAggregationString =
         "\"dates\":{\"date_histogram\":{\"field\":\"timestamp\",\"calendar_interval\":\"2d\"},\"aggs\":{\"minPrice\":{\"min\":{\"field\":\"price.adjusted\"}}}}";
-    assertEqual(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
   }
 
   @Test
@@ -645,7 +645,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
       return;
     }
     // Sort columns by name
-    assertEqual(expectedFields.size(), actualFields.size());
+    assertEquals(expectedFields.size(), actualFields.size());
 
     // Make a copy before sorting in case the lists are immutable
     List<SearchIndexField> expected = new ArrayList<>(expectedFields);
@@ -663,8 +663,8 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     assertTrue(
         expectedField.getName().equals(actualField.getName())
             || expectedField.getName().equals(actualField.getDisplayName()));
-    assertEqual(expectedField.getDescription(), actualField.getDescription());
-    assertEqual(expectedField.getDataType(), actualField.getDataType());
+    assertEquals(expectedField.getDescription(), actualField.getDescription());
+    assertEquals(expectedField.getDataType(), actualField.getDataType());
     TestUtils.validateTags(expectedField.getTags(), actualField.getTags());
 
     // Check the nested columns

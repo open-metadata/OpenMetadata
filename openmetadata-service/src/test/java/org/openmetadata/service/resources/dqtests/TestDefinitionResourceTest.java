@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -138,17 +138,17 @@ public class TestDefinitionResourceTest
   @Override
   public void validateCreatedEntity(
       TestDefinition createdEntity, CreateTestDefinition request, Map<String, String> authHeaders) {
-    assertEqual(request.getName(), createdEntity.getName());
-    assertEqual(request.getDescription(), createdEntity.getDescription());
-    assertEqual(request.getTestPlatforms(), createdEntity.getTestPlatforms());
+    assertEquals(request.getName(), createdEntity.getName());
+    assertEquals(request.getDescription(), createdEntity.getDescription());
+    assertEquals(request.getTestPlatforms(), createdEntity.getTestPlatforms());
   }
 
   @Override
   public void compareEntities(
       TestDefinition expected, TestDefinition updated, Map<String, String> authHeaders) {
-    assertEqual(expected.getName(), updated.getName());
-    assertEqual(expected.getDescription(), updated.getDescription());
-    assertEqual(expected.getTestPlatforms(), updated.getTestPlatforms());
+    assertEquals(expected.getName(), updated.getName());
+    assertEquals(expected.getDescription(), updated.getDescription());
+    assertEquals(expected.getTestPlatforms(), updated.getTestPlatforms());
   }
 
   @Override

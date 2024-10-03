@@ -1,6 +1,6 @@
 package org.openmetadata.service.search.security;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -235,7 +235,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     JsonNode rootNode = objectMapper.readTree(generatedQuery);
     AtomicInteger boolQueryCount = new AtomicInteger(0);
     countBoolQueries(rootNode, boolQueryCount);
-    assertEqual(
+    assertEquals(
         6, boolQueryCount.get(), "There should be no more than 5 'bool' clauses in the query.");
   }
 

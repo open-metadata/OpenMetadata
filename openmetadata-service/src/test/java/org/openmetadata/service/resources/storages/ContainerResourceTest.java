@@ -5,7 +5,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.ARRAY;
@@ -195,8 +195,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             ADMIN_AUTH_HEADERS,
             MINOR_UPDATE,
             change);
-    assertEqual(1.0, container.getSize());
-    assertEqual(10.0, container.getNumberOfObjects());
+    assertEquals(1.0, container.getSize());
+    assertEquals(10.0, container.getNumberOfObjects());
 
     change = getChangeDescription(container, MINOR_UPDATE);
     fieldUpdated(change, "prefix", "prefix2", "prefix3");
@@ -208,8 +208,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             MINOR_UPDATE,
             change);
 
-    assertEqual(5.0, container.getSize());
-    assertEqual(15.0, container.getNumberOfObjects());
+    assertEquals(5.0, container.getSize());
+    assertEquals(15.0, container.getNumberOfObjects());
 
     change = getChangeDescription(container, NO_CHANGE);
     container =
@@ -219,8 +219,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             ADMIN_AUTH_HEADERS,
             NO_CHANGE,
             change);
-    assertEqual(2.0, container.getSize());
-    assertEqual(3.0, container.getNumberOfObjects());
+    assertEquals(2.0, container.getSize());
+    assertEquals(3.0, container.getNumberOfObjects());
   }
 
   @Test
@@ -247,8 +247,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     fieldAdded(change, "fileFormats", FILE_FORMATS);
     container =
         patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEqual(1.0, container.getSize());
-    assertEqual(2.0, container.getNumberOfObjects());
+    assertEquals(1.0, container.getSize());
+    assertEquals(2.0, container.getNumberOfObjects());
 
     // Update description, chartType and chart url and verify patch
     // Changes from this PATCH is consolidated with the previous changes
@@ -278,8 +278,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     container =
         patchEntityAndCheck(
             container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
-    assertEqual(2.0, container.getSize());
-    assertEqual(3.0, container.getNumberOfObjects());
+    assertEquals(2.0, container.getSize());
+    assertEquals(3.0, container.getNumberOfObjects());
   }
 
   @Test
@@ -295,8 +295,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             ADMIN_AUTH_HEADERS,
             NO_CHANGE,
             change);
-    assertEqual(30.0, container.getSize());
-    assertEqual(20.0, container.getNumberOfObjects());
+    assertEquals(30.0, container.getSize());
+    assertEquals(20.0, container.getNumberOfObjects());
   }
 
   @Test
@@ -338,8 +338,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     container =
         patchEntityUsingFqnAndCheck(
             container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEqual(1.0, container.getSize());
-    assertEqual(2.0, container.getNumberOfObjects());
+    assertEquals(1.0, container.getSize());
+    assertEquals(2.0, container.getNumberOfObjects());
 
     // Update description, chartType and chart url and verify patch
     // Changes from this PATCH is consolidated with the previous changes
@@ -370,8 +370,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     container =
         patchEntityUsingFqnAndCheck(
             container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
-    assertEqual(2.0, container.getSize());
-    assertEqual(3.0, container.getNumberOfObjects());
+    assertEquals(2.0, container.getSize());
+    assertEquals(3.0, container.getNumberOfObjects());
   }
 
   @Test
@@ -437,58 +437,58 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // ensure order by using the string prefix in name
     List<Container> containers = containerList.getData();
     containers.sort(Comparator.comparing(Container::getName));
-    assertEqual(4, containerList.getData().size());
+    assertEquals(4, containerList.getData().size());
 
     // root container checks
     Container returnedRootContainer = containers.get(0);
-    assertEqual(returnedRootContainer.getName(), rootContainer.getName());
-    assertEqual("s3.0_root", returnedRootContainer.getFullyQualifiedName());
+    assertEquals(returnedRootContainer.getName(), rootContainer.getName());
+    assertEquals("s3.0_root", returnedRootContainer.getFullyQualifiedName());
     assertNull(returnedRootContainer.getParent());
 
     List<EntityReference> rootContainerChildren = returnedRootContainer.getChildren();
     rootContainerChildren.sort(Comparator.comparing(EntityReference::getName));
     // should return only first level children and not grand-children
-    assertEqual(2, rootContainerChildren.size());
+    assertEquals(2, rootContainerChildren.size());
     EntityReference childOneReference = rootContainerChildren.get(0);
     EntityReference childTwoReference = rootContainerChildren.get(1);
-    assertEqual(childOneReference.getName(), childOneContainer.getName());
-    assertEqual("s3.0_root.1_child_1", childOneReference.getFullyQualifiedName());
-    assertEqual(childTwoReference.getName(), childTwoContainer.getName());
-    assertEqual("s3.0_root.2_child_2", childTwoReference.getFullyQualifiedName());
+    assertEquals(childOneReference.getName(), childOneContainer.getName());
+    assertEquals("s3.0_root.1_child_1", childOneReference.getFullyQualifiedName());
+    assertEquals(childTwoReference.getName(), childTwoContainer.getName());
+    assertEquals("s3.0_root.2_child_2", childTwoReference.getFullyQualifiedName());
 
     // child one container checks
     Container returnedChildOneContainer = containers.get(1);
-    assertEqual(returnedChildOneContainer.getName(), childOneContainer.getName());
-    assertEqual("s3.0_root.1_child_1", returnedChildOneContainer.getFullyQualifiedName());
-    assertEqual(returnedChildOneContainer.getParent().getId(), rootContainer.getId());
+    assertEquals(returnedChildOneContainer.getName(), childOneContainer.getName());
+    assertEquals("s3.0_root.1_child_1", returnedChildOneContainer.getFullyQualifiedName());
+    assertEquals(returnedChildOneContainer.getParent().getId(), rootContainer.getId());
 
     List<EntityReference> childOneContainerChildren = returnedChildOneContainer.getChildren();
     childOneContainerChildren.sort(Comparator.comparing(EntityReference::getName));
     // should return only first level children and not grand-children
-    assertEqual(1, childOneContainerChildren.size());
+    assertEquals(1, childOneContainerChildren.size());
     EntityReference childOneChildReference = childOneContainerChildren.get(0);
-    assertEqual(childOneChildReference.getName(), childThreeContainer.getName());
-    assertEqual("s3.0_root.1_child_1.3_child_3", childOneChildReference.getFullyQualifiedName());
+    assertEquals(childOneChildReference.getName(), childThreeContainer.getName());
+    assertEquals("s3.0_root.1_child_1.3_child_3", childOneChildReference.getFullyQualifiedName());
 
     // child two container checks
     Container returnedChildTwoContainer = containers.get(2);
-    assertEqual(returnedChildTwoContainer.getName(), childTwoContainer.getName());
-    assertEqual("s3.0_root.2_child_2", returnedChildTwoContainer.getFullyQualifiedName());
-    assertEqual(returnedChildTwoContainer.getParent().getId(), rootContainer.getId());
-    assertEqual(0, returnedChildTwoContainer.getChildren().size());
+    assertEquals(returnedChildTwoContainer.getName(), childTwoContainer.getName());
+    assertEquals("s3.0_root.2_child_2", returnedChildTwoContainer.getFullyQualifiedName());
+    assertEquals(returnedChildTwoContainer.getParent().getId(), rootContainer.getId());
+    assertEquals(0, returnedChildTwoContainer.getChildren().size());
 
     // child three container checks
     Container returnedChildThreeContainer = containers.get(3);
-    assertEqual(returnedChildThreeContainer.getName(), childThreeContainer.getName());
-    assertEqual("s3.0_root.1_child_1.3_child_3", childThreeContainer.getFullyQualifiedName());
-    assertEqual(returnedChildThreeContainer.getParent().getId(), childOneContainer.getId());
-    assertEqual(0, returnedChildThreeContainer.getChildren().size());
+    assertEquals(returnedChildThreeContainer.getName(), childThreeContainer.getName());
+    assertEquals("s3.0_root.1_child_1.3_child_3", childThreeContainer.getFullyQualifiedName());
+    assertEquals(returnedChildThreeContainer.getParent().getId(), childOneContainer.getId());
+    assertEquals(0, returnedChildThreeContainer.getChildren().size());
 
     // Test that we can list only the root level containers (no parents)
     queryParams.put("root", "true");
     ResultList<Container> rootContainerList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEqual(1, rootContainerList.getData().size());
-    assertEqual("s3.0_root", rootContainerList.getData().get(0).getFullyQualifiedName());
+    assertEquals(1, rootContainerList.getData().size());
+    assertEquals("s3.0_root", rootContainerList.getData().get(0).getFullyQualifiedName());
   }
 
   @Test
@@ -675,7 +675,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertReference(createRequest.getService(), createdEntity.getService());
     assertReference(createRequest.getParent(), createdEntity.getParent());
     if (createRequest.getDataModel() != null) {
-      assertEqual(
+      assertEquals(
           createRequest.getDataModel().getIsPartitioned(),
           createdEntity.getDataModel().getIsPartitioned());
       assertColumns(
@@ -684,14 +684,14 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertListProperty(
         createRequest.getFileFormats(),
         createdEntity.getFileFormats(),
-        (c1, c2) -> assertEqual(c1.name(), c2.name()));
-    assertEqual(createRequest.getNumberOfObjects(), createdEntity.getNumberOfObjects());
-    assertEqual(createRequest.getSize(), createdEntity.getSize());
+        (c1, c2) -> assertEquals(c1.name(), c2.name()));
+    assertEquals(createRequest.getNumberOfObjects(), createdEntity.getNumberOfObjects());
+    assertEquals(createRequest.getSize(), createdEntity.getSize());
 
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
 
-    assertEqual(
+    assertEquals(
         createdEntity.getParent() != null
             ? FullyQualifiedName.add(
                 createdEntity.getParent().getFullyQualifiedName(), createdEntity.getName())
@@ -765,18 +765,18 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
       Container expected, Container patched, Map<String, String> authHeaders)
       throws HttpResponseException {
     TestUtils.validateEntityReference(patched.getService());
-    assertEqual(expected.getService().getId(), patched.getService().getId());
+    assertEquals(expected.getService().getId(), patched.getService().getId());
     if (expected.getDataModel() != null) {
-      assertEqual(
+      assertEquals(
           expected.getDataModel().getIsPartitioned(), patched.getDataModel().getIsPartitioned());
       assertColumns(expected.getDataModel().getColumns(), patched.getDataModel().getColumns());
     }
     assertListProperty(
         expected.getFileFormats(),
         patched.getFileFormats(),
-        (c1, c2) -> assertEqual(c1.name(), c2.name()));
-    assertEqual(expected.getNumberOfObjects(), patched.getNumberOfObjects());
-    assertEqual(expected.getSize(), patched.getSize());
+        (c1, c2) -> assertEquals(c1.name(), c2.name()));
+    assertEquals(expected.getNumberOfObjects(), patched.getNumberOfObjects());
+    assertEquals(expected.getSize(), patched.getSize());
 
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.validateEntityReferences(patched.getFollowers());
@@ -823,7 +823,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
       return;
     }
     if (fieldName.contains("size")) {
-      assertEqual((Integer) expected, (Integer) actual);
+      assertEquals((Integer) expected, (Integer) actual);
     } else if (fieldName.contains("fileFormats")) {
       assertFileFormats((List<ContainerFileFormat>) expected, actual.toString());
     } else if (fieldName.contains("dataModel")) {
@@ -835,13 +835,13 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
   private void assertDataModel(ContainerDataModel expected, String actualJson) throws IOException {
     ContainerDataModel actualDataModel = JsonUtils.readValue(actualJson, ContainerDataModel.class);
-    assertEqual(expected.getIsPartitioned(), actualDataModel.getIsPartitioned());
+    assertEquals(expected.getIsPartitioned(), actualDataModel.getIsPartitioned());
     assertColumns(expected.getColumns(), actualDataModel.getColumns());
   }
 
   private void assertFileFormats(List<ContainerFileFormat> expected, String actual) {
     List<ContainerFileFormat> actualFormats =
         JsonUtils.readObjects(actual, ContainerFileFormat.class);
-    assertListProperty(expected, actualFormats, (c1, c2) -> assertEqual(c1.name(), c2.name()));
+    assertListProperty(expected, actualFormats, (c1, c2) -> assertEquals(c1.name(), c2.name()));
   }
 }

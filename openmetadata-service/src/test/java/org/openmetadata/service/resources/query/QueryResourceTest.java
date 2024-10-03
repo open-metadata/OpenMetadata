@@ -2,7 +2,7 @@ package org.openmetadata.service.resources.query;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.*;
@@ -90,8 +90,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   @Override
   public void validateCreatedEntity(
       Query createdEntity, CreateQuery request, Map<String, String> authHeaders) {
-    assertEqual(request.getQuery(), createdEntity.getQuery());
-    assertEqual(request.getQueryDate(), createdEntity.getQueryDate());
+    assertEquals(request.getQuery(), createdEntity.getQuery());
+    assertEquals(request.getQueryDate(), createdEntity.getQueryDate());
     assertEntityReferences(request.getQueryUsedIn(), createdEntity.getQueryUsedIn());
   }
 
@@ -173,16 +173,16 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     ChangeEvent changeEvent =
         TestUtils.put(target, request, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
     Query updatedEntity = JsonUtils.convertValue(changeEvent.getEntity(), Query.class);
-    assertEqual(1, updatedEntity.getVotes().getUpVotes());
-    assertEqual(0, updatedEntity.getVotes().getDownVotes());
+    assertEquals(1, updatedEntity.getVotes().getUpVotes());
+    assertEquals(0, updatedEntity.getVotes().getDownVotes());
 
     // 2
     VoteRequest request2 = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_DOWN);
     ChangeEvent changeEvent2 =
         TestUtils.put(target, request2, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
     Query updatedEntity2 = JsonUtils.convertValue(changeEvent2.getEntity(), Query.class);
-    assertEqual(0, updatedEntity2.getVotes().getUpVotes());
-    assertEqual(1, updatedEntity2.getVotes().getDownVotes());
+    assertEquals(0, updatedEntity2.getVotes().getUpVotes());
+    assertEquals(1, updatedEntity2.getVotes().getDownVotes());
   }
 
   @Test
@@ -198,7 +198,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     fieldDeleted(change, "queryUsedIn", List.of(TABLE_REF));
     patchEntityAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
+    assertEquals(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
     updatedQuery.setQuery("select * from table1");
     updatedQuery.setQueryUsedIn(List.of(TABLE_REF, TEST_TABLE2.getEntityReference()));
   }
@@ -213,12 +213,12 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         createRequest(null, "description", "displayName", null)
             .withQuery(String.format(QUERY, RandomStringUtils.random(10, true, false)));
     Query entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    assertEqual(EntityUtil.hash(request.getQuery()), entity.getChecksum());
+    assertEquals(EntityUtil.hash(request.getQuery()), entity.getChecksum());
 
     // Create an entity with mandatory name field empty
     final CreateQuery request1 = createRequest("TestQueryName", "description", "displayName", null);
     entity = createEntity(request1, ADMIN_AUTH_HEADERS);
-    assertEqual("TestQueryName", entity.getName());
+    assertEquals("TestQueryName", entity.getName());
 
     // Create an entity with mandatory name field too long
     final CreateQuery request2 =
@@ -238,7 +238,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     String createQuery = create.getQuery();
     // Owner (USER1_REF) can see the results
     ResultList<Query> queries = getQueries(1, "*", false, authHeaders(USER1_REF.getName()));
-    queries.getData().forEach(query -> assertEqual(query.getQuery(), createQuery));
+    queries.getData().forEach(query -> assertEquals(query.getQuery(), createQuery));
     // Another user won't see the PII query body
     ResultList<Query> maskedQueries = getQueries(1, "*", false, authHeaders(USER2_REF.getName()));
     maskedQueries
@@ -248,9 +248,9 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
               if (query.getTags().stream()
                   .map(TagLabel::getTagFQN)
                   .anyMatch("PII.Sensitive"::equals)) {
-                assertEqual("********", query.getQuery());
+                assertEquals("********", query.getQuery());
               } else {
-                assertEqual(query.getQuery(), QUERY);
+                assertEquals(query.getQuery(), QUERY);
               }
             });
   }
@@ -268,7 +268,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     fieldDeleted(change, "queryUsedIn", List.of(TABLE_REF));
     patchEntityUsingFqnAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
+    assertEquals(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
     updatedQuery.setQuery("select * from table1");
     updatedQuery.setQueryUsedIn(List.of(TABLE_REF, TEST_TABLE2.getEntityReference()));
   }
@@ -288,8 +288,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         change, "checksum", EntityUtil.hash(create.getQuery()), EntityUtil.hash(queryText));
     patchEntityUsingFqnAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(updatedQuery.getQuery(), queryText);
-    assertEqual(updatedQuery.getChecksum(), EntityUtil.hash(updatedQuery.getQuery()));
+    assertEquals(updatedQuery.getQuery(), queryText);
+    assertEquals(updatedQuery.getChecksum(), EntityUtil.hash(updatedQuery.getQuery()));
   }
 
   @Test
@@ -327,8 +327,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         change, "checksum", EntityUtil.hash(create.getQuery()), EntityUtil.hash(queryText));
     patchEntityAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(updatedQuery.getQuery(), queryText);
-    assertEqual(updatedQuery.getChecksum(), EntityUtil.hash(updatedQuery.getQuery()));
+    assertEquals(updatedQuery.getQuery(), queryText);
+    assertEquals(updatedQuery.getChecksum(), EntityUtil.hash(updatedQuery.getQuery()));
   }
 
   public ResultList<Query> getQueries(

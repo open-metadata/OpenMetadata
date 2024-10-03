@@ -123,7 +123,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
 
     // Ensure that the user does not have relationship to this persona
     User user = userResourceTest.getEntity(user1.getId(), "personas", ADMIN_AUTH_HEADERS);
-    assertEqual(0, user.getPersonas().size());
+    assertEquals(0, user.getPersonas().size());
   }
 
   @Test
@@ -206,9 +206,9 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
       List<EntityReference> expectedUsers,
       String expectedUpdatedBy) {
     assertListNotNull(persona.getId(), persona.getHref());
-    assertEqual(expectedDescription, persona.getDescription());
-    assertEqual(expectedUpdatedBy, persona.getUpdatedBy());
-    assertEqual(expectedDisplayName, persona.getDisplayName());
+    assertEquals(expectedDescription, persona.getDescription());
+    assertEquals(expectedUpdatedBy, persona.getUpdatedBy());
+    assertEquals(expectedDisplayName, persona.getDisplayName());
     TestUtils.assertEntityReferences(expectedUsers, persona.getUsers());
   }
 
@@ -263,7 +263,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
 
   @Override
   public void compareEntities(Persona expected, Persona updated, Map<String, String> authHeaders) {
-    assertEqual(expected.getDisplayName(), updated.getDisplayName());
+    assertEquals(expected.getDisplayName(), updated.getDisplayName());
     List<EntityReference> expectedUsers = listOrEmpty(expected.getUsers());
     List<EntityReference> actualUsers = listOrEmpty(updated.getUsers());
     TestUtils.assertEntityReferences(expectedUsers, actualUsers);

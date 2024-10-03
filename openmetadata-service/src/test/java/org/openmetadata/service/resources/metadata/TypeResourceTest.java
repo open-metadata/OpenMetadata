@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.metadata;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -154,7 +154,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
         addCustomPropertyAndCheck(
             topicEntity.getId(), fieldB, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     fieldB.setPropertyType(INT_TYPE.getEntityReference());
-    assertEqual(2, topicEntity.getCustomProperties().size());
+    assertEquals(2, topicEntity.getCustomProperties().size());
     assertCustomProperties(
         new ArrayList<>(List.of(fieldA, fieldB)), topicEntity.getCustomProperties());
   }
@@ -290,7 +290,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
         addCustomPropertyAndCheck(
             tableEntity.getId(), fieldB, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     fieldB.setPropertyType(INT_TYPE.getEntityReference());
-    assertEqual(2, tableEntity.getCustomProperties().size());
+    assertEquals(2, tableEntity.getCustomProperties().size());
     assertCustomProperties(
         new ArrayList<>(List.of(fieldA, fieldB)), tableEntity.getCustomProperties());*/
   }
@@ -540,19 +540,19 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   @Override
   public void validateCreatedEntity(
       Type createdEntity, CreateType createRequest, Map<String, String> authHeaders) {
-    assertEqual(createRequest.getSchema(), createdEntity.getSchema());
-    assertEqual(createRequest.getCategory(), createdEntity.getCategory());
-    assertEqual(createRequest.getNameSpace(), createdEntity.getNameSpace());
+    assertEquals(createRequest.getSchema(), createdEntity.getSchema());
+    assertEquals(createRequest.getCategory(), createdEntity.getCategory());
+    assertEquals(createRequest.getNameSpace(), createdEntity.getNameSpace());
   }
 
   @Override
   public void compareEntities(Type expected, Type patched, Map<String, String> authHeaders) {
-    assertEqual(expected.getSchema(), patched.getSchema());
-    assertEqual(expected.getSchema(), patched.getSchema());
-    assertEqual(expected.getCategory(), patched.getCategory());
-    assertEqual(expected.getNameSpace(), patched.getNameSpace());
+    assertEquals(expected.getSchema(), patched.getSchema());
+    assertEquals(expected.getSchema(), patched.getSchema());
+    assertEquals(expected.getCategory(), patched.getCategory());
+    assertEquals(expected.getNameSpace(), patched.getNameSpace());
     try {
-      JSONAssert.assertEqual(
+      JSONAssert.assertEquals(
           JsonUtils.pojoToJson(expected.getCustomProperties()),
           JsonUtils.pojoToJson(patched.getCustomProperties()),
           false);
@@ -576,7 +576,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
       String expectedStr = JsonUtils.pojoToJson(expected);
       String actualStr = JsonUtils.pojoToJson(actual);
       try {
-        JSONAssert.assertEqual(expectedStr, actualStr, false);
+        JSONAssert.assertEquals(expectedStr, actualStr, false);
       } catch (Exception e) {
         throw new IllegalStateException(e.getMessage());
       }

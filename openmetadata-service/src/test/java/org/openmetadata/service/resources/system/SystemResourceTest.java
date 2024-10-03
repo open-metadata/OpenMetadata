@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.system;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
@@ -164,17 +164,17 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
     // Ensure counts of entities is increased by 1
     EntitiesCount afterCount = getEntitiesCount();
-    assertEqual(beforeCount.getDashboardCount() + 1, afterCount.getDashboardCount());
-    assertEqual(beforeCount.getPipelineCount() + 1, afterCount.getPipelineCount());
-    assertEqual(beforeCount.getServicesCount() + 1, afterCount.getServicesCount());
-    assertEqual(beforeCount.getUserCount() + 1, afterCount.getUserCount());
-    assertEqual(beforeCount.getTableCount() + 1, afterCount.getTableCount());
-    assertEqual(beforeCount.getTeamCount() + 1, afterCount.getTeamCount());
-    assertEqual(beforeCount.getTopicCount() + 1, afterCount.getTopicCount());
-    assertEqual(beforeCount.getTestSuiteCount() + 1, afterCount.getTestSuiteCount());
-    assertEqual(beforeCount.getStorageContainerCount() + 1, afterCount.getStorageContainerCount());
-    assertEqual(beforeCount.getGlossaryCount() + 1, afterCount.getGlossaryCount());
-    assertEqual(beforeCount.getGlossaryTermCount() + 1, afterCount.getGlossaryTermCount());
+    assertEquals(beforeCount.getDashboardCount() + 1, afterCount.getDashboardCount());
+    assertEquals(beforeCount.getPipelineCount() + 1, afterCount.getPipelineCount());
+    assertEquals(beforeCount.getServicesCount() + 1, afterCount.getServicesCount());
+    assertEquals(beforeCount.getUserCount() + 1, afterCount.getUserCount());
+    assertEquals(beforeCount.getTableCount() + 1, afterCount.getTableCount());
+    assertEquals(beforeCount.getTeamCount() + 1, afterCount.getTeamCount());
+    assertEquals(beforeCount.getTopicCount() + 1, afterCount.getTopicCount());
+    assertEquals(beforeCount.getTestSuiteCount() + 1, afterCount.getTestSuiteCount());
+    assertEquals(beforeCount.getStorageContainerCount() + 1, afterCount.getStorageContainerCount());
+    assertEquals(beforeCount.getGlossaryCount() + 1, afterCount.getGlossaryCount());
+    assertEquals(beforeCount.getGlossaryTermCount() + 1, afterCount.getGlossaryTermCount());
   }
 
   @Test
@@ -186,7 +186,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Password for Email is encrypted using fernet
     SmtpSettings expected = config.getSmtpSettings();
     expected.setPassword(smtp.getPassword());
-    assertEqual(config.getSmtpSettings(), smtp);
+    assertEquals(config.getSmtpSettings(), smtp);
 
     // Test Custom Ui Theme Preference Config
     Settings uiThemeConfigWrapped = getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE);
@@ -194,13 +194,13 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
         JsonUtils.convertValue(uiThemeConfigWrapped.getConfigValue(), UiThemePreference.class);
 
     // Defaults
-    assertEqual("", uiThemePreference.getCustomTheme().getPrimaryColor());
-    assertEqual("", uiThemePreference.getCustomTheme().getSuccessColor());
-    assertEqual("", uiThemePreference.getCustomTheme().getErrorColor());
-    assertEqual("", uiThemePreference.getCustomTheme().getWarningColor());
-    assertEqual("", uiThemePreference.getCustomTheme().getInfoColor());
-    assertEqual("", uiThemePreference.getCustomLogoConfig().getCustomLogoUrlPath());
-    assertEqual("", uiThemePreference.getCustomLogoConfig().getCustomMonogramUrlPath());
+    assertEquals("", uiThemePreference.getCustomTheme().getPrimaryColor());
+    assertEquals("", uiThemePreference.getCustomTheme().getSuccessColor());
+    assertEquals("", uiThemePreference.getCustomTheme().getErrorColor());
+    assertEquals("", uiThemePreference.getCustomTheme().getWarningColor());
+    assertEquals("", uiThemePreference.getCustomTheme().getInfoColor());
+    assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomLogoUrlPath());
+    assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomMonogramUrlPath());
   }
 
   @Test
@@ -214,7 +214,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     SmtpSettings storedAndEncrypted =
         JsonUtils.convertValue(stored.getConfigValue(), SmtpSettings.class);
     assertTrue(Fernet.isTokenized(storedAndEncrypted.getPassword()));
-    assertEqual(
+    assertEquals(
         config.getSmtpSettings().getPassword(),
         Fernet.getInstance().decryptIfApplies(storedAndEncrypted.getPassword()));
   }
@@ -234,8 +234,8 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     SmtpSettings updateEmailSettings =
         JsonUtils.convertValue(
             getSystemConfig(SettingsType.EMAIL_CONFIGURATION).getConfigValue(), SmtpSettings.class);
-    assertEqual(updateEmailSettings.getUsername(), test.getDisplayName());
-    assertEqual(updateEmailSettings.getEmailingEntity(), test.getDisplayName());
+    assertEquals(updateEmailSettings.getUsername(), test.getDisplayName());
+    assertEquals(updateEmailSettings.getEmailingEntity(), test.getDisplayName());
 
     // Test Custom Logo Update and theme preference
     UiThemePreference updateConfigReq =
@@ -260,7 +260,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
         JsonUtils.convertValue(
             getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE).getConfigValue(),
             UiThemePreference.class);
-    assertEqual(updateConfigReq, updatedConfig);
+    assertEquals(updateConfigReq, updatedConfig);
   }
 
   @Test
@@ -302,11 +302,11 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
     // Get count after creating services and ensure it increased by 1
     ServicesCount afterCount = getServicesCount();
-    assertEqual(beforeCount.getMessagingServiceCount() + 1, afterCount.getMessagingServiceCount());
-    assertEqual(beforeCount.getDashboardServiceCount() + 1, afterCount.getDashboardServiceCount());
-    assertEqual(beforeCount.getPipelineServiceCount() + 1, afterCount.getPipelineServiceCount());
-    assertEqual(beforeCount.getMlModelServiceCount() + 1, afterCount.getMlModelServiceCount());
-    assertEqual(beforeCount.getStorageServiceCount() + 1, afterCount.getStorageServiceCount());
+    assertEquals(beforeCount.getMessagingServiceCount() + 1, afterCount.getMessagingServiceCount());
+    assertEquals(beforeCount.getDashboardServiceCount() + 1, afterCount.getDashboardServiceCount());
+    assertEquals(beforeCount.getPipelineServiceCount() + 1, afterCount.getPipelineServiceCount());
+    assertEquals(beforeCount.getMlModelServiceCount() + 1, afterCount.getMlModelServiceCount());
+    assertEquals(beforeCount.getStorageServiceCount() + 1, afterCount.getStorageServiceCount());
   }
 
   @Test
@@ -333,7 +333,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     int afterUserCount = getEntitiesCount().getUserCount();
 
     // The bot user count should not be considered.
-    assertEqual(beforeUserCount, afterUserCount);
+    assertEquals(beforeUserCount, afterUserCount);
   }
 
   @Test
@@ -341,7 +341,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     ValidationResponse response = getValidation();
 
     // Check migrations are OK
-    assertEqual(Boolean.TRUE, response.getMigrations().getPassed());
+    assertEquals(Boolean.TRUE, response.getMigrations().getPassed());
   }
 
   @Test
@@ -366,7 +366,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     createSystemConfig(profilerSettings);
     ProfilerConfiguration createdProfilerSettings =
         JsonUtils.convertValue(getProfilerConfig().getConfigValue(), ProfilerConfiguration.class);
-    assertEqual(profilerConfiguration, createdProfilerSettings);
+    assertEquals(profilerConfiguration, createdProfilerSettings);
 
     // Update the profiler config
     profilerConfiguration.setMetricConfiguration(List.of(intMetricConfigDefinition));
@@ -377,7 +377,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     updateSystemConfig(profilerSettings);
     ProfilerConfiguration updatedProfilerSettings =
         JsonUtils.convertValue(getProfilerConfig().getConfigValue(), ProfilerConfiguration.class);
-    assertEqual(profilerConfiguration, updatedProfilerSettings);
+    assertEquals(profilerConfiguration, updatedProfilerSettings);
 
     // Delete the profiler config
     profilerConfiguration.setMetricConfiguration(new ArrayList<>());
@@ -387,7 +387,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
             .withConfigValue(profilerConfiguration));
     updatedProfilerSettings =
         JsonUtils.convertValue(getProfilerConfig().getConfigValue(), ProfilerConfiguration.class);
-    assertEqual(profilerConfiguration, updatedProfilerSettings);
+    assertEquals(profilerConfiguration, updatedProfilerSettings);
   }
 
   private static ValidationResponse getValidation() throws HttpResponseException {

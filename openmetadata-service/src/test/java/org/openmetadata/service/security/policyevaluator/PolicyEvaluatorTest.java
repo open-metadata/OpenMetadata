@@ -172,13 +172,13 @@ class PolicyEvaluatorTest {
 
   public static void assertEqualPermissions(
       List<MetadataOperation> expectedOperations, List<Permission> actual) {
-    assertEqual(expectedOperations.size(), actual.size());
+    assertEquals(expectedOperations.size(), actual.size());
 
     Comparator<Permission> comparator = Comparator.comparing(Permission::getOperation);
     actual.sort(comparator);
     Collections.sort(expectedOperations);
     for (int i = 0; i < expectedOperations.size(); i++) {
-      assertEqual(expectedOperations.get(i).value(), actual.get(i).getOperation().value());
+      assertEquals(expectedOperations.get(i).value(), actual.get(i).getOperation().value());
     }
   }
 

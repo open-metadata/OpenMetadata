@@ -1,6 +1,6 @@
 package org.openmetadata.service.pipelineService;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
@@ -19,7 +19,7 @@ public class PipelineServiceClientTest {
   @Test
   public void testGetVersionFromString() {
     String version = mockPipelineServiceClient.getVersionFromString("0.12.0.dev0");
-    assertEqual("0.12.0", version);
+    assertEquals("0.12.0", version);
   }
 
   @Test
@@ -32,18 +32,18 @@ public class PipelineServiceClientTest {
     String expectedMessage = "Cannot extract version x.y.z from random";
     String actualMessage = exception.getMessage();
 
-    assertEqual(expectedMessage, actualMessage);
+    assertEquals(expectedMessage, actualMessage);
   }
 
   @Test
   public void testBuildVersionMismatchErrorMessage() {
     String res = mockPipelineServiceClient.buildVersionMismatchErrorMessage("1.1.0.dev0", "1.0.0");
-    assertEqual(
+    assertEquals(
         "Server version [1.0.0] is older than Ingestion Version [1.1.0.dev0]. Please upgrade your server or downgrade the ingestion client.",
         res);
 
     res = mockPipelineServiceClient.buildVersionMismatchErrorMessage("1.0.0.dev0", "1.0.1");
-    assertEqual(
+    assertEquals(
         "Ingestion version [1.0.0.dev0] is older than Server Version [1.0.1]. Please upgrade your ingestion client.",
         res);
   }

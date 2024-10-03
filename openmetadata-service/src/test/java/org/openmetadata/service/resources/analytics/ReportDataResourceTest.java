@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.analytics;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.openmetadata.schema.type.DataReportIndex.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.schema.type.DataReportIndex.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
@@ -189,7 +189,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             "2022-10-16",
             ReportData.ReportDataType.ENTITY_REPORT_DATA,
             ADMIN_AUTH_HEADERS);
-    assertEqual(0, entityReportDataList.getData().size());
+    assertEquals(0, entityReportDataList.getData().size());
     // Check document has been deleted from elasticsearch
     String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
     assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 0);
@@ -251,6 +251,6 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
     // async client will return a future which we don't have access to, hence sleep
     JsonNode json = runSearchQuery(query, index);
     Integer docCount = json.get("hits").get("total").get("value").asInt();
-    assertEqual(count, docCount);
+    assertEquals(count, docCount);
   }
 }

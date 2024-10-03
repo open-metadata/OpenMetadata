@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -165,10 +165,10 @@ public class DatabaseServiceResourceTest
     service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     validateDatabaseConnection(
         databaseConnection, service.getConnection(), service.getServiceType(), true);
-    assertEqual("description1", service.getDescription());
+    assertEquals("description1", service.getDescription());
     // non admin/bot user, password fields must be masked
     DatabaseService newService = getEntity(service.getId(), "*", TEST_AUTH_HEADERS);
-    assertEqual(newService.getName(), service.getName());
+    assertEquals(newService.getName(), service.getName());
     validateDatabaseConnection(
         databaseConnection, newService.getConnection(), newService.getServiceType(), true);
     snowflakeConnection.setPassword("test123");
@@ -276,7 +276,7 @@ public class DatabaseServiceResourceTest
         ingestionPipelineResourceTest.createEntity(createIngestionPipeline, ADMIN_AUTH_HEADERS);
 
     DatabaseService updatedService = getEntity(service.getId(), "pipelines", ADMIN_AUTH_HEADERS);
-    assertEqual(1, updatedService.getPipelines().size());
+    assertEquals(1, updatedService.getPipelines().size());
     assertReference(ingestionPipeline.getEntityReference(), updatedService.getPipelines().get(0));
 
     // Delete the database service and ensure ingestion pipeline is deleted
@@ -293,16 +293,16 @@ public class DatabaseServiceResourceTest
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEqual(
+    assertEquals(
         TestConnectionResultStatus.SUCCESSFUL,
         updatedService.getTestConnectionResult().getStatus());
-    assertEqual(updatedService.getConnection(), service.getConnection());
+    assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     DatabaseService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEqual(
+    assertEquals(
         TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
-    assertEqual(stored.getConnection(), service.getConnection());
+    assertEquals(stored.getConnection(), service.getConnection());
   }
 
   @Test
@@ -341,7 +341,7 @@ public class DatabaseServiceResourceTest
       DatabaseService service,
       CreateDatabaseService createRequest,
       Map<String, String> authHeaders) {
-    assertEqual(createRequest.getName(), service.getName());
+    assertEquals(createRequest.getName(), service.getName());
     boolean maskPasswords = !INGESTION_BOT_AUTH_HEADERS.equals(authHeaders);
     validateDatabaseConnection(
         createRequest.getConnection(),
@@ -383,7 +383,7 @@ public class DatabaseServiceResourceTest
     if (fieldName.equals("ingestionSchedule")) {
       Schedule expectedSchedule = (Schedule) expected;
       Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
-      assertEqual(expectedSchedule, actualSchedule);
+      assertEquals(expectedSchedule, actualSchedule);
     } else if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
@@ -456,23 +456,23 @@ public class DatabaseServiceResourceTest
       MysqlConnection expectedMysqlConnection,
       MysqlConnection actualMysqlConnection,
       boolean maskedPasswords) {
-    assertEqual(
+    assertEquals(
         expectedMysqlConnection.getDatabaseSchema(), actualMysqlConnection.getDatabaseSchema());
-    assertEqual(expectedMysqlConnection.getHostPort(), actualMysqlConnection.getHostPort());
-    assertEqual(expectedMysqlConnection.getUsername(), actualMysqlConnection.getUsername());
-    assertEqual(
+    assertEquals(expectedMysqlConnection.getHostPort(), actualMysqlConnection.getHostPort());
+    assertEquals(expectedMysqlConnection.getUsername(), actualMysqlConnection.getUsername());
+    assertEquals(
         expectedMysqlConnection.getConnectionOptions(),
         actualMysqlConnection.getConnectionOptions());
-    assertEqual(
+    assertEquals(
         expectedMysqlConnection.getConnectionArguments(),
         actualMysqlConnection.getConnectionArguments());
     if (maskedPasswords) {
-      assertEqual(
+      assertEquals(
           PasswordEntityMasker.PASSWORD_MASK,
           JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class)
               .getPassword());
     } else {
-      assertEqual(
+      assertEquals(
           JsonUtils.convertValue(expectedMysqlConnection.getAuthType(), basicAuth.class)
               .getPassword(),
           JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class)
@@ -484,18 +484,18 @@ public class DatabaseServiceResourceTest
       BigQueryConnection expectedBigQueryConnection,
       BigQueryConnection actualBigQueryConnection,
       boolean maskedPasswords) {
-    assertEqual(expectedBigQueryConnection.getHostPort(), actualBigQueryConnection.getHostPort());
-    assertEqual(
+    assertEquals(expectedBigQueryConnection.getHostPort(), actualBigQueryConnection.getHostPort());
+    assertEquals(
         expectedBigQueryConnection.getCredentials(), actualBigQueryConnection.getCredentials());
-    assertEqual(expectedBigQueryConnection.getScheme(), actualBigQueryConnection.getScheme());
-    assertEqual(
+    assertEquals(expectedBigQueryConnection.getScheme(), actualBigQueryConnection.getScheme());
+    assertEquals(
         expectedBigQueryConnection.getConnectionArguments(),
         actualBigQueryConnection.getConnectionArguments());
-    assertEqual(
+    assertEquals(
         expectedBigQueryConnection.getConnectionOptions(),
         actualBigQueryConnection.getConnectionOptions());
     if (!maskedPasswords) {
-      assertEqual(
+      assertEquals(
           expectedBigQueryConnection.getCredentials(), actualBigQueryConnection.getCredentials());
     }
   }
@@ -504,20 +504,20 @@ public class DatabaseServiceResourceTest
       RedshiftConnection expectedRedshiftConnection,
       RedshiftConnection actualRedshiftConnection,
       boolean maskedPasswords) {
-    assertEqual(expectedRedshiftConnection.getHostPort(), actualRedshiftConnection.getHostPort());
-    assertEqual(expectedRedshiftConnection.getUsername(), actualRedshiftConnection.getUsername());
-    assertEqual(expectedRedshiftConnection.getScheme(), actualRedshiftConnection.getScheme());
-    assertEqual(expectedRedshiftConnection.getDatabase(), actualRedshiftConnection.getDatabase());
-    assertEqual(
+    assertEquals(expectedRedshiftConnection.getHostPort(), actualRedshiftConnection.getHostPort());
+    assertEquals(expectedRedshiftConnection.getUsername(), actualRedshiftConnection.getUsername());
+    assertEquals(expectedRedshiftConnection.getScheme(), actualRedshiftConnection.getScheme());
+    assertEquals(expectedRedshiftConnection.getDatabase(), actualRedshiftConnection.getDatabase());
+    assertEquals(
         expectedRedshiftConnection.getConnectionArguments(),
         actualRedshiftConnection.getConnectionArguments());
-    assertEqual(
+    assertEquals(
         expectedRedshiftConnection.getConnectionOptions(),
         actualRedshiftConnection.getConnectionOptions());
     if (maskedPasswords) {
-      assertEqual(PasswordEntityMasker.PASSWORD_MASK, actualRedshiftConnection.getPassword());
+      assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualRedshiftConnection.getPassword());
     } else {
-      assertEqual(
+      assertEquals(
           expectedRedshiftConnection.getPassword(), actualRedshiftConnection.getPassword());
     }
   }
@@ -526,22 +526,22 @@ public class DatabaseServiceResourceTest
       SnowflakeConnection expectedSnowflakeConnection,
       SnowflakeConnection actualSnowflakeConnection,
       boolean maskedPasswords) {
-    assertEqual(expectedSnowflakeConnection.getRole(), actualSnowflakeConnection.getRole());
-    assertEqual(
+    assertEquals(expectedSnowflakeConnection.getRole(), actualSnowflakeConnection.getRole());
+    assertEquals(
         expectedSnowflakeConnection.getUsername(), actualSnowflakeConnection.getUsername());
-    assertEqual(expectedSnowflakeConnection.getScheme(), actualSnowflakeConnection.getScheme());
-    assertEqual(
+    assertEquals(expectedSnowflakeConnection.getScheme(), actualSnowflakeConnection.getScheme());
+    assertEquals(
         expectedSnowflakeConnection.getDatabase(), actualSnowflakeConnection.getDatabase());
-    assertEqual(
+    assertEquals(
         expectedSnowflakeConnection.getConnectionArguments(),
         actualSnowflakeConnection.getConnectionArguments());
-    assertEqual(
+    assertEquals(
         expectedSnowflakeConnection.getConnectionOptions(),
         actualSnowflakeConnection.getConnectionOptions());
     if (maskedPasswords) {
-      assertEqual(PasswordEntityMasker.PASSWORD_MASK, actualSnowflakeConnection.getPassword());
+      assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualSnowflakeConnection.getPassword());
     } else {
-      assertEqual(
+      assertEquals(
           expectedSnowflakeConnection.getPassword(), actualSnowflakeConnection.getPassword());
     }
   }

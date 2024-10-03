@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -28,53 +28,53 @@ class RestUtilTest {
   @Test
   void hrefTests() throws URISyntaxException {
     URI baseUri = URI.create("http://base");
-    assertEqual(URI.create("http://base/path"), RestUtil.getHref(baseUri, "path"));
-    assertEqual(
+    assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "path"));
+    assertEquals(
         URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path")); // Remove leading slash
-    assertEqual(
+    assertEquals(
         URI.create("http://base/path"),
         RestUtil.getHref(baseUri, "path/")); // Removing trailing slash
-    assertEqual(
+    assertEquals(
         URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path/")); // Remove both slashes
 
     UriInfo uriInfo = mockUriInfo("http://base/");
-    assertEqual(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "collection"));
-    assertEqual(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "/collection"));
-    assertEqual(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "collection/"));
-    assertEqual(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "/collection/"));
+    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "collection"));
+    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "/collection"));
+    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "collection/"));
+    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "/collection/"));
 
     UUID id = UUID.randomUUID();
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "collection", id));
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "/collection", id));
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "collection/", id));
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "/collection/", id));
 
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "collection", "path"));
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/path"),
         RestUtil.getHref(uriInfo, "/collection", "/path"));
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/path"),
         RestUtil.getHref(uriInfo, "collection/", "path/"));
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/path"),
         RestUtil.getHref(uriInfo, "/collection/", "/path/"));
 
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/path%201"),
         RestUtil.getHref(uriInfo, "collection", "path 1"));
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/path%201"),
         RestUtil.getHref(uriInfo, "/collection", "/path 1"));
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/path%201"),
         RestUtil.getHref(uriInfo, "collection/", "path 1/"));
-    assertEqual(
+    assertEquals(
         URI.create("http://base/collection/path%201"),
         RestUtil.getHref(uriInfo, "/collection/", "/path 1/"));
   }

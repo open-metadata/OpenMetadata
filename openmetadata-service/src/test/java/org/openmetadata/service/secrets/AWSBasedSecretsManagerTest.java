@@ -12,7 +12,7 @@
  */
 package org.openmetadata.service.secrets;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -74,8 +74,8 @@ public abstract class AWSBasedSecretsManagerTest extends ExternalSecretsManagerT
 
     // Decrypt the pipeline and make sure the secret key is decrypted
     secretsManager.decryptIngestionPipeline(actualIngestionPipeline);
-    assertEqual(secretKey, getAwsSecretAccessKey(actualIngestionPipeline));
-    assertEqual(expectedIngestionPipeline, actualIngestionPipeline);
+    assertEquals(secretKey, getAwsSecretAccessKey(actualIngestionPipeline));
+    assertEquals(expectedIngestionPipeline, actualIngestionPipeline);
   }
 
   private String getAwsSecretAccessKey(IngestionPipeline ingestionPipeline) {

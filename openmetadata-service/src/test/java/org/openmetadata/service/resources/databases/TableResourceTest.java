@@ -20,7 +20,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -293,9 +293,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     create.setTableConstraints(List.of(constraint));
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Column column = created.getColumns().get(0);
-    assertEqual("col.umn", column.getName());
+    assertEquals("col.umn", column.getName());
     assertTrue(column.getFullyQualifiedName().contains("col.umn"));
-    assertEqual("col.umn", created.getTableConstraints().get(0).getColumns().get(0));
+    assertEquals("col.umn", created.getTableConstraints().get(0).getColumns().get(0));
   }
 
   @Test
@@ -581,11 +581,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     request.getColumns().get(0).withDataType(CHAR).withDataLength(200).withDescription(null);
 
     Table updatedTable = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
-    assertEqual(
+    assertEquals(
         table.getColumns().get(0).getDescription(),
         updatedTable.getColumns().get(0).getDescription());
-    assertEqual(CHAR, updatedTable.getColumns().get(0).getDataType());
-    assertEqual(200, updatedTable.getColumns().get(0).getDataLength());
+    assertEquals(CHAR, updatedTable.getColumns().get(0).getDataType());
+    assertEquals(200, updatedTable.getColumns().get(0).getDataLength());
   }
 
   @Test
@@ -689,12 +689,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.get(0).setFullyQualifiedName(table.getFullyQualifiedName() + "." + C1);
 
     // Ensure classification and tag usage counts are updated
-    assertEqual(
+    assertEquals(
         classificationUsageCount + 1, getClassificationUsageCount("User", TEST_AUTH_HEADERS));
-    assertEqual(
+    assertEquals(
         addressTagUsageCount + 1,
         getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
-    assertEqual(
+    assertEquals(
         glossaryTermUsageCount,
         getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
 
@@ -713,12 +713,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Ensure tag usage counts are updated
-    assertEqual(
+    assertEquals(
         classificationUsageCount + 1, getClassificationUsageCount("User", TEST_AUTH_HEADERS));
-    assertEqual(
+    assertEquals(
         addressTagUsageCount + 1,
         getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
-    assertEqual(
+    assertEquals(
         glossaryTermUsageCount + 1,
         getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
 
@@ -735,12 +735,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Ensure tag usage counts are updated - column c2 added both address
-    assertEqual(
+    assertEquals(
         classificationUsageCount + 2, getClassificationUsageCount("User", TEST_AUTH_HEADERS));
-    assertEqual(
+    assertEquals(
         addressTagUsageCount + 2,
         getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
-    assertEqual(
+    assertEquals(
         glossaryTermUsageCount + 2,
         getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
 
@@ -776,15 +776,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     table =
         updateAndCheckEntity(
             request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
-    assertEqual(1, table.getColumns().size());
+    assertEquals(1, table.getColumns().size());
 
     // Ensure tag usage counts are updated to reflect removal of column c2
-    assertEqual(
+    assertEquals(
         classificationUsageCount + 1, getClassificationUsageCount("User", TEST_AUTH_HEADERS));
-    assertEqual(
+    assertEquals(
         addressTagUsageCount + 1,
         getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
-    assertEqual(
+    assertEquals(
         glossaryTermUsageCount + 1,
         getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
   }
@@ -1023,8 +1023,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   public void assertColumnJoins(List<ColumnJoin> expected, TableJoins actual) {
     // Table reports last 30 days of aggregated join count
-    assertEqual(actual.getStartDate(), getDateStringByOffset(DATE_FORMAT, RestUtil.today(0), -30));
-    assertEqual(30, actual.getDayCount());
+    assertEquals(actual.getStartDate(), getDateStringByOffset(DATE_FORMAT, RestUtil.today(0), -30));
+    assertEquals(30, actual.getDayCount());
 
     // Sort the columnJoins and the joinedWith to account for different ordering
     expected.sort(Comparator.comparing(ColumnJoin::getColumnName));
@@ -1035,16 +1035,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .getColumnJoins()
         .forEach(
             c -> c.getJoinedWith().sort(Comparator.comparing(JoinedWith::getFullyQualifiedName)));
-    assertEqual(expected, actual.getColumnJoins());
+    assertEquals(expected, actual.getColumnJoins());
   }
 
   public void assertDirectTableJoins(List<JoinedWith> expected, TableJoins actual) {
     // Table reports last 30 days of aggregated join count
-    assertEqual(actual.getStartDate(), getDateStringByOffset(DATE_FORMAT, RestUtil.today(0), -30));
-    assertEqual(30, actual.getDayCount());
+    assertEquals(actual.getStartDate(), getDateStringByOffset(DATE_FORMAT, RestUtil.today(0), -30));
+    assertEquals(30, actual.getDayCount());
 
     // Sort the columnJoins and the joinedWith to account for different ordering
-    assertEqual(
+    assertEquals(
         expected.stream()
             .sorted(Comparator.comparing(JoinedWith::getFullyQualifiedName))
             .collect(Collectors.toList()),
@@ -1086,10 +1086,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       throws IOException {
     TableData tableData = new TableData().withColumns(columns).withRows(rows);
     Table putResponse = putSampleData(table.getId(), tableData, authHeaders);
-    assertEqual(tableData, putResponse.getSampleData());
+    assertEquals(tableData, putResponse.getSampleData());
 
     table = getSampleData(table.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(tableData, table.getSampleData());
+    assertEquals(tableData, table.getSampleData());
   }
 
   @Test
@@ -1143,7 +1143,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table = createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
     table = getEntity(table.getId(), "schemaDefinition", ADMIN_AUTH_HEADERS);
     LOG.info("table view definition {}", table.getSchemaDefinition());
-    assertEqual(table.getSchemaDefinition(), query);
+    assertEquals(table.getSchemaDefinition(), query);
   }
 
   @Test
@@ -1179,9 +1179,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withExcludeColumns(List.of(C2))
             .withIncludeColumns(columnProfilerConfigs);
     table = putTableProfilerConfig(table.getId(), tableProfilerConfig, authHeaders);
-    assertEqual(tableProfilerConfig, table.getTableProfilerConfig());
+    assertEquals(tableProfilerConfig, table.getTableProfilerConfig());
     Table storedTable = getEntity(table.getId(), "tableProfilerConfig", authHeaders);
-    assertEqual(tableProfilerConfig, storedTable.getTableProfilerConfig());
+    assertEquals(tableProfilerConfig, storedTable.getTableProfilerConfig());
 
     // Change table profile config with columns c2, c3 and column c1 excluded
     // Also change the profileQuery from dual to dual1
@@ -1195,18 +1195,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withExcludeColumns(List.of(C1))
             .withIncludeColumns(columnProfilerConfigs);
     table = putTableProfilerConfig(table.getId(), tableProfilerConfig, authHeaders);
-    assertEqual(tableProfilerConfig, table.getTableProfilerConfig());
+    assertEquals(tableProfilerConfig, table.getTableProfilerConfig());
     Table tableWithConfig = getTableProfileConfig(table.getId(), authHeaders);
-    assertEqual(tableProfilerConfig, tableWithConfig.getTableProfilerConfig());
+    assertEquals(tableProfilerConfig, tableWithConfig.getTableProfilerConfig());
     table = deleteTableProfilerConfig(table.getId(), authHeaders);
     assertNull(table.getTableProfilerConfig());
     storedTable = getTableProfileConfig(table.getId(), authHeaders);
     assertNull(storedTable.getTableProfilerConfig());
     tableProfilerConfig = new TableProfilerConfig().withProfileSample(80.0);
     table = putTableProfilerConfig(table.getId(), tableProfilerConfig, authHeaders);
-    assertEqual(tableProfilerConfig, table.getTableProfilerConfig());
+    assertEquals(tableProfilerConfig, table.getTableProfilerConfig());
     storedTable = getEntity(table.getId(), "tableProfilerConfig", authHeaders);
-    assertEqual(tableProfilerConfig, storedTable.getTableProfilerConfig());
+    assertEquals(tableProfilerConfig, storedTable.getTableProfilerConfig());
   }
 
   @Test
@@ -1493,8 +1493,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     putTableQueriesData(
         createdQuery.getId(), List.of(table.getEntityReference()), ADMIN_AUTH_HEADERS);
     List<Query> entityQueries = getTableQueriesData(table.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(1, entityQueries.size());
-    assertEqual(query.getQuery(), entityQueries.get(0).getQuery());
+    assertEquals(1, entityQueries.size());
+    assertEquals(query.getQuery(), entityQueries.get(0).getQuery());
 
     // Create
     CreateQuery query1 =
@@ -1508,8 +1508,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // try updating the same query again
     //
     createdQuery = queryResourceTest.updateEntity(query1, OK, ADMIN_AUTH_HEADERS);
-    assertEqual(query1.getQuery(), createdQuery.getQuery());
-    assertEqual(query1.getDuration(), createdQuery.getDuration());
+    assertEquals(query1.getQuery(), createdQuery.getQuery());
+    assertEquals(query1.getDuration(), createdQuery.getDuration());
 
     // Update bot
     VoteRequest request = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP);
@@ -1518,14 +1518,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     ChangeEvent changeEvent =
         TestUtils.put(target, request, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
     Query updatedEntity = JsonUtils.convertValue(changeEvent.getEntity(), Query.class);
-    assertEqual(1, updatedEntity.getVotes().getUpVotes());
-    assertEqual(0, updatedEntity.getVotes().getDownVotes());
+    assertEquals(1, updatedEntity.getVotes().getUpVotes());
+    assertEquals(0, updatedEntity.getVotes().getDownVotes());
 
     entityQueries = getTableQueriesData(table.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(1, entityQueries.size());
-    assertEqual(query1.getQuery(), entityQueries.get(0).getQuery());
-    assertEqual(1, updatedEntity.getVotes().getUpVotes());
-    assertEqual(0, updatedEntity.getVotes().getDownVotes());
+    assertEquals(1, entityQueries.size());
+    assertEquals(query1.getQuery(), entityQueries.get(0).getQuery());
+    assertEquals(1, updatedEntity.getVotes().getUpVotes());
+    assertEquals(0, updatedEntity.getVotes().getDownVotes());
   }
 
   @Test
@@ -1656,7 +1656,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withName("customTable")
             .withExpression("SELECT SUM(xyz) + SUM(def) FROM abc");
     Table tablePutResponse = putCustomMetric(table.getId(), createTableMetric, authHeaders);
-    assertEqual(1, tablePutResponse.getCustomMetrics().size());
+    assertEquals(1, tablePutResponse.getCustomMetrics().size());
 
     // Add another table custom metric
     CreateCustomMetric createTableMetric2 =
@@ -1664,7 +1664,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withName("custom2Table")
             .withExpression("SELECT SUM(xyz) / SUM(def) FROM abc");
     tablePutResponse = putCustomMetric(table.getId(), createTableMetric2, authHeaders);
-    assertEqual(2, tablePutResponse.getCustomMetrics().size());
+    assertEquals(2, tablePutResponse.getCustomMetrics().size());
 
     // check we can get the custom metrics
     Map<String, Object> customMetrics =
@@ -1673,7 +1673,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     for (CreateCustomMetric metric : List.of(createTableMetric, createTableMetric2)) {
       CustomMetric customMetric = (CustomMetric) customMetrics.get(metric.getName());
-      assertEqual(customMetric.getExpression(), metric.getExpression());
+      assertEquals(customMetric.getExpression(), metric.getExpression());
     }
 
     // Update table custom metric
@@ -1687,13 +1687,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .filter(metric -> metric.getName().equals(updatedTableMetric.getName()))
             .findFirst()
             .orElseThrow();
-    assertEqual(updatedCustomMetric.getExpression(), updatedTableMetric.getExpression());
+    assertEquals(updatedCustomMetric.getExpression(), updatedTableMetric.getExpression());
 
     // Delete table custom metric
     deleteTableCustomMetric(table.getId(), updatedTableMetric.getName(), authHeaders);
     table = getEntity(table.getId(), "customMetrics,columns", authHeaders);
-    assertEqual(1, table.getCustomMetrics().size());
-    assertEqual(createTableMetric2.getName(), table.getCustomMetrics().get(0).getName());
+    assertEquals(1, table.getCustomMetrics().size());
+    assertEquals(createTableMetric2.getName(), table.getCustomMetrics().get(0).getName());
   }
 
   @Test
@@ -1713,21 +1713,21 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Total 5 user tags  - 1 table tag + 2 column tags includes global test entities
-    assertEqual(3, getClassificationUsageCount("User", ADMIN_AUTH_HEADERS));
+    assertEquals(3, getClassificationUsageCount("User", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary1 tags  - 1 column
-    assertEqual(1, getGlossaryUsageCount(GLOSSARY1.getName()));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY1.getName()));
 
     // Total 1 glossary2 tags  - 1 table
-    assertEqual(1, getGlossaryUsageCount(GLOSSARY2.getName()));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY2.getName()));
 
     // Total 3 USER_ADDRESS tags - 1 table tag and 2 column tags
-    assertEqual(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Total 1 GLOSSARY1_TERM1 - 1 column level
-    assertEqual(
+    assertEquals(
         1, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Total 1 GLOSSARY1_TERM1 - 1 table level
-    assertEqual(
+    assertEquals(
         1, getGlossaryTermUsageCount(GLOSSARY2_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
 
     // Create a table test2 with 3 column tags
@@ -1739,22 +1739,22 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
 
     // Additional 2 user tags - 2 column tags
-    assertEqual(5, getClassificationUsageCount("User", ADMIN_AUTH_HEADERS));
+    assertEquals(5, getClassificationUsageCount("User", ADMIN_AUTH_HEADERS));
     // Additional 2 USER_ADDRESS tags - 2 column tags
-    assertEqual(5, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(5, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Additional 1 glossary tag - 1 column tags
-    assertEqual(
+    assertEquals(
         2, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
 
     ResultList<Table> tableList = listEntities(null, ADMIN_AUTH_HEADERS); // List tables
-    assertEqual(initialTableCount + 2, tableList.getData().size());
+    assertEquals(initialTableCount + 2, tableList.getData().size());
     assertFields(tableList.getData(), null);
 
     // List tables with databaseFQN as filter
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("database", DATABASE.getFullyQualifiedName());
     ResultList<Table> tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEqual(tableList.getData().size(), tableList1.getData().size());
+    assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), null);
 
     // GET .../tables?fields=columns,tableConstraints
@@ -1762,7 +1762,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams = new HashMap<>();
     queryParams.put("fields", fields);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEqual(initialTableCount + 2, tableList.getData().size());
+    assertEquals(initialTableCount + 2, tableList.getData().size());
     assertFields(tableList.getData(), fields);
 
     // List tables with databaseFQN as filter
@@ -1770,7 +1770,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams.put("fields", fields);
     queryParams.put("database", DATABASE.getFullyQualifiedName());
     tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEqual(tableList.getData().size(), tableList1.getData().size());
+    assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields);
 
     // List tables with databaseSchemaFQN as filter
@@ -1778,7 +1778,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams.put("fields", fields);
     queryParams.put("databaseSchema", DATABASE_SCHEMA.getFullyQualifiedName());
     tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEqual(tableList.getData().size(), tableList1.getData().size());
+    assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields);
 
     // GET .../tables?fields=usageSummary,owner
@@ -1786,7 +1786,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams = new HashMap<>();
     queryParams.put("fields", fields1);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEqual(initialTableCount + 2, tableList.getData().size());
+    assertEquals(initialTableCount + 2, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
       assertOwners(Lists.newArrayList(USER1_REF), table.getOwners());
@@ -1798,7 +1798,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams.put("fields", fields1);
     queryParams.put("database", DATABASE.getFullyQualifiedName());
     tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEqual(tableList.getData().size(), tableList1.getData().size());
+    assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields1);
   }
 
@@ -1951,7 +1951,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Ensure only 4 tag labels are found - Manual tags PersonalData.Personal, User.Address,
     // glossaryTerm1 and a derived tag PII.Sensitive from glossary term1
     List<TagLabel> updateTags = updatedTable.getColumns().get(0).getTags();
-    assertEqual(4, updateTags.size());
+    assertEquals(4, updateTags.size());
 
     TagLabel glossaryTerm1 =
         updateTags.stream()
@@ -1959,7 +1959,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .findAny()
             .orElse(null);
     assertNotNull(glossaryTerm1);
-    assertEqual(LabelType.MANUAL, glossaryTerm1.getLabelType());
+    assertEquals(LabelType.MANUAL, glossaryTerm1.getLabelType());
 
     TagLabel userAddress =
         updateTags.stream()
@@ -1967,7 +1967,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .findAny()
             .orElse(null);
     assertNotNull(userAddress);
-    assertEqual(LabelType.MANUAL, userAddress.getLabelType());
+    assertEquals(LabelType.MANUAL, userAddress.getLabelType());
 
     TagLabel personData =
         updateTags.stream()
@@ -1975,7 +1975,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .findAny()
             .orElse(null);
     assertNotNull(personData);
-    assertEqual(LabelType.MANUAL, personData.getLabelType());
+    assertEquals(LabelType.MANUAL, personData.getLabelType());
 
     TagLabel piiSensitive =
         updateTags.stream()
@@ -1983,7 +1983,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .findAny()
             .orElse(null);
     assertNotNull(piiSensitive);
-    assertEqual(LabelType.MANUAL, piiSensitive.getLabelType());
+    assertEquals(LabelType.MANUAL, piiSensitive.getLabelType());
   }
 
   @Test
@@ -2138,7 +2138,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Ensure only 4 tag labels are found - Manual tags PersonalData.Personal, User.Address,
     // glossaryTerm1 and a derived tag PII.Sensitive from glossary term1
     List<TagLabel> updateTags = updatedTable.getColumns().get(0).getTags();
-    assertEqual(4, updateTags.size());
+    assertEquals(4, updateTags.size());
 
     TagLabel glossaryTerm1 =
         updateTags.stream()
@@ -2146,7 +2146,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .findAny()
             .orElse(null);
     assertNotNull(glossaryTerm1);
-    assertEqual(LabelType.MANUAL, glossaryTerm1.getLabelType());
+    assertEquals(LabelType.MANUAL, glossaryTerm1.getLabelType());
 
     TagLabel userAddress =
         updateTags.stream()
@@ -2154,7 +2154,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .findAny()
             .orElse(null);
     assertNotNull(userAddress);
-    assertEqual(LabelType.MANUAL, userAddress.getLabelType());
+    assertEquals(LabelType.MANUAL, userAddress.getLabelType());
 
     TagLabel personData =
         updateTags.stream()
@@ -2162,7 +2162,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .findAny()
             .orElse(null);
     assertNotNull(personData);
-    assertEqual(LabelType.MANUAL, personData.getLabelType());
+    assertEquals(LabelType.MANUAL, personData.getLabelType());
 
     TagLabel piiSensitive =
         updateTags.stream()
@@ -2170,7 +2170,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .findAny()
             .orElse(null);
     assertNotNull(piiSensitive);
-    assertEqual(LabelType.MANUAL, piiSensitive.getLabelType());
+    assertEquals(LabelType.MANUAL, piiSensitive.getLabelType());
   }
 
   @Test
@@ -2354,13 +2354,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     Table createdTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEqual(DOMAIN.getFullyQualifiedName(), createdTable.getDomain().getFullyQualifiedName());
+    assertEquals(DOMAIN.getFullyQualifiedName(), createdTable.getDomain().getFullyQualifiedName());
 
     // update table entity domain w/ PUT request w/ bot auth and check update is ignored
     CreateTable updateTablePayload = createTable.withDomain(DOMAIN1.getFullyQualifiedName());
     updateEntity(updateTablePayload, OK, INGESTION_BOT_AUTH_HEADERS);
     Table updatedTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEqual(DOMAIN.getFullyQualifiedName(), updatedTable.getDomain().getFullyQualifiedName());
+    assertEquals(DOMAIN.getFullyQualifiedName(), updatedTable.getDomain().getFullyQualifiedName());
 
     // patch domain w/ bot auth and check update is applied
     patchEntity(
@@ -2369,7 +2369,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         createdTable.withDomain(DOMAIN1.getEntityReference()),
         INGESTION_BOT_AUTH_HEADERS);
     Table patchedTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEqual(DOMAIN1.getFullyQualifiedName(), patchedTable.getDomain().getFullyQualifiedName());
+    assertEquals(DOMAIN1.getFullyQualifiedName(), patchedTable.getDomain().getFullyQualifiedName());
   }
 
   @Test
@@ -2377,7 +2377,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateDatabase createDatabase =
         dbTest.createRequest(getEntityName(test)).withRetentionPeriod("P30D");
     Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
-    assertEqual("P30D", database.getRetentionPeriod());
+    assertEquals("P30D", database.getRetentionPeriod());
 
     // Ensure database schema retention period is carried over from the parent database
     CreateDatabaseSchema createDatabaseSchema =
@@ -2386,10 +2386,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         schemaTest
             .createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS)
             .withDatabase(database.getEntityReference());
-    assertEqual(
+    assertEquals(
         "P30D", schema.getRetentionPeriod()); // Retention period is inherited in create response
     schema = schemaTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
-    assertEqual(
+    assertEquals(
         "P30D", schema.getRetentionPeriod()); // Retention period is inherited in create response
 
     // Ensure table retention period is carried over from the parent database schema
@@ -2397,10 +2397,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
     Table table =
         createEntity(createTable, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
-    assertEqual(
+    assertEquals(
         "P30D", table.getRetentionPeriod()); // Retention period is inherited in get response
     table = getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
-    assertEqual(
+    assertEquals(
         "P30D", table.getRetentionPeriod()); // Retention period is inherited in get response
   }
 
@@ -2442,7 +2442,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams.put("limit", "100");
 
     ResultList<Table> tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEqual(4, tables.getData().size());
+    assertEquals(4, tables.getData().size());
     assertNotNull(tables.getData().get(0).getTestSuite());
   }
 
@@ -2584,7 +2584,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .anyMatch(MASKED_VALUE::equals));
     // assert values are masked when is not the table owner
     table = getSampleData(table.getId(), authHeaders(USER1_REF.getName()));
-    assertEqual(
+    assertEquals(
         3,
         table.getSampleData().getRows().stream()
             .flatMap(List::stream)
@@ -2639,7 +2639,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       assertNull(columnProfile.getMax());
       assertNull(columnProfile.getMin());
     }
-    assertEqual(maskedColumnProfiles.getData().size(), columnProfiles.getData().size());
+    assertEquals(maskedColumnProfiles.getData().size(), columnProfiles.getData().size());
   }
 
   @Test
@@ -3039,9 +3039,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   public void assertDataModel(DataModel expected, DataModel actual) {
-    assertEqual(expected.getSql(), actual.getSql());
-    assertEqual(expected.getModelType(), actual.getModelType());
-    assertEqual(expected.getGeneratedAt(), actual.getGeneratedAt());
+    assertEquals(expected.getSql(), actual.getSql());
+    assertEquals(expected.getModelType(), actual.getModelType());
+    assertEquals(expected.getGeneratedAt(), actual.getGeneratedAt());
   }
 
   private static void assertColumn(Column expectedColumn, Column actualColumn)
@@ -3050,12 +3050,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertTrue(
         expectedColumn.getName().equalsIgnoreCase(actualColumn.getName())
             || expectedColumn.getName().equalsIgnoreCase(actualColumn.getDisplayName()));
-    assertEqual(expectedColumn.getDescription(), actualColumn.getDescription());
-    assertEqual(expectedColumn.getDataType(), actualColumn.getDataType());
-    assertEqual(expectedColumn.getArrayDataType(), actualColumn.getArrayDataType());
-    assertEqual(expectedColumn.getConstraint(), actualColumn.getConstraint());
+    assertEquals(expectedColumn.getDescription(), actualColumn.getDescription());
+    assertEquals(expectedColumn.getDataType(), actualColumn.getDataType());
+    assertEquals(expectedColumn.getArrayDataType(), actualColumn.getArrayDataType());
+    assertEquals(expectedColumn.getConstraint(), actualColumn.getConstraint());
     if (expectedColumn.getDataTypeDisplay() != null) {
-      assertEqual(
+      assertEquals(
           expectedColumn.getDataTypeDisplay().toLowerCase(Locale.ROOT),
           actualColumn.getDataTypeDisplay());
     }
@@ -3071,7 +3071,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       return;
     }
     // Sort columns by name
-    assertEqual(expectedColumns.size(), actualColumns.size());
+    assertEquals(expectedColumns.size(), actualColumns.size());
 
     // Make a copy before sorting in case the lists are immutable
     List<Column> expected = new ArrayList<>(expectedColumns);
@@ -3242,8 +3242,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       ResultList<TableProfile> actualProfiles,
       List<TableProfile> expectedProfiles,
       int expectedCount) {
-    assertEqual(expectedCount, actualProfiles.getPaging().getTotal());
-    assertEqual(expectedProfiles.size(), actualProfiles.getData().size());
+    assertEquals(expectedCount, actualProfiles.getPaging().getTotal());
+    assertEquals(expectedProfiles.size(), actualProfiles.getData().size());
     Map<Long, TableProfile> tableProfileMap = new HashMap<>();
     for (TableProfile profile : actualProfiles.getData()) {
       tableProfileMap.put(profile.getTimestamp(), profile);
@@ -3258,8 +3258,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       ResultList<ColumnProfile> actualProfiles,
       List<ColumnProfile> expectedProfiles,
       int expectedCount) {
-    assertEqual(expectedCount, actualProfiles.getPaging().getTotal());
-    assertEqual(expectedProfiles.size(), actualProfiles.getData().size());
+    assertEquals(expectedCount, actualProfiles.getPaging().getTotal());
+    assertEquals(expectedProfiles.size(), actualProfiles.getData().size());
     Map<Long, ColumnProfile> columnProfileMap = new HashMap<>();
     for (ColumnProfile profile : actualProfiles.getData()) {
       columnProfileMap.put(profile.getTimestamp(), profile);
@@ -3272,12 +3272,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   private void verifyTableProfile(TableProfile actualProfile, TableProfile expectedProfile) {
     assertNotNull(actualProfile);
-    assertEqual(actualProfile, expectedProfile);
+    assertEquals(actualProfile, expectedProfile);
   }
 
   private void verifyColumnProfile(ColumnProfile actualProfile, ColumnProfile expectedProfile) {
     assertNotNull(actualProfile);
-    assertEqual(actualProfile, expectedProfile);
+    assertEquals(actualProfile, expectedProfile);
   }
 
   private void verifyCustomMetrics(
@@ -3288,7 +3288,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         actualMetrics = c.getCustomMetrics();
       }
     }
-    assertEqual(actualMetrics.size(), expectedMetrics.size());
+    assertEquals(actualMetrics.size(), expectedMetrics.size());
 
     Map<String, CustomMetric> columnMetricMap = new HashMap<>();
     for (CustomMetric metric : actualMetrics) {
@@ -3298,9 +3298,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     for (CreateCustomMetric metric : expectedMetrics) {
       CustomMetric storedMetric = columnMetricMap.get(metric.getName());
       assertNotNull(storedMetric);
-      assertEqual(metric.getDescription(), storedMetric.getDescription());
-      assertEqual(metric.getOwners(), storedMetric.getOwners());
-      assertEqual(metric.getExpression(), storedMetric.getExpression());
+      assertEquals(metric.getDescription(), storedMetric.getDescription());
+      assertEquals(metric.getOwners(), storedMetric.getOwners());
+      assertEquals(metric.getExpression(), storedMetric.getExpression());
     }
   }
 
@@ -3330,7 +3330,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       Table createdEntity, CreateTable createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Entity specific validation
-    assertEqual(createRequest.getTableType(), createdEntity.getTableType());
+    assertEquals(createRequest.getTableType(), createdEntity.getTableType());
     assertColumns(createRequest.getColumns(), createdEntity.getColumns());
     assertReference(createRequest.getDatabaseSchema(), createdEntity.getDatabaseSchema());
     validateEntityReference(createdEntity.getDatabase());
@@ -3341,7 +3341,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
     assertListNotNull(createdEntity.getService(), createdEntity.getServiceType());
-    assertEqual(
+    assertEquals(
         FullyQualifiedName.add(
             createdEntity.getDatabaseSchema().getFullyQualifiedName(), createdEntity.getName()),
         createdEntity.getFullyQualifiedName());
@@ -3349,7 +3349,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   private void validateTableConstraints(
       List<TableConstraint> expected, List<TableConstraint> actual) {
-    assertEqual(expected, actual);
+    assertEquals(expected, actual);
   }
 
   @Override
@@ -3368,13 +3368,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   public void compareEntities(Table expected, Table patched, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Entity specific validation
-    assertEqual(expected.getTableType(), patched.getTableType());
+    assertEquals(expected.getTableType(), patched.getTableType());
     assertColumns(expected.getColumns(), patched.getColumns());
     validateDatabase(expected.getDatabase(), patched.getDatabase());
-    assertEqual(expected.getTableConstraints(), patched.getTableConstraints());
+    assertEquals(expected.getTableConstraints(), patched.getTableConstraints());
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.validateEntityReferences(expected.getFollowers());
-    assertEqual(
+    assertEquals(
         FullyQualifiedName.add(
             patched.getDatabaseSchema().getFullyQualifiedName(), patched.getName()),
         patched.getFullyQualifiedName());
@@ -3382,7 +3382,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   private void validateDatabase(EntityReference expectedDatabase, EntityReference database) {
     TestUtils.validateEntityReference(database);
-    assertEqual(expectedDatabase.getId(), database.getId());
+    assertEquals(expectedDatabase.getId(), database.getId());
   }
 
   private void assertTablePartition(
@@ -3397,12 +3397,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
 
     assert expectedPartition != null;
-    assertEqual(expectedPartition.getColumns().size(), actualPartition.getColumns().size());
+    assertEquals(expectedPartition.getColumns().size(), actualPartition.getColumns().size());
     for (PartitionColumnDetails actualColumn : actualPartition.getColumns()) {
       PartitionColumnDetails expectedColumn = expectedColumnMap.get(actualColumn.getColumnName());
       assertNotNull(expectedColumn);
-      assertEqual(expectedColumn.getIntervalType(), actualColumn.getIntervalType());
-      assertEqual(expectedColumn.getInterval(), actualColumn.getInterval());
+      assertEquals(expectedColumn.getIntervalType(), actualColumn.getIntervalType());
+      assertEquals(expectedColumn.getInterval(), actualColumn.getInterval());
     }
   }
 
@@ -3415,10 +3415,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     if (fieldName.startsWith("columns") && fieldName.endsWith("constraint")) {
       ColumnConstraint expectedConstraint = (ColumnConstraint) expected;
       ColumnConstraint actualConstraint = ColumnConstraint.fromValue((String) actual);
-      assertEqual(expectedConstraint, actualConstraint);
+      assertEquals(expectedConstraint, actualConstraint);
     } else if (fieldName.startsWith("columns")
         && (fieldName.endsWith("description") || fieldName.endsWith("displayName"))) {
-      assertEqual(expected, actual);
+      assertEquals(expected, actual);
     } else if (fieldName.endsWith("tableConstraints")) {
       @SuppressWarnings("unchecked")
       List<TableConstraint> expectedConstraints =
@@ -3427,13 +3427,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
               : JsonUtils.readObjects(expected.toString(), TableConstraint.class);
       List<TableConstraint> actualConstraints =
           JsonUtils.readObjects(actual.toString(), TableConstraint.class);
-      assertEqual(expectedConstraints, actualConstraints);
+      assertEquals(expectedConstraints, actualConstraints);
     } else if (fieldName.contains("columns") && !fieldName.endsWith(FIELD_TAGS)) {
       assertColumnsFieldChange(expected, actual);
     } else if (fieldName.endsWith("tableType")) {
       TableType expectedTableType = TableType.fromValue(expected.toString());
       TableType actualTableType = TableType.fromValue(actual.toString());
-      assertEqual(expectedTableType, actualTableType);
+      assertEquals(expectedTableType, actualTableType);
     } else if (fieldName.endsWith("owners")) {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedOwners =

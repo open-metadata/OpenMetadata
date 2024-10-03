@@ -2,7 +2,7 @@ package org.openmetadata.service.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -127,16 +127,16 @@ public class SearchServiceResourceTest
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEqual(
+    assertEquals(
         TestConnectionResultStatus.SUCCESSFUL,
         updatedService.getTestConnectionResult().getStatus());
-    assertEqual(updatedService.getConnection(), service.getConnection());
+    assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     SearchService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEqual(
+    assertEquals(
         TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
-    assertEqual(stored.getConnection(), service.getConnection());
+    assertEquals(stored.getConnection(), service.getConnection());
   }
 
   public SearchService putTestConnectionResult(
@@ -161,7 +161,7 @@ public class SearchServiceResourceTest
   @Override
   public void validateCreatedEntity(
       SearchService service, CreateSearchService createRequest, Map<String, String> authHeaders) {
-    assertEqual(createRequest.getName(), service.getName());
+    assertEquals(createRequest.getName(), service.getName());
     SearchConnection expectedConnection = createRequest.getConnection();
     SearchConnection actualConnection = service.getConnection();
     validateConnection(expectedConnection, actualConnection, service.getServiceType());
@@ -219,7 +219,7 @@ public class SearchServiceResourceTest
           actualESConnection =
               JsonUtils.convertValue(actualConnection.getConfig(), ElasticSearchConnection.class);
         }
-        assertEqual(expectedESConnection.getHostPort(), actualESConnection.getHostPort());
+        assertEquals(expectedESConnection.getHostPort(), actualESConnection.getHostPort());
       }
     }
   }

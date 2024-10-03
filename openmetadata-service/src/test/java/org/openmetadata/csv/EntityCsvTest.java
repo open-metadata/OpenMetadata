@@ -1,6 +1,6 @@
 package org.openmetadata.csv;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.LINE_SEPARATOR;
@@ -49,7 +49,7 @@ public class EntityCsvTest {
     CsvFile csvFile = new CsvFile();
     csvFile.withHeaders(CSV_HEADERS);
     String file = CsvUtil.formatCsv(csvFile);
-    assertEqual(HEADER_STRING, file);
+    assertEquals(HEADER_STRING, file);
   }
 
   @Test
@@ -59,7 +59,7 @@ public class EntityCsvTest {
     CsvImportResult importResult = testCsv.importCsv(csv, true);
     assertSummary(importResult, ApiStatus.ABORTED, 1, 0, 1);
     assertNull(importResult.getImportResultsCsv());
-    assertEqual(TestCsv.invalidHeader("h1*,h2,h3", ",h2,h3"), importResult.getAbortReason());
+    assertEquals(TestCsv.invalidHeader("h1*,h2,h3", ",h2,h3"), importResult.getAbortReason());
   }
 
   public static void assertSummary(
@@ -68,16 +68,16 @@ public class EntityCsvTest {
       int expectedRowsProcessed,
       int expectedRowsPassed,
       int expectedRowsFailed) {
-    assertEqual(expectedStatus, importResult.getStatus(), importResult.toString());
-    assertEqual(
+    assertEquals(expectedStatus, importResult.getStatus(), importResult.toString());
+    assertEquals(
         expectedRowsProcessed,
         importResult.getNumberOfRowsProcessed(),
         importResult.getImportResultsCsv());
-    assertEqual(
+    assertEquals(
         expectedRowsPassed,
         importResult.getNumberOfRowsPassed(),
         importResult.getImportResultsCsv());
-    assertEqual(
+    assertEquals(
         expectedRowsFailed,
         importResult.getNumberOfRowsFailed(),
         importResult.getImportResultsCsv());
@@ -85,9 +85,9 @@ public class EntityCsvTest {
 
   public static void assertRows(CsvImportResult importResult, String... expectedRows) {
     String[] resultRecords = importResult.getImportResultsCsv().split(LINE_SEPARATOR);
-    assertEqual(expectedRows.length, resultRecords.length);
+    assertEquals(expectedRows.length, resultRecords.length);
     for (int i = 0; i < resultRecords.length; i++) {
-      assertEqual(expectedRows[i], resultRecords[i], "Row number is " + i);
+      assertEquals(expectedRows[i], resultRecords[i], "Row number is " + i);
     }
   }
 

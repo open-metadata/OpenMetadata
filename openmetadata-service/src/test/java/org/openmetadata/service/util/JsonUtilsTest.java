@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -72,7 +72,7 @@ class JsonUtilsTest {
     patchBuilder.add("/users/3", newUser2);
     Team updated = JsonUtils.applyPatch(original, patchBuilder.build(), Team.class);
 
-    assertEqual(4, updated.getUsers().size());
+    assertEquals(4, updated.getUsers().size());
     assertTrue(
         updated.getUsers().stream()
             .anyMatch(
@@ -118,7 +118,7 @@ class JsonUtilsTest {
     Map<String, String> expectedMap = Map.of("key1", "value1", "key2", "value2");
     String json = "{ \"key1\": \"value1\", \"key2\": \"value2\" }";
     TypeReference<Map<String, String>> mapTypeReference = new TypeReference<>() {};
-    assertEqual(expectedMap, JsonUtils.readValue(json, mapTypeReference));
+    assertEquals(expectedMap, JsonUtils.readValue(json, mapTypeReference));
   }
 
   @Test
@@ -132,7 +132,7 @@ class JsonUtilsTest {
         new TableauConnection().withHostPort(new URI("localhost:3306"));
     TableauConnection actualConnection =
         JsonUtils.toExposedEntity(airflowConnection, TableauConnection.class);
-    assertEqual(expectedConnection, actualConnection);
+    assertEquals(expectedConnection, actualConnection);
   }
 
   @Test
@@ -147,6 +147,6 @@ class JsonUtilsTest {
                         new MysqlConnection()
                             .withAuthType(new basicAuth().withPassword("password"))));
     String actualJson = JsonUtils.pojoToMaskedJson(databaseService);
-    assertEqual(expectedJson, actualJson);
+    assertEquals(expectedJson, actualJson);
   }
 }

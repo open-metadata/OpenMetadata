@@ -13,7 +13,7 @@
 
 package org.openmetadata.csv;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,32 +35,32 @@ public class CsvUtilTest {
 
     // Add string
     expectedRecord.add(null);
-    assertEqual(expectedRecord, CsvUtil.addField(actualRecord, (String) null));
+    assertEquals(expectedRecord, CsvUtil.addField(actualRecord, (String) null));
 
     expectedRecord.add("abc");
-    assertEqual(expectedRecord, CsvUtil.addField(actualRecord, "abc"));
+    assertEquals(expectedRecord, CsvUtil.addField(actualRecord, "abc"));
 
     // Add list of strings
     expectedRecord.add("");
-    assertEqual(expectedRecord, CsvUtil.addFieldList(actualRecord, null));
+    assertEquals(expectedRecord, CsvUtil.addFieldList(actualRecord, null));
 
     expectedRecord.add("def;ghi");
-    assertEqual(expectedRecord, CsvUtil.addFieldList(actualRecord, listOf("def", "ghi")));
+    assertEquals(expectedRecord, CsvUtil.addFieldList(actualRecord, listOf("def", "ghi")));
 
     // Add entity reference
     expectedRecord.add(null);
-    assertEqual(
+    assertEquals(
         expectedRecord, CsvUtil.addEntityReference(actualRecord, null)); // Null entity reference
 
     expectedRecord.add("fqn");
-    assertEqual(
+    assertEquals(
         expectedRecord,
         CsvUtil.addEntityReference(
             actualRecord, new EntityReference().withFullyQualifiedName("fqn")));
 
     // Add entity references
     expectedRecord.add(null);
-    assertEqual(
+    assertEquals(
         expectedRecord, CsvUtil.addEntityReferences(actualRecord, null)); // Null entity references
 
     expectedRecord.add("fqn1;fqn2");
@@ -68,20 +68,20 @@ public class CsvUtilTest {
         listOf(
             new EntityReference().withFullyQualifiedName("fqn1"),
             new EntityReference().withFullyQualifiedName("fqn2"));
-    assertEqual(expectedRecord, CsvUtil.addEntityReferences(actualRecord, refs));
+    assertEquals(expectedRecord, CsvUtil.addEntityReferences(actualRecord, refs));
 
     // Add tag labels
     expectedRecord.add(null);
-    assertEqual(
+    assertEquals(
         expectedRecord, CsvUtil.addTagLabels(actualRecord, null)); // Null entity references
 
     expectedRecord.add("t1;t2");
     List<TagLabel> tags = listOf(new TagLabel().withTagFQN("t1"), new TagLabel().withTagFQN("t2"));
-    assertEqual(expectedRecord, CsvUtil.addTagLabels(actualRecord, tags));
+    assertEquals(expectedRecord, CsvUtil.addTagLabels(actualRecord, tags));
 
     // Add extension
     expectedRecord.add(null);
-    assertEqual(expectedRecord, CsvUtil.addExtension(actualRecord, null)); // Null extension
+    assertEquals(expectedRecord, CsvUtil.addExtension(actualRecord, null)); // Null extension
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode jsonNode = mapper.createObjectNode();
@@ -104,21 +104,21 @@ public class CsvUtilTest {
 
     expectedRecord.add(
         "\"stringCp:String; input; with; semicolon\n And new line\";\"queryCp:SELECT * FROM table WHERE column = 'value';\"");
-    assertEqual(expectedRecord, CsvUtil.addExtension(actualRecord, jsonNode));
+    assertEquals(expectedRecord, CsvUtil.addExtension(actualRecord, jsonNode));
   }
 
   public static void assertCsv(String expectedCsv, String actualCsv) {
     // Break a csv text into records, sort it and compare
     List<String> expectedCsvRecords = listOf(expectedCsv.split(CsvUtil.LINE_SEPARATOR));
     List<String> actualCsvRecords = listOf(actualCsv.split(CsvUtil.LINE_SEPARATOR));
-    assertEqual(
+    assertEquals(
         expectedCsvRecords.size(),
         actualCsvRecords.size(),
         "Expected " + expectedCsv + " actual " + actualCsv);
     Collections.sort(expectedCsvRecords);
     Collections.sort(actualCsvRecords);
     for (int i = 0; i < expectedCsvRecords.size(); i++) {
-      assertEqual(expectedCsvRecords.get(i), actualCsvRecords.get(i));
+      assertEquals(expectedCsvRecords.get(i), actualCsvRecords.get(i));
     }
   }
 }

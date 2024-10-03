@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.apps;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import java.net.URI;
@@ -75,19 +75,19 @@ public class AppMarketPlaceResourceTest
       AppMarketPlaceDefinition updated,
       Map<String, String> authHeaders)
       throws HttpResponseException {
-    assertEqual(expected.getDeveloper(), updated.getDeveloper());
-    assertEqual(expected.getDeveloperUrl(), updated.getDeveloperUrl());
-    assertEqual(expected.getSupportEmail(), updated.getSupportEmail());
-    assertEqual(expected.getPrivacyPolicyUrl(), updated.getPrivacyPolicyUrl());
-    assertEqual(expected.getClassName(), updated.getClassName());
-    assertEqual(expected.getAppType(), updated.getAppType());
-    assertEqual(expected.getScheduleType(), updated.getScheduleType());
-    assertEqual(expected.getAppConfiguration(), updated.getAppConfiguration());
-    assertEqual(expected.getPermission(), updated.getPermission());
-    assertEqual(expected.getAppLogoUrl(), updated.getAppLogoUrl());
-    assertEqual(expected.getAppScreenshots(), updated.getAppScreenshots());
-    assertEqual(expected.getAppScreenshots(), updated.getAppScreenshots());
-    assertEqual(expected.getFeatures(), updated.getFeatures());
+    assertEquals(expected.getDeveloper(), updated.getDeveloper());
+    assertEquals(expected.getDeveloperUrl(), updated.getDeveloperUrl());
+    assertEquals(expected.getSupportEmail(), updated.getSupportEmail());
+    assertEquals(expected.getPrivacyPolicyUrl(), updated.getPrivacyPolicyUrl());
+    assertEquals(expected.getClassName(), updated.getClassName());
+    assertEquals(expected.getAppType(), updated.getAppType());
+    assertEquals(expected.getScheduleType(), updated.getScheduleType());
+    assertEquals(expected.getAppConfiguration(), updated.getAppConfiguration());
+    assertEquals(expected.getPermission(), updated.getPermission());
+    assertEquals(expected.getAppLogoUrl(), updated.getAppLogoUrl());
+    assertEquals(expected.getAppScreenshots(), updated.getAppScreenshots());
+    assertEquals(expected.getAppScreenshots(), updated.getAppScreenshots());
+    assertEquals(expected.getFeatures(), updated.getFeatures());
   }
 
   @Override

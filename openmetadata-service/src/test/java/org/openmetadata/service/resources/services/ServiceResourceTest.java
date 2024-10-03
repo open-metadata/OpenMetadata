@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.services;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
@@ -62,13 +62,13 @@ public abstract class ServiceResourceTest<T extends EntityInterface, K extends C
     Map<String, String> params = new HashMap<>();
     params.put("domain", domain1);
     List<T> list = listEntities(params, ADMIN_AUTH_HEADERS).getData();
-    assertEqual(2, list.size());
+    assertEquals(2, list.size());
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(s1.getName())));
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(s2.getName())));
 
     params.put("domain", domain2);
     list = listEntities(params, ADMIN_AUTH_HEADERS).getData();
-    assertEqual(2, list.size());
+    assertEquals(2, list.size());
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(s3.getName())));
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(s4.getName())));
   }

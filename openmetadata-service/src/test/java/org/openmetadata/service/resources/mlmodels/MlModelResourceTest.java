@@ -14,7 +14,7 @@
 package org.openmetadata.service.resources.mlmodels;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -489,8 +489,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   public void compareEntities(MlModel expected, MlModel updated, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Entity specific validations
-    assertEqual(expected.getAlgorithm(), updated.getAlgorithm());
-    assertEqual(expected.getDashboard(), updated.getDashboard());
+    assertEquals(expected.getAlgorithm(), updated.getAlgorithm());
+    assertEquals(expected.getDashboard(), updated.getDashboard());
     assertListProperty(expected.getMlFeatures(), updated.getMlFeatures(), assertMlFeature);
     assertListProperty(
         expected.getMlHyperParameters(), updated.getMlHyperParameters(), assertMlHyperParam);
@@ -507,27 +507,27 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
       (MlFeature expected, MlFeature actual) -> {
         // FQN gets created on-the-fly based on the test name. Just check that it is not null
         assertNotNull(actual.getFullyQualifiedName());
-        assertEqual(actual.getName(), expected.getName());
-        assertEqual(actual.getDescription(), expected.getDescription());
-        assertEqual(actual.getFeatureAlgorithm(), expected.getFeatureAlgorithm());
-        assertEqual(actual.getDataType(), expected.getDataType());
+        assertEquals(actual.getName(), expected.getName());
+        assertEquals(actual.getDescription(), expected.getDescription());
+        assertEquals(actual.getFeatureAlgorithm(), expected.getFeatureAlgorithm());
+        assertEquals(actual.getDataType(), expected.getDataType());
       };
 
   final BiConsumer<MlHyperParameter, MlHyperParameter> assertMlHyperParam =
       (MlHyperParameter expected, MlHyperParameter actual) -> {
-        assertEqual(actual.getName(), expected.getName());
-        assertEqual(actual.getDescription(), expected.getDescription());
-        assertEqual(actual.getValue(), expected.getValue());
+        assertEquals(actual.getName(), expected.getName());
+        assertEquals(actual.getDescription(), expected.getDescription());
+        assertEquals(actual.getValue(), expected.getValue());
       };
 
   final BiConsumer<MlFeatureSource, MlFeatureSource> assertMlFeatureSource =
       (MlFeatureSource expected, MlFeatureSource actual) -> {
         // FQN gets created on-the-fly based on the test name. Just check that it is not null
         assertNotNull(actual.getFullyQualifiedName());
-        assertEqual(actual.getName(), expected.getName());
-        assertEqual(actual.getDescription(), expected.getDescription());
-        assertEqual(actual.getDataType(), expected.getDataType());
-        assertEqual(actual.getDataSource(), expected.getDataSource());
+        assertEquals(actual.getName(), expected.getName());
+        assertEquals(actual.getDescription(), expected.getDescription());
+        assertEquals(actual.getDataType(), expected.getDataType());
+        assertEquals(actual.getDataSource(), expected.getDataSource());
       };
 
   private void validateMlFeatureSources(List<MlFeature> expected, List<MlFeature> actual) {
@@ -547,7 +547,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   public void validateCreatedEntity(
       MlModel createdEntity, CreateMlModel createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    assertEqual(createRequest.getAlgorithm(), createdEntity.getAlgorithm());
+    assertEquals(createRequest.getAlgorithm(), createdEntity.getAlgorithm());
     assertReference(createRequest.getDashboard(), createdEntity.getDashboard());
     assertListProperty(
         createRequest.getMlFeatures(), createdEntity.getMlFeatures(), assertMlFeature);
@@ -583,17 +583,17 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     } else if (fieldName.contains("algorithm")) {
       String expectedAlgorithm = (String) expected;
       String actualAlgorithm = actual.toString();
-      assertEqual(expectedAlgorithm, actualAlgorithm);
+      assertEquals(expectedAlgorithm, actualAlgorithm);
     } else if (fieldName.contains("dashboard")) {
       assertEntityReferenceFieldChange(expected, actual);
     } else if (fieldName.contains("server")) {
       URI expectedServer = (URI) expected;
       URI actualServer = URI.create(actual.toString());
-      assertEqual(expectedServer, actualServer);
+      assertEquals(expectedServer, actualServer);
     } else if (fieldName.contains("mlStore")) {
       MlStore expectedMlStore = (MlStore) expected;
       MlStore actualMlStore = JsonUtils.readValue(actual.toString(), MlStore.class);
-      assertEqual(expectedMlStore, actualMlStore);
+      assertEquals(expectedMlStore, actualMlStore);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

@@ -12,7 +12,7 @@
  */
 package org.openmetadata.service.pipelineService.airflow;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.security.KeyStoreException;
 import org.junit.jupiter.api.Test;
@@ -27,21 +27,21 @@ class AirflowRESTClientTest {
     // We build the right URI for a simple url
     PipelineServiceClientConfiguration config = getPipelineServiceConfiguration();
     AirflowRESTClient restClient = new AirflowRESTClient(config);
-    assertEqual(
+    assertEquals(
         "http://localhost:8080/api/v1/openmetadata/last_dag_logs",
         restClient.buildURI("last_dag_logs").toString());
 
     // We build the right URI for a service URLs with paths
     config.setApiEndpoint("http://localhost:8080/airflow");
     restClient = new AirflowRESTClient(config);
-    assertEqual(
+    assertEquals(
         "http://localhost:8080/airflow/api/v1/openmetadata/last_dag_logs",
         restClient.buildURI("last_dag_logs").toString());
 
     // The same works with more segments
     config.setApiEndpoint("http://localhost:8080/airflow/foo");
     restClient = new AirflowRESTClient(config);
-    assertEqual(
+    assertEquals(
         "http://localhost:8080/airflow/foo/api/v1/openmetadata/health",
         restClient.buildURI("health").toString());
   }

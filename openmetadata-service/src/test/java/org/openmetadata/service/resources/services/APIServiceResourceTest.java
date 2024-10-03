@@ -2,7 +2,7 @@ package org.openmetadata.service.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -130,16 +130,16 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEqual(
+    assertEquals(
         TestConnectionResultStatus.SUCCESSFUL,
         updatedService.getTestConnectionResult().getStatus());
-    assertEqual(updatedService.getConnection(), service.getConnection());
+    assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     APIService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEqual(
+    assertEquals(
         TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
-    assertEqual(stored.getConnection(), service.getConnection());
+    assertEquals(stored.getConnection(), service.getConnection());
   }
 
   public APIService putTestConnectionResult(
@@ -165,7 +165,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
   @Override
   public void validateCreatedEntity(
       APIService service, CreateAPIService createRequest, Map<String, String> authHeaders) {
-    assertEqual(createRequest.getName(), service.getName());
+    assertEquals(createRequest.getName(), service.getName());
     APIServiceConnection expectedConnection = createRequest.getConnection();
     APIServiceConnection actualConnection = service.getConnection();
     validateConnection(expectedConnection, actualConnection, service.getServiceType());
@@ -216,7 +216,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
       RESTConnection restConnection = (RESTConnection) expectedConnection.getConfig();
       RESTConnection actualESConnection =
           JsonUtils.convertValue(actualConnection.getConfig(), RESTConnection.class);
-      assertEqual(restConnection.getOpenAPISchemaURL(), actualESConnection.getOpenAPISchemaURL());
+      assertEquals(restConnection.getOpenAPISchemaURL(), actualESConnection.getOpenAPISchemaURL());
     }
   }
 }

@@ -76,7 +76,7 @@ public class StoredProcedureResourceTest
     StoredProcedure storedProcedure =
         createAndCheckEntity(createStoredProcedure, ADMIN_AUTH_HEADERS);
     storedProcedure = getEntity(storedProcedure.getId(), "", ADMIN_AUTH_HEADERS);
-    assertEqual(storedProcedure.getStoredProcedureCode().getCode(), query);
+    assertEquals(storedProcedure.getStoredProcedureCode().getCode(), query);
   }
 
   @Test
@@ -240,8 +240,8 @@ public class StoredProcedureResourceTest
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
     assertListNotNull(createdEntity.getService(), createdEntity.getServiceType());
-    assertEqual(createdEntity.getStoredProcedureCode(), createRequest.getStoredProcedureCode());
-    assertEqual(
+    assertEquals(createdEntity.getStoredProcedureCode(), createRequest.getStoredProcedureCode());
+    assertEquals(
         FullyQualifiedName.add(
             createdEntity.getDatabaseSchema().getFullyQualifiedName(), createdEntity.getName()),
         createdEntity.getFullyQualifiedName());
@@ -255,8 +255,8 @@ public class StoredProcedureResourceTest
     validateDatabase(expected.getDatabase(), patched.getDatabase());
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.validateEntityReferences(expected.getFollowers());
-    assertEqual(expected.getStoredProcedureCode(), patched.getStoredProcedureCode());
-    assertEqual(
+    assertEquals(expected.getStoredProcedureCode(), patched.getStoredProcedureCode());
+    assertEquals(
         FullyQualifiedName.add(
             patched.getDatabaseSchema().getFullyQualifiedName(), patched.getName()),
         patched.getFullyQualifiedName());
@@ -264,7 +264,7 @@ public class StoredProcedureResourceTest
 
   private void validateDatabase(EntityReference expectedDatabase, EntityReference database) {
     TestUtils.validateEntityReference(database);
-    assertEqual(expectedDatabase.getId(), database.getId());
+    assertEquals(expectedDatabase.getId(), database.getId());
   }
 
   @Override
@@ -275,7 +275,7 @@ public class StoredProcedureResourceTest
     if (fieldName.startsWith("storedProcedureCode")) {
       StoredProcedureCode expectedCode = (StoredProcedureCode) expected;
       StoredProcedureCode actualCode = (StoredProcedureCode) actual;
-      assertEqual(expectedCode, actualCode);
+      assertEquals(expectedCode, actualCode);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

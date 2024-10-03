@@ -1,6 +1,6 @@
 package org.openmetadata.service.secrets.converter;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.junit.jupiter.api.Test;
@@ -60,6 +60,6 @@ public class ClassConverterFactoryTest {
 
   @Test
   void testClassConvertedMapIsNotModified() {
-    assertEqual(26, ClassConverterFactory.getConverterMap().size());
+    assertEquals(26, ClassConverterFactory.getConverterMap().size());
   }
 }

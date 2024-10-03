@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.apis;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
@@ -124,11 +124,11 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("apiCollection", OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName());
     ResultList<APIEndpoint> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEqual(omAPIEndpoints.size(), list.getPaging().getTotal());
+    assertEquals(omAPIEndpoints.size(), list.getPaging().getTotal());
 
     queryParams.put("apiCollection", SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName());
     list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEqual(sampleAPIEndpoints.size(), list.getPaging().getTotal());
+    assertEquals(sampleAPIEndpoints.size(), list.getPaging().getTotal());
   }
 
   @Test
@@ -204,9 +204,9 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     fields = endpoint.getResponseSchema().getSchemaFields();
     tags = fields.get(0).getTags();
-    assertEqual(1, tags.size());
+    assertEquals(1, tags.size());
     for (TagLabel tag : tags) {
-      assertEqual(tag, PII_SENSITIVE_TAG_LABEL);
+      assertEquals(tag, PII_SENSITIVE_TAG_LABEL);
     }
 
     // add 2 new tags
@@ -219,7 +219,7 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     fields = endpoint.getResponseSchema().getSchemaFields();
     tags = fields.get(0).getTags();
-    assertEqual(3, tags.size());
+    assertEquals(3, tags.size());
     for (TagLabel tag : tags) {
       assertTrue(
           tag.equals(PERSONAL_DATA_TAG_LABEL)
@@ -236,7 +236,7 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     fields = endpoint.getResponseSchema().getSchemaFields();
     tags = fields.get(0).getTags();
-    assertEqual(2, tags.size());
+    assertEquals(2, tags.size());
     for (TagLabel tag : tags) {
       assertTrue(tag.equals(PII_SENSITIVE_TAG_LABEL) || tag.equals(USER_ADDRESS_TAG_LABEL));
     }
@@ -260,10 +260,10 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     requestFields = endpoint.getRequestSchema().getSchemaFields();
     fields = endpoint.getResponseSchema().getSchemaFields();
-    assertEqual(1, requestFields.get(0).getTags().size());
-    assertEqual(1, fields.get(0).getTags().size());
-    assertEqual(USER_ADDRESS_TAG_LABEL, requestFields.get(0).getTags().get(0));
-    assertEqual(PII_SENSITIVE_TAG_LABEL, fields.get(0).getTags().get(0));
+    assertEquals(1, requestFields.get(0).getTags().size());
+    assertEquals(1, fields.get(0).getTags().size());
+    assertEquals(USER_ADDRESS_TAG_LABEL, requestFields.get(0).getTags().get(0));
+    assertEquals(PII_SENSITIVE_TAG_LABEL, fields.get(0).getTags().get(0));
   }
 
   @Override
@@ -289,12 +289,12 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
   public void validateCreatedEntity(
       APIEndpoint apiEndpoint, CreateAPIEndpoint createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    assertEqual(createRequest.getRequestMethod(), apiEndpoint.getRequestMethod());
+    assertEquals(createRequest.getRequestMethod(), apiEndpoint.getRequestMethod());
     validateEntityReference(apiEndpoint.getApiCollection());
     validateEntityReference(apiEndpoint.getService());
     assertReference(createRequest.getApiCollection(), apiEndpoint.getApiCollection());
     TestUtils.validateTags(createRequest.getTags(), apiEndpoint.getTags());
-    assertEqual(
+    assertEquals(
         FullyQualifiedName.add(createRequest.getApiCollection(), createRequest.getName()),
         apiEndpoint.getFullyQualifiedName());
   }
@@ -356,7 +356,7 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
       return;
     }
     // Sort columns by name
-    assertEqual(expectedFields.size(), actualFields.size());
+    assertEquals(expectedFields.size(), actualFields.size());
 
     // Make a copy before sorting in case the lists are immutable
     List<Field> expected = new ArrayList<>(expectedFields);
@@ -374,8 +374,8 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     assertTrue(
         expectedField.getName().equals(actualField.getName())
             || expectedField.getName().equals(actualField.getDisplayName()));
-    assertEqual(expectedField.getDescription(), actualField.getDescription());
-    assertEqual(expectedField.getDataType(), actualField.getDataType());
+    assertEquals(expectedField.getDescription(), actualField.getDescription());
+    assertEquals(expectedField.getDataType(), actualField.getDataType());
     TestUtils.validateTags(expectedField.getTags(), actualField.getTags());
 
     // Check the nested columns

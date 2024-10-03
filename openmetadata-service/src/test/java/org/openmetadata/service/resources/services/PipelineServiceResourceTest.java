@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -190,7 +190,7 @@ public class PipelineServiceResourceTest
         ingestionPipelineResourceTest.createEntity(createIngestionPipeline, ADMIN_AUTH_HEADERS);
 
     PipelineService updatedService = getEntity(service.getId(), "pipelines", ADMIN_AUTH_HEADERS);
-    assertEqual(1, updatedService.getPipelines().size());
+    assertEquals(1, updatedService.getPipelines().size());
     assertReference(ingestionPipeline.getEntityReference(), updatedService.getPipelines().get(0));
 
     // Delete the pipeline service and ensure ingestion pipeline is deleted
@@ -207,16 +207,16 @@ public class PipelineServiceResourceTest
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEqual(
+    assertEquals(
         TestConnectionResultStatus.SUCCESSFUL,
         updatedService.getTestConnectionResult().getStatus());
-    assertEqual(updatedService.getConnection(), service.getConnection());
+    assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     PipelineService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEqual(
+    assertEquals(
         TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
-    assertEqual(stored.getConnection(), service.getConnection());
+    assertEquals(stored.getConnection(), service.getConnection());
   }
 
   public PipelineService putTestConnectionResult(
@@ -239,7 +239,7 @@ public class PipelineServiceResourceTest
       PipelineService service,
       CreatePipelineService createRequest,
       Map<String, String> authHeaders) {
-    assertEqual(createRequest.getName(), service.getName());
+    assertEquals(createRequest.getName(), service.getName());
     validatePipelineConnection(
         createRequest.getConnection(),
         service.getConnection(),
@@ -309,7 +309,7 @@ public class PipelineServiceResourceTest
       AirflowConnection expectedAirflowConnection,
       AirflowConnection actualAirflowConnection,
       Map<String, String> authHeaders) {
-    assertEqual(expectedAirflowConnection.getHostPort(), actualAirflowConnection.getHostPort());
+    assertEquals(expectedAirflowConnection.getHostPort(), actualAirflowConnection.getHostPort());
     // Currently, just checking for MySQL as metadata db for Airflow
     // We need to get inside the general DatabaseConnection and fetch the MysqlConnection
     MysqlConnection expectedMysqlConnection =

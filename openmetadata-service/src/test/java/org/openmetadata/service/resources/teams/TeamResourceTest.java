@@ -17,7 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -222,9 +222,9 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     // Ensure that the user entity has relationship to the team
     user1 = userResourceTest.getEntity(user1.getId(), "teams", TEST_AUTH_HEADERS);
-    assertEqual(team.getId(), user1.getTeams().get(0).getId());
+    assertEquals(team.getId(), user1.getTeams().get(0).getId());
     user2 = userResourceTest.getEntity(user2.getId(), "teams", TEST_AUTH_HEADERS);
-    assertEqual(team.getId(), user2.getTeams().get(0).getId());
+    assertEquals(team.getId(), user2.getTeams().get(0).getId());
   }
 
   /**
@@ -253,8 +253,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Ensure that the user does not have relationship to this team and is moved to the default team
     // - Organization.
     User user = userResourceTest.getEntity(user1.getId(), "teams", ADMIN_AUTH_HEADERS);
-    assertEqual(1, user.getTeams().size());
-    assertEqual(ORG_TEAM.getId(), user.getTeams().get(0).getId());
+    assertEquals(1, user.getTeams().size());
+    assertEquals(ORG_TEAM.getId(), user.getTeams().get(0).getId());
 
     // Ensure that the role is not deleted
     Role role = roleResourceTest.getEntity(role1.getId(), "", ADMIN_AUTH_HEADERS);
@@ -292,12 +292,12 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     div2 = getEntity(div2.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
     assertTrue(div2.getDeleted());
-    assertEqual(expectedVersion, div2.getVersion());
+    assertEquals(expectedVersion, div2.getVersion());
 
     expectedVersion = EntityUtil.nextVersion(dep3.getVersion());
     dep3 = getEntity(dep3.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
     assertTrue(dep3.getDeleted());
-    assertEqual(expectedVersion, dep3.getVersion());
+    assertEquals(expectedVersion, dep3.getVersion());
 
     // hard delete all the teams
     UUID div2Id = div2.getId();
@@ -338,7 +338,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     patchEntityAndCheck(team, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     team = getEntity(team.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(DIVISION, team.getTeamType());
+    assertEquals(DIVISION, team.getTeamType());
   }
 
   @Test
@@ -426,7 +426,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     TeamHierarchy bu1Hierarchy =
         hierarchyList.stream().filter(t -> t.getId().equals(bu1Id)).findAny().orElse(null);
     assertNotNull(bu1Hierarchy);
-    assertEqual(3, bu1Hierarchy.getChildren().size());
+    assertEquals(3, bu1Hierarchy.getChildren().size());
     List<TeamHierarchy> children = bu1Hierarchy.getChildren();
     assertTrue(children.stream().anyMatch(t -> t.getId().equals(bu11Id)));
     assertTrue(children.stream().anyMatch(t -> t.getId().equals(div12Id)));
@@ -438,15 +438,15 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     bu1Hierarchy =
         hierarchyList.stream().filter(t -> t.getId().equals(bu1Id)).findAny().orElse(null);
     assertNotNull(bu1Hierarchy);
-    assertEqual(2, bu1Hierarchy.getChildren().size());
+    assertEquals(2, bu1Hierarchy.getChildren().size());
     children = bu1Hierarchy.getChildren();
     assertTrue(children.stream().anyMatch(t -> t.getId().equals(bu11Id)));
     assertTrue(children.stream().anyMatch(t -> t.getId().equals(div12Id)));
     TeamHierarchy div12Hierarchy =
         children.stream().filter(t -> t.getId().equals(div12Id)).findAny().orElse(null);
     assertNotNull(div12Hierarchy);
-    assertEqual(1, div12Hierarchy.getChildren().size());
-    assertEqual(div121.getId(), div12Hierarchy.getChildren().get(0).getId());
+    assertEquals(1, div12Hierarchy.getChildren().size());
+    assertEquals(div121.getId(), div12Hierarchy.getChildren().get(0).getId());
 
     //
     // Create hierarchy of division, and department under division
@@ -541,17 +541,17 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     queryParams.put("parentTeam", "t1");
     queryParams.put("fields", "childrenCount,userCount");
     ResultList<Team> teams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEqual(3, teams.getData().size());
-    assertEqual(3, teams.getPaging().getTotal());
-    assertEqual(0, teams.getData().get(0).getChildrenCount());
-    assertEqual(0, teams.getData().get(0).getUserCount());
+    assertEquals(3, teams.getData().size());
+    assertEquals(3, teams.getPaging().getTotal());
+    assertEquals(0, teams.getData().get(0).getChildrenCount());
+    assertEquals(0, teams.getData().get(0).getUserCount());
 
     queryParams.put("parentTeam", ORGANIZATION_NAME);
     teams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertTrue(teams.getData().stream().anyMatch(t -> t.getName().equals("t1")));
     t1 = teams.getData().stream().filter(t -> t.getName().equals("t1")).toList().get(0);
-    assertEqual(3, t1.getChildrenCount());
-    assertEqual(0, t1.getUserCount());
+    assertEquals(3, t1.getChildrenCount());
+    assertEquals(0, t1.getUserCount());
 
     //
     // Creating a parent with invalid children type is not allowed
@@ -791,7 +791,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Test
   void testCsvDocumentation() throws HttpResponseException {
-    assertEqual(TeamCsv.DOCUMENTATION, getCsvDocumentation());
+    assertEquals(TeamCsv.DOCUMENTATION, getCsvDocumentation());
   }
 
   @Test
@@ -943,10 +943,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       List<EntityReference> expectedDefaultRoles,
       String expectedUpdatedBy) {
     assertListNotNull(team.getId(), team.getHref());
-    assertEqual(expectedDescription, team.getDescription());
-    assertEqual(expectedUpdatedBy, team.getUpdatedBy());
-    assertEqual(expectedDisplayName, team.getDisplayName());
-    assertEqual(expectedProfile, team.getProfile());
+    assertEquals(expectedDescription, team.getDescription());
+    assertEquals(expectedUpdatedBy, team.getUpdatedBy());
+    assertEquals(expectedDisplayName, team.getDisplayName());
+    assertEquals(expectedProfile, team.getProfile());
     TestUtils.assertEntityReferences(expectedUsers, team.getUsers());
     TestUtils.assertEntityReferences(expectedDefaultRoles, team.getDefaultRoles());
     validateEntityReferences(team.getOwns());
@@ -1000,8 +1000,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   @Override
   public void validateCreatedEntity(
       Team team, CreateTeam createRequest, Map<String, String> authHeaders) {
-    assertEqual(createRequest.getProfile(), team.getProfile());
-    assertEqual(createRequest.getEmail(), team.getEmail());
+    assertEquals(createRequest.getProfile(), team.getProfile());
+    assertEquals(createRequest.getEmail(), team.getEmail());
     TestUtils.validateEntityReferences(team.getOwns());
 
     List<EntityReference> expectedUsers = new ArrayList<>();
@@ -1034,9 +1034,9 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Override
   public void compareEntities(Team expected, Team updated, Map<String, String> authHeaders) {
-    assertEqual(expected.getDisplayName(), updated.getDisplayName());
-    assertEqual(expected.getProfile(), updated.getProfile());
-    assertEqual(expected.getEmail(), updated.getEmail());
+    assertEquals(expected.getDisplayName(), updated.getDisplayName());
+    assertEquals(expected.getProfile(), updated.getProfile());
+    assertEquals(expected.getEmail(), updated.getEmail());
     TestUtils.validateEntityReferences(updated.getOwns());
 
     List<EntityReference> expectedUsers = listOrEmpty(expected.getUsers());
@@ -1056,7 +1056,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     if (List.of("users", "defaultRoles", "parents", "children", "policies").contains(fieldName)) {
       assertEntityReferencesFieldChange(expected, actual);
     } else if (fieldName.equals("profile")) {
-      assertEqual(JsonUtils.pojoToJson(expected), actual);
+      assertEquals(JsonUtils.pojoToJson(expected), actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -1097,7 +1097,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   private void assertParents(Team team, List<EntityReference> expectedParents)
       throws HttpResponseException {
-    assertEqual(team.getParents().size(), expectedParents.size());
+    assertEquals(team.getParents().size(), expectedParents.size());
     assertEntityReferences(expectedParents, team.getParents());
 
     for (EntityReference expectedParent : expectedParents) {
@@ -1109,7 +1109,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   private void assertChildren(Team team, List<EntityReference> expectedChildren)
       throws HttpResponseException {
-    assertEqual(team.getChildren().size(), expectedChildren.size());
+    assertEquals(team.getChildren().size(), expectedChildren.size());
     assertEntityReferences(expectedChildren, team.getChildren());
 
     for (EntityReference expectedChild : expectedChildren) {

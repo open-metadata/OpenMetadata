@@ -13,7 +13,7 @@
 
 package org.openmetadata.service;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Permission.Access;
@@ -34,13 +34,13 @@ class EnumBackwardCompatibilityTest {
   /** */
   @Test
   void testRelationshipEnumBackwardCompatible() {
-    assertEqual(22, Relationship.values().length);
-    assertEqual(21, Relationship.DEFAULTS_TO.ordinal());
-    assertEqual(20, Relationship.EDITED_BY.ordinal());
-    assertEqual(19, Relationship.EXPERT.ordinal());
-    assertEqual(18, Relationship.VOTED.ordinal());
-    assertEqual(17, Relationship.REACTED_TO.ordinal());
-    assertEqual(16, Relationship.REVIEWS.ordinal());
+    assertEquals(22, Relationship.values().length);
+    assertEquals(21, Relationship.DEFAULTS_TO.ordinal());
+    assertEquals(20, Relationship.EDITED_BY.ordinal());
+    assertEquals(19, Relationship.EXPERT.ordinal());
+    assertEquals(18, Relationship.VOTED.ordinal());
+    assertEquals(17, Relationship.REACTED_TO.ordinal());
+    assertEquals(16, Relationship.REVIEWS.ordinal());
   }
 
   /**
@@ -49,8 +49,8 @@ class EnumBackwardCompatibilityTest {
    */
   @Test
   void testTagLabelEnumBackwardCompatible() {
-    assertEqual(4, LabelType.values().length);
-    assertEqual(3, LabelType.DERIVED.ordinal());
+    assertEquals(4, LabelType.values().length);
+    assertEquals(3, LabelType.DERIVED.ordinal());
   }
 
   /**
@@ -59,8 +59,8 @@ class EnumBackwardCompatibilityTest {
    */
   @Test
   void testTagStateEnumBackwardCompatible() {
-    assertEqual(2, TagLabel.State.values().length);
-    assertEqual(1, State.CONFIRMED.ordinal());
+    assertEquals(2, TagLabel.State.values().length);
+    assertEquals(1, State.CONFIRMED.ordinal());
   }
 
   /**
@@ -69,8 +69,8 @@ class EnumBackwardCompatibilityTest {
    */
   @Test
   void testTagSourceEnumBackwardCompatible() {
-    assertEqual(0, TagSource.CLASSIFICATION.ordinal());
-    assertEqual(1, TagSource.GLOSSARY.ordinal());
+    assertEquals(0, TagSource.CLASSIFICATION.ordinal());
+    assertEquals(1, TagSource.GLOSSARY.ordinal());
   }
 
   /**
@@ -80,10 +80,10 @@ class EnumBackwardCompatibilityTest {
   @Test
   void testAccessCardinality() {
     // Don't change the ordinal values of the Access
-    assertEqual(0, Access.DENY.ordinal());
-    assertEqual(1, Access.ALLOW.ordinal());
-    assertEqual(2, Access.CONDITIONAL_DENY.ordinal());
-    assertEqual(3, Access.CONDITIONAL_ALLOW.ordinal());
-    assertEqual(4, Access.NOT_ALLOW.ordinal());
+    assertEquals(0, Access.DENY.ordinal());
+    assertEquals(1, Access.ALLOW.ordinal());
+    assertEquals(2, Access.CONDITIONAL_DENY.ordinal());
+    assertEquals(3, Access.CONDITIONAL_ALLOW.ordinal());
+    assertEquals(4, Access.NOT_ALLOW.ordinal());
   }
 }

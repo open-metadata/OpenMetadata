@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.apis;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -70,7 +70,7 @@ public class APICollectionResourceTest
     String expectedFQN =
         FullyQualifiedName.build(
             OPENMETADATA_API_SERVICE_REFERENCE.getFullyQualifiedName(), create.getName());
-    assertEqual(expectedFQN, apiCollection.getFullyQualifiedName());
+    assertEquals(expectedFQN, apiCollection.getFullyQualifiedName());
   }
 
   @Test
@@ -98,7 +98,7 @@ public class APICollectionResourceTest
 
       ResultList<APICollection> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (APICollection apiCollection : list.getData()) {
-        assertEqual(service.getName(), apiCollection.getService().getName());
+        assertEquals(service.getName(), apiCollection.getService().getName());
       }
     }
   }
@@ -149,7 +149,7 @@ public class APICollectionResourceTest
     // Validate service
     assertNotNull(apiCollection.getServiceType());
     assertReference(createRequest.getService(), apiCollection.getService());
-    assertEqual(
+    assertEquals(
         FullyQualifiedName.build(apiCollection.getService().getName(), apiCollection.getName()),
         apiCollection.getFullyQualifiedName());
   }
@@ -158,7 +158,7 @@ public class APICollectionResourceTest
   public void compareEntities(
       APICollection expected, APICollection updated, Map<String, String> authHeaders) {
     assertReference(expected.getService(), updated.getService());
-    assertEqual(
+    assertEquals(
         FullyQualifiedName.build(updated.getService().getName(), updated.getName()),
         updated.getFullyQualifiedName());
   }

@@ -17,7 +17,7 @@ import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -129,7 +129,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
       ResultList<Topic> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Topic topic : list.getData()) {
-        assertEqual(service, topic.getService().getName());
+        assertEquals(service, topic.getService().getName());
       }
     }
   }
@@ -376,19 +376,19 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             "{\"email\": \"email3@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}");
     TopicSampleData topicSampleData = new TopicSampleData().withMessages(messages);
     Topic putResponse = putSampleData(topic.getId(), topicSampleData, ADMIN_AUTH_HEADERS);
-    assertEqual(topicSampleData, putResponse.getSampleData());
+    assertEquals(topicSampleData, putResponse.getSampleData());
 
     topic = getSampleData(topic.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(topicSampleData, topic.getSampleData());
+    assertEquals(topicSampleData, topic.getSampleData());
     messages =
         Arrays.asList(
             "{\"email\": \"email1@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}",
             "{\"email\": \"email2@email.com\", \"firstName\": \"Test\", \"lastName\": \"Jones\"}");
     topicSampleData.withMessages(messages);
     putResponse = putSampleData(topic.getId(), topicSampleData, ADMIN_AUTH_HEADERS);
-    assertEqual(topicSampleData, putResponse.getSampleData());
+    assertEquals(topicSampleData, putResponse.getSampleData());
     topic = getSampleData(topic.getId(), ADMIN_AUTH_HEADERS);
-    assertEqual(topicSampleData, topic.getSampleData());
+    assertEquals(topicSampleData, topic.getSampleData());
   }
 
   @Test
@@ -550,11 +550,11 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
       List<CleanupPolicy> expectedCleanupPolicies = (List<CleanupPolicy>) expected;
       List<CleanupPolicy> actualCleanupPolicies =
           JsonUtils.readObjects(actual.toString(), CleanupPolicy.class);
-      assertEqual(expectedCleanupPolicies, actualCleanupPolicies);
+      assertEquals(expectedCleanupPolicies, actualCleanupPolicies);
     } else if (fieldName.equals("schemaType")) {
       SchemaType expectedSchemaType = (SchemaType) expected;
       SchemaType actualSchemaType = SchemaType.fromValue(actual.toString());
-      assertEqual(expectedSchemaType, actualSchemaType);
+      assertEquals(expectedSchemaType, actualSchemaType);
     } else if (fieldName.endsWith("owners") && (expected != null && actual != null)) {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedOwners =
@@ -596,7 +596,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
       return;
     }
     // Sort columns by name
-    assertEqual(expectedFields.size(), actualFields.size());
+    assertEquals(expectedFields.size(), actualFields.size());
 
     // Make a copy before sorting in case the lists are immutable
     List<Field> expected = new ArrayList<>(expectedFields);
@@ -614,8 +614,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     assertTrue(
         expectedField.getName().equals(actualField.getName())
             || expectedField.getName().equals(actualField.getDisplayName()));
-    assertEqual(expectedField.getDescription(), actualField.getDescription());
-    assertEqual(expectedField.getDataType(), actualField.getDataType());
+    assertEquals(expectedField.getDescription(), actualField.getDescription());
+    assertEquals(expectedField.getDataType(), actualField.getDataType());
     TestUtils.validateTags(expectedField.getTags(), actualField.getTags());
 
     // Check the nested columns

@@ -16,7 +16,7 @@ package org.openmetadata.service.resources.charts;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -88,7 +88,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
       queryParams.put("service", service);
       ResultList<Chart> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Chart chart : list.getData()) {
-        assertEqual(service, chart.getService().getName());
+        assertEquals(service, chart.getService().getName());
       }
     }
   }
@@ -245,8 +245,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
       Chart chart, CreateChart createRequest, Map<String, String> authHeaders) {
     assertNotNull(chart.getServiceType());
     assertReference(createRequest.getService(), chart.getService());
-    assertEqual(createRequest.getChartType(), chart.getChartType());
-    assertEqual(createRequest.getSourceUrl(), chart.getSourceUrl());
+    assertEquals(createRequest.getChartType(), chart.getChartType());
+    assertEquals(createRequest.getSourceUrl(), chart.getSourceUrl());
   }
 
   @Test
@@ -297,10 +297,10 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
     // Validate that the created Chart entity has the expected "dashboards" field
     assertNotNull(chart.getDashboards());
-    assertEqual(3, chart.getDashboards().size());
-    assertEqual("dashboard0", chart.getDashboards().get(0).getName());
-    assertEqual("dashboard1", chart.getDashboards().get(1).getName());
-    assertEqual("dashboard2", chart.getDashboards().get(2).getName());
+    assertEquals(3, chart.getDashboards().size());
+    assertEquals("dashboard0", chart.getDashboards().get(0).getName());
+    assertEquals("dashboard1", chart.getDashboards().get(1).getName());
+    assertEquals("dashboard2", chart.getDashboards().get(2).getName());
 
     // Check that each dashboard  contains the newly created chart in their charts field
     for (EntityReference dashboardRef : chart.getDashboards()) {
@@ -332,8 +332,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     // field
     chart = getEntity(chart.getId(), "dashboards", ADMIN_AUTH_HEADERS);
     assertNotNull(chart.getDashboards());
-    assertEqual(1, chart.getDashboards().size());
-    assertEqual("dashboard3", chart.getDashboards().get(0).getName());
+    assertEquals(1, chart.getDashboards().size());
+    assertEquals("dashboard3", chart.getDashboards().get(0).getName());
 
     // Verify dashboard3 contains the respective chart
     dashboard3 = dashboardResourceTest.getEntity(dashboard3.getId(), "charts", ADMIN_AUTH_HEADERS);
@@ -381,8 +381,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   @Override
   public void compareEntities(Chart expected, Chart patched, Map<String, String> authHeaders) {
     assertReference(expected.getService(), patched.getService());
-    assertEqual(expected.getChartType(), patched.getChartType());
-    assertEqual(expected.getSourceUrl(), patched.getSourceUrl());
+    assertEquals(expected.getChartType(), patched.getChartType());
+    assertEquals(expected.getSourceUrl(), patched.getSourceUrl());
   }
 
   @Override
@@ -393,7 +393,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     if (fieldName.startsWith("chartType")) {
       ChartType expectedChartType = ChartType.fromValue(expected.toString());
       ChartType actualChartType = ChartType.fromValue(actual.toString());
-      assertEqual(expectedChartType, actualChartType);
+      assertEquals(expectedChartType, actualChartType);
     } else if (fieldName.contains("dashboards")) {
       assertEntityReferencesFieldChange(expected, actual);
     } else {

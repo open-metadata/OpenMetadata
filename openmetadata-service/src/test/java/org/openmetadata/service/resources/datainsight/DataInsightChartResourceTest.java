@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.datainsight;
 
 import static javax.ws.rs.core.Response.Status.*;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -157,16 +157,16 @@ public class DataInsightChartResourceTest
       DataInsightChart createdEntity,
       CreateDataInsightChart request,
       Map<String, String> authHeaders) {
-    assertEqual(request.getName(), createdEntity.getName());
-    assertEqual(request.getDescription(), createdEntity.getDescription());
+    assertEquals(request.getName(), createdEntity.getName());
+    assertEquals(request.getDescription(), createdEntity.getDescription());
   }
 
   @Override
   public void compareEntities(
       DataInsightChart expected, DataInsightChart updated, Map<String, String> authHeaders) {
-    assertEqual(expected.getName(), updated.getName());
-    assertEqual(expected.getFullyQualifiedName(), updated.getFullyQualifiedName());
-    assertEqual(expected.getDescription(), updated.getDescription());
+    assertEquals(expected.getName(), updated.getName());
+    assertEquals(expected.getFullyQualifiedName(), updated.getFullyQualifiedName());
+    assertEquals(expected.getDescription(), updated.getDescription());
   }
 
   @Override

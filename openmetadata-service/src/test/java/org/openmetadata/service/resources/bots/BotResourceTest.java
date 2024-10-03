@@ -146,7 +146,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     if (request.getBotUser() != null) {
       assertNotNull(entity.getBotUser());
       TestUtils.validateEntityReference(entity.getBotUser());
-      Assertions.assertEqual(
+      Assertions.assertEquals(
           request.getBotUser().toLowerCase(),
           entity.getBotUser().getFullyQualifiedName().toLowerCase());
     } else {

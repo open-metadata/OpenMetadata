@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.databases;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -76,7 +76,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     Database db = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     String expectedFQN =
         FullyQualifiedName.build(SNOWFLAKE_REFERENCE.getFullyQualifiedName(), create.getName());
-    assertEqual(expectedFQN, db.getFullyQualifiedName());
+    assertEquals(expectedFQN, db.getFullyQualifiedName());
   }
 
   @Test
@@ -103,7 +103,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
       ResultList<Database> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Database db : list.getData()) {
-        assertEqual(service.getName(), db.getService().getName());
+        assertEquals(service.getName(), db.getService().getName());
       }
     }
   }
@@ -151,7 +151,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     expectedRows = new String[] {resultsHeader, getSuccessRecord(record, "Entity created")};
     assertRows(result, expectedRows);
     DatabaseSchema createdSchema = schemaTest.getEntityByName(schemaFqn, "id", ADMIN_AUTH_HEADERS);
-    assertEqual(schemaFqn, createdSchema.getFullyQualifiedName());
+    assertEquals(schemaFqn, createdSchema.getFullyQualifiedName());
   }
 
   @Test
@@ -236,7 +236,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Validate service
     assertNotNull(database.getServiceType());
     assertReference(createRequest.getService(), database.getService());
-    assertEqual(
+    assertEquals(
         FullyQualifiedName.build(database.getService().getName(), database.getName()),
         database.getFullyQualifiedName());
   }
@@ -245,7 +245,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   public void compareEntities(
       Database expected, Database updated, Map<String, String> authHeaders) {
     assertReference(expected.getService(), updated.getService());
-    assertEqual(
+    assertEquals(
         FullyQualifiedName.build(updated.getService().getName(), updated.getName()),
         updated.getFullyQualifiedName());
   }

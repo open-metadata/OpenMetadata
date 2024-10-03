@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.databases;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -150,7 +150,7 @@ public class DatabaseSchemaResourceTest
     expectedRows = new String[] {resultsHeader, getSuccessRecord(record, "Entity created")};
     assertRows(result, expectedRows);
     Table table = tableTest.getEntityByName(tableFqn, "id", ADMIN_AUTH_HEADERS);
-    assertEqual(tableFqn, table.getFullyQualifiedName());
+    assertEquals(tableFqn, table.getFullyQualifiedName());
   }
 
   @Test
@@ -236,7 +236,7 @@ public class DatabaseSchemaResourceTest
     // Validate service
     assertNotNull(schema.getServiceType());
     assertReference(createRequest.getDatabase(), schema.getDatabase());
-    assertEqual(
+    assertEquals(
         FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName()),
         schema.getFullyQualifiedName());
   }
@@ -246,7 +246,7 @@ public class DatabaseSchemaResourceTest
       DatabaseSchema expected, DatabaseSchema updated, Map<String, String> authHeaders) {
     // Validate service
     assertReference(expected.getDatabase(), updated.getDatabase());
-    assertEqual(
+    assertEquals(
         FullyQualifiedName.add(updated.getDatabase().getFullyQualifiedName(), updated.getName()),
         updated.getFullyQualifiedName());
   }

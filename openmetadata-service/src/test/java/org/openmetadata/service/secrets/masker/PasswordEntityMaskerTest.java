@@ -31,7 +31,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                     .maskServiceConnectionConfig(
                         mysqlConnectionObject, "Mysql", ServiceType.DATABASE));
 
-    Assertions.assertEqual(
+    Assertions.assertEquals(
         "Failed to mask 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
         thrown.getMessage());
 
@@ -46,7 +46,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                         "Mysql",
                         ServiceType.DATABASE));
 
-    Assertions.assertEqual(
+    Assertions.assertEquals(
         "Failed to unmask 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
         thrown.getMessage());
   }

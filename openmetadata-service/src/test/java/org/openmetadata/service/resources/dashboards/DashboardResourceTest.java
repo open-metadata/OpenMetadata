@@ -16,7 +16,7 @@ package org.openmetadata.service.resources.dashboards;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -108,9 +108,9 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
 
       ResultList<Dashboard> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Dashboard db : list.getData()) {
-        assertEqual(service.getName(), db.getService().getName());
+        assertEquals(service.getName(), db.getService().getName());
         String expectedFQN = FullyQualifiedName.add(service.getFullyQualifiedName(), db.getName());
-        assertEqual(expectedFQN, db.getFullyQualifiedName());
+        assertEquals(expectedFQN, db.getFullyQualifiedName());
       }
     }
   }

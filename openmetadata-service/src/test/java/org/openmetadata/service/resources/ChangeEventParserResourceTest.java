@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -89,7 +89,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     ChangeEvent changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.0, 1.1);
 
     List<Thread> threadWithMessages = getThreadWithMessage(feedMessageFormatter, changeEvent);
-    assertEqual(1, threadWithMessages.size());
+    assertEquals(1, threadWithMessages.size());
 
     TagLabel tag1 = new TagLabel();
     tag1.withTagFQN("tag1").withLabelType(LabelType.DERIVED).withState(State.CONFIRMED);
@@ -102,10 +102,10 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
 
     List<Thread> updatedThreadWithMessages =
         getThreadWithMessage(feedMessageFormatter, changeEvent);
-    assertEqual(1, updatedThreadWithMessages.size());
+    assertEquals(1, updatedThreadWithMessages.size());
 
     // The entity links and values of both the messages should be the same
-    assertEqual(
+    assertEquals(
         threadWithMessages.get(0).getMessage(), updatedThreadWithMessages.get(0).getMessage());
   }
 
@@ -138,9 +138,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     ChangeEvent changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.0, 1.1);
 
     List<Thread> threadWithMessages = getThreadWithMessage(feedMessageFormatter, changeEvent);
-    assertEqual(1, threadWithMessages.size());
+    assertEquals(1, threadWithMessages.size());
 
-    assertEqual(
+    assertEquals(
         "Added **owners**: <span class=\"diff-added\">User One</span>",
         threadWithMessages.get(0).getMessage());
   }
@@ -153,9 +153,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
 
     ChangeEvent changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.0, 1.1);
     List<Thread> threadMessages = getThreadWithMessage(feedMessageFormatter, changeEvent);
-    assertEqual(1, threadMessages.size());
+    assertEquals(1, threadMessages.size());
 
-    assertEqual(
+    assertEquals(
         "Updated **description**: <span class=\"diff-removed\">old</span> "
             + "<span class=\"diff-added\">new</span> description",
         threadMessages.get(0).getMessage());
@@ -168,10 +168,10 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     // now test if both the type of updates give the same message
     changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.0, 1.1);
     List<Thread> threadUpdatedMessages = getThreadWithMessage(feedMessageFormatter, changeEvent);
-    assertEqual(1, threadUpdatedMessages.size());
+    assertEquals(1, threadUpdatedMessages.size());
 
-    assertEqual(threadMessages.get(0).getMessage(), threadUpdatedMessages.get(0).getMessage());
-    assertEqual(threadMessages.get(0).getAbout(), threadUpdatedMessages.get(0).getAbout());
+    assertEquals(threadMessages.get(0).getMessage(), threadUpdatedMessages.get(0).getMessage());
+    assertEquals(threadMessages.get(0).getAbout(), threadUpdatedMessages.get(0).getAbout());
   }
 
   @Test
@@ -183,9 +183,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     ChangeEvent changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.0, 1.1);
 
     List<Thread> threadsWithMessages = getThreadWithMessage(slackMessageFormatter, changeEvent);
-    assertEqual(1, threadsWithMessages.size());
+    assertEquals(1, threadsWithMessages.size());
 
-    assertEqual(
+    assertEquals(
         "Updated *description*: ~old~ *new* description", threadsWithMessages.get(0).getMessage());
 
     // test if it updates correctly with one add and one delete change
@@ -197,11 +197,11 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     List<Thread> threadsWithUpdatedMessages =
         getThreadWithMessage(slackMessageFormatter, changeEvent);
     // now test if both the type of updates give the same message
-    assertEqual(1, threadsWithUpdatedMessages.size());
+    assertEquals(1, threadsWithUpdatedMessages.size());
 
-    assertEqual(
+    assertEquals(
         threadsWithMessages.get(0).getAbout(), threadsWithUpdatedMessages.get(0).getAbout());
-    assertEqual(
+    assertEquals(
         threadsWithMessages.get(0).getMessage(), threadsWithUpdatedMessages.get(0).getMessage());
   }
 
@@ -222,9 +222,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     ChangeEvent changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.3, 1.4);
 
     List<Thread> threadWithMessages = getThreadWithMessage(feedMessageFormatter, changeEvent);
-    assertEqual(1, threadWithMessages.size());
+    assertEquals(1, threadWithMessages.size());
 
-    assertEqual(
+    assertEquals(
         "Updated **columns**: lo_order <span class=\"diff-added\">priority</span>",
         threadWithMessages.get(0).getMessage());
 
@@ -241,9 +241,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
 
     changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.3, 1.4);
     threadWithMessages = getThreadWithMessage(feedMessageFormatter, changeEvent);
-    assertEqual(1, threadWithMessages.size());
+    assertEquals(1, threadWithMessages.size());
 
-    assertEqual("Updated **columns**: lo_orderpriority", threadWithMessages.get(0).getMessage());
+    assertEquals("Updated **columns**: lo_orderpriority", threadWithMessages.get(0).getMessage());
 
     // Simulate multiple changes to columns
     changeDescription = new ChangeDescription().withPreviousVersion(1.4);
@@ -258,9 +258,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
 
     changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.3, 1.4);
     threadWithMessages = getThreadWithMessage(feedMessageFormatter, changeEvent);
-    assertEqual(1, threadWithMessages.size());
+    assertEquals(1, threadWithMessages.size());
 
-    assertEqual(
+    assertEquals(
         "Updated **columns**: lo_orderpriority <span class=\"diff-added\">, newColumn</span>",
         threadWithMessages.get(0).getMessage());
   }
@@ -281,9 +281,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
 
     ChangeEvent changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.3, 1.4);
     List<Thread> threadWithMessages = getThreadWithMessage(slackMessageFormatter, changeEvent);
-    assertEqual(1, threadWithMessages.size());
+    assertEquals(1, threadWithMessages.size());
 
-    assertEqual("Updated *columns*: lo_order *priority*", threadWithMessages.get(0).getMessage());
+    assertEquals("Updated *columns*: lo_order *priority*", threadWithMessages.get(0).getMessage());
 
     // Simulate a change of datatype change in column
     changeDescription = new ChangeDescription().withPreviousVersion(1.3);
@@ -298,9 +298,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
 
     changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.3, 1.4);
     threadWithMessages = getThreadWithMessage(slackMessageFormatter, changeEvent);
-    assertEqual(1, threadWithMessages.size());
+    assertEquals(1, threadWithMessages.size());
 
-    assertEqual("Updated *columns*: lo_orderpriority", threadWithMessages.get(0).getMessage());
+    assertEquals("Updated *columns*: lo_orderpriority", threadWithMessages.get(0).getMessage());
 
     // Simulate multiple changes to columns
     changeDescription = new ChangeDescription().withPreviousVersion(1.4);
@@ -315,9 +315,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
 
     changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.3, 1.4);
     threadWithMessages = getThreadWithMessage(slackMessageFormatter, changeEvent);
-    assertEqual(1, threadWithMessages.size());
+    assertEquals(1, threadWithMessages.size());
 
-    assertEqual(
+    assertEquals(
         "Updated *columns*: lo_orderpriority *, newColumn*",
         threadWithMessages.get(0).getMessage());
   }

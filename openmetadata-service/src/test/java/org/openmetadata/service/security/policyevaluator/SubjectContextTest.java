@@ -12,7 +12,7 @@
  */
 package org.openmetadata.service.security.policyevaluator;
 
-import static org.junit.jupiter.api.Assertions.assertEqual;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -317,9 +317,9 @@ public class SubjectContextTest {
     int count = 0;
     while (actualPolicyIterator.hasNext()) {
       PolicyContext policyContext = actualPolicyIterator.next();
-      assertEqual(expectedPolicyOrder.get(count), policyContext.getPolicyName());
+      assertEquals(expectedPolicyOrder.get(count), policyContext.getPolicyName());
       count++;
     }
-    assertEqual(expectedPolicyOrder.size(), count);
+    assertEquals(expectedPolicyOrder.size(), count);
   }
 }
