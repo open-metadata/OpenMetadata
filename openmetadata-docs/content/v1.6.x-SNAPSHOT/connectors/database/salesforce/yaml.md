@@ -161,7 +161,7 @@ source:
       sobjectName: sobjectName
 ```
 ```yaml {% srNumber=7 %}
-      salesforceApiVersion: 42.0
+      salesforceApiVersion: "42.0"
 ```
 ```yaml {% srNumber=8 %}
       salesforceDomain: login
