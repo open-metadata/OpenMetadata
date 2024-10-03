@@ -57,6 +57,9 @@
       "timestamp": {
         "type": "date"
       },
+      "@timestamp": {
+          "type": "date"
+      },
       "testResultValue": {
         "properties": {
           "name": {
