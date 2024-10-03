@@ -3,7 +3,7 @@ package org.openmetadata.service.resources.dqtests;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -169,8 +169,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     queryParams.put("include", Include.ALL.value());
     TestSuite deletedTestSuite =
         getEntity(TEST_SUITE1.getId(), queryParams, null, ADMIN_AUTH_HEADERS);
-    assertEquals(TEST_SUITE1.getId(), deletedTestSuite.getId());
-    assertEquals(true, deletedTestSuite.getDeleted());
+    assertEqual(TEST_SUITE1.getId(), deletedTestSuite.getId());
+    assertEqual(true, deletedTestSuite.getDeleted());
   }
 
   @Test
@@ -232,7 +232,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       testCaseResourceTest.deleteEntity(ref.getId(), true, true, ADMIN_AUTH_HEADERS);
     }
     TestSuite checkTestSuite = getEntity(deleteTestCases.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(checkTestSuite.getTests().size(), 0);
+    assertEqual(checkTestSuite.getTests().size(), 0);
     nonEmptyTestSuites = getTestSuites(20, "*", "false", null, null, ADMIN_AUTH_HEADERS);
     verifyTestSuites(nonEmptyTestSuites, testSuites.subList(0, 17));
 
@@ -504,11 +504,11 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
     Table actualTable = tableResourceTest.getEntity(table.getId(), "testSuite", ADMIN_AUTH_HEADERS);
     EntityReference tableTestSuiteRef = actualTable.getTestSuite();
-    assertEquals(testSuite.getId(), tableTestSuiteRef.getId());
+    assertEqual(testSuite.getId(), tableTestSuiteRef.getId());
     TestSuite tableTestSuite =
         testSuiteResourceTest.getEntity(
             tableTestSuiteRef.getId(), queryParams, "tests", ADMIN_AUTH_HEADERS);
-    assertEquals(5, tableTestSuite.getTests().size());
+    assertEqual(5, tableTestSuite.getTests().size());
 
     // Soft delete entity
     deleteExecutableTestSuite(tableTestSuite.getId(), true, false, ADMIN_AUTH_HEADERS);
@@ -519,7 +519,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     tableTestSuite =
         testSuiteResourceTest.getEntity(
             tableTestSuiteRef.getId(), queryParams, "tests", ADMIN_AUTH_HEADERS);
-    assertEquals(true, tableTestSuite.getDeleted());
+    assertEqual(true, tableTestSuite.getDeleted());
 
     // Hard delete entity
     deleteExecutableTestSuite(tableTestSuite.getId(), true, true, ADMIN_AUTH_HEADERS);
@@ -554,13 +554,13 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuite actualTestSuite =
         testSuiteResourceTest.getEntity(
             actualTestSuiteRef.getId(), queryParams, "tests", ADMIN_AUTH_HEADERS);
-    assertEquals(actualTestSuite.getId(), testSuite.getId());
+    assertEqual(actualTestSuite.getId(), testSuite.getId());
 
     tableResourceTest.deleteEntity(actualTable.getId(), true, false, ADMIN_AUTH_HEADERS);
 
     actualTestSuite =
         getEntityByName(testSuite.getFullyQualifiedName(), queryParams, "*", ADMIN_AUTH_HEADERS);
-    assertEquals(true, actualTestSuite.getDeleted());
+    assertEqual(true, actualTestSuite.getDeleted());
 
     // Hard delete entity
     tableResourceTest.deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
@@ -581,19 +581,19 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     Map<String, String> queryParams = new HashMap<>();
 
     ResultList<TestSuite> testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(10, testSuiteResultList.getData().size());
+    assertEqual(10, testSuiteResultList.getData().size());
 
     queryParams.put("testSuiteType", "executable");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    testSuiteResultList.getData().forEach(ts -> assertEquals(true, ts.getExecutable()));
+    testSuiteResultList.getData().forEach(ts -> assertEqual(true, ts.getExecutable()));
 
     queryParams.put("testSuiteType", "logical");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    testSuiteResultList.getData().forEach(ts -> assertEquals(false, ts.getExecutable()));
+    testSuiteResultList.getData().forEach(ts -> assertEqual(false, ts.getExecutable()));
 
     queryParams.put("includeEmptyTestSuites", "false");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(0, testSuiteResultList.getData().size());
+    assertEqual(0, testSuiteResultList.getData().size());
   }
 
   @Test
@@ -837,7 +837,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // We'll check that the test cases are still present in the executable test suite
     TestSuite actualExecutableTestSuite =
         getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(5, actualExecutableTestSuite.getTests().size());
+    assertEqual(5, actualExecutableTestSuite.getTests().size());
   }
 
   @Test
@@ -948,16 +948,16 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   private void verifyTestCases(
       List<EntityReference> actualTestCases, List<EntityReference> expectedTestCases) {
-    assertEquals(expectedTestCases.size(), actualTestCases.size());
+    assertEqual(expectedTestCases.size(), actualTestCases.size());
     Map<UUID, EntityReference> testCaseMap = new HashMap<>();
     for (EntityReference result : actualTestCases) {
       testCaseMap.put(result.getId(), result);
     }
     for (EntityReference result : expectedTestCases) {
       EntityReference storedTestCase = testCaseMap.get(result.getId());
-      assertEquals(result.getId(), storedTestCase.getId());
-      assertEquals(result.getName(), storedTestCase.getName());
-      assertEquals(result.getDescription(), storedTestCase.getDescription());
+      assertEqual(result.getId(), storedTestCase.getId());
+      assertEqual(result.getName(), storedTestCase.getName());
+      assertEqual(result.getDescription(), storedTestCase.getDescription());
     }
   }
 
@@ -969,15 +969,15 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   @Override
   public void validateCreatedEntity(
       TestSuite createdEntity, CreateTestSuite request, Map<String, String> authHeaders) {
-    assertEquals(request.getName(), createdEntity.getName());
-    assertEquals(request.getDescription(), createdEntity.getDescription());
+    assertEqual(request.getName(), createdEntity.getName());
+    assertEqual(request.getDescription(), createdEntity.getDescription());
   }
 
   @Override
   public void compareEntities(
       TestSuite expected, TestSuite updated, Map<String, String> authHeaders) {
-    assertEquals(expected.getName(), updated.getName());
-    assertEquals(expected.getDescription(), updated.getDescription());
+    assertEqual(expected.getName(), updated.getName());
+    assertEqual(expected.getDescription(), updated.getDescription());
   }
 
   @Override

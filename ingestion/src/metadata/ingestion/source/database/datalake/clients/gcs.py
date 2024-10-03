@@ -49,7 +49,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
         if hasattr(config.securityConfig, "gcpConfig") and isinstance(
             config.securityConfig.gcpConfig.projectId, MultipleProjectId
         ):
-            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
+            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.model_validate(
                 gcs_config.securityConfig.gcpConfig.projectId.root[0]
             )
 
@@ -89,7 +89,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
         gcs_config = deepcopy(config)
 
         if hasattr(gcs_config.securityConfig, "gcpConfig"):
-            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
+            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.model_validate(
                 database_name
             )
 

@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -183,16 +183,16 @@ public class MessagingServiceResourceTest
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(
+    assertEqual(
         TestConnectionResultStatus.SUCCESSFUL,
         updatedService.getTestConnectionResult().getStatus());
-    assertEquals(updatedService.getConnection(), service.getConnection());
+    assertEqual(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     MessagingService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(
+    assertEqual(
         TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
-    assertEquals(stored.getConnection(), service.getConnection());
+    assertEqual(stored.getConnection(), service.getConnection());
   }
 
   public MessagingService putTestConnectionResult(
@@ -280,10 +280,10 @@ public class MessagingServiceResourceTest
           actualKafkaConnection =
               JsonUtils.convertValue(actualConnection.getConfig(), KafkaConnection.class);
         }
-        assertEquals(
+        assertEqual(
             expectedKafkaConnection.getBootstrapServers(),
             actualKafkaConnection.getBootstrapServers());
-        assertEquals(
+        assertEqual(
             expectedKafkaConnection.getSchemaRegistryURL(),
             actualKafkaConnection.getSchemaRegistryURL());
       }

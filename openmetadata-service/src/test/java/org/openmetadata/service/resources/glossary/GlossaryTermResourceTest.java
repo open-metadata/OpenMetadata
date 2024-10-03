@@ -255,7 +255,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Ensure prefix based tagLabel doesn't double count due too common prefix
     for (GlossaryTerm term : List.of(a, aa, aaa)) {
       term = getEntity(term.getId(), "usageCount", ADMIN_AUTH_HEADERS);
-      assertEquals(1, term.getUsageCount());
+      assertEqual(1, term.getUsageCount());
     }
   }
 
@@ -338,7 +338,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // term g1t1 under glossary1 is created in Approved mode without reviewers
     GlossaryTerm g1t1 = createTerm(glossary1, null, "g1t1");
-    assertEquals(Status.APPROVED, g1t1.getStatus());
+    assertEqual(Status.APPROVED, g1t1.getStatus());
 
     //
     // glossary2 created with reviewers user1, user2
@@ -355,7 +355,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Creating a glossary term g2t1 should be in `Draft` mode (because glossary has reviewers)
     GlossaryTerm g2t1 = createTerm(glossary2, null, "g2t1");
-    assertEquals(Status.DRAFT, g2t1.getStatus());
+    assertEqual(Status.DRAFT, g2t1.getStatus());
     assertApprovalTask(g2t1, TaskStatus.Open); // A Request Approval task is opened
 
     // Non reviewer - even Admin - can't change the `Draft` to `Approved` status using PATCH
@@ -368,7 +368,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // A reviewer can change the `Draft` to `Approved` status using PATCH or PUT
     GlossaryTerm g2t1Updated = patchEntity(g2t1.getId(), json, g2t1, authHeaders(USER1.getName()));
-    assertEquals(Status.APPROVED, g2t1Updated.getStatus());
+    assertEqual(Status.APPROVED, g2t1Updated.getStatus());
     assertApprovalTask(g2t1, TaskStatus.Closed); // The Request Approval task is closed
 
     //
@@ -378,7 +378,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // `Approved`.
     //
     GlossaryTerm g2t2 = createTerm(glossary2, null, "g2t2");
-    assertEquals(Status.DRAFT, g2t2.getStatus());
+    assertEqual(Status.DRAFT, g2t2.getStatus());
     Thread approvalTask =
         assertApprovalTask(g2t2, TaskStatus.Open); // A Request Approval task is opened
     int taskId = approvalTask.getTask().getId();
@@ -394,7 +394,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     taskTest.resolveTask(taskId, resolveTask, authHeaders(USER1.getName()));
     assertApprovalTask(g2t2, TaskStatus.Closed); // A Request Approval task is opened
     g2t2 = getEntity(g2t2.getId(), authHeaders(USER1.getName()));
-    assertEquals(Status.APPROVED, g2t2.getStatus());
+    assertEqual(Status.APPROVED, g2t2.getStatus());
 
     //
     // Glossary terms g2t3 created is in `Draft` status. Automatically a Request Approval task is
@@ -403,7 +403,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // state.
     //
     GlossaryTerm g2t3 = createTerm(glossary2, null, "g2t3");
-    assertEquals(Status.DRAFT, g2t3.getStatus());
+    assertEqual(Status.DRAFT, g2t3.getStatus());
     approvalTask = assertApprovalTask(g2t3, TaskStatus.Open); // A Request Approval task is opened
     int taskId2 = approvalTask.getTask().getId();
 
@@ -417,7 +417,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     taskTest.closeTask(taskId2, "Rejected", authHeaders(USER1.getName()));
     assertApprovalTask(g2t3, TaskStatus.Closed); // A Request Approval task is opened
     g2t3 = getEntity(g2t3.getId(), authHeaders(USER1.getName()));
-    assertEquals(Status.REJECTED, g2t3.getStatus());
+    assertEqual(Status.REJECTED, g2t3.getStatus());
 
     //
     // Glossary terms g2t4 created is in `Draft` status. Automatically a Request Approval task is
@@ -426,7 +426,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // task.
     //
     final GlossaryTerm g2t4 = createTerm(glossary2, null, "g2t4");
-    assertEquals(Status.DRAFT, g2t4.getStatus());
+    assertEqual(Status.DRAFT, g2t4.getStatus());
     assertApprovalTask(g2t4, TaskStatus.Open); // A Request Approval task is opened
 
     // Non reviewer - even Admin - can't change the `Draft` to `Approved` status using PATCH
@@ -439,14 +439,14 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // A reviewer can change the `Draft` to `Rejected` status using PATCH
     GlossaryTerm g2t4Updated = patchEntity(g2t4.getId(), json2, g2t4, authHeaders(USER1.getName()));
-    assertEquals(Status.REJECTED, g2t4Updated.getStatus());
+    assertEqual(Status.REJECTED, g2t4Updated.getStatus());
     assertApprovalTask(g2t4, TaskStatus.Closed); // The Request Approval task is closed
 
     // Creating a glossary term g2t5 should be in `Draft` mode (because glossary has reviewers)
     // adding a new reviewer should add the person as assignee to the task
 
     GlossaryTerm g2t5 = createTerm(glossary2, null, "g2t5");
-    assertEquals(Status.DRAFT, g2t5.getStatus());
+    assertEqual(Status.DRAFT, g2t5.getStatus());
     assertApprovalTask(g2t5, TaskStatus.Open); // A Request Approval task is opened
 
     String origJson = JsonUtils.pojoToJson(g2t5);
@@ -559,7 +559,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     fieldAdded(change, FIELD_TAGS, List.of(PERSONAL_DATA_TAG_LABEL));
     term11.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
     patchEntityUsingFqnAndCheck(term11, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
+    assertEqual(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
 
     // Apply tags to term1
     json = JsonUtils.pojoToJson(term1);
@@ -568,10 +568,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // After adding tags to parent, make sure the parent and child still has tags
     term11 = getEntity(term11.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
+    assertEqual(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
 
     term1 = getEntity(term1.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(term1.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
+    assertEqual(term1.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
   }
 
   @Test
@@ -604,11 +604,11 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         new EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName()).getLinkString();
     ThreadList threads =
         taskTest.listTasks(entityLink, null, null, expectedTaskStatus, 100, ADMIN_AUTH_HEADERS);
-    assertEquals(1, threads.getData().size());
+    assertEqual(1, threads.getData().size());
     Thread taskThread = threads.getData().get(0);
     TaskDetails taskDetails = taskThread.getTask();
     assertNotNull(taskDetails);
-    assertEquals(expectedTaskStatus, taskDetails.getStatus());
+    assertEqual(expectedTaskStatus, taskDetails.getStatus());
     return taskThread;
   }
 
@@ -633,7 +633,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     fieldAdded(change, FIELD_TAGS, List.of(PERSONAL_DATA_TAG_LABEL));
     term11.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
     patchEntityAndCheck(term11, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
+    assertEqual(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
 
     // Apply tags to term1
     json = JsonUtils.pojoToJson(term1);
@@ -642,10 +642,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // After adding tags to parent, make sure the parent and child still has tags
     term11 = getEntity(term11.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
+    assertEqual(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
 
     term1 = getEntity(term1.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(term1.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
+    assertEqual(term1.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
   }
 
   @Test
@@ -656,7 +656,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       GlossaryTerm createdEntity = createEntity(create, ADMIN_AUTH_HEADERS);
       GlossaryTerm glossaryGet =
           getEntityByName(createdEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-      assertEquals(name, glossaryGet.getName());
+      assertEqual(name, glossaryGet.getName());
     }
   }
 
@@ -1018,7 +1018,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   public void assertContains(List<GlossaryTerm> expectedTerms, List<GlossaryTerm> actualTerms)
       throws HttpResponseException {
-    assertEquals(expectedTerms.size(), actualTerms.size());
+    assertEqual(expectedTerms.size(), actualTerms.size());
     for (GlossaryTerm expected : expectedTerms) {
       GlossaryTerm actual =
           actualTerms.stream()
@@ -1027,10 +1027,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
               .orElse(null);
       assertNotNull(
           actual, "Expected glossaryTerm " + expected.getFullyQualifiedName() + " not found");
-      assertEquals(expected.getFullyQualifiedName(), actual.getFullyQualifiedName());
-      assertEquals(expected.getSynonyms(), actual.getSynonyms());
-      assertEquals(expected.getParent(), actual.getParent());
-      assertEquals(expected.getStyle(), actual.getStyle());
+      assertEqual(expected.getFullyQualifiedName(), actual.getFullyQualifiedName());
+      assertEqual(expected.getSynonyms(), actual.getSynonyms());
+      assertEqual(expected.getParent(), actual.getParent());
+      assertEqual(expected.getStyle(), actual.getStyle());
       TestUtils.assertEntityReferences(expected.getChildren(), actual.getChildren());
       TestUtils.assertEntityReferences(expected.getReviewers(), actual.getReviewers());
       TestUtils.validateTags(expected.getTags(), actual.getTags());
@@ -1062,8 +1062,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         entity.getParent() == null
             ? FullyQualifiedName.build(entity.getGlossary().getName(), entity.getName())
             : FullyQualifiedName.add(entity.getParent().getFullyQualifiedName(), entity.getName());
-    assertEquals(fqn, entity.getFullyQualifiedName());
-    assertEquals(entity.getStyle(), request.getStyle());
+    assertEqual(fqn, entity.getFullyQualifiedName());
+    assertEqual(entity.getStyle(), request.getStyle());
     // Validate glossary that holds this term is present
     assertReference(request.getGlossary(), entity.getGlossary());
 
@@ -1084,7 +1084,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       throws HttpResponseException {
     assertReference(expected.getGlossary(), patched.getGlossary());
     assertReference(expected.getParent(), patched.getParent());
-    assertEquals(expected.getFullyQualifiedName(), patched.getFullyQualifiedName());
+    assertEqual(expected.getFullyQualifiedName(), patched.getFullyQualifiedName());
 
     // Entity specific validation
     TestUtils.validateTags(expected.getTags(), patched.getTags());
@@ -1146,7 +1146,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       case "status" -> {
         Status expectedStatus = Status.fromValue(expected.toString());
         Status actualStatus = Status.fromValue(actual.toString());
-        assertEquals(expectedStatus, actualStatus);
+        assertEqual(expectedStatus, actualStatus);
       }
       default -> assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -1157,7 +1157,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       CreateGlossaryTerm create, Map<String, String> authHeaders) throws IOException {
     int termCount = getGlossary(create.getGlossary()).getTermCount();
     GlossaryTerm term = super.createAndCheckEntity(create, authHeaders);
-    assertEquals(termCount + 1, getGlossary(create.getGlossary()).getTermCount());
+    assertEqual(termCount + 1, getGlossary(create.getGlossary()).getTermCount());
     return term;
   }
 
@@ -1173,7 +1173,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     GlossaryTerm term =
         super.updateAndCheckEntity(request, status, authHeaders, updateType, changeDescription);
     if (status == Response.Status.CREATED) {
-      assertEquals(termCount + 1, getGlossary(request.getGlossary()).getTermCount());
+      assertEqual(termCount + 1, getGlossary(request.getGlossary()).getTermCount());
     }
     return term;
   }
@@ -1277,7 +1277,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     queryParams.put("directChildrenOf", term1.getFullyQualifiedName());
     List<GlossaryTerm> children = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
 
-    assertEquals(term1.getChildren().size(), children.size());
+    assertEqual(term1.getChildren().size(), children.size());
 
     for (GlossaryTerm responseChild : children) {
       assertTrue(
@@ -1285,7 +1285,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     }
 
     GlossaryTerm response = getEntity(term1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
-    assertEquals(term1.getChildren().size(), response.getChildrenCount());
+    assertEqual(term1.getChildren().size(), response.getChildrenCount());
   }
 
   public Glossary createGlossary(

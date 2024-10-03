@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.events;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.v3.oas.annotations.Parameter;
@@ -49,7 +49,7 @@ public abstract class BaseCallbackResource<T> {
       T event) {
     String payload = JsonUtils.pojoToJson(event);
     String computedSignature = "sha256=" + CommonUtil.calculateHMAC(getTestName(), payload);
-    assertEquals(computedSignature, signature);
+    assertEqual(computedSignature, signature);
     addEventDetails(name, event);
     return Response.ok().build();
   }

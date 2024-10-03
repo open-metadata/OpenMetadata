@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.usage;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
@@ -290,11 +290,11 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
         int expectedPercentile = 100 * (tableIndex) / TABLES.size();
         EntityUsage usage =
             getUsage(TABLE, TABLES.get(tableIndex).getId(), date, 1, ADMIN_AUTH_HEADERS);
-        assertEquals(
+        assertEqual(
             expectedPercentile, usage.getUsage().get(0).getDailyStats().getPercentileRank());
-        assertEquals(
+        assertEqual(
             expectedPercentile, usage.getUsage().get(0).getWeeklyStats().getPercentileRank());
-        assertEquals(
+        assertEqual(
             expectedPercentile, usage.getUsage().get(0).getMonthlyStats().getPercentileRank());
       }
     }
@@ -335,7 +335,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     Table table =
         new TableResourceTest()
             .getEntity(TABLES.get(0).getId(), "usageSummary", ADMIN_AUTH_HEADERS);
-    Assertions.assertEquals(usage.getUsage().get(0), table.getUsageSummary());
+    Assertions.assertEqual(usage.getUsage().get(0), table.getUsageSummary());
 
     // Ensure GET .../databases/{id}?fields=usageSummary returns the latest usage
     usage =
@@ -343,7 +343,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
             Entity.DATABASE, databaseId, date, null /* days not specified */, ADMIN_AUTH_HEADERS);
     Database database =
         new DatabaseResourceTest().getEntity(databaseId, "usageSummary", ADMIN_AUTH_HEADERS);
-    Assertions.assertEquals(usage.getUsage().get(0), database.getUsageSummary());
+    Assertions.assertEqual(usage.getUsage().get(0), database.getUsageSummary());
   }
 
   public DailyCount usageReport() {
@@ -413,7 +413,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
       Map<String, String> authHeaders)
       throws HttpResponseException {
     EntityUsage usage = getUsage(entity, id, date, days, authHeaders);
-    assertEquals(expectedRecords, usage.getUsage().size());
+    assertEqual(expectedRecords, usage.getUsage().size());
   }
 
   public EntityUsage getUsageByName(
@@ -446,7 +446,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
       Map<String, String> authHeaders)
       throws HttpResponseException {
     EntityUsage usage = getUsage(entity, id, date, 1, authHeaders);
-    assertEquals(id, usage.getEntity().getId());
+    assertEqual(id, usage.getEntity().getId());
     checkUsage(usage, date, entity, dailyCount, weeklyCount, monthlyCount);
   }
 
@@ -470,11 +470,11 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
       int dailyCount,
       int weeklyCount,
       int monthlyCount) {
-    assertEquals(entity, usage.getEntity().getType());
+    assertEqual(entity, usage.getEntity().getType());
     UsageDetails usageDetails = usage.getUsage().get(0);
-    assertEquals(date, usageDetails.getDate());
-    assertEquals(dailyCount, usageDetails.getDailyStats().getCount());
-    assertEquals(weeklyCount, usageDetails.getWeeklyStats().getCount());
-    assertEquals(monthlyCount, usageDetails.getMonthlyStats().getCount());
+    assertEqual(date, usageDetails.getDate());
+    assertEqual(dailyCount, usageDetails.getDailyStats().getCount());
+    assertEqual(weeklyCount, usageDetails.getWeeklyStats().getCount());
+    assertEqual(monthlyCount, usageDetails.getMonthlyStats().getCount());
   }
 }

@@ -95,21 +95,21 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
     fieldUpdated(change, "metricType", MetricType.AVERAGE, MetricType.SUM);
     patchEntity(updatedMetric.getId(), origJson, updatedMetric, ADMIN_AUTH_HEADERS);
     updatedMetric = getMetric(updatedMetric.getId(), "*", ADMIN_AUTH_HEADERS);
-    Assertions.assertEquals(MetricUnitOfMeasurement.DOLLARS, updatedMetric.getUnitOfMeasurement());
-    Assertions.assertEquals(MetricType.SUM, updatedMetric.getMetricType());
+    Assertions.assertEqual(MetricUnitOfMeasurement.DOLLARS, updatedMetric.getUnitOfMeasurement());
+    Assertions.assertEqual(MetricType.SUM, updatedMetric.getMetricType());
     updatedMetric = getMetric(updatedMetric.getId(), "*", ADMIN_AUTH_HEADERS);
     origJson = JsonUtils.pojoToJson(updatedMetric);
     updatedMetric.setRelatedMetrics(
         List.of(Metric1.getEntityReference(), Metric2.getEntityReference()));
     patchEntity(updatedMetric.getId(), origJson, updatedMetric, ADMIN_AUTH_HEADERS);
-    Assertions.assertEquals(2, updatedMetric.getRelatedMetrics().size());
-    Assertions.assertEquals(Metric1.getEntityReference(), updatedMetric.getRelatedMetrics().get(0));
-    Assertions.assertEquals(Metric2.getEntityReference(), updatedMetric.getRelatedMetrics().get(1));
+    Assertions.assertEqual(2, updatedMetric.getRelatedMetrics().size());
+    Assertions.assertEqual(Metric1.getEntityReference(), updatedMetric.getRelatedMetrics().get(0));
+    Assertions.assertEqual(Metric2.getEntityReference(), updatedMetric.getRelatedMetrics().get(1));
     updatedMetric = getMetric(updatedMetric.getId(), "*", ADMIN_AUTH_HEADERS);
     origJson = JsonUtils.pojoToJson(updatedMetric);
     updatedMetric.setRelatedMetrics(new ArrayList<>());
     patchEntity(updatedMetric.getId(), origJson, updatedMetric, ADMIN_AUTH_HEADERS);
-    Assertions.assertEquals(0, updatedMetric.getRelatedMetrics().size());
+    Assertions.assertEqual(0, updatedMetric.getRelatedMetrics().size());
     updatedMetric = getMetric(updatedMetric.getId(), "*", ADMIN_AUTH_HEADERS);
     origJson = JsonUtils.pojoToJson(updatedMetric);
     updatedMetric.setRelatedMetrics(List.of(updatedMetric.getEntityReference()));
@@ -186,14 +186,14 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
           MetricExpression expectedExpression = (MetricExpression) expected;
           MetricExpression actualExpression =
               JsonUtils.readOrConvertValue(actual, MetricExpression.class);
-          Assertions.assertEquals(expectedExpression.getCode(), actualExpression.getCode());
-          Assertions.assertEquals(expectedExpression.getLanguage(), actualExpression.getLanguage());
+          Assertions.assertEqual(expectedExpression.getCode(), actualExpression.getCode());
+          Assertions.assertEqual(expectedExpression.getLanguage(), actualExpression.getLanguage());
         }
-        case "granularity" -> Assertions.assertEquals(
+        case "granularity" -> Assertions.assertEqual(
             expected, MetricGranularity.valueOf(actual.toString()));
-        case "unitOfMeasurement" -> Assertions.assertEquals(
+        case "unitOfMeasurement" -> Assertions.assertEqual(
             expected, MetricUnitOfMeasurement.valueOf(actual.toString()));
-        case "metricType" -> Assertions.assertEquals(
+        case "metricType" -> Assertions.assertEqual(
             expected, MetricType.valueOf(actual.toString()));
         default -> assertCommonFieldChange(fieldName, expected, actual);
       }

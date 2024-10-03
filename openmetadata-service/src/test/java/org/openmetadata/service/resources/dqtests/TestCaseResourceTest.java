@@ -17,7 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -340,7 +340,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     Map<String, String> queryParams = Map.of("fields", Entity.TEST_CASE_RESULT);
     testCase = getTestCase(testCase.getFullyQualifiedName(), queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(testCaseResult, testCase.getTestCaseResult());
+    assertEqual(testCaseResult, testCase.getTestCaseResult());
 
     ResultList<TestCase> testcases =
         listEntitiesFromSearch(Map.of("fields", "testCaseResult"), 100, 0, ADMIN_AUTH_HEADERS);
@@ -351,7 +351,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .findFirst()
             .orElse(null);
     assertNotNull(testCaseFromSearch);
-    assertEquals(testCaseResult, testCaseFromSearch.getTestCaseResult());
+    assertEqual(testCaseResult, testCaseFromSearch.getTestCaseResult());
 
     // insert test case for a past date
     createTestCaseResult =
@@ -361,7 +361,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-01"));
     postTestCaseResult(testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
     testCase = getTestCase(testCase.getFullyQualifiedName(), queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(testCaseResult, testCase.getTestCaseResult());
+    assertEqual(testCaseResult, testCase.getTestCaseResult());
 
     testCaseFromSearch =
         testcases.getData().stream()
@@ -369,7 +369,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .findFirst()
             .orElse(null);
     assertNotNull(testCaseFromSearch);
-    assertEquals(testCaseResult, testCaseFromSearch.getTestCaseResult());
+    assertEqual(testCaseResult, testCaseFromSearch.getTestCaseResult());
 
     // insert test case for a future date
     createTestCaseResult =
@@ -381,7 +381,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         postTestCaseResult(
             testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
     testCase = getTestCase(testCase.getFullyQualifiedName(), queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(futureTestCaseResult, testCase.getTestCaseResult());
+    assertEqual(futureTestCaseResult, testCase.getTestCaseResult());
 
     testCaseFromSearch =
         testcases.getData().stream()
@@ -389,13 +389,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .findFirst()
             .orElse(null);
     assertNotNull(testCaseFromSearch);
-    assertEquals(testCaseResult, testCaseFromSearch.getTestCaseResult());
+    assertEqual(testCaseResult, testCaseFromSearch.getTestCaseResult());
 
     // delete the future test case
     deleteTestCaseResult(
         testCase.getFullyQualifiedName(), futureTestCaseResult.getTimestamp(), ADMIN_AUTH_HEADERS);
     testCase = getTestCase(testCase.getFullyQualifiedName(), queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(testCaseResult, testCase.getTestCaseResult());
+    assertEqual(testCaseResult, testCase.getTestCaseResult());
 
     testCaseFromSearch =
         testcases.getData().stream()
@@ -403,7 +403,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .findFirst()
             .orElse(null);
     assertNotNull(testCaseFromSearch);
-    assertEquals(testCaseResult, testCaseFromSearch.getTestCaseResult());
+    assertEqual(testCaseResult, testCaseFromSearch.getTestCaseResult());
   }
 
   @Test
@@ -437,7 +437,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     ResultList<TestCase> maskedTestCases =
         getTestCases(queryParamsTwo, authHeaders(USER2_REF.getName()));
     assertNull(maskedTestCases.getData().get(0).getDescription());
-    assertEquals(0, maskedTestCases.getData().get(0).getParameterValues().size());
+    assertEqual(0, maskedTestCases.getData().get(0).getParameterValues().size());
   }
 
   private CreateTable getSensitiveTableReq(TestInfo test, TableResourceTest tableResourceTest) {
@@ -689,10 +689,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     Map<String, String> queryParams = new HashMap<>();
     ResultList<TestCase> allEntities =
         listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(testCasesNum, allEntities.getData().size());
+    assertEqual(testCasesNum, allEntities.getData().size());
     queryParams.put("q", "test_getSimpleListFromSearchc");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(1, allEntities.getData().size());
+    assertEqual(1, allEntities.getData().size());
     org.assertj.core.api.Assertions.assertThat(allEntities.getData().get(0).getName())
         .contains("test_getSimpleListFromSearchc");
 
@@ -700,20 +700,20 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("entityLink", testCaseForEL.getEntityLink());
     queryParams.put("includeAllTests", "true");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(1, allEntities.getData().size());
+    assertEqual(1, allEntities.getData().size());
     org.assertj.core.api.Assertions.assertThat(allEntities.getData().get(0).getEntityLink())
         .contains(testCaseForEL.getEntityLink());
 
     queryParams.clear();
     queryParams.put("testPlatforms", TestPlatform.DEEQU.value());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         0, allEntities.getData().size()); // we don't have any test cases with DEEQU platform
 
     queryParams.clear();
     queryParams.put("testPlatforms", TestPlatform.OPEN_METADATA.value());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         testCasesNum,
         allEntities.getData().size()); // we have all test cases with OPEN_METADATA platform
 
@@ -721,18 +721,18 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put(
         "testPlatforms", String.format("%s,%s", TestPlatform.OPEN_METADATA, TestPlatform.DEEQU));
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         testCasesNum, allEntities.getData().size()); // Should return either values matching
 
     queryParams.clear();
     queryParams.put("owner", USER2_REF.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(3, allEntities.getData().size()); // we have 3 test cases with USER2_REF as owner ,
+    assertEqual(3, allEntities.getData().size()); // we have 3 test cases with USER2_REF as owner ,
     // patch_entityUpdateOwnerFromNull_200 also adds owner
 
     queryParams.put("owner", USER_TEAM21.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         1,
         allEntities
             .getData()
@@ -887,10 +887,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("includeAllTests", "true");
     queryParams.put("fields", "domain,owners,tags");
     ResultList<TestCase> testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(2, testCases.getData().size());
+    assertEqual(2, testCases.getData().size());
     for (TestCase testCase : testCases.getData()) {
       assertOwners(table.getOwners(), testCase.getOwners());
-      assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
+      assertEqual(table.getDomain().getId(), testCase.getDomain().getId());
       List<TagLabel> tags = testCase.getTags();
       HashSet<String> actualTags =
           tags.stream().map(TagLabel::getName).collect(Collectors.toCollection(HashSet::new));
@@ -906,7 +906,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         expectedTags =
             new HashSet<>(List.of(PERSONAL_DATA_TAG_LABEL.getName(), TIER1_TAG_LABEL.getName()));
       }
-      assertEquals(expectedTags, actualTags);
+      assertEqual(expectedTags, actualTags);
     }
 
     createTable.setOwners(List.of(USER2_REF));
@@ -925,7 +925,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     for (TestCase testCase : testCases.getData()) {
       assertOwners(table.getOwners(), testCase.getOwners());
-      assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
+      assertEqual(table.getDomain().getId(), testCase.getDomain().getId());
       List<TagLabel> tags = testCase.getTags();
       HashSet<String> actualTags =
           tags.stream().map(TagLabel::getName).collect(Collectors.toCollection(HashSet::new));
@@ -935,7 +935,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         expectedTagsList.addAll(table.getColumns().get(0).getTags());
       }
       expectedTags = new HashSet<>(expectedTagsList.stream().map(TagLabel::getName).toList());
-      assertEquals(expectedTags, actualTags);
+      assertEqual(expectedTags, actualTags);
     }
   }
 
@@ -1037,7 +1037,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("fields", "*");
     queryParams.put("testSuiteId", logicalTestSuite.getId().toString());
     ResultList<TestCase> logicalTestSuiteTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(testCases.size(), logicalTestSuiteTestCases.getData().size());
+    assertEqual(testCases.size(), logicalTestSuiteTestCases.getData().size());
 
     // Delete a logical test case and check that it is deleted from the logical test suite but not
     // from the executable test suite
@@ -1049,7 +1049,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("testSuiteId", executableTestSuite.getId().toString());
     ResultList<TestCase> executableTestSuiteTestCases =
         getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(testCases.size(), executableTestSuiteTestCases.getData().size());
+    assertEqual(testCases.size(), executableTestSuiteTestCases.getData().size());
 
     // Soft Delete a test case from the executable test suite and check that it is deleted from the
     // executable test suite and from the logical test suite
@@ -1057,26 +1057,26 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     deleteEntity(executableTestCaseIdToDelete, false, false, ADMIN_AUTH_HEADERS);
     queryParams.put("testSuiteId", logicalTestSuite.getId().toString());
     logicalTestSuiteTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(3, logicalTestSuiteTestCases.getData().size());
+    assertEqual(3, logicalTestSuiteTestCases.getData().size());
     assertTrue(assertTestCaseIdNotInList(logicalTestSuiteTestCases, executableTestCaseIdToDelete));
 
     queryParams.put("includeAllTests", true);
     queryParams.put("include", "all");
     logicalTestSuiteTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(4, logicalTestSuiteTestCases.getData().size());
+    assertEqual(4, logicalTestSuiteTestCases.getData().size());
 
     queryParams.put("testSuiteId", executableTestSuite.getId().toString());
     queryParams.remove("includeAllTests");
     queryParams.remove("include");
     executableTestSuiteTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(4, executableTestSuiteTestCases.getData().size());
+    assertEqual(4, executableTestSuiteTestCases.getData().size());
     assertTrue(
         assertTestCaseIdNotInList(executableTestSuiteTestCases, executableTestCaseIdToDelete));
 
     queryParams.put("includeAllTests", true);
     queryParams.put("include", "all");
     executableTestSuiteTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(5, executableTestSuiteTestCases.getData().size());
+    assertEqual(5, executableTestSuiteTestCases.getData().size());
 
     // Hard Delete a test case from the executable test suite and check that it is deleted from the
     // executable test suite and from the logical test suite
@@ -1084,12 +1084,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     queryParams.put("testSuiteId", logicalTestSuite.getId().toString());
     logicalTestSuiteTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(3, logicalTestSuiteTestCases.getData().size());
+    assertEqual(3, logicalTestSuiteTestCases.getData().size());
     assertTrue(assertTestCaseIdNotInList(logicalTestSuiteTestCases, executableTestCaseIdToDelete));
 
     queryParams.put("testSuiteId", executableTestSuite.getId().toString());
     executableTestSuiteTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(4, executableTestSuiteTestCases.getData().size());
+    assertEqual(4, executableTestSuiteTestCases.getData().size());
     assertTrue(
         assertTestCaseIdNotInList(executableTestSuiteTestCases, executableTestCaseIdToDelete));
   }
@@ -1119,10 +1119,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     TestCase testCaseWithSuites =
         getEntityByName(testCase.getFullyQualifiedName(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         executableTestSuite.getFullyQualifiedName(),
         testCaseWithSuites.getTestSuite().getFullyQualifiedName());
-    assertEquals(2, testCaseWithSuites.getTestSuites().size());
+    assertEqual(2, testCaseWithSuites.getTestSuites().size());
 
     // Verify both our testSuites are in the list of TestSuite Entities
     Map<String, TestSuite> testSuiteFQNs = new HashMap<>();
@@ -1166,7 +1166,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Get the test case failure statuses
     ResultList<TestCaseResolutionStatus> testCaseFailureStatusResultList =
         getTestCaseFailureStatus(startTs, endTs, null, null);
-    assertEquals(4, testCaseFailureStatusResultList.getData().size());
+    assertEqual(4, testCaseFailureStatusResultList.getData().size());
 
     List<TestCaseResolutionStatus> ackStatuses =
         testCaseFailureStatusResultList.getData().stream()
@@ -1188,7 +1188,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .map(TestCaseResolutionStatus::getStateId)
             .toList();
     Set<UUID> stateIdSet = new HashSet<>(stateIds);
-    assertEquals(2, stateIdSet.size());
+    assertEqual(2, stateIdSet.size());
 
     TestCaseResolutionStatus testCaseResolutionStatus =
         testCaseFailureStatusResultList.getData().get(0);
@@ -1197,19 +1197,19 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Get the test case failure statuses by ID
     TestCaseResolutionStatus storedTestCaseResolution =
         getTestCaseFailureStatusById(testCaseResolutionStatus.getId());
-    assertEquals(storedTestCaseResolution.getId(), testCaseResolutionStatus.getId());
+    assertEqual(storedTestCaseResolution.getId(), testCaseResolutionStatus.getId());
 
     // Get the test case failure statuses by sequence ID
     ResultList<TestCaseResolutionStatus> storedTestCaseResolutions =
         getTestCaseFailureStatusByStateId(stateId);
-    assertEquals(2, storedTestCaseResolutions.getData().size());
-    assertEquals(stateId, storedTestCaseResolutions.getData().get(0).getStateId());
+    assertEqual(2, storedTestCaseResolutions.getData().size());
+    assertEqual(stateId, storedTestCaseResolutions.getData().get(0).getStateId());
 
     // Get the test case resolution statuses by status type
     storedTestCaseResolutions =
         getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
-    assertEquals(2, storedTestCaseResolutions.getData().size());
-    assertEquals(
+    assertEqual(2, storedTestCaseResolutions.getData().size());
+    assertEqual(
         TestCaseResolutionStatusTypes.Ack,
         storedTestCaseResolutions.getData().get(0).getTestCaseResolutionStatusType());
 
@@ -1234,12 +1234,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       TestCase testCase = getEntity(testCaseReference.getId(), ADMIN_AUTH_HEADERS);
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(testCase.getEntityLink());
-      assertEquals(entityLink.getEntityFQN(), TEST_TABLE1.getFullyQualifiedName());
+      assertEqual(entityLink.getEntityFQN(), TEST_TABLE1.getFullyQualifiedName());
     }
 
     queryParams.put("originEntityFQN", "IDONOTEXIST123");
     storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, null, null, queryParams);
-    assertEquals(0, storedTestCaseResolutions.getData().size());
+    assertEqual(0, storedTestCaseResolutions.getData().size());
 
     // Delete test case recursively and check that the test case resolution status is also deleted
     // 1. soft delete - should not delete the test case resolution status
@@ -1247,7 +1247,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     deleteEntity(testCaseEntity1.getId(), true, false, ADMIN_AUTH_HEADERS);
     storedTestCaseResolutions =
         getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
-    assertEquals(2, storedTestCaseResolutions.getData().size());
+    assertEqual(2, storedTestCaseResolutions.getData().size());
     assertTrue(
         storedTestCaseResolutions.getData().stream()
             .anyMatch(t -> t.getTestCaseReference().getId().equals(testCaseEntity1.getId())));
@@ -1255,7 +1255,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     deleteEntity(testCaseEntity1.getId(), true, true, ADMIN_AUTH_HEADERS);
     storedTestCaseResolutions =
         getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Ack);
-    assertEquals(1, storedTestCaseResolutions.getData().size());
+    assertEqual(1, storedTestCaseResolutions.getData().size());
     assertTrue(
         storedTestCaseResolutions.getData().stream()
             .noneMatch(t -> t.getTestCaseReference().getId().equals(testCaseEntity1.getId())));
@@ -1314,9 +1314,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TestCaseResolutionStatus stored = getTestCaseFailureStatus(testCaseFailureStatus.getId());
 
     // check our patch fields have been updated
-    assertEquals(patched.getUpdatedAt(), stored.getUpdatedAt());
-    assertEquals(patched.getUpdatedBy(), stored.getUpdatedBy());
-    assertEquals(patched.getSeverity(), stored.getSeverity());
+    assertEqual(patched.getUpdatedAt(), stored.getUpdatedAt());
+    assertEqual(patched.getUpdatedBy(), stored.getUpdatedBy());
+    assertEqual(patched.getSeverity(), stored.getSeverity());
   }
 
   @Test
@@ -1373,8 +1373,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .feedDAO()
             .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
     Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
-    assertEquals(TaskStatus.Open, thread.getTask().getStatus());
+    assertEqual(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
+    assertEqual(TaskStatus.Open, thread.getTask().getStatus());
 
     // resolve the task. The old task should be closed and the latest test case resolution status
     // should be updated (resolved) with the same state ID
@@ -1391,7 +1391,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
     thread = JsonUtils.readValue(jsonThread, Thread.class);
     // Confirm that the task is closed
-    assertEquals(TaskStatus.Closed, thread.getTask().getStatus());
+    assertEqual(TaskStatus.Closed, thread.getTask().getStatus());
 
     // We'll confirm that we have created a new test case resolution status with the same state ID
     // and type Resolved
@@ -1403,20 +1403,20 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             startTs,
             System.currentTimeMillis(),
             testCaseEntity.getFullyQualifiedName());
-    assertEquals(1, mostRecentTestCaseResolutionStatus.getData().size());
+    assertEqual(1, mostRecentTestCaseResolutionStatus.getData().size());
     TestCaseResolutionStatus mostRecentTestCaseResolutionStatusData =
         mostRecentTestCaseResolutionStatus.getData().get(0);
-    assertEquals(
+    assertEqual(
         TestCaseResolutionStatusTypes.Resolved,
         mostRecentTestCaseResolutionStatusData.getTestCaseResolutionStatusType());
-    assertEquals(
+    assertEqual(
         assignedIncident.getStateId(), mostRecentTestCaseResolutionStatusData.getStateId());
     Resolved resolved =
         JsonUtils.convertValue(
             mostRecentTestCaseResolutionStatusData.getTestCaseResolutionStatusDetails(),
             Resolved.class);
-    assertEquals(TestCaseFailureReasonType.FalsePositive, resolved.getTestCaseFailureReason());
-    assertEquals("False positive, test case was valid", resolved.getTestCaseFailureComment());
+    assertEqual(TestCaseFailureReasonType.FalsePositive, resolved.getTestCaseFailureReason());
+    assertEqual("False positive, test case was valid", resolved.getTestCaseFailureComment());
   }
 
   @Test
@@ -1450,8 +1450,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .feedDAO()
             .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
     Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
-    assertEquals(TaskStatus.Open, thread.getTask().getStatus());
+    assertEqual(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
+    assertEqual(TaskStatus.Open, thread.getTask().getStatus());
 
     // close the task. The old task should be closed and the latest test case resolution status
     // should be updated (resolved) with the same state ID.
@@ -1465,7 +1465,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .feedDAO()
             .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
     thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(TaskStatus.Closed, thread.getTask().getStatus());
+    assertEqual(TaskStatus.Closed, thread.getTask().getStatus());
 
     // We'll confirm that we have created a new test case resolution status with the same state ID
     // and type Assigned
@@ -1477,13 +1477,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             startTs,
             System.currentTimeMillis(),
             testCaseEntity.getFullyQualifiedName());
-    assertEquals(1, mostRecentTestCaseResolutionStatus.getData().size());
+    assertEqual(1, mostRecentTestCaseResolutionStatus.getData().size());
     TestCaseResolutionStatus mostRecentTestCaseResolutionStatusData =
         mostRecentTestCaseResolutionStatus.getData().get(0);
-    assertEquals(
+    assertEqual(
         TestCaseResolutionStatusTypes.Resolved,
         mostRecentTestCaseResolutionStatusData.getTestCaseResolutionStatusType());
-    assertEquals(
+    assertEqual(
         assignedIncident.getStateId(), mostRecentTestCaseResolutionStatusData.getStateId());
     mostRecentTestCaseResolutionStatusData.getMetrics().stream()
         .filter(m -> m.getName().equals("timeToResolution"))
@@ -1519,8 +1519,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .feedDAO()
             .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
     Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(TaskStatus.Open, thread.getTask().getStatus());
-    assertEquals(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
+    assertEqual(TaskStatus.Open, thread.getTask().getStatus());
+    assertEqual(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
 
     // Create a new test case resolution status with type Resolved
     // and confirm the task is closed
@@ -1536,7 +1536,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     jsonThread = Entity.getCollectionDAO().feedDAO().findById(thread.getId());
     thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(TaskStatus.Closed, thread.getTask().getStatus());
+    assertEqual(TaskStatus.Closed, thread.getTask().getStatus());
   }
 
   @Test
@@ -1635,34 +1635,34 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("testSuiteId", testSuite.getId().toString());
     // Assert we get all 15 test cases
     ResultList<TestCase> testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(testCaseEntries, testCases.getData().size());
+    assertEqual(testCaseEntries, testCases.getData().size());
 
     // Assert we get 8 failed test cases
     queryParams.put("testCaseStatus", TestCaseStatus.Failed);
     testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(8, testCases.getData().size());
+    assertEqual(8, testCases.getData().size());
 
     // Assert we get 7 success test cases
     queryParams.put("testCaseStatus", TestCaseStatus.Success);
     testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(6, testCases.getData().size());
+    assertEqual(6, testCases.getData().size());
 
     // Assert we get 1 aborted test cases
     queryParams.put("testCaseStatus", TestCaseStatus.Aborted);
     testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(1, testCases.getData().size());
+    assertEqual(1, testCases.getData().size());
 
     queryParams.remove("testCaseStatus");
 
     // Assert we get 7 column level test cases
     queryParams.put("testCaseType", "column");
     testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(8, testCases.getData().size());
+    assertEqual(8, testCases.getData().size());
 
     // Assert we get 8 table level test cases
     queryParams.put("testCaseType", "table");
     testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(7, testCases.getData().size());
+    assertEqual(7, testCases.getData().size());
   }
 
   @Test
@@ -1914,7 +1914,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .anyMatch(MASKED_VALUE::equals));
     // assert values are masked when is not the table owner
     data = getSampleData(testCase.getId(), authHeaders(USER2.getName()));
-    assertEquals(
+    assertEqual(
         3,
         data.getRows().stream()
             .flatMap(List::stream)
@@ -1938,7 +1938,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     String inspectionQuery = "SELECT * FROM test_table WHERE column1 = 'value1'";
     putInspectionQuery(testCase, inspectionQuery);
     TestCase updated = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-    assertEquals(updated.getInspectionQuery(), inspectionQuery);
+    assertEqual(updated.getInspectionQuery(), inspectionQuery);
   }
 
   @Test
@@ -2170,11 +2170,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
             .findFirst()
             .orElse(null);
-    assertEquals(
+    assertEqual(
         TestUtils.dateToTimestamp("2023-08-15"), storedTestCase.getTestCaseResult().getTimestamp());
-    assertEquals(1, storedTestSuite.getSummary().getTotal());
+    assertEqual(1, storedTestSuite.getSummary().getTotal());
     if (testSuiteResultSummary != null)
-      assertEquals(TestUtils.dateToTimestamp("2023-08-15"), testSuiteResultSummary.getTimestamp());
+      assertEqual(TestUtils.dateToTimestamp("2023-08-15"), testSuiteResultSummary.getTimestamp());
 
     // delete latest and check that result is the  new latest (i.e. the 14th)
     deleteTestCaseResult(
@@ -2188,11 +2188,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
             .findFirst()
             .orElse(null);
-    assertEquals(
+    assertEqual(
         TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
-    assertEquals(1, storedTestSuite.getSummary().getTotal());
+    assertEqual(1, storedTestSuite.getSummary().getTotal());
     if (testSuiteResultSummary != null)
-      assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
+      assertEqual(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
 
     // delete the 13h and check that result is still the 14th
     deleteTestCaseResult(
@@ -2206,11 +2206,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .findFirst()
             .orElse(null);
     storedTestCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
-    assertEquals(1, storedTestSuite.getSummary().getTotal());
+    assertEqual(1, storedTestSuite.getSummary().getTotal());
     if (testSuiteResultSummary != null)
-      assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
+      assertEqual(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
 
     // Patch the test case result adding the resolved status
     TestCaseResult testCaseResult = storedTestCase.getTestCaseResult();
@@ -2232,11 +2232,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .filter(t -> t.getTestCaseName().equals(testCase.getFullyQualifiedName()))
             .findFirst()
             .orElse(null);
-    assertEquals(
+    assertEqual(
         TestUtils.dateToTimestamp("2023-08-16"), storedTestCase.getTestCaseResult().getTimestamp());
-    assertEquals(1, storedTestSuite.getSummary().getTotal());
+    assertEqual(1, storedTestSuite.getSummary().getTotal());
     if (testSuiteResultSummary != null)
-      assertEquals(TestUtils.dateToTimestamp("2023-08-16"), testSuiteResultSummary.getTimestamp());
+      assertEqual(TestUtils.dateToTimestamp("2023-08-16"), testSuiteResultSummary.getTimestamp());
 
     // Add a new test case
     CreateTestCase create = createRequest(test, 3);
@@ -2256,11 +2256,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
 
     storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
-    assertEquals(2, storedTestSuite.getTestCaseResultSummary().size());
+    assertEqual(2, storedTestSuite.getTestCaseResultSummary().size());
 
     deleteEntity(testCase1.getId(), true, true, ADMIN_AUTH_HEADERS);
     storedTestSuite = testSuiteResourceTest.getEntity(testSuiteId, "*", ADMIN_AUTH_HEADERS);
-    assertEquals(1, storedTestSuite.getTestCaseResultSummary().size());
+    assertEqual(1, storedTestSuite.getTestCaseResultSummary().size());
   }
 
   @Test
@@ -2296,7 +2296,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     result = getTestCase(testCaseEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
     assertNotNull(result.getIncidentId());
-    assertEquals(incidentId, result.getIncidentId());
+    assertEqual(incidentId, result.getIncidentId());
 
     // Add a new failed result, which will create a NEW incident and start a new stateId
     postTestCaseResult(
@@ -2352,7 +2352,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 TestUtils.dateToTimestamp("2023-12-31"),
                 ADMIN_AUTH_HEADERS)
             .getData();
-    assertEquals(newIncidentId, testCaseResults.get(0).getIncidentId());
+    assertEqual(newIncidentId, testCaseResults.get(0).getIncidentId());
     assertNull(result.getIncidentId());
   }
 
@@ -2390,7 +2390,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             TestUtils.dateToTimestamp("2021-09-09"),
             ADMIN_AUTH_HEADERS);
 
-    assertEquals(
+    assertEqual(
         TestCaseStatus.Failed,
         testCaseResultResultListUpdated.getData().get(0).getTestCaseStatus());
   }
@@ -2470,7 +2470,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             TestUtils.dateToTimestamp("2021-10-01"),
             TestUtils.dateToTimestamp("2021-10-30"),
             ADMIN_AUTH_HEADERS);
-    assertEquals(resultList.getData().size(), 0); // hard deletion should delete existing results
+    assertEqual(resultList.getData().size(), 0); // hard deletion should delete existing results
 
     if (supportsSearchIndex) {
       getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
@@ -2536,7 +2536,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           assertEntityPagination(allEntities.getData(), forwardPage, limit, offset);
 
           if (pageCount == 0) { // First page is being returned. Offset should be 0
-            assertEquals(offset, 0);
+            assertEqual(offset, 0);
           } else {
             // Make sure scrolling back based on offset - limit cursor returns the correct result
             listTestCaseResultsFromSearch(
@@ -2550,7 +2550,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
         // We reached the end of the page check total cum number matches total records and paginate
         // backward
-        assertEquals(totalRecords, cumEntityCount);
+        assertEqual(totalRecords, cumEntityCount);
 
         pageCount = 0;
         cumEntityCount = 0;
@@ -2729,20 +2729,20 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
 
     for (Map.Entry<String, Integer> entry : map.entrySet()) {
-      assertEquals(entry.getValue(), testSummaryMap.get(entry.getKey()));
+      assertEqual(entry.getValue(), testSummaryMap.get(entry.getKey()));
     }
 
     if (testSuiteId != null) {
       // we validate column summary is set properly when requesting summary at the column level
       List<ColumnTestSummaryDefinition> columnTestSummary = testSummary.getColumnTestSummary();
-      assertEquals(columnsMap.size(), columnTestSummary.size());
+      assertEqual(columnsMap.size(), columnTestSummary.size());
       for (ColumnTestSummaryDefinition columnTestSummaryDefinition : columnTestSummary) {
         HashMap<String, Integer> columnSummary =
             JsonUtils.convertValue(columnTestSummaryDefinition, HashMap.class);
         HashMap<String, Integer> columnMap =
             columnsMap.get(columnTestSummaryDefinition.getEntityLink());
         for (Map.Entry<String, Integer> entry : columnMap.entrySet()) {
-          assertEquals(entry.getValue(), columnSummary.get(entry.getKey()));
+          assertEqual(entry.getValue(), columnSummary.get(entry.getKey()));
         }
       }
     }
@@ -2772,8 +2772,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       ResultList<TestCaseResult> actualTestCaseResults,
       List<TestCaseResult> expectedTestCaseResults,
       int expectedCount) {
-    assertEquals(expectedCount, actualTestCaseResults.getPaging().getTotal());
-    assertEquals(expectedTestCaseResults.size(), actualTestCaseResults.getData().size());
+    assertEqual(expectedCount, actualTestCaseResults.getPaging().getTotal());
+    assertEqual(expectedTestCaseResults.size(), actualTestCaseResults.getData().size());
     Map<Long, TestCaseResult> testCaseResultMap = new HashMap<>();
     for (TestCaseResult result : actualTestCaseResults.getData()) {
       testCaseResultMap.put(result.getTimestamp(), result);
@@ -2788,8 +2788,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       ResultList<TestCase> actualTestCases,
       List<CreateTestCase> expectedTestCases,
       int expectedCount) {
-    assertEquals(expectedCount, actualTestCases.getPaging().getTotal());
-    assertEquals(expectedTestCases.size(), actualTestCases.getData().size());
+    assertEqual(expectedCount, actualTestCases.getPaging().getTotal());
+    assertEqual(expectedTestCases.size(), actualTestCases.getData().size());
     Map<String, TestCase> testCaseMap = new HashMap<>();
     for (TestCase result : actualTestCases.getData()) {
       testCaseMap.put(result.getName(), result);
@@ -2801,7 +2801,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private void verifyTestCaseResult(TestCaseResult expected, TestCaseResult actual) {
-    assertEquals(expected, actual); // Ignore id as set on create
+    assertEqual(expected, actual); // Ignore id as set on create
     try {
       verifyTestCaseResultInIndex(expected);
     } catch (IOException e) {
@@ -2859,22 +2859,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   public void validateCreatedEntity(
       TestCase createdEntity, CreateTestCase request, Map<String, String> authHeaders) {
     validateCommonEntityFields(createdEntity, request, getPrincipalName(authHeaders));
-    assertEquals(request.getEntityLink(), createdEntity.getEntityLink());
+    assertEqual(request.getEntityLink(), createdEntity.getEntityLink());
     assertReference(request.getTestSuite(), createdEntity.getTestSuite());
     assertReference(request.getTestDefinition(), createdEntity.getTestDefinition());
     assertReference(request.getTestSuite(), createdEntity.getTestSuite());
-    assertEquals(request.getParameterValues(), createdEntity.getParameterValues());
+    assertEqual(request.getParameterValues(), createdEntity.getParameterValues());
   }
 
   @Override
   public void compareEntities(
       TestCase expected, TestCase updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(expected, updated, getPrincipalName(authHeaders));
-    assertEquals(expected.getEntityLink(), updated.getEntityLink());
-    assertEquals(expected.getTestSuite(), updated.getTestSuite());
-    assertEquals(expected.getTestDefinition(), updated.getTestDefinition());
-    assertEquals(expected.getTestSuite(), updated.getTestSuite());
-    assertEquals(expected.getParameterValues(), updated.getParameterValues());
+    assertEqual(expected.getEntityLink(), updated.getEntityLink());
+    assertEqual(expected.getTestSuite(), updated.getTestSuite());
+    assertEqual(expected.getTestDefinition(), updated.getTestDefinition());
+    assertEqual(expected.getTestSuite(), updated.getTestSuite());
+    assertEqual(expected.getParameterValues(), updated.getParameterValues());
   }
 
   @Override
@@ -2902,7 +2902,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       return;
     }
     if (fieldName.equals("parameterValues")) {
-      assertEquals(JsonUtils.pojoToJson(expected), JsonUtils.pojoToJson(actual));
+      assertEqual(JsonUtils.pojoToJson(expected), JsonUtils.pojoToJson(actual));
     } else if (fieldName.equals("testDefinition")) {
       assertEntityReferenceFieldChange(expected, actual);
     } else {
@@ -3154,7 +3154,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertNotEquals(testCaseResultResultList.getData().size(), 0);
     testCaseResultResultList
         .getData()
-        .forEach(testCaseResult -> assertEquals(testCaseResult.getTimestamp(), ts));
+        .forEach(testCaseResult -> assertEqual(testCaseResult.getTimestamp(), ts));
 
     queryParams.clear();
     queryParams.put("dataQualityDimension", "Completeness");
@@ -3170,7 +3170,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               EntityReference testDefinition = testCaseResult.getTestDefinition();
               TestDefinition td =
                   Entity.getEntity(TEST_DEFINITION, testDefinition.getId(), "", Include.ALL);
-              assertEquals(td.getDataQualityDimension(), DataQualityDimensions.COMPLETENESS);
+              assertEqual(td.getDataQualityDimension(), DataQualityDimensions.COMPLETENESS);
             });
 
     queryParams.clear();
@@ -3190,7 +3190,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private void putInspectionQuery(TestCase testCase, String sql) throws IOException {
     TestCase putResponse = putInspectionQuery(testCase.getId(), sql, ADMIN_AUTH_HEADERS);
-    assertEquals(sql, putResponse.getInspectionQuery());
+    assertEqual(sql, putResponse.getInspectionQuery());
   }
 
   private void putFailedRowsSample(
@@ -3212,10 +3212,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TableData tableData = new TableData().withColumns(columns).withRows(rows);
     TestCase putResponse =
         putFailedRowsSample(testCase.getId(), tableData, authHeaders, queryParams);
-    assertEquals(tableData, putResponse.getFailedRowsSample());
+    assertEqual(tableData, putResponse.getFailedRowsSample());
 
     TableData data = getSampleData(testCase.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(tableData, data);
+    assertEqual(tableData, data);
   }
 
   private void deleteFailedRowsSample(TestCase testCase) throws IOException {

@@ -2,7 +2,7 @@ package org.openmetadata.service.resources.docstore;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.Entity.DOCUMENT;
@@ -116,10 +116,10 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
             Response.Status.OK,
             ADMIN_AUTH_HEADERS);
     assertFalse(validateResponse.getIsValid());
-    assertEquals(
+    assertEqual(
         validateResponse.getMissingPlaceholder().size(),
         emailVerificationStoreTemplatePlaceHolders.size());
-    assertEquals(validateResponse.getAdditionalPlaceholder().size(), placeholderList.size());
+    assertEqual(validateResponse.getAdditionalPlaceholder().size(), placeholderList.size());
 
     assertThrows(
         HttpResponseException.class,
@@ -141,16 +141,16 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
             Response.Status.OK,
             ADMIN_AUTH_HEADERS);
     assertFalse(validateResponse2.getIsValid());
-    assertEquals(
+    assertEqual(
         validateResponse2.getMissingPlaceholder().size(),
         emailVerificationStoreTemplatePlaceHolders.size() - 1);
-    assertEquals(validateResponse2.getAdditionalPlaceholder().size(), 1);
+    assertEqual(validateResponse2.getAdditionalPlaceholder().size(), 1);
 
     Response errorResponse =
         SecurityUtil.addHeaders(getResource("docStore"), ADMIN_AUTH_HEADERS)
             .method("PUT", Entity.entity(create, MediaType.APPLICATION_JSON));
 
-    assertEquals(errorResponse.getStatus(), BAD_REQUEST.getStatusCode());
+    assertEqual(errorResponse.getStatus(), BAD_REQUEST.getStatusCode());
 
     // Push Valid Template
     String newUpdatedTemplate =
@@ -163,12 +163,12 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
         SecurityUtil.addHeaders(getResource("docStore"), ADMIN_AUTH_HEADERS)
             .method("PUT", Entity.entity(create, MediaType.APPLICATION_JSON));
 
-    assertEquals(validResp.getStatus(), Response.Status.OK.getStatusCode());
+    assertEqual(validResp.getStatus(), Response.Status.OK.getStatusCode());
 
     Document updatedTemplateInDb = getEntityByName(EMAIL_VERIFICATION_TEMPLATE, ADMIN_AUTH_HEADERS);
     EmailTemplate updatedEmailTemplate =
         JsonUtils.convertValue(updatedTemplateInDb.getData(), EmailTemplate.class);
-    assertEquals(updatedEmailTemplate.getTemplate(), newUpdatedTemplate);
+    assertEqual(updatedEmailTemplate.getTemplate(), newUpdatedTemplate);
   }
 
   @Test
@@ -265,7 +265,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     queryParams.put(
         "fqnPrefix", FullyQualifiedName.build(knowledgePanel.getEntityType().toString()));
     ResultList<Document> panelList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(panelDocs.size() + 7, panelList.getPaging().getTotal());
+    assertEqual(panelDocs.size() + 7, panelList.getPaging().getTotal());
 
     // docs
     List<Document> pageDocs = new ArrayList<>();
@@ -314,7 +314,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
         FullyQualifiedName.build(
             PERSONA, DATA_SCIENTIST.getFullyQualifiedName(), page.getEntityType().toString()));
     ResultList<Document> docList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(pageDocs.size(), docList.getPaging().getTotal());
+    assertEqual(pageDocs.size(), docList.getPaging().getTotal());
   }
 
   @Test
@@ -369,10 +369,10 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
       Object data,
       String expectedUpdatedBy) {
     assertListNotNull(doc.getId(), doc.getHref());
-    assertEquals(expectedDescription, doc.getDescription());
-    assertEquals(expectedUpdatedBy, doc.getUpdatedBy());
-    assertEquals(expectedDisplayName, doc.getDisplayName());
-    assertEquals(data, doc.getData());
+    assertEqual(expectedDescription, doc.getDescription());
+    assertEqual(expectedUpdatedBy, doc.getUpdatedBy());
+    assertEqual(expectedDisplayName, doc.getDisplayName());
+    assertEqual(data, doc.getData());
   }
 
   @Test
@@ -416,9 +416,9 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
   @Override
   public void compareEntities(
       Document expected, Document updated, Map<String, String> authHeaders) {
-    assertEquals(expected.getDisplayName(), updated.getDisplayName());
-    assertEquals(expected.getEntityType(), updated.getEntityType());
-    assertEquals(expected.getData(), updated.getData());
+    assertEqual(expected.getDisplayName(), updated.getDisplayName());
+    assertEqual(expected.getEntityType(), updated.getEntityType());
+    assertEqual(expected.getData(), updated.getData());
   }
 
   @Override
@@ -440,7 +440,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
 
   private void assertDocData(Object expected, Object actual) {
     Data data = (Data) expected;
-    assertEquals(
+    assertEqual(
         data.getAdditionalProperties(), JsonUtils.getMap(JsonUtils.readJson(actual.toString())));
   }
 }

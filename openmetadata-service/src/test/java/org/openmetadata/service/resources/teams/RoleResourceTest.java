@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
@@ -165,9 +165,9 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   private static void validateRole(
       Role role, String expectedDescription, String expectedDisplayName, String expectedUpdatedBy) {
     assertListNotNull(role.getId(), role.getHref());
-    assertEquals(expectedDescription, role.getDescription());
-    assertEquals(expectedUpdatedBy, role.getUpdatedBy());
-    assertEquals(expectedDisplayName, role.getDisplayName());
+    assertEqual(expectedDescription, role.getDescription());
+    assertEqual(expectedUpdatedBy, role.getUpdatedBy());
+    assertEqual(expectedDisplayName, role.getDisplayName());
   }
 
   @Override
@@ -239,7 +239,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Override
   public void compareEntities(Role expected, Role updated, Map<String, String> authHeaders) {
-    assertEquals(expected.getDisplayName(), updated.getDisplayName());
+    assertEqual(expected.getDisplayName(), updated.getDisplayName());
   }
 
   @Override

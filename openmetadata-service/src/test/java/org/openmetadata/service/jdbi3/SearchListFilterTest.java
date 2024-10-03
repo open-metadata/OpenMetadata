@@ -1,6 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.Entity;
@@ -13,7 +13,7 @@ public class SearchListFilterTest {
     String actual = searchListFilter.getCondition();
     String expected =
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"deleted\": \"false\"}}]}}}";
-    assertEquals(expected, actual);
+    assertEqual(expected, actual);
   }
 
   @Test
@@ -25,6 +25,6 @@ public class SearchListFilterTest {
     String actual = searchListFilter.getCondition(Entity.TEST_CASE);
     String expected =
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\",\"field3\",\"field4\"],\n\"include\": [\"field1\",\"field2\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"deleted\": \"false\"}},\n{\"term\": {\"testCaseResult.testCaseStatus\": \"failed\"}}]}}}";
-    assertEquals(expected, actual);
+    assertEqual(expected, actual);
   }
 }

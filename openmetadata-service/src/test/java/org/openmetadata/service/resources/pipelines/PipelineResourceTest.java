@@ -16,7 +16,7 @@ package org.openmetadata.service.resources.pipelines;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -133,10 +133,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   private void validateTasks(List<Task> expected, List<Task> actual) throws HttpResponseException {
     if (expected == null || actual == null) {
-      assertEquals(expected, actual);
+      assertEqual(expected, actual);
       return;
     }
-    assertEquals(expected.size(), actual.size());
+    assertEqual(expected.size(), actual.size());
     int i = 0;
     for (Task expectedTask : expected) {
       Task actualTask = actual.get(i);
@@ -155,7 +155,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   @Override
   public void compareEntities(Pipeline expected, Pipeline updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    assertEquals(expected.getDisplayName(), updated.getDisplayName());
+    assertEqual(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
     validateTasks(expected.getTasks(), updated.getTasks());
     TestUtils.validateTags(expected.getTags(), updated.getTags());
@@ -208,7 +208,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
       ResultList<Pipeline> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Pipeline db : list.getData()) {
-        assertEquals(service, db.getService().getFullyQualifiedName());
+        assertEqual(service, db.getService().getFullyQualifiedName());
       }
     }
   }
@@ -224,7 +224,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     create.setTasks(List.of(task));
     Pipeline created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Task actualTask = created.getTasks().get(0);
-    assertEquals("ta.sk", actualTask.getName());
+    assertEqual("ta.sk", actualTask.getName());
   }
 
   @Test
@@ -272,10 +272,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
         FullyQualifiedName.add(
             EntityInterfaceUtil.quoteName(AIRFLOW_REFERENCE.getName()),
             EntityInterfaceUtil.quoteName(pipeline.getName()));
-    assertEquals(pipelineURL, pipeline.getSourceUrl());
-    assertEquals(startDate, pipeline.getStartDate());
-    assertEquals(pipelineConcurrency, pipeline.getConcurrency());
-    assertEquals(expectedFQN, pipeline.getFullyQualifiedName());
+    assertEqual(pipelineURL, pipeline.getSourceUrl());
+    assertEqual(startDate, pipeline.getStartDate());
+    assertEqual(pipelineConcurrency, pipeline.getConcurrency());
+    assertEqual(expectedFQN, pipeline.getFullyQualifiedName());
   }
 
   @Test
@@ -595,7 +595,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             MINOR_UPDATE,
             change);
 
-    assertEquals(3, pipeline.getTasks().size());
+    assertEqual(3, pipeline.getTasks().size());
 
     List<Task> new_tasks = new ArrayList<>();
     for (int i = 1; i < 3; i++) { // remove task0
@@ -609,7 +609,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     }
     request.setTasks(new_tasks);
     pipeline = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
-    assertEquals(2, pipeline.getTasks().size());
+    assertEqual(2, pipeline.getTasks().size());
   }
 
   @Test
@@ -825,8 +825,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
       ResultList<PipelineStatus> actualStatuses,
       List<PipelineStatus> expectedStatuses,
       int expectedCount) {
-    assertEquals(expectedCount, actualStatuses.getPaging().getTotal());
-    assertEquals(expectedStatuses.size(), actualStatuses.getData().size());
+    assertEqual(expectedCount, actualStatuses.getPaging().getTotal());
+    assertEqual(expectedStatuses.size(), actualStatuses.getData().size());
     Map<Long, PipelineStatus> pipelineStatusMap = new HashMap<>();
     for (PipelineStatus result : actualStatuses.getData()) {
       pipelineStatusMap.put(result.getTimestamp(), result);
@@ -838,6 +838,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   private void verifyPipelineStatus(PipelineStatus actualStatus, PipelineStatus expectedStatus) {
-    assertEquals(actualStatus, expectedStatus);
+    assertEqual(actualStatus, expectedStatus);
   }
 }

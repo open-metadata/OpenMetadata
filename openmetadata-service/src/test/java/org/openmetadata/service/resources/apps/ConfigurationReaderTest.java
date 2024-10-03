@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.apps;
 
 import static org.junit.Assert.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import io.dropwizard.configuration.ConfigurationException;
@@ -27,16 +27,16 @@ public class ConfigurationReaderTest {
                 "value1"));
     AppPrivateConfig appConfig = reader.readConfigFromResource("TestApplication");
     assertNotNull(appConfig);
-    assertEquals("value1", appConfig.getParameters().getAdditionalProperties().get("key1"));
-    assertEquals("resolvedValue", appConfig.getParameters().getAdditionalProperties().get("key2"));
-    assertEquals("", appConfig.getParameters().getAdditionalProperties().get("emptyKey"));
-    assertEquals("default", appConfig.getParameters().getAdditionalProperties().get("defaultKey"));
+    assertEqual("value1", appConfig.getParameters().getAdditionalProperties().get("key1"));
+    assertEqual("resolvedValue", appConfig.getParameters().getAdditionalProperties().get("key2"));
+    assertEqual("", appConfig.getParameters().getAdditionalProperties().get("emptyKey"));
+    assertEqual("default", appConfig.getParameters().getAdditionalProperties().get("defaultKey"));
     Map<String, String> nested =
         (Map<String, String>) appConfig.getParameters().getAdditionalProperties().get("nested");
-    assertEquals("nestedValue", nested.get("nestedKey"));
+    assertEqual("nestedValue", nested.get("nestedKey"));
     List<String> list =
         (List<String>) appConfig.getParameters().getAdditionalProperties().get("list");
-    assertEquals("value1", list.get(1));
+    assertEqual("value1", list.get(1));
   }
 
   @Test

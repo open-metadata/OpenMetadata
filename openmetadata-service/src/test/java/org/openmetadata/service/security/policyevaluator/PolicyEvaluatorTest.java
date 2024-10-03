@@ -94,8 +94,8 @@ class PolicyEvaluatorTest {
 
     List<ResourcePermission> rpList = List.of(rp1, rp2);
     PolicyEvaluator.trimResourcePermissions(rpList);
-    assertEqualsPermissions(expectedOp1, rpList.get(0).getPermissions());
-    assertEqualsPermissions(expectedOp2, rpList.get(1).getPermissions());
+    assertEqualPermissions(expectedOp1, rpList.get(0).getPermissions());
+    assertEqualPermissions(expectedOp2, rpList.get(1).getPermissions());
   }
 
   @Test
@@ -106,7 +106,7 @@ class PolicyEvaluatorTest {
     ResourcePermission rp = getResourcePermission("testResource", Access.ALLOW, operations);
     ResourcePermission trimmedRp = PolicyEvaluator.trimResourcePermission(rp);
     List<MetadataOperation> expectedOperations = new ArrayList<>(List.of(ALL, VIEW_ALL, EDIT_ALL));
-    assertEqualsPermissions(expectedOperations, trimmedRp.getPermissions());
+    assertEqualPermissions(expectedOperations, trimmedRp.getPermissions());
   }
 
   @Test
@@ -116,7 +116,7 @@ class PolicyEvaluatorTest {
     List<MetadataOperation> expectedOperations =
         Arrays.asList(ALL, DELETE, CREATE, VIEW_ALL, EDIT_ALL);
     List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
-    assertEqualsPermissions(expectedOperations, actual);
+    assertEqualPermissions(expectedOperations, actual);
   }
 
   @Test
@@ -125,7 +125,7 @@ class PolicyEvaluatorTest {
     List<MetadataOperation> expectedOperations =
         Arrays.asList(ALL, DELETE, CREATE, VIEW_ALL, EDIT_ALL);
     List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
-    assertEqualsPermissions(expectedOperations, actual);
+    assertEqualPermissions(expectedOperations, actual);
   }
 
   @Test
@@ -140,7 +140,7 @@ class PolicyEvaluatorTest {
     updateAccess(permissions, VIEW_ALL, Access.NOT_ALLOW);
 
     List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
-    assertEqualsPermissions(expectedOperations, actual);
+    assertEqualPermissions(expectedOperations, actual);
   }
 
   @Test
@@ -155,7 +155,7 @@ class PolicyEvaluatorTest {
     updateAccess(permissions, EDIT_ALL, Access.CONDITIONAL_ALLOW);
 
     List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
-    assertEqualsPermissions(expectedOperations, actual);
+    assertEqualPermissions(expectedOperations, actual);
   }
 
   @Test
@@ -167,18 +167,18 @@ class PolicyEvaluatorTest {
     updateAccess(permissions, EDIT_ALL, Access.CONDITIONAL_DENY);
 
     List<Permission> actual = PolicyEvaluator.trimPermissions(permissions);
-    assertEqualsPermissions(expectedOperations, actual);
+    assertEqualPermissions(expectedOperations, actual);
   }
 
-  public static void assertEqualsPermissions(
+  public static void assertEqualPermissions(
       List<MetadataOperation> expectedOperations, List<Permission> actual) {
-    assertEquals(expectedOperations.size(), actual.size());
+    assertEqual(expectedOperations.size(), actual.size());
 
     Comparator<Permission> comparator = Comparator.comparing(Permission::getOperation);
     actual.sort(comparator);
     Collections.sort(expectedOperations);
     for (int i = 0; i < expectedOperations.size(); i++) {
-      assertEquals(expectedOperations.get(i).value(), actual.get(i).getOperation().value());
+      assertEqual(expectedOperations.get(i).value(), actual.get(i).getOperation().value());
     }
   }
 

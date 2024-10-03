@@ -14,7 +14,7 @@
 package org.openmetadata.service.security;
 
 import static java.lang.String.format;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -104,7 +104,7 @@ class JwtFilterTest {
         ArgumentCaptor.forClass(SecurityContext.class);
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
-    assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+    assertEqual("sam", securityContextArgument.getValue().getUserPrincipal().getName());
 
     // error case
     jwt =
@@ -139,7 +139,7 @@ class JwtFilterTest {
         ArgumentCaptor.forClass(SecurityContext.class);
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
-    assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+    assertEqual("sam", securityContextArgument.getValue().getUserPrincipal().getName());
   }
 
   @Test
@@ -158,7 +158,7 @@ class JwtFilterTest {
         ArgumentCaptor.forClass(SecurityContext.class);
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
-    assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+    assertEqual("sam", securityContextArgument.getValue().getUserPrincipal().getName());
   }
 
   @Test

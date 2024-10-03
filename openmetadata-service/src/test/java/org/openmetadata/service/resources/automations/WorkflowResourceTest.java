@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.automations;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -71,14 +71,14 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
     Map<String, String> params = new HashMap<>();
     params.put("workflowStatus", WorkflowStatus.SUCCESSFUL.value());
     ResultList<Workflow> resList = listEntities(params, ADMIN_AUTH_HEADERS);
-    assertEquals(1, resList.getData().size());
+    assertEqual(1, resList.getData().size());
   }
 
   @Override
   public void validateCreatedEntity(
       Workflow createdEntity, CreateWorkflow request, Map<String, String> authHeaders) {
-    assertEquals(request.getName(), createdEntity.getName());
-    assertEquals(request.getWorkflowType(), createdEntity.getWorkflowType());
+    assertEqual(request.getName(), createdEntity.getName());
+    assertEqual(request.getWorkflowType(), createdEntity.getWorkflowType());
     assertNotNull(createdEntity.getRequest());
     assertNotNull(createdEntity.getOpenMetadataServerConnection());
   }
@@ -86,9 +86,9 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
   @Override
   public void compareEntities(
       Workflow expected, Workflow updated, Map<String, String> authHeaders) {
-    assertEquals(expected.getName(), updated.getName());
-    assertEquals(expected.getWorkflowType(), updated.getWorkflowType());
-    assertEquals(expected.getStatus(), updated.getStatus());
+    assertEqual(expected.getName(), updated.getName());
+    assertEqual(expected.getWorkflowType(), updated.getWorkflowType());
+    assertEqual(expected.getStatus(), updated.getStatus());
   }
 
   @Override

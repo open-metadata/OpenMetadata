@@ -2,7 +2,7 @@ package org.openmetadata.service.resources.domains;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -163,7 +163,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   public void validateCreatedEntity(
       Domain createdEntity, CreateDomain request, Map<String, String> authHeaders) {
     // Entity specific validation
-    assertEquals(request.getDomainType(), createdEntity.getDomainType());
+    assertEqual(request.getDomainType(), createdEntity.getDomainType());
     assertReference(request.getParent(), createdEntity.getParent());
     assertEntityReferenceNames(request.getExperts(), createdEntity.getExperts());
   }
@@ -171,7 +171,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   @Override
   public void compareEntities(Domain expected, Domain updated, Map<String, String> authHeaders) {
     // Entity specific validation
-    assertEquals(expected.getDomainType(), updated.getDomainType());
+    assertEqual(expected.getDomainType(), updated.getDomainType());
     assertReference(expected.getParent(), updated.getParent());
     assertEntityReferences(expected.getExperts(), updated.getExperts());
   }
@@ -196,7 +196,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
             : getEntity(getDomain.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(getDomain.getDomainType());
     // Fields requested are received
-    assertEquals(domain.getParent(), getDomain.getParent());
+    assertEqual(domain.getParent(), getDomain.getParent());
     assertEntityReferences(domain.getChildren(), getDomain.getChildren());
     assertEntityReferences(domain.getExperts(), getDomain.getExperts());
 

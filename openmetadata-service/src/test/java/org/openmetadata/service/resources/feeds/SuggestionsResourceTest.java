@@ -4,7 +4,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -193,13 +193,13 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
   void post_validSuggestionAndList_200(TestInfo test) throws IOException {
     CreateSuggestion create = create();
     Suggestion suggestion = createSuggestion(create, USER_AUTH_HEADERS);
-    Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());
+    Assertions.assertEqual(create.getEntityLink(), suggestion.getEntityLink());
     create = create().withEntityLink(TABLE_LINK);
     int suggestionCount = 1;
     for (int i = 0; i < 10; i++) {
       createAndCheck(create, USER_AUTH_HEADERS);
       // List all the threads and make sure the number of threads increased by 1
-      assertEquals(
+      assertEqual(
           ++suggestionCount,
           listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS)
               .getPaging()
@@ -207,8 +207,8 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     }
     SuggestionsResource.SuggestionList suggestionList =
         listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
-    assertEquals(suggestionCount, suggestionList.getPaging().getTotal());
-    assertEquals(10, suggestionList.getData().size());
+    assertEqual(suggestionCount, suggestionList.getPaging().getTotal());
+    assertEqual(10, suggestionList.getData().size());
     suggestionList =
         listSuggestions(
             TABLE.getFullyQualifiedName(),
@@ -216,7 +216,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
             null,
             suggestionList.getPaging().getAfter(),
             USER_AUTH_HEADERS);
-    assertEquals(1, suggestionList.getData().size());
+    assertEqual(1, suggestionList.getData().size());
     suggestionList =
         listSuggestions(
             TABLE.getFullyQualifiedName(),
@@ -224,24 +224,24 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
             suggestionList.getPaging().getBefore(),
             null,
             USER_AUTH_HEADERS);
-    assertEquals(10, suggestionList.getData().size());
+    assertEqual(10, suggestionList.getData().size());
     create = create().withEntityLink(TABLE_COLUMN1_LINK);
     createAndCheck(create, USER2_AUTH_HEADERS);
     create = create().withEntityLink(TABLE_COLUMN2_LINK);
     createAndCheck(create, USER2_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         suggestionCount + 2,
         listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS)
             .getPaging()
             .getTotal());
     create = create().withEntityLink(TABLE2_LINK);
     createAndCheck(create, USER_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         suggestionCount + 2,
         listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS)
             .getPaging()
             .getTotal());
-    assertEquals(
+    assertEqual(
         1,
         listSuggestions(TABLE2.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS)
             .getPaging()
@@ -256,23 +256,23 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
             null,
             null,
             null);
-    assertEquals(2, suggestionList.getPaging().getTotal());
+    assertEqual(2, suggestionList.getPaging().getTotal());
     assertNull(suggestionList.getPaging().getBefore());
     assertNull(suggestionList.getPaging().getAfter());
     create = create().withEntityLink(TABLE_WITHOUT_OWNER_LINK);
     createAndCheck(create, USER_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         1,
         listSuggestions(
                 TABLE_WITHOUT_OWNER.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS)
             .getPaging()
             .getTotal());
     /*  deleteSuggestions("table", TABLE.getFullyQualifiedName(), USER_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         0,
         listSuggestions(TABLE.getFullyQualifiedName(), null, USER_AUTH_HEADERS).getPaging().getTotal());
     deleteSuggestions("table", TABLE2.getFullyQualifiedName(), USER_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         0,
         listSuggestions(TABLE2.getFullyQualifiedName(), null, USER_AUTH_HEADERS).getPaging().getTotal());*/
   }
@@ -281,12 +281,12 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
   void put_updateSuggestion_200(TestInfo test) throws IOException {
     CreateSuggestion create = create();
     Suggestion suggestion = createSuggestion(create, USER_AUTH_HEADERS);
-    Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());
+    Assertions.assertEqual(create.getEntityLink(), suggestion.getEntityLink());
     suggestion.setDescription("updated description");
     updateSuggestion(suggestion.getId(), suggestion, USER_AUTH_HEADERS);
     Suggestion updatedSuggestion = getSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
-    assertEquals(suggestion.getId(), updatedSuggestion.getId());
-    assertEquals(suggestion.getDescription(), updatedSuggestion.getDescription());
+    assertEqual(suggestion.getId(), updatedSuggestion.getId());
+    assertEqual(suggestion.getDescription(), updatedSuggestion.getDescription());
     updatedSuggestion.setDescription("updated description with different user");
     assertResponse(
         () -> updateSuggestion(updatedSuggestion.getId(), updatedSuggestion, USER2_AUTH_HEADERS),
@@ -299,16 +299,16 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
   void put_acceptSuggestion_200(TestInfo test) throws IOException {
     CreateSuggestion create = create();
     Suggestion suggestion = createSuggestion(create, USER_AUTH_HEADERS);
-    Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());
+    Assertions.assertEqual(create.getEntityLink(), suggestion.getEntityLink());
     acceptSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
     TableResourceTest tableResourceTest = new TableResourceTest();
     Table table = tableResourceTest.getEntity(TABLE.getId(), "", USER_AUTH_HEADERS);
-    assertEquals(suggestion.getDescription(), table.getDescription());
+    assertEqual(suggestion.getDescription(), table.getDescription());
     suggestion = getSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
-    assertEquals(SuggestionStatus.Accepted, suggestion.getStatus());
+    assertEqual(SuggestionStatus.Accepted, suggestion.getStatus());
     create = createTagSuggestion();
     Suggestion suggestion1 = createSuggestion(create, USER_AUTH_HEADERS);
-    Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());
+    Assertions.assertEqual(create.getEntityLink(), suggestion.getEntityLink());
     assertResponse(
         () -> acceptSuggestion(suggestion1.getId(), USER2_AUTH_HEADERS),
         FORBIDDEN,
@@ -340,7 +340,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     Suggestion suggestion3 = createSuggestion(create, USER_AUTH_HEADERS);
     acceptSuggestion(suggestion3.getId(), USER2_AUTH_HEADERS);
     table = tableResourceTest.getEntity(TABLE_WITHOUT_OWNER.getId(), "", USER_AUTH_HEADERS);
-    assertEquals(description, table.getDescription());
+    assertEqual(description, table.getDescription());
   }
 
   @Test
@@ -348,19 +348,19 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
   void put_rejectSuggestion_200(TestInfo test) throws IOException {
     CreateSuggestion create = create();
     Suggestion suggestion = createSuggestion(create, USER_AUTH_HEADERS);
-    Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());
-    assertEquals(
+    Assertions.assertEqual(create.getEntityLink(), suggestion.getEntityLink());
+    assertEqual(
         1,
         listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS)
             .getPaging()
             .getTotal());
     rejectSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
     suggestion = getSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
-    assertEquals(SuggestionStatus.Rejected, suggestion.getStatus());
+    assertEqual(SuggestionStatus.Rejected, suggestion.getStatus());
     CreateSuggestion create1 = create().withEntityLink(TABLE2_LINK);
     final Suggestion suggestion1 = createSuggestion(create1, USER2_AUTH_HEADERS);
-    Assertions.assertEquals(create1.getEntityLink(), suggestion1.getEntityLink());
-    assertEquals(
+    Assertions.assertEqual(create1.getEntityLink(), suggestion1.getEntityLink());
+    assertEqual(
         1,
         listSuggestions(TABLE2.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS)
             .getPaging()
@@ -371,7 +371,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
         CatalogExceptionMessage.taskOperationNotAllowed(USER.getName(), "Rejected"));
     rejectSuggestion(suggestion1.getId(), USER2_AUTH_HEADERS);
     Suggestion suggestion2 = getSuggestion(suggestion1.getId(), USER2_AUTH_HEADERS);
-    assertEquals(SuggestionStatus.Rejected, suggestion2.getStatus());
+    assertEqual(SuggestionStatus.Rejected, suggestion2.getStatus());
   }
 
   @Test
@@ -387,7 +387,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
 
     SuggestionsResource.SuggestionList suggestionList =
         listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
-    assertEquals(3, suggestionList.getData().size());
+    assertEqual(3, suggestionList.getData().size());
 
     acceptAllSuggestions(
         TABLE.getFullyQualifiedName(),
@@ -406,7 +406,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
             null,
             null);
     // We still have the tag suggestion open, since we only accepted the descriptions
-    assertEquals(1, suggestionList.getPaging().getTotal());
+    assertEqual(1, suggestionList.getPaging().getTotal());
 
     // Now we accept the pending one
     acceptAllSuggestions(
@@ -425,7 +425,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
             SuggestionStatus.Open.toString(),
             null,
             null);
-    assertEquals(0, suggestionList.getPaging().getTotal());
+    assertEqual(0, suggestionList.getPaging().getTotal());
   }
 
   @Test
@@ -441,7 +441,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
 
     SuggestionsResource.SuggestionList suggestionList =
         listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
-    assertEquals(3, suggestionList.getData().size());
+    assertEqual(3, suggestionList.getData().size());
 
     rejectAllSuggestions(
         TABLE.getFullyQualifiedName(),
@@ -459,7 +459,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
             SuggestionStatus.Open.toString(),
             null,
             null);
-    assertEquals(1, suggestionList.getPaging().getTotal());
+    assertEqual(1, suggestionList.getPaging().getTotal());
 
     // Now we reject the pending one
     rejectAllSuggestions(
@@ -478,7 +478,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
             SuggestionStatus.Open.toString(),
             null,
             null);
-    assertEquals(0, suggestionList.getPaging().getTotal());
+    assertEqual(0, suggestionList.getPaging().getTotal());
   }
 
   @Test
@@ -497,7 +497,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
 
     SuggestionsResource.SuggestionList suggestionList =
         listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
-    assertEquals(3, suggestionList.getData().size());
+    assertEqual(3, suggestionList.getData().size());
 
     acceptAllSuggestions(
         TABLE.getFullyQualifiedName(),
@@ -515,15 +515,15 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
             SuggestionStatus.Open.toString(),
             null,
             null);
-    assertEquals(0, suggestionList.getPaging().getTotal());
+    assertEqual(0, suggestionList.getPaging().getTotal());
 
     TableResourceTest tableResourceTest = new TableResourceTest();
     Table table = tableResourceTest.getEntity(TABLE.getId(), "columns", USER_AUTH_HEADERS);
     for (Column column : table.getColumns()) {
       if (column.getName().equals(C1)) {
-        assertEquals("Update column1 description", column.getDescription());
+        assertEqual("Update column1 description", column.getDescription());
       } else if (column.getName().equals(C2)) {
-        assertEquals("Update column2 description", column.getDescription());
+        assertEqual("Update column2 description", column.getDescription());
       }
     }
   }
@@ -663,11 +663,11 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
       String description,
       List<TagLabel> tags) {
     assertNotNull(suggestion.getId());
-    assertEquals(entityLink, suggestion.getEntityLink());
-    assertEquals(createdBy, suggestion.getCreatedBy().getName());
-    assertEquals(type, suggestion.getType());
-    assertEquals(tags, suggestion.getTagLabels());
-    assertEquals(description, suggestion.getDescription());
+    assertEqual(entityLink, suggestion.getEntityLink());
+    assertEqual(createdBy, suggestion.getCreatedBy().getName());
+    assertEqual(type, suggestion.getType());
+    assertEqual(tags, suggestion.getTagLabels());
+    assertEqual(description, suggestion.getDescription());
   }
 
   private void validateAppliedTags(List<TagLabel> appliedTags, List<TagLabel> entityTags) {

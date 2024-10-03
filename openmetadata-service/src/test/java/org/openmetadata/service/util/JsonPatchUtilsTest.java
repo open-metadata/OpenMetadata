@@ -16,7 +16,7 @@ class JsonPatchUtilsTest {
       {"/Unknown", MetadataOperation.EDIT_ALL} // Unknown fields map to EDIT_ALL
     };
     for (Object[] patchPathToOperation : patchPathToOperations) {
-      assertEquals(
+      assertEqual(
           patchPathToOperation[1],
           JsonPatchUtils.getMetadataOperation((String) patchPathToOperation[0]));
     }

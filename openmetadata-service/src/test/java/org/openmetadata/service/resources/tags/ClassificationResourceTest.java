@@ -14,7 +14,7 @@
 package org.openmetadata.service.resources.tags;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -102,19 +102,19 @@ public class ClassificationResourceTest
   @Override
   public void validateCreatedEntity(
       Classification createdEntity, CreateClassification request, Map<String, String> authHeaders) {
-    assertEquals(
+    assertEqual(
         request.getProvider() == null ? ProviderType.USER : request.getProvider(),
         createdEntity.getProvider());
-    assertEquals(request.getMutuallyExclusive(), createdEntity.getMutuallyExclusive());
+    assertEqual(request.getMutuallyExclusive(), createdEntity.getMutuallyExclusive());
   }
 
   @Override
   public void compareEntities(
       Classification expected, Classification updated, Map<String, String> authHeaders) {
-    assertEquals(
+    assertEqual(
         expected.getProvider() == null ? ProviderType.USER : expected.getProvider(),
         updated.getProvider());
-    assertEquals(expected.getMutuallyExclusive(), updated.getMutuallyExclusive());
+    assertEqual(expected.getMutuallyExclusive(), updated.getMutuallyExclusive());
   }
 
   @Override

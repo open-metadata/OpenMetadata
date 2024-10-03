@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.services.connections;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import java.util.UUID;
@@ -25,14 +25,14 @@ public class TestConnectionDefinitionResourceTest extends OpenMetadataApplicatio
     WebTarget target = getResourceByName(TEST_CONNECTION_NAME);
     TestConnectionDefinition mysqlTest =
         TestUtils.get(target, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
-    assertEquals("Mysql", mysqlTest.getName());
-    assertEquals(4, mysqlTest.getSteps().size());
+    assertEqual("Mysql", mysqlTest.getName());
+    assertEqual(4, mysqlTest.getSteps().size());
 
     WebTarget idTarget = getResourceById(mysqlTest.getId());
     TestConnectionDefinition mysqlTestById =
         TestUtils.get(idTarget, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
-    assertEquals("Mysql", mysqlTestById.getName());
-    assertEquals(4, mysqlTestById.getSteps().size());
+    assertEqual("Mysql", mysqlTestById.getName());
+    assertEqual(4, mysqlTestById.getSteps().size());
   }
 
   @Test
@@ -41,7 +41,7 @@ public class TestConnectionDefinitionResourceTest extends OpenMetadataApplicatio
     ResultList testConnectionDefinitions =
         TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
     // we get 10 as it's the default paging size
-    assertEquals(10, testConnectionDefinitions.getData().size());
+    assertEqual(10, testConnectionDefinitions.getData().size());
   }
 
   protected final WebTarget getResourceByName(String name) {

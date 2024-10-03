@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.monitoring;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest.DATABASE_METADATA_CONFIG;
 
 import java.time.Instant;
@@ -94,7 +94,7 @@ public class CloudWatchEventMonitorTest {
 
   @Test
   void buildMetricNamespaceTest() {
-    assertEquals(EXPECTED_NAMESPACE, eventMonitor.buildMetricNamespace(NAMESPACE));
+    assertEqual(EXPECTED_NAMESPACE, eventMonitor.buildMetricNamespace(NAMESPACE));
   }
 
   @Test
@@ -115,7 +115,7 @@ public class CloudWatchEventMonitorTest {
                     .build())
             .build();
 
-    assertEquals(metricRequests.get(0), expectedMetric);
+    assertEqual(metricRequests.get(0), expectedMetric);
   }
 
   @Test
@@ -136,7 +136,7 @@ public class CloudWatchEventMonitorTest {
                     .build())
             .build();
 
-    assertEquals(metricRequests.get(0), expectedMetric);
+    assertEqual(metricRequests.get(0), expectedMetric);
   }
 
   @Test
@@ -167,6 +167,6 @@ public class CloudWatchEventMonitorTest {
                     .build())
             .build();
 
-    assertEquals(metricRequests.get(0), expectedMetric);
+    assertEqual(metricRequests.get(0), expectedMetric);
   }
 }

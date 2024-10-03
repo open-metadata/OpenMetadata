@@ -2,7 +2,7 @@ package org.openmetadata.service.resources.kpi;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -138,21 +138,21 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   public void validateCreatedEntity(
       Kpi createdEntity, CreateKpiRequest request, Map<String, String> authHeaders) {
     validateCommonEntityFields(createdEntity, request, getPrincipalName(authHeaders));
-    assertEquals(request.getStartDate(), createdEntity.getStartDate());
-    assertEquals(request.getEndDate(), createdEntity.getEndDate());
+    assertEqual(request.getStartDate(), createdEntity.getStartDate());
+    assertEqual(request.getEndDate(), createdEntity.getEndDate());
     assertReference(request.getDataInsightChart().value(), createdEntity.getDataInsightChart());
-    assertEquals(request.getMetricType(), createdEntity.getMetricType());
-    assertEquals(request.getTargetValue(), createdEntity.getTargetValue());
+    assertEqual(request.getMetricType(), createdEntity.getMetricType());
+    assertEqual(request.getTargetValue(), createdEntity.getTargetValue());
   }
 
   @Override
   public void compareEntities(Kpi expected, Kpi updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(expected, updated, getPrincipalName(authHeaders));
-    assertEquals(expected.getStartDate(), updated.getStartDate());
-    assertEquals(expected.getEndDate(), updated.getEndDate());
-    assertEquals(expected.getDataInsightChart(), updated.getDataInsightChart());
-    assertEquals(expected.getMetricType(), updated.getMetricType());
-    assertEquals(expected.getTargetValue(), updated.getTargetValue());
+    assertEqual(expected.getStartDate(), updated.getStartDate());
+    assertEqual(expected.getEndDate(), updated.getEndDate());
+    assertEqual(expected.getDataInsightChart(), updated.getDataInsightChart());
+    assertEqual(expected.getMetricType(), updated.getMetricType());
+    assertEqual(expected.getTargetValue(), updated.getTargetValue());
   }
 
   @Override
@@ -179,7 +179,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
       return;
     }
     if (fieldName.equals("targetDefinition")) {
-      assertEquals(JsonUtils.pojoToJson(expected), actual);
+      assertEqual(JsonUtils.pojoToJson(expected), actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

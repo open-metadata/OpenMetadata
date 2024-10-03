@@ -23,7 +23,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -291,10 +291,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // we are hardcoding the usernames as they are passed in config
     // Create user with different optional fields
     User user = getEntityByName("admin", ADMIN_AUTH_HEADERS);
-    assertEquals("admin", user.getName());
+    assertEqual("admin", user.getName());
 
     user = getEntityByName("hello.world", ADMIN_AUTH_HEADERS);
-    assertEquals("hello.world", user.getName());
+    assertEqual("hello.world", user.getName());
   }
 
   @Test
@@ -311,7 +311,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
     fieldAdded(change, "displayName", "displayName1");
     user = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertEquals(oldEmail, user.getEmail());
+    assertEqual(oldEmail, user.getEmail());
     // Update the user information using PUT as the logged-in user
     update = create.withDisplayName("displayName2");
     change = getChangeDescription(user, MINOR_UPDATE);
@@ -359,9 +359,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Ensure Team has relationship to this user
     team1 = TEAM_TEST.getEntity(team1.getId(), "users", ADMIN_AUTH_HEADERS);
-    assertEquals(user.getId(), team1.getUsers().get(0).getId());
+    assertEqual(user.getId(), team1.getUsers().get(0).getId());
     team2 = TEAM_TEST.getEntity(team2.getId(), "users", ADMIN_AUTH_HEADERS);
-    assertEquals(user.getId(), team2.getUsers().get(0).getId());
+    assertEqual(user.getId(), team2.getUsers().get(0).getId());
   }
 
   @Test
@@ -409,7 +409,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     queryParams.put("team", team1.getName());
 
     ResultList<User> users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(2, users.getData().size());
+    assertEqual(2, users.getData().size());
     assertTrue(users.getData().stream().anyMatch(isUser1));
     assertTrue(users.getData().stream().anyMatch(isUser2));
 
@@ -417,7 +417,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     queryParams.put("team", team2.getName());
 
     users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(1, users.getData().size());
+    assertEqual(1, users.getData().size());
     assertTrue(users.getData().stream().anyMatch(isUser2));
 
     users = listEntities(null, 100_000, null, null, ADMIN_AUTH_HEADERS);
@@ -450,12 +450,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Predicate<User> isUser2 = u -> u.getId().equals(user2.getId());
 
     users = listEntities(null, 100_000, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(initialUserCount + 3, users.getPaging().getTotal());
+    assertEqual(initialUserCount + 3, users.getPaging().getTotal());
 
     // list admin users
     users = listEntities(adminQueryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(initialAdminCount + 1, users.getData().size());
-    assertEquals(initialAdminCount + 1, users.getPaging().getTotal());
+    assertEqual(initialAdminCount + 1, users.getData().size());
+    assertEqual(initialAdminCount + 1, users.getPaging().getTotal());
     assertTrue(users.getData().stream().anyMatch(isUser0));
 
     Map<String, String> queryParams = new HashMap<>();
@@ -463,7 +463,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // list non-admin users
     users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(initialUserCount - initialAdminCount + 2, users.getPaging().getTotal());
+    assertEqual(initialUserCount - initialAdminCount + 2, users.getPaging().getTotal());
     assertTrue(users.getData().stream().anyMatch(isUser1));
     assertTrue(users.getData().stream().anyMatch(isUser2));
   }
@@ -490,12 +490,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Predicate<User> isBot2 = u -> u.getId().equals(bot2.getId());
 
     users = listEntities(null, 100_000, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(initialUserCount + 3, users.getPaging().getTotal());
+    assertEqual(initialUserCount + 3, users.getPaging().getTotal());
 
     // list bot users
     bots = listEntities(botQueryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(initialBotCount + 3, bots.getData().size());
-    assertEquals(initialBotCount + 3, bots.getPaging().getTotal());
+    assertEqual(initialBotCount + 3, bots.getData().size());
+    assertEqual(initialBotCount + 3, bots.getPaging().getTotal());
     assertTrue(bots.getData().stream().anyMatch(isBot0));
     assertTrue(bots.getData().stream().anyMatch(isBot1));
     assertTrue(bots.getData().stream().anyMatch(isBot2));
@@ -505,7 +505,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // list users (not bots)
     users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(initialUserCount - initialBotCount, users.getPaging().getTotal());
+    assertEqual(initialUserCount - initialBotCount, users.getPaging().getTotal());
   }
 
   @Test
@@ -527,8 +527,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     }
 
     ResultList<User> users = listEntities(queryParams, 5, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(5, users.getData().size());
-    assertEquals(10, users.getPaging().getTotal());
+    assertEqual(5, users.getData().size());
+    assertEqual(10, users.getPaging().getTotal());
     // First page must contain "after" and should not have "before"
     assertNotNull(users.getPaging().getAfter());
     assertNull(users.getPaging().getBefore());
@@ -536,8 +536,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     String after = users.getPaging().getAfter();
     users = listEntities(queryParams, 5, null, after, ADMIN_AUTH_HEADERS);
-    assertEquals(5, users.getData().size());
-    assertEquals(10, users.getPaging().getTotal());
+    assertEqual(5, users.getData().size());
+    assertEqual(10, users.getPaging().getTotal());
     // Third page must contain only "before" since it is the last page
     assertNull(users.getPaging().getAfter());
     assertNotNull(users.getPaging().getBefore());
@@ -546,12 +546,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     String before = users.getPaging().getBefore();
     users = listEntities(queryParams, 5, before, null, ADMIN_AUTH_HEADERS);
-    assertEquals(5, users.getData().size());
-    assertEquals(10, users.getPaging().getTotal());
+    assertEqual(5, users.getData().size());
+    assertEqual(10, users.getPaging().getTotal());
     // First page must contain only "after"
     assertNotNull(users.getPaging().getAfter());
     assertNull(users.getPaging().getBefore());
-    assertEquals(user1, users.getData().get(0));
+    assertEqual(user1, users.getData().get(0));
   }
 
   @Test
@@ -569,8 +569,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     queryParams.put("team", team1.getName());
 
     ResultList<User> users = listEntities(queryParams, 5, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(5, users.getData().size());
-    assertEquals(15, users.getPaging().getTotal());
+    assertEqual(5, users.getData().size());
+    assertEqual(15, users.getPaging().getTotal());
     // First page must contain "after" and should not have "before"
     assertNotNull(users.getPaging().getAfter());
     assertNull(users.getPaging().getBefore());
@@ -578,8 +578,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     String after = users.getPaging().getAfter();
     users = listEntities(queryParams, 5, null, after, ADMIN_AUTH_HEADERS);
-    assertEquals(5, users.getData().size());
-    assertEquals(15, users.getPaging().getTotal());
+    assertEqual(5, users.getData().size());
+    assertEqual(15, users.getPaging().getTotal());
     // Second page must contain both "after" and "before"
     assertNotNull(users.getPaging().getAfter());
     assertNotNull(users.getPaging().getBefore());
@@ -587,8 +587,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     after = users.getPaging().getAfter();
     users = listEntities(queryParams, 5, null, after, ADMIN_AUTH_HEADERS);
-    assertEquals(5, users.getData().size());
-    assertEquals(15, users.getPaging().getTotal());
+    assertEqual(5, users.getData().size());
+    assertEqual(15, users.getPaging().getTotal());
     // Third page must contain only "before" since it is the last page
     assertNull(users.getPaging().getAfter());
     assertNotNull(users.getPaging().getBefore());
@@ -598,21 +598,21 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Now fetch previous pages using before pointer
     String before = users.getPaging().getBefore();
     users = listEntities(queryParams, 5, before, null, ADMIN_AUTH_HEADERS);
-    assertEquals(5, users.getData().size());
-    assertEquals(15, users.getPaging().getTotal());
+    assertEqual(5, users.getData().size());
+    assertEqual(15, users.getPaging().getTotal());
     // Second page must contain both "after" and "before"
     assertNotNull(users.getPaging().getAfter());
     assertNotNull(users.getPaging().getBefore());
-    assertEquals(user2, users.getData().get(0));
+    assertEqual(user2, users.getData().get(0));
 
     before = users.getPaging().getBefore();
     users = listEntities(queryParams, 5, before, null, ADMIN_AUTH_HEADERS);
-    assertEquals(5, users.getData().size());
-    assertEquals(15, users.getPaging().getTotal());
+    assertEqual(5, users.getData().size());
+    assertEqual(15, users.getPaging().getTotal());
     // First page must contain only "after"
     assertNotNull(users.getPaging().getAfter());
     assertNull(users.getPaging().getBefore());
-    assertEquals(user1, users.getData().get(0));
+    assertEqual(user1, users.getData().get(0));
   }
 
   @Test
@@ -657,8 +657,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     user.setTeams(teams); // Update the teams
     user = patchEntity(user.getId(), userJson, user, ADMIN_AUTH_HEADERS); // Patch the user
     // Ensure default "Organization" team is not part of the patch response
-    assertEquals(1, user.getTeams().size());
-    assertEquals(team1.getId(), user.getTeams().get(0).getId());
+    assertEqual(1, user.getTeams().size());
+    assertEqual(team1.getId(), user.getTeams().get(0).getId());
   }
 
   @Test
@@ -873,13 +873,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   protected void validateCommonEntityFields(User entity, CreateEntity create, String updatedBy) {
     assertListNotNull(entity.getId(), entity.getHref(), entity.getFullyQualifiedName());
-    assertEquals(create.getName().toLowerCase(), entity.getName());
-    assertEquals(create.getDisplayName(), entity.getDisplayName());
-    assertEquals(create.getDescription(), entity.getDescription());
-    assertEquals(
+    assertEqual(create.getName().toLowerCase(), entity.getName());
+    assertEqual(create.getDisplayName(), entity.getDisplayName());
+    assertEqual(create.getDescription(), entity.getDescription());
+    assertEqual(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
     assertOwners(create.getOwners(), entity.getOwners());
-    assertEquals(updatedBy, entity.getUpdatedBy());
+    assertEqual(updatedBy, entity.getUpdatedBy());
   }
 
   @Test
@@ -899,7 +899,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withAuthenticationMechanism(authMechanism);
     User user = createEntity(create, USER_WITH_CREATE_HEADERS);
     user = getEntity(user.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(1, user.getRoles().size());
+    assertEqual(1, user.getRoles().size());
     TestUtils.put(
         getResource(String.format("users/generateToken/%s", user.getId())),
         new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
@@ -907,7 +907,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         ADMIN_AUTH_HEADERS);
     user = getEntity(user.getId(), "*", ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
-    assertEquals(1, user.getRoles().size());
+    assertEqual(1, user.getRoles().size());
     JWTAuthMechanism jwtAuthMechanism =
         TestUtils.get(
             getResource(String.format("users/token/%s", user.getId())),
@@ -918,8 +918,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Date date = jwt.getExpiresAt();
     long daysBetween = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60 * 24));
     assertTrue(daysBetween >= 6);
-    assertEquals("ingestion-bot-jwt", jwt.getClaims().get("sub").asString());
-    assertEquals(true, jwt.getClaims().get("isBot").asBoolean());
+    assertEqual("ingestion-bot-jwt", jwt.getClaims().get("sub").asString());
+    assertEqual(true, jwt.getClaims().get("isBot").asBoolean());
     TestUtils.put(
         getResource("users/revokeToken"),
         new RevokeTokenRequest().withId(user.getId()),
@@ -930,7 +930,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             getResource(String.format("users/token/%s", user.getId())),
             JWTAuthMechanism.class,
             ADMIN_AUTH_HEADERS);
-    assertEquals(StringUtils.EMPTY, jwtAuthMechanism.getJWTToken());
+    assertEqual(StringUtils.EMPTY, jwtAuthMechanism.getJWTToken());
   }
 
   @Test
@@ -953,8 +953,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // jwtAuth Response should be null always
     user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
-    assertEquals(name.toLowerCase(), user.getName());
-    assertEquals(name.toLowerCase(), user.getFullyQualifiedName());
+    assertEqual(name.toLowerCase(), user.getName());
+    assertEqual(name.toLowerCase(), user.getFullyQualifiedName());
 
     // Login With Correct Password
     LoginRequest loginRequest =
@@ -1021,8 +1021,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // jwtAuth Response should be null always
     User user = getEntityByName(name, null, ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
-    assertEquals(name.toLowerCase(), user.getName());
-    assertEquals(name.toLowerCase(), user.getFullyQualifiedName());
+    assertEqual(name.toLowerCase(), user.getName());
+    assertEqual(name.toLowerCase(), user.getFullyQualifiedName());
 
     // Login With Correct Password
     LoginRequest loginRequest =
@@ -1102,13 +1102,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             OK,
             ADMIN_AUTH_HEADERS);
 
-    assertEquals(tokens, getToken.getData().get(0));
-    assertEquals(0, getTokenAfterRevoke.getData().size());
+    assertEqual(tokens, getToken.getData().get(0));
+    assertEqual(0, getTokenAfterRevoke.getData().size());
   }
 
   @Test
   void testCsvDocumentation() throws HttpResponseException {
-    assertEquals(UserCsv.DOCUMENTATION, getCsvDocumentation());
+    assertEqual(UserCsv.DOCUMENTATION, getCsvDocumentation());
   }
 
   @Test
@@ -1165,7 +1165,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String team11 = "teamImportExport11,,,Group,teamImportExport1,,,,";
     String csv = EntityCsvTest.createCsv(TeamCsv.HEADERS, listOf(team, team1, team11), null);
     CsvImportResult result = TEAM_TEST.importCsv(ORG_TEAM.getName(), csv, false);
-    assertEquals(0, result.getNumberOfRowsFailed());
+    assertEqual(0, result.getNumberOfRowsFailed());
 
     // Create users in the team hierarchy
     // Headers - name,displayName,description,email,timezone,isAdmin,teams,roles
@@ -1212,9 +1212,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     DecodedJWT jwt = decodedJWT(jwtResponse.getAccessToken());
     Date date = jwt.getExpiresAt();
     long hours = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60));
-    assertEquals(1, hours);
-    assertEquals(username.toLowerCase(), jwt.getClaims().get("sub").asString().toLowerCase());
-    assertEquals(false, jwt.getClaims().get("isBot").asBoolean());
+    assertEqual(1, hours);
+    assertEqual(username.toLowerCase(), jwt.getClaims().get("sub").asString().toLowerCase());
+    assertEqual(false, jwt.getClaims().get("isBot").asBoolean());
   }
 
   @Test
@@ -1346,11 +1346,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   void test_maskEmail() throws HttpResponseException {
     // Admins can check the mail
     User user = getEntityByName(USER1.getName(), ADMIN_AUTH_HEADERS);
-    assertEquals(USER1.getEmail(), user.getEmail());
+    assertEqual(USER1.getEmail(), user.getEmail());
 
     // non-admins cannot see the mail
     User noEmailUser = getEntityByName(USER1.getName(), authHeaders(USER2.getName()));
-    assertEquals(PIIMasker.MASKED_MAIL, noEmailUser.getEmail());
+    assertEqual(PIIMasker.MASKED_MAIL, noEmailUser.getEmail());
   }
 
   private DecodedJWT decodedJWT(String token) {
@@ -1431,11 +1431,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public void validateCreatedEntity(
       User user, CreateUser createRequest, Map<String, String> authHeaders) {
-    assertEquals(createRequest.getName().toLowerCase(), user.getName());
-    assertEquals(createRequest.getDisplayName(), user.getDisplayName());
-    assertEquals(createRequest.getTimezone(), user.getTimezone());
-    assertEquals(createRequest.getIsBot(), user.getIsBot());
-    assertEquals(createRequest.getIsAdmin(), user.getIsAdmin());
+    assertEqual(createRequest.getName().toLowerCase(), user.getName());
+    assertEqual(createRequest.getDisplayName(), user.getDisplayName());
+    assertEqual(createRequest.getTimezone(), user.getTimezone());
+    assertEqual(createRequest.getIsBot(), user.getIsBot());
+    assertEqual(createRequest.getIsAdmin(), user.getIsAdmin());
 
     List<EntityReference> expectedRoles = new ArrayList<>();
     for (UUID roleId : listOrEmpty(createRequest.getRoles())) {
@@ -1460,23 +1460,23 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEntityReferences(expectedTeams, user.getTeams());
     assertEntityReferences(createRequest.getPersonas(), user.getPersonas());
     if (createRequest.getProfile() != null) {
-      assertEquals(createRequest.getProfile(), user.getProfile());
+      assertEqual(createRequest.getProfile(), user.getProfile());
     }
   }
 
   @Override
   public void compareEntities(User expected, User updated, Map<String, String> authHeaders) {
-    assertEquals(expected.getName(), updated.getName());
-    assertEquals(expected.getDisplayName(), updated.getDisplayName());
-    assertEquals(expected.getTimezone(), updated.getTimezone());
+    assertEqual(expected.getName(), updated.getName());
+    assertEqual(expected.getDisplayName(), updated.getDisplayName());
+    assertEqual(expected.getTimezone(), updated.getTimezone());
     if (expected.getIsBot() == null) {
       assertFalse(updated.getIsBot());
     } else {
-      assertEquals(expected.getIsBot(), updated.getIsBot());
+      assertEqual(expected.getIsBot(), updated.getIsBot());
     }
-    assertEquals(expected.getIsAdmin(), updated.getIsAdmin());
+    assertEqual(expected.getIsAdmin(), updated.getIsAdmin());
     if (expected.getDefaultPersona() != null) {
-      assertEquals(expected.getDefaultPersona(), updated.getDefaultPersona());
+      assertEqual(expected.getDefaultPersona(), updated.getDefaultPersona());
     }
 
     TestUtils.assertEntityReferences(expected.getRoles(), updated.getRoles());
@@ -1485,7 +1485,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       TestUtils.assertEntityReferences(expected.getPersonas(), updated.getPersonas());
     }
     if (expected.getProfile() != null) {
-      assertEquals(expected.getProfile(), updated.getProfile());
+      assertEqual(expected.getProfile(), updated.getProfile());
     }
   }
 
@@ -1498,7 +1498,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       case "profile" -> {
         Profile expectedProfile = (Profile) expected;
         Profile actualProfile = JsonUtils.readValue(actual.toString(), Profile.class);
-        assertEquals(expectedProfile, actualProfile);
+        assertEqual(expectedProfile, actualProfile);
       }
       case "teams", "roles", "personas" -> assertEntityReferencesFieldChange(expected, actual);
       case "defaultPersona" -> assertEntityReferenceFieldChange(expected, actual);

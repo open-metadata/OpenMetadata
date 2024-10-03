@@ -1,6 +1,6 @@
 package org.openmetadata.service.security;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -51,7 +51,7 @@ class JWTTokenGeneratorTest {
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Seven);
     DecodedJWT jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
-    assertEquals("ingestion-bot", jwt.getClaims().get("sub").asString());
+    assertEqual("ingestion-bot", jwt.getClaims().get("sub").asString());
     Date date = jwt.getExpiresAt();
     long daysBetween = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60 * 24));
     assertTrue(daysBetween >= 6);

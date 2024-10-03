@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.domains;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
@@ -155,13 +155,13 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     Map<String, String> params = new HashMap<>();
     params.put("domain", domain1);
     List<DataProduct> list = listEntities(params, ADMIN_AUTH_HEADERS).getData();
-    assertEquals(2, list.size());
+    assertEqual(2, list.size());
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(p1.getName())));
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(p2.getName())));
 
     params.put("domain", domain2);
     list = listEntities(params, ADMIN_AUTH_HEADERS).getData();
-    assertEquals(2, list.size());
+    assertEqual(2, list.size());
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(p3.getName())));
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(p4.getName())));
   }
@@ -204,7 +204,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   public void validateCreatedEntity(
       DataProduct createdEntity, CreateDataProduct request, Map<String, String> authHeaders) {
     // Entity specific validation
-    assertEquals(request.getDomain(), createdEntity.getDomain().getFullyQualifiedName());
+    assertEqual(request.getDomain(), createdEntity.getDomain().getFullyQualifiedName());
     assertEntityReferenceNames(request.getExperts(), createdEntity.getExperts());
     assertEntityReferences(request.getAssets(), createdEntity.getAssets());
     assertStyle(request.getStyle(), createdEntity.getStyle());

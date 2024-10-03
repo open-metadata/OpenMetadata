@@ -1,6 +1,6 @@
 package org.openmetadata.service.secrets.masker;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -53,7 +53,7 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(airflowConnection, "Airflow", ServiceType.PIPELINE);
     assertNotNull(masked);
-    assertEquals(
+    assertEqual(
         (JsonUtils.convertValue(
                 ((MysqlConnection) masked.getConnection()).getAuthType(), basicAuth.class)
             .getPassword()),
@@ -63,7 +63,7 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(
                     masked, airflowConnection, "Airflow", ServiceType.PIPELINE);
-    assertEquals(
+    assertEqual(
         PASSWORD,
         JsonUtils.convertValue(
                 ((MysqlConnection) unmasked.getConnection()).getAuthType(), basicAuth.class)
@@ -79,13 +79,13 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(bigQueryConnection, "BigQuery", ServiceType.DATABASE);
     assertNotNull(masked);
-    assertEquals(getPrivateKeyFromGcsConfig(masked.getCredentials()), getMaskedPassword());
+    assertEqual(getPrivateKeyFromGcsConfig(masked.getCredentials()), getMaskedPassword());
     BigQueryConnection unmasked =
         (BigQueryConnection)
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(
                     masked, bigQueryConnection, "BigQuery", ServiceType.DATABASE);
-    assertEquals(PASSWORD, getPrivateKeyFromGcsConfig(unmasked.getCredentials()));
+    assertEqual(PASSWORD, getPrivateKeyFromGcsConfig(unmasked.getCredentials()));
   }
 
   @Test
@@ -97,7 +97,7 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(datalakeConnection, "Datalake", ServiceType.DATABASE);
     assertNotNull(masked);
-    assertEquals(
+    assertEqual(
         getPrivateKeyFromGcsConfig(((GCSConfig) masked.getConfigSource()).getSecurityConfig()),
         getMaskedPassword());
     DatalakeConnection unmasked =
@@ -105,7 +105,7 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(
                     masked, datalakeConnection, "Datalake", ServiceType.DATABASE);
-    assertEquals(
+    assertEqual(
         PASSWORD,
         getPrivateKeyFromGcsConfig(((GCSConfig) unmasked.getConfigSource()).getSecurityConfig()));
   }
@@ -116,7 +116,7 @@ abstract class TestEntityMasker {
     IngestionPipeline originalDbtPipeline = buildIngestionPipeline();
     EntityMaskerFactory.createEntityMasker().maskIngestionPipeline(dbtPipeline);
     assertNotNull(dbtPipeline);
-    assertEquals(
+    assertEqual(
         getPrivateKeyFromGcsConfig(
             ((DbtGCSConfig)
                     ((DbtPipeline) dbtPipeline.getSourceConfig().getConfig()).getDbtConfigSource())
@@ -124,7 +124,7 @@ abstract class TestEntityMasker {
         getMaskedPassword());
     EntityMaskerFactory.createEntityMasker()
         .unmaskIngestionPipeline(dbtPipeline, originalDbtPipeline);
-    assertEquals(
+    assertEqual(
         PASSWORD,
         getPrivateKeyFromGcsConfig(
             ((DbtGCSConfig)
@@ -154,7 +154,7 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(supersetConnection, "Superset", ServiceType.DASHBOARD);
     assertNotNull(masked);
-    assertEquals(
+    assertEqual(
         JsonUtils.convertValue(
                 ((MysqlConnection) masked.getConnection()).getAuthType(), basicAuth.class)
             .getPassword(),
@@ -164,7 +164,7 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(
                     masked, supersetConnection, "Superset", ServiceType.DASHBOARD);
-    assertEquals(
+    assertEqual(
         PASSWORD,
         JsonUtils.convertValue(
                 ((MysqlConnection) unmasked.getConnection()).getAuthType(), basicAuth.class)
@@ -183,7 +183,7 @@ abstract class TestEntityMasker {
             .withOpenMetadataServerConnection(buildOpenMetadataConnection());
     Workflow masked = EntityMaskerFactory.createEntityMasker().maskWorkflow(workflow);
     assertNotNull(masked);
-    assertEquals(
+    assertEqual(
         JsonUtils.convertValue(
                 ((MysqlConnection)
                         ((DatabaseConnection)
@@ -195,7 +195,7 @@ abstract class TestEntityMasker {
             .getPassword(),
         getMaskedPassword());
     Workflow unmasked = EntityMaskerFactory.createEntityMasker().unmaskWorkflow(masked, workflow);
-    assertEquals(
+    assertEqual(
         PASSWORD,
         JsonUtils.convertValue(
                 ((MysqlConnection)
@@ -216,7 +216,7 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(mysqlConnection, "Mysql", ServiceType.DATABASE);
     assertNotNull(masked);
-    assertEquals(
+    assertEqual(
         JsonUtils.convertValue(masked.getAuthType(), basicAuth.class).getPassword(),
         getMaskedPassword());
     MysqlConnection unmasked =
@@ -224,7 +224,7 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(
                     masked, mysqlConnection, "Mysql", ServiceType.DATABASE);
-    assertEquals(
+    assertEqual(
         PASSWORD, JsonUtils.convertValue(unmasked.getAuthType(), basicAuth.class).getPassword());
   }
 

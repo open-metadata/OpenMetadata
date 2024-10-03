@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.lineage;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -451,7 +451,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     lineageDetails.setDescription("lineage edge description");
     addEdge(TABLES.get(0), TABLES.get(1), lineageDetails, ADMIN_AUTH_HEADERS);
     Edge edge = getEdge(TABLES.get(0).getId(), TABLES.get(1).getId(), lineageDetails);
-    assertEquals(lineageDetails.getDescription(), edge.getLineageDetails().getDescription());
+    assertEqual(lineageDetails.getDescription(), edge.getLineageDetails().getDescription());
   }
 
   public Edge getEdge(Table from, Table to) {
@@ -598,7 +598,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
               ids.add(edge.getToEntity());
             });
     if (lineage.getNodes().size() != 0) {
-      assertEquals((int) ids.stream().distinct().count(), lineage.getNodes().size() + 1);
+      assertEqual((int) ids.stream().distinct().count(), lineage.getNodes().size() + 1);
     }
   }
 
@@ -620,7 +620,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertEdges(lineageByName, expectedUpstreamEdges, expectedDownstreamEdges);
 
     // Finally, ensure lineage by Id matches lineage by name
-    assertEquals(lineageById, lineageByName);
+    assertEqual(lineageById, lineageByName);
   }
 
   public EntityLineage getLineage(
@@ -673,11 +673,11 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
   public void assertEdges(
       EntityLineage lineage, Edge[] expectedUpstreamEdges, Edge[] expectedDownstreamEdges) {
-    assertEquals(lineage.getUpstreamEdges().size(), expectedUpstreamEdges.length);
+    assertEqual(lineage.getUpstreamEdges().size(), expectedUpstreamEdges.length);
     for (Edge expectedUpstreamEdge : expectedUpstreamEdges) {
       assertTrue(lineage.getUpstreamEdges().contains(expectedUpstreamEdge));
     }
-    assertEquals(lineage.getDownstreamEdges().size(), expectedDownstreamEdges.length);
+    assertEqual(lineage.getDownstreamEdges().size(), expectedDownstreamEdges.length);
     for (Edge expectedDownstreamEdge : expectedDownstreamEdges) {
       assertTrue(lineage.getDownstreamEdges().contains(expectedDownstreamEdge));
     }

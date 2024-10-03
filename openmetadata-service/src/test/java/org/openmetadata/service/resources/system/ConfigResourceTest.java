@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.system;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 
@@ -61,14 +61,14 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("auth");
     AuthenticationConfiguration auth =
         TestUtils.get(target, AuthenticationConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAuthenticationConfiguration().getProvider(), auth.getProvider());
-    assertEquals(config.getAuthenticationConfiguration().getProviderName(), auth.getProviderName());
-    assertEquals(config.getAuthenticationConfiguration().getAuthority(), auth.getAuthority());
-    assertEquals(config.getAuthenticationConfiguration().getCallbackUrl(), auth.getCallbackUrl());
-    assertEquals(
+    assertEqual(config.getAuthenticationConfiguration().getProvider(), auth.getProvider());
+    assertEqual(config.getAuthenticationConfiguration().getProviderName(), auth.getProviderName());
+    assertEqual(config.getAuthenticationConfiguration().getAuthority(), auth.getAuthority());
+    assertEqual(config.getAuthenticationConfiguration().getCallbackUrl(), auth.getCallbackUrl());
+    assertEqual(
         config.getAuthenticationConfiguration().getJwtPrincipalClaims(),
         auth.getJwtPrincipalClaims());
-    assertEquals(config.getAuthenticationConfiguration().getClientId(), auth.getClientId());
+    assertEqual(config.getAuthenticationConfiguration().getClientId(), auth.getClientId());
   }
 
   @Test
@@ -76,18 +76,18 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("authorizer");
     AuthorizerConfiguration auth =
         TestUtils.get(target, AuthorizerConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAuthorizerConfiguration().getClassName(), auth.getClassName());
-    assertEquals(
+    assertEqual(config.getAuthorizerConfiguration().getClassName(), auth.getClassName());
+    assertEqual(
         config.getAuthorizerConfiguration().getPrincipalDomain(), auth.getPrincipalDomain());
-    assertEquals(
+    assertEqual(
         config.getAuthorizerConfiguration().getAdminPrincipals(), auth.getAdminPrincipals());
-    assertEquals(
+    assertEqual(
         config.getAuthorizerConfiguration().getContainerRequestFilter(),
         auth.getContainerRequestFilter());
-    assertEquals(
+    assertEqual(
         config.getAuthorizerConfiguration().getEnableSecureSocketConnection(),
         auth.getEnableSecureSocketConnection());
-    assertEquals(
+    assertEqual(
         config.getAuthorizerConfiguration().getEnforcePrincipalDomain(),
         auth.getEnforcePrincipalDomain());
   }
@@ -97,7 +97,7 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("pipeline-service-client");
     PipelineServiceAPIClientConfig auth =
         TestUtils.get(target, PipelineServiceAPIClientConfig.class, TEST_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         config.getPipelineServiceClientConfiguration().getApiEndpoint(), auth.getApiEndpoint());
   }
 
@@ -108,13 +108,13 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     UiThemePreference uiThemePreference =
         TestUtils.get(target, UiThemePreference.class, TEST_AUTH_HEADERS);
 
-    assertEquals("", uiThemePreference.getCustomTheme().getPrimaryColor());
-    assertEquals("", uiThemePreference.getCustomTheme().getSuccessColor());
-    assertEquals("", uiThemePreference.getCustomTheme().getErrorColor());
-    assertEquals("", uiThemePreference.getCustomTheme().getWarningColor());
-    assertEquals("", uiThemePreference.getCustomTheme().getInfoColor());
-    assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomLogoUrlPath());
-    assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomMonogramUrlPath());
+    assertEqual("", uiThemePreference.getCustomTheme().getPrimaryColor());
+    assertEqual("", uiThemePreference.getCustomTheme().getSuccessColor());
+    assertEqual("", uiThemePreference.getCustomTheme().getErrorColor());
+    assertEqual("", uiThemePreference.getCustomTheme().getWarningColor());
+    assertEqual("", uiThemePreference.getCustomTheme().getInfoColor());
+    assertEqual("", uiThemePreference.getCustomLogoConfig().getCustomLogoUrlPath());
+    assertEqual("", uiThemePreference.getCustomLogoConfig().getCustomMonogramUrlPath());
   }
 
   @Test
@@ -123,9 +123,9 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("loginConfig");
     LoginConfiguration loginConfiguration =
         TestUtils.get(target, LoginConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(3, loginConfiguration.getMaxLoginFailAttempts());
-    assertEquals(600, loginConfiguration.getAccessBlockTime());
-    assertEquals(3600, loginConfiguration.getJwtTokenExpiryTime());
+    assertEqual(3, loginConfiguration.getMaxLoginFailAttempts());
+    assertEqual(600, loginConfiguration.getAccessBlockTime());
+    assertEqual(3600, loginConfiguration.getJwtTokenExpiryTime());
   }
 
   @Test
@@ -133,11 +133,11 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("jwks");
     JWKSResponse auth = TestUtils.get(target, JWKSResponse.class, TEST_AUTH_HEADERS);
     assertNotNull(auth);
-    assertEquals(1, auth.getJwsKeys().size());
+    assertEqual(1, auth.getJwsKeys().size());
     JWKSKey jwksKey = auth.getJwsKeys().get(0);
-    assertEquals("RS256", jwksKey.getAlg());
-    assertEquals("sig", jwksKey.getUse());
-    assertEquals("RSA", jwksKey.getKty());
+    assertEqual("RS256", jwksKey.getAlg());
+    assertEqual("sig", jwksKey.getUse());
+    assertEqual("RSA", jwksKey.getKty());
     assertNotNull(jwksKey.getN());
     assertNotNull(jwksKey.getE());
   }

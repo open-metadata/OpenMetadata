@@ -43,7 +43,7 @@ class CompiledRuleTest {
     CompiledRule rule =
         new CompiledRule(new Rule().withName("test").withResources(new ArrayList<>(ruleResources)));
     for (String resource : RESOURCE_LIST) {
-      assertEquals(
+      assertEqual(
           rule.matchResource(resource),
           ruleResources.contains(resource),
           "Resource name " + resource + " not matched");

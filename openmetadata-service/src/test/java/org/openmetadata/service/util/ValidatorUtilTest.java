@@ -1,6 +1,6 @@
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.UUID;
@@ -12,17 +12,17 @@ class ValidatorUtilTest {
   void testValidator() {
     // Required parameters name, description, and id missing
     Glossary glossary = new Glossary().withName("name").withDescription("description");
-    assertEquals("[id must not be null]", ValidatorUtil.validate(glossary));
+    assertEqual("[id must not be null]", ValidatorUtil.validate(glossary));
 
     glossary.withId(UUID.randomUUID()).withName(null);
-    assertEquals("[name must not be null]", ValidatorUtil.validate(glossary));
+    assertEqual("[name must not be null]", ValidatorUtil.validate(glossary));
 
     glossary.withName("name").withDescription(null);
-    assertEquals("[description must not be null]", ValidatorUtil.validate(glossary));
+    assertEqual("[description must not be null]", ValidatorUtil.validate(glossary));
 
     // Invalid name
     glossary.withName("invalid::Name").withDescription("description");
-    assertEquals("[name must match \"^((?!::).)*$\"]", ValidatorUtil.validate(glossary));
+    assertEqual("[name must match \"^((?!::).)*$\"]", ValidatorUtil.validate(glossary));
 
     // No error
     glossary.withName("validName").withId(UUID.randomUUID()).withDescription("description");

@@ -14,7 +14,7 @@
 package org.openmetadata.service.resources.permissions;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DESCRIPTION;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DISPLAY_NAME;
@@ -153,7 +153,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   void get_admin_permissions_for_role() throws HttpResponseException {
     // Ensure an admin has all the permissions
     List<ResourcePermission> actualPermissions = getPermissions(ADMIN_AUTH_HEADERS);
-    assertEquals(
+    assertEqual(
         PolicyEvaluator.trimResourcePermissions(PolicyEvaluator.getResourcePermissions(ALLOW)),
         actualPermissions);
   }
@@ -413,7 +413,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
 
   private void assertResourcePermissions(
       List<ResourcePermission> expected, List<ResourcePermission> actual) {
-    assertEquals(expected.size(), actual.size());
+    assertEqual(expected.size(), actual.size());
     Comparator<ResourcePermission> resourcePermissionComparator =
         Comparator.comparing(ResourcePermission::getResource);
     expected.sort(resourcePermissionComparator);
@@ -424,14 +424,14 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   }
 
   private void assertResourcePermission(ResourcePermission expected, ResourcePermission actual) {
-    assertEquals(expected.getPermissions().size(), actual.getPermissions().size());
+    assertEqual(expected.getPermissions().size(), actual.getPermissions().size());
     Comparator<Permission> operationComparator = Comparator.comparing(Permission::getOperation);
     expected.getPermissions().sort(operationComparator);
     actual.getPermissions().sort(operationComparator);
     for (int i = 0; i < expected.getPermissions().size(); i++) {
       // Using for loop to compare instead of equals to help with debugging the difference between
       // the lists
-      assertEquals(expected.getPermissions().get(i), actual.getPermissions().get(i));
+      assertEqual(expected.getPermissions().get(i), actual.getPermissions().get(i));
     }
   }
 

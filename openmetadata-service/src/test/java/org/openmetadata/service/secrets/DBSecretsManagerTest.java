@@ -12,7 +12,7 @@
  */
 package org.openmetadata.service.secrets;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
@@ -90,7 +90,7 @@ public class DBSecretsManagerTest {
 
   @Test
   void testReturnsExpectedSecretManagerProvider() {
-    assertEquals(SecretsManagerProvider.DB, secretsManager.getSecretsManagerProvider());
+    assertEqual(SecretsManagerProvider.DB, secretsManager.getSecretsManagerProvider());
   }
 
   private void testEncryptServiceConnection() {
@@ -99,7 +99,7 @@ public class DBSecretsManagerTest {
     Object actualConfig =
         secretsManager.encryptServiceConnectionConfig(
             connection, Mysql.value(), "test", ServiceType.DATABASE);
-    assertEquals(
+    assertEqual(
         ENCRYPTED_VALUE,
         JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class)
             .getPassword());
@@ -112,7 +112,7 @@ public class DBSecretsManagerTest {
     Object actualConfig =
         secretsManager.decryptServiceConnectionConfig(
             mysqlConnection, Mysql.value(), ServiceType.DATABASE);
-    assertEquals(
+    assertEqual(
         DECRYPTED_VALUE,
         JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class)
             .getPassword());

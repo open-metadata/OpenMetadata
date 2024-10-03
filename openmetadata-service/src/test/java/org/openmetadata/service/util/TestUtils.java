@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -221,12 +221,12 @@ public final class TestUtils {
       actual = listOrEmpty(actual);
       expected.sort(EntityUtil.compareCustomProperty);
       actual.sort(EntityUtil.compareCustomProperty);
-      assertEquals(expected.size(), actual.size());
+      assertEqual(expected.size(), actual.size());
       for (int i = 0; i < expected.size(); i++) {
-        assertEquals(expected.get(i).getName(), actual.get(i).getName());
-        assertEquals(
+        assertEqual(expected.get(i).getName(), actual.get(i).getName());
+        assertEqual(
             expected.get(i).getPropertyType().getId(), actual.get(i).getPropertyType().getId());
-        assertEquals(
+        assertEqual(
             expected.get(i).getPropertyType().getType(), actual.get(i).getPropertyType().getType());
       }
     }
@@ -255,7 +255,7 @@ public final class TestUtils {
     if (!HttpStatus.isSuccess(response.getStatus())) {
       readResponseError(response);
     }
-    assertEquals(expectedResponse, response.getStatus());
+    assertEqual(expectedResponse, response.getStatus());
   }
 
   public static <T> T readResponse(Response response, Class<T> clz, int expectedResponse)
@@ -263,21 +263,21 @@ public final class TestUtils {
     if (!HttpStatus.isSuccess(response.getStatus())) {
       readResponseError(response);
     }
-    assertEquals(expectedResponse, response.getStatus());
+    assertEqual(expectedResponse, response.getStatus());
     return response.readEntity(clz);
   }
 
   public static void assertResponse(
       Executable executable, Response.Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
-    assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
-    assertEquals(expectedReason, exception.getReasonPhrase());
+    assertEqual(expectedStatus.getStatusCode(), exception.getStatusCode());
+    assertEqual(expectedReason, exception.getReasonPhrase());
   }
 
   public static void assertResponseContains(
       Executable executable, Response.Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
-    assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
+    assertEqual(expectedStatus.getStatusCode(), exception.getStatusCode());
 
     // Strip "[" at the beginning and "]" at the end as actual reason may contain more than one
     // error messages
@@ -295,13 +295,13 @@ public final class TestUtils {
     assertFalse(actual.getData().isEmpty());
     if (actual.getPaging().getAfter() != null && actual.getPaging().getBefore() != null) {
       // Last page may have less than limit number of records
-      assertEquals(limit, actual.getData().size());
+      assertEqual(limit, actual.getData().size());
     }
     for (int i = 0; i < actual.getData().size(); i++) {
-      assertEquals(allEntities.get(offset + i), actual.getData().get(i));
+      assertEqual(allEntities.get(offset + i), actual.getData().get(i));
     }
     // Ensure total count returned in paging is correct
-    assertEquals(allEntities.size(), actual.getPaging().getTotal());
+    assertEqual(allEntities.size(), actual.getPaging().getTotal());
   }
 
   public static void post(WebTarget target, Map<String, String> headers)
@@ -408,11 +408,11 @@ public final class TestUtils {
     if (!HttpStatus.isSuccess(response.getStatus())) {
       readResponseError(response);
     }
-    assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    assertEqual(Status.OK.getStatusCode(), response.getStatus());
   }
 
   public static void assertDeleted(List<EntityReference> list, Boolean expected) {
-    listOrEmpty(list).forEach(e -> assertEquals(expected, e.getDeleted()));
+    listOrEmpty(list).forEach(e -> assertEqual(expected, e.getDeleted()));
   }
 
   public static void validateEntityReference(EntityReference ref) {
@@ -521,7 +521,7 @@ public final class TestUtils {
     if (expected.isEmpty()) {
       return;
     }
-    assertEquals(expected.size(), actual.size());
+    assertEqual(expected.size(), actual.size());
     for (UUID id : expected) {
       assertNotNull(
           actual.stream().filter(entity -> entity.getId().equals(id)).findAny().orElse(null));
@@ -536,7 +536,7 @@ public final class TestUtils {
     }
     if (expected != null) {
       actual = listOrEmpty(actual);
-      assertEquals(expected.size(), actual.size());
+      assertEqual(expected.size(), actual.size());
       for (EntityReference e : expected) {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);
       }
@@ -547,7 +547,7 @@ public final class TestUtils {
       List<String> expected, List<EntityReference> actual) {
     if (expected != null) {
       actual = listOrEmpty(actual);
-      assertEquals(expected.size(), actual.size());
+      assertEqual(expected.size(), actual.size());
       for (String e : expected) {
         TestUtils.existsInEntityReferenceList(actual, e, true);
       }
@@ -664,8 +664,8 @@ public final class TestUtils {
 
   public static void assertStyle(Style expected, Style actual) {
     if (expected == null) return;
-    assertEquals(expected.getIconURL(), actual.getIconURL());
-    assertEquals(expected.getColor(), actual.getColor());
+    assertEqual(expected.getIconURL(), actual.getIconURL());
+    assertEqual(expected.getColor(), actual.getColor());
   }
 
   public static void assertEventually(String name, CheckedRunnable runnable) {

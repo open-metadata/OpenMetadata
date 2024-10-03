@@ -20,7 +20,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.awaitility.Awaitility.with;
 import static org.awaitility.Durations.ONE_MINUTE;
 import static org.awaitility.Durations.ONE_SECOND;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -298,25 +298,25 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     for (int i = 0; i < 10; i++) {
       createAndCheck(create, USER_AUTH_HEADERS);
       // List all the threads and make sure the number of threads increased by 1
-      assertEquals(
+      assertEqual(
           ++userThreadCount,
           listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Mentioned user
-      assertEquals(
+      assertEqual(
           ++tableThreadCount,
           listThreads(TABLE_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // About TABLE
-      assertEquals(
+      assertEqual(
           ++totalThreadCount,
           listThreads(null, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Overall threads
     }
 
     // List threads should not include mentioned entities
     // It should only include threads which are about the entity link
-    assertEquals(
+    assertEqual(
         tableDescriptionThreadCount,
         listThreads(TABLE_DESCRIPTION_LINK, null, USER_AUTH_HEADERS)
             .getPaging()
             .getTotal()); // About TABLE Description
-    assertEquals(
+    assertEqual(
         tableColumnDescriptionThreadCount,
         listThreads(TABLE_COLUMN_LINK, null, USER_AUTH_HEADERS)
             .getPaging()
@@ -326,18 +326,18 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     for (int i = 0; i < 10; i++) {
       createAndCheck(create, USER_AUTH_HEADERS);
       // List all the threads and make sure the number of threads increased by 1
-      assertEquals(
+      assertEqual(
           ++userThreadCount,
           listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Mentioned user
-      assertEquals(
+      assertEqual(
           ++tableThreadCount,
           listThreads(TABLE_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // About TABLE
-      assertEquals(
+      assertEqual(
           ++tableDescriptionThreadCount,
           listThreads(TABLE_DESCRIPTION_LINK, null, USER_AUTH_HEADERS)
               .getPaging()
               .getTotal()); // About TABLE Description
-      assertEquals(
+      assertEqual(
           ++totalThreadCount,
           listThreads(null, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Overall threads
     }
@@ -346,34 +346,34 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     for (int i = 0; i < 10; i++) {
       createAndCheck(create, USER_AUTH_HEADERS);
       // List all the threads and make sure the number of threads increased by 1
-      assertEquals(
+      assertEqual(
           ++userThreadCount,
           listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Mentioned user
-      assertEquals(
+      assertEqual(
           ++tableThreadCount,
           listThreads(TABLE_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal()); // About TABLE
-      assertEquals(
+      assertEqual(
           ++tableColumnDescriptionThreadCount,
           listThreads(TABLE_COLUMN_LINK, null, USER_AUTH_HEADERS)
               .getPaging()
               .getTotal()); // About TABLE Description
-      assertEquals(
+      assertEqual(
           ++totalThreadCount,
           listThreads(null, null, USER_AUTH_HEADERS).getPaging().getTotal()); // Overall threads
     }
 
     // Test the /api/v1/feed/count API
-    assertEquals(
+    assertEqual(
         userThreadCount, listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal());
     FeedResource.ThreadCountList threadCounts = listThreadsCount(USER_LINK, USER_AUTH_HEADERS);
     for (ThreadCount threadCount : threadCounts.getData()) {
       if (threadCount.getEntityLink().equals(USER_LINK)) {
-        assertEquals(userThreadCount, threadCount.getConversationCount());
+        assertEqual(userThreadCount, threadCount.getConversationCount());
       }
     }
-    assertEquals(
+    assertEqual(
         tableDescriptionThreadCount, getThreadCount(TABLE_DESCRIPTION_LINK, USER_AUTH_HEADERS));
-    assertEquals(
+    assertEqual(
         tableColumnDescriptionThreadCount, getThreadCount(TABLE_COLUMN_LINK, USER_AUTH_HEADERS));
   }
 
@@ -460,8 +460,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // List all the tasks for a user
     tasks = listTasks(null, USER.getId().toString(), null, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(assignedToCount + assignedByCount + 2, tasks.getPaging().getTotal());
-    assertEquals(assignedToCount + assignedByCount + 2, tasks.getData().size());
+    assertEqual(assignedToCount + assignedByCount + 2, tasks.getPaging().getTotal());
+    assertEqual(assignedToCount + assignedByCount + 2, tasks.getData().size());
 
     // close a task and test the task status filter
     ResolveTask resolveTask = new ResolveTask().withNewValue("accepted description");
@@ -471,7 +471,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertFalse(tasks.getData().stream().anyMatch(t -> t.getTask().getId().equals(task2.getId())));
 
     tasks = listTasks(null, null, null, TaskStatus.Closed, null, USER2_AUTH_HEADERS);
-    assertEquals(task2.getId(), tasks.getData().get(0).getTask().getId());
+    assertEqual(task2.getId(), tasks.getData().get(0).getTask().getId());
   }
 
   @Test
@@ -505,32 +505,32 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     ThreadList announcements = listAnnouncements(null, null, null, ADMIN_AUTH_HEADERS);
     int announcementCount = announcements.getPaging().getTotal();
 
-    assertEquals(totalAnnouncementCount + 4, announcementCount);
-    assertEquals(totalAnnouncementCount + 4, announcements.getData().size());
+    assertEqual(totalAnnouncementCount + 4, announcementCount);
+    assertEqual(totalAnnouncementCount + 4, announcements.getData().size());
 
     announcements = listAnnouncements(about, null, null, ADMIN_AUTH_HEADERS);
-    assertEquals(announcementCount, announcements.getPaging().getTotal());
-    assertEquals(announcementCount, announcements.getData().size());
+    assertEqual(announcementCount, announcements.getPaging().getTotal());
+    assertEqual(announcementCount, announcements.getData().size());
 
     announcements = listAnnouncements(null, null, true, ADMIN_AUTH_HEADERS);
     int activeAnnouncementCount = announcements.getPaging().getTotal();
 
-    assertEquals(1, activeAnnouncementCount);
-    assertEquals(1, announcements.getData().size());
-    assertEquals("Active", announcements.getData().get(0).getAnnouncement().getDescription());
+    assertEqual(1, activeAnnouncementCount);
+    assertEqual(1, announcements.getData().size());
+    assertEqual("Active", announcements.getData().get(0).getAnnouncement().getDescription());
 
     announcements = listAnnouncements(about, null, true, ADMIN_AUTH_HEADERS);
-    assertEquals(activeAnnouncementCount, announcements.getPaging().getTotal());
-    assertEquals(activeAnnouncementCount, announcements.getData().size());
+    assertEqual(activeAnnouncementCount, announcements.getPaging().getTotal());
+    assertEqual(activeAnnouncementCount, announcements.getData().size());
 
     // get non-active announcements
     announcements = listAnnouncements(null, null, false, ADMIN_AUTH_HEADERS);
-    assertEquals(totalAnnouncementCount + 3, announcements.getPaging().getTotal());
-    assertEquals(totalAnnouncementCount + 3, announcements.getData().size());
+    assertEqual(totalAnnouncementCount + 3, announcements.getPaging().getTotal());
+    assertEqual(totalAnnouncementCount + 3, announcements.getData().size());
 
     announcements = listAnnouncements(about, null, false, ADMIN_AUTH_HEADERS);
-    assertEquals(totalAnnouncementCount + 3, announcements.getPaging().getTotal());
-    assertEquals(totalAnnouncementCount + 3, announcements.getData().size());
+    assertEqual(totalAnnouncementCount + 3, announcements.getPaging().getTotal());
+    assertEqual(totalAnnouncementCount + 3, announcements.getData().size());
   }
 
   @Test
@@ -541,7 +541,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     createAI(USER.getName(), about, "Second AI", "query", USER_AUTH_HEADERS);
 
     // List all the AI and make sure the number of AI increased by 2
-    assertEquals(2, listAI(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal());
+    assertEqual(2, listAI(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal());
   }
 
   @Test
@@ -620,17 +620,17 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // User2 who is assigned the task can resolve the task
     resolveTask(taskId, resolveTask, USER2_AUTH_HEADERS);
     table = TABLE_RESOURCE_TEST.getEntity(table.getId(), null, USER_AUTH_HEADERS);
-    assertEquals("accepted", EntityUtil.getColumn(table, (C1)).getDescription());
+    assertEqual("accepted", EntityUtil.getColumn(table, (C1)).getDescription());
 
     taskThread = getTask(taskId, USER_AUTH_HEADERS);
-    assertEquals(taskId, taskThread.getTask().getId());
-    assertEquals("accepted", taskThread.getTask().getNewValue());
-    assertEquals(TaskStatus.Closed, taskThread.getTask().getStatus());
-    assertEquals(1, taskThread.getPostsCount());
-    assertEquals(1, taskThread.getPosts().size());
+    assertEqual(taskId, taskThread.getTask().getId());
+    assertEqual("accepted", taskThread.getTask().getNewValue());
+    assertEqual(TaskStatus.Closed, taskThread.getTask().getStatus());
+    assertEqual(1, taskThread.getPostsCount());
+    assertEqual(1, taskThread.getPosts().size());
     String diff = feedMessageFormatter.getPlaintextDiff("old", "accepted");
     String expectedMessage = String.format("Resolved the Task with Description - %s", diff);
-    assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
+    assertEqual(expectedMessage, taskThread.getPosts().get(0).getMessage());
   }
 
   @Test
@@ -658,17 +658,17 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // User2 to who is part of Team 2 to which the task is assigned to can resolve the task
     resolveTask(taskId, resolveTask, USER2_AUTH_HEADERS);
     Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, USER_AUTH_HEADERS);
-    assertEquals("accepted", EntityUtil.getColumn(table, (C1)).getDescription());
+    assertEqual("accepted", EntityUtil.getColumn(table, (C1)).getDescription());
 
     taskThread = getTask(taskId, USER_AUTH_HEADERS);
-    assertEquals(taskId, taskThread.getTask().getId());
-    assertEquals("accepted", taskThread.getTask().getNewValue());
-    assertEquals(TaskStatus.Closed, taskThread.getTask().getStatus());
-    assertEquals(1, taskThread.getPostsCount());
-    assertEquals(1, taskThread.getPosts().size());
+    assertEqual(taskId, taskThread.getTask().getId());
+    assertEqual("accepted", taskThread.getTask().getNewValue());
+    assertEqual(TaskStatus.Closed, taskThread.getTask().getStatus());
+    assertEqual(1, taskThread.getPostsCount());
+    assertEqual(1, taskThread.getPosts().size());
     String diff = feedMessageFormatter.getPlaintextDiff("old", "accepted");
     String expectedMessage = String.format("Resolved the Task with Description - %s", diff);
-    assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
+    assertEqual(expectedMessage, taskThread.getPosts().get(0).getMessage());
   }
 
   @Test
@@ -697,15 +697,15 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // closing the task should not affect description of the table
     table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, USER_AUTH_HEADERS);
-    assertEquals(oldDescription, EntityUtil.getColumn(table, C1).getDescription());
+    assertEqual(oldDescription, EntityUtil.getColumn(table, C1).getDescription());
 
     Thread taskThread = getTask(taskId, USER_AUTH_HEADERS);
-    assertEquals(taskId, taskThread.getTask().getId());
+    assertEqual(taskId, taskThread.getTask().getId());
     assertNull(taskThread.getTask().getNewValue());
-    assertEquals(TaskStatus.Closed, taskThread.getTask().getStatus());
-    assertEquals(1, taskThread.getPostsCount());
-    assertEquals(1, taskThread.getPosts().size());
-    assertEquals(
+    assertEqual(TaskStatus.Closed, taskThread.getTask().getStatus());
+    assertEqual(1, taskThread.getPostsCount());
+    assertEqual(1, taskThread.getPosts().size());
+    assertEqual(
         "Closed the Task with comment - closing comment",
         taskThread.getPosts().get(0).getMessage());
   }
@@ -742,17 +742,17 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), "tags,columns", USER_AUTH_HEADERS);
     List<TagLabel> tags = EntityUtil.getColumn(table, C1).getTags();
-    assertEquals(USER_ADDRESS_TAG_LABEL.getTagFQN(), tags.get(0).getTagFQN());
+    assertEqual(USER_ADDRESS_TAG_LABEL.getTagFQN(), tags.get(0).getTagFQN());
 
     taskThread = getTask(taskId, USER_AUTH_HEADERS);
-    assertEquals(taskId, taskThread.getTask().getId());
-    assertEquals(newValue, taskThread.getTask().getNewValue());
-    assertEquals(TaskStatus.Closed, taskThread.getTask().getStatus());
-    assertEquals(1, taskThread.getPostsCount());
-    assertEquals(1, taskThread.getPosts().size());
+    assertEqual(taskId, taskThread.getTask().getId());
+    assertEqual(newValue, taskThread.getTask().getNewValue());
+    assertEqual(TaskStatus.Closed, taskThread.getTask().getStatus());
+    assertEqual(1, taskThread.getPostsCount());
+    assertEqual(1, taskThread.getPosts().size());
     String diff = feedMessageFormatter.getPlaintextDiff("", USER_ADDRESS_TAG_LABEL.getTagFQN());
     String expectedMessage = String.format("Resolved the Task with Tag(s) - %s", diff);
-    assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
+    assertEqual(expectedMessage, taskThread.getPosts().get(0).getMessage());
   }
 
   private static Stream<Arguments> provideStringsForListThreads() {
@@ -776,7 +776,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       CreateThread create = create().withMessage("Thread " + i);
       createAndCheck(create, USER_AUTH_HEADERS);
       // List all the threads and make sure the number of threads increased by 1
-      assertEquals(
+      assertEqual(
           ++totalThreadCount,
           listThreads(entityLink, null, USER_AUTH_HEADERS).getPaging().getTotal());
     }
@@ -805,8 +805,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             limit,
             null,
             null);
-    assertEquals(limit, threads.getData().size());
-    assertEquals(totalThreadCount, threads.getPaging().getTotal());
+    assertEqual(limit, threads.getData().size());
+    assertEqual(totalThreadCount, threads.getPaging().getTotal());
     assertNotNull(threads.getPaging().getAfter());
     assertNull(threads.getPaging().getBefore());
     String afterCursor = threads.getPaging().getAfter();
@@ -835,7 +835,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         beforeCursor = threads.getPaging().getBefore();
       }
     }
-    assertEquals(totalPages - 1, pageCount);
+    assertEqual(totalPages - 1, pageCount);
 
     // Get the last page
     threads =
@@ -851,7 +851,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             limit,
             null,
             afterCursor);
-    assertEquals(lastPageCount, threads.getData().size());
+    assertEqual(lastPageCount, threads.getData().size());
     assertNull(threads.getPaging().getAfter());
 
     // beforeCursor should point to the first page
@@ -868,10 +868,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             limit,
             beforeCursor,
             null);
-    assertEquals(limit, threads.getData().size());
+    assertEqual(limit, threads.getData().size());
     // since threads are always returned to the order of updated timestamp
     // the first message should read "Thread 10"
-    assertEquals("Thread 10", threads.getData().get(0).getMessage());
+    assertEqual("Thread 10", threads.getData().get(0).getMessage());
   }
 
   @Test
@@ -919,7 +919,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // Check if get posts API returns all the posts
     PostList postList = listPosts(thread.getId().toString(), USER_AUTH_HEADERS);
-    assertEquals(POST_COUNT, postList.getData().size());
+    assertEqual(POST_COUNT, postList.getData().size());
   }
 
   @Test
@@ -951,7 +951,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
     assertNotEquals(patched.getUpdatedAt(), thread.getUpdatedAt());
-    assertEquals(TEST_USER_NAME, patched.getUpdatedBy());
+    assertEqual(TEST_USER_NAME, patched.getUpdatedBy());
   }
 
   @Test
@@ -972,8 +972,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
 
     assertNotEquals(patched.getUpdatedAt(), thread.getUpdatedAt());
-    assertEquals(TEST_USER_NAME, patched.getUpdatedBy());
-    assertEquals("query", patched.getChatbot().getQuery());
+    assertEqual(TEST_USER_NAME, patched.getUpdatedBy());
+    assertEqual("query", patched.getChatbot().getQuery());
 
     // Patch again to update the query
     String originalJson2 = JsonUtils.pojoToJson(patched);
@@ -981,8 +981,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     Thread patched2 = patchThreadAndCheck(updated2, originalJson2, TEST_AUTH_HEADERS);
 
     assertNotEquals(patched2.getUpdatedAt(), patched.getUpdatedAt());
-    assertEquals(TEST_USER_NAME, patched2.getUpdatedBy());
-    assertEquals("query2", patched2.getChatbot().getQuery());
+    assertEqual(TEST_USER_NAME, patched2.getUpdatedBy());
+    assertEqual("query2", patched2.getChatbot().getQuery());
   }
 
   @Test
@@ -1004,13 +1004,13 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
 
     assertNotEquals(patched.getUpdatedAt(), thread.getUpdatedAt());
-    assertEquals(TEST_USER_NAME, patched.getUpdatedBy());
-    assertEquals(startTs, patched.getAnnouncement().getStartTime());
-    assertEquals(endTs, patched.getAnnouncement().getEndTime());
+    assertEqual(TEST_USER_NAME, patched.getUpdatedBy());
+    assertEqual(startTs, patched.getAnnouncement().getStartTime());
+    assertEqual(endTs, patched.getAnnouncement().getEndTime());
 
     Thread thread1 = getThread(thread.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(startTs, thread1.getAnnouncement().getStartTime());
-    assertEquals(endTs, thread1.getAnnouncement().getEndTime());
+    assertEqual(startTs, thread1.getAnnouncement().getStartTime());
+    assertEqual(endTs, thread1.getAnnouncement().getEndTime());
 
     // patch description
     originalJson = JsonUtils.pojoToJson(thread1);
@@ -1018,10 +1018,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         thread1.getAnnouncement().withDescription("New Description");
     updated = thread1.withAnnouncement(announcementDetails1);
     patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
-    assertEquals("New Description", patched.getAnnouncement().getDescription());
+    assertEqual("New Description", patched.getAnnouncement().getDescription());
 
     Thread thread2 = getThread(thread.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals("New Description", thread2.getAnnouncement().getDescription());
+    assertEqual("New Description", thread2.getAnnouncement().getDescription());
   }
 
   @Test
@@ -1126,19 +1126,19 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     ThreadList threads = listThreads(null, 5, USER_AUTH_HEADERS);
     thread = threads.getData().get(0);
-    assertEquals(5, thread.getPosts().size());
-    assertEquals(POST_COUNT, thread.getPostsCount());
+    assertEqual(5, thread.getPosts().size());
+    assertEqual(POST_COUNT, thread.getPostsCount());
     // Thread should contain the latest 5 messages
     List<Post> posts = thread.getPosts();
     int startIndex = 5;
     for (var post : posts) {
-      assertEquals("message" + startIndex++, post.getMessage());
+      assertEqual("message" + startIndex++, post.getMessage());
     }
 
     // when posts limit is null, it should return 3 posts which is the default
     threads = listThreads(null, null, USER_AUTH_HEADERS);
     thread = threads.getData().get(0);
-    assertEquals(3, thread.getPosts().size());
+    assertEqual(3, thread.getPosts().size());
 
     // limit <0 is not supported and should throw an exception
     assertResponse(
@@ -1149,7 +1149,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // limit greater than total number of posts should return correct response
     threads = listThreads(null, 100, USER_AUTH_HEADERS);
     thread = threads.getData().get(0);
-    assertEquals(10, thread.getPosts().size());
+    assertEqual(10, thread.getPosts().size());
   }
 
   @Test
@@ -1176,7 +1176,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // user1 thread count remains the same as the newly created thread belongs to team2 and user1 is
     // not part of it
     ThreadList threads = listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS);
-    assertEquals(user1ThreadCount, threads.getPaging().getTotal());
+    assertEqual(user1ThreadCount, threads.getPaging().getTotal());
 
     // This should return error since the table is owned by a team
     // and for the filter we are passing team id instead of user id
@@ -1187,11 +1187,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // Now, test the filter with user2 who is part of the team2
     threads = listThreadsWithFilter(user2, FilterType.OWNER, USER_AUTH_HEADERS);
-    assertEquals(user2ThreadCount + 1, threads.getPaging().getTotal());
+    assertEqual(user2ThreadCount + 1, threads.getPaging().getTotal());
 
     // Test if no user id  filter returns all threads
     threads = listThreadsWithFilter(null, FilterType.OWNER, USER_AUTH_HEADERS);
-    assertEquals(totalThreadCount + 1, threads.getPaging().getTotal());
+    assertEqual(totalThreadCount + 1, threads.getPaging().getTotal());
   }
 
   @Test
@@ -1219,7 +1219,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // user1 thread count remains the same as the newly created thread belongs to team2 and user1 is
     // not part of it
     ThreadList threads = listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS);
-    assertEquals(user1ThreadCount, threads.getPaging().getTotal());
+    assertEqual(user1ThreadCount, threads.getPaging().getTotal());
 
     String entityLink = String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName());
     int initialThreadCount =
@@ -1248,7 +1248,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     ThreadList ownerOrFollowTreads =
         listThreadsWithFilter(
             USER.getId().toString(), FilterType.OWNER_OR_FOLLOWS, USER_AUTH_HEADERS);
-    assertEquals(threads.getPaging().getTotal() + 3, ownerOrFollowTreads.getPaging().getTotal());
+    assertEqual(threads.getPaging().getTotal() + 3, ownerOrFollowTreads.getPaging().getTotal());
   }
 
   @Test
@@ -1278,7 +1278,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     ThreadList threads =
         listThreadsWithFilter(USER.getId().toString(), FilterType.MENTIONS, USER_AUTH_HEADERS);
-    assertEquals(32, threads.getPaging().getTotal());
+    assertEqual(32, threads.getPaging().getTotal());
   }
 
   @Test
@@ -1316,18 +1316,18 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             });
     ThreadList threads =
         listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
-    assertEquals(initialThreadCount + 3, threads.getPaging().getTotal());
-    assertEquals(initialThreadCount + 3, threads.getData().size());
-    assertEquals(
+    assertEqual(initialThreadCount + 3, threads.getPaging().getTotal());
+    assertEqual(initialThreadCount + 3, threads.getData().size());
+    assertEqual(
         String.format("Followed **table** `%s`", TABLE2.getFullyQualifiedName()),
         threads.getData().get(0).getMessage());
-    assertEquals("Message 2", threads.getData().get(1).getMessage());
+    assertEqual("Message 2", threads.getData().get(1).getMessage());
 
     // Filter by follows for another user should return 0 threads
     threads =
         listThreadsWithFilter(USER2.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
-    assertEquals(0, threads.getPaging().getTotal());
-    assertEquals(0, threads.getData().size());
+    assertEqual(0, threads.getPaging().getTotal());
+    assertEqual(0, threads.getData().size());
   }
 
   @Test
@@ -1377,12 +1377,12 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     Thread thread = createAndCheck(create(), USER_AUTH_HEADERS);
     CreatePost createPost = createPost(null);
     thread = addPostAndCheck(thread, createPost, USER_AUTH_HEADERS);
-    assertEquals(1, thread.getPosts().size());
+    assertEqual(1, thread.getPosts().size());
 
     // delete the post
     Post post = thread.getPosts().get(0);
     Post deletedPost = deletePost(thread.getId(), post.getId(), USER_AUTH_HEADERS);
-    assertEquals(post.getId(), deletedPost.getId());
+    assertEqual(post.getId(), deletedPost.getId());
 
     // Check if get posts API returns the post
     PostList postList = listPosts(thread.getId().toString(), USER_AUTH_HEADERS);
@@ -1390,7 +1390,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // validate posts count
     Thread getThread = getThread(thread.getId(), USER_AUTH_HEADERS);
-    assertEquals(0, getThread.getPostsCount());
+    assertEqual(0, getThread.getPostsCount());
   }
 
   @Test
@@ -1401,7 +1401,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // delete the thread
     Thread deletedThread = deleteThread(thread.getId(), USER_AUTH_HEADERS);
-    assertEquals(thread.getId(), deletedThread.getId());
+    assertEqual(thread.getId(), deletedThread.getId());
 
     // Check if thread is not found
     assertResponse(
@@ -1416,7 +1416,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     Thread thread = createAndCheck(create(), ADMIN_AUTH_HEADERS);
     CreatePost createPost = createPost(null).withFrom(ADMIN_USER_NAME);
     thread = addPostAndCheck(thread, createPost, ADMIN_AUTH_HEADERS);
-    assertEquals(1, thread.getPosts().size());
+    assertEqual(1, thread.getPosts().size());
 
     // delete the post using a different user who is not an admin
     // Here post author is ADMIN, and we try to delete as USER
@@ -1451,7 +1451,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     Thread thread = createAndCheck(create(), USER_AUTH_HEADERS);
     CreatePost createPost = createPost("reply 1");
     thread = addPostAndCheck(thread, createPost, USER_AUTH_HEADERS);
-    assertEquals(1, thread.getPosts().size());
+    assertEqual(1, thread.getPosts().size());
 
     // patch the post
     Post post = thread.getPosts().get(0);
@@ -1465,7 +1465,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertTrue(containsAll(updatedPost.getReactions(), List.of(reaction1, reaction2)));
     ThreadList threads = listThreads(null, 5, USER_AUTH_HEADERS);
     thread = threads.getData().get(0);
-    assertEquals(TEST_USER_NAME, thread.getUpdatedBy());
+    assertEqual(TEST_USER_NAME, thread.getUpdatedBy());
   }
 
   @Test
@@ -1575,9 +1575,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   private void validateThread(Thread thread, String message, String from, String about) {
     assertNotNull(thread.getId());
-    assertEquals(message, thread.getMessage());
-    assertEquals(from, thread.getCreatedBy());
-    assertEquals(about, thread.getAbout());
+    assertEqual(message, thread.getMessage());
+    assertEqual(from, thread.getCreatedBy());
+    assertEqual(about, thread.getAbout());
   }
 
   private void validatePost(Thread expected, Thread actual, String from, String message) {
@@ -1586,12 +1586,12 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         actual
             .getPosts()
             .get(actual.getPosts().size() - 1); // Last post was newly added to the thread
-    assertEquals(from, actualPost.getFrom());
-    assertEquals(message, actualPost.getMessage());
+    assertEqual(from, actualPost.getFrom());
+    assertEqual(message, actualPost.getMessage());
     assertNotNull(actualPost.getPostTs());
 
     // Ensure post count increased
-    assertEquals(expected.getPosts().size() + 1, actual.getPosts().size());
+    assertEqual(expected.getPosts().size() + 1, actual.getPosts().size());
   }
 
   public Thread createThread(CreateThread create, Map<String, String> authHeaders)
@@ -1875,17 +1875,17 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   public void compareEntities(Thread expected, Thread patched, Map<String, String> authHeaders) {
     assertListNotNull(patched.getId(), patched.getHref(), patched.getAbout());
-    assertEquals(expected.getMessage(), patched.getMessage());
-    assertEquals(expected.getResolved(), patched.getResolved());
-    assertEquals(getPrincipalName(authHeaders), patched.getUpdatedBy());
+    assertEqual(expected.getMessage(), patched.getMessage());
+    assertEqual(expected.getResolved(), patched.getResolved());
+    assertEqual(getPrincipalName(authHeaders), patched.getUpdatedBy());
   }
 
   public void compareEntities(Post expected, Post patched) {
     assertListNotNull(patched.getId(), patched.getMessage(), patched.getFrom());
-    assertEquals(expected.getMessage(), patched.getMessage());
-    assertEquals(expected.getFrom(), patched.getFrom());
-    assertEquals(expected.getPostTs(), patched.getPostTs());
-    assertEquals(expected.getReactions().size(), patched.getReactions().size());
+    assertEqual(expected.getMessage(), patched.getMessage());
+    assertEqual(expected.getFrom(), patched.getFrom());
+    assertEqual(expected.getPostTs(), patched.getPostTs());
+    assertEqual(expected.getReactions().size(), patched.getReactions().size());
     assertTrue(containsAll(expected.getReactions(), patched.getReactions()));
   }
 
@@ -1971,8 +1971,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       ThreadList tasks) {
     validateTask(
         expectedAssignee, expectedSuggestion, expectedTaskStatus, tasks.getData().get(0).getTask());
-    assertEquals(expectedCount, tasks.getPaging().getTotal());
-    assertEquals(expectedCount, tasks.getData().size());
+    assertEqual(expectedCount, tasks.getPaging().getTotal());
+    assertEqual(expectedCount, tasks.getData().size());
   }
 
   public void validateTask(
@@ -1981,16 +1981,16 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       TaskStatus expectedTaskStatus,
       TaskDetails task) {
     assertNotNull(task.getId());
-    assertEquals(expectedAssignee, task.getAssignees().get(0).getId());
-    assertEquals(expectedSuggestion, task.getSuggestion());
-    assertEquals(expectedTaskStatus, task.getStatus());
+    assertEqual(expectedAssignee, task.getAssignees().get(0).getId());
+    assertEqual(expectedSuggestion, task.getSuggestion());
+    assertEqual(expectedTaskStatus, task.getStatus());
   }
 
   public void validateTask(TaskDetails expected, TaskDetails actual) {
-    assertEquals(expected.getId(), actual.getId());
-    assertEquals(expected.getAssignees(), actual.getAssignees());
-    assertEquals(expected.getSuggestion(), actual.getSuggestion());
-    assertEquals(expected.getStatus(), actual.getStatus());
+    assertEqual(expected.getId(), actual.getId());
+    assertEqual(expected.getAssignees(), actual.getAssignees());
+    assertEqual(expected.getSuggestion(), actual.getSuggestion());
+    assertEqual(expected.getStatus(), actual.getStatus());
   }
 
   public AnnouncementDetails getAnnouncementDetails(String description, long start, long end) {

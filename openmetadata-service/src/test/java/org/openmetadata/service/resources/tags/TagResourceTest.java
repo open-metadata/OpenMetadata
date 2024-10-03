@@ -16,7 +16,7 @@ package org.openmetadata.service.resources.tags;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -114,7 +114,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     Tag tag1 = createTag("tag1", classification.getName(), null);
     List<Tag> childrenAfter = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
 
-    assertEquals(childrenBefore.size() + 1, childrenAfter.size());
+    assertEqual(childrenBefore.size() + 1, childrenAfter.size());
 
     createTag("SecondaryTag", classification.getName(), tag1.getFullyQualifiedName());
   }
@@ -344,27 +344,27 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   @Override
   public void validateCreatedEntity(
       Tag createdEntity, CreateTag request, Map<String, String> authHeaders) {
-    assertEquals(
+    assertEqual(
         request.getClassification(), createdEntity.getClassification().getFullyQualifiedName());
     if (request.getParent() == null) {
       assertNull(createdEntity.getParent());
     } else {
-      assertEquals(request.getParent(), createdEntity.getParent().getFullyQualifiedName());
+      assertEqual(request.getParent(), createdEntity.getParent().getFullyQualifiedName());
     }
-    assertEquals(
+    assertEqual(
         request.getProvider() == null ? ProviderType.USER : request.getProvider(),
         createdEntity.getProvider());
-    assertEquals(request.getMutuallyExclusive(), createdEntity.getMutuallyExclusive());
+    assertEqual(request.getMutuallyExclusive(), createdEntity.getMutuallyExclusive());
   }
 
   @Override
   public void compareEntities(Tag expected, Tag updated, Map<String, String> authHeaders) {
     assertReference(expected.getClassification(), updated.getClassification());
     assertReference(expected.getParent(), updated.getParent());
-    assertEquals(
+    assertEqual(
         expected.getProvider() == null ? ProviderType.USER : expected.getProvider(),
         updated.getProvider());
-    assertEquals(expected.getMutuallyExclusive(), updated.getMutuallyExclusive());
+    assertEqual(expected.getMutuallyExclusive(), updated.getMutuallyExclusive());
   }
 
   @Override
@@ -396,7 +396,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
       throws IOException {
     int termCount = getClassification(create.getClassification()).getTermCount();
     Tag tag = super.createAndCheckEntity(create, authHeaders);
-    assertEquals(termCount + 1, getClassification(create.getClassification()).getTermCount());
+    assertEqual(termCount + 1, getClassification(create.getClassification()).getTermCount());
     return tag;
   }
 
@@ -412,7 +412,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     Tag tag =
         super.updateAndCheckEntity(request, status, authHeaders, updateType, changeDescription);
     if (status == Response.Status.CREATED) {
-      assertEquals(termCount + 1, getClassification(request.getClassification()).getTermCount());
+      assertEqual(termCount + 1, getClassification(request.getClassification()).getTermCount());
     }
     return tag;
   }

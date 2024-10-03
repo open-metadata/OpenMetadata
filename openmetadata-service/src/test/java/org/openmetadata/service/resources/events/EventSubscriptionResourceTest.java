@@ -4,7 +4,7 @@ import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -106,7 +106,7 @@ public class EventSubscriptionResourceTest
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     // For the DISABLED Publisher are not available, so it will have no status
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(DISABLED, status.getStatus());
+    assertEqual(DISABLED, status.getStatus());
     WebhookCallbackResource.EventDetails details =
         webhookCallbackResource.getEventDetails(webhookName);
     assertNull(details);
@@ -140,14 +140,14 @@ public class EventSubscriptionResourceTest
             change);
 
     SubscriptionStatus status2 = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
 
     // Ensure the call back notification has started
     details = waitForFirstEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
     SubscriptionStatus successDetails =
         getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, successDetails.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, successDetails.getStatus());
     assertNull(successDetails.getLastFailedAt());
     //
     // Disable the webhook and ensure notification is disabled
@@ -166,13 +166,13 @@ public class EventSubscriptionResourceTest
             MINOR_UPDATE,
             change);
     SubscriptionStatus status3 = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(DISABLED, status3.getStatus());
+    assertEqual(DISABLED, status3.getStatus());
 
     int iterations = 0;
     while (iterations < 10) {
       Awaitility.await().atLeast(Duration.ofMillis(100L)).untilTrue(new AtomicBoolean(true));
       iterations++;
-      assertEquals(1, details.getEvents().size()); // Event counter remains the same
+      assertEqual(1, details.getEvents().size()); // Event counter remains the same
     }
 
     deleteEntity(alert.getId(), ADMIN_AUTH_HEADERS);
@@ -197,7 +197,7 @@ public class EventSubscriptionResourceTest
         .untilTrue(testExpectedStatus(alert.getId(), FAILED));
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(FAILED, status.getStatus());
+    assertEqual(FAILED, status.getStatus());
 
     // Now change the webhook URL to a valid URL and ensure callbacks resume
     String baseUri =
@@ -219,7 +219,7 @@ public class EventSubscriptionResourceTest
         .untilTrue(testExpectedStatus(alert.getId(), ACTIVE));
 
     SubscriptionStatus status2 = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
     deleteEntity(alert.getId(), ADMIN_AUTH_HEADERS);
   }
 
@@ -477,7 +477,7 @@ public class EventSubscriptionResourceTest
         .untilTrue(testExpectedStatus(alert.getId(), ACTIVE));
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, status.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, status.getStatus());
 
     waitForAllEventToComplete(alert.getId());
     Awaitility.await()
@@ -514,7 +514,7 @@ public class EventSubscriptionResourceTest
         .untilTrue(testExpectedStatus(alert.getId(), ACTIVE));
 
     SubscriptionStatus status1 = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, status1.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, status1.getStatus());
 
     assertResponse(
         () -> createAndCheckEntity(genericWebhookRequest, ADMIN_AUTH_HEADERS),
@@ -581,7 +581,7 @@ public class EventSubscriptionResourceTest
         .untilTrue(testExpectedStatus(alert.getId(), ACTIVE));
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, status.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, status.getStatus());
   }
 
   @Test
@@ -628,7 +628,7 @@ public class EventSubscriptionResourceTest
         .untilTrue(testExpectedStatus(alert.getId(), ACTIVE));
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, status.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, status.getStatus());
 
     waitForAllEventToComplete(alert.getId());
     Awaitility.await()
@@ -697,7 +697,7 @@ public class EventSubscriptionResourceTest
     // Create and check the event subscription
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
 
     // Verify no Slack events triggered initially
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
@@ -717,7 +717,7 @@ public class EventSubscriptionResourceTest
         tableResourceTest.createRequest(test).withOwners(List.of(USER_TEAM21.getEntityReference()));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
 
     // Clean up: delete the event subscription and created tables
     deleteEntity(alert.getId(), ADMIN_AUTH_HEADERS);
@@ -752,7 +752,7 @@ public class EventSubscriptionResourceTest
 
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
 
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
     assertNull(details);
@@ -772,7 +772,7 @@ public class EventSubscriptionResourceTest
             .withDomain(domain.getName());
     tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
   }
 
   @Test
@@ -796,7 +796,7 @@ public class EventSubscriptionResourceTest
 
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
 
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
     // alerts will trigger on the changeEvent of table resource
@@ -812,7 +812,7 @@ public class EventSubscriptionResourceTest
     CreateTable createTable2 = tableResourceTest.createRequest(test).withName("test");
     Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
 
     tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
     tableResourceTest.deleteEntity(table2.getId(), ADMIN_AUTH_HEADERS);
@@ -839,7 +839,7 @@ public class EventSubscriptionResourceTest
 
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
 
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
     assertNull(details);
@@ -892,7 +892,7 @@ public class EventSubscriptionResourceTest
 
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
 
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
     assertNull(details);
@@ -934,7 +934,7 @@ public class EventSubscriptionResourceTest
 
     // Wait for the slack event and verify its details
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
     tableResourceTest.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
   }
 
@@ -953,7 +953,7 @@ public class EventSubscriptionResourceTest
 
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
 
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
 
@@ -965,7 +965,7 @@ public class EventSubscriptionResourceTest
 
     // Wait for the slack event and verify its details
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
   }
 
   @Test
@@ -980,7 +980,7 @@ public class EventSubscriptionResourceTest
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
 
     // Alerts are triggered only by ChangeEvent occurrences related to resources as topic
@@ -994,7 +994,7 @@ public class EventSubscriptionResourceTest
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
 
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
   }
 
   @Test
@@ -1019,7 +1019,7 @@ public class EventSubscriptionResourceTest
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
 
     // Alerts are triggered only by changeEvent occurrences related to resources as topic with
@@ -1042,7 +1042,7 @@ public class EventSubscriptionResourceTest
     topicResourceTest.createEntity(topicRequest2, ADMIN_AUTH_HEADERS);
 
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
   }
 
   @Test
@@ -1071,7 +1071,7 @@ public class EventSubscriptionResourceTest
 
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
 
     // Alerts are triggered only by ChangeEvent occurrences related to resources as topic by
@@ -1086,7 +1086,7 @@ public class EventSubscriptionResourceTest
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
 
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
   }
 
   @Test
@@ -1109,7 +1109,7 @@ public class EventSubscriptionResourceTest
 
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
 
     // Alerts are triggered only by changeEvent occurrences related to resources as topic by
@@ -1124,7 +1124,7 @@ public class EventSubscriptionResourceTest
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
 
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
   }
 
   @Test
@@ -1159,7 +1159,7 @@ public class EventSubscriptionResourceTest
 
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
 
     // Alerts are triggered only by ChangeEvent occurrences related to resources as topic by
@@ -1203,7 +1203,7 @@ public class EventSubscriptionResourceTest
     topicResourceTest.createEntity(topicRequest3, ADMIN_AUTH_HEADERS);
 
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
   }
 
   @Test
@@ -1219,7 +1219,7 @@ public class EventSubscriptionResourceTest
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
 
     // Alerts are triggered only by ChangeEvent occurrences related to resources as
@@ -1245,7 +1245,7 @@ public class EventSubscriptionResourceTest
     ingestionPipelineResourceTest.createEntity(request, ADMIN_AUTH_HEADERS);
 
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
   }
 
   @Test
@@ -1271,7 +1271,7 @@ public class EventSubscriptionResourceTest
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(ACTIVE, status.getStatus());
+    assertEqual(ACTIVE, status.getStatus());
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
 
     // Alerts are triggered only by ChangeEvent occurrences related to resources as
@@ -1297,7 +1297,7 @@ public class EventSubscriptionResourceTest
     ingestionPipelineResourceTest.createEntity(request, ADMIN_AUTH_HEADERS);
 
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
   }
 
   public static String generateUniqueNumberAsString() {
@@ -1317,7 +1317,7 @@ public class EventSubscriptionResourceTest
 
     // For the DISABLED Publisher are not available, so it will have no status
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(DISABLED, status.getStatus());
+    assertEqual(DISABLED, status.getStatus());
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
     assertNull(details);
 
@@ -1336,11 +1336,11 @@ public class EventSubscriptionResourceTest
             change);
 
     SubscriptionStatus status2 = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
 
     // Ensure the call back notification has started
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
     ConcurrentLinkedQueue<SlackMessage> messages = details.getEvents();
     for (SlackMessage sm : messages) {
       validateSlackMessage(alert, sm);
@@ -1348,7 +1348,7 @@ public class EventSubscriptionResourceTest
 
     SubscriptionStatus successDetails =
         getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, successDetails.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, successDetails.getStatus());
     assertNull(successDetails.getLastFailedAt());
 
     // Disable the webhook and ensure notification is disabled
@@ -1366,13 +1366,13 @@ public class EventSubscriptionResourceTest
             MINOR_UPDATE,
             change);
     SubscriptionStatus status3 = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(DISABLED, status3.getStatus());
+    assertEqual(DISABLED, status3.getStatus());
 
     int iterations = 0;
     while (iterations < 10) {
       Awaitility.await().atLeast(Duration.ofMillis(100L)).untilTrue(new AtomicBoolean(true));
       iterations++;
-      assertEquals(1, details.getEvents().size()); // Event counter remains the same
+      assertEqual(1, details.getEvents().size()); // Event counter remains the same
     }
 
     deleteEntity(alert.getId(), ADMIN_AUTH_HEADERS);
@@ -1481,7 +1481,7 @@ public class EventSubscriptionResourceTest
     }
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, status.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, status.getStatus());
 
     waitForAllEventToComplete(alert.getId());
     Awaitility.await()
@@ -1505,7 +1505,7 @@ public class EventSubscriptionResourceTest
 
     // For the DISABLED Publisher are not available, so it will have no status
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(DISABLED, status.getStatus());
+    assertEqual(DISABLED, status.getStatus());
     MSTeamsCallbackResource.EventDetails details =
         teamsCallbackResource.getEventDetails(webhookName);
     assertNull(details);
@@ -1525,11 +1525,11 @@ public class EventSubscriptionResourceTest
             change);
 
     SubscriptionStatus status2 = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
 
     // Ensure the call back notification has started
     details = waitForFirstMSTeamsEvent(alert.getId(), webhookName, 25);
-    assertEquals(1, details.getEvents().size());
+    assertEqual(1, details.getEvents().size());
     ConcurrentLinkedQueue<TeamsMessage> messages = details.getEvents();
     for (TeamsMessage teamsMessage : messages) {
       validateTeamsMessage(alert, teamsMessage);
@@ -1537,7 +1537,7 @@ public class EventSubscriptionResourceTest
 
     SubscriptionStatus successDetails =
         getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, successDetails.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, successDetails.getStatus());
     assertNull(successDetails.getLastFailedAt());
 
     // Disable the webhook and ensure notification is disabled
@@ -1555,13 +1555,13 @@ public class EventSubscriptionResourceTest
             MINOR_UPDATE,
             change);
     SubscriptionStatus status3 = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
-    assertEquals(DISABLED, status3.getStatus());
+    assertEqual(DISABLED, status3.getStatus());
 
     int iterations = 0;
     while (iterations < 10) {
       Awaitility.await().atLeast(Duration.ofMillis(100L)).untilTrue(new AtomicBoolean(true));
       iterations++;
-      assertEquals(1, details.getEvents().size()); // Event counter remains the same
+      assertEqual(1, details.getEvents().size()); // Event counter remains the same
     }
 
     deleteEntity(alert.getId(), ADMIN_AUTH_HEADERS);
@@ -1648,7 +1648,7 @@ public class EventSubscriptionResourceTest
 
     // Check if the actual text matches the expected format
     String actualText = slackMessage.getText();
-    assertEquals(
+    assertEqual(
         actualText, expectedTextFormat, "Slack message text does not match expected format");
   }
 
@@ -1688,7 +1688,7 @@ public class EventSubscriptionResourceTest
     // Validate Activity
     String expectedTitle = buildExpectedActivityTitleTextFormatMSTeams(alert);
     String actualTitle = firstSection.getActivityTitle();
-    assertEquals(
+    assertEqual(
         expectedTitle, actualTitle, "Teams message activity title does not match expected format");
 
     // Validate sections
@@ -1735,9 +1735,9 @@ public class EventSubscriptionResourceTest
 
   private void assertAlertEquals(EventSubscription expected, EventSubscription actual) {
     assertNotNull(actual);
-    assertEquals(expected.getId(), actual.getId());
-    assertEquals(expected.getName(), actual.getName());
-    assertEquals(expected.getFullyQualifiedName(), actual.getFullyQualifiedName());
+    assertEqual(expected.getId(), actual.getId());
+    assertEqual(expected.getName(), actual.getName());
+    assertEqual(expected.getFullyQualifiedName(), actual.getFullyQualifiedName());
   }
 
   private AtomicBoolean testExpectedStatus(UUID id, SubscriptionStatus.Status expectedStatus)
@@ -1987,7 +1987,7 @@ public class EventSubscriptionResourceTest
 
   public void assertAlertStatusSuccessWithId(UUID alertId) throws HttpResponseException {
     SubscriptionStatus status = getStatus(alertId, Response.Status.OK.getStatusCode());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, status.getStatus());
+    assertEqual(SubscriptionStatus.Status.ACTIVE, status.getStatus());
     assertNull(status.getLastFailedAt());
   }
 
@@ -2000,9 +2000,9 @@ public class EventSubscriptionResourceTest
       UUID alertId, SubscriptionStatus.Status status, Integer statusCode, String failedReason)
       throws HttpResponseException {
     SubscriptionStatus actionStatus = getStatus(alertId, Response.Status.OK.getStatusCode());
-    assertEquals(status, actionStatus.getStatus());
-    assertEquals(statusCode, actionStatus.getLastFailedStatusCode());
-    assertEquals(failedReason, actionStatus.getLastFailedReason());
+    assertEqual(status, actionStatus.getStatus());
+    assertEqual(statusCode, actionStatus.getLastFailedStatusCode());
+    assertEqual(failedReason, actionStatus.getLastFailedReason());
   }
 
   private SubscriptionStatus getStatus(UUID alertId, int statusCode) throws HttpResponseException {
@@ -2192,9 +2192,9 @@ public class EventSubscriptionResourceTest
       EventSubscription createdEntity,
       CreateEventSubscription createRequest,
       Map<String, String> authHeaders) {
-    assertEquals(createRequest.getName(), createdEntity.getName());
-    assertEquals(createRequest.getInput(), createdEntity.getInput());
-    assertEquals(createRequest.getAlertType(), createdEntity.getAlertType());
+    assertEqual(createRequest.getName(), createdEntity.getName());
+    assertEqual(createRequest.getInput(), createdEntity.getInput());
+    assertEqual(createRequest.getAlertType(), createdEntity.getAlertType());
   }
 
   @Override
@@ -2217,9 +2217,9 @@ public class EventSubscriptionResourceTest
           JsonUtils.readObjects((String) actual, SubscriptionDestination.class);
       actualDestination.forEach(
           d -> d.setConfig(JsonUtils.convertValue(d.getConfig(), Webhook.class)));
-      assertEquals(expected, actualDestination);
+      assertEqual(expected, actualDestination);
     } else if (fieldName.equals("filteringRules") || fieldName.equals("input")) {
-      assertEquals(JsonUtils.pojoToJson(expected), actual);
+      assertEqual(JsonUtils.pojoToJson(expected), actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -2334,10 +2334,10 @@ public class EventSubscriptionResourceTest
 
     // This is done because the actual list will have one extra field always because the Secret Key
     // Encrytion always produces a change recordChange
-    assertEquals(expectedListCopy.size(), actualListCopy.size());
+    assertEqual(expectedListCopy.size(), actualListCopy.size());
 
     for (int i = 0; i < expectedListCopy.size(); i++) {
-      assertEquals(expectedListCopy.get(i).getName(), actualListCopy.get(i).getName());
+      assertEqual(expectedListCopy.get(i).getName(), actualListCopy.get(i).getName());
       assertFieldChange(
           expectedListCopy.get(i).getName(),
           expectedListCopy.get(i).getNewValue(),

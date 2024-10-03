@@ -1,6 +1,6 @@
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -13,13 +13,13 @@ import org.junit.jupiter.api.Test;
 class FullyQualifiedNameTest {
   private record FQNTest(String[] parts, String fqn) {
     public void validate(String[] actualParts, String actualFQN) {
-      assertEquals(fqn, actualFQN);
-      assertEquals(parts.length, actualParts.length);
+      assertEqual(fqn, actualFQN);
+      assertEqual(parts.length, actualParts.length);
       for (int i = 0; i < parts.length; i++) {
         if (parts[i].contains(".")) {
-          assertEquals(FullyQualifiedName.quoteName(parts[i]), actualParts[i]);
+          assertEqual(FullyQualifiedName.quoteName(parts[i]), actualParts[i]);
         } else {
-          assertEquals(parts[i], actualParts[i]);
+          assertEqual(parts[i], actualParts[i]);
         }
       }
     }
@@ -47,10 +47,10 @@ class FullyQualifiedNameTest {
 
   @Test
   void test_quoteName() {
-    assertEquals("a", FullyQualifiedName.quoteName("a")); // Unquoted name remains unquoted
-    assertEquals("\"a.b\"", FullyQualifiedName.quoteName("a.b")); // Add quotes when "." in the name
-    assertEquals("\"a.b\"", FullyQualifiedName.quoteName("\"a.b\"")); // Leave existing valid quotes
-    assertEquals("a", FullyQualifiedName.quoteName("\"a\"")); // Remove quotes when not needed
+    assertEqual("a", FullyQualifiedName.quoteName("a")); // Unquoted name remains unquoted
+    assertEqual("\"a.b\"", FullyQualifiedName.quoteName("a.b")); // Add quotes when "." in the name
+    assertEqual("\"a.b\"", FullyQualifiedName.quoteName("\"a.b\"")); // Leave existing valid quotes
+    assertEqual("a", FullyQualifiedName.quoteName("\"a\"")); // Remove quotes when not needed
 
     assertThrows(
         IllegalArgumentException.class,
@@ -69,8 +69,8 @@ class FullyQualifiedNameTest {
 
   @Test
   void test_unquoteName() {
-    assertEquals("a", FullyQualifiedName.unquoteName("a")); // Unquoted name remains unquoted
-    assertEquals("a.b", FullyQualifiedName.unquoteName("\"a.b\"")); // Leave existing valid quotes
+    assertEqual("a", FullyQualifiedName.unquoteName("a")); // Unquoted name remains unquoted
+    assertEqual("a.b", FullyQualifiedName.unquoteName("\"a.b\"")); // Leave existing valid quotes
   }
 
   @Test
@@ -80,19 +80,19 @@ class FullyQualifiedNameTest {
 
   @Test
   void test_getParentFQN() {
-    assertEquals("a.b.c", FullyQualifiedName.getParentFQN("a.b.c.d"));
-    assertEquals("\"a.b\"", FullyQualifiedName.getParentFQN("\"a.b\".c"));
-    assertEquals("a", FullyQualifiedName.getParentFQN("a.b"));
-    assertEquals("a", FullyQualifiedName.getParentFQN("a.\"b.c\""));
-    assertEquals("a.\"b.c\"", FullyQualifiedName.getParentFQN("a.\"b.c\".d"));
+    assertEqual("a.b.c", FullyQualifiedName.getParentFQN("a.b.c.d"));
+    assertEqual("\"a.b\"", FullyQualifiedName.getParentFQN("\"a.b\".c"));
+    assertEqual("a", FullyQualifiedName.getParentFQN("a.b"));
+    assertEqual("a", FullyQualifiedName.getParentFQN("a.\"b.c\""));
+    assertEqual("a.\"b.c\"", FullyQualifiedName.getParentFQN("a.\"b.c\".d"));
     assertNull(FullyQualifiedName.getParentFQN("a"));
   }
 
   @Test
   void test_getRoot() {
-    assertEquals("a", FullyQualifiedName.getRoot("a.b.c.d"));
-    assertEquals("a", FullyQualifiedName.getRoot("a.b.c"));
-    assertEquals("a", FullyQualifiedName.getRoot("a.b"));
+    assertEqual("a", FullyQualifiedName.getRoot("a.b.c.d"));
+    assertEqual("a", FullyQualifiedName.getRoot("a.b.c"));
+    assertEqual("a", FullyQualifiedName.getRoot("a.b"));
     assertNull(FullyQualifiedName.getRoot("a"));
   }
 

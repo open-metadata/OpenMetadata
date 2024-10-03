@@ -17,7 +17,7 @@
 package org.openmetadata.service.resources.glossary;
 
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -185,7 +185,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // Verify that the term has both the glossary's reviewer and its own reviewer
     List<EntityReference> reviewers = listOf(USER1_REF, USER2_REF);
     reviewers.sort(Comparator.comparing(EntityReference::getName));
-    assertEquals(GLOSSARY_TERM1.getReviewers().size(), reviewers.size());
+    assertEqual(GLOSSARY_TERM1.getReviewers().size(), reviewers.size());
 
     // Compare the reviewer IDs of both lists to ensure they match
     List<UUID> glossaryTermReviewerIds =
@@ -193,14 +193,14 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .map(EntityReference::getId)
             .sorted()
             .collect(Collectors.toList());
-    assertEquals(
+    assertEqual(
         glossaryTermReviewerIds,
         listOf(USER1_REF.getId(), USER2_REF.getId()).stream().sorted().toList());
 
     // Verify that the task assignees are the same as the term reviewers
     Thread approvalTask =
         glossaryTermResourceTest.assertApprovalTask(GLOSSARY_TERM1, TaskStatus.Open);
-    assertEquals(
+    assertEqual(
         GLOSSARY_TERM1.getReviewers().size(), approvalTask.getTask().getAssignees().size());
 
     // Compare the reviewer IDs of both lists to ensure they match
@@ -209,7 +209,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .map(EntityReference::getId)
             .sorted()
             .collect(Collectors.toList());
-    assertEquals(glossaryTermReviewerIds, taskAssigneeIds);
+    assertEqual(glossaryTermReviewerIds, taskAssigneeIds);
 
     // Remove a reviewer USER1 in PATCH request
     // Changes from this PATCH is consolidated with the previous changes
@@ -227,7 +227,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         glossaryTermResourceTest.getEntity(GLOSSARY_TERM1.getId(), "reviewers", ADMIN_AUTH_HEADERS);
     reviewers = listOf(USER2_REF);
     reviewers.sort(Comparator.comparing(EntityReference::getName));
-    assertEquals(GLOSSARY_TERM1.getReviewers(), reviewers);
+    assertEqual(GLOSSARY_TERM1.getReviewers(), reviewers);
 
     // Create a child term under GLOSSARY_TERM1 and ensure the reviewers are inherited from parent
     // term
@@ -243,7 +243,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     reviewers = listOf(USER2_REF, DATA_CONSUMER_REF);
     reviewers.sort(Comparator.comparing(EntityReference::getName));
-    assertEquals(CHILD_TERM1.getReviewers().size(), reviewers.size());
+    assertEqual(CHILD_TERM1.getReviewers().size(), reviewers.size());
 
     // Compare the reviewer IDs of both lists to ensure they match
     List<UUID> childTermReviewerIds =
@@ -251,13 +251,13 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .map(EntityReference::getId)
             .sorted()
             .collect(Collectors.toList());
-    assertEquals(
+    assertEqual(
         childTermReviewerIds,
         listOf(DATA_CONSUMER_REF.getId(), USER2_REF.getId()).stream().sorted().toList());
 
     // Verify that the task assignees are the same as the child term reviewers
     approvalTask = glossaryTermResourceTest.assertApprovalTask(CHILD_TERM1, TaskStatus.Open);
-    assertEquals(CHILD_TERM1.getReviewers().size(), approvalTask.getTask().getAssignees().size());
+    assertEqual(CHILD_TERM1.getReviewers().size(), approvalTask.getTask().getAssignees().size());
 
     // Compare the reviewer IDs of both lists to ensure they match
     taskAssigneeIds =
@@ -265,7 +265,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .map(EntityReference::getId)
             .sorted()
             .collect(Collectors.toList());
-    assertEquals(childTermReviewerIds, taskAssigneeIds);
+    assertEqual(childTermReviewerIds, taskAssigneeIds);
   }
 
   @Test
@@ -500,7 +500,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
   @Test
   void testCsvDocumentation() throws HttpResponseException {
-    assertEquals(GlossaryCsv.DOCUMENTATION, getCsvDocumentation());
+    assertEqual(GlossaryCsv.DOCUMENTATION, getCsvDocumentation());
   }
 
   @Test
@@ -882,7 +882,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .listTasks(about, null, null, null, null, ADMIN_AUTH_HEADERS)
             .getPaging()
             .getTotal();
-    assertEquals(0, totalTaskCount);
+    assertEqual(0, totalTaskCount);
 
     // Generate tasks related to the glossary - Add update description task thread for the glossary
     // from user1 to user2
@@ -901,7 +901,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .listTasks(about, null, null, null, null, ADMIN_AUTH_HEADERS)
             .getPaging()
             .getTotal();
-    assertEquals(1, totalTaskCount); // task at glossary level
+    assertEqual(1, totalTaskCount); // task at glossary level
 
     // Glossary term `glossaryTerm` created under glossary are in `Draft` status. Automatically a
     // Request Approval task is created.
@@ -917,7 +917,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .listTasks(termAbout, null, null, null, null, ADMIN_AUTH_HEADERS)
             .getPaging()
             .getTotal();
-    assertEquals(1, totalTaskCount); // approval task at glossary term level
+    assertEqual(1, totalTaskCount); // approval task at glossary term level
 
     // Fetch the activity task feed for the glossary
     FeedResource.ThreadList threads =
@@ -940,7 +940,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .listTasks(about, null, null, null, null, ADMIN_AUTH_HEADERS)
             .getPaging()
             .getTotal();
-    assertEquals(3, totalTaskCount);
+    assertEqual(3, totalTaskCount);
 
     // Delete the glossary term and check that the task count at glossary level decreases
     glossaryTermResourceTest.deleteAndCheckEntity(glossaryTerm, true, true, ADMIN_AUTH_HEADERS);
@@ -949,7 +949,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .listTasks(about, null, null, null, null, ADMIN_AUTH_HEADERS)
             .getPaging()
             .getTotal();
-    assertEquals(1, totalTaskCount);
+    assertEqual(1, totalTaskCount);
   }
 
   private void copyGlossaryTerm(GlossaryTerm from, GlossaryTerm to) {

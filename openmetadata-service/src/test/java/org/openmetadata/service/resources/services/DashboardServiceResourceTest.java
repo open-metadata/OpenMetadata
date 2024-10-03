@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -181,16 +181,16 @@ public class DashboardServiceResourceTest
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(
+    assertEqual(
         TestConnectionResultStatus.SUCCESSFUL,
         updatedService.getTestConnectionResult().getStatus());
-    assertEquals(updatedService.getConnection(), service.getConnection());
+    assertEqual(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     DashboardService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(
+    assertEqual(
         TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
-    assertEquals(stored.getConnection(), service.getConnection());
+    assertEqual(stored.getConnection(), service.getConnection());
   }
 
   public DashboardService putTestConnectionResult(
@@ -219,7 +219,7 @@ public class DashboardServiceResourceTest
       DashboardService service,
       CreateDashboardService createRequest,
       Map<String, String> authHeaders) {
-    assertEquals(createRequest.getName(), service.getName());
+    assertEqual(createRequest.getName(), service.getName());
     DashboardConnection expectedConnection = createRequest.getConnection();
     DashboardConnection actualConnection = service.getConnection();
     validateConnection(expectedConnection, actualConnection, service.getServiceType(), authHeaders);
@@ -279,15 +279,15 @@ public class DashboardServiceResourceTest
               JsonUtils.convertValue(
                   actualDashboardConnection.getConfig(), MetabaseConnection.class);
         }
-        assertEquals(
+        assertEqual(
             expectedmetabaseConnection.getHostPort(), actualMetabaseConnection.getHostPort());
-        assertEquals(
+        assertEqual(
             expectedmetabaseConnection.getUsername(), actualMetabaseConnection.getUsername());
         if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
-          assertEquals(
+          assertEqual(
               expectedmetabaseConnection.getPassword(), actualMetabaseConnection.getPassword());
         } else {
-          assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualMetabaseConnection.getPassword());
+          assertEqual(PasswordEntityMasker.PASSWORD_MASK, actualMetabaseConnection.getPassword());
         }
       }
     }

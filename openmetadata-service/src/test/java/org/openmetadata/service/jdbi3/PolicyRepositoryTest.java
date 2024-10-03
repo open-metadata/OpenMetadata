@@ -1,6 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
 
@@ -15,12 +15,12 @@ class PolicyRepositoryTest {
     // Ensure with ALL_RESOURCES all the other resources are filtered
     List<String> resources = listOf(ALL_RESOURCES, Entity.TABLE, Entity.TAG);
     List<String> filteredResources = PolicyRepository.filterRedundantResources(resources);
-    assertEquals(listOf(ALL_RESOURCES), filteredResources);
+    assertEqual(listOf(ALL_RESOURCES), filteredResources);
 
     // Ensure resources are returned unfiltered when ALL_RESOURCES does not exist
     resources = listOf(Entity.TABLE, Entity.TAG);
     filteredResources = PolicyRepository.filterRedundantResources(listOf(Entity.TABLE, Entity.TAG));
-    assertEquals(resources, filteredResources);
+    assertEqual(resources, filteredResources);
   }
 
   @Test
@@ -38,7 +38,7 @@ class PolicyRepositoryTest {
             MetadataOperation.DELETE);
     List<MetadataOperation> filteredOperations =
         PolicyRepository.filterRedundantOperations(operations);
-    assertEquals(
+    assertEqual(
         listOf(
             MetadataOperation.CREATE,
             MetadataOperation.VIEW_ALL,
@@ -56,6 +56,6 @@ class PolicyRepositoryTest {
             MetadataOperation.EDIT_TAGS,
             MetadataOperation.DELETE);
     filteredOperations = PolicyRepository.filterRedundantOperations(operations);
-    assertEquals(operations, filteredOperations);
+    assertEqual(operations, filteredOperations);
   }
 }

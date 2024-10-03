@@ -1,6 +1,6 @@
 package org.openmetadata.service.secrets;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEqual;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
 
@@ -48,10 +48,10 @@ public abstract class ExternalSecretsManagerTest {
         (MysqlConnection)
             secretsManager.decryptServiceConnectionConfig(
                 mysqlConnection, Mysql.value(), ServiceType.DATABASE);
-    assertEquals(
+    assertEqual(
         password,
         JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
-    assertEquals(expectedConnection, actualConnection);
+    assertEqual(expectedConnection, actualConnection);
   }
 
   @Test
@@ -75,7 +75,7 @@ public abstract class ExternalSecretsManagerTest {
 
     // Decrypt private key and ensure it is decrypted
     secretsManager.decryptAuthenticationMechanism("bot", actualAuthMechanism);
-    assertEquals(privateKey, getPrivateKey(actualAuthMechanism));
+    assertEqual(privateKey, getPrivateKey(actualAuthMechanism));
   }
 
   @Test
@@ -110,11 +110,11 @@ public abstract class ExternalSecretsManagerTest {
 
     // Decrypt the workflow and ensure password and secrete key are decrypted
     actualWorkflow = secretsManager.decryptWorkflow(actualWorkflow);
-    assertEquals(password, getPassword(actualWorkflow));
-    assertEquals(
+    assertEqual(password, getPassword(actualWorkflow));
+    assertEqual(
         secretKey,
         actualWorkflow.getOpenMetadataServerConnection().getSecurityConfig().getJwtToken());
-    assertEquals(expectedWorkflow, actualWorkflow);
+    assertEqual(expectedWorkflow, actualWorkflow);
   }
 
   @Test
@@ -129,7 +129,7 @@ public abstract class ExternalSecretsManagerTest {
                 secretsManager.encryptServiceConnectionConfig(
                     mysqlConnection, Mysql.value(), "test", ServiceType.DATABASE));
 
-    Assertions.assertEquals(
+    Assertions.assertEqual(
         "Failed to encrypt 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
         thrown.getMessage());
     thrown =
@@ -139,14 +139,14 @@ public abstract class ExternalSecretsManagerTest {
                 secretsManager.decryptServiceConnectionConfig(
                     mysqlConnection, Mysql.value(), ServiceType.DATABASE));
 
-    Assertions.assertEquals(
+    Assertions.assertEqual(
         "Failed to decrypt 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
         thrown.getMessage());
   }
 
   @Test
   void testReturnsExpectedSecretManagerProvider() {
-    assertEquals(expectedSecretManagerProvider(), secretsManager.getSecretsManagerProvider());
+    assertEqual(expectedSecretManagerProvider(), secretsManager.getSecretsManagerProvider());
   }
 
   abstract void setUpSpecific(SecretsManagerConfiguration config);
