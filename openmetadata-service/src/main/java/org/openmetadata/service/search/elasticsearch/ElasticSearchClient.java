@@ -227,6 +227,11 @@ public class ElasticSearchClient implements SearchClient {
           "fqnParts",
           "chart_suggest",
           "field_suggest");
+  private static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
+      Stream.concat(
+              FIELDS_TO_REMOVE.stream(),
+              Stream.of("schemaDefinition", "testSuite", "customMetrics"))
+          .toList();
 
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
@@ -705,13 +710,15 @@ public class ElasticSearchClient implements SearchClient {
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    List<String> sourceFieldsToExcludeCopy = new ArrayList<>(SOURCE_FIELDS_TO_EXCLUDE);
+    sourceFieldsToExcludeCopy.add("lineage");
+    searchSourceBuilder.fetchSource(null, sourceFieldsToExcludeCopy.toArray(String[]::new));
     searchSourceBuilder.query(
         QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
     searchRequest.source(searchSourceBuilder.size(1000));
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
       Map<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
       responseMap.put("entity", tempMap);
     }
     getLineage(
@@ -772,6 +779,7 @@ public class ElasticSearchClient implements SearchClient {
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
     searchSourceBuilder.query(
         QueryBuilders.boolQuery()
             .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn))));
@@ -788,7 +796,7 @@ public class ElasticSearchClient implements SearchClient {
       List<Map<String, Object>> lineage =
           (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
       HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+      tempMap.remove("lineage");
       nodes.add(tempMap);
       for (Map<String, Object> lin : lineage) {
         Map<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
@@ -963,6 +971,7 @@ public class ElasticSearchClient implements SearchClient {
         QueryBuilders.boolQuery()
             .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
     searchSourceBuilder.query(boolQueryBuilder);
     if (CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
@@ -977,7 +986,7 @@ public class ElasticSearchClient implements SearchClient {
       List<Map<String, Object>> lineage =
           (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
       HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+      tempMap.remove("lineage");
       nodes.add(tempMap);
       for (Map<String, Object> lin : lineage) {
         HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
