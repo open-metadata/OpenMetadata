@@ -74,9 +74,13 @@ test.describe.serial('Persona operations', () => {
 
     await page.locator(descriptionBox).fill(PERSONA_DETAILS.description);
 
-    const userResponse = page.waitForResponse('/api/v1/users?*');
+    const userListResponse = page.waitForResponse(
+      '/api/v1/users?limit=*&isBot=false*'
+    );
     await page.getByTestId('add-users').click();
-    await userResponse;
+    await userListResponse;
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await page.waitForSelector('[data-testid="selectable-list"]');
 

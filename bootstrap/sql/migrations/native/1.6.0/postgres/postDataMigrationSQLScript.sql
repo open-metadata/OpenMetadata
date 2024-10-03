@@ -28,7 +28,10 @@ CREATE INDEX IF NOT EXISTS  data_quality_data_time_series_id_index  ON data_qual
 -- Remove VIRTUAL status column from test_case table and remove
 -- testCaseResult state from testCase; fetch from search repo.
 ALTER TABLE test_case DROP COLUMN status;
-UPDATE test_case SET json = jsonb_set(json, '{testCaseStatus}', json->'testCaseResult'->'testCaseStatus');
+
+UPDATE test_case SET json = jsonb_set(json, '{testCaseStatus}', json->'testCaseResult'->'testCaseStatus')
+WHERE json->'testCaseResult'->'testCaseStatus' IS NOT NULL;
+
 ALTER TABLE test_case ADD COLUMN status VARCHAR(56) GENERATED ALWAYS AS (json ->> 'testCaseStatus') STORED NULL;
 
 
@@ -38,3 +41,20 @@ SET json = json - 'testCaseResultSummary';
 
 UPDATE test_case
 SET json = json - 'testCaseResult';
+
+-- Add Supports interrupts to SearchIndexingApplication
+UPDATE apps_marketplace
+SET json = jsonb_set(
+	json::jsonb,
+	'{supportsInterrupt}',
+	to_jsonb(true)
+)
+where name = 'SearchIndexingApplication';
+
+UPDATE installed_apps
+SET json = jsonb_set(
+	json::jsonb,
+	'{supportsInterrupt}',
+	to_jsonb(true)
+)
+where name = 'SearchIndexingApplication';

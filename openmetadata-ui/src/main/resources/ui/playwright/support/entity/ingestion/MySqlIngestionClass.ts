@@ -125,14 +125,8 @@ class MysqlIngestionClass extends ServiceBaseClass {
         )
         .then((res) => res.json());
 
-      // Re-deploy before running the ingestion
-      await page.click(
-        `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
-      );
-      await page.getByTestId('re-deploy-button').click();
-
       // need manual wait to settle down the deployed pipeline, before triggering the pipeline
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
 
       await page.click(
         `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
@@ -144,6 +138,9 @@ class MysqlIngestionClass extends ServiceBaseClass {
         `Pipeline triggered successfully!`,
         'success'
       );
+
+      // need manual wait to make sure we are awaiting on latest run results
+      await page.waitForTimeout(2000);
 
       await this.handleIngestionRetry('profiler', page);
     });

@@ -2729,7 +2729,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,c1,c1,c1,,INT,,,,";
     String csv = createCsv(TableCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(tableName, csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows =
         new String[] {
           resultsHeader,
@@ -2741,7 +2741,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     record = "s1,dsp1,dsc1,,,,,,,,c1,,,,INT,,,Tag.invalidTag,";
     csv = createCsv(TableCsv.HEADERS, listOf(record), null);
     result = importCsv(tableName, csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,

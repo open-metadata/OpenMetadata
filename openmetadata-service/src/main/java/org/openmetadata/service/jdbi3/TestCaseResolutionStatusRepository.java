@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
+import org.openmetadata.schema.tests.type.Metric;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
@@ -49,6 +50,8 @@ import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverity
 public class TestCaseResolutionStatusRepository
     extends EntityTimeSeriesRepository<TestCaseResolutionStatus> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
+  public static final String TIME_TO_RESPONSE = "timeToResponse";
+  public static final String TIME_TO_RESOLUTION = "timeToResolution";
 
   public TestCaseResolutionStatusRepository() {
     super(
@@ -73,6 +76,21 @@ public class TestCaseResolutionStatusRepository
     }
 
     return getResultList(testCaseResolutionStatuses, null, null, testCaseResolutionStatuses.size());
+  }
+
+  private TestCaseResolutionStatus listFirstTestCaseResolutionStatusForStateId(UUID stateId) {
+    String json =
+        ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+            .listFirstTestCaseResolutionStatusesForStateId(stateId.toString());
+
+    if (json == null) {
+      return null;
+    }
+
+    TestCaseResolutionStatus testCaseResolutionStatus =
+        JsonUtils.readValue(json, TestCaseResolutionStatus.class);
+    setInheritedFields(testCaseResolutionStatus);
+    return testCaseResolutionStatus;
   }
 
   public RestUtil.PatchResponse<TestCaseResolutionStatus> patch(
@@ -165,7 +183,8 @@ public class TestCaseResolutionStatusRepository
 
   @Override
   @Transaction
-  public void storeInternal(TestCaseResolutionStatus recordEntity, String recordFQN) {
+  public void storeInternal(
+      TestCaseResolutionStatus recordEntity, String recordFQN, String extension) {
 
     TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
 
@@ -189,6 +208,7 @@ public class TestCaseResolutionStatusRepository
               : recordEntity.getSeverity());
     }
 
+    setResolutionMetrics(lastIncident, recordEntity);
     inferIncidentSeverity(recordEntity);
 
     switch (recordEntity.getTestCaseResolutionStatusType()) {
@@ -212,7 +232,7 @@ public class TestCaseResolutionStatusRepository
     }
     EntityReference testCaseReference = recordEntity.getTestCaseReference();
     recordEntity.withTestCaseReference(null); // we don't want to store the reference in the record
-    super.storeInternal(recordEntity, recordFQN);
+    timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
     recordEntity.withTestCaseReference(testCaseReference);
   }
 
@@ -302,7 +322,10 @@ public class TestCaseResolutionStatusRepository
     EntityReference testCaseReference = newIncidentStatus.getTestCaseReference();
     newIncidentStatus.setTestCaseReference(
         null); // we don't want to store the reference in the record
-    super.storeInternal(newIncidentStatus, testCase.getFullyQualifiedName());
+    timeSeriesDao.insert(
+        testCaseReference.getFullyQualifiedName(),
+        entityType,
+        JsonUtils.pojoToJson(newIncidentStatus));
     newIncidentStatus.setTestCaseReference(testCaseReference);
   }
 
@@ -433,5 +456,36 @@ public class TestCaseResolutionStatusRepository
         testCaseResolutionStatusRepository.getLatestRecord(testCase.getFullyQualifiedName());
 
     return incident.getStateId();
+  }
+
+  private void setResolutionMetrics(
+      TestCaseResolutionStatus lastIncident, TestCaseResolutionStatus newIncident) {
+    List<Metric> metrics = new ArrayList<>();
+    if (lastIncident == null) return;
+
+    if (lastIncident.getTestCaseResolutionStatusType().equals(TestCaseResolutionStatusTypes.New)
+        && !newIncident
+            .getTestCaseResolutionStatusType()
+            .equals(TestCaseResolutionStatusTypes.Resolved)) {
+      // Time to response is New (1st step in the workflow) -> [Any status but Resolved (Last step
+      // in the workflow)]
+      long timeToResponse = newIncident.getTimestamp() - lastIncident.getTimestamp();
+      Metric metric = new Metric().withName(TIME_TO_RESPONSE).withValue((double) timeToResponse);
+      metrics.add(metric);
+    }
+
+    if (newIncident
+        .getTestCaseResolutionStatusType()
+        .equals(TestCaseResolutionStatusTypes.Resolved)) {
+      TestCaseResolutionStatus firstIncidentInWorkflow =
+          listFirstTestCaseResolutionStatusForStateId(newIncident.getStateId());
+      if (firstIncidentInWorkflow != null) {
+        long timeToResolution = newIncident.getTimestamp() - firstIncidentInWorkflow.getTimestamp();
+        Metric metric =
+            new Metric().withName(TIME_TO_RESOLUTION).withValue((double) timeToResolution);
+        metrics.add(metric);
+      }
+    }
+    if (!metrics.isEmpty()) newIncident.setMetrics(metrics);
   }
 }

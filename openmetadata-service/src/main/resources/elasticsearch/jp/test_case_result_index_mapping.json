@@ -121,6 +121,15 @@
           "type": "keyword",
           "normalizer": "lowercase_normalizer"
         },
+        "entityLink": {
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer",
+          "fields": {
+            "nonNormalized": {
+              "type": "keyword"
+            }
+          }
+        },
         "parameterValues": {
           "properties": {
             "name": {

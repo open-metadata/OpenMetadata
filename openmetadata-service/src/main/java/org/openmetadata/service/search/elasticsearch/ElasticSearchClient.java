@@ -154,6 +154,7 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
+import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
@@ -361,21 +362,7 @@ public class ElasticSearchClient implements SearchClient {
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
     // Add Filter
-    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(
-                    xContentRegistry, LoggingDeprecationHandler.INSTANCE, request.getQueryFilter());
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
+    buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
 
     if (!nullOrEmpty(request.getPostFilter())) {
       try {
@@ -757,6 +744,18 @@ public class ElasticSearchClient implements SearchClient {
     return Response.status(OK).entity(responseMap).build();
   }
 
+  @Override
+  public Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    Set<Map<String, Object>> edges = new HashSet<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
+    searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
+    return Response.status(OK).entity(responseMap).build();
+  }
+
   private void getLineage(
       String fqn,
       int depth,
@@ -782,21 +781,7 @@ public class ElasticSearchClient implements SearchClient {
               .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn)))
               .must(QueryBuilders.termQuery("deleted", deleted)));
     }
-    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
-        es.org.elasticsearch.index.query.QueryBuilder filter =
-            SearchSourceBuilder.fromXContent(filterParser).query();
-        es.org.elasticsearch.index.query.BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
     searchRequest.source(searchSourceBuilder.size(1000));
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
@@ -825,6 +810,141 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
+  private void searchDataQualityLineage(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      Set<Map<String, Object>> edges,
+      Set<Map<String, Object>> nodes)
+      throws IOException {
+    Map<String, Map<String, Object>> allNodes = new HashMap<>();
+    Map<String, List<Map<String, Object>>> allEdges = new HashMap<>();
+    Set<String> nodesWithFailures = new HashSet<>();
+
+    collectNodesAndEdges(
+        fqn,
+        upstreamDepth,
+        queryFilter,
+        deleted,
+        allEdges,
+        allNodes,
+        nodesWithFailures,
+        new HashSet<>());
+    for (String nodeWithFailure : nodesWithFailures) {
+      traceBackDQLineage(
+          nodeWithFailure, nodesWithFailures, allEdges, allNodes, nodes, edges, new HashSet<>());
+    }
+  }
+
+  private void collectNodesAndEdges(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      Map<String, List<Map<String, Object>>> allEdges,
+      Map<String, Map<String, Object>> allNodes,
+      Set<String> nodesWithFailure,
+      Set<String> processedNode)
+      throws IOException {
+    TestCaseResultRepository testCaseResultRepository = new TestCaseResultRepository();
+    if (upstreamDepth <= 0 || processedNode.contains(fqn)) {
+      return;
+    }
+    processedNode.add(fqn);
+    SearchResponse searchResponse = performLineageSearch(fqn, queryFilter, deleted);
+    Optional<List> optionalDocs =
+        JsonUtils.readJsonAtPath(searchResponse.toString(), "$.hits.hits[*]._source", List.class);
+
+    if (optionalDocs.isPresent()) {
+      List<Map<String, Object>> docs = (List<Map<String, Object>>) optionalDocs.get();
+      for (Map<String, Object> doc : docs) {
+        String nodeId = doc.get("id").toString();
+        allNodes.put(nodeId, doc);
+        if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
+          nodesWithFailure.add(nodeId);
+        }
+        Optional<List> optionalLineageList =
+            JsonUtils.readJsonAtPath(JsonUtils.pojoToJson(doc), "$.lineage", List.class);
+        if (optionalLineageList.isPresent()) {
+          List<Map<String, Object>> lineageList =
+              (List<Map<String, Object>>) optionalLineageList.get();
+          for (Map<String, Object> lineage : lineageList) {
+            Map<String, String> fromEntity = (Map<String, String>) lineage.get("fromEntity");
+            String fromEntityId = fromEntity.get("id");
+            allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
+            collectNodesAndEdges(
+                fromEntity.get("fqn"),
+                upstreamDepth - 1,
+                queryFilter,
+                deleted,
+                allEdges,
+                allNodes,
+                nodesWithFailure,
+                processedNode);
+          }
+        }
+      }
+    }
+  }
+
+  private void traceBackDQLineage(
+      String nodeFailureId,
+      Set<String> nodesWithFailures,
+      Map<String, List<Map<String, Object>>> allEdges,
+      Map<String, Map<String, Object>> allNodes,
+      Set<Map<String, Object>> nodes,
+      Set<Map<String, Object>> edges,
+      Set<String> processedNodes) {
+    if (processedNodes.contains(nodeFailureId)) {
+      return;
+    }
+
+    processedNodes.add(nodeFailureId);
+    if (nodesWithFailures.contains(nodeFailureId)) {
+      Map<String, Object> node = allNodes.get(nodeFailureId);
+      node.keySet().removeAll(FIELDS_TO_REMOVE);
+      node.remove("lineage");
+      nodes.add(allNodes.get(nodeFailureId));
+    }
+    List<Map<String, Object>> edgesForNode = allEdges.get(nodeFailureId);
+    if (edgesForNode != null) {
+      for (Map<String, Object> edge : edgesForNode) {
+        Map<String, String> fromEntity = (Map<String, String>) edge.get("fromEntity");
+        String fromEntityId = fromEntity.get("id");
+        if (!fromEntityId.equals(nodeFailureId)) continue;
+        Map<String, String> toEntity = (Map<String, String>) edge.get("toEntity");
+        edges.add(edge);
+        traceBackDQLineage(
+            toEntity.get("id"),
+            nodesWithFailures,
+            allEdges,
+            allNodes,
+            nodes,
+            edges,
+            processedNodes);
+      }
+    }
+  }
+
+  private SearchResponse performLineageSearch(String fqn, String queryFilter, boolean deleted)
+      throws IOException {
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery()
+            .must(
+                QueryBuilders.termQuery(
+                    "lineage.toEntity.fqnHash.keyword", FullyQualifiedName.buildHash(fqn)))
+            .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
+
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+    searchRequest.source(searchSourceBuilder.size(1000));
+    return client.search(searchRequest, RequestOptions.DEFAULT);
+  }
+
   private Map<String, Object> searchPipelineLineage(
       String fqn,
       int upstreamDepth,
@@ -850,21 +970,7 @@ public class ElasticSearchClient implements SearchClient {
               .must(boolQueryBuilder)
               .must(QueryBuilders.termQuery("deleted", deleted)));
     }
-    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
-        es.org.elasticsearch.index.query.QueryBuilder filter =
-            SearchSourceBuilder.fromXContent(filterParser).query();
-        es.org.elasticsearch.index.query.BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
     searchRequest.source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
@@ -1310,6 +1416,14 @@ public class ElasticSearchClient implements SearchClient {
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("databaseSchema.name.keyword")
             .field("databaseSchema.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("database.displayName")
+            .field("database.displayName")
+            .size(MAX_AGGREGATE_SIZE));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("databaseSchema.displayName")
+            .field("databaseSchema.displayName")
             .size(MAX_AGGREGATE_SIZE));
     return addAggregation(searchSourceBuilder);
   }
@@ -1995,21 +2109,7 @@ public class ElasticSearchClient implements SearchClient {
 
     searchSourceBuilder.query(searchQueryFiler).fetchSource(false);
 
-    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
-        es.org.elasticsearch.index.query.QueryBuilder filter =
-            SearchSourceBuilder.fromXContent(filterParser).query();
-        es.org.elasticsearch.index.query.BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
 
     return searchSourceBuilder;
   }
@@ -2220,6 +2320,7 @@ public class ElasticSearchClient implements SearchClient {
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+        restClientBuilder.setCompressionEnabled(true);
         return new RestHighLevelClientBuilder(restClientBuilder.build())
             .setApiCompatibilityMode(true)
             .build();
@@ -2329,6 +2430,24 @@ public class ElasticSearchClient implements SearchClient {
             QueryBuilders.boolQuery()
                 .must(searchSourceBuilder.query())
                 .filter(((ElasticQueryBuilder) rbacQuery).build()));
+      }
+    }
+  }
+
+  private static void buildSearchSourceFilter(
+      String queryFilter, SearchSourceBuilder searchSourceBuilder) {
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        BoolQueryBuilder newQuery =
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        searchSourceBuilder.query(newQuery);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
       }
     }
   }

@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../styles/variables.less');
+
 .entity-reference-list-item:last-child {
   border-bottom: none;
 }
@@ -21,8 +24,53 @@
     align-items: center;
     justify-content: center;
     svg {
-      height: 18px;
-      width: 18px;
+      height: 24px;
+      width: 24px;
     }
   }
+}
+
+.custom-property-value-toggle-btn {
+  svg {
+    vertical-align: middle;
+    width: 14px;
+    transition: 0.3s ease-in-out;
+  }
+}
+
+.custom-property-value-toggle-btn.active {
+  svg {
+    transform: rotate(180deg);
+  }
+}
+
+.ant-tag.enum-key-tag {
+  width: max-content;
+  margin: 0px;
+  padding: 2px 8px;
+  border: 1px solid @text-color;
+  background: @white;
+}
+
+.sql-query-custom-property {
+  .ant-space-item:first-child {
+    width: 100%;
+  }
+}
+.custom-property-card {
+  .ant-card-body {
+    overflow-x: scroll;
+  }
+
+  .property-name {
+    font-weight: 400;
+  }
+
+  .property-value {
+    font-weight: 500;
+  }
+}
+
+.custom-property-card-right-panel {
+  overflow-x: scroll;
 }
