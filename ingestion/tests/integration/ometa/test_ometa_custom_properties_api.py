@@ -348,9 +348,7 @@ class OMetaCustomAttributeTest(TestCase):
                         custom_property["propertyType"]["name"],
                         expected_custom_property["propertyType"]["name"],
                     )
-        self.assertEqual(
-            len(actual_custom_properties), len(EXPECTED_CUSTOM_PROPERTIES)
-        )
+        self.assertEqual(len(actual_custom_properties), len(EXPECTED_CUSTOM_PROPERTIES))
 
     def test_add_custom_property_table(self):
         """
