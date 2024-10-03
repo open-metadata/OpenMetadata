@@ -123,7 +123,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 return 3;
             }
           }),
-    [testCases, isApiSortingEnabled.current]
+    [testCases]
   );
 
   const handleCancel = () => {
