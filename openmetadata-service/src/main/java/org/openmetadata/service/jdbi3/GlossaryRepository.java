@@ -223,7 +223,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         importFailure(
             printer,
             invalidField(
-                6, "Term References should be given in the format referenceName;endpoint url."),
+                6, "Term References should be given in the format referenceName:endpoint url."),
             csvRecord);
         processRecord = false;
         return null;

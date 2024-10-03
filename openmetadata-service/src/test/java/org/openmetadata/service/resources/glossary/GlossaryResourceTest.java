@@ -545,7 +545,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
           getFailedRecord(
               record,
               invalidField(
-                  6, "Term References should be given in the format referenceName;endpoint url."))
+                  6, "Term References should be given in the format referenceName:endpoint url."))
         };
     assertRows(result, expectedRows);
 
