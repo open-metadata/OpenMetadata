@@ -506,6 +506,7 @@ class AlationSinkTest(TestCase):
                     schema_name="shopify",
                     table_name=model_str(om_table.name),
                     om_column=om_column,
+                    table_constraints=om_table.tableConstraints,
                 )
             )
         for _, (expected, original) in enumerate(
