@@ -535,7 +535,7 @@ const APICollectionPage: FunctionComponent = () => {
   );
 
   const handleExtensionUpdate = async (apiCollectionData: APICollection) => {
-    const response = await saveUpdatedAPICollectionData({
+    await saveUpdatedAPICollectionData({
       ...apiCollection,
       extension: apiCollectionData.extension,
     });
@@ -546,7 +546,7 @@ const APICollectionPage: FunctionComponent = () => {
 
       return {
         ...prev,
-        extension: response.extension,
+        extension: apiCollectionData.extension,
       };
     });
   };

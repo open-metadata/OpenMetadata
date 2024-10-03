@@ -112,8 +112,7 @@ public class TypeRegistry {
         }
       }
     }
-    throw EntityNotFoundException.byMessage(
-        CatalogExceptionMessage.entityNotFound(Entity.TYPE, String.valueOf(type)));
+    return null;
   }
 
   public static String getCustomPropertyConfig(String entityType, String propertyName) {
@@ -123,13 +122,7 @@ public class TypeRegistry {
         if (property.getName().equals(propertyName)
             && property.getCustomPropertyConfig() != null
             && property.getCustomPropertyConfig().getConfig() != null) {
-          Object config = property.getCustomPropertyConfig().getConfig();
-          if (config instanceof String || config instanceof Integer) {
-            return config.toString(); // for simple type config return as string
-          } else {
-            return JsonUtils.pojoToJson(
-                config); // for complex object in config return as JSON string
-          }
+          return property.getCustomPropertyConfig().getConfig().toString();
         }
       }
     }

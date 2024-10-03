@@ -11,16 +11,11 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Skeleton, Typography } from 'antd';
+import { Skeleton, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
@@ -33,9 +28,11 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription, Type } from '../../../generated/entity/type';
+import { CustomProperty } from '../../../generated/type/customProperty';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
@@ -43,6 +40,7 @@ import {
 } from '../../../utils/EntityVersionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
+import Table from '../Table/Table';
 import {
   CustomPropertyProps,
   ExtentionEntities,
@@ -148,6 +146,44 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return { extensionObject: entityDetails?.extension };
   }, [isVersionView, entityDetails?.extension]);
 
+  const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
+    return [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        key: 'name',
+        ellipsis: true,
+        width: isRenderedInRightPanel ? 150 : 400,
+        render: (_, record) => getEntityName(record),
+        sorter: columnSorter,
+      },
+      {
+        title: t('label.value'),
+        dataIndex: 'value',
+        key: 'value',
+        render: (_, record) => (
+          <PropertyValue
+            extension={extensionObject.extensionObject}
+            hasEditPermissions={hasEditAccess}
+            isRenderedInRightPanel={isRenderedInRightPanel}
+            isVersionView={isVersionView}
+            property={record}
+            versionDataKeys={extensionObject.addedKeysList}
+            onExtensionUpdate={onExtensionUpdate}
+          />
+        ),
+      },
+    ];
+  }, [
+    entityDetails,
+    entityDetails?.extension,
+    hasEditAccess,
+    extensionObject,
+    isVersionView,
+    onExtensionUpdate,
+    isRenderedInRightPanel,
+  ]);
+
   const viewAllBtn = useMemo(() => {
     const customProp = entityTypeDetail.customProperties ?? [];
 
@@ -175,14 +211,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     entityDetails,
     maxDataCap,
   ]);
-
-  const dataSource = useMemo(() => {
-    const customProperties = entityTypeDetail?.customProperties ?? [];
-
-    return Array.isArray(customProperties)
-      ? customProperties.slice(0, maxDataCap)
-      : [];
-  }, [maxDataCap, entityTypeDetail?.customProperties]);
 
   useEffect(() => {
     if (typePermission?.ViewAll || typePermission?.ViewBasic) {
@@ -249,44 +277,21 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             </Typography.Text>
             {viewAllBtn}
           </div>
-
-          {isRenderedInRightPanel ? (
-            <>
-              {dataSource.map((record, index) => (
-                <Fragment key={record.name}>
-                  <PropertyValue
-                    extension={extensionObject.extensionObject}
-                    hasEditPermissions={hasEditAccess}
-                    isRenderedInRightPanel={isRenderedInRightPanel}
-                    isVersionView={isVersionView}
-                    key={record.name}
-                    property={record}
-                    versionDataKeys={extensionObject.addedKeysList}
-                    onExtensionUpdate={onExtensionUpdate}
-                  />
-                  {index !== dataSource.length - 1 && (
-                    <Divider className="m-y-md" />
-                  )}
-                </Fragment>
-              ))}
-            </>
-          ) : (
-            <Row data-testid="custom-properties-card" gutter={[16, 16]}>
-              {dataSource.map((record) => (
-                <Col key={record.name} span={8}>
-                  <PropertyValue
-                    extension={extensionObject.extensionObject}
-                    hasEditPermissions={hasEditAccess}
-                    isRenderedInRightPanel={isRenderedInRightPanel}
-                    isVersionView={isVersionView}
-                    property={record}
-                    versionDataKeys={extensionObject.addedKeysList}
-                    onExtensionUpdate={onExtensionUpdate}
-                  />
-                </Col>
-              ))}
-            </Row>
-          )}
+          <Table
+            bordered
+            resizableColumns
+            columns={tableColumn}
+            data-testid="custom-properties-table"
+            dataSource={entityTypeDetail?.customProperties?.slice(
+              0,
+              maxDataCap
+            )}
+            loading={entityTypeDetailLoading}
+            pagination={false}
+            rowKey="name"
+            scroll={isRenderedInRightPanel ? { x: true } : undefined}
+            size="small"
+          />
         </>
       )}
     </>

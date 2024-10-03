@@ -153,13 +153,17 @@ describe('Test CustomProperty Table Component', () => {
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
-    const table = await screen.findByTestId('custom-properties-card');
+    const table = await screen.findByTestId('custom-properties-table');
 
     expect(table).toBeInTheDocument();
 
-    const propertyValue = await screen.findByText('PropertyValue');
+    const propertyName = await screen.findByText('label.name');
+    const propertyValue = await screen.findByText('label.value');
+    const rows = await screen.findAllByRole('row');
 
+    expect(propertyName).toBeInTheDocument();
     expect(propertyValue).toBeInTheDocument();
+    expect(rows).toHaveLength(mockCustomProperties.length + 1);
   });
 
   it('Should render no data placeholder if custom properties list is empty', async () => {
@@ -218,9 +222,10 @@ describe('Test CustomProperty Table Component', () => {
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
-
+    const tableRowTitle = await screen.findByText('xName');
     const tableRowValue = await screen.findByText('PropertyValue');
 
+    expect(tableRowTitle).toBeInTheDocument();
     expect(tableRowValue).toBeInTheDocument();
   });
 });

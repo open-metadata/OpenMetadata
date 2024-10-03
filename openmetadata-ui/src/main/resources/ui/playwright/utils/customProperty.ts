@@ -44,7 +44,6 @@ export enum CustomPropertyTypeByName {
   TIME_CP = 'time-cp',
   DATE_CP = 'date-cp',
   DATE_TIME_CP = 'dateTime-cp',
-  ENUM_WITH_DESCRIPTION = 'enumWithDescriptions',
 }
 
 export interface CustomProperty {
@@ -67,18 +66,12 @@ export const setValueForProperty = async (data: {
   const { page, propertyName, value, propertyType, endpoint } = data;
   await page.click('[data-testid="custom_properties"]');
 
-  const container = page.locator(
-    `[data-testid="custom-property-${propertyName}-card"]`
+  await expect(page.getByRole('cell', { name: propertyName })).toContainText(
+    propertyName
   );
 
-  await expect(
-    page.locator(
-      `[data-testid="custom-property-${propertyName}-card"] [data-testid="property-name"]`
-    )
-  ).toHaveText(propertyName);
-
   const editButton = page.locator(
-    `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
+    `[data-row-key="${propertyName}"] [data-testid="edit-icon"]`
   );
   await editButton.scrollIntoViewIfNeeded();
   await editButton.click({ force: true });
@@ -103,14 +96,14 @@ export const setValueForProperty = async (data: {
     case 'email':
       await page.locator('[data-testid="email-input"]').isVisible();
       await page.locator('[data-testid="email-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'duration':
       await page.locator('[data-testid="duration-input"]').isVisible();
       await page.locator('[data-testid="duration-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
@@ -119,30 +112,21 @@ export const setValueForProperty = async (data: {
       await page.fill('#enumValues', value);
       await page.press('#enumValues', 'Enter');
       await clickOutside(page);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'enumWithDescriptions':
-      await page.click('#enumWithDescriptionValues');
-      await page.fill('#enumWithDescriptionValues', value, { force: true });
-      await page.press('#enumWithDescriptionValues', 'Enter');
-      await clickOutside(page);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await page.click('[data-testid="inline-save-btn"]');
 
       break;
 
     case 'sqlQuery':
       await page.locator("pre[role='presentation']").last().click();
       await page.keyboard.type(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'timestamp':
       await page.locator('[data-testid="timestamp-input"]').isVisible();
       await page.locator('[data-testid="timestamp-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
@@ -152,7 +136,7 @@ export const setValueForProperty = async (data: {
       await page.locator('[data-testid="start-input"]').fill(startValue);
       await page.locator('[data-testid="end-input"]').isVisible();
       await page.locator('[data-testid="end-input"]').fill(endValue);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -162,7 +146,7 @@ export const setValueForProperty = async (data: {
       await page.locator('[data-testid="time-picker"]').click();
       await page.locator('[data-testid="time-picker"]').fill(value);
       await page.getByRole('button', { name: 'OK', exact: true }).click();
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -177,7 +161,7 @@ export const setValueForProperty = async (data: {
       } else {
         await page.getByText('Today', { exact: true }).click();
       }
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -187,7 +171,7 @@ export const setValueForProperty = async (data: {
     case 'number':
       await page.locator('[data-testid="value-input"]').isVisible();
       await page.locator('[data-testid="value-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
@@ -207,9 +191,7 @@ export const setValueForProperty = async (data: {
         await page.locator(`[data-testid="${val}"]`).click();
       }
 
-      await clickOutside(page);
-
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -226,43 +208,23 @@ export const validateValueForProperty = async (data: {
   const { page, propertyName, value, propertyType } = data;
   await page.click('[data-testid="custom_properties"]');
 
-  const container = page.locator(
-    `[data-testid="custom-property-${propertyName}-card"]`
-  );
-
-  const toggleBtnVisibility = await container
-    .locator(`[data-testid="toggle-${propertyName}"]`)
-    .isVisible();
-
-  if (toggleBtnVisibility) {
-    await container.locator(`[data-testid="toggle-${propertyName}"]`).click();
-  }
-
   if (propertyType === 'enum') {
-    await expect(container.getByTestId('enum-value')).toContainText(value);
+    await expect(
+      page.getByLabel('Custom Properties').getByTestId('enum-value')
+    ).toContainText(value);
   } else if (propertyType === 'timeInterval') {
     const [startValue, endValue] = value.split(',');
 
-    await expect(container.getByTestId('time-interval-value')).toContainText(
-      startValue
-    );
-    await expect(container.getByTestId('time-interval-value')).toContainText(
-      endValue
-    );
+    await expect(
+      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
+    ).toContainText(startValue);
+    await expect(
+      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
+    ).toContainText(endValue);
   } else if (propertyType === 'sqlQuery') {
-    await expect(container.locator('.CodeMirror-scroll')).toContainText(value);
-  } else if (propertyType === 'enumWithDescriptions') {
     await expect(
-      container.locator('[data-testid="enum-with-description-table"]')
-    ).toBeVisible();
-
-    await expect(
-      container
-        .locator('[data-testid="enum-with-description-table"]')
-        .getByText(value, {
-          exact: true,
-        })
-    ).toBeVisible();
+      page.getByLabel('Custom Properties').locator('.CodeMirror-scroll')
+    ).toContainText(value);
   } else if (
     ![
       'entityReference',
@@ -271,7 +233,9 @@ export const validateValueForProperty = async (data: {
       'dateTime-cp',
     ].includes(propertyType)
   ) {
-    await expect(container).toContainText(value.replace(/\*|_/gi, ''));
+    await expect(page.getByRole('row', { name: propertyName })).toContainText(
+      value.replace(/\*|_/gi, '')
+    );
   }
 };
 
@@ -315,11 +279,6 @@ export const getPropertyValues = (
       return {
         value: 'small',
         newValue: 'medium',
-      };
-    case 'enumWithDescriptions':
-      return {
-        value: 'enumWithDescription1',
-        newValue: 'enumWithDescription2',
       };
     case 'sqlQuery':
       return {
@@ -444,25 +403,6 @@ export const createCustomPropertyForEntity = async (
                 },
               }
             : {}),
-          ...(item.name === 'enumWithDescriptions'
-            ? {
-                customPropertyConfig: {
-                  config: {
-                    multiSelect: true,
-                    values: [
-                      {
-                        key: 'enumWithDescription1',
-                        description: 'This is enumWithDescription1',
-                      },
-                      {
-                        key: 'enumWithDescription2',
-                        description: 'This is enumWithDescription2',
-                      },
-                    ],
-                  },
-                },
-              }
-            : {}),
           ...(['entityReference', 'entityReferenceList'].includes(item.name)
             ? {
                 customPropertyConfig: {
@@ -525,17 +465,12 @@ export const addCustomPropertiesForEntity = async ({
   enumConfig,
   formatConfig,
   entityReferenceConfig,
-  enumWithDescriptionConfig,
 }: {
   page: Page;
   propertyName: string;
   customPropertyData: { description: string };
   customType: string;
   enumConfig?: { values: string[]; multiSelect: boolean };
-  enumWithDescriptionConfig?: {
-    values: { key: string; description: string }[];
-    multiSelect: boolean;
-  };
   formatConfig?: string;
   entityReferenceConfig?: string[];
 }) => {
@@ -615,27 +550,6 @@ export const addCustomPropertiesForEntity = async ({
       await page.click('#root\\/multiSelect');
     }
   }
-  // Enum With Description configuration
-  if (customType === 'Enum With Descriptions' && enumWithDescriptionConfig) {
-    for await (const [
-      index,
-      val,
-    ] of enumWithDescriptionConfig.values.entries()) {
-      await page.locator('[data-testid="add-enum-description-config"]').click();
-      await page.locator(`#key-${index}`).fill(val.key);
-      await page.locator(descriptionBox).nth(index).fill(val.description);
-    }
-    await clickOutside(page);
-
-    if (enumWithDescriptionConfig.multiSelect) {
-      await page.click('#root\\/multiSelect');
-    }
-
-    await page
-      .locator(descriptionBox)
-      .nth(2)
-      .fill(customPropertyData.description);
-  }
 
   // Entity reference configuration
   if (
@@ -663,9 +577,7 @@ export const addCustomPropertiesForEntity = async ({
   }
 
   // Description
-  if (customType !== 'Enum With Descriptions') {
-    await page.fill(descriptionBox, customPropertyData.description);
-  }
+  await page.fill(descriptionBox, customPropertyData.description);
 
   const createPropertyPromise = page.waitForResponse(
     '/api/v1/metadata/types/name/*?fields=customProperties'
@@ -700,32 +612,16 @@ export const editCreatedProperty = async (
     ).toContainText('["enum1","enum2","enum3"]');
   }
 
-  if (type === 'Enum With Descriptions') {
-    await expect(
-      page
-        .getByRole('row', {
-          name: `${propertyName} enumWithDescriptions enumWithDescription1`,
-        })
-        .getByTestId('enum-with-description-config')
-    ).toBeVisible();
-  }
-
   await editButton.click();
 
-  if (type !== 'Enum With Descriptions') {
-    await page.locator(descriptionBox).fill('');
-    await page.locator(descriptionBox).fill('This is new description');
-  }
+  await page.locator(descriptionBox).fill('');
+  await page.locator(descriptionBox).fill('This is new description');
 
   if (type === 'Enum') {
     await page.click('#root\\/customPropertyConfig');
     await page.fill('#root\\/customPropertyConfig', 'updatedValue');
     await page.press('#root\\/customPropertyConfig', 'Enter');
     await clickOutside(page);
-  }
-  if (type === 'Enum With Descriptions') {
-    await page.locator(descriptionBox).nth(0).fill('');
-    await page.locator(descriptionBox).nth(0).fill('This is new description');
   }
 
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
@@ -759,17 +655,6 @@ export const editCreatedProperty = async (
       )
     ).toContainText('["enum1","enum2","enum3","updatedValue"]');
   }
-
-  if (type === 'Enum With Descriptions') {
-    await expect(
-      page
-        .getByRole('row', {
-          name: `${propertyName} enumWithDescriptions enumWithDescription1`,
-        })
-        .getByTestId('enum-with-description-config')
-    ).toBeVisible();
-  }
-
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
     await expect(
       page.locator(

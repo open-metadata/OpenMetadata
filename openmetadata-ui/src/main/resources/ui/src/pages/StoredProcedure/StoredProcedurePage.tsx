@@ -477,22 +477,21 @@ const StoredProcedurePage = () => {
 
   const onExtensionUpdate = useCallback(
     async (updatedData: StoredProcedure) => {
-      if (storedProcedure) {
-        const response = await saveUpdatedStoredProceduresData({
+      storedProcedure &&
+        (await saveUpdatedStoredProceduresData({
           ...storedProcedure,
           extension: updatedData.extension,
-        });
-        setStoredProcedure((prev) => {
-          if (!prev) {
-            return prev;
-          }
+        }));
+      setStoredProcedure((prev) => {
+        if (!prev) {
+          return prev;
+        }
 
-          return {
-            ...prev,
-            extension: response.extension,
-          };
-        });
-      }
+        return {
+          ...prev,
+          extension: updatedData.extension,
+        };
+      });
     },
     [saveUpdatedStoredProceduresData, storedProcedure]
   );
