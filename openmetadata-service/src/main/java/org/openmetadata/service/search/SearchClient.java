@@ -108,6 +108,8 @@ public interface SearchClient {
 
   void createAliases(IndexMapping indexMapping);
 
+  void addIndexAlias(IndexMapping indexMapping, String... aliasName);
+
   Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
   Response getDocByID(String indexName, String entityId) throws IOException;
@@ -135,6 +137,9 @@ public interface SearchClient {
       boolean deleted,
       String entityType)
       throws IOException;
+
+  Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException;
 
   /*
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
