@@ -1010,7 +1010,7 @@ To continue pursuing this objective, the application was completely refactored t
   {
     id: 48,
     version: 'v1.5.6',
-    description: 'Released on 1st October 2024.',
+    description: 'Released on 3rd October 2024.',
     features: [],
     changeLogs: {
       Improvements: `-   **Minor**: MSTR connector import fix.
@@ -1019,7 +1019,6 @@ To continue pursuing this objective, the application was completely refactored t
 -   **Fix**: Manifest is not parsed correctly on dbt versionless.
 -   **Minor**: Fixed lineage & queries in dbt.
 -   **Improvement**: Added DBT tests with versionless and fixed v7 parsing.
--   **Feature**: Add new enumWithDescriptions Custom Property to allow adding Enum Keys with Description.
 -   **Minor**: Reset displayName to avoid being persisted.
 -   **Fix**: Fixed incorrect @Schema implementations in Swagger annotations.
 -   **Fix**: Resolved type null exception on user feed.
@@ -1030,7 +1029,6 @@ To continue pursuing this objective, the application was completely refactored t
 -   **Improvement**: Change time format for the created_at of the DBT cloud pipeline status.
 -   **Minor**: Fixed role page size from 10 to 50.
 -   **Fix**: Search Indexing Fixes.
--   **Feature**: Allow Custom Property Update in Glossary Bulk Import/export.
 -   **Improvement**: Collate API with Knowledge Center routes ${CollateIconWithLinkMD}.`,
     },
   },
