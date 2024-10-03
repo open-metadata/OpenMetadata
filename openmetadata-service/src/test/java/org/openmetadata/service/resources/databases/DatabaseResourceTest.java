@@ -124,7 +124,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,";
     String csv = createCsv(DatabaseCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(databaseName, csv, false);
-    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     String[] expectedRows =
         new String[] {
           resultsHeader, getFailedRecord(record, entityNotFound(4, "tag", "Tag.invalidTag"))
@@ -135,7 +135,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,";
     csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
     result = importCsv(databaseName, csv, false);
-    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader, getFailedRecord(record, entityNotFound(4, "tag", "Tag.invalidTag"))

@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -326,7 +325,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                       />
                     </div>
                   ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+                  minWidth: 800,
+                  flex: 0.87,
                 }}
                 secondPanel={{
                   children: (
@@ -350,7 +350,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                       />
                     </div>
                   ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+                  minWidth: 320,
+                  flex: 0.13,
                   className:
                     'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}

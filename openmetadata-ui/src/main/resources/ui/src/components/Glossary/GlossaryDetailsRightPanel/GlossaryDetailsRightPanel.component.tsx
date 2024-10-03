@@ -288,7 +288,7 @@ const GlossaryDetailsRightPanel = ({
           </div>
         </Col>
       )}
-      <Col span="24">
+      <Col span="22">
         {!isGlossary && selectedData && (
           <CustomPropertyTable
             isRenderedInRightPanel

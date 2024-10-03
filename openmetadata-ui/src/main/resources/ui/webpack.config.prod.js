@@ -99,10 +99,6 @@ module.exports = {
           path.resolve(__dirname, 'node_modules/katex'),
           path.resolve(__dirname, 'node_modules/react-resizable'),
           path.resolve(__dirname, 'node_modules/react-antd-column-resize'),
-          path.resolve(
-            __dirname,
-            'node_modules/@inovua/reactdatagrid-community'
-          ),
         ],
         // May need to handle files outside the source code
         // (from node_modules)

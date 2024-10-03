@@ -20,7 +20,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
@@ -180,7 +179,8 @@ const GlossaryDetails = ({
                   </Space>
                 </div>
               ),
-              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+              minWidth: 800,
+              flex: 0.75,
             }}
             secondPanel={{
               children: (
@@ -195,7 +195,8 @@ const GlossaryDetails = ({
                   onUpdate={handleGlossaryUpdate}
                 />
               ),
-              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+              minWidth: 320,
+              flex: 0.25,
               className:
                 'entity-resizable-right-panel-container glossary-resizable-panel-container',
             }}

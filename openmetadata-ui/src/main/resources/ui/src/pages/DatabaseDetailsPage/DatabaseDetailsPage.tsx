@@ -51,7 +51,6 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -549,7 +548,8 @@ const DatabaseDetails: FunctionComponent = () => {
                       </Row>
                     </div>
                   ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+                  minWidth: 800,
+                  flex: 0.87,
                 }}
                 secondPanel={{
                   children: (
@@ -573,7 +573,8 @@ const DatabaseDetails: FunctionComponent = () => {
                       />
                     </div>
                   ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+                  minWidth: 320,
+                  flex: 0.13,
                   className:
                     'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}

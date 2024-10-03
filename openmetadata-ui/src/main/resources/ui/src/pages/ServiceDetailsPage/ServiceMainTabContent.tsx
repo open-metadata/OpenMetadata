@@ -26,7 +26,6 @@ import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrev
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { PAGE_SIZE } from '../../constants/constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
@@ -224,7 +223,8 @@ function ServiceMainTabContent({
                 </Row>
               </div>
             ),
-            ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+            minWidth: 800,
+            flex: 0.87,
           }}
           secondPanel={{
             children: (
@@ -247,7 +247,8 @@ function ServiceMainTabContent({
                 />
               </div>
             ),
-            ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+            minWidth: 320,
+            flex: 0.13,
             className:
               'entity-resizable-right-panel-container entity-resizable-panel-container',
           }}

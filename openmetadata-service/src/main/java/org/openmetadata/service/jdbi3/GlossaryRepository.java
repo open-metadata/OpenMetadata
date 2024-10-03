@@ -20,7 +20,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
-import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addReviewers;
@@ -158,7 +157,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", name);
     List<GlossaryTerm> terms =
         repository.listAll(
-            repository.getFields("owners,reviewers,tags,relatedTerms,synonyms,extension"), filter);
+            repository.getFields("owners,reviewers,tags,relatedTerms,synonyms"), filter);
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms);
   }
@@ -201,8 +200,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
                   printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
           .withReviewers(getOwners(printer, csvRecord, 8))
           .withOwners(getOwners(printer, csvRecord, 9))
-          .withStatus(getTermStatus(printer, csvRecord))
-          .withExtension(getExtension(printer, csvRecord, 11));
+          .withStatus(getTermStatus(printer, csvRecord));
       if (processRecord) {
         createEntity(printer, csvRecord, glossaryTerm);
       }
@@ -221,10 +219,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       if (termRefList.size() % 2 != 0) {
         // List should have even numbered terms - termName and endPoint
         importFailure(
-            printer,
-            invalidField(
-                6, "Term References should be given in the format referenceName:endpoint url."),
-            csvRecord);
+            printer, invalidField(6, "Term references should termName;endpoint"), csvRecord);
         processRecord = false;
         return null;
       }
@@ -270,7 +265,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addReviewers(recordList, entity.getReviewers());
       addOwners(recordList, entity.getOwners());
       addField(recordList, entity.getStatus().value());
-      addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
 

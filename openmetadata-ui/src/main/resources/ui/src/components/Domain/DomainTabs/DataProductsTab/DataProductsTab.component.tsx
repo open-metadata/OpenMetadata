@@ -22,7 +22,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -143,7 +142,8 @@ const DataProductsTab = forwardRef(
               ))}
             </div>
           ),
-          ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+          minWidth: 800,
+          flex: 0.87,
         }}
         pageTitle={t('label.domain')}
         secondPanel={{
@@ -158,7 +158,8 @@ const DataProductsTab = forwardRef(
               handleClosePanel={() => setSelectedCard(undefined)}
             />
           ),
-          ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+          minWidth: 320,
+          flex: 0.13,
           className:
             'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
         }}

@@ -13,7 +13,6 @@
 import { Col, Row, Space } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { EntityField } from '../../../../constants/Feeds.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Glossary } from '../../../../generated/entity/data/glossary';
@@ -189,7 +188,8 @@ const GlossaryOverviewTab = ({
                 </Row>
               </div>
             ),
-            ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+            minWidth: 800,
+            flex: 0.75,
           }}
           secondPanel={{
             children: (
@@ -205,7 +205,8 @@ const GlossaryOverviewTab = ({
                 onUpdate={onUpdate}
               />
             ),
-            ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+            minWidth: 320,
+            flex: 0.25,
             className: 'entity-resizable-right-panel-container',
           }}
         />

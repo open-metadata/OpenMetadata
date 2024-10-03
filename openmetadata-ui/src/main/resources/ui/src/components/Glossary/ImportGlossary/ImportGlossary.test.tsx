@@ -13,7 +13,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
-import { importGlossaryInCSVFormat } from '../../../rest/glossaryAPI';
 import ImportGlossary from './ImportGlossary';
 
 const mockPush = jest.fn();
@@ -37,18 +36,11 @@ jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
-jest.mock('../../BulkImport/BulkEntityImport.component', () =>
-  jest.fn().mockImplementation(({ onSuccess, onValidateCsvString }) => (
-    <div>
-      <button onClick={onSuccess}>SuccessButton</button>
-      <button
-        onClick={() => onValidateCsvString('markdown: This is test', true)}>
-        ValidateCsvButton
-      </button>
-      <p>BulkEntityImport</p>
-    </div>
-  ))
-);
+jest.mock('../ImportResult/GlossaryImportResult.component', () => ({
+  GlossaryImportResult: jest
+    .fn()
+    .mockReturnValue(<div>GlossaryImportResult</div>),
+}));
 
 jest.mock('../../../rest/glossaryAPI', () => ({
   importGlossaryInCSVFormat: jest
@@ -88,34 +80,17 @@ describe('Import Glossary', () => {
 
     expect(await screen.findByTestId('breadcrumb')).toBeInTheDocument();
     expect(await screen.findByTestId('title')).toBeInTheDocument();
-    expect(screen.getByText('BulkEntityImport')).toBeInTheDocument();
-    expect(screen.getByText('SuccessButton')).toBeInTheDocument();
-    expect(screen.getByText('ValidateCsvButton')).toBeInTheDocument();
+    expect(await screen.findByTestId('entity-import')).toBeInTheDocument();
   });
 
-  it('should redirect the page when onSuccess get triggered', async () => {
+  it('GlossaryImportResult should visible', async () => {
     render(<ImportGlossary glossaryName={glossaryName} />);
 
-    const successButton = screen.getByText('SuccessButton');
+    const importBtn = await screen.findByTestId('import');
     await act(async () => {
-      fireEvent.click(successButton);
+      fireEvent.click(importBtn);
     });
 
-    expect(mockPush).toHaveBeenCalled();
-  });
-
-  it('should call the importGlossaryInCSVFormat api when validate props is trigger', async () => {
-    render(<ImportGlossary glossaryName={glossaryName} />);
-
-    const successButton = screen.getByText('ValidateCsvButton');
-    await act(async () => {
-      fireEvent.click(successButton);
-    });
-
-    expect(importGlossaryInCSVFormat).toHaveBeenCalledWith(
-      'Glossary1',
-      'markdown: This is test',
-      true
-    );
+    expect(await screen.findByText('GlossaryImportResult')).toBeInTheDocument();
   });
 });

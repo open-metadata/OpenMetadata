@@ -69,17 +69,10 @@ public class TypeRegistry {
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
     CUSTOM_PROPERTIES.put(customPropertyFQN, customProperty);
 
-    try {
-      JsonSchema jsonSchema =
-          JsonUtils.getJsonSchema(
-              TYPES.get(customProperty.getPropertyType().getName()).getSchema());
-      CUSTOM_PROPERTY_SCHEMAS.put(customPropertyFQN, jsonSchema);
-      LOG.info("Adding custom property {} with JSON schema {}", customPropertyFQN, jsonSchema);
-
-    } catch (Exception e) {
-      CUSTOM_PROPERTIES.remove(customPropertyFQN);
-      LOG.info("Failed to add custom property {}: {}", customPropertyFQN, e.getMessage());
-    }
+    JsonSchema jsonSchema =
+        JsonUtils.getJsonSchema(TYPES.get(customProperty.getPropertyType().getName()).getSchema());
+    CUSTOM_PROPERTY_SCHEMAS.put(customPropertyFQN, jsonSchema);
+    LOG.info("Adding custom property {} with JSON schema {}", customPropertyFQN, jsonSchema);
   }
 
   public JsonSchema getSchema(String entityType, String propertyName) {

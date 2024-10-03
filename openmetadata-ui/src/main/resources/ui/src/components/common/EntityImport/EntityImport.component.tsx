@@ -10,20 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
+import {
+  Affix,
+  Button,
+  Card,
+  Col,
+  Row,
+  Space,
+  Typography,
+  UploadProps,
+} from 'antd';
+import Dragger from 'antd/lib/upload/Dragger';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-drag-drop.svg';
 import { ReactComponent as SuccessBadgeIcon } from '../../../assets/svg/success-badge.svg';
 import { STEPS_FOR_IMPORT_ENTITY } from '../../../constants/entity.constants';
 import {
   CSVImportResult,
   Status,
 } from '../../../generated/type/csvImportResult';
+import { Transi18next } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Stepper from '../../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
-import { UploadFile } from '../../UploadFile/UploadFile';
 import Loader from '../Loader/Loader';
 import './entity-import.style.less';
 import { EntityImportProps } from './EntityImport.interface';
@@ -43,6 +54,7 @@ export const EntityImport = ({
   const [csvFileResult, setCsvFileResult] = useState<string>('');
   const [csvImportResult, setCsvImportResult] = useState<CSVImportResult>();
   const [activeStep, setActiveStep] = useState<number>(1);
+  const [uploading, setUploading] = useState(false);
   const { isFailure, isAborted } = useMemo(() => {
     const status = csvImportResult?.status;
 
@@ -59,6 +71,7 @@ export const EntityImport = ({
     try {
       const result = e.target?.result as string;
       if (result) {
+        setUploading(true);
         const response = await onImport(entityName, result);
 
         if (response) {
@@ -69,6 +82,27 @@ export const EntityImport = ({
       }
     } catch (error) {
       setCsvImportResult(undefined);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUpload: UploadProps['customRequest'] = (options) => {
+    setIsLoading(true);
+    try {
+      const reader = new FileReader();
+
+      reader.readAsText(options.file as Blob);
+
+      reader.addEventListener('load', handleLoadData);
+
+      reader.addEventListener('error', () => {
+        throw t('server.unexpected-error');
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -102,14 +136,39 @@ export const EntityImport = ({
         <>
           {activeStep === 1 && (
             <Col data-testid="upload-file-container" span={24}>
-              <UploadFile
-                beforeUpload={(file) => {
-                  setFileName(file.name);
-                }}
-                fileType=".csv"
-                onCSVUploaded={handleLoadData}
-              />
-
+              {uploading ? (
+                <Loader />
+              ) : (
+                <Dragger
+                  accept=".csv"
+                  beforeUpload={(file) => {
+                    setFileName(file.name);
+                  }}
+                  className="file-dragger-wrapper p-lg bg-white"
+                  customRequest={handleUpload}
+                  data-testid="upload-file-widget"
+                  multiple={false}
+                  showUploadList={false}>
+                  <Space
+                    align="center"
+                    className="w-full justify-center"
+                    direction="vertical"
+                    size={42}>
+                    <ImportIcon height={86} width={86} />
+                    <Typography.Text className="font-medium text-md">
+                      <Transi18next
+                        i18nKey="message.drag-and-drop-or-browse-csv-files-here"
+                        renderElement={
+                          <span className="text-primary browse-text" />
+                        }
+                        values={{
+                          text: t('label.browse'),
+                        }}
+                      />
+                    </Typography.Text>
+                  </Space>
+                </Dragger>
+              )}
               <Affix className="bg-white p-md import-preview-footer">
                 <Space className="justify-end w-full p-r-md">
                   <Button
