@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: docker-openmetadata-ingestion docker
+name: docker-openmetadata-ingestion-extended docker
 on:
   workflow_dispatch:
     inputs:
@@ -35,7 +35,7 @@ jobs:
         id: prepare
         uses: ./.github/actions/prepare-for-docker-build-and-push
         with:
-          image: openmetadata/ingestion
+          image: openmetadata/ingestion-extended
           tag: ${{ inputs.docker_release_tag }}
           push_latest: ${{ inputs.push_latest_tag_to_release }}
           is_ingestion: true
@@ -54,4 +54,4 @@ jobs:
           tags: ${{ steps.prepare.outputs.tags }}
           file: ./ingestion/Dockerfile
           build-args: |
-            INGESTION_DEPENDENCY=slim
+            INGESTION_DEPENDENCY=all
