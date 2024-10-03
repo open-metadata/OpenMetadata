@@ -58,7 +58,6 @@ from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_DB_NAMES,
     POSTGRES_GET_STORED_PROCEDURES,
-    POSTGRES_GET_STORED_PROCEDURES_QUERIES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
     POSTGRES_SCHEMA_COMMENTS,
@@ -371,7 +370,4 @@ class PostgresSource(CommonDbSourceService, MultiDBSource, StoredProcedureMixin)
         Return the dictionary associating stored procedures to the
         queries they triggered
         """
-        queries_dict = self.procedure_queries_dict(
-            query=POSTGRES_GET_STORED_PROCEDURES_QUERIES,
-        )
-        return queries_dict
+        return {}
