@@ -35,7 +35,6 @@ const RichTextEditorPreviewer = ({
   showReadMoreBtn = true,
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
   isDescriptionExpanded = false,
-  reducePreviewLineClass,
 }: PreviewerProp) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
@@ -111,11 +110,7 @@ const RichTextEditorPreviewer = ({
       data-testid="viewer-container"
       dir={i18n.dir()}>
       <div
-        className={classNames(
-          'markdown-parser',
-          textVariant,
-          readMore ? '' : reducePreviewLineClass
-        )}
+        className={classNames('markdown-parser', textVariant)}
         data-testid="markdown-parser">
         <Viewer
           extendedAutolinks

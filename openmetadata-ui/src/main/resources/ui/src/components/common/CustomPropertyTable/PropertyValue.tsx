@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
+import Icon, { DownOutlined, UpOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -29,7 +29,6 @@ import {
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { t } from 'i18next';
 import {
   isArray,
@@ -51,7 +50,6 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ArrowIconComponent } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
@@ -867,7 +865,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                                 isTeam={item.type === 'team'}
                                 name={item.name ?? ''}
                                 type="circle"
-                                width="18"
+                                width="20"
                               />
                             ) : (
                               searchClassBase.getEntityIcon(item.type)
@@ -876,7 +874,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                         }
                         type="text">
                         <Typography.Text
-                          className="text-left text-primary truncate w-68"
+                          className="text-left text-lg truncate w-68"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
@@ -918,7 +916,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                         isTeam={item.type === 'team'}
                         name={item.name ?? ''}
                         type="circle"
-                        width="18"
+                        width="20"
                       />
                     ) : (
                       searchClassBase.getEntityIcon(item.type)
@@ -927,7 +925,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 }
                 type="text">
                 <Typography.Text
-                  className="text-left text-primary truncate w-68 "
+                  className="text-left text-lg truncate w-68"
                   data-testid="entityReference-value-name"
                   ellipsis={{ tooltip: true }}>
                   {getEntityName(item)}
@@ -949,17 +947,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="break-all"
             data-testid="time-interval-value">
             <span>
-              <Typography.Text>{`${t('label.start-entity', {
-                entity: t('label.time'),
-              })}: `}</Typography.Text>
-              <Typography.Text className="text-sm text-grey-body property-value">
+              <Typography.Text className="text-xs">{`StartTime: `}</Typography.Text>
+              <Typography.Text className="text-sm font-medium text-grey-body">
                 {timeInterval.start}
               </Typography.Text>
               <Divider className="self-center" type="vertical" />
-              <Typography.Text>{`${t('label.end-entity', {
-                entity: t('label.time'),
-              })}: `}</Typography.Text>
-              <Typography.Text className="text-sm text-grey-body property-value">
+              <Typography.Text className="text-xs">{`EndTime: `}</Typography.Text>
+              <Typography.Text className="text-sm font-medium text-grey-body">
                 {timeInterval.end}
               </Typography.Text>
             </span>
@@ -979,7 +973,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       default:
         return (
           <Typography.Text
-            className="break-all text-grey-body property-value"
+            className="break-all text-lg font-medium text-grey-body"
             data-testid="value">
             {value}
           </Typography.Text>
@@ -1018,10 +1012,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
   const customPropertyInlineElement = (
     <div className="d-flex flex-column gap-2" data-testid={propertyName}>
-      <div className="d-flex justify-between w-full items-center">
+      <div className="d-flex justify-between w-full">
         <div className="d-flex flex-column gap-1 w-full">
           <Typography.Text
-            className="property-name text-grey-body"
+            className="text-md text-grey-body"
             data-testid="property-name">
             {getEntityName(property)}
           </Typography.Text>
@@ -1045,6 +1039,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           )}
         </div>
       </div>
+      <RichTextEditorPreviewer
+        className="text-grey-muted"
+        markdown={property.description || ''}
+        maxLength={70}
+      />
     </div>
   );
 
@@ -1052,9 +1051,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     <Row data-testid={propertyName} gutter={[0, 16]}>
       <Col span={24}>
         <Row gutter={[0, 2]}>
-          <Col className="d-flex justify-between items-center w-full" span={24}>
+          <Col className="d-flex justify-between w-full" span={24}>
             <Typography.Text
-              className="text-grey-body property-name"
+              className="text-md text-grey-body"
               data-testid="property-name">
               {getEntityName(property)}
             </Typography.Text>
@@ -1073,30 +1072,18 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               </Tooltip>
             )}
           </Col>
-          {!isRenderedInRightPanel && (
-            <Col span={24}>
-              <RichTextEditorPreviewer
-                className="text-grey-muted property-description"
-                markdown={property.description || ''}
-                maxLength={70}
-                reducePreviewLineClass="max-one-line"
-              />
-            </Col>
-          )}
+          <Col span={24}>
+            <RichTextEditorPreviewer
+              className="text-grey-muted"
+              markdown={property.description || ''}
+              maxLength={70}
+            />
+          </Col>
         </Row>
       </Col>
 
       <Col span={24}>
-        <div
-          className={classNames(
-            'd-flex justify-between w-full gap-2',
-            {
-              'items-end': isExpanded,
-            },
-            {
-              'items-center': !isExpanded,
-            }
-          )}>
+        <div className="d-flex justify-between w-full gap-2">
           <div
             className="w-full"
             ref={contentRef}
@@ -1107,15 +1094,14 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             {showInput ? getPropertyInput() : getValueElement()}
           </div>
           {isOverflowing && !showInput && (
-            <Icon
-              className={classNames('custom-property-value-toggle-btn', {
-                active: isExpanded,
-              })}
-              component={ArrowIconComponent}
+            <Button
+              className="custom-property-value-toggle-btn"
               data-testid={`toggle-${propertyName}`}
-              style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-              onClick={toggleExpand}
-            />
+              size="small"
+              type="text"
+              onClick={toggleExpand}>
+              {isExpanded ? <UpOutlined /> : <DownOutlined />}
+            </Button>
           )}
         </div>
       </Col>
@@ -1125,7 +1111,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   if (isRenderedInRightPanel) {
     return (
       <div
-        className="custom-property-card custom-property-card-right-panel"
+        className="custom-property-card-right-panel"
         data-testid="custom-property-right-panel-card">
         {isInlineProperty ? customPropertyInlineElement : customPropertyElement}
       </div>

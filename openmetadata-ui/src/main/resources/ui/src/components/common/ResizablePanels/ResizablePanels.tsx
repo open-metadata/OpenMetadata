@@ -111,7 +111,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           }}>
           {!hideSecondPanel && (
             <PanelContainer overlay={secondPanel.overlay}>
-              <div className="p-l-sm">{secondPanel.children}</div>
+              {secondPanel.children}
             </PanelContainer>
           )}
         </ReflexElement>
