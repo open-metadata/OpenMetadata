@@ -200,7 +200,7 @@ describe('Test PropertyValue Component', () => {
     const iconElement = await screen.findByTestId('edit-icon');
 
     expect(await screen.findByTestId('value')).toHaveTextContent(
-      '20-03-2024 | 2:00:00'
+      '20-03-2024 2:00:00'
     );
 
     await act(async () => {

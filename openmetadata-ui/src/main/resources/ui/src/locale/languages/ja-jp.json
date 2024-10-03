@@ -1565,7 +1565,6 @@
     "integration-description": "Configure applications and bots to amplify productivity.",
     "invalid-object-key": "Invalid object key. Must start with a letter, underscore, or dollar sign, followed by letters, underscores, dollar signs, or digits.",
     "invalid-property-name": "無効なプロパティ名",
-    "invalid-unix-epoch-time-milliseconds": "Invalid Unix epoch time in milliseconds",
     "jwt-token": "Token you have generated that can be used to access the OpenMetadata API.",
     "jwt-token-expiry-time-message": "JWT token expiry timer in seconds.",
     "kill-ingestion-warning": "Once you kill this Ingestion, all running and queued workflows will be stopped and marked as Failed.",
