@@ -36,6 +36,7 @@ import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
@@ -335,6 +336,9 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   void post_trigger_app_200() throws HttpResponseException {
     String appName = "SearchIndexingApplication";
     postTriggerApp(appName, ADMIN_AUTH_HEADERS);
+    assertAppStatusAvailableAfterTrigger(appName);
+    assertListExtension(appName, AppExtension.ExtensionType.STATUS);
+    assertAppRanAfterTriggerWithStatus(appName, AppRunRecord.Status.SUCCESS);
     assertAppRanAfterTrigger(appName);
   }
 
@@ -348,6 +352,23 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
             throw new AssertionError(ex);
           }
         },
+        APP_TRIGGER_RETRY);
+  }
+
+  private void assertListExtension(String appName, AppExtension.ExtensionType extensionType) {
+    assertEventually(
+        "appIsRunning",
+        () -> {
+          try {
+            assert Objects.nonNull(listAppExtension(appName, extensionType, ADMIN_AUTH_HEADERS));
+          } catch (HttpResponseException ex) {
+            throw new AssertionError(ex);
+          }
+        },
+        APP_TRIGGER_RETRY);
+  }
+
+  private void assertAppRanAfterTriggerWithStatus(String appName, AppRunRecord.Status status) {
         appTriggerRetry);
     assertEventually(
         "appSuccess",
@@ -410,5 +431,14 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
       throws HttpResponseException {
     WebTarget target = getResource(String.format("apps/name/%s/runs/latest", appName));
     return TestUtils.get(target, AppRunRecord.class, authHeaders);
+  }
+
+  private AppExtension listAppExtension(
+      String appName, AppExtension.ExtensionType extensionType, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target =
+        getResource(
+            String.format("apps/name/%s/extension?extensionType=%s", appName, extensionType));
+    return TestUtils.get(target, AppExtension.class, authHeaders);
   }
 }
