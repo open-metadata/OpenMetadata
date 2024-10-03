@@ -13,7 +13,7 @@
 Glue Pipeline Source Model module
 """
 
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -57,6 +57,17 @@ class JDBCSource(BaseModel):
     schema_name: Optional[str] = Field(default=None, alias="SchemaName")
     database_name: Optional[str] = None
     table_name: str = Field(alias="ConnectionTable")
+
+
+class S3Source(BaseModel):
+    Name: str
+    Paths: List[str]
+
+
+class S3Target(BaseModel):
+    Name: str
+    Path: str
+    Paths: Optional[str] = None
 
 
 class JobNodes(BaseModel):
