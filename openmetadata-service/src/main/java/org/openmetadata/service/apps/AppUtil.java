@@ -6,6 +6,9 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppExtension;
+import org.openmetadata.service.util.JsonUtils;
 
 public class AppUtil {
   public enum RunType {
@@ -93,5 +96,18 @@ public class AppUtil {
     private Long timestamp;
     private AppRunStatus status;
     private String runType;
+  }
+
+  public static AppExtension buildExtension(
+      Object object, App app, long timestamp, AppExtension.ExtensionType extensionType) {
+    Map<String, Object> jsonData = JsonUtils.getMap(object);
+    AppExtension data =
+        new AppExtension()
+            .withAppId(app.getId())
+            .withAppName(app.getName())
+            .withTimestamp(timestamp)
+            .withExtension(extensionType);
+    jsonData.forEach(data::setAdditionalProperty);
+    return data;
   }
 }

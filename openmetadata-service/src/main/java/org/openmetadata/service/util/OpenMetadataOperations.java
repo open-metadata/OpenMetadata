@@ -338,8 +338,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       try {
         AppRepository appRepository =
             (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-        appRunRecord =
-            appRepository.getLatestAppRunsAfterStartTime(searchIndexApp.getId(), startTime);
+        appRunRecord = appRepository.getLatestAppRunsAfterStartTime(searchIndexApp, startTime);
         if (isRunCompleted(appRunRecord)) {
           List<String> columns =
               new ArrayList<>(

@@ -58,3 +58,5 @@ SET json = jsonb_set(
 	to_jsonb(true)
 )
 where name = 'SearchIndexingApplication';
+
+ALTER TABLE apps_extension_time_series ADD COLUMN appName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'appName') STORED NOT NULL;
