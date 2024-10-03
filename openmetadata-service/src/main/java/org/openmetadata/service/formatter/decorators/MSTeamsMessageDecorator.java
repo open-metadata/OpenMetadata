@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
@@ -116,7 +117,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
     return switch (entityType) {
       case Entity.TEST_CASE -> createDQMessage(publisherName, event, outgoingMessage);
-      default -> createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
+      default -> createDQMessage(publisherName, event, outgoingMessage);
     };
   }
 
@@ -187,6 +188,9 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     List<TeamsMessage.Fact> facts = createEventDetailsFacts(eventDetails);
     List<TeamsMessage.Fact> testCaseDetailsFacts = createTestCaseDetailsFacts(dqTemplateData);
     List<TeamsMessage.Fact> testCaseResultFacts = createTestCaseResultFacts(dqTemplateData);
+
+    List<TeamsMessage.Fact> parameterValuesFacts = createParameterValuesFacts(dqTemplateData);
+
     List<TeamsMessage.Fact> inspectionQueryFacts = createInspectionQueryFacts(dqTemplateData);
     List<TeamsMessage.Fact> testDefinitionFacts = createTestDefinitionFacts(dqTemplateData);
     List<TeamsMessage.Fact> sampleDataFacts = createSampleDataFacts(dqTemplateData);
@@ -219,6 +223,10 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     // event details facts
     body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(facts).build());
 
+    // Add the outgoing message text blocks
+    body.addAll(messageTextBlocks);
+    body.add(divider);
+
     // test case details facts
     if (dqTemplateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)
         && !nullOrEmpty(testCaseDetailsFacts)) {
@@ -233,6 +241,12 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
       body.add(createBoldTextBlock("Test Case Result"));
       body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(testCaseResultFacts).build());
       body.add(divider);
+    }
+
+    // parameterValues facts
+    if (dqTemplateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)
+        && !nullOrEmpty(parameterValuesFacts)) {
+      body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(parameterValuesFacts).build());
     }
 
     // inspection query facts
@@ -255,9 +269,6 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         && !nullOrEmpty(sampleDataFacts)) {
       body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(sampleDataFacts).build());
     }
-
-    // Add the outgoing message text blocks
-    body.addAll(messageTextBlocks);
 
     body.add(createEntityLink(outgoingMessage.getEntityUrl()));
 
@@ -335,13 +346,44 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
                 "Status:",
                 String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseResultKeys.STATUS, "-"))),
             createFact(
-                "Parameter Value:",
-                String.valueOf(
-                    testCaseDetails.getOrDefault(DQ_TestCaseResultKeys.PARAMETER_VALUE, "-"))),
-            createFact(
                 "Result Message:",
                 String.valueOf(
                     testCaseDetails.getOrDefault(DQ_TestCaseResultKeys.RESULT_MESSAGE, "-"))))
+        .collect(Collectors.toList());
+  }
+
+  private List<TeamsMessage.Fact> createParameterValuesFacts(
+      Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
+
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
+
+    if (nullOrEmpty(testCaseDetails)) {
+      return Collections.emptyList();
+    }
+
+    Object result = testCaseDetails.get(DQ_TestCaseResultKeys.PARAMETER_VALUE);
+    if (!(result instanceof List<?>)) {
+      return Collections.emptyList();
+    }
+
+    List<TestCaseParameterValue> parameterValues = (List<TestCaseParameterValue>) result;
+    if (nullOrEmpty(parameterValues)) {
+      return Collections.emptyList();
+    }
+
+    StringBuilder parameterValuesText = new StringBuilder();
+
+    parameterValues.forEach(
+        param -> {
+          if (parameterValuesText.length() > 0) {
+            parameterValuesText.append(", ");
+          }
+
+          parameterValuesText.append(String.format("[%s: %s]", param.getName(), param.getValue()));
+        });
+
+    // Return a fact for "Parameter Values" with all parameter values in a single string
+    return Stream.of(createFact("Parameter Values:", parameterValuesText.toString()))
         .collect(Collectors.toList());
   }
 
@@ -524,7 +566,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     }
 
     // Replace the text part (if it's in markdown link format [some text](url))
-    String updatedUrl = url.replaceAll("\\[.*?\\]\\((.*?)\\)", "[view data]($1)");
+    String updatedUrl = url.replaceAll("\\[.*?\\]\\((.*?)\\)", "[View Data]($1)");
 
     return TextBlock.builder()
         .type("TextBlock")
