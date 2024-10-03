@@ -2,8 +2,11 @@ package org.openmetadata.service.jdbi3;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import org.openmetadata.schema.governance.workflows.Stage;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -55,22 +58,47 @@ public class WorkflowInstanceStateRepository
     return recordEntity;
   }
 
-  public void addNewStateToInstance(WorkflowInstanceState.State state, String workflowInstanceId, String workflowDefinitionName) {
-    addNewStateToInstance(state, workflowInstanceId, workflowDefinitionName, null, null);
-  }
-  public void addNewStateToInstance(WorkflowInstanceState.State state, String workflowInstanceId, String workflowDefinitionName, UUID taskId, String flowableTaskId) {
-    WorkflowDefinitionRepository workflowDefinitionRepository = (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+  public UUID addNewStageToInstance(String workflowInstanceStage, String workflowInstanceId, String workflowDefinitionName, Long startedAt) {
+     WorkflowDefinitionRepository workflowDefinitionRepository = (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
     EntityReference workflowDefinitionReference = workflowDefinitionRepository.getByName(null, workflowDefinitionName, new EntityUtil.Fields(Set.of("*"))).getEntityReference();
 
-    createNewRecord(
-        new WorkflowInstanceState()
-                .withState(state)
-                .withWorkflowInstanceId(workflowInstanceId)
-                .withTimestamp(System.currentTimeMillis())
-                .withTaskId(taskId)
-                .withFlowableTaskId(flowableTaskId)
-                .withWorkflowDefinitionReference(workflowDefinitionReference), buildWorkflowInstanceFqn(workflowDefinitionName, workflowInstanceId));
+    Stage stage = new Stage()
+            .withName(workflowInstanceStage)
+            .withStartedAt(startedAt);
 
+    WorkflowInstanceState createdRecord = createNewRecord(
+            new WorkflowInstanceState()
+                    .withStage(stage)
+                    .withWorkflowInstanceId(workflowInstanceId)
+                    .withTimestamp(System.currentTimeMillis())
+                    .withWorkflowDefinitionReference(workflowDefinitionReference), buildWorkflowInstanceFqn(workflowDefinitionName, workflowInstanceId));
+
+    return createdRecord.getId();
+  }
+
+  public void updateStage(UUID workflowInstanceStateId, Long endedAt, Map<String, Object> variables) {
+    WorkflowInstanceState workflowInstanceState =
+            JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceStateId), WorkflowInstanceState.class);
+
+    Stage stage = workflowInstanceState.getStage();
+    stage.setEndedAt(endedAt);
+    stage.setVariables(variables);
+
+    workflowInstanceState.setStage(stage);
+
+    getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstanceState), workflowInstanceStateId);
+  }
+
+  public void updateStageWithTask(UUID taskId, UUID workflowInstanceStateId) {
+    WorkflowInstanceState workflowInstanceState =
+          JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceStateId), WorkflowInstanceState.class);
+
+    Stage stage = workflowInstanceState.getStage();
+    stage.getTasks().add(taskId);
+
+    workflowInstanceState.setStage(stage);
+
+    getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstanceState), workflowInstanceStateId);
   }
 
   private String buildWorkflowInstanceFqn(String workflowDefinitionName, String workflowInstanceId) {

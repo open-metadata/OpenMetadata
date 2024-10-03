@@ -33,6 +33,10 @@ public class UserApprovalTask implements WorkflowNodeInterface {
         getMetadataExtension(
                 userApprovalTaskDefinition.getName(), userApprovalTaskDefinition.getDisplayName(), userApprovalTaskDefinition.getDescription()));
 
+    // Attach Listeners
+    attachSubProcessListeners(subProcess);
+
+
     StartEvent startEvent = new StartEvent();
     startEvent.setId(getFlowableElementId(userApprovalTaskDefinition.getName(), "startEvent"));
     startEvent.setName(getFlowableElementName(userApprovalTaskDefinition.getNodeDisplayName(), "startEvent"));

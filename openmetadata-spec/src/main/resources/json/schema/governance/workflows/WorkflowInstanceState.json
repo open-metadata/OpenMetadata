@@ -6,36 +6,42 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.governance.workflows.WorkflowInstanceState",
   "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
-  "definitions": {
-    "state": {
-      "title": "State",
-      "description": "Different States a Workflow Instance can be found at.",
-      "type": "string",
-      "enum": [
-        "CREATED",
-        "WAITING_USER"
-      ]
-    }
-  },
   "properties": {
     "id": {
       "description": "Unique identifier of this workflow instance state.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
-    "state": {
-      "$ref": "#/definitions/state"
-    },
     "workflowInstanceId": {
       "description": "Unique identifier of this workflow instance.",
       "type": "string"
     },
-    "taskId": {
-      "description": "Unique identifier of this workflow instance task, if any.",
-      "$ref": "../../type/basic.json#/definitions/uuid"
-    },
-    "flowableTaskId": {
-      "description": "Unique identifier of this workflow instance task, if any.",
-      "type": "string"
+    "stage": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "../../type/basic.json#/definitions/entityName"
+        },
+        "startedAt": {
+          "description": "Timestamp on which the workflow instance stage started.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "endedAt": {
+          "description": "Timestamp on which the workflow instance stage ended.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "../../type/basic.json#/definitions/uuid"
+          },
+          "default": []
+        },
+        "variables": {
+          "type": "object",
+          "existingJavaType": "java.util.Map<java.lang.String, java.lang.Object>"
+        }
+      },
+      "additionalProperties": false
     },
     "workflowDefinitionReference": {
       "description": "Workflow Definition Reference.",

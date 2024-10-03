@@ -7,7 +7,6 @@ import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.Process;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
-import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.service.governance.workflows.elements.Edge;
 import org.openmetadata.service.governance.workflows.elements.WorkflowNodeFactory;
 import org.openmetadata.service.util.JsonUtils;
@@ -34,16 +33,21 @@ public class Workflow {
             workflowDefinition.getDescription()));
     model.addProcess(process);
 
-    // Add Workflow Start Listener
+    // Add Workflow Listeners
     FlowableListener startListener = new FlowableListener();
     startListener.setEvent("start");
     startListener.setImplementationType("class");
-    startListener.setImplementation(WorkflowStartListener.class.getName());
+    startListener.setImplementation(WorkflowInstanceUpdaterListener.class.getName());
     process.getExecutionListeners().add(startListener);
+
+    FlowableListener endListener = new FlowableListener();
+    endListener.setEvent("end");
+    endListener.setImplementationType("class");
+    endListener.setImplementation(WorkflowInstanceUpdaterListener.class.getName());
+    process.getExecutionListeners().add(endListener);
 
     // Add Nodes
     for (Object nodeDefinitionObj : workflowDefinition.getNodes()) {
-//      WorkflowNodeDefinitionInterface nodeDefinition = JsonUtils.readOrConvertValue(nodeDefinitionObj, WorkflowNodeDefinitionInterface.class);
       WorkflowNodeFactory.createNode(JsonUtils.readOrConvertValue(nodeDefinitionObj, Map.class)).addToWorkflow(model, process);
     }
 

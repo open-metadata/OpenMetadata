@@ -14,6 +14,7 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
@@ -39,21 +40,11 @@ public class CreateApprovalTaskImpl implements TaskListener {
                 Include.ALL
         );
         Thread task = createApprovalTask(entity, assignees);
+        WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
 
-        String processInstanceId = delegateTask.getProcessInstanceId();
-        String processDefinitionKey = Arrays.stream(delegateTask.getProcessDefinitionId().split(":")).toList().get(0);
-        String taskId = delegateTask.getId();
-
+        UUID workflowInstanceStateId = (UUID) delegateTask.getVariable("stageInstanceStateId");
         WorkflowInstanceStateRepository workflowInstanceStateRepository = (WorkflowInstanceStateRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
-        WorkflowInstanceState latestWorkflowInstanceState = workflowInstanceStateRepository.getLastWorkflowInstanceStateForWorkflowInstanceId(processInstanceId);
-        workflowInstanceStateRepository.createNewRecord(
-                latestWorkflowInstanceState
-                        .withState(WorkflowInstanceState.State.WAITING_USER)
-                        .withWorkflowInstanceId(processInstanceId)
-                        .withTimestamp(System.currentTimeMillis())
-                        .withTaskId(task.getId())
-                        .withFlowableTaskId(taskId),
-                String.format("%s.%s", processDefinitionKey, processInstanceId));
+        workflowInstanceStateRepository.updateStageWithTask(task.getId(), workflowInstanceStateId);
     }
 
     private List<EntityReference> getAssignees(DelegateTask delegateTask) {

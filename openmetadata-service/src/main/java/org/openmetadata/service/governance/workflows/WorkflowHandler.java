@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.engine.HistoryService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.RepositoryService;
@@ -16,6 +17,7 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.task.api.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -84,25 +86,40 @@ public class WorkflowHandler {
     runtimeService.signalEventReceived(signal, variables);
   }
 
+  public void setCustomTaskId(String taskId, UUID customTaskId) {
+    taskService.setVariable(taskId, "customTaskId", customTaskId.toString());
+  }
+
   public void resolveTask(UUID taskId) {
     resolveTask(taskId, null);
   }
 
-  public void resolveTask(UUID taskId, Map<String, Object> variables) {
-    String flowableTaskId = ((WorkflowInstanceStateRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE)).getFlowableTaskIdFromTaskId(taskId);
-
+  public void resolveTask(UUID customTaskId, Map<String, Object> variables) {
     try {
-      Optional.ofNullable(variables).ifPresentOrElse(
-              variablesValue -> taskService.complete(flowableTaskId, variablesValue),
-              () -> taskService.complete(flowableTaskId));
+      Optional<Task> oTask = Optional.ofNullable(taskService.createTaskQuery()
+              .processVariableValueEquals("customTaskId", customTaskId.toString())
+              .singleResult());
+
+      if (oTask.isPresent()) {
+        Task task = oTask.get();
+        Optional.ofNullable(variables).ifPresentOrElse(
+                variablesValue -> taskService.complete(task.getId(), variablesValue),
+                () -> taskService.complete(task.getId()));
+      } else {
+        LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+      }
     } catch (FlowableObjectNotFoundException ex) {
-      LOG.debug(String.format("Flowable Task for Task ID %s not found.", taskId));
-    } catch (FlowableException ex) {
+      LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+    } catch (FlowableException ex) { // TODO: Remove this once we change the Task flow. Currently closeTask() is called twice.
       LOG.debug(String.format("Flowable Exception: %s.", ex));
     }
   }
 
   public static String getProcessDefinitionKeyFromId(String processDefinitionId) {
     return Arrays.stream(processDefinitionId.split(":")).toList().get(0);
+  }
+
+  public void updateBusinessKey(String processInstanceId, UUID workflowInstanceBusinessKey) {
+    runtimeService.updateBusinessKey(processInstanceId, workflowInstanceBusinessKey.toString());
   }
 }

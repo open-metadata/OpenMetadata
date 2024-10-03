@@ -2,12 +2,14 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
+import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.service.governance.workflows.WorkflowInstanceStageUpdaterListener;
 import org.openmetadata.service.governance.workflows.elements.WorkflowNodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTasks.impl.CheckEntityHasReviewersImpl;
 
@@ -25,6 +27,9 @@ public class CheckEntityHasReviewersTask implements WorkflowNodeInterface {
                         nodeDefinition.getName(),
                         nodeDefinition.getDisplayName(),
                         nodeDefinition.getDescription()));
+
+        // Attach Listeners
+        attachSubProcessListeners(subProcess);
 
         StartEvent startEvent = new StartEvent();
         startEvent.setId(getFlowableElementId(nodeDefinition.getName(), "startEvent"));

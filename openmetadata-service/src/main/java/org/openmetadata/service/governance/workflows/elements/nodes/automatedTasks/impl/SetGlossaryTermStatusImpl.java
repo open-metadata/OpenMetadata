@@ -30,7 +30,6 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
 
     private void setStatus(EntityReference entityReference, String user, String status) {
         GlossaryTerm glossaryTerm = Entity.getEntity(entityReference, "*", Include.ALL);
-
         String originalJson = JsonUtils.pojoToJson(glossaryTerm);
 
         glossaryTerm.setStatus(GlossaryTerm.Status.fromValue(status));
@@ -39,6 +38,7 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
         JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
 
         GlossaryTermRepository entityRepository = (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+        // TODO: How to deal when user is null because it's an automated decision?
         entityRepository.patch(null, glossaryTerm.getId(), user, patch);
     }
 }
