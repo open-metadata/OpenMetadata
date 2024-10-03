@@ -47,6 +47,11 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FeedUtils;
 
 public interface MessageDecorator<T> {
+  String CONNECTION_TEST_DESCRIPTION =
+      "This is a test message, receiving this message confirms that you have successfully configured OpenMetadata to receive alerts.";
+
+  String TEMPLATE_FOOTER = "Change Event By OpenMetadata";
+
   String getBold();
 
   String getBoldWithSpace();
@@ -73,43 +78,80 @@ public interface MessageDecorator<T> {
 
   T buildEntityMessage(String publisherName, ChangeEvent event);
 
-  T buildTestMessage(String publisherName);
-
   T buildThreadMessage(String publisherName, ChangeEvent event);
 
+  T buildTestMessage(String publisherName);
+
   default String buildEntityUrl(String entityType, EntityInterface entityInterface) {
+    String fqn = resolveFullyQualifiedName(entityType, entityInterface);
+
+    switch (entityType) {
+      case Entity.TEST_CASE:
+        if (entityInterface instanceof TestCase testCase) {
+          return getEntityUrl(
+              "incident-manager", testCase.getFullyQualifiedName(), "test-case-results");
+        }
+        break;
+
+      case Entity.GLOSSARY_TERM:
+        return getEntityUrl(Entity.GLOSSARY, fqn, "");
+
+      case Entity.TAG:
+        return getEntityUrl("tags", fqn.split("\\.")[0], "");
+
+      case Entity.INGESTION_PIPELINE:
+        return getIngestionPipelineUrl(this, entityType, entityInterface);
+
+      default:
+        return getEntityUrl(entityType, fqn, "");
+    }
+
+    // Fallback in case of no match
+    return getEntityUrl(entityType, fqn, "");
+  }
+
+  default String buildThreadUrl(
+      ThreadType threadType, String entityType, EntityInterface entityInterface) {
+
+    String activeTab =
+        threadType.equals(ThreadType.Task) ? "activity_feed/tasks" : "activity_feed/all";
+
+    String fqn = resolveFullyQualifiedName(entityType, entityInterface);
+
+    switch (entityType) {
+      case Entity.TEST_CASE:
+        if (entityInterface instanceof TestCase) {
+          TestCase testCase = (TestCase) entityInterface;
+          return getEntityUrl("incident-manager", testCase.getFullyQualifiedName(), "issues");
+        }
+        break;
+
+      case Entity.GLOSSARY_TERM:
+        return getEntityUrl(Entity.GLOSSARY, fqn, activeTab);
+
+      case Entity.TAG:
+        return getEntityUrl("tags", fqn.split("\\.")[0], "");
+
+      case Entity.INGESTION_PIPELINE:
+        return getIngestionPipelineUrl(this, entityType, entityInterface);
+
+      default:
+        return getEntityUrl(entityType, fqn, activeTab);
+    }
+
+    // Fallback in case of no match
+    return getEntityUrl(entityType, fqn, activeTab);
+  }
+
+  // Helper function to resolve FQN if null or empty
+  private String resolveFullyQualifiedName(String entityType, EntityInterface entityInterface) {
     String fqn = entityInterface.getFullyQualifiedName();
     if (CommonUtil.nullOrEmpty(fqn)) {
       EntityInterface result =
           Entity.getEntity(entityType, entityInterface.getId(), "id", Include.NON_DELETED);
       fqn = result.getFullyQualifiedName();
     }
-
-    // Hande Test Case
-    if (entityType.equals(Entity.TEST_CASE)) {
-      TestCase testCase = (TestCase) entityInterface;
-      return getEntityUrl(
-          "incident-manager", testCase.getFullyQualifiedName(), "test-case-results");
-    }
-
-    // Glossary Term
-    if (entityType.equals(Entity.GLOSSARY_TERM)) {
-      // Glossary Term is a special case where the URL is different
-      return getEntityUrl(Entity.GLOSSARY, fqn, "");
-    }
-
-    // Tag
-    if (entityType.equals(Entity.TAG)) {
-      // Tags need to be redirected to Classification Page
-      return getEntityUrl("tags", fqn.split("\\.")[0], "");
-    }
-
-    // IngestionPipeline
-    if (entityType.equals(Entity.INGESTION_PIPELINE)) {
-      return getIngestionPipelineUrl(this, entityType, entityInterface);
-    }
-
-    return getEntityUrl(entityType, fqn, "");
+    return fqn;
   }
 
   default String getFQNForChangeEventEntity(ChangeEvent event) {
@@ -129,43 +171,6 @@ public interface MessageDecorator<T> {
 
               return fqn;
             });
-  }
-
-  default String buildThreadUrl(
-      ThreadType threadType, String entityType, EntityInterface entityInterface) {
-    String activeTab =
-        threadType.equals(ThreadType.Task) ? "activity_feed/tasks" : "activity_feed/all";
-    String fqn = entityInterface.getFullyQualifiedName();
-    if (CommonUtil.nullOrEmpty(fqn)) {
-      EntityInterface result =
-          Entity.getEntity(entityType, entityInterface.getId(), "id", Include.NON_DELETED);
-      fqn = result.getFullyQualifiedName();
-    }
-
-    // Hande Test Case
-    if (entityType.equals(Entity.TEST_CASE)) {
-      TestCase testCase = (TestCase) entityInterface;
-      return getEntityUrl("incident-manager", testCase.getFullyQualifiedName(), "issues");
-    }
-
-    // Glossary Term
-    if (entityType.equals(Entity.GLOSSARY_TERM)) {
-      // Glossary Term is a special case where the URL is different
-      return getEntityUrl(Entity.GLOSSARY, fqn, activeTab);
-    }
-
-    // Tag
-    if (entityType.equals(Entity.TAG)) {
-      // Tags need to be redirected to Classification Page
-      return getEntityUrl("tags", fqn.split("\\.")[0], "");
-    }
-
-    // IngestionPipeline
-    if (entityType.equals(Entity.INGESTION_PIPELINE)) {
-      return getIngestionPipelineUrl(this, entityType, entityInterface);
-    }
-
-    return getEntityUrl(entityType, fqn, activeTab);
   }
 
   default T buildOutgoingMessage(String publisherName, ChangeEvent event) {
@@ -473,13 +478,9 @@ public interface MessageDecorator<T> {
     private final Map<S, Map<Enum<?>, Object>> templateMap = new HashMap<>();
 
     /**
-     * Adds a key-value pair to a specified template section.
-     *
      * @param section The section of the template.
      * @param key     The key for the section, represented as an enum.
-     * @param value   The value associated with the key.
      * @param <K>     The type of the enum used as the key (must extend Enum).
-     * @return This builder instance for chaining.
      */
     @SuppressWarnings("unchecked")
     public <K extends Enum<K>> TemplateDataBuilder<S> add(S section, K key, Object value) {

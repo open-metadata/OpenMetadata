@@ -17,10 +17,16 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.AdaptiveCardContent;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.Attachment;
@@ -79,7 +85,12 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
   @Override
   public TeamsMessage buildEntityMessage(String publisherName, ChangeEvent event) {
-    return getTeamMessage(publisherName, event, createEntityMessage(publisherName, event));
+    return createMessage(publisherName, event, createEntityMessage(publisherName, event));
+  }
+
+  @Override
+  public TeamsMessage buildThreadMessage(String publisherName, ChangeEvent event) {
+    return createMessage(publisherName, event, createThreadMessage(publisherName, event));
   }
 
   @Override
@@ -95,19 +106,18 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     return createConnectionTestMessage(publisherName);
   }
 
-  @Override
-  public TeamsMessage buildThreadMessage(String publisherName, ChangeEvent event) {
-    OutgoingMessage threadMessage = createThreadMessage(publisherName, event);
-    return createGeneralChangeEventMessage(publisherName, event, threadMessage);
-  }
-
-  private TeamsMessage getTeamMessage(
+  private TeamsMessage createMessage(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
     if (outgoingMessage.getMessages().isEmpty()) {
       throw new UnhandledServerException("No messages found for the event");
     }
 
-    return createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
+    String entityType = event.getEntityType();
+
+    return switch (entityType) {
+      case Entity.TEST_CASE -> createDQMessage(publisherName, event, outgoingMessage);
+      default -> createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
+    };
   }
 
   private TeamsMessage createGeneralChangeEventMessage(
@@ -139,22 +149,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
     TextBlock footerMessage = createFooterMessage();
 
-    ColumnSet columnSet =
-        ColumnSet.builder()
-            .type("ColumnSet")
-            .columns(
-                List.of(
-                    Column.builder()
-                        .type("Column")
-                        .items(List.of(createOMImageMessage()))
-                        .width("auto")
-                        .build(),
-                    Column.builder()
-                        .type("Column")
-                        .items(List.of(changeEventDetailsTextBlock))
-                        .width("stretch")
-                        .build()))
-            .build();
+    ColumnSet columnSet = createHeaderColumnSet(changeEventDetailsTextBlock);
 
     // Create the body list and combine all elements
     List<TeamsMessage.BodyItem> body = new ArrayList<>();
@@ -181,7 +176,6 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   private TeamsMessage createDQMessage(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
 
-    // todo - complete buildDQTemplateData fn
     Map<DQ_Template_Section, Map<Enum<?>, Object>> dqTemplateData =
         buildDQTemplateData(publisherName, event, outgoingMessage);
 
@@ -213,22 +207,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
     TextBlock footerMessage = createFooterMessage();
 
-    ColumnSet columnSet =
-        ColumnSet.builder()
-            .type("ColumnSet")
-            .columns(
-                List.of(
-                    Column.builder()
-                        .type("Column")
-                        .items(List.of(createOMImageMessage()))
-                        .width("auto")
-                        .build(),
-                    Column.builder()
-                        .type("Column")
-                        .items(List.of(changeEventDetailsTextBlock))
-                        .width("stretch")
-                        .build()))
-            .build();
+    ColumnSet columnSet = createHeaderColumnSet(changeEventDetailsTextBlock);
 
     // Divider between sections
     TextBlock divider = createDivider();
@@ -241,34 +220,39 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(facts).build());
 
     // test case details facts
-    if (dqTemplateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
+    if (dqTemplateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)
+        && !nullOrEmpty(testCaseDetailsFacts)) {
       body.add(createBoldTextBlock("Test Case Details"));
       body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(testCaseDetailsFacts).build());
       body.add(divider);
     }
 
     // test case result facts
-    if (dqTemplateData.containsKey(DQ_Template_Section.TEST_CASE_RESULT)) {
+    if (dqTemplateData.containsKey(DQ_Template_Section.TEST_CASE_RESULT)
+        && !nullOrEmpty(testCaseResultFacts)) {
       body.add(createBoldTextBlock("Test Case Result"));
       body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(testCaseResultFacts).build());
       body.add(divider);
     }
 
     // inspection query facts
-    if (dqTemplateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
+    if (dqTemplateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)
+        && !nullOrEmpty(inspectionQueryFacts)) {
       body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(inspectionQueryFacts).build());
       body.add(divider);
     }
 
     // test definition facts
-    if (dqTemplateData.containsKey(DQ_Template_Section.TEST_DEFINITION)) {
+    if (dqTemplateData.containsKey(DQ_Template_Section.TEST_DEFINITION)
+        && !nullOrEmpty(testDefinitionFacts)) {
       body.add(createBoldTextBlock("Test Definition"));
       body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(testDefinitionFacts).build());
       body.add(divider);
     }
 
     // Add sample data facts
-    if (dqTemplateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
+    if (dqTemplateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)
+        && !nullOrEmpty(sampleDataFacts)) {
       body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(sampleDataFacts).build());
     }
 
@@ -294,6 +278,24 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     return TeamsMessage.builder().type("message").attachments(List.of(attachment)).build();
   }
 
+  private ColumnSet createHeaderColumnSet(TextBlock changeEventDetailsTextBlock) {
+    return ColumnSet.builder()
+        .type("ColumnSet")
+        .columns(
+            List.of(
+                Column.builder()
+                    .type("Column")
+                    .items(List.of(createOMImageMessage())) // Create and add image message
+                    .width("auto")
+                    .build(),
+                Column.builder()
+                    .type("Column")
+                    .items(List.of(changeEventDetailsTextBlock)) // Add change event details
+                    .width("stretch")
+                    .build()))
+        .build();
+  }
+
   private List<TeamsMessage.Fact> createEventDetailsFacts(Map<Enum<?>, Object> detailsMap) {
     return List.of(
         createFact("Event Type:", String.valueOf(detailsMap.get(EventDetailsKeys.EVENT_TYPE))),
@@ -307,126 +309,96 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   private List<TeamsMessage.Fact> createTestCaseDetailsFacts(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
 
-    List<TeamsMessage.Fact> list = List.of();
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
-      Map<Enum<?>, Object> testCaseDetails =
-          templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+    Function<DQ_TestCaseDetailsKeys, String> getDetail =
+        key -> String.valueOf(testCaseDetails.getOrDefault(key, "-"));
 
-      list =
-          List.of(
-              createFact(
-                  "ID:",
-                  String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.ID, "-"))),
-              createFact(
-                  "Name:",
-                  String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.NAME, "-"))),
-              createFact(
-                  "Owners:",
-                  String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.OWNERS, "-"))),
-              createFact(
-                  "Tags:",
-                  String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TAGS, "-"))));
-    }
-    return list;
+    return Arrays.asList(
+        createFact("ID:", getDetail.apply(DQ_TestCaseDetailsKeys.ID)),
+        createFact("Name:", getDetail.apply(DQ_TestCaseDetailsKeys.NAME)),
+        createFact("Owners:", getDetail.apply(DQ_TestCaseDetailsKeys.OWNERS)),
+        createFact("Tags:", getDetail.apply(DQ_TestCaseDetailsKeys.TAGS)));
   }
 
   private List<TeamsMessage.Fact> createTestCaseResultFacts(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
-    List<TeamsMessage.Fact> list = List.of();
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_RESULT)) {
-      Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
 
-      if (!nullOrEmpty(testCaseDetails)) {
-        list =
-            List.of(
-                createFact(
-                    "Status:",
-                    String.valueOf(
-                        testCaseDetails.getOrDefault(DQ_TestCaseResultKeys.STATUS, "-"))),
-                createFact(
-                    "Parameter Value:",
-                    String.valueOf(
-                        testCaseDetails.getOrDefault(DQ_TestCaseResultKeys.PARAMETER_VALUE, "-"))),
-                createFact(
-                    "Result Message:",
-                    String.valueOf(
-                        testCaseDetails.getOrDefault(DQ_TestCaseResultKeys.RESULT_MESSAGE, "-"))));
-      }
+    if (nullOrEmpty(testCaseDetails)) {
+      return Collections.emptyList();
     }
 
-    return list;
+    return Stream.of(
+            createFact(
+                "Status:",
+                String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseResultKeys.STATUS, "-"))),
+            createFact(
+                "Parameter Value:",
+                String.valueOf(
+                    testCaseDetails.getOrDefault(DQ_TestCaseResultKeys.PARAMETER_VALUE, "-"))),
+            createFact(
+                "Result Message:",
+                String.valueOf(
+                    testCaseDetails.getOrDefault(DQ_TestCaseResultKeys.RESULT_MESSAGE, "-"))))
+        .collect(Collectors.toList());
   }
 
   private List<TeamsMessage.Fact> createInspectionQueryFacts(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
-    List<TeamsMessage.Fact> list = List.of();
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
-      Map<Enum<?>, Object> testCaseDetails =
-          templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
-
-      if (!nullOrEmpty(testCaseDetails)
-          && !nullOrEmpty(testCaseDetails.get(DQ_TestCaseDetailsKeys.INSPECTION_QUERY))) {
-        list =
-            List.of(
-                createFact(
-                    "Inspection Query:",
-                    String.valueOf(
-                        testCaseDetails.getOrDefault(
-                            DQ_TestCaseDetailsKeys.INSPECTION_QUERY, "-"))));
-      }
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+    if (nullOrEmpty(testCaseDetails)) {
+      return Collections.emptyList();
     }
 
-    return list;
+    Object inspectionQuery = testCaseDetails.get(DQ_TestCaseDetailsKeys.INSPECTION_QUERY);
+
+    if (!nullOrEmpty(inspectionQuery)) {
+      return Stream.of(createFact("Inspection Query:", String.valueOf(inspectionQuery)))
+          .collect(Collectors.toList());
+    }
+
+    return Collections.emptyList();
   }
 
   private List<TeamsMessage.Fact> createTestDefinitionFacts(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
-    List<TeamsMessage.Fact> list = List.of();
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_DEFINITION)) {
-      Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_DEFINITION);
-
-      if (!nullOrEmpty(testCaseDetails)) {
-        list =
-            List.of(
-                createFact(
-                    "Name:",
-                    String.valueOf(
-                        testCaseDetails.getOrDefault(
-                            DQ_TestDefinitionKeys.TEST_DEFINITION_NAME, "-"))),
-                createFact(
-                    "Description:",
-                    String.valueOf(
-                        testCaseDetails.getOrDefault(
-                            DQ_TestDefinitionKeys.TEST_DEFINITION_DESCRIPTION, "-"))));
-      }
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_DEFINITION);
+    if (nullOrEmpty(testCaseDetails)) {
+      return Collections.emptyList();
     }
 
-    return list;
+    return Stream.of(
+            createFact(
+                "Name:",
+                String.valueOf(
+                    testCaseDetails.getOrDefault(DQ_TestDefinitionKeys.TEST_DEFINITION_NAME, "-"))),
+            createFact(
+                "Description:",
+                String.valueOf(
+                    testCaseDetails.getOrDefault(
+                        DQ_TestDefinitionKeys.TEST_DEFINITION_DESCRIPTION, "-"))))
+        .collect(Collectors.toList());
   }
 
   private List<TeamsMessage.Fact> createSampleDataFacts(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
-    List<TeamsMessage.Fact> list = List.of();
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
-      Map<Enum<?>, Object> testCaseDetails =
-          templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
-
-      if (!nullOrEmpty(testCaseDetails)) {
-        list =
-            List.of(
-                createFact(
-                    "Sample Data:",
-                    String.valueOf(
-                        testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.SAMPLE_DATA, "-"))));
-      }
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+    if (nullOrEmpty(testCaseDetails)) {
+      return Collections.emptyList();
     }
 
-    return list;
+    Object sampleData = testCaseDetails.get(DQ_TestCaseDetailsKeys.SAMPLE_DATA);
+    if (nullOrEmpty(sampleData)) {
+      return Collections.emptyList();
+    }
+
+    return Stream.of(createFact("Sample Data:", String.valueOf(sampleData)))
+        .collect(Collectors.toList());
   }
 
   private TeamsMessage createConnectionTestMessage(String publisherName) {
@@ -435,29 +407,10 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     Column column1 =
         Column.builder().type("Column").width("auto").items(List.of(imageItem)).build();
 
-    TextBlock textBlock1 =
-        TextBlock.builder()
-            .type("TextBlock")
-            .text("Connection Successful \u2705")
-            .weight("Bolder")
-            .size("Large")
-            .wrap(true)
-            .build();
-
+    TextBlock textBlock1 = createTextBlock("Connection Successful \u2705", "Bolder", "Large");
     TextBlock textBlock2 =
-        TextBlock.builder()
-            .type("TextBlock")
-            .text(applyBoldFormat("Publisher:") + publisherName)
-            .wrap(true)
-            .build();
-
-    TextBlock textBlock3 =
-        TextBlock.builder()
-            .type("TextBlock")
-            .text(
-                "This is a Test Message, receiving this message confirms that you have successfully configured OpenMetadata to receive alerts.")
-            .wrap(true)
-            .build();
+        createTextBlock(applyBoldFormat("Publisher:") + publisherName, null, null);
+    TextBlock textBlock3 = createTextBlock(CONNECTION_TEST_DESCRIPTION, null, null);
 
     Column column2 =
         Column.builder()
@@ -469,23 +422,17 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     ColumnSet columnSet =
         ColumnSet.builder().type("ColumnSet").columns(List.of(column1, column2)).build();
 
-    // AdaptiveCardContent
+    // Create the footer text block
+    TextBlock footerTextBlock = createTextBlock("OpenMetadata", "Lighter", "Small");
+    footerTextBlock.setHorizontalAlignment("Center");
+    footerTextBlock.setSpacing("Medium");
+    footerTextBlock.setSeparator(true);
+
     AdaptiveCardContent adaptiveCardContent =
         AdaptiveCardContent.builder()
             .type("AdaptiveCard")
             .version("1.0")
-            .body(
-                List.of(
-                    columnSet,
-                    TextBlock.builder()
-                        .type("TextBlock")
-                        .text("OpenMetadata")
-                        .weight("Lighter")
-                        .size("Small")
-                        .horizontalAlignment("Center")
-                        .spacing("Medium")
-                        .separator(true)
-                        .build()))
+            .body(List.of(columnSet, footerTextBlock))
             .build();
 
     Attachment attachment =
@@ -533,6 +480,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     return builder.build();
   }
 
+  // todo - complete buildDQTemplateData fn
   private Map<DQ_Template_Section, Map<Enum<?>, Object>> buildDQTemplateData(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
 
@@ -587,10 +535,20 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         .build();
   }
 
+  private TextBlock createTextBlock(String text, String weight, String size) {
+    return TextBlock.builder()
+        .type("TextBlock")
+        .text(text)
+        .weight(weight)
+        .size(size)
+        .wrap(true)
+        .build();
+  }
+
   private TextBlock createFooterMessage() {
     return TextBlock.builder()
         .type("TextBlock")
-        .text("Change Event By OpenMetadata.")
+        .text(TEMPLATE_FOOTER)
         .size("Small")
         .weight("Lighter")
         .horizontalAlignment("Center")

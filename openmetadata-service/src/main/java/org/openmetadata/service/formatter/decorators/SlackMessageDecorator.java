@@ -28,7 +28,8 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.schema.EntityInterface;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
@@ -44,6 +45,14 @@ import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
+
+  private static final String SLACK_ATTACHMENT_BODY =
+      """
+    Open and unified metadata platform for data discovery, observability, and governance.
+    A single place for all your data and all your data practitioners to build and manage
+    high-quality data assets at scale.
+    """;
+
   @Override
   public String getBold() {
     return "*%s*";
@@ -95,13 +104,13 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   @Override
-  public SlackMessage buildTestMessage(String publisherName) {
-    return createConnectionTestMessage(publisherName);
+  public SlackMessage buildThreadMessage(String publisherName, ChangeEvent event) {
+    return getSlackMessage(publisherName, event, createThreadMessage(publisherName, event));
   }
 
   @Override
-  public SlackMessage buildThreadMessage(String publisherName, ChangeEvent event) {
-    return getSlackMessage(publisherName, event, createThreadMessage(publisherName, event));
+  public SlackMessage buildTestMessage(String publisherName) {
+    return createConnectionTestMessage(publisherName);
   }
 
   private SlackMessage getSlackMessage(
@@ -115,20 +124,24 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return new SlackMessage(messageBlocks, attachments.toArray(new SlackAttachment[0]));
   }
 
+  private List<LayoutBlock> createMessage(
+      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+    String entityType = event.getEntityType();
+
+    return switch (entityType) {
+      case Entity.INGESTION_PIPELINE -> createIngestionPipelineMessage(
+          publisherName, event, outgoingMessage);
+      case Entity.TEST_CASE -> createDQTemplate(publisherName, event, outgoingMessage);
+      default -> createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
+    };
+  }
+
   private List<SlackAttachment> createSlackAttachments() {
     SlackAttachment attachment = new SlackAttachment();
     attachment.setFallback("Slack destination test successful.");
     attachment.setColor("#36a64f");
     attachment.setTitle("OpenMetadata");
-
-    String body =
-        """
-            Open and unified metadata platform for data discovery, observability, and governance.
-            A single place for all your data and all your data practitioners to build and manage
-            high-quality data assets at scale.
-            """;
-
-    attachment.setText(body);
+    attachment.setText(SLACK_ATTACHMENT_BODY);
     attachment.setTs(String.valueOf(System.currentTimeMillis() / 1000)); // Adding timestamp
 
     List<SlackAttachment> attachmentList = new ArrayList<>();
@@ -163,10 +176,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     // Section Block 2 (Test Message)
     blocks.add(
         Blocks.section(
-            section ->
-                section.text(
-                    BlockCompositions.markdownText(
-                        "This is a test message, receiving this message confirms that you have successfully configured OpenMetadata to receive alerts."))));
+            section -> section.text(BlockCompositions.markdownText(CONNECTION_TEST_DESCRIPTION))));
 
     // Divider Block
     blocks.add(Blocks.divider());
@@ -191,17 +201,6 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     message.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
 
     return message;
-  }
-
-  private List<LayoutBlock> createMessage(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-
-    EntityInterface entityInterface = getEntity(event);
-    if (entityInterface instanceof IngestionPipeline) {
-      return createIngestionPipelineMessage(publisherName, event, outgoingMessage);
-    } else {
-      return createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
-    }
   }
 
   private List<LayoutBlock> createGeneralChangeEventMessage(
@@ -270,7 +269,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                 context.elements(
                     List.of(
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
-                        BlockCompositions.markdownText("Change Event By OpenMetadata")))));
+                        BlockCompositions.markdownText(TEMPLATE_FOOTER)))));
 
     return blocks;
   }
@@ -491,232 +490,194 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return blocks;
   }
 
-  // Method to add ID and Name Section
   private void addIdAndNameSection(
       List<LayoutBlock> blocks, Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
-      Map<Enum<?>, Object> testCaseDetails =
-          templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
-
-      if (!nullOrEmpty(testCaseDetails)) {
-
-        List<TextObject> idNameFields = new ArrayList<>();
-        idNameFields.add(
-            BlockCompositions.markdownText(
-                applyBoldFormatWithNewLine("ID")
-                    + testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.ID, "-")));
-        idNameFields.add(
-            BlockCompositions.markdownText(
-                applyBoldFormatWithNewLine("Name")
-                    + testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.NAME, "-")));
-        blocks.add(Blocks.section(section -> section.fields(idNameFields)));
-      }
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+    if (nullOrEmpty(testCaseDetails)) {
+      return;
     }
+
+    List<TextObject> idNameFields =
+        Stream.of(
+                createFieldText("ID", testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.ID, "-")),
+                createFieldText(
+                    "Name", testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.NAME, "-")))
+            .collect(Collectors.toList());
+
+    blocks.add(Blocks.section(section -> section.fields(idNameFields)));
   }
 
-  // Method to add Publisher and Updated By
   private void addPublisherUpdatedSection(
       List<LayoutBlock> blocks, Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
 
-    if (templateData.containsKey(DQ_Template_Section.EVENT_DETAILS)) {
-      Map<Enum<?>, Object> eventDetails = templateData.get(DQ_Template_Section.EVENT_DETAILS);
-
-      if (!nullOrEmpty(eventDetails)) {
-
-        List<TextObject> eventDetailFields = new ArrayList<>();
-        eventDetailFields.add(
-            BlockCompositions.markdownText(
-                applyBoldFormatWithNewLine("Publisher")
-                    + eventDetails.getOrDefault(EventDetailsKeys.PUBLISHER, "-")));
-        eventDetailFields.add(
-            BlockCompositions.markdownText(
-                applyBoldFormatWithNewLine("Updated By")
-                    + eventDetails.getOrDefault(EventDetailsKeys.UPDATED_BY, "-")));
-        blocks.add(Blocks.section(section -> section.fields(eventDetailFields)));
-      }
+    Map<Enum<?>, Object> eventDetails = templateData.get(DQ_Template_Section.EVENT_DETAILS);
+    if (nullOrEmpty(eventDetails)) {
+      return;
     }
+
+    List<TextObject> eventDetailFields =
+        Stream.of(
+                createFieldText(
+                    "Publisher", eventDetails.getOrDefault(EventDetailsKeys.PUBLISHER, "-")),
+                createFieldText(
+                    "Updated By", eventDetails.getOrDefault(EventDetailsKeys.UPDATED_BY, "-")))
+            .collect(Collectors.toList());
+
+    blocks.add(Blocks.section(section -> section.fields(eventDetailFields)));
   }
 
-  // Method to add Owners and Tags Section
   private void addOwnersTagsSection(
       List<LayoutBlock> blocks, Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
-      Map<Enum<?>, Object> testCaseDetails =
-          templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
-
-      if (!nullOrEmpty(testCaseDetails)) {
-
-        List<TextObject> ownerTagFields = new ArrayList<>();
-        ownerTagFields.add(
-            BlockCompositions.markdownText(
-                applyBoldFormatWithNewLine("Owners")
-                    + testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.OWNERS, "-")));
-        ownerTagFields.add(
-            BlockCompositions.markdownText(
-                applyBoldFormatWithNewLine("Tags")
-                    + testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TAGS, "-")));
-        blocks.add(Blocks.section(section -> section.fields(ownerTagFields)));
-      }
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+    if (nullOrEmpty(testCaseDetails)) {
+      return;
     }
+
+    List<TextObject> ownerTagFields =
+        Stream.of(
+                createFieldText(
+                    "Owners", testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.OWNERS, "-")),
+                createFieldText(
+                    "Tags", testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TAGS, "-")))
+            .collect(Collectors.toList());
+
+    blocks.add(Blocks.section(section -> section.fields(ownerTagFields)));
   }
 
-  // Method to add Test Case FQN Section
   private void addTestCaseFQNSection(
       List<LayoutBlock> blocks, Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
-      Map<Enum<?>, Object> testCaseDetails =
-          templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
-
-      if (!nullOrEmpty(testCaseDetails)) {
-        List<TextObject> fqnField = new ArrayList<>();
-        fqnField.add(
-            BlockCompositions.markdownText(
-                applyBoldFormatWithNewLine("Test Case FQN")
-                    + testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TEST_CASE_FQN, "-")));
-        blocks.add(Blocks.section(section -> section.fields(fqnField)));
-      }
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+    if (nullOrEmpty(testCaseDetails)) {
+      return;
     }
+
+    List<TextObject> fqnField =
+        Stream.of(
+                createFieldText(
+                    "Test Case FQN",
+                    testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TEST_CASE_FQN, "-")))
+            .collect(Collectors.toList());
+
+    blocks.add(Blocks.section(section -> section.fields(fqnField)));
   }
 
-  // Method to create Test Case Result Sections
   private List<LayoutBlock> createTestCaseResultSections(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
+
     List<LayoutBlock> blocks = new ArrayList<>();
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_RESULT)) {
-
-      Map<Enum<?>, Object> testCaseResults = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
-
-      if (!nullOrEmpty(testCaseResults)) {
-        // Test Case Result Header
-        blocks.add(
-            Blocks.section(
-                section ->
-                    section.text(
-                        BlockCompositions.markdownText(
-                            applyBoldFormat(":mag: TEST CASE RESULT")))));
-
-        // Status and Parameter Value
-        List<TextObject> statusParameterFields = new ArrayList<>();
-
-        statusParameterFields.add(
-            BlockCompositions.markdownText(
-                applyBoldFormatWithSpace("Status -")
-                    + testCaseResults.getOrDefault(DQ_TestCaseResultKeys.STATUS, "-")));
-
-        blocks.add(Blocks.section(section -> section.fields(statusParameterFields)));
-
-        // Result Message with triple backticks
-        blocks.add(
-            Blocks.section(
-                section ->
-                    section.text(BlockCompositions.markdownText(applyBoldFormat("Result")))));
-
-        blocks.add(
-            Blocks.section(
-                section ->
-                    section.text(
-                        BlockCompositions.markdownText(
-                            formatWithTripleBackticksForEnumMap(
-                                DQ_TestCaseResultKeys.RESULT_MESSAGE, testCaseResults)))));
-
-        createParameterValueBlocks(templateData, blocks);
-
-        addInspectionQuerySection(templateData, blocks);
-
-        // Divider
-        blocks.add(Blocks.divider());
-      }
+    Map<Enum<?>, Object> testCaseResults = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
+    if (nullOrEmpty(testCaseResults)) {
+      return blocks;
     }
 
+    // Test Case Result Header
+    blocks.add(
+        Blocks.section(
+            section ->
+                section.text(
+                    BlockCompositions.markdownText(applyBoldFormat(":mag: TEST CASE RESULT")))));
+
+    // Status and Parameter Value
+    addStatusAndParameterValueSection(blocks, testCaseResults);
+
+    // Result Message Section
+    blocks.add(
+        Blocks.section(
+            section -> section.text(BlockCompositions.markdownText(applyBoldFormat("Result")))));
+
+    blocks.add(
+        Blocks.section(
+            section ->
+                section.text(
+                    BlockCompositions.markdownText(
+                        formatWithTripleBackticksForEnumMap(
+                            DQ_TestCaseResultKeys.RESULT_MESSAGE, testCaseResults)))));
+
+    // parameter section
+    createParameterValueBlocks(templateData, blocks);
+
+    // inspection section
+    addInspectionQuerySection(templateData, blocks);
+
+    blocks.add(Blocks.divider());
     return blocks;
   }
 
+  private void addStatusAndParameterValueSection(
+      List<LayoutBlock> blocks, Map<Enum<?>, Object> testCaseResults) {
+    List<TextObject> statusParameterFields =
+        Stream.of(
+                BlockCompositions.markdownText(
+                    applyBoldFormatWithSpace("Status -")
+                        + testCaseResults.getOrDefault(DQ_TestCaseResultKeys.STATUS, "-")))
+            .collect(Collectors.toList());
+
+    blocks.add(Blocks.section(section -> section.fields(statusParameterFields)));
+  }
+
+  @SuppressWarnings("unchecked")
   private void createParameterValueBlocks(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<LayoutBlock> blocks) {
 
-    // Check if templateData contains the TEST_CASE_RESULT section
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_RESULT)) {
-      Map<Enum<?>, Object> testCaseResults = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
-
-      if (!nullOrEmpty(testCaseResults)) {
-        List<TestCaseParameterValue> parameterValues = null;
-
-        // Retrieve parameter values from testCaseResults
-        Object result = testCaseResults.get(DQ_TestCaseResultKeys.PARAMETER_VALUE);
-        if (result instanceof List<?>) {
-          parameterValues = (List<TestCaseParameterValue>) result;
-        }
-
-        // Ensure parameterValues is not null or empty before proceeding
-        if (!nullOrEmpty(parameterValues)) {
-
-          // Add the Parameter Value title block
-          blocks.add(
-              Blocks.section(
-                  section ->
-                      section.text(
-                          BlockCompositions.markdownText(applyBoldFormat("Parameter Value")))));
-
-          // Add the formatted parameter values block
-          StringBuilder parameterValuesText = new StringBuilder();
-          for (int i = 0; i < parameterValues.size(); i++) {
-            TestCaseParameterValue parameterValue = parameterValues.get(i);
-            parameterValuesText
-                .append("[")
-                .append(parameterValue.getName())
-                .append(": ")
-                .append(parameterValue.getValue())
-                .append("]");
-
-            // Append a comma if it's not the last item
-            if (i < parameterValues.size() - 1) {
-              parameterValuesText.append(", ");
-            }
-          }
-
-          // Adding parameter values as a markdown section block
-          blocks.add(
-              Blocks.section(
-                  section ->
-                      section.text(
-                          BlockCompositions.markdownText(
-                              "```" + parameterValuesText.toString() + "```"))));
-        }
-      }
+    Map<Enum<?>, Object> testCaseResults = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
+    if (nullOrEmpty(testCaseResults)) {
+      return;
     }
+
+    Object result = testCaseResults.get(DQ_TestCaseResultKeys.PARAMETER_VALUE);
+    List<TestCaseParameterValue> parameterValues =
+        result instanceof List<?> ? (List<TestCaseParameterValue>) result : null;
+
+    if (nullOrEmpty(parameterValues)) {
+      return;
+    }
+
+    blocks.add(
+        Blocks.section(
+            section ->
+                section.text(BlockCompositions.markdownText(applyBoldFormat("Parameter Value")))));
+
+    String parameterValuesText =
+        parameterValues.stream()
+            .map(pv -> String.format("[%s: %s]", pv.getName(), pv.getValue()))
+            .collect(Collectors.joining(", "));
+
+    blocks.add(
+        Blocks.section(
+            section ->
+                section.text(
+                    BlockCompositions.markdownText(
+                        formatWithTripleBackticks(parameterValuesText)))));
   }
 
-  // Method to add the Inspection Query section to the blocks list
   private void addInspectionQuerySection(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<LayoutBlock> blocks) {
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
-      Map<Enum<?>, Object> testCaseDetails =
-          templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
 
-      if (!nullOrEmpty(testCaseDetails)
-          && testCaseDetails.containsKey(DQ_TestCaseDetailsKeys.INSPECTION_QUERY)) {
-        // Section - Inspection Query
-        blocks.add(
-            Blocks.section(
-                section ->
-                    section.text(
-                        BlockCompositions.markdownText(
-                            applyBoldFormat(":hammer_and_wrench: Inspection Query")))));
-
-        blocks.add(
-            Blocks.section(
-                section ->
-                    section.text(
-                        BlockCompositions.markdownText(
-                            formatWithTripleBackticksForEnumMap(
-                                DQ_TestCaseDetailsKeys.INSPECTION_QUERY, testCaseDetails)))));
-      }
+    if (nullOrEmpty(testCaseDetails)
+        || !testCaseDetails.containsKey(DQ_TestCaseDetailsKeys.INSPECTION_QUERY)) {
+      return;
     }
+
+    blocks.add(
+        Blocks.section(
+            section ->
+                section.text(
+                    BlockCompositions.markdownText(
+                        applyBoldFormat(":hammer_and_wrench: Inspection Query")))));
+
+    blocks.add(
+        Blocks.section(
+            section ->
+                section.text(
+                    BlockCompositions.markdownText(
+                        formatWithTripleBackticksForEnumMap(
+                            DQ_TestCaseDetailsKeys.INSPECTION_QUERY, testCaseDetails)))));
   }
 
   // Method to create Test Definition Sections
@@ -837,13 +798,8 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return String.format("Access data: <%s|View>", entityUrl);
   }
 
-  private SlackAttachment getSlackAttachment(String message) {
-    SlackAttachment attachment = new SlackAttachment();
-    List<String> mark = new ArrayList<>();
-    mark.add("text");
-    attachment.setMarkdownIn(mark);
-    attachment.setText(message);
-    return attachment;
+  private TextObject createFieldText(String label, Object value) {
+    return BlockCompositions.markdownText(applyBoldFormatWithNewLine(label) + value);
   }
 
   private void addChangeEventDetailsHeader(List<LayoutBlock> blocks) {
@@ -871,6 +827,10 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       Enum<?> key, Map<Enum<?>, Object> placeholders) {
     Object value = placeholders.getOrDefault(key, "-");
     return "```" + value + "```";
+  }
+
+  private String formatWithTripleBackticks(String text) {
+    return "```" + text + "```";
   }
 
   private String getOMImage() {

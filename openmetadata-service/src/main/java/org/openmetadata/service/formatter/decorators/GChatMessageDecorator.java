@@ -21,8 +21,11 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage.*;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -77,26 +80,17 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
   @Override
   public GChatMessage buildEntityMessage(String publisherName, ChangeEvent event) {
-    return getGChatMessage(publisherName, event, createEntityMessage(publisherName, event));
+    return createMessage(publisherName, event, createEntityMessage(publisherName, event));
+  }
+
+  @Override
+  public GChatMessage buildThreadMessage(String publisherName, ChangeEvent event) {
+    return createMessage(publisherName, event, createThreadMessage(publisherName, event));
   }
 
   @Override
   public GChatMessage buildTestMessage(String publisherName) {
     return getGChatTestMessage(publisherName);
-  }
-
-  @Override
-  public GChatMessage buildThreadMessage(String publisherName, ChangeEvent event) {
-    return getGChatMessage(publisherName, event, createThreadMessage(publisherName, event));
-  }
-
-  private GChatMessage getGChatMessage(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-    if (outgoingMessage.getMessages().isEmpty()) {
-      throw new UnhandledServerException("No messages found for the event");
-    }
-
-    return createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
   }
 
   private GChatMessage getGChatTestMessage(String publisherName) {
@@ -105,6 +99,21 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
     }
 
     return createConnectionTestMessage(publisherName);
+  }
+
+  public GChatMessage createMessage(
+      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+
+    if (outgoingMessage.getMessages().isEmpty()) {
+      throw new UnhandledServerException("No messages found for the event");
+    }
+
+    String entityType = event.getEntityType();
+
+    return switch (entityType) {
+      case Entity.TEST_CASE -> createDQTemplate(publisherName, event, outgoingMessage);
+      default -> createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
+    };
   }
 
   public GChatMessage createGeneralChangeEventMessage(
@@ -175,15 +184,11 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   public GChatMessage createConnectionTestMessage(String publisherName) {
-    Header header =
-        new Header("Connection Successful \u2705", "https://imgur.com/kOOPEG4.png", "IMAGE");
+    Header header = createConnectionSuccessfulHeader();
 
     Widget publisherWidget = createWidget("Publisher:", publisherName);
 
-    Widget descriptionWidget =
-        new Widget(
-            new TextParagraph(
-                "This is a Test Message, receiving this message confirms that you have successfully configured OpenMetadata to receive alerts."));
+    Widget descriptionWidget = new Widget(new TextParagraph(CONNECTION_TEST_DESCRIPTION));
 
     Section publisherSection = new Section(List.of(publisherWidget));
     Section descriptionSection = new Section(List.of(descriptionWidget));
@@ -195,11 +200,9 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
     return new GChatMessage(List.of(card));
   }
 
-  // todo call createDQTemplate for test cases
   public GChatMessage createDQTemplate(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
 
-    //     todo complete buildDQTemplateData fn
     Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData =
         buildDQTemplateData(publisherName, event, outgoingMessage);
 
@@ -213,6 +216,8 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
             .map(message -> new Widget(new TextParagraph(message)))
             .toList();
     sections.add(new Section(additionalMessageWidgets));
+
+    // todo create clickable entity link in the message
 
     addTestCaseDetailsSection(templateData, sections);
     addTestCaseFQNSection(templateData, sections);
@@ -257,179 +262,151 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
   private void addChangeEventDetailsSection(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<Section> sections) {
-    if (templateData.containsKey(DQ_Template_Section.EVENT_DETAILS)) {
-      Map<Enum<?>, Object> eventDetails = templateData.get(DQ_Template_Section.EVENT_DETAILS);
-      if (!nullOrEmpty(eventDetails)) {
-        sections.add(new Section(createEventDetailsWidgets(eventDetails)));
-      }
+
+    Map<Enum<?>, Object> eventDetails = templateData.get(DQ_Template_Section.EVENT_DETAILS);
+    if (nullOrEmpty(eventDetails)) {
+      return;
     }
+
+    sections.add(new Section(createEventDetailsWidgets(eventDetails)));
   }
 
   private void addTestCaseDetailsSection(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<Section> sections) {
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
-      Map<Enum<?>, Object> testCaseDetails =
-          templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
 
-      if (testCaseDetails != null) {
-        List<Widget> testCaseDetailsWidgets =
-            List.of(
-                createWidget("TEST CASE", ""),
-                createWidget(
-                    "ID:",
-                    String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.ID, "-"))),
-                createWidget(
-                    "Name:",
-                    String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.NAME, "-"))),
-                createWidget(
-                    "Owners:",
-                    String.valueOf(
-                        testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.OWNERS, "-"))),
-                createWidget(
-                    "Tags:",
-                    String.valueOf(
-                        testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TAGS, "-"))));
-
-        sections.add(new Section(testCaseDetailsWidgets));
-      }
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+    if (nullOrEmpty(testCaseDetails)) {
+      return;
     }
+
+    List<Widget> testCaseDetailsWidgets =
+        List.of(
+            createWidget("TEST CASE"),
+            createWidget(
+                "ID:",
+                String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.ID, "-"))),
+            createWidget(
+                "Name:",
+                String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.NAME, "-"))),
+            createWidget(
+                "Owners:",
+                String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.OWNERS, "-"))),
+            createWidget(
+                "Tags:",
+                String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TAGS, "-"))));
+
+    sections.add(new Section(testCaseDetailsWidgets));
   }
 
   private void addTestCaseFQNSection(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<Section> sections) {
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
-      Map<Enum<?>, Object> testCaseDetails =
-          templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
 
-      if (!nullOrEmpty(testCaseDetails)
-          && testCaseDetails.containsKey(DQ_TestCaseDetailsKeys.TEST_CASE_FQN)) {
-        Widget testCaseFQNWidget =
-            createWidget(
-                "Test Case FQN:",
-                String.valueOf(
-                    testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TEST_CASE_FQN, "-")));
-        sections.add(new Section(List.of(testCaseFQNWidget)));
-      }
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+    if (nullOrEmpty(testCaseDetails)) {
+      return;
     }
+
+    Widget testCaseFQNWidget =
+        createWidget(
+            "Test Case FQN:",
+            String.valueOf(
+                testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TEST_CASE_FQN, "-")));
+
+    sections.add(new Section(List.of(testCaseFQNWidget)));
   }
 
   private void addTestCaseResultSection(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<Section> sections) {
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_RESULT)) {
-      Map<Enum<?>, Object> testCaseResult = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
 
-      if (!nullOrEmpty(testCaseResult)) {
-        List<Widget> statusParameterWidgets = new ArrayList<>();
-        statusParameterWidgets.add(createWidget("TEST CASE RESULT", ""));
-
-        statusParameterWidgets.add(
-            createWidget(
-                "Status:",
-                String.valueOf(testCaseResult.getOrDefault(DQ_TestCaseResultKeys.STATUS, "-"))));
-
-        statusParameterWidgets.add(
-            createWidget(
-                "Result Message:",
-                String.valueOf(
-                    testCaseResult.getOrDefault(DQ_TestCaseResultKeys.RESULT_MESSAGE, "-"))));
-
-        sections.add(new Section(statusParameterWidgets));
-      }
+    Map<Enum<?>, Object> testCaseResult = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
+    if (nullOrEmpty(testCaseResult)) {
+      return;
     }
+
+    List<Widget> statusParameterWidgets = new ArrayList<>();
+    statusParameterWidgets.add(createWidget("TEST CASE RESULT"));
+
+    statusParameterWidgets.add(
+        createWidget(
+            "Status:",
+            String.valueOf(testCaseResult.getOrDefault(DQ_TestCaseResultKeys.STATUS, "-"))));
+
+    statusParameterWidgets.add(
+        createWidget(
+            "Result Message:",
+            String.valueOf(
+                testCaseResult.getOrDefault(DQ_TestCaseResultKeys.RESULT_MESSAGE, "-"))));
+
+    sections.add(new Section(statusParameterWidgets));
   }
 
   private void addParameterValuesSection(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<Section> sections) {
 
-    // Check if the TEST_CASE_RESULT section is present in the template data
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_RESULT)) {
-      Map<Enum<?>, Object> testCaseResult = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
-
-      if (!nullOrEmpty(testCaseResult)) {
-        List<Widget> parameterValueWidget = new ArrayList<>();
-        List<TestCaseParameterValue> parameterValues = null;
-
-        // Retrieve PARAMETER_VALUE from the test case result
-        Object result = testCaseResult.get(DQ_TestCaseResultKeys.PARAMETER_VALUE);
-        if (result instanceof List<?>) {
-          parameterValues = (List<TestCaseParameterValue>) result;
-        }
-
-        if (!nullOrEmpty(parameterValues)) {
-
-          // Build the formatted string for parameter values
-          StringBuilder parameterValuesText = new StringBuilder();
-          for (int i = 0; i < parameterValues.size(); i++) {
-            TestCaseParameterValue parameterValue = parameterValues.get(i);
-            parameterValuesText
-                .append("[")
-                .append(parameterValue.getName())
-                .append(": ")
-                .append(parameterValue.getValue())
-                .append("]");
-
-            // Append a comma if it's not the last item
-            if (i < parameterValues.size() - 1) {
-              parameterValuesText.append(", ");
-            }
-          }
-
-          parameterValueWidget.add(
-              createWidget("Parameter Value:", parameterValuesText.toString()));
-
-          sections.add(new Section(parameterValueWidget));
-        }
-      }
+    Map<Enum<?>, Object> testCaseResult = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
+    if (nullOrEmpty(testCaseResult)) {
+      return;
     }
+
+    Object result = testCaseResult.get(DQ_TestCaseResultKeys.PARAMETER_VALUE);
+    if (!(result instanceof List<?>)) {
+      return;
+    }
+
+    List<TestCaseParameterValue> parameterValues = (List<TestCaseParameterValue>) result;
+    if (parameterValues == null || parameterValues.isEmpty()) {
+      return;
+    }
+
+    String parameterValuesText =
+        parameterValues.stream()
+            .map(param -> String.format("[%s: %s]", param.getName(), param.getValue()))
+            .collect(Collectors.joining(", "));
+
+    List<Widget> parameterValueWidget = new ArrayList<>();
+    parameterValueWidget.add(createWidget("Parameter Value:", parameterValuesText));
+
+    sections.add(new Section(parameterValueWidget));
   }
 
   private void addInspectionQuerySection(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<Section> sections) {
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_CASE_DETAILS)) {
-      Map<Enum<?>, Object> testCaseDetails =
-          templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
 
-      if (!nullOrEmpty(testCaseDetails)
-          && testCaseDetails.containsKey(DQ_TestCaseDetailsKeys.INSPECTION_QUERY)) {
+    if (!nullOrEmpty(testCaseDetails)) {
+      String inspectionQueryText =
+          String.valueOf(
+              testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.INSPECTION_QUERY, "-"));
 
-        Widget inspectionQuery = createWidget("Inspection Query", "");
+      Widget inspectionQuery = createWidget("Inspection Query", "");
+      Widget inspectionQueryWidget = new Widget(new TextParagraph(inspectionQueryText));
 
-        Widget inspectionQueryWidget =
-            new Widget(
-                new TextParagraph(
-                    String.valueOf(
-                        testCaseDetails.getOrDefault(
-                            DQ_TestCaseDetailsKeys.INSPECTION_QUERY, "-"))));
-
-        sections.add(new Section(List.of(inspectionQuery, inspectionQueryWidget)));
-      }
+      sections.add(new Section(List.of(inspectionQuery, inspectionQueryWidget)));
     }
   }
 
   private void addTestDefinitionSection(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<Section> sections) {
 
-    if (templateData.containsKey(DQ_Template_Section.TEST_DEFINITION)) {
-      Map<Enum<?>, Object> testDefinition = templateData.get(DQ_Template_Section.TEST_DEFINITION);
+    Map<Enum<?>, Object> testDefinition = templateData.get(DQ_Template_Section.TEST_DEFINITION);
 
-      if (!nullOrEmpty(testDefinition)) {
-        List<Widget> testDefinitionWidgets = new ArrayList<>();
-        testDefinitionWidgets.add(createWidget("TEST DEFINITION", ""));
-        testDefinitionWidgets.add(
-            createWidget(
-                "Name:",
-                String.valueOf(
-                    testDefinition.getOrDefault(DQ_TestDefinitionKeys.TEST_DEFINITION_NAME, "-"))));
-        testDefinitionWidgets.add(
-            createWidget(
-                "Description:",
-                String.valueOf(
-                    testDefinition.getOrDefault(
-                        DQ_TestDefinitionKeys.TEST_DEFINITION_DESCRIPTION, "-"))));
+    if (!nullOrEmpty(testDefinition)) {
+      List<Widget> testDefinitionWidgets =
+          List.of(
+              createWidget("TEST DEFINITION"),
+              createWidget(
+                  "Name:",
+                  String.valueOf(
+                      testDefinition.getOrDefault(
+                          DQ_TestDefinitionKeys.TEST_DEFINITION_NAME, "-"))),
+              createWidget(
+                  "Description:",
+                  String.valueOf(
+                      testDefinition.getOrDefault(
+                          DQ_TestDefinitionKeys.TEST_DEFINITION_DESCRIPTION, "-"))));
 
-        sections.add(new Section(testDefinitionWidgets));
-      }
+      sections.add(new Section(testDefinitionWidgets));
     }
   }
 
@@ -453,55 +430,45 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
   private List<Widget> createEventDetailsWidgets(Map<Enum<?>, Object> detailsMap) {
     List<Widget> widgets = new ArrayList<>();
-    if (detailsMap.containsKey(EventDetailsKeys.EVENT_TYPE)) {
-      widgets.add(
-          createWidget("Event Type:", String.valueOf(detailsMap.get(EventDetailsKeys.EVENT_TYPE))));
-    }
-    if (detailsMap.containsKey(EventDetailsKeys.UPDATED_BY)) {
-      widgets.add(
-          createWidget("Updated By:", String.valueOf(detailsMap.get(EventDetailsKeys.UPDATED_BY))));
-    }
-    if (detailsMap.containsKey(EventDetailsKeys.ENTITY_TYPE)) {
-      widgets.add(
-          createWidget(
-              "Entity Type:", String.valueOf(detailsMap.get(EventDetailsKeys.ENTITY_TYPE))));
-    }
-    if (detailsMap.containsKey(EventDetailsKeys.PUBLISHER)) {
-      widgets.add(
-          createWidget("Publisher:", String.valueOf(detailsMap.get(EventDetailsKeys.PUBLISHER))));
-    }
-    if (detailsMap.containsKey(EventDetailsKeys.TIME)) {
-      widgets.add(createWidget("Time:", String.valueOf(detailsMap.get(EventDetailsKeys.TIME))));
-    }
+
+    // Define a map of display labels for each EventDetailsKey
+    Map<Enum<?>, String> labelsMap =
+        Map.of(
+            EventDetailsKeys.EVENT_TYPE, "Event Type:",
+            EventDetailsKeys.UPDATED_BY, "Updated By:",
+            EventDetailsKeys.ENTITY_TYPE, "Entity Type:",
+            EventDetailsKeys.PUBLISHER, "Publisher:",
+            EventDetailsKeys.TIME, "Time:");
+
+    // Iterate over the defined keys and add widgets if present in the detailsMap
+    labelsMap.forEach(
+        (key, label) -> {
+          if (detailsMap.containsKey(key)) {
+            widgets.add(createWidget(label, String.valueOf(detailsMap.get(key))));
+          }
+        });
 
     return widgets;
   }
 
-  // Helper Method to create widgets
+  private Widget createWidget(String label) {
+    return new Widget(new TextParagraph(applyBoldFormatWithSpace(label) + StringUtils.EMPTY));
+  }
+
   private Widget createWidget(String label, String content) {
     return new Widget(new TextParagraph(applyBoldFormatWithSpace(label) + content));
   }
 
-  private Widget createWidgetWithNewLine(String label, String content) {
-    return new Widget(new TextParagraph(applyBoldFormatWithNewLine(label) + content));
-  }
-
-  // Helper Method to create header section
   private Header createHeader() {
     return new Header("Change Event Details", "https://imgur.com/kOOPEG4.png", "IMAGE");
   }
 
-  // Helper Method to create footer section
+  private Header createConnectionSuccessfulHeader() {
+    return new Header("Connection Successful \u2705", "https://imgur.com/kOOPEG4.png", "IMAGE");
+  }
+
   private Section createFooterSection() {
-    return new Section(List.of(new Widget(new TextParagraph("Change Event By OpenMetadata"))));
-  }
-
-  private String applyBoldFormatWithNewLine(String title) {
-    return applyBoldFormat(title) + "\n";
-  }
-
-  private String applyBoldFormat(String title) {
-    return String.format(getBold(), title);
+    return new Section(List.of(new Widget(new TextParagraph(TEMPLATE_FOOTER))));
   }
 
   private String applyBoldFormatWithSpace(String title) {
