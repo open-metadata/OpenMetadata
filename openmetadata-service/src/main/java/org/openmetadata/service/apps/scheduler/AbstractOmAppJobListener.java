@@ -62,8 +62,8 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       boolean update = false;
       if (jobExecutionContext.isRecovering()) {
         AppRunRecord latestRunRecord =
-            repository.getLatestExtension(
-                jobApp, false, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+            repository.getLatestExtensionById(
+                jobApp, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
         if (latestRunRecord != null) {
           runRecord = latestRunRecord;
         }

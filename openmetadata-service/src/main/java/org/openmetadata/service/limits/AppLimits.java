@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
+import org.openmetadata.service.exception.LimitsException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -35,23 +36,18 @@ public abstract class AppLimits {
   }
 
   public AppExtension getLatestLimit() {
-    return repository.getLatestExtension(
-        this.app, true, AppExtension.class, AppExtension.ExtensionType.LIMITS);
+    return repository.getLatestExtensionByName(
+        this.app, AppExtension.class, AppExtension.ExtensionType.LIMITS);
   }
 
   public AppExtension getLatestLimit(long startTime) {
-    return repository.getLatestExtensionAfterStartTime(
-        this.app, true, startTime, AppExtension.class, AppExtension.ExtensionType.LIMITS);
+    return repository.getLatestExtensionAfterStartTimeByName(
+        this.app, startTime, AppExtension.class, AppExtension.ExtensionType.LIMITS);
   }
 
   public ResultList<AppExtension> listLimits(int limitParam, int offset) {
-    return repository.listAppExtension(
-        this.app, true, limitParam, offset, AppExtension.class, AppExtension.ExtensionType.LIMITS);
-  }
-
-  public ResultList<AppExtension> listAllLimits() {
-    return repository.listAllAppExtension(
-        this.app, true, AppExtension.class, AppExtension.ExtensionType.LIMITS);
+    return repository.listAppExtensionByName(
+        this.app, limitParam, offset, AppExtension.class, AppExtension.ExtensionType.LIMITS);
   }
 
   public void insertLimit(AppExtension limitsExtension) {
@@ -75,7 +71,7 @@ public abstract class AppLimits {
 
   // Parse the app limits defined in the Private Configuration
   // Let each App parse and store however is needed
-  public abstract void parseAppLimits() throws Exception;
+  public abstract void parseAppLimits() throws LimitsException;
 
   // Enforce limits for the app
   public abstract void enforceLimits(

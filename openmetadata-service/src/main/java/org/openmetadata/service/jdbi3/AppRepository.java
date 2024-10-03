@@ -189,56 +189,36 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public ResultList<AppRunRecord> listAppRuns(App app, int limitParam, int offset) {
-    return listAppExtension(
-        app, false, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+    return listAppExtensionById(
+        app, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
   }
 
   public AppRunRecord getLatestAppRuns(App app) {
-    return getLatestExtension(app, false, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+    return getLatestExtensionById(app, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
   }
 
   public AppRunRecord getLatestAppRunsAfterStartTime(App app, long startTime) {
-    return getLatestExtensionAfterStartTime(
-        app, false, startTime, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+    return getLatestExtensionAfterStartTimeById(
+        app, startTime, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
   }
 
-  public <T> ResultList<T> listAppExtension(
+  public <T> ResultList<T> listAppExtensionByName(
       App app,
-      boolean byName,
       int limitParam,
       int offset,
       Class<T> clazz,
       AppExtension.ExtensionType extensionType) {
-    int total;
-    if (byName) {
-      total =
-          daoCollection
-              .appExtensionTimeSeriesDao()
-              .listAppExtensionCountByName(app.getName(), extensionType.toString());
-    } else {
-      total =
-          daoCollection
-              .appExtensionTimeSeriesDao()
-              .listAppExtensionCount(app.getId().toString(), extensionType.toString());
-    }
+    int total =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionCountByName(app.getName(), extensionType.toString());
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
-      List<String> jsons;
-      if (byName) {
-        jsons =
-            daoCollection
-                .appExtensionTimeSeriesDao()
-                .listAppExtensionByName(
-                    app.getName(), limitParam, offset, extensionType.toString());
-      } else {
-        jsons =
-            daoCollection
-                .appExtensionTimeSeriesDao()
-                .listAppExtension(
-                    app.getId().toString(), limitParam, offset, extensionType.toString());
-      }
-
+      List<String> jsons =
+          daoCollection
+              .appExtensionTimeSeriesDao()
+              .listAppExtensionByName(app.getName(), limitParam, offset, extensionType.toString());
       for (String json : jsons) {
         T entity = JsonUtils.readValue(json, clazz);
         entities.add(entity);
@@ -251,50 +231,55 @@ public class AppRepository extends EntityRepository<App> {
     }
   }
 
-  public <T> ResultList<T> listAppExtensionAfterTime(
+  public <T> ResultList<T> listAppExtensionById(
       App app,
-      boolean byName,
+      int limitParam,
+      int offset,
+      Class<T> clazz,
+      AppExtension.ExtensionType extensionType) {
+    int total =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionCount(app.getId().toString(), extensionType.toString());
+    List<T> entities = new ArrayList<>();
+    if (limitParam > 0) {
+      // forward scrolling, if after == null then first page is being asked
+      List<String> jsons =
+          daoCollection
+              .appExtensionTimeSeriesDao()
+              .listAppExtension(
+                  app.getId().toString(), limitParam, offset, extensionType.toString());
+      for (String json : jsons) {
+        T entity = JsonUtils.readValue(json, clazz);
+        entities.add(entity);
+      }
+      return new ResultList<>(entities, offset, total);
+    } else {
+      // limit == 0 , return total count of entity.
+      return new ResultList<>(entities, null, total);
+    }
+  }
+
+  public <T> ResultList<T> listAppExtensionAfterTimeByName(
+      App app,
       long startTime,
       int limitParam,
       int offset,
       Class<T> clazz,
       AppExtension.ExtensionType extensionType) {
-    int total;
-    if (byName) {
-      total =
-          daoCollection
-              .appExtensionTimeSeriesDao()
-              .listAppExtensionCountAfterTimeByName(
-                  app.getName(), startTime, extensionType.toString());
-    } else {
-      total =
-          daoCollection
-              .appExtensionTimeSeriesDao()
-              .listAppExtensionCountAfterTime(
-                  app.getId().toString(), startTime, extensionType.toString());
-    }
+    int total =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionCountAfterTimeByName(
+                app.getName(), startTime, extensionType.toString());
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
-      List<String> jsons;
-      if (byName) {
-        jsons =
-            daoCollection
-                .appExtensionTimeSeriesDao()
-                .listAppExtensionAfterTimeByName(
-                    app.getName(), limitParam, offset, startTime, extensionType.toString());
-      } else {
-        jsons =
-            daoCollection
-                .appExtensionTimeSeriesDao()
-                .listAppExtensionAfterTime(
-                    app.getId().toString(),
-                    limitParam,
-                    offset,
-                    startTime,
-                    extensionType.toString());
-      }
-
+      List<String> jsons =
+          daoCollection
+              .appExtensionTimeSeriesDao()
+              .listAppExtensionAfterTimeByName(
+                  app.getName(), limitParam, offset, startTime, extensionType.toString());
       for (String json : jsons) {
         T entity = JsonUtils.readValue(json, clazz);
         entities.add(entity);
@@ -307,51 +292,81 @@ public class AppRepository extends EntityRepository<App> {
     }
   }
 
-  public <T> ResultList<T> listAllAppExtension(
-      App app, boolean byName, Class<T> clazz, AppExtension.ExtensionType extensionType) {
-    return listAppExtension(app, byName, Integer.MAX_VALUE, 0, clazz, extensionType);
+  public <T> ResultList<T> listAppExtensionAfterTimeById(
+      App app,
+      long startTime,
+      int limitParam,
+      int offset,
+      Class<T> clazz,
+      AppExtension.ExtensionType extensionType) {
+    int total =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionCountAfterTime(
+                app.getId().toString(), startTime, extensionType.toString());
+    List<T> entities = new ArrayList<>();
+    if (limitParam > 0) {
+      // forward scrolling, if after == null then first page is being asked
+      List<String> jsons =
+          daoCollection
+              .appExtensionTimeSeriesDao()
+              .listAppExtensionAfterTime(
+                  app.getId().toString(), limitParam, offset, startTime, extensionType.toString());
+      for (String json : jsons) {
+        T entity = JsonUtils.readValue(json, clazz);
+        entities.add(entity);
+      }
+      return new ResultList<>(entities, offset, total);
+    } else {
+      // limit == 0 , return total count of entity.
+      return new ResultList<>(entities, null, total);
+    }
   }
 
-  public <T> T getLatestExtension(
-      App app, boolean byName, Class<T> clazz, AppExtension.ExtensionType extensionType) {
-    List<String> result;
-    if (byName) {
-      result =
-          daoCollection
-              .appExtensionTimeSeriesDao()
-              .listAppExtensionByName(app.getName(), 1, 0, extensionType.toString());
-    } else {
-      result =
-          daoCollection
-              .appExtensionTimeSeriesDao()
-              .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString());
-    }
+  public <T> T getLatestExtensionByName(
+      App app, Class<T> clazz, AppExtension.ExtensionType extensionType) {
+    List<String> result =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionByName(app.getName(), 1, 0, extensionType.toString());
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
     return JsonUtils.readValue(result.get(0), clazz);
   }
 
-  public <T> T getLatestExtensionAfterStartTime(
-      App app,
-      boolean byName,
-      long startTime,
-      Class<T> clazz,
-      AppExtension.ExtensionType extensionType) {
-    List<String> result;
-    if (byName) {
-      result =
-          daoCollection
-              .appExtensionTimeSeriesDao()
-              .listAppExtensionAfterTimeByName(
-                  app.getName(), 1, 0, startTime, extensionType.toString());
-    } else {
-      result =
-          daoCollection
-              .appExtensionTimeSeriesDao()
-              .listAppExtensionAfterTime(
-                  app.getId().toString(), 1, 0, startTime, extensionType.toString());
+  public <T> T getLatestExtensionById(
+      App app, Class<T> clazz, AppExtension.ExtensionType extensionType) {
+    List<String> result =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString());
+    if (nullOrEmpty(result)) {
+      throw AppException.byExtension(extensionType);
     }
+    return JsonUtils.readValue(result.get(0), clazz);
+  }
+
+  public <T> T getLatestExtensionAfterStartTimeByName(
+      App app, long startTime, Class<T> clazz, AppExtension.ExtensionType extensionType) {
+    List<String> result =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionAfterTimeByName(
+                app.getName(), 1, 0, startTime, extensionType.toString());
+    if (nullOrEmpty(result)) {
+      throw AppException.byExtension(extensionType);
+    }
+    return JsonUtils.readValue(result.get(0), clazz);
+  }
+
+  public <T> T getLatestExtensionAfterStartTimeById(
+      App app, long startTime, Class<T> clazz, AppExtension.ExtensionType extensionType) {
+    List<String> result =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionAfterTime(
+                app.getId().toString(), 1, 0, startTime, extensionType.toString());
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }

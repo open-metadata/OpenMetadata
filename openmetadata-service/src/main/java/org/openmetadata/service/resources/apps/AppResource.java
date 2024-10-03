@@ -361,23 +361,23 @@ public class AppResource extends EntityResource<App, AppRepository> {
           boolean byName) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
     if (startTs != null) {
-      return Response.status(Response.Status.OK)
-          .entity(
-              repository.listAppExtensionAfterTime(
-                  installation,
-                  byName,
-                  startTs,
-                  limitParam,
-                  offset,
-                  AppExtension.class,
-                  extensionType))
-          .build();
+      ResultList<AppExtension> appExtensionList =
+          byName
+              ? repository.listAppExtensionAfterTimeByName(
+                  installation, startTs, limitParam, offset, AppExtension.class, extensionType)
+              : repository.listAppExtensionAfterTimeById(
+                  installation, startTs, limitParam, offset, AppExtension.class, extensionType);
+      return Response.status(Response.Status.OK).entity(appExtensionList).build();
     }
-    return Response.status(Response.Status.OK)
-        .entity(
-            repository.listAppExtension(
-                installation, byName, limitParam, offset, AppExtension.class, extensionType))
-        .build();
+
+    ResultList<AppExtension> appExtensionList =
+        byName
+            ? repository.listAppExtensionByName(
+                installation, limitParam, offset, AppExtension.class, extensionType)
+            : repository.listAppExtensionById(
+                installation, limitParam, offset, AppExtension.class, extensionType);
+
+    return Response.status(Response.Status.OK).entity(appExtensionList).build();
   }
 
   @GET
