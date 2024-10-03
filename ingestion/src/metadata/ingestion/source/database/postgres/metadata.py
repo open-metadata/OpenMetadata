@@ -13,7 +13,7 @@ Postgres source module
 """
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy import sql
@@ -58,6 +58,7 @@ from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_DB_NAMES,
     POSTGRES_GET_STORED_PROCEDURES,
+    POSTGRES_GET_STORED_PROCEDURES_QUERIES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
     POSTGRES_SCHEMA_COMMENTS,
@@ -71,6 +72,10 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_table_comment,
     get_table_owner,
     get_view_definition,
+)
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureMixin,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
@@ -152,7 +157,7 @@ Inspector.get_json_fields_and_type = get_json_fields_and_type
 PGDialect.get_foreign_keys = get_foreign_keys
 
 
-class PostgresSource(CommonDbSourceService, MultiDBSource):
+class PostgresSource(CommonDbSourceService, MultiDBSource, StoredProcedureMixin):
     """
     Implements the necessary methods to extract
     Database metadata from Postgres Source
@@ -360,3 +365,13 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+        """
+        Return the dictionary associating stored procedures to the
+        queries they triggered
+        """
+        queries_dict = self.procedure_queries_dict(
+            query=POSTGRES_GET_STORED_PROCEDURES_QUERIES,
+        )
+        return queries_dict

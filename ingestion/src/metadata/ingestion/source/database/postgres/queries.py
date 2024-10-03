@@ -307,3 +307,11 @@ POSTGRES_GET_STORED_PROCEDURES = """
     JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
     WHERE prokind = 'p';
 """
+
+POSTGRES_GET_STORED_PROCEDURES_QUERIES = """
+    SELECT 
+        total_exec_time,
+        query
+    FROM pg_stat_statements
+    WHERE query LIKE 'CALL%';
+"""
