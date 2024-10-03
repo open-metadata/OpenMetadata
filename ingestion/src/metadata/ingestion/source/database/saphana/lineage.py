@@ -106,7 +106,7 @@ class SaphanaLineageSource(Source):
             ).execute(text(SAPHANA_LINEAGE))
             for row in result:
                 try:
-                    lineage_model = SapHanaLineageModel.validate(dict(row))
+                    lineage_model = SapHanaLineageModel.validate(model_dump(row))
 
                     yield from self.parse_cdata(
                         metadata=self.metadata, lineage_model=lineage_model

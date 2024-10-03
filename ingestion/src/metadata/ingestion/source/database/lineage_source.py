@@ -63,7 +63,7 @@ class LineageSource(QueryParserSource, ABC):
             for file_path in file_paths:
                 with open(file_path, "r", encoding="utf-8") as file:
                     for row in csv.DictReader(file):
-                        query_dict = dict(row)
+                        query_dict = model_dump(row)
                         yield TableQuery(
                             query=query_dict["query_text"],
                             databaseName=self.get_database_name(query_dict),
@@ -103,7 +103,7 @@ class LineageSource(QueryParserSource, ABC):
                     )
                 )
                 for row in rows:
-                    query_dict = dict(row)
+                    query_dict = model_dump(row)
                     try:
                         yield TableQuery(
                             query=query_dict["query_text"],

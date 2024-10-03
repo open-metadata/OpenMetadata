@@ -72,7 +72,7 @@ class SQAValidatorMixin:
         metric_fn = metric_obj(column).fn() if column is not None else metric_obj().fn()
 
         try:
-            value = dict(runner.dispatch_query_select_first(metric_fn))  # type: ignore
+            value = model_dump(runner.dispatch_query_select_first(metric_fn))  # type: ignore
             res = value.get(metric.name)
         except Exception as exc:
             raise SQLAlchemyError(exc)
@@ -106,7 +106,7 @@ class SQAValidatorMixin:
         Returns:
         """
         try:
-            value = dict(
+            value = model_dump(
                 runner.dispatch_query_select_first(
                     Metrics.ROW_COUNT(column).fn(),
                     query_filter_=query_filter,

@@ -45,7 +45,7 @@ class TestParameters(BaseModel):
         if args:
             # Map positional arguments to fields
             field_names = list(self.__annotations__.keys())
-            kwargs.update(dict(zip(field_names, args)))
+            kwargs.update(model_dump(zip(field_names, args)))
 
         super().__init__(**kwargs)
 
@@ -289,7 +289,7 @@ def test_happy_paths(
         },
         "processor": {
             "type": "orm-test-runner",
-            "config": {"testCases": [parameters.test_case_defintion.dict()]},
+            "config": {"testCases": [parameters.test_case_defintion.model_dump()]},
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
@@ -412,7 +412,7 @@ def test_error_paths(
         },
         "processor": {
             "type": "orm-test-runner",
-            "config": {"testCases": [parameters.dict()]},
+            "config": {"testCases": [parameters.model_dump()]},
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
@@ -508,7 +508,7 @@ def copy_table(source_engine, destination_engine, table_name):
         for i in range(0, len(data), batch_size):
             batch = data[i : i + batch_size]
             destination_connection.execute(
-                source_table.insert(), [dict(row) for row in batch]
+                source_table.insert(), [model_dump(row) for row in batch]
             )
 
 

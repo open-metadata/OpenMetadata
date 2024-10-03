@@ -161,7 +161,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     and metric not in {Sum, StdDev, Mean}
                 ]
             )
-            return dict(row)
+            return model_dump(row)
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -195,7 +195,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             )
             row = table_metric_computer.compute()
             if row:
-                return dict(row)
+                return model_dump(row)
             return None
 
         except Exception as exc:
@@ -232,7 +232,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     if not metric.is_window_metric()
                 ],
             )
-            return dict(row)
+            return model_dump(row)
         except (ProgrammingError, DBAPIError) as exc:
             return self._programming_error_static_metric(
                 runner, column, exc, session, metrics
@@ -269,11 +269,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 return None
             if col_metric.metric_type == dict:
                 results = runner.select_all_from_query(metric_query)
-                data = {k: [result[k] for result in results] for k in dict(results[0])}
+                data = {k: [result[k] for result in results] for k in model_dump(results[0])}
                 return {metric.name(): data}
 
             row = runner.select_first_from_query(metric_query)
-            return dict(row)
+            return model_dump(row)
         except ResourceClosedError as exc:
             # if the query returns no results, we will get a ResourceClosedError from Druid
             if (
@@ -314,7 +314,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 *[metric(column).fn() for metric in metrics],
             )
             if row:
-                return dict(row)
+                return model_dump(row)
         except ProgrammingError as exc:
             logger.info(
                 f"Skipping metrics for {runner.table.__tablename__}.{column.name} due to {exc}"
@@ -493,7 +493,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     ):
         """get all profiler metrics"""
         logger.debug(f"Computing metrics with {self._thread_count} threads.")
-        profile_results = {"table": dict(), "columns": defaultdict(dict)}
+        profile_results = {"table": model_dump(), "columns": defaultdict(dict)}
         with CustomThreadPoolExecutor(max_workers=self._thread_count) as pool:
             futures = [
                 pool.submit(
@@ -514,7 +514,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     if metric_type != MetricTypes.System.value and not isinstance(
                         profile, dict
                     ):
-                        profile = dict()
+                        profile = model_dump()
                     if metric_type == MetricTypes.Table.value:
                         profile_results["table"].update(profile)
                     elif metric_type == MetricTypes.System.value:

@@ -68,7 +68,7 @@ class TrinoProfilerInterface(SQAProfilerInterface):
                 *[metric(column).fn() for metric in metrics], **runner_kwargs
             )
             if row:
-                return dict(row)
+                return model_dump(row)
         except ProgrammingError as err:
             logger.info(
                 f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to {err}"

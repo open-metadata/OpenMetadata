@@ -640,7 +640,7 @@ class SnowflakeSource(
                 )
             ).all()
             for row in results:
-                stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
+                stored_procedure = SnowflakeStoredProcedure.model_validate(model_dump(row))
                 if stored_procedure.definition is None:
                     logger.debug(
                         f"Missing ownership permissions on procedure {stored_procedure.name}."
@@ -669,7 +669,7 @@ class SnowflakeSource(
                 procedure_signature=stored_procedure.unquote_signature(),
             )
         )
-        return dict(res.all()).get("body", "")
+        return model_dump(res.all()).get("body", "")
 
     def yield_stored_procedure(
         self, stored_procedure: SnowflakeStoredProcedure

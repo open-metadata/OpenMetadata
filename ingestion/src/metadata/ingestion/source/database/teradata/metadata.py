@@ -83,7 +83,7 @@ class TeradataSource(CommonDbSourceService):
             ).all()
             for row in results:
                 try:
-                    stored_procedure = TeradataStoredProcedure.model_validate(dict(row))
+                    stored_procedure = TeradataStoredProcedure.model_validate(model_dump(row))
                     stored_procedure.definition = self.describe_procedure_definition(
                         stored_procedure
                     )
@@ -92,7 +92,7 @@ class TeradataSource(CommonDbSourceService):
                     logger.error()
                     self.status.failed(
                         error=StackTraceError(
-                            name=dict(row).get("name", "UNKNOWN"),
+                            name=model_dump(row).get("name", "UNKNOWN"),
                             error=f"Error parsing Stored Procedure payload: {exc}",
                             stackTrace=traceback.format_exc(),
                         )

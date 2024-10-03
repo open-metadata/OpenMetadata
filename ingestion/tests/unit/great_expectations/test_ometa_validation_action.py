@@ -67,7 +67,7 @@ def test_create_jinja_environment(fixture_jinja_environment):
     assert isinstance(fixture_jinja_environment, Environment)
 
 
-@mock.patch.dict(os.environ, {"API_VERSION": "v1"})
+@mock.patch.model_dump(os.environ, {"API_VERSION": "v1"})
 def test_render_template(fixture_jinja_environment):
     """Test create jinja environment"""
     tmplt = render_template(fixture_jinja_environment)

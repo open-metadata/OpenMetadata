@@ -79,7 +79,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
             with get_connection(self.service_connection).connect() as conn:
                 rows = conn.execute(self.get_sql_statement())
                 for row in rows:
-                    row = dict(row)
+                    row = model_dump(row)
                     try:
                         yield TableQuery(
                             query=row["query_text"],

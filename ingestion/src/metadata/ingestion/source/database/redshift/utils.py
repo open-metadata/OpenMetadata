@@ -140,7 +140,7 @@ def _get_schema_column_info(
     for col in result:
         key = RelationKey(col.table_name, col.schema, connection)
         all_columns[key].append(col)
-    return dict(all_columns)
+    return model_dump(all_columns)
 
 
 def _handle_array_type(attype):

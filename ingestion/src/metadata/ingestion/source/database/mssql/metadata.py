@@ -169,13 +169,13 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
             ).all()
             for row in results:
                 try:
-                    stored_procedure = MssqlStoredProcedure.model_validate(dict(row))
+                    stored_procedure = MssqlStoredProcedure.model_validate(model_dump(row))
                     yield stored_procedure
                 except Exception as exc:
                     logger.error()
                     self.status.failed(
                         error=StackTraceError(
-                            name=dict(row).get("name", "UNKNOWN"),
+                            name=model_dump(row).get("name", "UNKNOWN"),
                             error=f"Error parsing Stored Procedure payload: {exc}",
                             stackTrace=traceback.format_exc(),
                         )

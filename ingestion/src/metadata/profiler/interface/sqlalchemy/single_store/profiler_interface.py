@@ -73,7 +73,7 @@ class SingleStoreProfilerInterface(SQAProfilerInterface):
                 *[metric(column).fn() for metric in metrics],
             )
             if row:
-                return dict(row)
+                return model_dump(row)
         except ProgrammingError:
             logger.info(
                 f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"

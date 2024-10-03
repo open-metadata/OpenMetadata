@@ -122,7 +122,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
             try:
                 self.complex_dataframe_sample[index] = df.astype(
-                    dict(zip(df.keys(), coltype_mapping_df))
+                    model_dump(zip(df.keys(), coltype_mapping_df))
                 )
             except (TypeError, ValueError) as err:
                 self.complex_dataframe_sample[index] = df

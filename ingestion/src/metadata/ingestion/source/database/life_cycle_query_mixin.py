@@ -79,7 +79,7 @@ class LifeCycleQueryMixin:
 
         for row in results:
             try:
-                life_cycle_by_table = LifeCycleQueryByTable.model_validate(dict(row))
+                life_cycle_by_table = LifeCycleQueryByTable.model_validate(model_dump(row))
                 queries_dict[life_cycle_by_table.table_name] = life_cycle_by_table
             except Exception as exc:
                 self.status.failed(

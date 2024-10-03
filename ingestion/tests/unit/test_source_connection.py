@@ -647,7 +647,7 @@ class SourceConnectionTest(TestCase):
             username="username",
             hostPort="localhost:8123",
             scheme=ClickhouseScheme.clickhouse_http,
-            connectionOptions=dict(protocol="https"),
+            connectionOptions=model_dump(protocol="https"),
             databaseSchema="default",
         )
         assert expected_url == get_connection_url_common(clickhouse_conn_obj)
@@ -1139,7 +1139,7 @@ class SourceConnectionTest(TestCase):
             hostPort="localhost:1541",
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
-            connectionOptions=dict(
+            connectionOptions=model_dump(
                 test_key_1="test_value_1", test_key_2="test_value_2"
             ),
         )
@@ -1157,7 +1157,7 @@ class SourceConnectionTest(TestCase):
             hostPort="localhost:1541",
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
-            connectionOptions=dict(
+            connectionOptions=model_dump(
                 test_key_1="test_value_1", test_key_2="test_value_2"
             ),
         )

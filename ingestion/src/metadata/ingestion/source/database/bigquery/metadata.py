@@ -806,7 +806,7 @@ class BigquerySource(
                 )
             ).all()
             for row in results:
-                stored_procedure = BigQueryStoredProcedure.model_validate(dict(row))
+                stored_procedure = BigQueryStoredProcedure.model_validate(model_dump(row))
                 yield stored_procedure
 
     def yield_stored_procedure(
