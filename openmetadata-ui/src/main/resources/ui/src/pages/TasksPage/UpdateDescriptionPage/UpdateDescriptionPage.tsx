@@ -77,16 +77,11 @@ const UpdateDescription = () => {
   const value = queryParams.get('value');
 
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
-  const [assignees, setAssignees] = useState<EntityReference[]>([]);
   const [currentDescription, setCurrentDescription] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
   const selectedAssignees =
-    Form.useWatch<EntityReference | EntityReference[]>('assignees', form) ?? [];
-
-  const assigneesList = Array.isArray(selectedAssignees)
-    ? selectedAssignees
-    : [selectedAssignees];
+    Form.useWatch<EntityReference[]>('assignees', form) ?? [];
 
   const entityFQN = useMemo(
     () => getTaskEntityFQN(entityType, fqn),
@@ -145,7 +140,7 @@ const UpdateDescription = () => {
       message: value.title || taskMessage,
       about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
-        assignees: assignees.map((assignee) => ({
+        assignees: selectedAssignees.map((assignee) => ({
           id: assignee.id,
           type: assignee.type,
         })),
@@ -180,15 +175,10 @@ const UpdateDescription = () => {
   }, [entityFQN, entityType]);
 
   useEffect(() => {
-    const defaultAssignee = getTaskAssignee(entityData as Glossary);
-
-    if (defaultAssignee) {
-      setAssignees(defaultAssignee);
-    }
     form.setFieldsValue({
       title: taskMessage.trimEnd(),
-      assignees: defaultAssignee,
       description: getDescription(),
+      assignees: getTaskAssignee(entityData as Glossary),
     });
   }, [entityData]);
 
@@ -258,7 +248,7 @@ const UpdateDescription = () => {
                       hasPermission
                       selectBoth
                       multiple={{ user: true, team: true }}
-                      owner={assignees}
+                      owner={selectedAssignees}
                       onUpdate={(values) =>
                         form.setFieldValue(['assignees'], values)
                       }>
@@ -275,11 +265,11 @@ const UpdateDescription = () => {
                     </UserTeamSelectableList>
                   </Form.Item>
 
-                  {Boolean(assigneesList.length) && (
+                  {Boolean(selectedAssignees.length) && (
                     <Space wrap data-testid="assignees-container" size={[8, 8]}>
                       <OwnerLabel
                         maxVisibleOwners={LIST_SIZE}
-                        owners={assigneesList}
+                        owners={selectedAssignees}
                       />
                     </Space>
                   )}
