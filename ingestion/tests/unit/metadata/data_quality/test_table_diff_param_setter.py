@@ -41,17 +41,18 @@ MOCK_TABLE = Table(
     [
         (
             "postgresql+psycopg2://test:test@localhost:5432/dvdrental",
-            "postgresql://test:test@localhost:5432/dvdrental",
-        )
+            "postgresql://test:test@localhost:5432/database",
+        ),
+        (
+            "snowflake://test:test@localhost:5432/dvdrental",
+            "snowflake://test:test@localhost:5432/database/schema",
+        ),
     ],
 )
 def test_get_data_diff_url(input, expected):
-    assert (
-        TableDiffParamsSetter(None, None, MOCK_TABLE, None).get_data_diff_url(
-            input, "service.database.schema.table"
-        )
-        == expected
-    )
+    assert expected == TableDiffParamsSetter(
+        None, None, MOCK_TABLE, None
+    ).get_data_diff_url(input, "service.database.schema.table")
 
 
 @pytest.mark.parametrize(
