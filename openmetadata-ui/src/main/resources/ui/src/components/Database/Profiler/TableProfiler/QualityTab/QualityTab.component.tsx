@@ -147,6 +147,7 @@ export const QualityTab = () => {
                     (await getResourceLimit('dataQuality', true, true));
                 }}
                 breadcrumbData={tableBreadcrumb}
+                fetchTestCases={fetchAllTests}
                 isLoading={isTestsLoading}
                 showTableColumn={false}
                 testCases={allTestCases}

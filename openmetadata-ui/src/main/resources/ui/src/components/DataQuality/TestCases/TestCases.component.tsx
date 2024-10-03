@@ -146,7 +146,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const fetchTestCases = async (
     currentPage = INITIAL_PAGING_VALUE,
-    filters?: string[]
+    filters?: string[],
+    apiParams?: TestCaseSearchParams
   ) => {
     const updatedParams = getTestCaseFiltersValue(
       params,
@@ -157,6 +158,9 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     try {
       const { data, paging } = await getListTestCaseBySearch({
         ...updatedParams,
+        sortType: SORT_ORDER.DESC,
+        sortField: 'testCaseResult.timestamp',
+        ...apiParams,
         testCaseStatus: isEmpty(params?.testCaseStatus)
           ? undefined
           : params?.testCaseStatus,
@@ -169,8 +173,6 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         ],
         q: searchValue ? `*${searchValue}*` : undefined,
         offset: (currentPage - 1) * pageSize,
-        sortType: SORT_ORDER.DESC,
-        sortField: 'testCaseResult.timestamp',
       });
       setTestCase(data);
       handlePagingChange(paging);
@@ -180,6 +182,11 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const sortTestCase = async (apiParams?: TestCaseSearchParams) => {
+    const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
+    await fetchTestCases(INITIAL_PAGING_VALUE, updatedValue, apiParams);
   };
 
   const handleStatusSubmit = (testCase: TestCase) => {
@@ -620,6 +627,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
             },
           ]}
+          fetchTestCases={sortTestCase}
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}

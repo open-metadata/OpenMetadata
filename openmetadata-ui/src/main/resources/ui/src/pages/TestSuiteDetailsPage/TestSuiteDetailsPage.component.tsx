@@ -391,6 +391,7 @@ const TestSuiteDetailsPage = () => {
           <DataQualityTab
             afterDeleteAction={fetchTestCases}
             breadcrumbData={incidentUrlState}
+            fetchTestCases={fetchTestCases}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
             removeFromTestSuite={{ testSuite: testSuite as TestSuite }}

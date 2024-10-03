@@ -12,13 +12,14 @@
  */
 
 import { Button, Col, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
+import { FilterValue, SorterResult } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined, sortBy } from 'lodash';
+import { isArray, isUndefined, sortBy } from 'lodash';
 import { PagingResponse } from 'Models';
 import QueryString from 'qs';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
@@ -28,10 +29,14 @@ import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import { TestCaseStatus } from '../../../../generated/configuration/testResultNotificationConfiguration';
 import { Operation } from '../../../../generated/entity/policies/policy';
-import { TestCase, TestCaseResult } from '../../../../generated/tests/testCase';
+import {
+  TestCase,
+  TestCaseResult,
+  TestCaseStatus,
+} from '../../../../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
@@ -74,6 +79,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   afterDeleteAction,
   showPagination,
   breadcrumbData,
+  fetchTestCases,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -82,6 +88,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const [testCaseStatus, setTestCaseStatus] = useState<
     TestCaseResolutionStatus[]
   >([]);
+  const isApiSortingEnabled = useRef(false);
 
   const testCaseEditPermission = useMemo(() => {
     return checkPermission(
@@ -101,20 +108,22 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   const sortedData = useMemo(
     () =>
-      sortBy(testCases, (test) => {
-        switch (test.testCaseResult?.testCaseStatus) {
-          case TestCaseStatus.Failed:
-            return 0;
-          case TestCaseStatus.Aborted:
-            return 1;
-          case TestCaseStatus.Success:
-            return 2;
+      isApiSortingEnabled.current
+        ? testCases
+        : sortBy(testCases, (test) => {
+            switch (test.testCaseResult?.testCaseStatus) {
+              case TestCaseStatus.Failed:
+                return 0;
+              case TestCaseStatus.Aborted:
+                return 1;
+              case TestCaseStatus.Success:
+                return 2;
 
-          default:
-            return 3;
-        }
-      }),
-    [testCases]
+              default:
+                return 3;
+            }
+          }),
+    [testCases, isApiSortingEnabled.current]
   );
 
   const handleCancel = () => {
@@ -247,6 +256,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'testCaseResult',
         key: 'lastRun',
         width: 150,
+        sorter: true,
         render: (result: TestCaseResult) =>
           result?.timestamp ? formatDateTime(result.timestamp) : '--',
       },
@@ -411,6 +421,26 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
   };
 
+  const handleTableChange = (
+    _pagination: TablePaginationConfig,
+    _filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<TestCase> | SorterResult<TestCase>[]
+  ) => {
+    if (!isArray(sorter)) {
+      if (fetchTestCases && sorter?.columnKey === 'lastRun') {
+        const sortData = isUndefined(sorter.order)
+          ? undefined
+          : {
+              sortField: 'testCaseResult.timestamp',
+              sortType:
+                sorter?.order === 'ascend' ? SORT_ORDER.ASC : SORT_ORDER.DESC,
+            };
+        isApiSortingEnabled.current = !isUndefined(sorter.order);
+        fetchTestCases(sortData);
+      }
+    }
+  };
+
   useEffect(() => {
     if (testCases.length) {
       fetchTestCaseStatus();
@@ -454,6 +484,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           pagination={false}
           rowKey="id"
           size="small"
+          onChange={handleTableChange}
         />
       </Col>
       <Col span={24}>
