@@ -786,6 +786,8 @@ site_menu:
 
   - category: How-to Guides / Data Discovery
     url: /how-to-guides/data-discovery
+  - category: How-to Guides / Data Discovery / How our search ranking works
+    url: /how-to-guides/data-discovery/search
   - category: How-to Guides / Data Discovery / How to Discover Assets of Interest
     url: /how-to-guides/data-discovery/discover
   - category: How-to Guides / Data Discovery / Get a Quick Glance of the Data Assets

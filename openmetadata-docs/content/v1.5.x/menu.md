@@ -696,7 +696,9 @@ site_menu:
     url: /how-to-guides
     color: violet-70
     icon: openmetadata
-
+  
+  - category: How-to Guides / Data Discovery / How our search ranking works
+    url: /how-to-guides/data-discovery/search
   - category: How-to Guides / Getting Started  
     url: /how-to-guides/getting-started
   - category: How-to Guides / Day 1  
