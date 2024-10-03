@@ -75,6 +75,7 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -141,7 +142,10 @@ import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.indices.CreateIndexRequest;
 import os.org.opensearch.client.indices.CreateIndexResponse;
 import os.org.opensearch.client.indices.GetIndexRequest;
+import os.org.opensearch.client.indices.GetMappingsRequest;
+import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.indices.PutMappingRequest;
+import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
@@ -282,18 +286,29 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public void addIndexAlias(IndexMapping indexMapping, String... aliasName) {
+    try {
+      IndicesAliasesRequest.AliasActions aliasAction =
+          IndicesAliasesRequest.AliasActions.add()
+              .index(indexMapping.getIndexName(clusterAlias))
+              .aliases(aliasName);
+      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+      aliasesRequest.addAliasAction(aliasAction);
+      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+    } catch (Exception e) {
+      LOG.error(
+          String.format(
+              "Failed to create alias for %s due to", indexMapping.getAlias(clusterAlias)),
+          e);
+    }
+  }
+
+  @Override
   public void createAliases(IndexMapping indexMapping) {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
-
-      IndicesAliasesRequest.AliasActions aliasAction =
-          IndicesAliasesRequest.AliasActions.add()
-              .index(indexMapping.getIndexName(clusterAlias))
-              .aliases(aliases.toArray(new String[0]));
-      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-      aliasesRequest.addAliasAction(aliasAction);
-      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+      addIndexAlias(indexMapping, aliases.toArray(new String[0]));
     } catch (Exception e) {
       LOG.error(
           String.format(
@@ -2077,6 +2092,25 @@ public class OpenSearchClient implements SearchClient {
     buildSearchSourceFilter(queryFilter, searchSourceBuilder);
 
     return searchSourceBuilder;
+  }
+
+  @Override
+  public List<Map<String, String>> fetchDIChartFields() throws IOException {
+    // This function is being used for creating custom charts in Data Insights
+    List<Map<String, String>> fields = new ArrayList<>();
+    GetMappingsRequest request =
+        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+
+    // Execute request
+    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
+
+    // Get mappings for the index
+    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
+      // Get fields for the index
+      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
+      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
+    }
+    return fields;
   }
 
   void getFieldNames(
