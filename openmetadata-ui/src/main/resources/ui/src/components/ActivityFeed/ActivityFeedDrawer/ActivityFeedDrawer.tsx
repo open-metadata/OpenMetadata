@@ -17,6 +17,7 @@ import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import Loader from '../../common/Loader/Loader';
+import applicationsClassBase from '../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
@@ -33,6 +34,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   className,
 }) => {
   const { t } = useTranslation();
+  const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const {
     focusReplyEditor,
     isDrawerLoading,
@@ -71,7 +73,12 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       {isDrawerLoading ? (
         <Loader />
       ) : (
-        <Row gutter={[0, 16]} id="feed-panel">
+        <Row
+          className={classNames({
+            ['reserve-right-sidebar']: Boolean(ApplicationExtras),
+          })}
+          gutter={[0, 16]}
+          id="feed-panel">
           <Col span={24}>
             <FeedPanelBodyV1
               isOpenInDrawer
@@ -85,7 +92,11 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
             />
           </Col>
           <Col span={24}>
-            <ActivityFeedEditor focused={focusReplyEditor} onSave={onSave} />
+            <ActivityFeedEditor
+              className="activity-feed-editor"
+              focused={focusReplyEditor}
+              onSave={onSave}
+            />
           </Col>
         </Row>
       )}
