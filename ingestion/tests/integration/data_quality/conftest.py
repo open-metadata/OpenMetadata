@@ -1,3 +1,5 @@
+from typing import cast
+
 import pytest
 from testcontainers.mysql import MySqlContainer
 
@@ -108,7 +110,13 @@ def ingest_postgres_metadata(
         "source": {
             "type": postgres_service.connection.config.type.value.lower(),
             "serviceName": postgres_service.fullyQualifiedName.root,
-            "serviceConnection": postgres_service.connection,
+            "serviceConnection": postgres_service.connection.model_copy(
+                update={
+                    "config": postgres_service.connection.config.model_copy(
+                        update={"ingestAllDatabases": True}
+                    )
+                }
+            ),
             "sourceConfig": {"config": {}},
         },
         "sink": sink_config,
