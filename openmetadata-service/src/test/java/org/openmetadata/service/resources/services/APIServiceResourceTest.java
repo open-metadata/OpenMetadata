@@ -18,12 +18,14 @@ import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+
+import com.google.protobuf.Api;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.CreateApiService;
-import org.openmetadata.schema.entity.services.APIService;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.services.connections.api.RestConnection;
@@ -34,11 +36,11 @@ import org.openmetadata.service.resources.services.apiservices.APIServiceResourc
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
-public class APIServiceResourceTest extends ServiceResourceTest<APIService, CreateApiService> {
+public class APIServiceResourceTest extends ServiceResourceTest<ApiService, CreateApiService> {
   public APIServiceResourceTest() {
     super(
         Entity.API_SERVICE,
-        APIService.class,
+        ApiService.class,
         APIServiceResource.APIServiceList.class,
         "services/apiServices",
         "owners");
@@ -51,10 +53,10 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
         apiServiceResourceTest
             .createRequest(test)
             .withName("openmetadata")
-            .withServiceType(CreateApiService.APIServiceType.Rest)
+            .withServiceType(CreateApiService.ApiServiceType.Rest)
             .withConnection(TestUtils.API_SERVICE_CONNECTION);
 
-    APIService omAPIService =
+    ApiService omAPIService =
         new APIServiceResourceTest().createEntity(createApiService, ADMIN_AUTH_HEADERS);
     OPENMETADATA_API_SERVICE_REFERENCE = omAPIService.getEntityReference();
     APIServiceResourceTest sampleAPIServiceResourceTest = new APIServiceResourceTest();
@@ -62,9 +64,9 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
         sampleAPIServiceResourceTest
             .createRequest(test)
             .withName("sampleAPI")
-            .withServiceType(CreateApiService.APIServiceType.Rest)
+            .withServiceType(CreateApiService.ApiServiceType.Rest)
             .withConnection(TestUtils.API_SERVICE_CONNECTION);
-    APIService sampleAPIService =
+    ApiService sampleAPIService =
         new APIServiceResourceTest().createEntity(createApiService, ADMIN_AUTH_HEADERS);
     SAMPLE_API_SERVICE_REFERENCE = sampleAPIService.getEntityReference();
   }
@@ -99,7 +101,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
                 new RestConnection()
                     .withOpenAPISchemaURL(
                         new URI("http://sandbox.open-metadata.org/swagger.json")));
-    APIService service =
+    ApiService service =
         createAndCheckEntity(
             createRequest(test).withDescription(null).withConnection(connection1),
             ADMIN_AUTH_HEADERS);
@@ -123,10 +125,10 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
 
   @Test
   void put_testConnectionResult_200(TestInfo test) throws IOException {
-    APIService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    ApiService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    APIService updatedService =
+    ApiService updatedService =
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
@@ -135,25 +137,25 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
         updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
-    APIService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
+    ApiService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
     assertEquals(
         TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
-  public APIService putTestConnectionResult(
+  public ApiService putTestConnectionResult(
       UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
-    return TestUtils.put(target, testConnectionResult, APIService.class, OK, authHeaders);
+    return TestUtils.put(target, testConnectionResult, ApiService.class, OK, authHeaders);
   }
 
   @Override
   public CreateApiService createRequest(String name) {
     return new CreateApiService()
         .withName(name)
-        .withServiceType(CreateApiService.APIServiceType.Rest)
+        .withServiceType(CreateApiService.ApiServiceType.Rest)
         .withConnection(
             new ApiConnection()
                 .withConfig(
@@ -164,7 +166,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
 
   @Override
   public void validateCreatedEntity(
-      APIService service, CreateApiService createRequest, Map<String, String> authHeaders) {
+          ApiService service, CreateApiService createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
     ApiConnection expectedConnection = createRequest.getConnection();
     ApiConnection actualConnection = service.getConnection();
@@ -173,12 +175,12 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
 
   @Override
   public void compareEntities(
-      APIService expected, APIService updated, Map<String, String> authHeaders) {
+          ApiService expected, ApiService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 
   @Override
-  public APIService validateGetWithDifferentFields(APIService service, boolean byName)
+  public ApiService validateGetWithDifferentFields(ApiService service, boolean byName)
       throws HttpResponseException {
     String fields = "";
     service =
@@ -211,7 +213,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
   private void validateConnection(
       ApiConnection expectedConnection,
       ApiConnection actualConnection,
-      CreateApiService.APIServiceType serviceType) {
+      CreateApiService.ApiServiceType serviceType) {
     if (expectedConnection != null && actualConnection != null) {
       RestConnection restConnection = (RestConnection) expectedConnection.getConfig();
       RestConnection actualESConnection =

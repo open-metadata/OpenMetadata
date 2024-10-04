@@ -20,7 +20,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.services.apiService import (
     ApiConnection,
-    APIServiceType,
+    ApiServiceType,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
@@ -135,7 +135,7 @@ HAS_INNER_CONNECTION = {"Airflow"}
 # Build a service type map dynamically from JSON Schema covered types
 SERVICE_TYPE_MAP = {
     "Backend": PipelineConnection,  # For Airflow backend
-    **{service: ApiConnection for service in APIServiceType.__members__},
+    **{service: ApiConnection for service in ApiServiceType.__members__},
     **{service: DatabaseConnection for service in DatabaseServiceType.__members__},
     **{service: DashboardConnection for service in DashboardServiceType.__members__},
     **{service: MessagingConnection for service in MessagingServiceType.__members__},
@@ -557,6 +557,7 @@ def parse_automation_workflow_gracefully(
             message="Error parsing the service connection",
         )
 
+    #
     raise ParsingConfigurationError(
         "Uncaught error when parsing the Ingestion Pipeline!"
     )
