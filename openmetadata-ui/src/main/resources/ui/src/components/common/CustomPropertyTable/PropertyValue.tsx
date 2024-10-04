@@ -96,21 +96,18 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const { propertyName, propertyType, value, isTimeIntervalType } =
-    useMemo(() => {
-      const propertyName = property.name;
-      const propertyType = property.propertyType;
-      const isTimeIntervalType = propertyType.name === 'timeInterval';
+  const { propertyName, propertyType, value } = useMemo(() => {
+    const propertyName = property.name;
+    const propertyType = property.propertyType;
 
-      const value = extension?.[propertyName];
+    const value = extension?.[propertyName];
 
-      return {
-        propertyName,
-        propertyType,
-        value,
-        isTimeIntervalType,
-      };
-    }, [property, extension]);
+    return {
+      propertyName,
+      propertyType,
+      value,
+    };
+  }, [property, extension]);
 
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -1044,16 +1041,14 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     const isOverflowing =
       (contentRef.current.scrollHeight > 30 || isMarkdownWithValue) &&
       propertyType.name !== 'entityReference' &&
-      !(isTimeIntervalType && isRenderedInRightPanel);
+      !isRenderedInRightPanel;
 
     setIsOverflowing(isOverflowing);
   }, [property, extension, contentRef, value]);
 
   const containerStyleFlag = useMemo(() => {
-    return (
-      isExpanded || showInput || (isTimeIntervalType && isRenderedInRightPanel)
-    );
-  }, [isExpanded, showInput, isTimeIntervalType, isRenderedInRightPanel]);
+    return isExpanded || showInput || isRenderedInRightPanel;
+  }, [isExpanded, showInput, isRenderedInRightPanel]);
 
   const customPropertyElement = (
     <Row data-testid={propertyName} gutter={[0, 8]}>
