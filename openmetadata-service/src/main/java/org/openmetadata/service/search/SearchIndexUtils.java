@@ -20,6 +20,7 @@ import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.util.Utilities;
 
 public final class SearchIndexUtils {
 
@@ -93,9 +94,15 @@ public final class SearchIndexUtils {
       List<Datum> reportData,
       Map<String, String> nodeData,
       String metric) {
-    Optional<String> val = Optional.ofNullable(aggregationResults.getString("value_as_string"));
-    val.ifPresentOrElse(s -> nodeData.put(metric, s), () -> nodeData.put(metric, null));
+    String valueStr = null;
+    if (aggregationResults.containsKey("value")) {
+      JsonNumber value = aggregationResults.getJsonNumber("value");
+      if (value != null) valueStr = value.toString();
+    } else {
+        valueStr = aggregationResults.getString("value_as_string", null);
+    }
 
+    nodeData.put(metric, valueStr);
     Datum datum = new Datum();
     for (Map.Entry<String, String> entry : nodeData.entrySet()) {
       datum.withAdditionalProperty(entry.getKey(), entry.getValue());
@@ -175,9 +182,13 @@ public final class SearchIndexUtils {
       return;
     }
 
-    String currentKey =
-        keys.get(0); // The current key represent the node in the aggregation tree (i.e. the current
-    // bucket)
+    // The current key represent the node in the aggregation tree (i.e. the current bucket)
+    String currentKey = keys.get(0);
+    if (currentKey.contains("bucket_selector")) {
+      // if we have reached the bucket_selector, we are in the leaf of the term aggregation
+      handleLeafTermsAggregation(aggregationResults, reportData, nodeData);
+      return;
+    }
     Optional<JsonObject> aggregation =
         Optional.ofNullable(SearchClient.getAggregationObject(aggregationResults, currentKey));
 
@@ -186,6 +197,17 @@ public final class SearchIndexUtils {
           Optional<JsonArray> buckets =
               Optional.ofNullable(SearchClient.getAggregationBuckets(agg));
           if (buckets.isEmpty()) {
+            if ((keys.size()>1) && (agg.containsKey(keys.get(1)))) {
+              // If the current node in the aggregation tree does not have further buckets
+              // but contains the next level of aggregation, it means we are in the nested aggregation
+              traverseAggregationResults(
+                      agg,
+                      reportData,
+                      nodeData,
+                      keys.subList(1, keys.size()),
+                      metric,
+                      dimensions.subList(1, dimensions.size()));
+            }
             // If the current node in the aggregation tree does not have further bucket
             // it means we are in the leaf of the metric aggregation. We'll add the metric
             handleLeafMetricsAggregation(agg, reportData, nodeData, metric);
@@ -263,45 +285,49 @@ public final class SearchIndexUtils {
 
     for (String sibling : siblings) {
       List<Map<String, String>> aggregationsMap = new ArrayList<>();
-      String[] nested = sibling.split(",");
+      String[] nested = sibling.split(Utilities.doubleQuoteRegexEscape(","), -1);
       for (int i = 0; i < nested.length; i++) {
-        Map<String, String> aggregationMap = new HashMap<>();
-        String[] parts = nested[i].split(":");
+        String[] nestedSiblingParts = nested[i].split("::");
 
-        Iterator<String> partsIterator = Arrays.stream(parts).iterator();
+        for (int j = 0; j < nestedSiblingParts.length; j++) {
+          Map<String, String> aggregationMap = new HashMap<>();
+          String[] parts = nestedSiblingParts[j].split(":(?!:)");
+          Iterator<String> partsIterator = Arrays.stream(parts).iterator();
 
-        while (partsIterator.hasNext()) {
-          String part = partsIterator.next();
-          if (!partsIterator.hasNext()) {
-            // last element = key=value pairs of the aggregation
-            String[] subParts = part.split("&");
-            Arrays.stream(subParts)
-                .forEach(
-                    subPart -> {
-                      String[] kvPairs = subPart.split("=");
-                      aggregationString
-                          .append("\"")
-                          .append(kvPairs[0])
-                          .append("\":\"")
-                          .append(kvPairs[1])
-                          .append("\"");
-                      aggregationMap.put(kvPairs[0], kvPairs[1]);
-                      // add comma if not the last element
-                      if (Arrays.asList(subParts).indexOf(subPart) < subParts.length - 1)
-                        aggregationString.append(",");
-                    });
-            aggregationString.append("}");
-          } else {
-            String[] kvPairs = part.split("=");
-            aggregationString.append("\"").append(kvPairs[1]).append("\":{");
-            aggregationMap.put(kvPairs[0], kvPairs[1]);
+          while (partsIterator.hasNext()) {
+            String part = partsIterator.next();
+            if (!partsIterator.hasNext()) {
+              // last element = key=value pairs of the aggregation
+              String[] subParts = part.split("&");
+              Arrays.stream(subParts)
+                      .forEach(
+                              subPart -> {
+                                String[] kvPairs = subPart.split(Utilities.doubleQuoteRegexEscape("="), -1);
+                                aggregationString
+                                        .append("\"")
+                                        .append(kvPairs[0])
+                                        .append("\":\"")
+                                        .append(Utilities.cleanUpDoubleQuotes(kvPairs[1]))
+                                        .append("\"");
+                                aggregationMap.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                                // add comma if not the last element
+                                if (Arrays.asList(subParts).indexOf(subPart) < subParts.length - 1)
+                                  aggregationString.append(",");
+                              });
+              aggregationString.append("}");
+            } else {
+              String[] kvPairs = part.split("=");
+              aggregationString.append("\"").append(kvPairs[1]).append("\":{");
+              aggregationMap.put(kvPairs[0], kvPairs[1]);
+            }
           }
+          if (j != nestedSiblingParts.length-1) aggregationString.append("},");
+          aggregationsMap.add(aggregationMap);
         }
 
         if (i < nested.length - 1) {
           aggregationString.append(",\"aggs\":{");
         }
-        aggregationsMap.add(aggregationMap);
       }
       // nested aggregations will add the "aggs" key if nested.length > 1, hence *2
       aggregationString.append("}".repeat(((nested.length - 1) * 2) + 1));

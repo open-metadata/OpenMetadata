@@ -505,8 +505,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "Search query to filter the aggregation results",
-              schema = @Schema(type = "String"))
+              description = "Search query to filter the aggregation results")
           @QueryParam("q")
           String query,
       @Parameter(

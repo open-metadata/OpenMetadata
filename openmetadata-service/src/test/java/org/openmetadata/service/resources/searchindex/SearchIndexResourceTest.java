@@ -463,6 +463,13 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     expectedAggregationString =
         "\"dates\":{\"date_histogram\":{\"field\":\"timestamp\",\"calendar_interval\":\"2d\"},\"aggs\":{\"minPrice\":{\"min\":{\"field\":\"price.adjusted\"}}}}";
     assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+
+    aggregationString=
+            "bucketName=entityFQN:aggType=terms:field=originEntityFQN&size=1000,bucketName=status:aggType=terms:field=testCaseStatus.keyword&include=\"Failed,Aborted\"::bucketName=statusFilter:aggType=bucket_selector:pathValues=\"status._bucket_count\"&pathKeys=\"status\"&script=\"params.status==0\"";
+    expectedAggregationString =
+            "\"entityFQN\":{\"terms\":{\"field\":\"originEntityFQN\",\"size\":\"1000\"},\"aggs\":{\"status\":{\"terms\":{\"field\":\"testCaseStatus.keyword\",\"include\":\"Failed,Aborted\"}},\"statusFilter\":{\"bucket_selector\":{\"pathValues\":\"status._bucket_count\",\"pathKeys\":\"status\",\"script\":\"params.status==0\"}}}}";
+    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
   }
 
   @Test

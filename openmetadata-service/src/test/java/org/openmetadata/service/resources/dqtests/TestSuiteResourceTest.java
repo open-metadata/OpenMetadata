@@ -13,7 +13,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
-import es.org.elasticsearch.search.aggregations.AggregationBuilder;
+import es.org.elasticsearch.script.Script;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import java.io.IOException;
 import java.text.ParseException;
@@ -23,10 +23,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.json.JsonObject;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
+
+import es.org.elasticsearch.search.aggregations.BaseAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.PipelineAggregatorBuilders;
+import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -49,6 +55,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -625,8 +632,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   @Test
   void buildElasticsearchAggregationFromJson(TestInfo test) {
     JsonObject aggregationJson;
-    List<AggregationBuilder> actual;
-    List<AggregationBuilder> expected = new ArrayList<>();
+    List<BaseAggregationBuilder> expected = new ArrayList<>();
     String aggregationQuery;
 
     // Test aggregation with nested aggregation
@@ -656,8 +662,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                 AggregationBuilders.terms("status_counts").field("testCaseResultSummary.status")));
 
     aggregationJson = JsonUtils.readJson(aggregationQuery).asJsonObject();
-    actual = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
-    assertThat(actual).hasSameElementsAs(expected);
+    List<ElasticAggregations> actual = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
+    actual.forEach(m -> {
+      if (m.isPipelineAggregation()) {
+        assertEquals(expected.get(0), m.getElasticPipelineAggregationBuilder());
+      } else {
+        assertEquals(expected.get(0), m.getElasticAggregationBuilder());
+      }
+    });
 
     // Test aggregation with multiple aggregations
     aggregationQuery =
@@ -682,11 +694,18 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     expected.clear();
     expected.addAll(
         List.of(
-            AggregationBuilders.terms("my-second-agg-name").field("my-other-field"),
-            AggregationBuilders.terms("my-first-agg-name").field("my-field")));
+            AggregationBuilders.terms("my-first-agg-name").field("my-field"),
+            AggregationBuilders.terms("my-second-agg-name").field("my-other-field")));
 
-    actual = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
-    assertThat(actual).hasSameElementsAs(expected);
+    List<ElasticAggregations> actual2 = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
+    AtomicInteger idx2 = new AtomicInteger();
+    actual2.forEach(m -> {
+      if (m.isPipelineAggregation()) {
+        assertEquals(expected.get(idx2.getAndIncrement()), m.getElasticPipelineAggregationBuilder());
+      } else {
+        assertEquals(expected.get(idx2.getAndIncrement()), m.getElasticAggregationBuilder());
+      }
+    });
 
     // Test aggregation with multiple aggregations including a nested one which has itself multiple
     // aggregations
@@ -724,17 +743,24 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     expected.clear();
     expected.addAll(
         List.of(
+            AggregationBuilders.terms("my-first-agg-name").field("my-field"),
             AggregationBuilders.nested("testCaseResultSummary", "testCaseResultSummary")
                 .subAggregation(
                     AggregationBuilders.terms("status_counts")
                         .field("testCaseResultSummary.status"))
                 .subAggregation(
                     AggregationBuilders.terms("other_status_counts")
-                        .field("testCaseResultSummary.status")),
-            AggregationBuilders.terms("my-first-agg-name").field("my-field")));
+                        .field("testCaseResultSummary.status"))));
 
-    actual = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
-    assertThat(actual).hasSameElementsAs(expected);
+    List<ElasticAggregations> actual3 = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
+    AtomicInteger idx3 = new AtomicInteger();
+    actual3.forEach(m -> {
+      if (m.isPipelineAggregation()) {
+        assertEquals(expected.get(idx3.getAndIncrement()), m.getElasticPipelineAggregationBuilder());
+      } else {
+        assertEquals(expected.get(idx3.getAndIncrement()), m.getElasticAggregationBuilder());
+      }
+    });
 
     // Test aggregation with nested aggregation and sub-aggregation
     aggregationQuery =
@@ -778,20 +804,81 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     expected.clear();
     expected.addAll(
         List.of(
+            AggregationBuilders.terms("my-first-agg-name")
+                        .field("my-field")
+                        .subAggregation(
+                                AggregationBuilders.terms("my-nested-agg-name").field("my-other-field")),
             AggregationBuilders.nested("testCaseResultSummary", "testCaseResultSummary")
                 .subAggregation(
                     AggregationBuilders.terms("status_counts")
                         .field("testCaseResultSummary.status"))
                 .subAggregation(
                     AggregationBuilders.terms("other_status_counts")
-                        .field("testCaseResultSummary.status")),
-            AggregationBuilders.terms("my-first-agg-name")
-                .field("my-field")
-                .subAggregation(
-                    AggregationBuilders.terms("my-nested-agg-name").field("my-other-field"))));
+                        .field("testCaseResultSummary.status"))));
 
-    actual = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
-    assertThat(actual).hasSameElementsAs(expected);
+    List<ElasticAggregations> actual4 = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
+    AtomicInteger idx4 = new AtomicInteger();
+    actual4.forEach(m -> {
+      if (m.isPipelineAggregation()) {
+        assertEquals(expected.get(idx4.getAndIncrement()), m.getElasticPipelineAggregationBuilder());
+      } else {
+        assertEquals(expected.get(idx4.getAndIncrement()), m.getElasticAggregationBuilder());
+      }
+    });
+
+    aggregationQuery = """
+      {
+        "aggregations": {
+            "entityFQN": {
+                "terms": {
+                    "field": "originEntityFQN",
+                    "size": 1000
+                },
+                "aggs": {
+                    "status": {
+                        "terms": {
+                            "field": "testCaseStatus.keyword",
+                            "include": "Failed,Aborted"
+                        }
+                    },
+                    "status_bucket_filter": {
+                        "bucket_selector": {
+                            "pathKeys": "status",
+                            "pathValues": "status._bucket_count",
+                            "script": "params.status == 0"
+                        }
+                    }
+                }
+            }
+        }
+      }
+      """;
+    aggregationJson = JsonUtils.readJson(aggregationQuery).asJsonObject();
+
+    expected.clear();
+    expected.add(
+            AggregationBuilders.terms("entityFQN")
+                    .field("originEntityFQN")
+                    .size(1000)
+                    .subAggregation(
+                            AggregationBuilders.terms("status")
+                                    .field("testCaseStatus.keyword")
+                                    .includeExclude(new IncludeExclude(new String[]{"Failed","Aborted"}, null)))
+                    .subAggregation(
+                            PipelineAggregatorBuilders.bucketSelector(
+                                            "status_bucket_filter",
+                                            Map.of("status", "status._bucket_count"),
+                                            new Script("params.status == 0"))));
+
+    List<ElasticAggregations> actual5 = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
+    AtomicInteger idx5 = new AtomicInteger();
+    actual5.forEach(m -> {
+      if (m.isPipelineAggregation()) {
+        assertEquals(expected.get(idx5.getAndIncrement()), m.getElasticPipelineAggregationBuilder());
+      } else {
+        assertEquals(expected.get(idx5.getAndIncrement()), m.getElasticAggregationBuilder());
+      }
+    });
   }
 
   @Test

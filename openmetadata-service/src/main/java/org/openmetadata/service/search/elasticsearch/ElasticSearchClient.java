@@ -87,15 +87,19 @@ import es.org.elasticsearch.search.SearchModule;
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.aggregations.BucketOrder;
+import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.PipelineAggregatorBuilders;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.AvgAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.metrics.CardinalityAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.pipeline.BucketSelectorPipelineAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import es.org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -124,6 +128,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
@@ -160,6 +166,9 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
+import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
+import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsFactory;
+import org.openmetadata.service.search.elasticsearch.aggregations.ElasticNestedAggregations;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator;
@@ -1100,85 +1109,54 @@ public class ElasticSearchClient implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
+
+
   /*
   Build dynamic aggregation from elasticsearch JSON like aggregation query.
   See TestSuiteResourceTest for example usage (ln. 506) for tested aggregation query.
 
   @param aggregations - JsonObject containing the aggregation query
    */
-  public static List<AggregationBuilder> buildAggregation(JsonObject aggregations) {
-    List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
+  public static List<ElasticAggregations> buildAggregation(JsonObject aggregations) {
+    List<ElasticAggregations> aggregationsList = new ArrayList<>();
     for (String key : aggregations.keySet()) {
       JsonObject aggregation = aggregations.getJsonObject(key);
       Set<String> keySet = aggregation.keySet();
       for (String aggregationType : keySet) {
-        switch (aggregationType) {
-          case "terms":
-            JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
-            TermsAggregationBuilder termsAggregationBuilder =
-                AggregationBuilders.terms(key).field(termAggregation.getString("field"));
-            aggregationBuilders.add(termsAggregationBuilder);
-            break;
-          case "avg":
-            JsonObject avgAggregation = aggregation.getJsonObject(aggregationType);
-            AvgAggregationBuilder avgAggregationBuilder =
-                AggregationBuilders.avg(key).field(avgAggregation.getString("field"));
-            aggregationBuilders.add(avgAggregationBuilder);
-            break;
-          case "date_histogram":
-            JsonObject dateHistogramAggregation = aggregation.getJsonObject(aggregationType);
-            String calendarInterval = dateHistogramAggregation.getString("calendar_interval");
-            DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
-                AggregationBuilders.dateHistogram(key)
-                    .field(dateHistogramAggregation.getString("field"))
-                    .calendarInterval(new DateHistogramInterval(calendarInterval));
-            aggregationBuilders.add(dateHistogramAggregationBuilder);
-            break;
-          case "top_hits":
-            JsonObject topHitsAggregation = aggregation.getJsonObject(aggregationType);
-            TopHitsAggregationBuilder topHitsAggregationBuilder =
-                AggregationBuilders.topHits(key)
-                    .size(topHitsAggregation.getInt("size"))
-                    .sort(
-                        topHitsAggregation.getString("sort_field"),
-                        SortOrder.fromString(topHitsAggregation.getString("sort_order")));
-            aggregationBuilders.add(topHitsAggregationBuilder);
-            break;
-          case "nested":
-            JsonObject nestedAggregation = aggregation.getJsonObject("nested");
-            AggregationBuilder nestedAggregationBuilder =
-                AggregationBuilders.nested(
-                    nestedAggregation.getString("path"), nestedAggregation.getString("path"));
-            JsonObject nestedAggregations = aggregation.getJsonObject("aggs");
-
-            List<AggregationBuilder> nestedAggregationBuilders =
-                buildAggregation(nestedAggregations);
-            for (AggregationBuilder nestedAggregationBuilder1 : nestedAggregationBuilders) {
-              nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
-            }
-            aggregationBuilders.add(nestedAggregationBuilder);
-            break;
-          case "aggs":
-            // Sub aggregation logic
-            if (!keySet.contains("nested")) {
-              JsonObject subAggregation = aggregation.getJsonObject("aggs");
-              if (!nullOrEmpty(aggregationBuilders)) {
-                AggregationBuilder aggregationBuilder =
-                    aggregationBuilders.get(aggregationBuilders.size() - 1);
-                List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
-                for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
-                  aggregationBuilder.subAggregation(subAggregationBuilder);
+        if ((aggregationType.equals("aggs"))) {
+            if (keySet.contains("nested")) continue;
+            // Here qw
+            JsonObject subAggregation = aggregation.getJsonObject("aggs");
+            if (!nullOrEmpty(aggregationsList)) {
+              ElasticAggregations agg = aggregationsList.get(aggregationsList.size() - 1);
+              List<ElasticAggregations> subAggregationBuilders = buildAggregation(subAggregation);
+              for (ElasticAggregations subAggregationBuilder : subAggregationBuilders) {
+                if (!subAggregationBuilder.isPipelineAggregation()) {
+                  agg.setSubAggregation(subAggregationBuilder.getElasticAggregationBuilder());
+                } else {
+                  agg.setSubAggregation(subAggregationBuilder.getElasticPipelineAggregationBuilder());
                 }
               }
-              break;
             }
-            break;
-          default:
-            break;
+            continue;
+          }
+
+        ElasticAggregations agg = ElasticAggregationsFactory.getAggregation(aggregationType);
+        agg.createAggregation(aggregation, key);
+        aggregationsList.add(agg);
+
+        if (aggregationType.equals(ElasticNestedAggregations.aggregationType)) {
+          JsonObject nestedAggregations = aggregation.getJsonObject("aggs");
+          List<ElasticAggregations> nestedAggregationBuilders = buildAggregation(nestedAggregations);
+          for (ElasticAggregations nestedAggregationBuilder : nestedAggregationBuilders) {
+            if (!nestedAggregationBuilder.isPipelineAggregation()) {
+              agg.setSubAggregation(nestedAggregationBuilder.getElasticAggregationBuilder());
+            }
+          }
         }
       }
     }
-    return aggregationBuilders;
+    return aggregationsList;
   }
 
   @Override
@@ -1186,7 +1164,7 @@ public class ElasticSearchClient implements SearchClient {
       String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
     String aggregationStr = (String) aggregationMetadata.get("aggregationStr");
     JsonObject aggregationObj = JsonUtils.readJson("{%s}".formatted(aggregationStr)).asJsonObject();
-    List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregationObj);
+    List<ElasticAggregations> aggregationBuilder = buildAggregation(aggregationObj);
 
     // Create search request
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
@@ -1208,8 +1186,12 @@ public class ElasticSearchClient implements SearchClient {
     }
     searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
 
-    for (AggregationBuilder aggregation : aggregationBuilder) {
-      searchSourceBuilder.aggregation(aggregation);
+    for (ElasticAggregations aggregation : aggregationBuilder) {
+      if (!aggregation.isPipelineAggregation()) {
+        searchSourceBuilder.aggregation(aggregation.getElasticAggregationBuilder());
+      } else {
+        searchSourceBuilder.aggregation(aggregation.getElasticPipelineAggregationBuilder());
+      }
     }
 
     searchRequest.source(searchSourceBuilder);
@@ -1230,7 +1212,7 @@ public class ElasticSearchClient implements SearchClient {
       return null;
     }
 
-    List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregations);
+    List<ElasticAggregations> aggregationBuilder = buildAggregation(aggregations);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(index));
@@ -1250,8 +1232,13 @@ public class ElasticSearchClient implements SearchClient {
 
     searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
 
-    for (AggregationBuilder aggregation : aggregationBuilder) {
-      searchSourceBuilder.aggregation(aggregation);
+    for (ElasticAggregations aggregation : aggregationBuilder) {
+      if (!aggregation.isPipelineAggregation()) {
+        searchSourceBuilder.aggregation(aggregation.getElasticAggregationBuilder());
+      } else {
+        searchSourceBuilder.aggregation(
+            aggregation.getElasticPipelineAggregationBuilder());
+      }
     }
 
     searchRequest.source(searchSourceBuilder);
