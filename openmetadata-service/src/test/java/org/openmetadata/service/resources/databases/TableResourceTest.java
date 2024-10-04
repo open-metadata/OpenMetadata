@@ -19,7 +19,6 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -2726,41 +2725,29 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
     // Create table with invalid tags field
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(TableCsv.HEADERS));
-    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,c1,c1,c1,,INT,,,,";
-    String csv = createCsv(TableCsv.HEADERS, listOf(record), null);
+    // Add an invalid column tag
+    String csvRecord = "c1,,,,INT,,,Tag.invalidTag,";
+    String csv = createCsv(TableCsv.HEADERS, listOf(csvRecord), null);
     CsvImportResult result = importCsv(tableName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows =
         new String[] {
           resultsHeader,
-          getFailedRecord(record, EntityCsv.entityNotFound(4, "tag", "Tag.invalidTag"))
-        };
-    assertRows(result, expectedRows);
-
-    // Add an invalid column tag
-    record = "s1,dsp1,dsc1,,,,,,,,c1,,,,INT,,,Tag.invalidTag,";
-    csv = createCsv(TableCsv.HEADERS, listOf(record), null);
-    result = importCsv(tableName, csv, false);
-    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
-    expectedRows =
-        new String[] {
-          resultsHeader,
-          getFailedRecord(record, EntityCsv.entityNotFound(17, "tag", "Tag.invalidTag"))
+          getFailedRecord(csvRecord, EntityCsv.entityNotFound(7, "tag", "Tag.invalidTag"))
         };
     assertRows(result, expectedRows);
 
     // Update a non-existing column, this should create a new column with name "nonExistingColumn"
-    record = "s1,dsp1,dsc1,,,,,,,,nonExistingColumn,,,,INT,,,,";
-    csv = createCsv(TableCsv.HEADERS, listOf(record), null);
+    csvRecord = "nonExistingColumn,,,,INT,,,,";
+    csv = createCsv(TableCsv.HEADERS, listOf(csvRecord), null);
     result = importCsv(tableName, csv, false);
     assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
-    expectedRows = new String[] {resultsHeader, getSuccessRecord(record, "Entity updated")};
+    expectedRows = new String[] {resultsHeader, getSuccessRecord(csvRecord, "Entity updated")};
     assertRows(result, expectedRows);
   }
 
   @Test
   void testImportExport() throws IOException {
-    String user1 = USER1.getName();
     Column c1 = new Column().withName("c1").withDataType(STRUCT);
     Column c11 = new Column().withName("c11").withDataType(INT);
     Column c2 = new Column().withName("c2").withDataType(INT);
@@ -2775,13 +2762,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
-            String.format(
-                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,c1,"
-                    + "dsp1-new,desc1,type,STRUCT,,,PII.Sensitive,",
-                user1, escapeCsv(DOMAIN.getFullyQualifiedName())),
-            ",,,,,,,,,,c1.c11,dsp11-new,desc11,type1,INT,,,PII.Sensitive,",
-            ",,,,,,,,,,c2,,,type1,INT,,,,",
-            ",,,,,,,,,,c3,,,type1,INT,,,,");
+            "c1,dsp1-new,desc1,type,STRUCT,,,PII.Sensitive,",
+            "c1.c11,dsp11-new,desc11,type1,INT,,,PII.Sensitive,",
+            "c2,,,type1,INT,,,,",
+            "c3,,,type1,INT,,,,");
 
     // Update created entity with changes
     importCsvAndValidate(table.getFullyQualifiedName(), TableCsv.HEADERS, null, updateRecords);
