@@ -17,6 +17,23 @@ from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     Table,
 )
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseConnection,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -40,12 +57,57 @@ MOCK_TABLE = Table(
     "input,expected",
     [
         (
-            "postgresql+psycopg2://test:test@localhost:5432/dvdrental",
+            DatabaseService(
+                id="85811038-099a-11ed-861d-0242ac120002",
+                name="postgres",
+                connection=DatabaseConnection(
+                    config=PostgresConnection(
+                        username="test",
+                        authType=BasicAuth(
+                            password="test",
+                        ),
+                        hostPort="localhost:5432",
+                        database="dvdrental",
+                    )
+                ),
+                serviceType=DatabaseServiceType.Postgres,
+            ),
             "postgresql://test:test@localhost:5432/database",
         ),
         (
-            "snowflake://test:test@localhost:5432/dvdrental",
-            "snowflake://test:test@localhost:5432/database/schema",
+            DatabaseService(
+                id="85811038-099a-11ed-861d-0242ac120002",
+                name="mysql",
+                connection=DatabaseConnection(
+                    config=MysqlConnection(
+                        username="test",
+                        authType=BasicAuth(
+                            password="test",
+                        ),
+                        hostPort="localhost:5432",
+                        databaseSchema="mysql_db",
+                    )
+                ),
+                serviceType=DatabaseServiceType.Mysql,
+            ),
+            "mysql://test:test@localhost:5432/mysql_db",
+        ),
+        (
+            DatabaseService(
+                id="85811038-099a-11ed-861d-0242ac120002",
+                name="snowflake",
+                connection=DatabaseConnection(
+                    config=SnowflakeConnection(
+                        username="test",
+                        password="test",
+                        account="sf-account",
+                        database="dvdrental",
+                        warehouse="SF_DH",
+                    )
+                ),
+                serviceType=DatabaseServiceType.Postgres,
+            ),
+            "snowflake://test:test@sf-account/database/schema?account=sf-account&warehouse=SF_DH",
         ),
     ],
 )
