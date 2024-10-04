@@ -1,7 +1,7 @@
-# 1.5.5 Release 🎉
+# 1.5.6 Release 🎉
 
 {% note noteType="Tip" %}
-**Sep 25th, 2024**
+**Oct 3rd, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,37 +10,34 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.5!
+Learn how to upgrade your OpenMetadata instance to 1.5.6!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.5-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.6-release).
 
 # What's Changed
 
-- Made the type optional in ES Response.
-- Added support for refresh tokens with multiple tabs open.
-- Resolved issue of overriding user info after login.
-- Updated the custom property entities data model, along with the data product and database schema icons.
-- Ensured Teams and Owner fields are correctly passed in the policy API call.
-- Enhanced PII logging information.
-- Addressed the paginate_es issue in OpenSearch.
-- Decrypted JWT internally for system health checks.
-- Implemented multithreading in View Lineage Processing.
-- Improved search relevancy.
-- Resolved issue with owners patch.
-- Fixed Snowflake data diff issue.
-- Updated Presidio Analyzer version and validated support for legal entities.
-- Added validations for Salesforce connection.
-- Allowed PII Processor to operate without storing sample data.
-- Added seconds to the human-readable format scale for test case graphs.
-- Added missing field in glossary term.
-- Excluded defaultPersona if not present in personas.
-- Resolved team export issue.
-- Updated Python lineage SDK to work with UUID and FQN models.
-- Fixed LDAP login issue.
-- Column sizing of data quality and pipeline widget ${CollateIconWithLinkMD}
-- Export with new line in description ${CollateIconWithLinkMD}
-- Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
+- Fixed MSTR connector import.
+- Show displayName for database and databaseSchema in explore tree.
+- Allow PowerBI datamodel children in column lineage.
+- Fixed manifest is not parsed correctly on dbt versionless.
+- Fixed lineage & queries in dbt.
+- Added DBT tests with versionless and fixed v7 parsing.
+- Reset displayName to avoid being persisted while editing user display name.
+- Fixed incorrect schema implementations in Swagger annotations.
+- Resolved type null exception on user feed.
+- Addressed missing cast to str.
+- Fixed DI Missing Dashboard Description Status.
+- Fixed SAML redirect leads to 404 page on UI.
+- Fixed General Profiler Bugs.
+- Fixed time format for the created_at of the DBT cloud pipeline status.
+- Fixed role page size from 10 to 50.
+- Fixed Search Indexing.
+- Improved AlationSink connector.
+- Fixed sktime version to fix AUT
+- Fixed Expected ColumnLineage but got dict
+- Improved Collate API with Knowledge Center routes.  ${CollateIconWithLinkMD}
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.4-release...1.5.5-release
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.5-release...1.5.6-release
