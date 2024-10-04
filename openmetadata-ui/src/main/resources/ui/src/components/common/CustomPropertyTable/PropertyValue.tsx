@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon, { DownOutlined, UpOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -29,6 +29,7 @@ import {
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { t } from 'i18next';
 import {
   isArray,
@@ -50,13 +51,17 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as ArrowIconComponent } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
-import { ENUM_WITH_DESCRIPTION } from '../../../constants/CustomProperty.constants';
+import {
+  ENUM_WITH_DESCRIPTION,
+  INLINE_PROPERTY_TYPES,
+} from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -91,18 +96,23 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const { propertyName, propertyType, value } = useMemo(() => {
-    const propertyName = property.name;
-    const propertyType = property.propertyType;
+  const { propertyName, propertyType, value, isInlineProperty } =
+    useMemo(() => {
+      const propertyName = property.name;
+      const propertyType = property.propertyType;
+      const isInlineProperty = INLINE_PROPERTY_TYPES.includes(
+        propertyType.name ?? ''
+      );
 
-    const value = extension?.[propertyName];
+      const value = extension?.[propertyName];
 
-    return {
-      propertyName,
-      propertyType,
-      value,
-    };
-  }, [property, extension]);
+      return {
+        propertyName,
+        propertyType,
+        value,
+        isInlineProperty,
+      };
+    }, [property, extension]);
 
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -485,6 +495,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={commonStyle}>
@@ -540,6 +551,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={{ ...commonStyle, marginBottom: '16px' }}>
@@ -557,6 +569,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={commonStyle}>
@@ -617,6 +630,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="sql-query-custom-property"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -856,7 +870,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                                 isTeam={item.type === 'team'}
                                 name={item.name ?? ''}
                                 type="circle"
-                                width="24"
+                                width="18"
                               />
                             ) : (
                               searchClassBase.getEntityIcon(item.type)
@@ -865,7 +879,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                         }
                         type="text">
                         <Typography.Text
-                          className="text-left text-lg"
+                          className="text-left text-primary truncate w-68"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
@@ -900,14 +914,14 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 icon={
                   <div
                     className="entity-button-icon m-r-xs"
-                    style={{ width: '24px', display: 'flex' }}>
+                    style={{ width: '20px', display: 'flex' }}>
                     {['user', 'team'].includes(item.type) ? (
                       <ProfilePicture
                         className="d-flex"
                         isTeam={item.type === 'team'}
                         name={item.name ?? ''}
                         type="circle"
-                        width="24"
+                        width="18"
                       />
                     ) : (
                       searchClassBase.getEntityIcon(item.type)
@@ -916,7 +930,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 }
                 type="text">
                 <Typography.Text
-                  className="text-left text-lg"
+                  className="text-left text-primary truncate w-68 "
                   data-testid="entityReference-value-name"
                   ellipsis={{ tooltip: true }}>
                   {getEntityName(item)}
@@ -938,16 +952,36 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="break-all"
             data-testid="time-interval-value">
             <span>
-              <Typography.Text className="text-xs">{`StartTime: `}</Typography.Text>
-              <Typography.Text className="text-sm font-medium text-grey-body">
+              <Typography.Text>{`${t('label.start-entity', {
+                entity: t('label.time'),
+              })}: `}</Typography.Text>
+              <Typography.Text className="text-sm text-grey-body property-value">
                 {timeInterval.start}
               </Typography.Text>
               <Divider className="self-center" type="vertical" />
-              <Typography.Text className="text-xs">{`EndTime: `}</Typography.Text>
-              <Typography.Text className="text-sm font-medium text-grey-body">
+              <Typography.Text>{`${t('label.end-entity', {
+                entity: t('label.time'),
+              })}: `}</Typography.Text>
+              <Typography.Text className="text-sm text-grey-body property-value">
                 {timeInterval.end}
               </Typography.Text>
             </span>
+          </Typography.Text>
+        );
+      }
+
+      case 'dateTime-cp': {
+        if (isUndefined(value)) {
+          return null;
+        }
+
+        const [date, time] = value?.split(' ');
+
+        return (
+          <Typography.Text
+            className="break-all text-grey-body property-value"
+            data-testid="value">
+            {`${date} | ${time}`}
           </Typography.Text>
         );
       }
@@ -956,7 +990,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'integer':
       case 'number':
       case 'date-cp':
-      case 'dateTime-cp':
       case 'time-cp':
       case 'email':
       case 'timestamp':
@@ -964,7 +997,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       default:
         return (
           <Typography.Text
-            className="break-all text-xl font-semibold text-grey-body"
+            className="break-all text-grey-body property-value"
             data-testid="value">
             {value}
           </Typography.Text>
@@ -1001,13 +1034,45 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     setIsOverflowing(isOverflowing);
   }, [property, extension, contentRef, value]);
 
+  const customPropertyInlineElement = (
+    <div className="d-flex flex-column gap-2" data-testid={propertyName}>
+      <div className="d-flex justify-between w-full items-center">
+        <div className="d-flex flex-column gap-1 w-full">
+          <Typography.Text
+            className="property-name text-grey-body"
+            data-testid="property-name">
+            {getEntityName(property)}
+          </Typography.Text>
+        </div>
+
+        <div className="d-flex gap-2 w-full items-center justify-end">
+          {showInput ? getPropertyInput() : getValueElement()}
+          {hasEditPermissions && !showInput && (
+            <Tooltip
+              placement="left"
+              title={t('label.edit-entity', { entity: propertyName })}>
+              <Icon
+                component={EditIconComponent}
+                data-testid={`edit-icon${
+                  isRenderedInRightPanel ? '-right-panel' : ''
+                }`}
+                style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                onClick={onShowInput}
+              />
+            </Tooltip>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   const customPropertyElement = (
-    <Row gutter={[0, 16]}>
+    <Row data-testid={propertyName} gutter={[0, 16]}>
       <Col span={24}>
         <Row gutter={[0, 2]}>
-          <Col className="d-flex justify-between w-full" span={24}>
+          <Col className="d-flex justify-between items-center w-full" span={24}>
             <Typography.Text
-              className="text-md text-grey-body"
+              className="text-grey-body property-name"
               data-testid="property-name">
               {getEntityName(property)}
             </Typography.Text>
@@ -1026,54 +1091,68 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               </Tooltip>
             )}
           </Col>
-          <Col span={24}>
-            <RichTextEditorPreviewer
-              className="text-grey-muted"
-              markdown={property.description || ''}
-            />
-          </Col>
+          {!isRenderedInRightPanel && (
+            <Col span={24}>
+              <RichTextEditorPreviewer
+                className="text-grey-muted property-description"
+                markdown={property.description || ''}
+                maxLength={70}
+                reducePreviewLineClass="max-one-line"
+              />
+            </Col>
+          )}
         </Row>
       </Col>
 
       <Col span={24}>
-        <Row gutter={[6, 0]}>
-          <Col
+        <div
+          className={classNames(
+            'd-flex justify-between w-full gap-2',
+            {
+              'items-end': isExpanded,
+            },
+            {
+              'items-center': !isExpanded,
+            }
+          )}>
+          <div
+            className="w-full"
             ref={contentRef}
-            span={22}
             style={{
               height: isExpanded || showInput ? 'auto' : '30px',
-              overflow: isExpanded ? 'visible' : 'hidden',
+              overflow: isExpanded || showInput ? 'visible' : 'hidden',
             }}>
             {showInput ? getPropertyInput() : getValueElement()}
-          </Col>
+          </div>
           {isOverflowing && !showInput && (
-            <Col span={2}>
-              <Button
-                className="custom-property-value-toggle-btn"
-                data-testid={`toggle-${propertyName}`}
-                size="small"
-                type="text"
-                onClick={toggleExpand}>
-                {isExpanded ? <UpOutlined /> : <DownOutlined />}
-              </Button>
-            </Col>
+            <Icon
+              className={classNames('custom-property-value-toggle-btn', {
+                active: isExpanded,
+              })}
+              component={ArrowIconComponent}
+              data-testid={`toggle-${propertyName}`}
+              style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+              onClick={toggleExpand}
+            />
           )}
-        </Row>
+        </div>
       </Col>
     </Row>
   );
 
   if (isRenderedInRightPanel) {
     return (
-      <div data-testid="custom-property-right-panel-card">
-        {customPropertyElement}
+      <div
+        className="custom-property-card custom-property-card-right-panel"
+        data-testid="custom-property-right-panel-card">
+        {isInlineProperty ? customPropertyInlineElement : customPropertyElement}
       </div>
     );
   }
 
   return (
     <Card
-      className="w-full"
+      className="w-full custom-property-card"
       data-testid={`custom-property-${propertyName}-card`}>
       {customPropertyElement}
     </Card>
