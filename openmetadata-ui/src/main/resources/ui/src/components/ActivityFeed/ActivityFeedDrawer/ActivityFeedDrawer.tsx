@@ -16,8 +16,8 @@ import classNames from 'classnames';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
+import { useReserveSidebar } from '../../../hooks/useReserveSidebar';
 import Loader from '../../common/Loader/Loader';
-import applicationsClassBase from '../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
@@ -34,7 +34,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   className,
 }) => {
   const { t } = useTranslation();
-  const ApplicationExtras = applicationsClassBase.getApplicationExtension();
+  const { isSidebarReserve } = useReserveSidebar();
   const {
     focusReplyEditor,
     isDrawerLoading,
@@ -75,7 +75,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       ) : (
         <Row
           className={classNames({
-            ['reserve-right-sidebar']: Boolean(ApplicationExtras),
+            ['reserve-right-sidebar']: isSidebarReserve,
           })}
           gutter={[0, 16]}
           id="feed-panel">
