@@ -234,6 +234,38 @@ class TestParameters(BaseModel):
                     testCaseStatus=TestCaseStatus.Failed,
                 ),
             ),
+            (
+                TestCaseDefinition(
+                    name="postgres_different_case_columns_fail",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="caseSensitiveColumns", value="true"
+                        )
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
+                TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Success,
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="postgres_different_case_columns_success",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(name="caseSensitiveColumns", value="")
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
+                TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Success,
+                ),
+            ),
         ]
     ],
 )
@@ -429,6 +461,15 @@ def test_error_paths(
 
 def add_changed_tables(connection: Connection):
     connection.execute("CREATE TABLE customer_200 AS SELECT * FROM customer LIMIT 200;")
+    connection.execute(
+        "CREATE TABLE customer_different_case_columns AS SELECT * FROM customer;"
+    )
+    connection.execute(
+        'ALTER TABLE customer_different_case_columns RENAME COLUMN first_name TO "First_Name";'
+    )
+    connection.execute(
+        "ALTER TABLE customer_different_case_columns ALTER COLUMN store_id TYPE decimal"
+    )
     connection.execute("CREATE TABLE changed_customer AS SELECT * FROM customer;")
     connection.execute(
         "UPDATE changed_customer SET first_name = 'John' WHERE MOD(customer_id, 2) = 0;"

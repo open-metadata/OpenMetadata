@@ -65,8 +65,8 @@ class BaseTestValidator(ABC):
         """
         raise NotImplementedError
 
+    @staticmethod
     def get_test_case_param_value(
-        self,
         test_case_param_vals: list[TestCaseParameterValue],
         name: str,
         type_: T,
@@ -77,6 +77,7 @@ class BaseTestValidator(ABC):
         test case definition.
 
         Args:
+            test_case_param_vals: list of test case parameter values
             test_case: the test case
             type_ (Union[float, int, str]): type for the value
             name (str): column name
@@ -87,7 +88,7 @@ class BaseTestValidator(ABC):
             (param.value for param in test_case_param_vals if param.name == name), None
         )
 
-        if not value:
+        if value is None:
             return default if default is not None else None
 
         if not pre_processor:
