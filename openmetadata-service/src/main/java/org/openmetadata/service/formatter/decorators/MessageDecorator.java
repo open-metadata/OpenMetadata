@@ -523,6 +523,7 @@ public interface MessageDecorator<T> {
     NAME,
     OWNERS,
     TAGS,
+    DESCRIPTION,
     TEST_CASE_FQN,
     INSPECTION_QUERY,
     SAMPLE_DATA

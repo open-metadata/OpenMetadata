@@ -25,6 +25,7 @@ import com.slack.api.model.block.composition.TextObject;
 import com.slack.api.model.block.element.ImageElement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -119,19 +121,16 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       throw new UnhandledServerException("No messages found for the event");
     }
 
-    List<LayoutBlock> messageBlocks = createMessage(publisherName, event, outgoingMessage);
-    List<SlackAttachment> attachments = createSlackAttachments();
-    return new SlackMessage(messageBlocks, attachments.toArray(new SlackAttachment[0]));
+    return createMessage(publisherName, event, outgoingMessage);
   }
 
-  private List<LayoutBlock> createMessage(
+  private SlackMessage createMessage(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-    String entityType = event.getEntityType();
 
-    return switch (entityType) {
+    return switch (event.getEntityType()) {
       case Entity.INGESTION_PIPELINE -> createIngestionPipelineMessage(
           publisherName, event, outgoingMessage);
-      case Entity.TEST_CASE -> createDQTemplate(publisherName, event, outgoingMessage);
+      case Entity.TEST_CASE -> createDQTemplateMessage(publisherName, event, outgoingMessage);
       default -> createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
     };
   }
@@ -142,7 +141,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     attachment.setColor("#36a64f");
     attachment.setTitle("OpenMetadata");
     attachment.setText(SLACK_ATTACHMENT_BODY);
-    attachment.setTs(String.valueOf(System.currentTimeMillis() / 1000)); // Adding timestamp
+    attachment.setTs(String.valueOf(System.currentTimeMillis() / 1000));
 
     List<SlackAttachment> attachmentList = new ArrayList<>();
     attachmentList.add(attachment);
@@ -190,20 +189,26 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
                         BlockCompositions.markdownText(applyBoldFormat("OpenMetadata"))))));
 
-    SlackAttachment attachment = new SlackAttachment();
-    attachment.setColor("#36a64f");
+    SlackMessage.Attachment attachment = new SlackMessage.Attachment();
+    attachment.setColor("#36a64f"); // green
     attachment.setBlocks(blocks);
 
-    List<SlackAttachment> attachmentList = new ArrayList<>();
-    attachmentList.add(attachment);
-
     SlackMessage message = new SlackMessage();
-    message.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
+    message.setAttachments(Collections.singletonList(attachment));
 
     return message;
   }
 
-  private List<LayoutBlock> createGeneralChangeEventMessage(
+  private SlackMessage createGeneralChangeEventMessage(
+      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+    List<LayoutBlock> generalChangeEventBody =
+        createGeneralChangeEventBody(publisherName, event, outgoingMessage);
+    SlackMessage message = new SlackMessage();
+    message.setBlocks(generalChangeEventBody);
+    return message;
+  }
+
+  private List<LayoutBlock> createGeneralChangeEventBody(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
     List<LayoutBlock> blocks = new ArrayList<>();
 
@@ -221,8 +226,6 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     first_field.add(
         BlockCompositions.markdownText(
             applyBoldFormatWithSpace("Entity Type:") + event.getEntityType()));
-    first_field.add(
-        BlockCompositions.markdownText(applyBoldFormatWithSpace("Publisher:") + publisherName));
     first_field.add(
         BlockCompositions.markdownText(
             applyBoldFormatWithSpace("Time:") + new Date(event.getTimestamp())));
@@ -270,70 +273,57 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                     List.of(
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
                         BlockCompositions.markdownText(TEMPLATE_FOOTER)))));
-
     return blocks;
   }
 
-  private List<LayoutBlock> createIngestionPipelineMessage(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+  private void createDQHeading(
+      List<LayoutBlock> blocks, Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
+    Map<Enum<?>, Object> testCaseResults = templateData.get(DQ_Template_Section.TEST_CASE_RESULT);
+
+    if (nullOrEmpty(testCaseResults)) {
+      addChangeEventDetailsHeader(blocks);
+    } else {
+      String statusWithEmoji =
+          getStatusWithEmoji(testCaseResults.get(DQ_TestCaseResultKeys.STATUS));
+      Map<Enum<?>, Object> testCaseDetails =
+          templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+      String testName = String.valueOf(testCaseDetails.get(DQ_TestCaseDetailsKeys.NAME));
+      String message =
+          String.format("\"%s\" test completed with status: %s", testName, statusWithEmoji);
+      blocks.add(Blocks.header(header -> header.text(BlockCompositions.plainText(message))));
+    }
+  }
+
+  private List<LayoutBlock> createDQBodyBlocks(
+      String publisherName,
+      ChangeEvent event,
+      OutgoingMessage outgoingMessage,
+      Map<DQ_Template_Section, Map<Enum<?>, Object>> data) {
     List<LayoutBlock> blocks = new ArrayList<>();
 
-    IngestionPipeline entityInterface = (IngestionPipeline) getEntity(event);
-
     // Header
-    addChangeEventDetailsHeader(blocks);
+    createDQHeading(blocks, data);
 
     // Info about the event
     List<TextObject> first_field = new ArrayList<>();
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBoldWithSpace(), "Event Type:") + event.getEventType()));
+            applyBoldFormatWithSpace("Event Type:") + event.getEventType()));
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBoldWithSpace(), "Updated By:") + event.getUserName()));
+            applyBoldFormatWithSpace("Updated By:") + event.getUserName()));
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBoldWithSpace(), "Entity Type:") + event.getEntityType()));
+            applyBoldFormatWithSpace("Entity Type:") + event.getEntityType()));
     first_field.add(
         BlockCompositions.markdownText(
-            String.format(getBoldWithSpace(), "Publisher:") + publisherName));
-    first_field.add(
-        BlockCompositions.markdownText(
-            String.format(getBoldWithSpace(), "Time:") + new Date(event.getTimestamp())));
+            applyBoldFormatWithSpace("Time:") + new Date(event.getTimestamp())));
 
     // Split fields into multiple sections to avoid block limits
     for (int i = 0; i < first_field.size(); i += 10) {
       List<TextObject> sublist = first_field.subList(i, Math.min(i + 10, first_field.size()));
       blocks.add(Blocks.section(section -> section.fields(sublist)));
     }
-
-    // Divider
-    blocks.add(Blocks.divider());
-
-    List<TextObject> pipelineFields =
-        Arrays.asList(
-            BlockCompositions.markdownText(
-                String.format(getBold(), "Pipeline ID") + getLineBreak() + entityInterface.getId()),
-            BlockCompositions.markdownText(
-                String.format(getBold(), "Pipeline Name")
-                    + getLineBreak()
-                    + entityInterface.getDisplayName()),
-            BlockCompositions.markdownText(
-                String.format(getBold(), "Pipeline Type")
-                    + getLineBreak()
-                    + entityInterface.getPipelineType()),
-            BlockCompositions.markdownText(
-                String.format(getBold(), "Status")
-                    + getLineBreak()
-                    + buildPipelineStatusMessage(entityInterface.getPipelineStatuses())),
-            BlockCompositions.markdownText(
-                String.format(getBold(), "Provider")
-                    + getLineBreak()
-                    + entityInterface.getProvider()));
-
-    blocks.add(Blocks.section(section -> section.fields(pipelineFields)));
-
-    blocks.add(Blocks.divider());
 
     String fqnForChangeEventEntity = getFQNForChangeEventEntity(event);
 
@@ -371,37 +361,152 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                 context.elements(
                     List.of(
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
+                        BlockCompositions.markdownText(TEMPLATE_FOOTER)))));
+    return blocks;
+  }
+
+  private SlackMessage createIngestionPipelineMessage(
+      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+
+    IngestionPipeline ingestionPipeline = (IngestionPipeline) getEntity(event);
+
+    // Create the message with general change event body
+    SlackMessage message = new SlackMessage();
+    message.setBlocks(createGeneralChangeEventBody(publisherName, event, outgoingMessage));
+
+    // Check if pipelineStatuses is null and handle accordingly
+    PipelineStatus pipelineStatus = ingestionPipeline.getPipelineStatuses();
+    String color = "#808080"; // Default to gray if no status is found
+    if (pipelineStatus != null && pipelineStatus.getPipelineState() != null) {
+      color = getPipelineStatusColor(pipelineStatus.getPipelineState());
+    }
+
+    // Create the attachment with pipeline-specific details and color
+    SlackMessage.Attachment attachment = new SlackMessage.Attachment();
+    attachment.setColor(color);
+    attachment.setBlocks(createIngestionPipelineBody(ingestionPipeline));
+
+    message.setAttachments(Collections.singletonList(attachment));
+
+    return message;
+  }
+
+  private List<LayoutBlock> createIngestionPipelineBody(IngestionPipeline ingestionPipeline) {
+    List<LayoutBlock> blocks = new ArrayList<>();
+
+    // Header
+    addIngestionPipelineAttachmentHeader(blocks);
+
+    // Divider
+    blocks.add(Blocks.divider());
+
+    List<TextObject> pipelineFields =
+        Arrays.asList(
+            BlockCompositions.markdownText(
+                String.format(getBold(), "Pipeline ID")
+                    + getLineBreak()
+                    + ingestionPipeline.getId()),
+            BlockCompositions.markdownText(
+                String.format(getBold(), "Pipeline Name")
+                    + getLineBreak()
+                    + ingestionPipeline.getDisplayName()),
+            BlockCompositions.markdownText(
+                String.format(getBold(), "Pipeline Type")
+                    + getLineBreak()
+                    + ingestionPipeline.getPipelineType()),
+            BlockCompositions.markdownText(
+                String.format(getBold(), "Status")
+                    + getLineBreak()
+                    + buildPipelineStatusMessage(ingestionPipeline.getPipelineStatuses())));
+
+    blocks.add(Blocks.section(section -> section.fields(pipelineFields)));
+
+    blocks.add(Blocks.divider());
+
+    // Context Block
+    blocks.add(
+        Blocks.context(
+            context ->
+                context.elements(
+                    List.of(
+                        ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
                         BlockCompositions.markdownText("Change Event By OpenMetadata")))));
 
     return blocks;
   }
 
   // DQ TEMPLATE
-  public List<LayoutBlock> createDQTemplate(
+  public SlackMessage createDQTemplateMessage(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-    List<LayoutBlock> blocks = new ArrayList<>();
 
     Map<DQ_Template_Section, Map<Enum<?>, Object>> dqTemplateData =
         buildDQTemplateData(publisherName, event, outgoingMessage);
 
-    // Header Block
-    addChangeEventDetailsHeader(blocks);
+    List<LayoutBlock> body =
+        createDQBodyBlocks(publisherName, event, outgoingMessage, dqTemplateData);
 
-    // Section 1 - ID and Name
+    SlackMessage message = new SlackMessage();
+    message.setBlocks(body);
+
+    Map<Enum<?>, Object> enumObjectMap = dqTemplateData.get(DQ_Template_Section.TEST_CASE_RESULT);
+    if (!nullOrEmpty(enumObjectMap)) {
+      SlackMessage.Attachment attachment =
+          createDQAttachment(publisherName, event, outgoingMessage, dqTemplateData);
+
+      attachment.setColor(
+          determineColorBasedOnStatus(enumObjectMap.get(DQ_TestCaseResultKeys.STATUS)));
+
+      message.setAttachments(Collections.singletonList(attachment));
+    }
+
+    return message;
+  }
+
+  private String determineColorBasedOnStatus(Object object) {
+    if (object instanceof TestCaseStatus status) {
+      return switch (status) {
+        case Success -> "#36a64f"; // Green for success
+        case Failed -> "#ff0000"; // Red for failure
+        case Aborted -> "#ffcc00"; // Yellow for aborted
+        case Queued -> "#439FE0"; // Blue for queued
+        default -> "#808080"; // Gray for unknown or default cases
+      };
+    }
+    return "#808080"; // Default to gray if the object is not a valid TestCaseStatus
+  }
+
+  private String getStatusWithEmoji(Object object) {
+    if (object instanceof TestCaseStatus status) {
+      return switch (status) {
+        case Success -> "Success :white_check_mark:"; // Green checkmark for success
+        case Failed -> "Failed :x:"; // Red cross for failure
+        case Aborted -> "Aborted :warning:"; // Warning sign for aborted
+        case Queued -> "Queued :hourglass_flowing_sand:"; // Hourglass for queued
+        default -> "Unknown :grey_question:"; // Gray question mark for unknown cases
+      };
+    }
+    return "Unknown :grey_question:"; // Default to unknown if the object is not a valid
+    // TestCaseStatus
+  }
+
+  public SlackMessage.Attachment createDQAttachment(
+      String publisherName,
+      ChangeEvent event,
+      OutgoingMessage outgoingMessage,
+      Map<DQ_Template_Section, Map<Enum<?>, Object>> dqTemplateData) {
+    List<LayoutBlock> blocks = new ArrayList<>();
+
+    // Header Block
+    addDQAlertHeader(blocks);
+
+    // Section 1 - Name
     addIdAndNameSection(blocks, dqTemplateData);
 
-    // Section 2 - Publisher and Updated By
-    addPublisherUpdatedSection(blocks, dqTemplateData);
-
-    // Section 3 - Owners and Tags
+    // Section 2 - Owners and Tags
     addOwnersTagsSection(blocks, dqTemplateData);
 
-    // Section 4 - entity link
-    String entityUrl = buildClickableEntityUrl(outgoingMessage.getEntityUrl());
-    blocks.add(Blocks.section(section -> section.text(BlockCompositions.markdownText(entityUrl))));
-
-    // Section 5 - Test Case FQN
-    addTestCaseFQNSection(blocks, dqTemplateData);
+    // Section 3 - Description
+    addDescriptionSection(blocks, dqTemplateData);
 
     // Divider
     blocks.add(Blocks.divider());
@@ -418,7 +523,10 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
                         BlockCompositions.markdownText("Change Event by OpenMetadata")))));
 
-    return blocks;
+    SlackMessage.Attachment attachment = new SlackMessage.Attachment();
+    attachment.setBlocks(blocks);
+
+    return attachment;
   }
 
   // todo complete buildDQTemplateData fn
@@ -500,31 +608,29 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
     List<TextObject> idNameFields =
         Stream.of(
-                createFieldText("ID", testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.ID, "-")),
                 createFieldText(
-                    "Name", testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.NAME, "-")))
+                    "Name :", testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.NAME, "-")))
             .collect(Collectors.toList());
 
     blocks.add(Blocks.section(section -> section.fields(idNameFields)));
   }
 
-  private void addPublisherUpdatedSection(
+  private void addDescriptionSection(
       List<LayoutBlock> blocks, Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
 
-    Map<Enum<?>, Object> eventDetails = templateData.get(DQ_Template_Section.EVENT_DETAILS);
-    if (nullOrEmpty(eventDetails)) {
+    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
+    if (nullOrEmpty(testCaseDetails)) {
       return;
     }
 
-    List<TextObject> eventDetailFields =
+    List<TextObject> idNameFields =
         Stream.of(
-                createFieldText(
-                    "Publisher", eventDetails.getOrDefault(EventDetailsKeys.PUBLISHER, "-")),
-                createFieldText(
-                    "Updated By", eventDetails.getOrDefault(EventDetailsKeys.UPDATED_BY, "-")))
+                createFieldTextWithNewLine(
+                    "Description",
+                    testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.DESCRIPTION, "-")))
             .collect(Collectors.toList());
 
-    blocks.add(Blocks.section(section -> section.fields(eventDetailFields)));
+    blocks.add(Blocks.section(section -> section.fields(idNameFields)));
   }
 
   private void addOwnersTagsSection(
@@ -537,31 +643,13 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
     List<TextObject> ownerTagFields =
         Stream.of(
-                createFieldText(
+                createFieldTextWithNewLine(
                     "Owners", testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.OWNERS, "-")),
-                createFieldText(
+                createFieldTextWithNewLine(
                     "Tags", testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TAGS, "-")))
             .collect(Collectors.toList());
 
     blocks.add(Blocks.section(section -> section.fields(ownerTagFields)));
-  }
-
-  private void addTestCaseFQNSection(
-      List<LayoutBlock> blocks, Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
-
-    Map<Enum<?>, Object> testCaseDetails = templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
-    if (nullOrEmpty(testCaseDetails)) {
-      return;
-    }
-
-    List<TextObject> fqnField =
-        Stream.of(
-                createFieldText(
-                    "Test Case FQN",
-                    testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TEST_CASE_FQN, "-")))
-            .collect(Collectors.toList());
-
-    blocks.add(Blocks.section(section -> section.fields(fqnField)));
   }
 
   private List<LayoutBlock> createTestCaseResultSections(
@@ -613,7 +701,8 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
         Stream.of(
                 BlockCompositions.markdownText(
                     applyBoldFormatWithSpace("Status -")
-                        + testCaseResults.getOrDefault(DQ_TestCaseResultKeys.STATUS, "-")))
+                        + getStatusWithEmoji(
+                            testCaseResults.getOrDefault(DQ_TestCaseResultKeys.STATUS, "-"))))
             .collect(Collectors.toList());
 
     blocks.add(Blocks.section(section -> section.fields(statusParameterFields)));
@@ -785,6 +874,17 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return statusString.toString();
   }
 
+  private String getPipelineStatusColor(PipelineStatusType pipelineState) {
+    return switch (pipelineState) {
+      case QUEUED -> "#439FE0"; // Blue for queued
+      case RUNNING -> "#FFA500"; // Orange for running
+      case SUCCESS -> "#36a64f"; // Green for success
+      case PARTIAL_SUCCESS -> "#ffcc00"; // Yellow for partial success
+      case FAILED -> "#ff0000"; // Red for failure
+      default -> "#808080"; // Gray for unknown cases
+    };
+  }
+
   private String buildClickableEntityUrl(String entityUrl) {
     if (entityUrl.startsWith("<") && entityUrl.endsWith(">")) {
       entityUrl = entityUrl.substring(1, entityUrl.length() - 1);
@@ -798,8 +898,12 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return String.format("Access data: <%s|View>", entityUrl);
   }
 
-  private TextObject createFieldText(String label, Object value) {
+  private TextObject createFieldTextWithNewLine(String label, Object value) {
     return BlockCompositions.markdownText(applyBoldFormatWithNewLine(label) + value);
+  }
+
+  private TextObject createFieldText(String label, Object value) {
+    return BlockCompositions.markdownText(applyBoldFormatWithSpace(label) + value);
   }
 
   private void addChangeEventDetailsHeader(List<LayoutBlock> blocks) {
@@ -809,6 +913,18 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                 header.text(
                     BlockCompositions.plainText(
                         ":arrows_counterclockwise: Change Event Details"))));
+  }
+
+  private void addDQAlertHeader(List<LayoutBlock> blocks) {
+    blocks.add(
+        Blocks.section(
+            section -> section.text(BlockCompositions.markdownText(applyBoldFormat("TEST CASE")))));
+  }
+
+  private void addIngestionPipelineAttachmentHeader(List<LayoutBlock> blocks) {
+    blocks.add(
+        Blocks.section(
+            section -> section.text(BlockCompositions.markdownText(applyBoldFormat("TEST CASE")))));
   }
 
   private String applyBoldFormat(String title) {
