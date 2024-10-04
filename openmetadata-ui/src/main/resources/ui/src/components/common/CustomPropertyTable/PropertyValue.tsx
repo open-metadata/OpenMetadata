@@ -17,7 +17,6 @@ import {
   Card,
   Col,
   DatePicker,
-  Divider,
   Form,
   Input,
   Row,
@@ -53,20 +52,21 @@ import React, {
 import { Link } from 'react-router-dom';
 import { ReactComponent as ArrowIconComponent } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as EndTimeArrowIcon } from '../../../assets/svg/end-time-arrow.svg';
+import { ReactComponent as EndTimeIcon } from '../../../assets/svg/end-time.svg';
+import { ReactComponent as StartTimeIcon } from '../../../assets/svg/start-time.svg';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
-import {
-  ENUM_WITH_DESCRIPTION,
-  INLINE_PROPERTY_TYPES,
-} from '../../../constants/CustomProperty.constants';
+import { ENUM_WITH_DESCRIPTION } from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { EnumConfig, ValueClass } from '../../../generated/type/customProperty';
+import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -96,13 +96,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const { propertyName, propertyType, value, isInlineProperty } =
+  const { propertyName, propertyType, value, isTimeIntervalType } =
     useMemo(() => {
       const propertyName = property.name;
       const propertyType = property.propertyType;
-      const isInlineProperty = INLINE_PROPERTY_TYPES.includes(
-        propertyType.name ?? ''
-      );
+      const isTimeIntervalType = propertyType.name === 'timeInterval';
 
       const value = extension?.[propertyName];
 
@@ -110,7 +108,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         propertyName,
         propertyType,
         value,
-        isInlineProperty,
+        isTimeIntervalType,
       };
     }, [property, extension]);
 
@@ -948,25 +946,41 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         }
 
         return (
-          <Typography.Text
-            className="break-all"
+          <div
+            className="d-flex justify-between"
             data-testid="time-interval-value">
-            <span>
-              <Typography.Text>{`${t('label.start-entity', {
-                entity: t('label.time'),
-              })}: `}</Typography.Text>
+            <div className="d-flex flex-column gap-2 items-center">
+              <StartTimeIcon height={30} width={30} />
+              <Typography.Text className="property-value">{`${t(
+                'label.start-entity',
+                {
+                  entity: t('label.time'),
+                }
+              )}`}</Typography.Text>
               <Typography.Text className="text-sm text-grey-body property-value">
                 {timeInterval.start}
               </Typography.Text>
-              <Divider className="self-center" type="vertical" />
-              <Typography.Text>{`${t('label.end-entity', {
-                entity: t('label.time'),
-              })}: `}</Typography.Text>
+            </div>
+            <div className="d-flex items-center">
+              <EndTimeArrowIcon />
+              <Tag className="time-interval-separator">
+                {calculateInterval(timeInterval.start, timeInterval.end)}
+              </Tag>
+              <EndTimeArrowIcon />
+            </div>
+            <div className="d-flex flex-column gap-2 items-center">
+              <EndTimeIcon height={30} width={30} />
+              <Typography.Text className="property-value">{`${t(
+                'label.end-entity',
+                {
+                  entity: t('label.time'),
+                }
+              )}`}</Typography.Text>
               <Typography.Text className="text-sm text-grey-body property-value">
                 {timeInterval.end}
               </Typography.Text>
-            </span>
-          </Typography.Text>
+            </div>
+          </div>
         );
       }
 
@@ -1029,45 +1043,20 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     const isMarkdownWithValue = propertyType.name === 'markdown' && value;
     const isOverflowing =
       (contentRef.current.scrollHeight > 30 || isMarkdownWithValue) &&
-      propertyType.name !== 'entityReference';
+      propertyType.name !== 'entityReference' &&
+      !(isTimeIntervalType && isRenderedInRightPanel);
 
     setIsOverflowing(isOverflowing);
   }, [property, extension, contentRef, value]);
 
-  const customPropertyInlineElement = (
-    <div className="d-flex flex-column gap-2" data-testid={propertyName}>
-      <div className="d-flex justify-between w-full items-center">
-        <div className="d-flex flex-column gap-1 w-full">
-          <Typography.Text
-            className="property-name text-grey-body"
-            data-testid="property-name">
-            {getEntityName(property)}
-          </Typography.Text>
-        </div>
-
-        <div className="d-flex gap-2 w-full items-center justify-end">
-          {showInput ? getPropertyInput() : getValueElement()}
-          {hasEditPermissions && !showInput && (
-            <Tooltip
-              placement="left"
-              title={t('label.edit-entity', { entity: propertyName })}>
-              <Icon
-                component={EditIconComponent}
-                data-testid={`edit-icon${
-                  isRenderedInRightPanel ? '-right-panel' : ''
-                }`}
-                style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                onClick={onShowInput}
-              />
-            </Tooltip>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  const containerStyleFlag = useMemo(() => {
+    return (
+      isExpanded || showInput || (isTimeIntervalType && isRenderedInRightPanel)
+    );
+  }, [isExpanded, showInput, isTimeIntervalType, isRenderedInRightPanel]);
 
   const customPropertyElement = (
-    <Row data-testid={propertyName} gutter={[0, 16]}>
+    <Row data-testid={propertyName} gutter={[0, 8]}>
       <Col span={24}>
         <Row gutter={[0, 2]}>
           <Col className="d-flex justify-between items-center w-full" span={24}>
@@ -1119,8 +1108,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="w-full"
             ref={contentRef}
             style={{
-              height: isExpanded || showInput ? 'auto' : '30px',
-              overflow: isExpanded || showInput ? 'visible' : 'hidden',
+              height: containerStyleFlag ? 'auto' : '30px',
+              overflow: containerStyleFlag ? 'visible' : 'hidden',
             }}>
             {showInput ? getPropertyInput() : getValueElement()}
           </div>
@@ -1145,7 +1134,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       <div
         className="custom-property-card custom-property-card-right-panel"
         data-testid="custom-property-right-panel-card">
-        {isInlineProperty ? customPropertyInlineElement : customPropertyElement}
+        {customPropertyElement}
       </div>
     );
   }
