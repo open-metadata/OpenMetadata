@@ -65,10 +65,10 @@
     "output": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["approved"],
+      "default": ["approved", "resolvedBy"],
       "additionalItems": false,
-      "minItems": 1,
-      "maxItems": 1
+      "minItems": 2,
+      "maxItems": 2
     }
   }
 }

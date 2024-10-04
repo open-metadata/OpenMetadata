@@ -596,7 +596,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
       variables.put("approved", true);
-      variables.put("user", user);
+      variables.put("resolvedBy", user);
       WorkflowHandler.getInstance().resolveTask(taskId, variables);
       // ---
 
@@ -612,7 +612,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
       variables.put("approved", false);
-      variables.put("user", user);
+      variables.put("resolvedBy", user);
       WorkflowHandler.getInstance().resolveTask(taskId, variables);
     }
   }

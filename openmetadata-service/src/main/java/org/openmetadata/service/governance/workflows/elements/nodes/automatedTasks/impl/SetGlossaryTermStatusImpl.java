@@ -15,30 +15,32 @@ import org.openmetadata.service.util.JsonUtils;
 
 import javax.json.JsonPatch;
 import java.util.Map;
+import java.util.Optional;
 
 
 public class SetGlossaryTermStatusImpl implements JavaDelegate {
     private Expression statusExpr;
     @Override
     public void execute(DelegateExecution execution) {
-        String status = (String) statusExpr.getValue(execution);
-        String user = (String) execution.getVariable("user");
-
         EntityReference entityReference = JsonUtils.readOrConvertValue(execution.getVariable("relatedEntity"), EntityReference.class);
-        setStatus(entityReference, user, status);
+        GlossaryTerm glossaryTerm = Entity.getEntity(entityReference, "*", Include.ALL);
+
+        String status = (String) statusExpr.getValue(execution);
+        String user = Optional.ofNullable((String) execution.getVariable("resolvedBy"))
+                .orElse(glossaryTerm.getUpdatedBy());
+
+        setStatus(glossaryTerm, user, status);
     }
 
-    private void setStatus(EntityReference entityReference, String user, String status) {
-        GlossaryTerm glossaryTerm = Entity.getEntity(entityReference, "*", Include.ALL);
+    private void setStatus(GlossaryTerm glossaryTerm, String user, String status) {
         String originalJson = JsonUtils.pojoToJson(glossaryTerm);
 
         glossaryTerm.setStatus(GlossaryTerm.Status.fromValue(status));
-
         String updatedJson = JsonUtils.pojoToJson(glossaryTerm);
+
         JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
 
         GlossaryTermRepository entityRepository = (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-        // TODO: How to deal when user is null because it's an automated decision?
         entityRepository.patch(null, glossaryTerm.getId(), user, patch);
     }
 }
