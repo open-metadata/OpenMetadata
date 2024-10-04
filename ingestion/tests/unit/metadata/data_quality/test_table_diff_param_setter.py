@@ -30,8 +30,8 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
     SnowflakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseService,
     DatabaseConnection,
+    DatabaseService,
     DatabaseServiceType,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
