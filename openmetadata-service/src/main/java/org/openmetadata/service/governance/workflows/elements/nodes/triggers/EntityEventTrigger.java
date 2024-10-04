@@ -25,6 +25,9 @@ public class EntityEventTrigger implements WorkflowNodeInterface {
         getMetadataExtension(
                 node.getName(), node.getDisplayName(), node.getDescription()));
 
+    // Attach Listeners
+    attachWorkflowInstanceStageUpdaterListeners(startEvent);
+
     String signalId = getEntitySignalId(node.getConfig().getEntityType(), node.getConfig().getEvent().toString());
     Signal signal = new Signal();
     signal.setId(signalId);

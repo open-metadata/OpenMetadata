@@ -29,7 +29,7 @@ public class CheckEntityHasReviewersTask implements WorkflowNodeInterface {
                         nodeDefinition.getDescription()));
 
         // Attach Listeners
-        attachSubProcessListeners(subProcess);
+        attachWorkflowInstanceStageUpdaterListeners(subProcess);
 
         StartEvent startEvent = new StartEvent();
         startEvent.setId(getFlowableElementId(nodeDefinition.getName(), "startEvent"));

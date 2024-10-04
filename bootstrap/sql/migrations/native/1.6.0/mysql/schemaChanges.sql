@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS workflow_definition_entity (
 -- Workflow Instance extension time series
 CREATE TABLE workflow_instance_state_time_series (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.id'))) STORED NOT NULL,
+  workflowDefinitionId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowDefinitionReference.id'))) STORED NOT NULL,
   workflowInstanceId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowInstanceId'))) STORED NOT NULL,
   stage varchar(256) GENERATED ALWAYS AS (json_unquote(json_Extract(json, '$.stage.name'))) STORED NOT NULL,
   stageStartedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.stage.startedAt'))) STORED NOT NULL,
@@ -24,7 +25,9 @@ CREATE TABLE workflow_instance_state_time_series (
   json json NOT NULL,
   entityFQNHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
   CONSTRAINT workflow_instance_time_series_unique_constraint UNIQUE (id,timestamp,entityFQNHash),
-  INDEX (id)
+  PRIMARY KEY (id),
+  INDEX (workflowDefinitionId),
+  INDEX (workflowInstanceId)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Flowable Related Tables

@@ -32,6 +32,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ReportDataContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -106,17 +107,17 @@ public class WorkflowInstanceStateResource
           @QueryParam("latest")
           Boolean latest,
       @Parameter(
-              description = "Workflow Definition fully qualified name",
-              schema = @Schema(type = "String"))
-          @QueryParam("workflowDefinitionFQN")
-          String workflowDefinitionFQN) {
+              description = "Workflow Definition ID",
+              schema = @Schema(type = "UUID"))
+          @QueryParam("workflowDefinitionId")
+          UUID workflowDefinitionId) {
     OperationContext operationContext =
         new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     ListFilter filter = new ListFilter(null);
-    filter.addQueryParam("entityFQNHash", workflowDefinitionFQN);
+    filter.addQueryParam("workflowDefinitionId", workflowDefinitionId.toString());
 
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
   }
@@ -138,9 +139,9 @@ public class WorkflowInstanceStateResource
       })
   public ResultList<WorkflowInstanceState> listForStateId(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Workflow Instance ID", schema = @Schema(type = "String"))
+      @Parameter(description = "Workflow Instance ID", schema = @Schema(type = "UUID"))
           @PathParam("workflowInstanceId")
-          String workflowInstanceId) {
+          UUID workflowInstanceId) {
     OperationContext operationContext =
         new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();

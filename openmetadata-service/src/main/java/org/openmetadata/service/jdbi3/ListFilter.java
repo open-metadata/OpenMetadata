@@ -45,6 +45,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getAssignee());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getApiCollectionCondition(tableName));
+    conditions.add(getWorkflowDefinitionIdCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -52,6 +53,11 @@ public class ListFilter extends Filter<ListFilter> {
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
     return assignee == null ? "" : String.format("assignee = '%s'", assignee);
+  }
+
+  private String getWorkflowDefinitionIdCondition() {
+    String workflowDefinitionId = queryParams.get("workflowDefinitionId");
+    return workflowDefinitionId == null ? "" : String.format("workflowDefinitionId = '%s'", workflowDefinitionId);
   }
 
   private String getEventSubscriptionAlertType() {

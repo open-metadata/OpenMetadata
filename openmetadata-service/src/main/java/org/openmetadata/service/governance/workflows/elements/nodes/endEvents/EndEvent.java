@@ -3,8 +3,10 @@ package org.openmetadata.service.governance.workflows.elements.nodes.endEvents;
 import static org.openmetadata.service.governance.workflows.Workflow.getMetadataExtension;
 
 import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.Process;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.service.governance.workflows.WorkflowInstanceStageUpdaterListener;
 import org.openmetadata.service.governance.workflows.elements.WorkflowNodeInterface;
 
 public class EndEvent implements WorkflowNodeInterface {
@@ -16,6 +18,9 @@ public class EndEvent implements WorkflowNodeInterface {
     endEvent.setName(nodeDefinition.getDisplayName());
     endEvent.addExtensionElement(
         getMetadataExtension(nodeDefinition.getName(), nodeDefinition.getDisplayName(), null));
+
+    // Attach Listeners
+    attachWorkflowInstanceStageUpdaterListeners(endEvent);
 
     this.endEvent = endEvent;
   }

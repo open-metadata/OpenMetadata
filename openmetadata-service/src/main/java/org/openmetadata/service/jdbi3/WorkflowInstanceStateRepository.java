@@ -26,7 +26,7 @@ public class WorkflowInstanceStateRepository
   }
 
   public ResultList<WorkflowInstanceState> listWorkflowInstanceStatesForWorkflowInstanceId(
-      String workflowInstanceId) {
+      UUID workflowInstanceId) {
     List<WorkflowInstanceState> workflowInstanceStates = new ArrayList<>();
     List<String> jsons =
             ((CollectionDAO.WorkflowInstanceStateTimeSeriesDAO) timeSeriesDao)
@@ -39,16 +39,6 @@ public class WorkflowInstanceStateRepository
       workflowInstanceStates.add(workflowInstanceState);
     }
     return getResultList(workflowInstanceStates, null, null, workflowInstanceStates.size());
-  }
-
-  public WorkflowInstanceState getLastWorkflowInstanceStateForWorkflowInstanceId(String workflowInstanceId) {
-    // NOTE: They are ordered using timestamp DESC.
-    return listWorkflowInstanceStatesForWorkflowInstanceId(workflowInstanceId).getData().get(0);
-  }
-
-  public String getFlowableTaskIdFromTaskId(UUID taskId) {
-    return ((CollectionDAO.WorkflowInstanceStateTimeSeriesDAO) timeSeriesDao)
-            .getFlowableTaskIdFromTaskId(taskId);
   }
 
   public WorkflowInstanceState createNewRecord(WorkflowInstanceState recordEntity, String recordFQN) {

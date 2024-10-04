@@ -29,7 +29,7 @@ public class SetGlossaryTermStatusTask implements WorkflowNodeInterface {
                         node.getName(), node.getDisplayName(), node.getDescription()));
 
         // Attach Listeners
-        attachSubProcessListeners(subProcess);
+        attachWorkflowInstanceStageUpdaterListeners(subProcess);
 
         StartEvent startEvent = new StartEvent();
         startEvent.setId(getFlowableElementId(node.getName(), "startEvent"));

@@ -1,10 +1,16 @@
 package org.openmetadata.service.governance.workflows.elements;
 
 import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.EndEvent;
+import org.flowable.bpmn.model.FlowNode;
 import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.Process;
+import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceStageUpdaterListener;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public interface WorkflowNodeInterface {
     void addToWorkflow(BpmnModel model, Process process);
@@ -17,20 +23,24 @@ public interface WorkflowNodeInterface {
         return String.format("[%s] %s", nodeDisplayName, elementName);
     }
 
-    default void attachSubProcessListeners(SubProcess subProcess) {
-        // Add Workflow Start Listener
-        FlowableListener startListener = new FlowableListener();
-        startListener.setEvent("start");
-        startListener.setImplementationType("class");
-        startListener.setImplementation(WorkflowInstanceStageUpdaterListener.class.getName());
-        subProcess.getExecutionListeners().add(startListener);
+    default void attachWorkflowInstanceStageUpdaterListeners(FlowNode flowableNode) {
+        for (FlowableListener listener : getWorkflowInstanceStageUpdaterListeners()) {
+            flowableNode.getExecutionListeners().add(listener);
+        }
+    }
 
+    private List<FlowableListener> getWorkflowInstanceStageUpdaterListeners() {
+        List<FlowableListener> listeners = new ArrayList<>();
 
-        // Add Workflow Start Listener
-        FlowableListener endListener = new FlowableListener();
-        endListener.setEvent("end");
-        endListener.setImplementationType("class");
-        endListener.setImplementation(WorkflowInstanceStageUpdaterListener.class.getName());
-        subProcess.getExecutionListeners().add(endListener);
+        List<String> events = List.of("start", "end");
+        for (String event : events) {
+            FlowableListener listener = new FlowableListener();
+            listener.setEvent(event);
+            listener.setImplementationType("class");
+            listener.setImplementation(WorkflowInstanceStageUpdaterListener.class.getName());
+            listeners.add(listener);
+        }
+
+        return listeners;
     }
 }

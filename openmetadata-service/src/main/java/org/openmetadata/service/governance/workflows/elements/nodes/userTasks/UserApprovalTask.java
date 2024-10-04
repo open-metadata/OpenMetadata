@@ -34,7 +34,7 @@ public class UserApprovalTask implements WorkflowNodeInterface {
                 userApprovalTaskDefinition.getName(), userApprovalTaskDefinition.getDisplayName(), userApprovalTaskDefinition.getDescription()));
 
     // Attach Listeners
-    attachSubProcessListeners(subProcess);
+    attachWorkflowInstanceStageUpdaterListeners(subProcess);
 
 
     StartEvent startEvent = new StartEvent();
