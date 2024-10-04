@@ -160,12 +160,12 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         db_service: DatabaseService, table_fqn, override_url: Optional[str] = None
     ) -> str:
         """Get the url for the data diff service.
-        
+
         Args:
             db_service (DatabaseService): The database service entity
             table_fqn (str): The fully qualified name of the table
             override_url (Optional[str], optional): Override the url. Defaults to None.
-            
+
         Returns:
             str: The url for the data diff service
         """
