@@ -821,6 +821,7 @@
     "owner": "مالک",
     "owner-kpi": "KPI مالک",
     "owner-lowercase": "مالک",
+    "owner-lowercase-plural": "owner",
     "owner-plural": "مالکان",
     "page-not-found": "صفحه یافت نشد",
     "page-views-by-data-asset-plural": "بازدیدهای صفحه توسط دارایی‌های داده",

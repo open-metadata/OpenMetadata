@@ -821,6 +821,7 @@
     "owner": "所有者",
     "owner-kpi": "Owner KPI",
     "owner-lowercase": "所有者",
+    "owner-lowercase-plural": "owner",
     "owner-plural": "所有者",
     "page-not-found": "ページが存在しません",
     "page-views-by-data-asset-plural": "データアセットごとのページビュー",
