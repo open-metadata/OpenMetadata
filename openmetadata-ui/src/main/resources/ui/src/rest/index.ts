@@ -14,8 +14,10 @@
 import axios from 'axios';
 import Qs from 'qs';
 
+const basePath = window.BASE_PATH || '/';
+
 const axiosClient = axios.create({
-  baseURL: '/api/v1',
+  baseURL: `${basePath}api/v1`,
   paramsSerializer: (params) => Qs.stringify(params, { arrayFormat: 'comma' }),
 });
 
