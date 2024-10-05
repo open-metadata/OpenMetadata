@@ -160,22 +160,22 @@
     promise-polyfill "^8.2.1"
     unfetch "^4.2.0"
 
-"@azure/msal-browser@^3.10.0":
-  version "3.10.0"
-  resolved "https://registry.yarnpkg.com/@azure/msal-browser/-/msal-browser-3.10.0.tgz#8925659e8d1a4bd21e389cca4683eb52658c778e"
-  integrity sha512-mnmi8dCXVNZI+AGRq0jKQ3YiodlIC4W9npr6FCB9WN6NQT+6rq+cIlxgUb//BjLyzKsnYo+i4LROGeMyU+6v1A==
+"@azure/msal-browser@^3.25.0":
+  version "3.25.0"
+  resolved "https://registry.yarnpkg.com/@azure/msal-browser/-/msal-browser-3.25.0.tgz#7ce0949977bc9e0c58319f7090c44fe5537104d4"
+  integrity sha512-a0Y7pmSy8SC1s9bvwr+REvyAA1nQcITlZvkElM2gNUPYFTTNUTEdcpg73TmawNucyMdZ9xb/GFcuhrLOqYAzwg==
   dependencies:
-    "@azure/msal-common" "14.7.1"
+    "@azure/msal-common" "14.15.0"
 
-"@azure/msal-common@14.7.1":
-  version "14.7.1"
-  resolved "https://registry.yarnpkg.com/@azure/msal-common/-/msal-common-14.7.1.tgz#b13443fbacc87ce2019a91e81a6582ea73847c75"
-  integrity sha512-v96btzjM7KrAu4NSEdOkhQSTGOuNUIIsUdB8wlyB9cdgl5KqEKnTonHUZ8+khvZ6Ap542FCErbnTyDWl8lZ2rA==
+"@azure/msal-common@14.15.0":
+  version "14.15.0"
+  resolved "https://registry.yarnpkg.com/@azure/msal-common/-/msal-common-14.15.0.tgz#0e27ac0bb88fe100f4f8d1605b64d5c268636a55"
+  integrity sha512-ImAQHxmpMneJ/4S8BRFhjt1MZ3bppmpRPYYNyzeQPeFN288YKbb8TmmISQEbtfkQ1BPASvYZU5doIZOPBAqENQ==
 
-"@azure/msal-react@^2.0.12":
-  version "2.0.12"
-  resolved "https://registry.yarnpkg.com/@azure/msal-react/-/msal-react-2.0.12.tgz#f33c84a57663307fcf3707ca17d9ce2d7934a048"
-  integrity sha512-23HKdajBWQ5SSzcwwFKHAWaOCpq4UCthoOBgKpab3UoHx0OuFMQiq6CrNBzBKtBFdyxCjadBGzWshRgl0Nvk1g==
+"@azure/msal-react@^2.1.1":
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/@azure/msal-react/-/msal-react-2.1.1.tgz#d61cd8698d3963ffff685377ece487d7ad5bc111"
+  integrity sha512-XOBgAR0fbkfUUkQZyhIlwAZiy8WIzNWxAAFacJgyL8LiE2Y5pgM9var9X0Jh7Oz/1Oy5lhTQDtCYWSMHmTZ84Q==
 
 "@babel/code-frame@7.12.11":
   version "7.12.11"
