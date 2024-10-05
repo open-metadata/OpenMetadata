@@ -36,6 +36,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWebhookCondition(tableName));
     conditions.add(getWebhookTypeCondition(tableName));
     conditions.add(getTestCaseCondition());
+    conditions.add(getTestCaseIncidentCondition());
     conditions.add(getTestSuiteTypeCondition(tableName));
     conditions.add(getTestSuiteFQNCondition());
     conditions.add(getDomainCondition(tableName));
@@ -231,6 +232,18 @@ public class ListFilter extends Filter<ListFilter> {
     return addCondition(conditions);
   }
 
+  private String getTestCaseIncidentCondition() {
+    String originEntityFQN = getQueryParam("originEntityFQN");
+    if (originEntityFQN != null) {
+      queryParams.put(
+          "originEntityFQNLike",
+          originEntityFQN + ".%"); // Add wildcard to get all column test cases under the entity
+      return "(testCaseEntityFQN = :originEntityFQN\n"
+          + " OR testCaseEntityFQN LIKE :originEntityFQNLike)";
+    }
+    return "";
+  }
+
   private String getTestSuiteTypeCondition(String tableName) {
     String testSuiteType = getQueryParam("testSuiteType");
 
@@ -303,7 +316,7 @@ public class ListFilter extends Filter<ListFilter> {
     queryParams.put("escapedCategory", category);
     return tableName == null
         ? "category LIKE :escapedCategory"
-        : String.format(tableName + ".category LIKE :escapedCategory");
+        : tableName + ".category LIKE :escapedCategory";
   }
 
   private String getStatusPrefixCondition(String tableName, String statusPrefix) {
@@ -324,7 +337,7 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   protected String addCondition(List<String> conditions) {
-    StringBuffer condition = new StringBuffer();
+    StringBuilder condition = new StringBuilder();
 
     for (String c : conditions) {
       if (!c.isEmpty()) {

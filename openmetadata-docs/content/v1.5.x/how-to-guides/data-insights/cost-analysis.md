@@ -28,12 +28,11 @@ To have cost analysis data available you will need to execute the below workflow
 2. **Profiler Workflow**:
 - Purpose: Gather size information (in bytes) for data assets.
 - Description: The Profiler Workflow is responsible for obtaining the size of data assets in bytes. This information is vital for generating the size-related data used in the Cost Analysis charts. It helps in assessing the resource consumption and cost implications of each asset.
-- Click [here](/connectors/ingestion/workflows/profiler) for documentation on the profiler workflow.
+- Click [here](/how-to-guides/data-quality-observability/profiler/workflow) for documentation on the profiler workflow.
 
 3. **Data Insights Workflow**:
 - Purpose: Aggregate information from Usage Workflow and Profiler Workflow.
 - Description: The Data Insights Workflow serves as the central aggregator of data, combining the Life Cycle information from the Usage Workflow and the size information from the Profiler Workflow. This aggregated data is then utilized in the creation of the Cost Analysis charts. By integrating both usage and size data, it provides a comprehensive view of resource utilization and its impact on costs.
-- Click [here](/how-to-guides/data-insights/airflow-sdk) for documentation on the data insight workflow.
 
 With these three interconnected workflows, the `Cost Analysis` feature enables users to make informed decisions about resource allocation, cost optimization, and performance improvement.
 

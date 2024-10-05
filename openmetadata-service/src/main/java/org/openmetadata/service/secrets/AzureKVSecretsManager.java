@@ -17,7 +17,7 @@ import org.openmetadata.service.exception.SecretsManagerException;
 public class AzureKVSecretsManager extends ExternalSecretsManager {
 
   private static AzureKVSecretsManager instance = null;
-  private SecretClient client;
+  private final SecretClient client;
 
   public static final String CLIENT_ID = "clientId";
   public static final String CLIENT_SECRET = "clientSecret";

@@ -803,7 +803,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     String record = getRecord(1, GROUP, team.getName(), "", false, "", "invalidPolicy");
     String csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows = {
       resultsHeader,
       getFailedRecord(record, EntityCsv.entityNotFound(8, Entity.POLICY, "invalidPolicy"))
@@ -814,7 +814,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, team.getName(), "", false, "invalidRole", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -826,7 +826,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, team.getName(), "user:invalidOwner", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -838,7 +838,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, "invalidParent", "", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(4, TEAM, "invalidParent"))
@@ -849,7 +849,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, TEAM21.getName(), "", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -891,7 +891,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     // Add new team x3 to existing rows
     String record3 = getRecord(3, GROUP, team.getName(), null, true, null, (List<Policy>) null);
-    List<String> newRecords = listOf(record3);
+    // Add new team containing dot character in name
+    String teamNameWithDotRecord =
+        getRecord("team.with.dot", GROUP, team.getName(), null, true, null, (List<Policy>) null);
+    List<String> newRecords = listOf(record3, teamNameWithDotRecord);
     testImportExport(team.getName(), TeamCsv.HEADERS, createRecords, updateRecords, newRecords);
 
     // Import to team111 a user with parent team1 - since team1 is not under team111 hierarchy,
@@ -904,7 +907,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
+  void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a user term, carry it forward from the parent team
     CreateTeam createTeam =
         createRequest(test)
@@ -918,7 +921,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   public Team assertDomainInheritance(CreateTeam createRequest, EntityReference expectedDomain)
-      throws IOException, InterruptedException {
+      throws IOException {
     Team entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
@@ -1214,6 +1217,56 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         index,
         index,
         index,
+        teamType.value(),
+        parent,
+        owner,
+        isJoinable == null ? "" : isJoinable,
+        defaultRoles,
+        policies);
+  }
+
+  private String getRecord(
+      String teamName,
+      TeamType teamType,
+      String parent,
+      User owner,
+      Boolean isJoinable,
+      List<Role> defaultRoles,
+      List<Policy> policies) {
+    return getRecord(
+        teamName,
+        teamType,
+        parent != null ? parent : "",
+        owner != null ? "user:" + owner.getName() : "",
+        isJoinable,
+        defaultRoles != null
+            ? defaultRoles.stream()
+                .flatMap(r -> Stream.of(r.getName()))
+                .collect(Collectors.joining(";"))
+            : "",
+        policies != null
+            ? policies.stream()
+                .flatMap(p -> Stream.of(p.getName()))
+                .collect(Collectors.joining(";"))
+            : "");
+  }
+
+  private String getRecord(
+      String teamName,
+      TeamType teamType,
+      String parent,
+      String owner,
+      Boolean isJoinable,
+      String defaultRoles,
+      String policies) {
+    // CSV Header
+    // "name", "displayName", "description", "teamType", "parents", "owners", "isJoinable",
+    // "defaultRoles", & "policies"
+    return String.format(
+        "x%s,displayName%s,description%s,%s,%s,%s,%s,%s,%s",
+        teamName,
+        teamName,
+        teamName,
         teamType.value(),
         parent,
         owner,

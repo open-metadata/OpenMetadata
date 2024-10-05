@@ -5,6 +5,19 @@ slug: /how-to-guides
 
 # How-to Guides
 
+## Getting Started
+
+Set up and explore OpenMetadata's core features, from basic configuration to advanced functionalities, for a seamless onboarding experience.
+
+{% tilesContainer %}
+{% tile
+    title="Getting Started"
+    description="Unlock metadata insights for informed business decisions."
+    link="/how-to-guides/getting-started"
+    icon="discovery"
+/%}
+{% /tilesContainer %}
+
 The How-to Guides will give you a walk through on accomplishing the basic to the most advanced things in OpenMetadata. These step-by-step guides will help get an overview of the features and also help explore the various functionalities.  
 
 ## Features in OpenMetadata
@@ -79,7 +92,7 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
 
 - Foster **[Team Collaboration](/how-to-guides/data-collaboration)** with conversations, tasks, announcements, and alerts in real time.
 
-- Build trust in your data with **[Data Quality Tests](/how-to-guides/data-quality-profiler)** to ensure completeness and accuracy.
+- Build trust in your data with **[Data Quality Tests](/how-to-guides/data-quality-observability)** to ensure completeness and accuracy.
 
 - Track your data evolution with end-to-end **[Data Lineage](/how-to-guides/data-lineage)**.
 

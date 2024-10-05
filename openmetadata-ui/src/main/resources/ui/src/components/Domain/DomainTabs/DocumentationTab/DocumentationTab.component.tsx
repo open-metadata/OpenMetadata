@@ -22,6 +22,7 @@ import { UserTeamSelectableList } from '../../../../components/common/UserTeamSe
 import DomainTypeSelectForm from '../../../../components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component';
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
@@ -178,6 +179,7 @@ const DocumentationTab = ({
         children: (
           <div className="p-md domain-content-container">
             <DescriptionV1
+              removeBlur
               description={description}
               entityName={getEntityName(domain)}
               entityType={EntityType.DOMAIN}
@@ -190,8 +192,7 @@ const DocumentationTab = ({
             />
           </div>
         ),
-        minWidth: 800,
-        flex: 0.75,
+        ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
       }}
       secondPanel={{
         children: (
@@ -373,8 +374,7 @@ const DocumentationTab = ({
             )}
           </Row>
         ),
-        minWidth: 320,
-        flex: 0.25,
+        ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
         className:
           'entity-resizable-right-panel-container domain-resizable-panel-container',
       }}

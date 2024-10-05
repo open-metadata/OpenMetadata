@@ -13,12 +13,18 @@
 Test database connectors which extend from `CommonDbSourceService` with CLI
 """
 import json
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
 from sqlalchemy.engine import Engine
 
+from metadata.config.common import load_config_file
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.ingestion.api.status import Status
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -44,6 +50,19 @@ class CliCommonDB:
             cls.test_file_path = str(
                 Path(PATH_TO_RESOURCES + f"/database/{connector}/test.yaml")
             )
+
+        @classmethod
+        def tearDownClass(cls):
+            workflow = OpenMetadataWorkflowConfig.model_validate(
+                load_config_file(Path(cls.config_file_path))
+            )
+            db_service: DatabaseService = cls.openmetadata.get_by_name(
+                DatabaseService, workflow.source.serviceName
+            )
+            if db_service and os.getenv("E2E_CLEAN_DB", "false") == "true":
+                cls.openmetadata.delete(
+                    DatabaseService, db_service.id, hard_delete=True, recursive=True
+                )
 
         def tearDown(self) -> None:
             self.engine.dispose()

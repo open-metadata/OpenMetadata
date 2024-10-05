@@ -244,14 +244,14 @@ def _update_column_info(  # pylint: disable=too-many-arguments
     return column_info
 
 
+# pylint: disable=unused-argument
 def _update_coltype(coltype, args, kwargs, attype, name, is_array):
     if coltype:
         coltype = coltype(*args, **kwargs)
         if is_array:
             coltype = ischema_names["_array"](coltype)
     else:
-        util.warn(f"Did not recognize type '{attype}' of column '{name}'")
-        coltype = sqltypes.NULLTYPE
+        coltype = create_sqlalchemy_type("UNKNOWN")
     return coltype
 
 
@@ -386,7 +386,7 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
     result = connection.execute(
         sa.text(
             REDSHIFT_GET_ALL_RELATIONS.format(
-                schema_clause=schema_clause, table_clause=table_clause
+                schema_clause=schema_clause, table_clause=table_clause, limit_clause=""
             )
         )
     )
@@ -395,3 +395,22 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
         key = RelationKey(rel.relname, rel.schema, connection)
         relations[key] = rel
     return relations
+
+
+@reflection.cache
+def get_view_definition(self, connection, view_name, schema=None, **kw):
+    """Return view definition.
+    Given a :class:`.Connection`, a string `view_name`,
+    and an optional string `schema`, return the view definition.
+
+    Overrides interface
+    :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
+    """
+    view = self._get_redshift_relation(connection, view_name, schema, **kw)
+    pattern = re.compile("WITH NO SCHEMA BINDING", re.IGNORECASE)
+    view_definition = str(sa.text(pattern.sub("", view.view_definition)))
+    if not view_definition.startswith("create"):
+        view_definition = (
+            f"CREATE VIEW {view.schema}.{view.relname} AS {view_definition}"
+        )
+    return view_definition

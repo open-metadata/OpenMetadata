@@ -60,8 +60,9 @@ export const createDescriptionTask = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
     );
+
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
 
@@ -110,8 +111,9 @@ export const createTagTask = async (
       '[data-testid="select-assignee"] > .ant-select-selector #assignees'
     );
     await assigneeField.click();
+
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -154,6 +156,8 @@ export const checkTaskCount = async (
   openTask = 0,
   closedTask = 0
 ) => {
+  await page.waitForLoadState('networkidle');
+
   const openTaskElement = await page.getByTestId('open-task').textContent();
 
   expect(openTaskElement).toContain(`${openTask} Open`);

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
+
 export const KPI_CHARTS = [
   {
     id: 'd2f093d4-0ca8-42b8-8721-1c2a59951b59',
@@ -307,7 +309,7 @@ export const KPI_LIST = [
     displayName: 'Description KPI',
     fullyQualifiedName: 'description-kpi',
     description: '',
-    metricType: 'PERCENTAGE',
+    metricType: KpiTargetType.Percentage,
     dataInsightChart: {
       id: '7dc794d3-1881-408c-92fc-6182aa453bc8',
       type: 'dataInsightChart',
@@ -349,6 +351,7 @@ export const KPI_LIST = [
       previousVersion: 0.1,
     },
     deleted: false,
+    targetValue: 58,
   },
 ];
 

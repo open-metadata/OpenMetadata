@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_2'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_6'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -932,6 +932,104 @@ To continue pursuing this objective, the application was completely refactored t
 -   [Improve]: Enhanced the display of tier tags with improved styling for better visibility and distinction.
 -   [Improve]: Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
 -   [Improve]: Added custom properties support in Data Product`,
+    },
+  },
+  {
+    id: 45,
+    version: 'v1.5.3',
+    description: `Released on 10th September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Added resizable columns for custom properties
+-   Added support for automated ingestion of Tableau data source tags and description
+-   Improved "follow data" landing page module performance
+-   Improved search result suggestion by showing display name instead of FQN
+-   Fixed Cost Analysis issue when service has no connection
+-   Improved PII classification for JSON data types
+-   Fixed issue with expand all operation on terms page
+-   Fixed feed freezing when large images are part of the feed results
+-   Fixed dbt run_results file name with dbt cloud connection
+-   Cleaned Argo logs artifacts ${CollateIconWithLinkMD}
+-   Shipped VertexAI Connector ${CollateIconWithLinkMD}
+-   Fixed automator lineage propagation issues with possible None entities ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 46,
+    version: 'v1.5.4',
+    description: `Released on 12th September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Hotfix to the Term Aggregation size on Data Insights
+-   ES pagination with error handling
+-   Updated Domain in Docker Compose & Docs
+-   Fix Classification API returns Table class for restore
+-   Fix Redshift View Def regex_replace Error
+-   Make ingestion pipeline APIs public
+-   Fix token limitations using config ${CollateIconWithLinkMD}
+-   Updating the domain PRINCIPAL DOMAIN
+-   Fix Automator pagination ${CollateIconWithLinkMD}
+-   Fix MetaPilot push for no constraint ${CollateIconWithLinkMD}
+-   Glossary list selector for bulk import
+-   Unable to access import glossary page`,
+    },
+  },
+  {
+    id: 47,
+    version: 'v1.5.5',
+    description: `Released on 23rd September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   **Minor**: Made the type optional in ES Response.
+-   **Feature**: Added support for refresh tokens with multiple tabs open.
+-   **Fix**: Resolved issue of overriding user info after login.
+-   **Minor**: Updated the custom property entities data model, along with the data product and database schema icons.
+-   **Fix**: Ensured Teams and Owner fields are correctly passed in the policy API call.
+-   **Improvement**: Enhanced PII logging information.
+-   **Fix**: Addressed the paginate_es issue in OpenSearch.
+-   **Feature**: Decrypted JWT internally for system health checks.
+-   **Minor**: Implemented multithreading in View Lineage Processing.
+-   **Improvement**: Improved search relevancy.
+-   **Fix**: Resolved issue with owners patch.
+-   **Fix (Data Quality)**: Fixed Snowflake data diff issue.
+-   **Minor**: Updated Presidio Analyzer version and validated support for legal entities.
+-   **Feature**: Added validations for Salesforce connection.
+-   **Feature**: Allowed PII Processor to operate without storing sample data.
+-   **Minor**: Added seconds to the human-readable format scale for test case graphs.
+-   **Fix**: Added missing field in glossary term.
+-   **Fix**: Excluded defaultPersona if not present in personas.
+-   **Fix**: Resolved team export issue.
+-   **Fix**: Updated Python lineage SDK to work with UUID and FQN models.
+-   **Fix**: Fixed LDAP login issue.
+-   **Fix**: Column sizing of data quality and pipeline widget ${CollateIconWithLinkMD}
+-   **Fix**: Export with new line in description ${CollateIconWithLinkMD}
+-   **Minor**: Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
+`,
+    },
+  },
+  {
+    id: 48,
+    version: 'v1.5.6',
+    description: 'Released on 3rd October 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   **Minor**: MSTR connector import fix.
+-   **Minor**: Show displayName for database and databaseSchema in explore tree.
+-   **Minor**: Allow PowerBI datamodel children in col.lineage.
+-   **Fix**: Manifest is not parsed correctly on dbt versionless.
+-   **Minor**: Fixed lineage & queries in dbt.
+-   **Improvement**: Added DBT tests with versionless and fixed v7 parsing.
+-   **Minor**: Reset displayName to avoid being persisted.
+-   **Fix**: Fixed incorrect @Schema implementations in Swagger annotations.
+-   **Fix**: Resolved type null exception on user feed.
+-   **Fix**: Addressed missing cast to str.
+-   **Minor**: DI Missing Dashboard Description Status.
+-   **Fix**: SAML redirect leads to 404 page on UI.
+-   **Minor**: Fixed General Profiler Bugs.
+-   **Improvement**: Change time format for the created_at of the DBT cloud pipeline status.
+-   **Minor**: Fixed role page size from 10 to 50.
+-   **Fix**: Search Indexing Fixes.
+-   **Improvement**: Collate API with Knowledge Center routes ${CollateIconWithLinkMD}.`,
     },
   },
 ];

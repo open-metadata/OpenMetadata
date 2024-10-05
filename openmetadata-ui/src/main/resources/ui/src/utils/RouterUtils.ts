@@ -13,6 +13,7 @@
 
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
+import process from 'process';
 import {
   getServiceDetailsPath,
   IN_PAGE_SEARCH_ROUTES,
@@ -608,4 +609,8 @@ export const getNotificationAlertDetailsPath = (fqn: string) => {
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
+};
+
+export const getPathNameFromWindowLocation = () => {
+  return window.location.pathname.replace(process.env.APP_SUB_PATH ?? '', '');
 };

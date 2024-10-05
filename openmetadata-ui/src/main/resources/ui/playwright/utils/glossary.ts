@@ -499,9 +499,7 @@ export const approveGlossaryTermTask = async (
   await taskResolve;
 
   // Display toast notification
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /Task resolved successfully/
-  );
+  await toastNotification(page, /Task resolved successfully/);
 };
 
 export const validateGlossaryTerm = async (
@@ -869,7 +867,7 @@ export const createDescriptionTaskForGlossary = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -924,7 +922,7 @@ export const createTagTaskForGlossary = async (
     );
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;

@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -60,6 +60,7 @@ import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { Metric } from '../../../generated/entity/data/metric';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
@@ -68,6 +69,7 @@ import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.compon
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
+import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './data-asset-header.less';
 import {
@@ -148,6 +150,7 @@ export const DataAssetsHeader = ({
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
   extraDropdownContent,
+  onMetricUpdate,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
@@ -158,18 +161,18 @@ export const DataAssetsHeader = ({
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
-  const icon = useMemo(
-    () =>
-      dataAsset?.serviceType ? (
-        <img
-          className="h-9"
-          src={serviceUtilClassBase.getServiceTypeLogo(
-            dataAsset as SearchSourceAlias
-          )}
-        />
-      ) : null,
-    [dataAsset]
-  );
+  const icon = useMemo(() => {
+    const serviceType = get(dataAsset, 'serviceType', '');
+
+    return serviceType ? (
+      <img
+        className="h-9"
+        src={serviceUtilClassBase.getServiceTypeLogo(
+          dataAsset as SearchSourceAlias
+        )}
+      />
+    ) : null;
+  }, [dataAsset]);
   const [copyTooltip, setCopyTooltip] = useState<string>();
 
   const excludeEntityService = useMemo(
@@ -429,6 +432,14 @@ export const DataAssetsHeader = ({
                     hasPermission={permissions.EditAll && !dataAsset.deleted}
                     retentionPeriod={(dataAsset as Table).retentionPeriod}
                     onUpdate={onUpdateRetentionPeriod}
+                  />
+                )}
+
+                {entityType === EntityType.METRIC && onMetricUpdate && (
+                  <MetricHeaderInfo
+                    metricDetails={dataAsset as Metric}
+                    metricPermissions={permissions}
+                    onUpdateMetricDetails={onMetricUpdate}
                   />
                 )}
 

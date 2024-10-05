@@ -1122,7 +1122,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String record = "invalid::User,,,user@domain.com,,,team-invalidCsv,";
     String csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows = {
       resultsHeader, getFailedRecord(record, "[name must match \"^((?!::).)*$\"]")
     };
@@ -1134,7 +1134,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     record = "user,,,user@domain.com,,,invalidTeam,";
     csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -1146,7 +1146,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     record = "user,,,user@domain.com,,,team-invalidCsv,invalidRole";
     csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -1316,7 +1316,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
+  void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a user term, carry it forward from the parent team
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam =
@@ -1329,7 +1329,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   public User assertDomainInheritance(CreateUser createRequest, EntityReference expectedDomain)
-      throws IOException, InterruptedException {
+      throws IOException {
     User entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);

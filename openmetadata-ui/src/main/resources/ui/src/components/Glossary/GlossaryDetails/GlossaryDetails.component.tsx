@@ -12,6 +12,7 @@
  */
 
 import { Col, Row, Space, Tabs } from 'antd';
+import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +20,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
@@ -178,8 +180,7 @@ const GlossaryDetails = ({
                   </Space>
                 </div>
               ),
-              minWidth: 800,
-              flex: 0.75,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
             }}
             secondPanel={{
               children: (
@@ -194,8 +195,7 @@ const GlossaryDetails = ({
                   onUpdate={handleGlossaryUpdate}
                 />
               ),
-              minWidth: 320,
-              flex: 0.25,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
               className:
                 'entity-resizable-right-panel-container glossary-resizable-panel-container',
             }}
@@ -271,7 +271,11 @@ const GlossaryDetails = ({
       className="glossary-details"
       data-testid="glossary-details"
       gutter={[0, 16]}>
-      <Col className="p-x-md p-l-xl" span={24}>
+      <Col
+        className={classNames('p-x-md', {
+          'p-l-xl': !isVersionView,
+        })}
+        span={24}>
         <GlossaryHeader
           isGlossary
           isVersionView={isVersionView}

@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.charts;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -173,7 +173,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
+  void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a dashboard service, carry it forward from the chart
     CreateDashboardService createService =
         serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());

@@ -22,6 +22,7 @@ from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
 from requests.utils import quote
 
+from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -71,6 +72,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 logger = workflow_logger()
 
 ENTITY_CLASS_MAP = {
+    "apiService": ApiService,
     "databaseService": DatabaseService,
     "pipelineService": PipelineService,
     "dashboardService": DashboardService,

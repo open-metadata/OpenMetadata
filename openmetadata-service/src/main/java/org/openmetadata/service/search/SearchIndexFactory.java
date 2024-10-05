@@ -14,6 +14,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.APICollectionIndex;
 import org.openmetadata.service.search.indexes.APIEndpointIndex;
@@ -59,6 +61,7 @@ import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.IngestionPipelineIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
 import org.openmetadata.service.search.indexes.MetadataServiceIndex;
+import org.openmetadata.service.search.indexes.MetricIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.MlModelServiceIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
@@ -75,6 +78,7 @@ import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TeamIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
+import org.openmetadata.service.search.indexes.TestCaseResultIndex;
 import org.openmetadata.service.search.indexes.TestSuiteIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
@@ -93,6 +97,7 @@ public class SearchIndexFactory {
       case Entity.INGESTION_PIPELINE -> new IngestionPipelineIndex((IngestionPipeline) entity);
       case Entity.USER -> new UserIndex((User) entity);
       case Entity.TEAM -> new TeamIndex((Team) entity);
+      case Entity.METRIC -> new MetricIndex((Metric) entity);
       case Entity.GLOSSARY -> new GlossaryIndex((Glossary) entity);
       case Entity.GLOSSARY_TERM -> new GlossaryTermIndex((GlossaryTerm) entity);
       case Entity.MLMODEL -> new MlModelIndex((MlModel) entity);
@@ -134,6 +139,7 @@ public class SearchIndexFactory {
           (ReportData) entity);
       case Entity.TEST_CASE_RESOLUTION_STATUS -> new TestCaseResolutionStatusIndex(
           (TestCaseResolutionStatus) entity);
+      case Entity.TEST_CASE_RESULT -> new TestCaseResultIndex((TestCaseResult) entity);
       default -> buildExternalIndexes(entityType, entity);
     };
   }

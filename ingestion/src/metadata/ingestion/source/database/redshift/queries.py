@@ -236,31 +236,7 @@ REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"
 # hence we are appending "create view <schema>.<table> as " to select query
 # to generate the column level lineage
 REDSHIFT_GET_ALL_RELATIONS = """
-  WITH view_defs AS (
-      SELECT
-          c.oid,
-          pg_catalog.pg_get_viewdef(c.oid, true) AS view_definition,
-          n.nspname,
-          c.relname
-      FROM
-          pg_catalog.pg_class c
-          LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-      WHERE
-          c.relkind = 'v'
-    ),
-    adjusted_view_defs AS (
-        SELECT
-            oid,
-            CASE
-                WHEN view_definition LIKE '%WITH NO SCHEMA BINDING%' THEN
-                  REGEXP_REPLACE(view_definition, 'create view [^ ]+ as (.*WITH NO SCHEMA BINDING;?)', '\\1')
-                ELSE
-                  'CREATE VIEW ' || nspname || '.' || relname || ' AS ' || view_definition
-            END AS view_definition
-        FROM
-            view_defs
-    )
-    SELECT
+    (SELECT
         c.relkind,
         n.oid as "schema_oid",
         n.nspname as "schema",
@@ -271,17 +247,17 @@ REDSHIFT_GET_ALL_RELATIONS = """
         AS "diststyle",
         c.relowner AS "owner_id",
         u.usename AS "owner_name",
-        avd.view_definition 
+        CAST(pg_catalog.pg_get_viewdef(c.oid, true) AS TEXT)
         AS "view_definition",
         pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
     FROM pg_catalog.pg_class c
             LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
             JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
-            LEFT JOIN adjusted_view_defs avd ON avd.oid = c.oid
     WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
         AND n.nspname !~ '^pg_' {schema_clause} {table_clause}
+        {limit_clause})
     UNION
-    SELECT
+    (SELECT
         'r' AS "relkind",
         s.esoid AS "schema_oid",
         s.schemaname AS "schema",
@@ -297,7 +273,8 @@ REDSHIFT_GET_ALL_RELATIONS = """
         JOIN svv_external_schemas s ON s.schemaname = t.schemaname
         JOIN pg_catalog.pg_user u ON u.usesysid = s.esowner
     where 1 {schema_clause} {table_clause}
-    ORDER BY "relkind", "schema_oid", "schema";
+    ORDER BY "relkind", "schema_oid", "schema"
+    {limit_clause});
     """
 
 

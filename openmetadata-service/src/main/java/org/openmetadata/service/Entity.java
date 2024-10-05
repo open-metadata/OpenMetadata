@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.resources.CollectionRegistry.PACKAGES;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
@@ -124,6 +125,8 @@ public final class Entity {
 
   public static final String FIELD_DISABLED = "disabled";
 
+  public static final String FIELD_TEST_SUITES = "testSuites";
+
   //
   // Service entities
   //
@@ -144,7 +147,7 @@ public final class Entity {
   public static final String STORED_PROCEDURE = "storedProcedure";
   public static final String DATABASE = "database";
   public static final String DATABASE_SCHEMA = "databaseSchema";
-  public static final String METRICS = "metrics";
+  public static final String METRIC = "metric";
   public static final String DASHBOARD = "dashboard";
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
@@ -215,6 +218,7 @@ public final class Entity {
   // Time series entities
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
+  public static final String TEST_CASE_RESULT = "testCaseResult";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA =
       "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA =
@@ -511,7 +515,7 @@ public final class Entity {
             TABLE,
             DATABASE,
             DATABASE_SCHEMA,
-            METRICS,
+            METRIC,
             DASHBOARD,
             DASHBOARD_DATA_MODEL,
             PIPELINE,
@@ -557,7 +561,11 @@ public final class Entity {
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
   private static List<Class<?>> getRepositories() {
-    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+    try (ScanResult scanResult =
+        new ClassGraph()
+            .enableAnnotationInfo()
+            .acceptPackages(PACKAGES.toArray(new String[0]))
+            .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
       return classList.loadClasses();
     }

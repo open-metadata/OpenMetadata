@@ -202,7 +202,7 @@ const GlossaryDetailsRightPanel = ({
               onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
               <TagButton
                 className="text-primary cursor-pointer"
-                dataTestId="edit-owner"
+                dataTestId="add-owner"
                 icon={<PlusIcon height={16} name="plus" width={16} />}
                 label={t('label.add')}
                 tooltip=""
@@ -288,7 +288,7 @@ const GlossaryDetailsRightPanel = ({
           </div>
         </Col>
       )}
-      <Col span="22">
+      <Col span="24">
         {!isGlossary && selectedData && (
           <CustomPropertyTable
             isRenderedInRightPanel

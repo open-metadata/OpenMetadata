@@ -58,6 +58,9 @@
       "timestamp": {
         "type": "date"
       },
+      "@timestamp": {
+          "type": "date"
+      },
       "testCaseResolutionStatusType": {
         "type": "keyword",
         "fields": {
@@ -194,6 +197,23 @@
             }
           }
       },
+      "metrics": {
+        "type": "nested",
+        "properties": {
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "value": {
+            "type": "float"
+          }
+        }
+      },
       "updatedBy": {
         "properties": {
           "id": {
@@ -241,7 +261,7 @@
             }
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -302,7 +322,7 @@
             }
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -356,7 +376,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -404,7 +424,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -452,7 +472,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -500,7 +520,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -548,7 +568,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -596,7 +616,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
