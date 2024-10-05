@@ -17,6 +17,7 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useReserveSidebar } from '../../hooks/useReserveSidebar';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
@@ -29,6 +30,7 @@ const AppContainer = () => {
   const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
   const { currentUser } = useApplicationStore();
+  const { isSidebarReserve } = useReserveSidebar();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
@@ -56,7 +58,7 @@ const AppContainer = () => {
       <Layout
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
-          ['reserve-right-sidebar']: Boolean(ApplicationExtras),
+          ['reserve-right-sidebar']: isSidebarReserve,
         })}>
         <Sider
           className={classNames('left-sidebar-col', {

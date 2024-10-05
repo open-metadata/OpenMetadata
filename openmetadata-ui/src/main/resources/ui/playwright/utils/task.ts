@@ -156,6 +156,8 @@ export const checkTaskCount = async (
   openTask = 0,
   closedTask = 0
 ) => {
+  await page.waitForLoadState('networkidle');
+
   const openTaskElement = await page.getByTestId('open-task').textContent();
 
   expect(openTaskElement).toContain(`${openTask} Open`);
