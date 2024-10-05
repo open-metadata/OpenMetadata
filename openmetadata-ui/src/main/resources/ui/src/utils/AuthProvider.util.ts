@@ -429,7 +429,7 @@ export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
     scope: scopes.join(),
     profile: {
       email: get(account, 'idTokenClaims.email', ''),
-      name: account?.name || '',
+      name: account?.name ?? '',
       picture: '',
       preferred_username: get(account, 'idTokenClaims.preferred_username', ''),
       sub: get(account, 'idTokenClaims.sub', ''),

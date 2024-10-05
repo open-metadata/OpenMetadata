@@ -64,7 +64,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     const login = async () => {
       try {
         // Use login with redirect to avoid popup issue with maximized browser window
-        instance.loginRedirect();
+        await instance.loginRedirect();
       } catch (error) {
         onLoginFailure(error as AxiosError);
       }
