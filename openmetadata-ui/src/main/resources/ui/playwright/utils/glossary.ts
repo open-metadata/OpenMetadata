@@ -499,7 +499,7 @@ export const approveGlossaryTermTask = async (
   await taskResolve;
 
   // Display toast notification
-  await toastNotification(page, /Task resolved successfully/);
+  await toastNotification(page, /Task resolved successfully/, 'success');
 };
 
 export const validateGlossaryTerm = async (
@@ -718,9 +718,17 @@ export const deleteGlossaryOrGlossaryTerm = async (
   await deleteRes;
 
   if (isGlossaryTerm) {
-    await toastNotification(page, /"Glossary Term" deleted successfully!/);
+    await toastNotification(
+      page,
+      /"Glossary Term" deleted successfully!/,
+      'success'
+    );
   } else {
-    await toastNotification(page, /"Glossary" deleted successfully!/);
+    await toastNotification(
+      page,
+      /"Glossary" deleted successfully!/,
+      'success'
+    );
   }
 };
 
@@ -886,7 +894,7 @@ export const createDescriptionTaskForGlossary = async (
   }
   await page.click('button[type="submit"]');
 
-  await toastNotification(page, /Task created successfully./);
+  await toastNotification(page, /Task created successfully./, 'success');
 };
 
 export const createTagTaskForGlossary = async (
@@ -957,7 +965,7 @@ export const createTagTaskForGlossary = async (
 
   await page.click('button[type="submit"]');
 
-  await toastNotification(page, /Task created successfully./);
+  await toastNotification(page, /Task created successfully./, 'success');
 };
 
 export const approveTagsTask = async (

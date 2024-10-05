@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
@@ -29,6 +30,7 @@ const AppContainer = () => {
   const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
   const { currentUser } = useApplicationStore();
+  const { alert } = useAlertStore();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
@@ -56,6 +58,7 @@ const AppContainer = () => {
       <Layout
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
+          ['alert-banner']: Boolean(alert),
           ['reserve-right-sidebar']: Boolean(ApplicationExtras),
         })}>
         <Sider

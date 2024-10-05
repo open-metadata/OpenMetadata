@@ -16,6 +16,7 @@ import {
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
 } from '../constant/common';
+import { toastNotification } from './common';
 
 type CustomMetricDetails = {
   page: Page;
@@ -118,11 +119,11 @@ export const createCustomMetric = async ({
   await page.click('[data-testid="submit-button"]');
   await createMetricResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    new RegExp(`${metric.name} created successfully.`)
+  await toastNotification(
+    page,
+    new RegExp(`${metric.name} created successfully.`),
+    'success'
   );
-
-  await page.locator('.Toastify__close-button').click();
 
   // verify the created custom metric
   await expect(page).toHaveURL(/profiler/);
