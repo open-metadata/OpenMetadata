@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.resources.CollectionRegistry.PACKAGES;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
@@ -563,7 +564,7 @@ public final class Entity {
     try (ScanResult scanResult =
         new ClassGraph()
             .enableAnnotationInfo()
-            .acceptPackages("org.openmetadata", "io.collate")
+            .acceptPackages(PACKAGES.toArray(new String[0]))
             .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
       return classList.loadClasses();

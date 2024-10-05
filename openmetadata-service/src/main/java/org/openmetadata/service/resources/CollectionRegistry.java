@@ -51,6 +51,7 @@ import org.openmetadata.service.util.ReflectionUtil;
  */
 @Slf4j
 public final class CollectionRegistry {
+  public static final List<String> PACKAGES = List.of("org.openmetadata", "io.collate");
   private static CollectionRegistry instance = null;
   private static volatile boolean initialized = false;
 
@@ -111,7 +112,7 @@ public final class CollectionRegistry {
    */
   private void loadConditionFunctions() {
     try (ScanResult scanResult =
-        new ClassGraph().enableAllInfo().acceptPackages("org.openmetadata", "io.collate").scan()) {
+        new ClassGraph().enableAllInfo().acceptPackages(PACKAGES.toArray(new String[0])).scan()) {
       for (ClassInfo classInfo : scanResult.getClassesWithMethodAnnotation(Function.class)) {
         List<Method> methods =
             ReflectionUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
@@ -224,7 +225,7 @@ public final class CollectionRegistry {
     try (ScanResult scanResult =
         new ClassGraph()
             .enableAnnotationInfo()
-            .acceptPackages("org.openmetadata", "io.collate")
+            .acceptPackages(PACKAGES.toArray(new String[0]))
             .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Collection.class);
       List<Class<?>> collectionClasses = classList.loadClasses();
