@@ -4,38 +4,38 @@ import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
+import javax.json.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
-
-import javax.json.JsonObject;
 
 @Setter
 @Getter
 public class ElasticDateHistogramAggregations implements ElasticAggregations {
-    static final String aggregationType = "date_histogram";
-    AggregationBuilder elasticAggregationBuilder;
+  static final String aggregationType = "date_histogram";
+  AggregationBuilder elasticAggregationBuilder;
 
-    @Override
-    public void createAggregation(JsonObject jsonAggregation, String key) {
-        JsonObject dateHistogramAggregation = jsonAggregation.getJsonObject(aggregationType);
-        String calendarInterval = dateHistogramAggregation.getString("calendar_interval");
-        AggregationBuilder aggregationBuilder = AggregationBuilders.dateHistogram(key)
-                .field(dateHistogramAggregation.getString("field"))
-                .calendarInterval(new DateHistogramInterval(calendarInterval));
-        setElasticAggregationBuilder(aggregationBuilder);
-    }
+  @Override
+  public void createAggregation(JsonObject jsonAggregation, String key) {
+    JsonObject dateHistogramAggregation = jsonAggregation.getJsonObject(aggregationType);
+    String calendarInterval = dateHistogramAggregation.getString("calendar_interval");
+    AggregationBuilder aggregationBuilder =
+        AggregationBuilders.dateHistogram(key)
+            .field(dateHistogramAggregation.getString("field"))
+            .calendarInterval(new DateHistogramInterval(calendarInterval));
+    setElasticAggregationBuilder(aggregationBuilder);
+  }
 
-    @Override
-    public void setSubAggregation(PipelineAggregationBuilder aggregation) {
-        if (elasticAggregationBuilder != null) {
-            elasticAggregationBuilder.subAggregation(aggregation);
-        }
+  @Override
+  public void setSubAggregation(PipelineAggregationBuilder aggregation) {
+    if (elasticAggregationBuilder != null) {
+      elasticAggregationBuilder.subAggregation(aggregation);
     }
+  }
 
-    @Override
-    public void setSubAggregation(AggregationBuilder aggregation) {
-        if (elasticAggregationBuilder != null) {
-            elasticAggregationBuilder.subAggregation(aggregation);
-        }
+  @Override
+  public void setSubAggregation(AggregationBuilder aggregation) {
+    if (elasticAggregationBuilder != null) {
+      elasticAggregationBuilder.subAggregation(aggregation);
     }
+  }
 }

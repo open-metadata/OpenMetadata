@@ -56,7 +56,8 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
     doc.put("followers", SearchIndexUtils.parseFollowers(testCase.getFollowers()));
     doc.put("testCaseType", testDefinition.getEntityType());
-    doc.put("originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
+    doc.put(
+        "originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
     setParentRelationships(doc, testCase);
     return doc;
   }

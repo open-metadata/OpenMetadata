@@ -81,9 +81,6 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
-import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsFactory;
-import org.openmetadata.service.search.elasticsearch.aggregations.ElasticNestedAggregations;
 import org.openmetadata.service.search.indexes.APIEndpointIndex;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
@@ -194,7 +191,6 @@ import os.org.opensearch.search.aggregations.bucket.terms.Terms;
 import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
-import os.org.opensearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -1271,8 +1267,7 @@ public class OpenSearchClient implements SearchClient {
       if (!aggregation.isPipelineAggregation()) {
         searchSourceBuilder.aggregation(aggregation.getElasticAggregationBuilder());
       } else {
-        searchSourceBuilder.aggregation(
-                aggregation.getElasticPipelineAggregationBuilder());
+        searchSourceBuilder.aggregation(aggregation.getElasticPipelineAggregationBuilder());
       }
     }
 

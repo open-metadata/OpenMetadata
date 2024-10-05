@@ -99,7 +99,7 @@ public final class SearchIndexUtils {
       JsonNumber value = aggregationResults.getJsonNumber("value");
       if (value != null) valueStr = value.toString();
     } else {
-        valueStr = aggregationResults.getString("value_as_string", null);
+      valueStr = aggregationResults.getString("value_as_string", null);
     }
 
     nodeData.put(metric, valueStr);
@@ -192,16 +192,17 @@ public final class SearchIndexUtils {
           Optional<JsonArray> buckets =
               Optional.ofNullable(SearchClient.getAggregationBuckets(agg));
           if (buckets.isEmpty()) {
-            if ((keys.size()>1) && (agg.containsKey(keys.get(1)))) {
+            if ((keys.size() > 1) && (agg.containsKey(keys.get(1)))) {
               // If the current node in the aggregation tree does not have further buckets
-              // but contains the next level of aggregation, it means we are in the nested aggregation
+              // but contains the next level of aggregation, it means we are in the nested
+              // aggregation
               traverseAggregationResults(
-                      agg,
-                      reportData,
-                      nodeData,
-                      keys.subList(1, keys.size()),
-                      metric,
-                      dimensions.subList(1, dimensions.size()));
+                  agg,
+                  reportData,
+                  nodeData,
+                  keys.subList(1, keys.size()),
+                  metric,
+                  dimensions.subList(1, dimensions.size()));
             }
             // If the current node in the aggregation tree does not have further bucket
             // it means we are in the leaf of the metric aggregation. We'll add the metric
@@ -295,30 +296,34 @@ public final class SearchIndexUtils {
               // last element = key=value pairs of the aggregation
               String[] subParts = part.split("&");
               Arrays.stream(subParts)
-                      .forEach(
-                              subPart -> {
-                                String[] kvPairs = subPart.split(Utilities.doubleQuoteRegexEscape("="), -1);
-                                aggregationString
-                                        .append("\"")
-                                        .append(kvPairs[0])
-                                        .append("\":\"")
-                                        .append(Utilities.cleanUpDoubleQuotes(kvPairs[1]))
-                                        .append("\"");
-                                // bucket selector are neither metrics nor dimensions but filters and should not be added to the metadata
-                                if (!Arrays.asList(parts).contains("aggType=bucket_selector")) aggregationMap.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
-                                // add comma if not the last element
-                                if (Arrays.asList(subParts).indexOf(subPart) < subParts.length - 1)
-                                  aggregationString.append(",");
-                              });
+                  .forEach(
+                      subPart -> {
+                        String[] kvPairs = subPart.split(Utilities.doubleQuoteRegexEscape("="), -1);
+                        aggregationString
+                            .append("\"")
+                            .append(kvPairs[0])
+                            .append("\":\"")
+                            .append(Utilities.cleanUpDoubleQuotes(kvPairs[1]))
+                            .append("\"");
+                        // bucket selector are neither metrics nor dimensions but filters and should
+                        // not be added to the metadata
+                        if (!Arrays.asList(parts).contains("aggType=bucket_selector"))
+                          aggregationMap.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                        // add comma if not the last element
+                        if (Arrays.asList(subParts).indexOf(subPart) < subParts.length - 1)
+                          aggregationString.append(",");
+                      });
               aggregationString.append("}");
             } else {
               String[] kvPairs = part.split("=");
               aggregationString.append("\"").append(kvPairs[1]).append("\":{");
-              // bucket selector are neither metrics nor dimensions but filters and should not be added to the metadata
-              if (!Arrays.asList(parts).contains("aggType=bucket_selector")) aggregationMap.put(kvPairs[0], kvPairs[1]);
+              // bucket selector are neither metrics nor dimensions but filters and should not be
+              // added to the metadata
+              if (!Arrays.asList(parts).contains("aggType=bucket_selector"))
+                aggregationMap.put(kvPairs[0], kvPairs[1]);
             }
           }
-          if (j != nestedSiblingParts.length-1) aggregationString.append("},");
+          if (j != nestedSiblingParts.length - 1) aggregationString.append("},");
           if (!aggregationMap.isEmpty()) aggregationsMap.add(aggregationMap);
         }
 
