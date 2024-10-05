@@ -184,11 +184,6 @@ public final class SearchIndexUtils {
 
     // The current key represent the node in the aggregation tree (i.e. the current bucket)
     String currentKey = keys.get(0);
-    if (currentKey.contains("bucket_selector")) {
-      // if we have reached the bucket_selector, we are in the leaf of the term aggregation
-      handleLeafTermsAggregation(aggregationResults, reportData, nodeData);
-      return;
-    }
     Optional<JsonObject> aggregation =
         Optional.ofNullable(SearchClient.getAggregationObject(aggregationResults, currentKey));
 
@@ -309,7 +304,8 @@ public final class SearchIndexUtils {
                                         .append("\":\"")
                                         .append(Utilities.cleanUpDoubleQuotes(kvPairs[1]))
                                         .append("\"");
-                                aggregationMap.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                                // bucket selector are neither metrics nor dimensions but filters and should not be added to the metadata
+                                if (!Arrays.asList(parts).contains("aggType=bucket_selector")) aggregationMap.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
                                 // add comma if not the last element
                                 if (Arrays.asList(subParts).indexOf(subPart) < subParts.length - 1)
                                   aggregationString.append(",");
@@ -318,11 +314,12 @@ public final class SearchIndexUtils {
             } else {
               String[] kvPairs = part.split("=");
               aggregationString.append("\"").append(kvPairs[1]).append("\":{");
-              aggregationMap.put(kvPairs[0], kvPairs[1]);
+              // bucket selector are neither metrics nor dimensions but filters and should not be added to the metadata
+              if (!Arrays.asList(parts).contains("aggType=bucket_selector")) aggregationMap.put(kvPairs[0], kvPairs[1]);
             }
           }
           if (j != nestedSiblingParts.length-1) aggregationString.append("},");
-          aggregationsMap.add(aggregationMap);
+          if (!aggregationMap.isEmpty()) aggregationsMap.add(aggregationMap);
         }
 
         if (i < nested.length - 1) {

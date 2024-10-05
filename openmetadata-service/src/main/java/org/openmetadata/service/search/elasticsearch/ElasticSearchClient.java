@@ -1157,6 +1157,7 @@ public class ElasticSearchClient implements SearchClient {
           }
 
         ElasticAggregations agg = ElasticAggregationsFactory.getAggregation(aggregationType);
+        if (agg == null) continue;
         agg.createAggregation(aggregation, key);
         aggregationsList.add(agg);
 
