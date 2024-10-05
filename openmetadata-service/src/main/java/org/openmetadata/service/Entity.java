@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.resources.CollectionRegistry.PACKAGES;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
@@ -557,7 +558,11 @@ public final class Entity {
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
   private static List<Class<?>> getRepositories() {
-    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+    try (ScanResult scanResult =
+        new ClassGraph()
+            .enableAnnotationInfo()
+            .acceptPackages(PACKAGES.toArray(new String[0]))
+            .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
       return classList.loadClasses();
     }
