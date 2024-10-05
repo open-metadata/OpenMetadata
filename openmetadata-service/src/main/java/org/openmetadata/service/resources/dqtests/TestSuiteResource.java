@@ -504,7 +504,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public DataQualityReport getDataQualityReport(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Search query to filter the aggregation results") @QueryParam("q")
+      @Parameter(description = "Search query to filter the aggregation results",
+              schema = @Schema(type = "String")) @QueryParam("q")
           String query,
       @Parameter(
               description = "Aggregation query to perform aggregation on the search results",

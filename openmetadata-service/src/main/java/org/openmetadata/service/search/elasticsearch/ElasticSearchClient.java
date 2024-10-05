@@ -1130,7 +1130,6 @@ public class ElasticSearchClient implements SearchClient {
       for (String aggregationType : keySet) {
         if ((aggregationType.equals("aggs"))) {
           if (keySet.contains("nested")) continue;
-          // Here qw
           JsonObject subAggregation = aggregation.getJsonObject("aggs");
           if (!nullOrEmpty(aggregationsList)) {
             ElasticAggregations agg = aggregationsList.get(aggregationsList.size() - 1);
