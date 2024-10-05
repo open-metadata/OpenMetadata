@@ -211,8 +211,6 @@ test.describe('Activity feed', () => {
 
     await toastNotification(page, /Task resolved successfully/);
 
-    await page.waitForLoadState('networkidle');
-
     await checkTaskCount(page, 0, 2);
   });
 
@@ -372,8 +370,6 @@ test.describe('Activity feed', () => {
 
     await toastNotification(page, /Task resolved successfully/);
 
-    await page.waitForLoadState('networkidle');
-
     await checkTaskCount(page, 0, 2);
   });
 
@@ -434,8 +430,6 @@ test.describe('Activity feed', () => {
 
     await toastNotification(page, 'Task closed successfully.');
 
-    await page.waitForLoadState('networkidle');
-
     await checkTaskCount(page, 0, 1);
   });
 
@@ -456,12 +450,8 @@ test.describe('Activity feed', () => {
     await createDescriptionTask(page, value);
     await openTaskAfterDescriptionResponse;
 
-    await page.waitForLoadState('networkidle');
-
     // open task count after description
-    const openTask1 = await page.getByTestId('open-task').textContent();
-
-    expect(openTask1).toContain('1 Open');
+    await checkTaskCount(page, 1, 0);
 
     await page.getByTestId('schema').click();
 
@@ -471,8 +461,6 @@ test.describe('Activity feed', () => {
     const openTaskAfterTagResponse = page.waitForResponse(TASK_OPEN_FETCH_LINK);
     await createTagTask(page, { ...value, tag: 'PII.None' });
     await openTaskAfterTagResponse;
-
-    await page.waitForLoadState('networkidle');
 
     // open task count after description
     await checkTaskCount(page, 2, 0);
@@ -493,7 +481,6 @@ test.describe('Activity feed', () => {
     await commentWithCloseTask;
 
     await toastNotification(page, 'Task closed successfully.');
-    await page.waitForLoadState('networkidle');
     // open task count after closing one task
     await checkTaskCount(page, 1, 1);
 
@@ -857,7 +844,11 @@ base.describe('Activity feed with Data Consumer User', () => {
           page2.locator('[data-testid="edit-accept-task-dropdown"]')
         ).not.toBeVisible();
 
+        const tagsSuggestionResponse = page2.waitForResponse(
+          '/api/v1/search/query?q=***'
+        );
         await page2.getByRole('button', { name: 'Add Tags' }).click();
+        await tagsSuggestionResponse;
 
         await page2.waitForSelector('[role="dialog"].ant-modal');
 
