@@ -129,16 +129,6 @@
         "entityType": {
           "type": "keyword"
         },
-        "suggest": {
-          "type": "completion",
-          "contexts": [
-            {
-              "name": "deleted",
-              "type": "category",
-              "path": "deleted"
-            }
-          ]
-        },
         "domain": {
           "properties": {
             "id": {
@@ -179,7 +169,7 @@
         "extension": {
           "type": "object"
         },
-        "owner": {
+        "owners": {
           "properties": {
             "id": {
               "type": "keyword",
@@ -208,6 +198,7 @@
               "fields": {
                 "keyword": {
                   "type": "keyword",
+                  "normalizer": "lowercase_normalizer",
                   "ignore_above": 256
                 }
               }
@@ -264,7 +255,8 @@
           }
         },
         "serviceType": {
-          "type": "keyword"
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer"
         },
         "database": {
           "properties": {
@@ -286,6 +278,16 @@
               "fields": {
                 "keyword": {
                   "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "displayName": {
+              "type": "keyword",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "normalizer": "lowercase_normalizer",
                   "ignore_above": 256
                 }
               }
@@ -366,6 +368,15 @@
         },
         "sourceUrl": {
           "type": "text"
+        },
+        "totalVotes": {
+          "type": "long"
+        },
+        "votes" : {
+          "type": "object"
+        },
+        "descriptionStatus": {
+          "type": "keyword"
         }
       }
     }

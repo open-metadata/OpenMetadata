@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import { get, isEmpty, isUndefined } from 'lodash';
 import React from 'react';
@@ -21,8 +22,9 @@ import {
   BasicEntityInfo,
   HighlightedTagLabel,
 } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
+import { EntityType } from '../enums/entity.enum';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Chart } from '../generated/entity/data/chart';
 import { TagLabel } from '../generated/entity/data/container';
@@ -30,6 +32,8 @@ import { MlFeature } from '../generated/entity/data/mlmodel';
 import { Task } from '../generated/entity/data/pipeline';
 import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
+import { EntityReference } from '../generated/tests/testCase';
+import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import { stringToHTML } from './StringsUtils';
 
@@ -64,16 +68,33 @@ export const getTitle = (
     : getEntityName(listItem) || NO_DATA_PLACEHOLDER;
   const sourceUrl = (listItem as Chart | Task).sourceUrl;
 
-  return sourceUrl ? (
-    <Link target="_blank" to={{ pathname: sourceUrl }}>
-      <div className="d-flex">
+  if ((listItem as EntityReference).type === SummaryEntityType.DASHBOARD) {
+    return (
+      <Link
+        to={entityUtilClassBase.getEntityLink(
+          EntityType.DASHBOARD,
+          listItem.fullyQualifiedName ?? ''
+        )}>
         <Text
           className="entity-title text-link-color font-medium m-r-xss"
           data-testid="entity-title"
           ellipsis={{ tooltip: true }}>
           {title}
         </Text>
-        <IconExternalLink width={12} />
+      </Link>
+    );
+  }
+
+  return sourceUrl ? (
+    <Link target="_blank" to={{ pathname: sourceUrl }}>
+      <div className="d-flex items-center">
+        <Text
+          className="entity-title text-link-color font-medium m-r-xss"
+          data-testid="entity-title"
+          ellipsis={{ tooltip: true }}>
+          {title}
+        </Text>
+        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
       </div>
     </Link>
   ) : (
@@ -271,6 +292,12 @@ export const getFormattedEntityData = (
     const { listHighlights, listHighlightsMap } =
       getMapOfListHighlights(highlights);
 
+    const entityHasChildren = [
+      SummaryEntityType.COLUMN,
+      SummaryEntityType.FIELD,
+      SummaryEntityType.SCHEMAFIELD,
+    ].includes(entityType);
+
     const { highlightedListItem, remainingListItem } = entityInfo.reduce(
       (acc, listItem) => {
         // return the highlight of listItem
@@ -296,8 +323,7 @@ export const getFormattedEntityData = (
           ...(entityType === SummaryEntityType.MLFEATURE && {
             algorithm: (listItem as MlFeature).featureAlgorithm,
           }),
-          ...((entityType === SummaryEntityType.COLUMN ||
-            entityType === SummaryEntityType.FIELD) && {
+          ...(entityHasChildren && {
             children: getFormattedEntityData(
               entityType,
               (listItem as Column | Field).children,

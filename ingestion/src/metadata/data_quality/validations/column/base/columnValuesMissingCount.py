@@ -46,7 +46,10 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
         """
         try:
             column: Union[SQALikeColumn, Column] = self._get_column_name()
-            null_res = self._run_results(Metrics.NULL_COUNT, column)
+            null_res = self._run_results(
+                Metrics.NULL_MISSING_COUNT,
+                column,
+            )
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())

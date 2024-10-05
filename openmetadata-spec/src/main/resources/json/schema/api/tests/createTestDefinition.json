@@ -9,7 +9,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this test case.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/testCaseEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this test case.",
@@ -19,9 +19,9 @@
       "description": "Description of the testcase.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this TestCase definition.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this TestCase definition.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "entityType": {
       "$ref": "../../tests/testDefinition.json#/definitions/entityType"
@@ -38,11 +38,18 @@
         "$ref": "../../entity/data/table.json#/definitions/dataType"
       }
     },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
     "parameterDefinition": {
       "type": "array",
       "items": {
         "$ref": "../../tests/testDefinition.json#/definitions/testCaseParameterDefinition"
       }
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "description","entityType", "testPlatforms"],

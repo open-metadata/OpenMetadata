@@ -18,8 +18,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import CustomizeMyData from '../../components/CustomizableComponents/CustomizeMyData/CustomizeMyData';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
+import CustomizeMyData from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -30,6 +30,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { PageType } from '../../generated/system/ui/page';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createDocument,
@@ -46,6 +47,7 @@ export const CustomizablePage = () => {
   const { pageFqn } = useParams<{ pageFqn: PageType }>();
   const { fqn: decodedPageFQN } = useFqn();
   const { t } = useTranslation();
+  const { theme } = useApplicationStore();
   const [page, setPage] = useState<Document>({} as Document);
   const [editedPage, setEditedPage] = useState<Document>({} as Document);
   const [isLoading, setIsLoading] = useState(false);
@@ -112,7 +114,10 @@ export const CustomizablePage = () => {
 
         response = await updateDocument(page.id ?? '', jsonPatch);
       } else {
-        response = await createDocument(editedPage);
+        response = await createDocument({
+          ...editedPage,
+          domain: editedPage.domain?.fullyQualifiedName,
+        });
       }
       setPage(response);
       setEditedPage(response);
@@ -166,7 +171,7 @@ export const CustomizablePage = () => {
                 i18nKey="message.no-persona-message"
                 renderElement={
                   <Link
-                    style={{ color: '#1890ff' }}
+                    style={{ color: theme.primaryColor }}
                     to={getSettingPath(
                       GlobalSettingsMenuCategory.MEMBERS,
                       GlobalSettingOptions.PERSONA

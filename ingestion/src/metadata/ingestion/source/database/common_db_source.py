@@ -11,10 +11,13 @@
 """
 Generic source to build SQL connectors.
 """
+import math
+import time
 import traceback
 from abc import ABC
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union, cast
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
@@ -50,11 +53,22 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    get_connection,
+    kill_active_connections,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
@@ -62,9 +76,14 @@ from metadata.ingestion.source.database.stored_procedures_mixin import QueryByPr
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
+from metadata.utils.execution_time_tracker import (
+    ExecutionTimeTrackerContextMap,
+    calculate_execution_time,
+    calculate_execution_time_generator,
+)
 from metadata.utils.filters import filter_by_table
-from metadata.utils.helpers import calculate_execution_time_generator
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 logger = ingestion_logger()
 
@@ -100,19 +119,29 @@ class CommonDbSourceService(
         self.metadata = metadata
 
         # It will be one of the Unions. We don't know the specific type here.
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
+
+        self.ssl_manager = None
+        self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
+        if self.ssl_manager:
+            self.service_connection = self.ssl_manager.setup_ssl(
+                self.service_connection
+            )
 
         self.engine: Engine = get_connection(self.service_connection)
+        self.session = create_and_bind_thread_safe_session(self.engine)
 
         # Flag the connection for the test connection
         self.connection_obj = self.engine
         self.test_connection()
 
-        self._connection = None  # Lazy init as well
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
         self.table_constraints = None
         self.database_source_state = set()
-        self.context.table_views = []
-        self.context.table_constrains = []
+        self.context.get_global().table_views = []
+        self.context.get_global().table_constrains = []
+        self.context.set_threads(self.source_config.threads)
         super().__init__()
 
     def set_inspector(self, database_name: str) -> None:
@@ -121,13 +150,16 @@ class CommonDbSourceService(
         to setup multiple inspectors. They can use this function.
         :param database_name: new database to set
         """
+
+        kill_active_connections(self.engine)
         logger.info(f"Ingesting from database: {database_name}")
 
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.database = database_name
         self.engine = get_connection(new_service_connection)
-        self.inspector = inspect(self.engine)
-        self._connection = None  # Lazy init as well
+
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -144,8 +176,6 @@ class CommonDbSourceService(
             "database", custom_database_name or "default"
         )
 
-        # By default, set the inspector on the created engine
-        self.inspector = inspect(self.engine)
         yield database_name
 
     def get_database_description(self, database_name: str) -> Optional[str]:
@@ -160,6 +190,7 @@ class CommonDbSourceService(
         by default there will be no schema description
         """
 
+    @calculate_execution_time_generator()
     def yield_database(
         self, database_name: str
     ) -> Iterable[Either[CreateDatabaseRequest]]:
@@ -168,12 +199,23 @@ class CommonDbSourceService(
         Prepare a database request and pass it to the sink
         """
 
+        description = (
+            Markdown(db_description)
+            if (db_description := self.get_database_description(database_name))
+            else None
+        )
+        source_url = (
+            SourceUrl(source_url)
+            if (source_url := self.get_source_url(database_name=database_name))
+            else None
+        )
+
         yield Either(
             right=CreateDatabaseRequest(
-                name=database_name,
-                service=self.context.database_service,
-                description=self.get_database_description(database_name),
-                sourceUrl=self.get_source_url(database_name=database_name),
+                name=EntityName(database_name),
+                service=FullyQualifiedEntityName(self.context.get().database_service),
+                description=description,
+                sourceUrl=source_url,
                 tags=self.get_database_tag_labels(database_name=database_name),
             )
         )
@@ -191,6 +233,7 @@ class CommonDbSourceService(
         """
         yield from self._get_filtered_schema_names()
 
+    @calculate_execution_time_generator()
     def yield_database_schema(
         self, schema_name: str
     ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
@@ -199,25 +242,36 @@ class CommonDbSourceService(
         Prepare a database schema request and pass it to the sink
         """
 
+        description = (
+            Markdown(db_description)
+            if (db_description := self.get_schema_description(schema_name))
+            else None
+        )
+        source_url = (
+            SourceUrl(source_url)
+            if (source_url := self.get_source_url(database_name=schema_name))
+            else None
+        )
+
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
-                description=self.get_schema_description(schema_name),
-                sourceUrl=self.get_source_url(
-                    database_name=self.context.database,
-                    schema_name=schema_name,
-                ),
+                description=description,
+                sourceUrl=source_url,
                 tags=self.get_schema_tag_labels(schema_name=schema_name),
             )
         )
 
     @staticmethod
+    @calculate_execution_time()
     def get_table_description(
         schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
@@ -277,7 +331,7 @@ class CommonDbSourceService(
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema
+        schema_name = self.context.get().database_schema
         try:
             if self.source_config.includeTables:
                 for table_and_type in self.query_table_names_and_types(schema_name):
@@ -287,17 +341,19 @@ class CommonDbSourceService(
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
                         table_name=table_name,
                         skip_es_search=True,
                     )
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        table_fqn
-                        if self.source_config.useFqnForFiltering
-                        else table_name,
+                        (
+                            table_fqn
+                            if self.source_config.useFqnForFiltering
+                            else table_name
+                        ),
                     ):
                         self.status.filter(
                             table_fqn,
@@ -314,17 +370,19 @@ class CommonDbSourceService(
                     view_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
                         table_name=view_name,
                     )
 
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        view_fqn
-                        if self.source_config.useFqnForFiltering
-                        else view_name,
+                        (
+                            view_fqn
+                            if self.source_config.useFqnForFiltering
+                            else view_name
+                        ),
                     ):
                         self.status.filter(
                             view_fqn,
@@ -338,26 +396,40 @@ class CommonDbSourceService(
             )
             logger.debug(traceback.format_exc())
 
-    def get_view_definition(
-        self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
+    @calculate_execution_time()
+    def get_schema_definition(
+        self,
+        table_type: TableType,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
     ) -> Optional[str]:
-        if table_type in (TableType.View, TableType.MaterializedView):
-            try:
-                view_definition = inspector.get_view_definition(table_name, schema_name)
-                view_definition = (
-                    "" if view_definition is None else str(view_definition)
+        """
+        Get the DDL statement or View Definition for a table
+        """
+        try:
+            schema_definition = None
+            if table_type in (TableType.View, TableType.MaterializedView):
+                schema_definition = inspector.get_view_definition(
+                    table_name, schema_name
                 )
-                return view_definition
-
-            except NotImplementedError:
-                logger.warning("View definition not implemented")
-
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to fetch view definition for {table_name}: {exc}"
+            elif hasattr(inspector, "get_table_ddl") and self.source_config.includeDDL:
+                schema_definition = inspector.get_table_ddl(
+                    self.connection, table_name, schema_name
                 )
-            return None
+            schema_definition = (
+                str(schema_definition).strip()
+                if schema_definition is not None
+                else None
+            )
+            return schema_definition
+
+        except NotImplementedError:
+            logger.debug("Schema definition not implemented")
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
 
     def is_partition(  # pylint: disable=unused-argument
@@ -399,22 +471,23 @@ class CommonDbSourceService(
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
+    @calculate_execution_time_generator()
     def yield_procedure_lineage_and_queries(
         self,
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         """Not Implemented"""
         yield from []
 
-    @calculate_execution_time_generator
+    @calculate_execution_time_generator()
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        schema_name = self.context.database_schema
+        schema_name = self.context.get().database_schema
         try:
             (
                 columns,
@@ -423,36 +496,52 @@ class CommonDbSourceService(
             ) = self.get_columns_and_constraints(
                 schema_name=schema_name,
                 table_name=table_name,
-                db_name=self.context.database,
+                db_name=self.context.get().database,
                 inspector=self.inspector,
             )
 
-            view_definition = self.get_view_definition(
-                table_type=table_type,
-                table_name=table_name,
-                schema_name=schema_name,
-                inspector=self.inspector,
+            schema_definition = (
+                self.get_schema_definition(
+                    table_type=table_type,
+                    table_name=table_name,
+                    schema_name=schema_name,
+                    inspector=self.inspector,
+                )
+                if self.source_config.includeDDL
+                else None
             )
+
             table_constraints = self.update_table_constraints(
                 table_constraints, foreign_columns
             )
+
+            description = (
+                Markdown(db_description)
+                if (
+                    db_description := self.get_table_description(
+                        schema_name=schema_name,
+                        table_name=table_name,
+                        inspector=self.inspector,
+                    )
+                )
+                else None
+            )
+
             table_request = CreateTableRequest(
-                name=table_name,
+                name=EntityName(table_name),
                 tableType=table_type,
-                description=self.get_table_description(
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    inspector=self.inspector,
-                ),
+                description=description,
                 columns=columns,
                 tableConstraints=table_constraints,
-                viewDefinition=view_definition,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=schema_name,
+                schemaDefinition=schema_definition,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=schema_name,
+                    )
                 ),
                 tags=self.get_tag_labels(
                     table_name=table_name
@@ -460,10 +549,10 @@ class CommonDbSourceService(
                 sourceUrl=self.get_source_url(
                     table_name=table_name,
                     schema_name=schema_name,
-                    database_name=self.context.database,
+                    database_name=self.context.get().database,
                     table_type=table_type,
                 ),
-                owner=self.get_owner_ref(table_name=table_name),
+                owners=self.get_owner_ref(table_name=table_name),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(
@@ -479,61 +568,155 @@ class CommonDbSourceService(
             self.register_record(table_request=table_request)
 
             # Flag view as visited
-            if table_type == TableType.View or view_definition:
-                table_view = TableView.parse_obj(
-                    {
-                        "table_name": table_name,
-                        "schema_name": schema_name,
-                        "db_name": self.context.database,
-                        "view_definition": view_definition,
-                    }
+            if table_type == TableType.View and schema_definition:
+                table_view = TableView(
+                    table_name=table_name,
+                    schema_name=schema_name,
+                    db_name=self.context.get().database,
+                    view_definition=schema_definition,
                 )
-                self.context.table_views.append(table_view)
+                self.context.get_global().table_views.append(table_view)
 
         except Exception as exc:
-            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
+            error = (
+                f"Unexpected exception to yield table "
+                f"(database=[{self.context.get().database}], schema=[{schema_name}], table=[{table_name}]): {exc}"
+            )
             yield Either(
                 left=StackTraceError(
                     name=table_name, error=error, stackTrace=traceback.format_exc()
                 )
             )
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        logger.info("Processing Lineage for Views")
-        for view in [
-            v for v in self.context.table_views if v.view_definition is not None
-        ]:
-            yield from get_view_lineage(
+    def multithread_process_view_lineage(self) -> Iterable[Either[OMetaLineageRequest]]:
+        """Multithread Processing of a Node"""
+
+        views_list = list(self.context.get().table_views or [])
+        views_length = len(views_list)
+
+        if views_length != 0:
+            chunksize = int(math.ceil(views_length / self.source_config.threads))
+            chunks = [
+                views_list[i : i + chunksize] for i in range(0, views_length, chunksize)
+            ]
+
+            thread_pool = ThreadPoolExecutor(max_workers=self.source_config.threads)
+            queue = Queue()
+
+            futures = [
+                thread_pool.submit(
+                    self._process_view_def_chunk,
+                    chunk,
+                    queue,
+                    self.context.get_current_thread_id(),
+                )
+                for chunk in chunks
+            ]
+
+            while True:
+                if queue.has_tasks():
+                    yield from queue.process()
+
+                else:
+                    if not futures:
+                        break
+
+                    for i, future in enumerate(futures):
+                        if future.done():
+                            future.result()
+                            futures.pop(i)
+
+                time.sleep(0.01)
+
+    def _process_view_def_chunk(
+        self, chunk: List[TableView], queue: Queue, thread_id: int
+    ) -> None:
+        """
+        Process a chunk of view definitions
+        """
+        self.context.copy_from(thread_id)
+        ExecutionTimeTrackerContextMap().copy_from_parent(thread_id)
+        for view in [v for v in chunk if v.view_definition is not None]:
+            for lineage in get_view_lineage(
                 view=view,
                 metadata=self.metadata,
-                service_name=self.context.database_service,
+                service_name=self.context.get().database_service,
                 connection_type=self.service_connection.type.value,
                 timeout_seconds=self.source_config.queryParsingTimeoutLimit,
-            )
+            ):
+                if lineage.right is not None:
+                    queue.put(
+                        Either(
+                            right=OMetaLineageRequest(
+                                lineage_request=lineage.right,
+                                override_lineage=self.source_config.overrideViewLineage,
+                            )
+                        )
+                    )
+                else:
+                    queue.put(lineage)
+
+    def _process_view_def_serial(self) -> Iterable[Either[OMetaLineageRequest]]:
+        """
+        Process view definitions serially
+        """
+        for view in [
+            v for v in self.context.get().table_views if v.view_definition is not None
+        ]:
+            for lineage in get_view_lineage(
+                view=view,
+                metadata=self.metadata,
+                service_name=self.context.get().database_service,
+                connection_type=self.service_connection.type.value,
+                timeout_seconds=self.source_config.queryParsingTimeoutLimit,
+            ):
+                if lineage.right is not None:
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage.right,
+                            override_lineage=self.source_config.overrideViewLineage,
+                        )
+                    )
+                else:
+                    yield lineage
+
+    @calculate_execution_time_generator()
+    def yield_view_lineage(self) -> Iterable[Either[OMetaLineageRequest]]:
+        logger.info("Processing Lineage for Views")
+        if self.source_config.threads > 1:
+            yield from self.multithread_process_view_lineage()
+        else:
+            yield from self._process_view_def_serial()
 
     def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
         """
         Search the referred table for foreign constraints
         and get referred column fqn
         """
+        supports_database = hasattr(self.service_connection, "supportsDatabase")
 
         foreign_constraints = []
         for column in foreign_columns:
             referred_column_fqns = []
-            referred_table = fqn.search_table_from_es(
+            if supports_database:
+                database_name = column.get("referred_database")
+            else:
+                database_name = self.context.get().database
+            referred_table_fqn = fqn.build(
                 metadata=self.metadata,
+                entity_type=Table,
                 table_name=column.get("referred_table"),
                 schema_name=column.get("referred_schema"),
-                database_name=None,
-                service_name=self.context.database_service,
+                database_name=database_name,
+                service_name=self.context.get().database_service,
             )
-            if referred_table:
+            if referred_table_fqn:
                 for referred_column in column.get("referred_columns"):
-                    col_fqn = get_column_fqn(
-                        table_entity=referred_table, column=referred_column
+                    col_fqn = fqn._build(
+                        referred_table_fqn, referred_column, quote=False
                     )
                     if col_fqn:
-                        referred_column_fqns.append(col_fqn)
+                        referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
             else:
                 # do not build partial foreign constraint. It will updated in next run.
                 continue
@@ -547,6 +730,7 @@ class CommonDbSourceService(
 
         return foreign_constraints
 
+    @calculate_execution_time()
     def update_table_constraints(
         self, table_constraints, foreign_columns
     ) -> List[TableConstraint]:
@@ -567,14 +751,30 @@ class CommonDbSourceService(
         """
         Return the SQLAlchemy connection
         """
-        if not self._connection:
-            self._connection = self.engine.connect()
+        thread_id = self.context.get_current_thread_id()
 
-        return self._connection
+        if not self._connection_map.get(thread_id):
+            self._connection_map[thread_id] = self.engine.connect()
+
+        return self._connection_map[thread_id]
+
+    @property
+    def inspector(self) -> Inspector:
+        thread_id = self.context.get_current_thread_id()
+
+        if not self._inspector_map.get(thread_id):
+            self._inspector_map[thread_id] = inspect(self.connection)
+
+        return self._inspector_map[thread_id]
 
     def close(self):
         if self.connection is not None:
             self.connection.close()
+        for connection in self._connection_map.values():
+            connection.close()
+        if hasattr(self, "ssl_manager") and self.ssl_manager:
+            self.ssl_manager = cast(SSLManager, self.ssl_manager)
+            self.ssl_manager.cleanup_temp_files()
         self.engine.dispose()
 
     def fetch_table_tags(

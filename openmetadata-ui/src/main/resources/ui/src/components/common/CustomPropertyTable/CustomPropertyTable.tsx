@@ -11,42 +11,40 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
-
 import { EntityField } from '../../../constants/Feeds.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  ChangeDescription,
-  CustomProperty,
-  Type,
-} from '../../../generated/entity/type';
+import { ChangeDescription, Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-
-import { getEntityDetailLink, Transi18next } from '../../../utils/CommonUtils';
-
-import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { Transi18next } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
   getUpdatedExtensionDiffFields,
 } from '../../../utils/EntityVersionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../PermissionProvider/PermissionProvider.interface';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../Table/Table';
+import './custom-property-table.less';
 import {
   CustomPropertyProps,
   ExtentionEntities,
@@ -63,7 +61,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   isVersionView,
   hasPermission,
   entityDetails,
-  maxDataCap = 5,
+  maxDataCap,
   isRenderedInRightPanel = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
@@ -152,48 +150,47 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return { extensionObject: entityDetails?.extension };
   }, [isVersionView, entityDetails?.extension]);
 
-  const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
-    return [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        ellipsis: true,
-        width: '50%',
-        render: (_, record) => getEntityName(record),
-        sorter: columnSorter,
-      },
-      {
-        title: t('label.value'),
-        dataIndex: 'value',
-        key: 'value',
-        render: (_, record) => (
-          <PropertyValue
-            extension={extensionObject.extensionObject}
-            hasEditPermissions={hasEditAccess}
-            isVersionView={isVersionView}
-            propertyName={record.name}
-            propertyType={record.propertyType}
-            versionDataKeys={extensionObject.addedKeysList}
-            onExtensionUpdate={onExtensionUpdate}
-          />
-        ),
-      },
-    ];
+  const viewAllBtn = useMemo(() => {
+    const customProp = entityTypeDetail.customProperties ?? [];
+
+    if (
+      maxDataCap &&
+      customProp.length >= maxDataCap &&
+      entityDetails.fullyQualifiedName
+    ) {
+      return (
+        <Link
+          to={entityUtilClassBase.getEntityLink(
+            entityType,
+            entityDetails.fullyQualifiedName,
+            EntityTabs.CUSTOM_PROPERTIES
+          )}>
+          {t('label.view-all')}
+        </Link>
+      );
+    }
+
+    return null;
   }, [
+    entityTypeDetail.customProperties,
+    entityType,
     entityDetails,
-    entityDetails?.extension,
-    hasEditAccess,
-    extensionObject,
-    isVersionView,
-    onExtensionUpdate,
+    maxDataCap,
   ]);
+
+  const dataSource = useMemo(() => {
+    const customProperties = entityTypeDetail?.customProperties ?? [];
+
+    return Array.isArray(customProperties)
+      ? customProperties.slice(0, maxDataCap)
+      : [];
+  }, [maxDataCap, entityTypeDetail?.customProperties]);
 
   useEffect(() => {
     if (typePermission?.ViewAll || typePermission?.ViewBasic) {
       fetchTypeDetail();
     }
-  }, [typePermission, entityDetails?.extension]);
+  }, [typePermission]);
 
   useEffect(() => {
     fetchResourcePermission(entityType);
@@ -225,10 +222,11 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             <Transi18next
               i18nKey="message.no-custom-properties-table"
               renderElement={
-                <Link
+                <a
+                  href={CUSTOM_PROPERTIES_DOCS}
                   rel="noreferrer"
                   target="_blank"
-                  to={{ pathname: CUSTOM_PROPERTIES_DOCS }}
+                  title="Custom properties documentation"
                 />
               }
               values={{
@@ -248,35 +246,62 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     <>
       {!isEmpty(entityTypeDetail.customProperties) && (
         <>
-          <div className="d-flex justify-between m-b-xs">
-            <Typography.Text className="right-panel-label">
-              {t('label.custom-property-plural')}
-            </Typography.Text>
-            {(entityTypeDetail.customProperties ?? []).length >= maxDataCap &&
-              entityDetails.fullyQualifiedName && (
-                <Link
-                  to={getEntityDetailLink(
-                    entityType,
-                    entityDetails.fullyQualifiedName,
-                    EntityTabs.CUSTOM_PROPERTIES
-                  )}>
-                  {t('label.view-all')}
-                </Link>
-              )}
-          </div>
-          <Table
-            bordered
-            columns={tableColumn}
-            data-testid="custom-properties-table"
-            dataSource={entityTypeDetail?.customProperties?.slice(
-              0,
-              maxDataCap
-            )}
-            loading={entityTypeDetailLoading}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
+          {isRenderedInRightPanel ? (
+            <>
+              <div className="d-flex justify-between m-b-md">
+                <Typography.Text className="right-panel-label">
+                  {t('label.custom-property-plural')}
+                </Typography.Text>
+                {viewAllBtn}
+              </div>
+              <div className="custom-property-right-panel-container">
+                {dataSource.map((record, index) => (
+                  <Fragment key={record.name}>
+                    <div
+                      className={classNames(
+                        'custom-property-right-panel-card',
+                        {
+                          'top-border-radius': index === 0,
+                          'bottom-border-radius':
+                            index === dataSource.length - 1,
+                        }
+                      )}
+                      key={record.name}>
+                      <PropertyValue
+                        extension={extensionObject.extensionObject}
+                        hasEditPermissions={hasEditAccess}
+                        isRenderedInRightPanel={isRenderedInRightPanel}
+                        isVersionView={isVersionView}
+                        key={record.name}
+                        property={record}
+                        versionDataKeys={extensionObject.addedKeysList}
+                        onExtensionUpdate={onExtensionUpdate}
+                      />
+                    </div>
+                    {index !== dataSource.length - 1 && (
+                      <Divider className="m-y-0" />
+                    )}
+                  </Fragment>
+                ))}
+              </div>
+            </>
+          ) : (
+            <Row data-testid="custom-properties-card" gutter={[16, 16]}>
+              {dataSource.map((record) => (
+                <Col key={record.name} span={8}>
+                  <PropertyValue
+                    extension={extensionObject.extensionObject}
+                    hasEditPermissions={hasEditAccess}
+                    isRenderedInRightPanel={isRenderedInRightPanel}
+                    isVersionView={isVersionView}
+                    property={record}
+                    versionDataKeys={extensionObject.addedKeysList}
+                    onExtensionUpdate={onExtensionUpdate}
+                  />
+                </Col>
+              ))}
+            </Row>
+          )}
         </>
       )}
     </>

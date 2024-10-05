@@ -28,7 +28,7 @@ const mockProp: PropertyInputProps = {
   isLoading: false,
 };
 
-jest.mock('../../../components/InlineEdit/InlineEdit.component', () => {
+jest.mock('../InlineEdit/InlineEdit.component', () => {
   return jest.fn().mockImplementation(({ children, onSave }) => (
     <div data-testid="inline-edit">
       {children}
@@ -57,7 +57,10 @@ describe('Test PropertyInput Component', () => {
     const saveBtn = await screen.findByTestId('save');
 
     expect(valueInput).toBeInTheDocument();
+    expect(valueInput).toHaveValue('yValue');
 
+    userEvent.clear(valueInput);
+    // type the new value
     userEvent.type(valueInput, input);
     userEvent.click(saveBtn);
 

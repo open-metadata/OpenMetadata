@@ -21,25 +21,46 @@ import {
 import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 import ExploreV1 from './ExploreV1.component';
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ search: '' }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
-  useLocation: jest.fn().mockImplementation(() => ({ search: '' })),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
 }));
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+jest.mock('../common/ResizablePanels/ResizablePanels', () => {
+  return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </div>
+  ));
+});
+
+jest.mock('../common/ResizablePanels/ResizableLeftPanels', () => {
+  return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </div>
+  ));
 });
 
 jest.mock('./ExploreSearchCard/ExploreSearchCard', () => {
   return jest.fn().mockReturnValue(<p>ExploreSearchCard</p>);
 });
 
-jest.mock('../../components/GlobalSearchProvider/GlobalSearchProvider', () => ({
-  useGlobalSearchProvider: jest.fn().mockImplementation(() => ({
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
+    theme: {
+      primaryColor: '#000000',
+      errorColor: '#000000',
+    },
   })),
 }));
 
@@ -114,20 +135,16 @@ describe('ExploreV1', () => {
     render(<ExploreV1 {...props} />);
 
     expect(screen.getByTestId('explore-page')).toBeInTheDocument();
-    expect(screen.getByText('Tables')).toBeInTheDocument();
-    expect(screen.getByText('Stored Procedures')).toBeInTheDocument();
-    expect(screen.getByText('Databases')).toBeInTheDocument();
-    expect(screen.getByText('Database Schemas')).toBeInTheDocument();
-    expect(screen.getByText('Pipelines')).toBeInTheDocument();
-    expect(screen.getByText('Ml Models')).toBeInTheDocument();
-    expect(screen.getByText('Topics')).toBeInTheDocument();
-    expect(screen.getByText('Containers')).toBeInTheDocument();
-    expect(screen.getByText('Tags')).toBeInTheDocument();
-    expect(screen.getByText('Glossaries')).toBeInTheDocument();
-    expect(screen.getByText('Dashboards')).toBeInTheDocument();
-    expect(screen.getByText('Data Models')).toBeInTheDocument();
-    expect(screen.getByText('Search Indexes')).toBeInTheDocument();
-    expect(screen.getByText('Data Products')).toBeInTheDocument();
+
+    expect(screen.getByText('label.database-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.dashboard-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.pipeline-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.ml-model-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.topic-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.container-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.search-index-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.governance')).toBeInTheDocument();
+    expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
   });
 
   it('changes sort order when sort button is clicked', () => {

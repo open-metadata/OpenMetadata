@@ -14,7 +14,7 @@
       "description": "Type of MlModel service",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
-      "enum": ["Mlflow", "Sklearn", "CustomMlModel", "SageMaker"],
+      "enum": ["Mlflow", "Sklearn", "CustomMlModel", "SageMaker", "VertexAI"],
       "javaEnums": [
         {
           "name": "Mlflow"
@@ -27,6 +27,9 @@
         },
         {
           "name": "SageMaker"
+        },
+        {
+          "name": "VertexAI"
         }
       ]
     },
@@ -52,6 +55,9 @@
             },
             {
               "$ref": "./connections/mlmodel/sageMakerConnection.json"
+            },
+            {
+              "$ref": "./connections/mlmodel/vertexaiConnection.json"
             }
           ]
         }
@@ -115,9 +121,9 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this pipeline service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this pipeline service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this pipeline service.",

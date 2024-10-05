@@ -30,11 +30,12 @@ import { searchData } from '../../../rest/miscAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../utils/TableUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import searchClassBase from '../../../utils/SearchClassBase';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import EntityListSkeleton from '../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './my-data-widget.less';
 
 const MyDataWidgetInternal = ({
@@ -43,7 +44,7 @@ const MyDataWidgetInternal = ({
   widgetKey,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SourceType[]>([]);
   const [totalOwnedAssetsCount, setTotalOwnedAssetsCount] = useState<number>(0);
@@ -54,8 +55,8 @@ const MyDataWidgetInternal = ({
       try {
         const teamsIds = (currentUser.teams ?? []).map((team) => team.id);
         const mergedIds = [
-          ...teamsIds.map((id) => `owner.id:${id}`),
-          `owner.id:${currentUser.id}`,
+          ...teamsIds.map((id) => `owners.id:${id}`),
+          `owners.id:${currentUser.id}`,
         ].join(' OR ');
 
         const queryFilter = `(${mergedIds})`;
@@ -163,7 +164,6 @@ const MyDataWidgetInternal = ({
                   key={item.id}>
                   <div className="d-flex items-center">
                     <Link
-                      className=""
                       to={entityUtilClassBase.getEntityLink(
                         item.entityType ?? '',
                         item.fullyQualifiedName as string
@@ -172,7 +172,9 @@ const MyDataWidgetInternal = ({
                         className="entity-button flex-center p-0 m--ml-1"
                         icon={
                           <div className="entity-button-icon m-r-xs">
-                            {getEntityIcon(item.entityType ?? '')}
+                            {searchClassBase.getEntityIcon(
+                              item.entityType ?? ''
+                            )}
                           </div>
                         }
                         type="text">

@@ -19,6 +19,10 @@
         "effect" : {
           "$ref": "./eventFilterRule.json#/definitions/effect"
         },
+        "prefixCondition": {
+          "description": "Prefix Condition for the filter.",
+          "$ref": "../events/eventFilterRule.json#/definitions/prefixCondition"
+        },
         "arguments": {
           "description": "Arguments List",
           "type": "array",
@@ -84,7 +88,9 @@
         "Users",
         "Teams",
         "Admins",
+        "Assignees",
         "Owners",
+        "Mentions",
         "Followers",
         "External"
       ]
@@ -93,7 +99,7 @@
       "description": "Subscription Endpoint Type.",
       "type": "string",
       "enum": [
-        "Generic",
+        "Webhook",
         "Slack",
         "MsTeams",
         "GChat",
@@ -141,9 +147,6 @@
             },
             {
               "$ref": "./emailAlertConfig.json"
-            },
-            {
-              "$ref": "./userAlertConfig.json"
             }
           ]
         }
@@ -270,9 +273,9 @@
       "description": "A short description of the Event Subscription, comprehensible to regular users.",
       "$ref": "../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this Event Subscription.",
-      "$ref": "../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Event Subscription.",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "href": {
@@ -320,7 +323,7 @@
       "default": true
     },
     "batchSize": {
-      "description": "Maximum number of events sent in a batch (Default 10).",
+      "description": "Maximum number of events sent in a batch (Default 100).",
       "type": "integer",
       "default": 100
     },
@@ -335,12 +338,15 @@
     "pollInterval": {
       "description": "Poll Interval in seconds.",
       "type": "integer",
-      "default": 10
+      "default": 60
     },
     "input": {
       "description": "Input for the Filters.",
       "$ref": "#/definitions/alertFilteringInput"
-
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["id", "name", "alertType", "destinations"],

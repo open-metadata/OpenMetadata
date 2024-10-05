@@ -168,7 +168,7 @@ class TestAirflow(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_CONFIG)
+        self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_CONFIG)
 
         # This already validates that the source can be initialized
         self.airflow: AirflowSource = AirflowSource.create(
@@ -187,7 +187,7 @@ class TestAirflow(TestCase):
         dag = AirflowDagDetails(
             dag_id="id",
             fileloc="loc",
-            data=AirflowDag.parse_obj(SERIALIZED_DAG),
+            data=AirflowDag.model_validate(SERIALIZED_DAG),
             max_active_runs=data.get("max_active_runs", None),
             description=data.get("_description", None),
             start_date=data.get("start_date", None),

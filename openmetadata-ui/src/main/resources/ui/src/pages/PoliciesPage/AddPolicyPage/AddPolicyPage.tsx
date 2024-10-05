@@ -21,8 +21,8 @@ import ResizablePanels from '../../../components/common/ResizablePanels/Resizabl
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ERROR_MESSAGE } from '../../../constants/constants';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
-import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import {
   CreatePolicy,
   Effect,
@@ -68,6 +68,7 @@ const AddPolicyPage = () => {
     condition: '',
     effect: Effect.Allow,
   });
+  const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
 
   const handleCancel = () => {
     history.push(policiesPath);
@@ -80,6 +81,8 @@ const AddPolicyPage = () => {
       description,
       rules: [condition ? { ...rest, condition } : rest],
     };
+
+    setIsSaveLoading(true);
 
     try {
       const dataResponse = await addPolicy(data);
@@ -98,12 +101,16 @@ const AddPolicyPage = () => {
             })
           : (error as AxiosError)
       );
+    } finally {
+      setIsSaveLoading(false);
     }
   };
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div
             className="max-width-md w-9/10 service-form-container"
@@ -126,22 +133,7 @@ const AddPolicyPage = () => {
                 <Form.Item
                   label={`${t('label.name')}:`}
                   name="name"
-                  rules={[
-                    {
-                      required: true,
-                      max: 128,
-                      min: 1,
-                      message: `${t('message.entity-size-in-between', {
-                        entity: `${t('label.name')}`,
-                        max: '128',
-                        min: '1',
-                      })}`,
-                    },
-                    {
-                      pattern: ENTITY_NAME_REGEX,
-                      message: t('message.entity-name-validation'),
-                    },
-                  ]}>
+                  rules={NAME_FIELD_RULES}>
                   <Input
                     data-testid="policy-name"
                     placeholder={t('label.policy-name')}
@@ -181,6 +173,7 @@ const AddPolicyPage = () => {
                     data-testid="submit-btn"
                     form="policy-form"
                     htmlType="submit"
+                    loading={isSaveLoading}
                     type="primary">
                     {t('label.submit')}
                   </Button>
@@ -204,13 +197,9 @@ const AddPolicyPage = () => {
             <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
           </>
         ),
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'p-md p-t-xl content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

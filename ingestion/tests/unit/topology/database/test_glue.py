@@ -132,18 +132,18 @@ class GlueUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_glue_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
         self.glue_source = GlueSource.create(
             mock_glue_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.glue_source.context.__dict__[
+        self.glue_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.glue_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.glue_source.context.__dict__[
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.glue_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.glue_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
         self.glue_source._get_glue_database_and_schemas = lambda: [
             DatabasePage(**mock_data.get("mock_database_paginator"))
         ]

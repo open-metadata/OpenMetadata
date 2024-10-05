@@ -12,7 +12,7 @@
  */
 import { Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
+import { startCase, unionBy } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
@@ -24,13 +24,12 @@ import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCase
 import Assignees from '../../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../../pages/TasksPage/TasksPage.interface';
 import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
-import { fetchOptions } from '../../../utils/TasksUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 export const TestCaseStatusModal = ({
@@ -39,13 +38,26 @@ export const TestCaseStatusModal = ({
   testCaseFqn,
   onSubmit,
   onCancel,
+  usersList,
 }: TestCaseStatusModalProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
+
+  const { assigneeOptions } = useMemo(() => {
+    const initialAssignees = data?.testCaseResolutionStatusDetails?.assignee
+      ? generateOptions([data.testCaseResolutionStatusDetails.assignee])
+      : [];
+    const assigneeOptions = unionBy(
+      [...initialAssignees, ...generateOptions(usersList ?? [])],
+      'value'
+    );
+
+    return { initialAssignees, assigneeOptions };
+  }, [data, usersList]);
 
   const statusType = Form.useWatch('testCaseResolutionStatusType', form);
   const updatedAssignees = Form.useWatch(
@@ -93,6 +105,7 @@ export const TestCaseStatusModal = ({
             ...data.testCaseResolutionStatusDetails,
             assignee: {
               name: updatedAssignees[0].name,
+              displayName: updatedAssignees[0].displayName,
               id: updatedAssignees[0].value,
               type: EntityType.USER,
             },
@@ -125,16 +138,9 @@ export const TestCaseStatusModal = ({
         ['testCaseResolutionStatusDetails', 'assignee'],
         [assignee.id]
       );
-      setOptions([
-        {
-          label: getEntityName(assignee),
-          value: assignee.id,
-          type: assignee.type,
-          name: assignee.name,
-        },
-      ]);
     }
-  }, [data]);
+    setOptions(assigneeOptions);
+  }, [data, assigneeOptions]);
 
   return (
     <Modal
@@ -157,6 +163,7 @@ export const TestCaseStatusModal = ({
         id="update-status-form"
         initialValues={data}
         layout="vertical"
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleFormSubmit}>
         <Form.Item
           label={t('label.status')}
@@ -164,9 +171,6 @@ export const TestCaseStatusModal = ({
           rules={[
             {
               required: true,
-              message: t('label.field-required', {
-                field: t('label.status'),
-              }),
             },
           ]}>
           <Select
@@ -188,9 +192,6 @@ export const TestCaseStatusModal = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.field-required', {
-                    field: t('label.reason'),
-                  }),
                 },
               ]}>
               <Select
@@ -212,9 +213,6 @@ export const TestCaseStatusModal = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.field-required', {
-                    field: t('label.comment'),
-                  }),
                 },
               ]}>
               <RichTextEditor
@@ -247,9 +245,6 @@ export const TestCaseStatusModal = ({
             rules={[
               {
                 required: true,
-                message: t('label.field-required', {
-                  field: t('label.assignee'),
-                }),
               },
             ]}>
             <Assignees
@@ -264,7 +259,12 @@ export const TestCaseStatusModal = ({
                 )
               }
               onSearch={(query) =>
-                fetchOptions({ query, setOptions, onlyUsers: true })
+                fetchOptions({
+                  query,
+                  setOptions,
+                  onlyUsers: true,
+                  initialOptions: assigneeOptions,
+                })
               }
             />
           </Form.Item>

@@ -25,7 +25,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,6 +39,7 @@ import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.util.ReflectionUtil;
@@ -51,6 +51,7 @@ import org.openmetadata.service.util.ReflectionUtil;
  */
 @Slf4j
 public final class CollectionRegistry {
+  public static final List<String> PACKAGES = List.of("org.openmetadata", "io.collate");
   private static CollectionRegistry instance = null;
   private static volatile boolean initialized = false;
 
@@ -88,10 +89,6 @@ public final class CollectionRegistry {
     }
   }
 
-  public Map<String, CollectionDetails> getCollectionMap() {
-    return Collections.unmodifiableMap(collectionMap);
-  }
-
   /**
    * REST collections are described using *CollectionDescriptor.json Load all CollectionDescriptors from these files in
    * the classpath
@@ -114,7 +111,8 @@ public final class CollectionRegistry {
    * those conditions and makes it available for listing them over API to author expressions in Rules.
    */
   private void loadConditionFunctions() {
-    try (ScanResult scanResult = new ClassGraph().enableAllInfo().scan()) {
+    try (ScanResult scanResult =
+        new ClassGraph().enableAllInfo().acceptPackages(PACKAGES.toArray(new String[0])).scan()) {
       for (ClassInfo classInfo : scanResult.getClassesWithMethodAnnotation(Function.class)) {
         List<Method> methods =
             ReflectionUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
@@ -152,19 +150,20 @@ public final class CollectionRegistry {
       Environment environment,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
-      AuthenticatorHandler authenticatorHandler) {
+      AuthenticatorHandler authenticatorHandler,
+      Limits limits) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
         Object resource =
-            createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
+            createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler, limits);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
       } catch (Exception ex) {
-        LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
+        LOG.warn("Failed to create resource for class {} {}", resourceClass, ex.getMessage());
       }
     }
 
@@ -176,9 +175,31 @@ public final class CollectionRegistry {
         });
   }
 
+  public void loadSeedData(
+      Jdbi jdbi,
+      OpenMetadataApplicationConfig config,
+      Authorizer authorizer,
+      AuthenticatorHandler authenticatorHandler,
+      Limits limits,
+      boolean isOperations) {
+    // Build list of ResourceDescriptors
+    for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
+      CollectionDetails details = e.getValue();
+      if (!isOperations || details.requiredForOps) {
+        String resourceClass = details.resourceClass;
+        try {
+          createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler, limits);
+        } catch (Exception ex) {
+          LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
+        }
+      }
+    }
+  }
+
   /** Get collection details based on annotations in Resource classes */
   private static CollectionDetails getCollection(Class<?> cl) {
     int order = 0;
+    boolean requiredForOps = false;
     CollectionInfo collectionInfo = new CollectionInfo();
     for (Annotation a : cl.getAnnotations()) {
       if (a instanceof Path path) {
@@ -191,16 +212,21 @@ public final class CollectionRegistry {
         // Use @Collection annotation to get initialization information for the class
         collectionInfo.withName(collection.name());
         order = collection.order();
+        requiredForOps = collection.requiredForOps();
       }
     }
     CollectionDescriptor cd = new CollectionDescriptor();
     cd.setCollection(collectionInfo);
-    return new CollectionDetails(cd, cl.getCanonicalName(), order);
+    return new CollectionDetails(cd, cl.getCanonicalName(), order, requiredForOps);
   }
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
-    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+    try (ScanResult scanResult =
+        new ClassGraph()
+            .enableAnnotationInfo()
+            .acceptPackages(PACKAGES.toArray(new String[0]))
+            .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Collection.class);
       List<Class<?>> collectionClasses = classList.loadClasses();
       List<CollectionDetails> collections = new ArrayList<>();
@@ -218,7 +244,8 @@ public final class CollectionRegistry {
       String resourceClass,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
-      AuthenticatorHandler authHandler)
+      AuthenticatorHandler authHandler,
+      Limits limits)
       throws ClassNotFoundException,
           NoSuchMethodException,
           IllegalAccessException,
@@ -230,19 +257,36 @@ public final class CollectionRegistry {
 
     // Create the resource identified by resourceClass
     try {
-      resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
+      resource =
+          clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class, Limits.class)
+              .newInstance(config, limits);
     } catch (NoSuchMethodException e) {
       try {
         resource =
-            clz.getDeclaredConstructor(Authorizer.class, AuthenticatorHandler.class)
-                .newInstance(authorizer, authHandler);
+            clz.getDeclaredConstructor(Authorizer.class, Limits.class)
+                .newInstance(authorizer, limits);
       } catch (NoSuchMethodException ex) {
         try {
-          resource =
-              clz.getDeclaredConstructor(Jdbi.class, Authorizer.class)
-                  .newInstance(jdbi, authorizer);
+          resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
         } catch (NoSuchMethodException exe) {
-          resource = Class.forName(resourceClass).getConstructor().newInstance();
+          try {
+            resource =
+                clz.getDeclaredConstructor(
+                        Authorizer.class, Limits.class, AuthenticatorHandler.class)
+                    .newInstance(authorizer, limits, authHandler);
+          } catch (NoSuchMethodException exec) {
+            try {
+              resource =
+                  clz.getDeclaredConstructor(Jdbi.class, Authorizer.class)
+                      .newInstance(jdbi, authorizer);
+            } catch (NoSuchMethodException execp) {
+              try {
+                resource = clz.getDeclaredConstructor(Limits.class).newInstance(limits);
+              } catch (NoSuchMethodException except) {
+                resource = Class.forName(resourceClass).getConstructor().newInstance();
+              }
+            }
+          }
         }
       }
     } catch (Exception ex) {
@@ -277,11 +321,14 @@ public final class CollectionRegistry {
     @Getter @Setter private Object resource;
     private final CollectionDescriptor cd;
     private final int order;
+    private final boolean requiredForOps;
 
-    CollectionDetails(CollectionDescriptor cd, String resourceClass, int order) {
+    CollectionDetails(
+        CollectionDescriptor cd, String resourceClass, int order, boolean requiredForOps) {
       this.cd = cd;
       this.resourceClass = resourceClass;
       this.order = order;
+      this.requiredForOps = requiredForOps;
     }
   }
 }

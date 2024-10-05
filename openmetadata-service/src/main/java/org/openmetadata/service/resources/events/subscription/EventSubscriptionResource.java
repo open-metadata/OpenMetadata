@@ -15,9 +15,9 @@ package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.ACTIVITY_FEED;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
+import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -59,22 +59,28 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.NotificationResourceDescriptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
+import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -95,10 +101,10 @@ import org.quartz.SchedulerException;
 public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
-  public static final String FIELDS = "owner,filteringRules";
+  public static final String FIELDS = "owners,filteringRules";
 
-  public EventSubscriptionResource(Authorizer authorizer) {
-    super(Entity.EVENT_SUBSCRIPTION, authorizer);
+  public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
+    super(Entity.EVENT_SUBSCRIPTION, authorizer, limits);
   }
 
   @Override
@@ -120,10 +126,10 @@ public class EventSubscriptionResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
-      repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(
           listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
           listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
+      repository.initSeedDataFromResources();
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail
@@ -135,15 +141,11 @@ public class EventSubscriptionResource
     try {
       CollectionDAO daoCollection = repository.getDaoCollection();
       List<String> listAllEventsSubscriptions =
-          daoCollection
-              .eventSubscriptionDAO()
-              .listAllEventsSubscriptions(daoCollection.eventSubscriptionDAO().getTableName());
+          daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions();
       List<EventSubscription> eventSubList =
           JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       for (EventSubscription subscription : eventSubList) {
-        if (subscription.getAlertType() != ACTIVITY_FEED) {
-          EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
-        }
+        EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
       }
     } catch (Exception ex) {
       // Starting application should not fail
@@ -349,6 +351,38 @@ public class EventSubscriptionResource
                       }))
           JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
+    EventSubscriptionScheduler.getInstance()
+        .updateEventSubscription((EventSubscription) response.getEntity());
+    return response;
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchEventSubscription",
+      summary = "Update an Event Subscriptions by name.",
+      description = "Update an existing Event Subscriptions using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchEventSubscription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the event Subscription", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     EventSubscriptionScheduler.getInstance()
         .updateEventSubscription((EventSubscription) response.getEntity());
     return response;
@@ -592,6 +626,42 @@ public class EventSubscriptionResource
     AlertUtil.validateExpression(expression, Boolean.class);
   }
 
+  @POST
+  @Path("/testDestination")
+  @Operation(
+      operationId = "testDestination",
+      summary = "Send a test message alert to external destinations.",
+      description = "Send a test message alert to external destinations of the alert.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test message sent successfully",
+            content = @Content(schema = @Schema(implementation = Response.class)))
+      })
+  public Response sendTestMessageAlert(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      EventSubscriptionDestinationTestRequest request) {
+    EventSubscription eventSubscription =
+        new EventSubscription().withFullyQualifiedName(request.getAlertName());
+
+    // by-pass AbstractEventConsumer - covers external destinations as of now
+    request
+        .getDestinations()
+        .forEach(
+            (destination) -> {
+              Destination<ChangeEvent> alert =
+                  AlertFactory.getAlert(eventSubscription, destination);
+              try {
+                alert.sendTestMessage();
+              } catch (EventPublisherException e) {
+                LOG.error(e.getMessage());
+              }
+            });
+
+    return Response.ok().build();
+  }
+
   private EventSubscription getEventSubscription(CreateEventSubscription create, String user) {
     return repository
         .copy(new EventSubscription(), create, user)
@@ -599,8 +669,10 @@ public class EventSubscriptionResource
         .withTrigger(create.getTrigger())
         .withEnabled(create.getEnabled())
         .withBatchSize(create.getBatchSize())
-        .withFilteringRules(validateAndBuildFilteringConditions(create))
-        .withDestinations(getSubscriptions(create.getDestinations()))
+        .withFilteringRules(
+            validateAndBuildFilteringConditions(
+                create.getResources(), create.getAlertType(), create.getInput()))
+        .withDestinations(encryptWebhookSecretKey(getSubscriptions(create.getDestinations())))
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())
         .withPollInterval(create.getPollInterval())
@@ -612,7 +684,7 @@ public class EventSubscriptionResource
     List<SubscriptionDestination> result = new ArrayList<>();
     subscriptions.forEach(
         subscription -> {
-          if (subscription.getId() == null) {
+          if (nullOrEmpty(subscription.getId())) {
             subscription.withId(UUID.randomUUID());
           }
           result.add(subscription);

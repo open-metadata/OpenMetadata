@@ -12,6 +12,7 @@
 Databricks Query parser module
 """
 from abc import ABC
+from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
@@ -35,7 +36,11 @@ class DatabricksQueryParserSource(QueryParserSource, ABC):
 
     filters: str
 
-    def _init_super(self, config: WorkflowSource, metadata: OpenMetadata):
+    def _init_super(
+        self,
+        config: WorkflowSource,
+        metadata: OpenMetadata,
+    ):
         super().__init__(config, metadata, False)
 
     # pylint: disable=super-init-not-called
@@ -44,10 +49,12 @@ class DatabricksQueryParserSource(QueryParserSource, ABC):
         self.client = DatabricksClient(self.service_connection)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DatabricksConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: DatabricksConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatabricksConnection):
             raise InvalidSourceException(
                 f"Expected DatabricksConnection, but got {connection}"

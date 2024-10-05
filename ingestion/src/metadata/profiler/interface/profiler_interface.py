@@ -29,11 +29,12 @@ from metadata.generated.schema.entity.data.databaseSchema import (
 )
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
+    SystemProfile,
     Table,
     TableData,
 )
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    SampleDataStorageConfig,
+    DataStorageConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
@@ -51,7 +52,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.api.models import (
     DatabaseAndSchemaConfig,
     ProfilerProcessorConfig,
@@ -63,6 +63,7 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.partition import get_partition_details
+from metadata.utils.ssl_manager import get_ssl_connection
 
 
 class ProfilerProcessorStatus(Status):
@@ -93,7 +94,7 @@ class ProfilerInterface(ABC):
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],
         ometa_client: OpenMetadata,
         entity: Table,
-        storage_config: SampleDataStorageConfig,
+        storage_config: DataStorageConfig,
         profile_sample_config: Optional[ProfileSampleConfig],
         source_config: DatabaseServiceProfilerPipeline,
         sample_query: Optional[str],
@@ -110,14 +111,14 @@ class ProfilerInterface(ABC):
         self.ometa_client = ometa_client
         self.source_config = source_config
         self.service_connection_config = service_connection_config
-        self.connection = get_connection(self.service_connection_config)
+        self.connection = get_ssl_connection(self.service_connection_config)
         self.status = ProfilerProcessorStatus()
         try:
             fqn = self.table_entity.fullyQualifiedName
         except AttributeError:
             self.status.entity = None
         else:
-            self.status.entity = fqn.__root__ if fqn else None
+            self.status.entity = fqn.root if fqn else None
         self.profile_sample_config = profile_sample_config
         self.profile_query = sample_query
         self.partition_details = (
@@ -247,8 +248,8 @@ class ProfilerInterface(ABC):
             DatabaseSchemaProfilerConfig,
             DatabaseProfilerConfig,
             DatabaseAndSchemaConfig,
-        ]
-    ):
+        ],
+    ) -> Optional[DataStorageConfig]:
         if (
             config
             and config.sampleDataStorageConfig
@@ -264,7 +265,7 @@ class ProfilerInterface(ABC):
         database_profiler_config: Optional[DatabaseProfilerConfig],
         db_service: Optional[DatabaseService],
         profiler_config: ProfilerProcessorConfig,
-    ) -> Optional[SampleDataStorageConfig]:
+    ) -> Optional[DataStorageConfig]:
         """Get config for a specific entity
 
         Args:
@@ -272,7 +273,7 @@ class ProfilerInterface(ABC):
         """
         for schema_config in profiler_config.schemaConfig:
             if (
-                schema_config.fullyQualifiedName.__root__
+                schema_config.fullyQualifiedName.root
                 == entity.databaseSchema.fullyQualifiedName
                 and ProfilerInterface._get_sample_storage_config(schema_config)
             ):
@@ -280,7 +281,7 @@ class ProfilerInterface(ABC):
 
         for database_config in profiler_config.databaseConfig:
             if (
-                database_config.fullyQualifiedName.__root__
+                database_config.fullyQualifiedName.root
                 == entity.database.fullyQualifiedName
                 and ProfilerInterface._get_sample_storage_config(database_config)
             ):
@@ -328,6 +329,7 @@ class ProfilerInterface(ABC):
                     return ProfileSampleConfig(
                         profile_sample=config.profileSample,
                         profile_sample_type=config.profileSampleType,
+                        sampling_method_type=config.samplingMethodType,
                     )
             except AttributeError:
                 pass
@@ -425,8 +427,12 @@ class ProfilerInterface(ABC):
         runner,
         *args,
         **kwargs,
-    ):
-        """Get metrics"""
+    ) -> Dict[str, Any]:
+        """Get metrics
+        Return:
+            Dict[str, Any]: dict of metrics tio be merged into the final column profile. Keys need to be compatible with
+            the `metadata.generated.schema.entity.data.table.ColumnProfile` schema.
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -458,7 +464,7 @@ class ProfilerInterface(ABC):
         runner,
         *args,
         **kwargs,
-    ):
+    ) -> List[SystemProfile]:
         """Get metrics"""
         raise NotImplementedError
 

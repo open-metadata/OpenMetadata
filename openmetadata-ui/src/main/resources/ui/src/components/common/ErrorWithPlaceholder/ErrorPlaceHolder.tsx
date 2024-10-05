@@ -13,7 +13,6 @@
 
 import React from 'react';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-
 import AssignErrorPlaceHolder from './AssignErrorPlaceHolder';
 import CreateErrorPlaceHolder from './CreateErrorPlaceHolder';
 import CustomNoDataPlaceHolder from './CustomNoDataPlaceHolder';
@@ -66,7 +65,12 @@ const ErrorPlaceHolder = ({
 
       case ERROR_PLACEHOLDER_TYPE.FILTER:
         return (
-          <FilterErrorPlaceHolder className={className} doc={doc} size={size} />
+          <FilterErrorPlaceHolder
+            className={className}
+            doc={doc}
+            placeholderText={placeholderText}
+            size={size}
+          />
         );
 
       case ERROR_PLACEHOLDER_TYPE.PERMISSION:

@@ -14,6 +14,9 @@ Base class for ingesting search index services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
@@ -43,7 +46,7 @@ from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -63,7 +66,9 @@ class SearchServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -78,7 +83,9 @@ class SearchServiceTopology(ServiceTopology):
         children=["search_index"],
         post_process=["mark_search_indexes_as_deleted"],
     )
-    search_index = TopologyNode(
+    search_index: Annotated[
+        TopologyNode, Field(description="Search Index Processing Node")
+    ] = TopologyNode(
         producer="get_search_index",
         stages=[
             NodeStage(
@@ -107,10 +114,10 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: SearchServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: SearchConnection.__fields__["config"].type_
+    service_connection: SearchConnection.model_fields["config"].annotation
 
     topology = SearchServiceTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
     index_source_state: Set = set()
 
     def __init__(
@@ -124,7 +131,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: SearchServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.connection = get_connection(self.service_connection)
 
         # Flag the connection for the test connection
@@ -195,7 +202,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=SearchIndex,
                 entity_source_state=self.index_source_state,
                 mark_deleted_entity=self.source_config.markDeletedSearchIndexes,
-                params={"service": self.context.search_service},
+                params={"service": self.context.get().search_service},
             )
 
     def register_record(self, search_index_request: CreateSearchIndexRequest) -> None:
@@ -205,8 +212,8 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         index_fqn = fqn.build(
             self.metadata,
             entity_type=SearchIndex,
-            service_name=search_index_request.service.__root__,
-            search_index_name=search_index_request.name.__root__,
+            service_name=search_index_request.service.root,
+            search_index_name=search_index_request.name.root,
         )
 
         self.index_source_state.add(index_fqn)

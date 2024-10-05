@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MetricChartType } from '../components/ProfilerDashboard/profilerDashboard.interface';
+import { MetricChartType } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { ColumnProfile } from '../generated/entity/data/table';
 
 export interface ColumnMetricsInterface {

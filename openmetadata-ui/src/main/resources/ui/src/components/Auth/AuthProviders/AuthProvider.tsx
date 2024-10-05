@@ -13,81 +13,79 @@
 
 import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
-import { Configuration } from '@azure/msal-browser';
+import {
+  Configuration,
+  IPublicClientApplication,
+  PublicClientApplication,
+} from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
-import { LoginCallback } from '@okta/okta-react';
 import {
   AxiosError,
   AxiosRequestHeaders,
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isNumber } from 'lodash';
 import Qs from 'qs';
 import React, {
   ComponentType,
-  createContext,
   ReactNode,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import {
-  ACTIVE_DOMAIN_STORAGE_KEY,
   DEFAULT_DOMAIN_VALUE,
+  ES_MAX_PAGE_SIZE,
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
-import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
-import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import {
+  AuthenticationConfiguration,
+  ClientType,
+} from '../../../generated/configuration/authenticationConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import axiosClient from '../../../rest';
+import { getDomainList } from '../../../rest/domainAPI';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
-import { getLoggedInUser, updateUserDetail } from '../../../rest/userAPI';
+import { getLoggedInUser } from '../../../rest/userAPI';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
   getAuthConfig,
   getUrlPathnameExpiry,
   getUserManagerConfig,
   isProtectedRoute,
-  msalInstance,
-  setMsalInstance,
+  prepareUserProfileFromClaims,
 } from '../../../utils/AuthProvider.util';
-import localState from '../../../utils/LocalStorageUtils';
+import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import {
-  getUserDataFromOidc,
-  matchUserDetails,
-} from '../../../utils/UserDataUtils';
+import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
+import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
-import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
+import { GenericAuthenticator } from '../AppAuthenticators/GenericAuthenticator';
 import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
 import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
 import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
 import SamlAuthenticator from '../AppAuthenticators/SamlAuthenticator';
-import Auth0Callback from '../AppCallbacks/Auth0Callback/Auth0Callback';
-import {
-  AuthenticationConfigurationWithScope,
-  AuthenticatorRef,
-  IAuthContext,
-  OidcUser,
-  UserProfile,
-} from './AuthProvider.interface';
+import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './BasicAuthProvider';
 import OktaAuthProvider from './OktaAuthProvider';
 
@@ -96,56 +94,70 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthContext = createContext<IAuthContext>({} as IAuthContext);
-
 const cookieStorage = new CookieStorage();
 
-const userAPIQueryFields = 'profile,teams,roles,personas,defaultPersona';
+const userAPIQueryFields = [
+  TabSpecificField.PROFILE,
+  TabSpecificField.TEAMS,
+  TabSpecificField.ROLES,
+  TabSpecificField.PERSONAS,
+  TabSpecificField.DEFAULT_PERSONA,
+  TabSpecificField.DOMAINS,
+];
 
 const isEmailVerifyField = 'isEmailVerified';
 
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
+let failedLoggedInUserRequest: boolean | null;
 
 export const AuthProvider = ({
   childComponentType,
   children,
 }: AuthProviderProps) => {
-  const location = useLocation();
+  const {
+    setHelperFunctionsRef,
+    setCurrentUser,
+    updateNewUser: setNewUserProfile,
+    setIsAuthenticated,
+    authConfig,
+    setAuthConfig,
+    setAuthorizerConfig,
+    setIsSigningUp,
+    authorizerConfig,
+    jwtPrincipalClaims,
+    jwtPrincipalClaimsMapping,
+    setJwtPrincipalClaims,
+    setJwtPrincipalClaimsMapping,
+    removeRefreshToken,
+    removeOidcToken,
+    getOidcToken,
+    getRefreshToken,
+    isApplicationLoading,
+    setApplicationLoading,
+  } = useApplicationStore();
+  const { updateDomains, updateDomainLoading } = useDomainStore();
+  const tokenService = useRef<TokenService>();
+
+  const location = useCustomLocation();
   const history = useHistory();
   const { t } = useTranslation();
+
   const [timeoutId, setTimeoutId] = useState<number>();
+  const [msalInstance, setMsalInstance] = useState<IPublicClientApplication>();
+
   const authenticatorRef = useRef<AuthenticatorRef>(null);
-  const [currentUser, setCurrentUser] = useState<User>();
-  const { urlPathName } = useApplicationConfigContext();
-
-  const oidcUserToken = localState.getOidcToken();
-  const [newUserProfile, setNewUserProfile] = useState<UserProfile>();
-  const [isUserAuthenticated, setIsUserAuthenticated] = useState(
-    Boolean(oidcUserToken)
-  );
-
-  const [loading, setLoading] = useState(true);
-  const [authConfig, setAuthConfig] =
-    useState<AuthenticationConfigurationWithScope>();
-
-  const [authorizerConfig, setAuthorizerConfig] =
-    useState<AuthorizerConfiguration>();
-  const [isSigningIn, setIsSigningIn] = useState(false);
-
-  const [jwtPrincipalClaims, setJwtPrincipalClaims] = useState<
-    AuthenticationConfiguration['jwtPrincipalClaims']
-  >([]);
-
-  let silentSignInRetries = 0;
 
   const userConfig = useMemo(
     () => (authConfig ? getUserManagerConfig(authConfig) : {}),
     [authConfig]
   );
 
+  const clientType = authConfig?.clientType ?? ClientType.Public;
+
   const onLoginHandler = () => {
-    setLoading(true);
+    setApplicationLoading(true);
+
     authenticatorRef.current?.invokeLogin();
 
     resetWebAnalyticSession();
@@ -153,7 +165,9 @@ export const AuthProvider = ({
 
   const onLogoutHandler = useCallback(() => {
     clearTimeout(timeoutId);
+
     authenticatorRef.current?.invokeLogout();
+    setIsAuthenticated(false);
 
     // reset the user details on logout
     setCurrentUser({} as User);
@@ -162,14 +176,33 @@ export const AuthProvider = ({
     removeSession();
 
     // remove the refresh token on logout
-    localState.removeRefreshToken();
+    removeRefreshToken();
 
-    setLoading(false);
+    setApplicationLoading(false);
   }, [timeoutId]);
 
-  const onRenewIdTokenHandler = () => {
-    return authenticatorRef.current?.renewIdToken();
-  };
+  useEffect(() => {
+    if (authenticatorRef.current?.renewIdToken) {
+      tokenService.current = new TokenService(
+        authenticatorRef.current?.renewIdToken
+      );
+    }
+  }, [authenticatorRef.current?.renewIdToken]);
+
+  const fetchDomainList = useCallback(async () => {
+    try {
+      updateDomainLoading(true);
+      const { data } = await getDomainList({
+        limit: ES_MAX_PAGE_SIZE,
+        fields: 'parent',
+      });
+      updateDomains(data);
+    } catch (error) {
+      // silent fail
+    } finally {
+      updateDomainLoading(false);
+    }
+  }, []);
 
   const handledVerifiedUser = () => {
     if (!isProtectedRoute(location.pathname)) {
@@ -177,84 +210,59 @@ export const AuthProvider = ({
     }
   };
 
-  const setLoadingIndicator = (value: boolean) => {
-    setLoading(value);
-  };
-
   /**
    * Stores redirect URL for successful login
    */
-  const storeRedirectPath = useCallback(
-    (path?: string) => {
-      cookieStorage.setItem(REDIRECT_PATHNAME, path ?? urlPathName, {
-        expires: getUrlPathnameExpiry(),
-        path: '/',
-      });
-    },
-    [urlPathName]
-  );
+  const storeRedirectPath = useCallback((path?: string) => {
+    if (!path) {
+      return;
+    }
+    cookieStorage.setItem(REDIRECT_PATHNAME, path, {
+      expires: getUrlPathnameExpiry(),
+      path: '/',
+    });
+  }, []);
 
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
-    localState.removeOidcToken();
-    setIsUserAuthenticated(false);
-    setLoadingIndicator(false);
+    removeOidcToken();
+    setIsAuthenticated(false);
+    setApplicationLoading(false);
     clearTimeout(timeoutId);
     if (forceLogout) {
       onLogoutHandler();
+      showInfoToast(t('message.session-expired'));
     } else {
       history.push(ROUTES.SIGNIN);
     }
   };
 
-  const getLoggedInUserDetails = () => {
-    setLoading(true);
-    getLoggedInUser({ fields: userAPIQueryFields })
-      .then((res) => {
-        if (res) {
-          setCurrentUser(res);
-        } else {
-          resetUserDetails();
-        }
-      })
-      .catch((err: AxiosError) => {
+  const getLoggedInUserDetails = async () => {
+    setApplicationLoading(true);
+    try {
+      const res = await getLoggedInUser({ fields: userAPIQueryFields });
+      if (res) {
+        setCurrentUser(res);
+        setIsAuthenticated(true);
+        // Fetch domains at the start
+        await fetchDomainList();
+      } else {
         resetUserDetails();
-        if (err.response?.status !== 404) {
-          showErrorToast(
-            err,
-            t('server.entity-fetch-error', {
-              entity: t('label.logged-in-user-lowercase'),
-            })
-          );
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
-
-  const getUpdatedUser = (updatedData: User, existingData: User) => {
-    // PUT method for users api only excepts below fields
-    const updatedUserData = { ...existingData, ...updatedData };
-    const jsonPatch = compare(existingData, updatedUserData);
-
-    updateUserDetail(existingData.id, jsonPatch)
-      .then((res) => {
-        if (res) {
-          setCurrentUser({ ...existingData, ...res });
-        } else {
-          throw t('server.unexpected-response');
-        }
-      })
-      .catch((error: AxiosError) => {
-        setCurrentUser(existingData);
+      }
+    } catch (error) {
+      const err = error as AxiosError;
+      resetUserDetails();
+      if (err.response?.status !== 404) {
         showErrorToast(
-          error,
-          t('server.entity-updating-error', {
-            entity: t('label.admin-profile'),
+          err,
+          t('server.entity-fetch-error', {
+            entity: t('label.logged-in-user-lowercase'),
           })
         );
-      });
+      }
+    } finally {
+      setApplicationLoading(false);
+    }
   };
 
   /**
@@ -263,8 +271,20 @@ export const AuthProvider = ({
    */
   const renewIdToken = async () => {
     try {
-      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
+      if (!tokenService.current?.isTokenUpdateInProgress()) {
+        await tokenService.current?.refreshToken();
+      } else {
+        // wait for renewal to complete
+        const wait = new Promise((resolve) => {
+          setTimeout(() => {
+            return resolve(true);
+          }, 500);
+        });
+        await wait;
+
+        // should have updated token after renewal
+        return getOidcToken();
+      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(
@@ -275,39 +295,43 @@ export const AuthProvider = ({
       throw error;
     }
 
-    return localState.getOidcToken();
+    return getOidcToken();
   };
 
   /**
    * This method will try to signIn silently when token is about to expire
-   * It will try for max 3 times if it's not succeed then it will proceed for logout
+   * if it's not succeed then it will proceed for logout
    */
-  const trySilentSignIn = () => {
-    const pathName = location.pathname;
+  const trySilentSignIn = async (forceLogout?: boolean) => {
+    const pathName = getPathNameFromWindowLocation();
     // Do not try silent sign in for SignIn or SignUp route
-    if ([ROUTES.SIGNIN, ROUTES.SIGNUP].indexOf(pathName) === -1) {
-      // Try to renew token
-      silentSignInRetries < 3
-        ? renewIdToken()
-            .then(() => {
-              silentSignInRetries = 0;
-              // eslint-disable-next-line @typescript-eslint/no-use-before-define
-              startTokenExpiryTimer();
-            })
-            .catch((err) => {
-              if (err.message.includes('Frame window timed out')) {
-                silentSignInRetries = 0;
-                // eslint-disable-next-line @typescript-eslint/no-use-before-define
-                startTokenExpiryTimer();
+    if (
+      [ROUTES.SIGNIN, ROUTES.SIGNUP, ROUTES.SILENT_CALLBACK].includes(pathName)
+    ) {
+      return;
+    }
 
-                return;
-              }
-              // eslint-disable-next-line no-console
-              console.error('Error while attempting for silent signIn. ', err);
-              silentSignInRetries += 1;
-              trySilentSignIn();
-            })
-        : resetUserDetails(); // Logout if we reaches max silent signIn limit;
+    try {
+      // Try to renew token
+      const newToken = await renewIdToken();
+
+      if (newToken) {
+        // Start expiry timer on successful silent signIn
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        startTokenExpiryTimer();
+
+        // Retry the failed request after successful silent signIn
+        if (failedLoggedInUserRequest) {
+          await getLoggedInUserDetails();
+          failedLoggedInUserRequest = null;
+        }
+      } else {
+        // reset user details if silent signIn fails
+        resetUserDetails(forceLogout);
+      }
+    } catch (error) {
+      // reset user details if silent signIn fails
+      resetUserDetails(forceLogout);
     }
   };
 
@@ -319,8 +343,10 @@ export const AuthProvider = ({
    */
   const startTokenExpiryTimer = () => {
     // Extract expiry
-    const { isExpired, timeoutExpiry } = extractDetailsFromToken();
-    const refreshToken = localState.getRefreshToken();
+    const { isExpired, timeoutExpiry } = extractDetailsFromToken(
+      getOidcToken()
+    );
+    const refreshToken = getRefreshToken();
 
     // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
     const shouldStartExpiry =
@@ -350,60 +376,106 @@ export const AuthProvider = ({
   }, [timeoutId]);
 
   const handleFailedLogin = () => {
-    setIsSigningIn(false);
-    setIsUserAuthenticated(false);
-    setLoading(false);
+    setIsSigningUp(false);
+    setIsAuthenticated(false);
+    setApplicationLoading(false);
     history.push(ROUTES.SIGNIN);
   };
 
-  const handleSuccessfulLogin = (user: OidcUser) => {
-    setLoading(true);
-    setIsUserAuthenticated(true);
-    const fields =
-      authConfig?.provider === AuthProviderEnum.Basic
-        ? userAPIQueryFields + ',' + isEmailVerifyField
-        : userAPIQueryFields;
-    getLoggedInUser({ fields })
-      .then((res) => {
+  const handleSuccessfulLogin = useCallback(
+    async (user: OidcUser) => {
+      setApplicationLoading(true);
+      setIsAuthenticated(true);
+      const fields =
+        authConfig?.provider === AuthProviderEnum.Basic
+          ? userAPIQueryFields + ',' + isEmailVerifyField
+          : userAPIQueryFields;
+      try {
+        const newUser = prepareUserProfileFromClaims({
+          user,
+          jwtPrincipalClaims,
+          principalDomain: authorizerConfig?.principalDomain ?? '',
+          jwtPrincipalClaimsMapping,
+          clientType,
+        });
+
+        const res = await getLoggedInUser({ fields });
         if (res) {
-          const updatedUserData = getUserDataFromOidc(res, user);
-          if (!matchUserDetails(res, updatedUserData, ['profile', 'email'])) {
-            getUpdatedUser(updatedUserData, res);
-          } else {
-            setCurrentUser(res);
-          }
+          const userDetails = await checkIfUpdateRequired(res, newUser);
+          setCurrentUser(userDetails);
+
+          // Fetch domains at the start
+          await fetchDomainList();
+
           handledVerifiedUser();
           // Start expiry timer on successful login
           startTokenExpiryTimer();
         }
-      })
-      .catch((err) => {
-        if (err && err.response && err.response.status === 404) {
-          setNewUserProfile(user.profile);
-          setCurrentUser({} as User);
-          setIsSigningIn(true);
-          history.push(ROUTES.SIGNUP);
+      } catch (error) {
+        const err = error as AxiosError;
+        if (err?.response?.status === 404) {
+          if (!authConfig?.enableSelfSignup) {
+            resetUserDetails();
+            history.push(ROUTES.UNAUTHORISED);
+          } else {
+            setNewUserProfile(user.profile);
+            setCurrentUser({} as User);
+            setIsSigningUp(true);
+            history.push(ROUTES.SIGNUP);
+          }
         } else {
           // eslint-disable-next-line no-console
           console.error(err);
+          showErrorToast(err);
+          resetUserDetails();
           history.push(ROUTES.SIGNIN);
         }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
+      } finally {
+        setApplicationLoading(false);
+      }
+    },
+    [
+      authConfig?.enableSelfSignup,
+      clientType,
+      authorizerConfig?.principalDomain,
+      jwtPrincipalClaims,
+      jwtPrincipalClaimsMapping,
+      setIsSigningUp,
+      setIsAuthenticated,
+      setApplicationLoading,
+      setCurrentUser,
+      setNewUserProfile,
+    ]
+  );
 
   const handleSuccessfulLogout = () => {
     resetUserDetails();
   };
 
-  const updateAuthInstance = (configJson: AuthenticationConfiguration) => {
+  /**
+   * Stores redirect URL for successful login
+   */
+  const handleStoreProtectedRedirectPath = useCallback(() => {
+    if (isProtectedRoute(location.pathname)) {
+      storeRedirectPath(location.pathname);
+    }
+  }, [location.pathname, storeRedirectPath]);
+
+  const updateAuthInstance = async (
+    configJson: AuthenticationConfiguration
+  ) => {
     const { provider, ...otherConfigs } = configJson;
     switch (provider) {
       case AuthProviderEnum.Azure:
         {
-          setMsalInstance(otherConfigs as unknown as Configuration);
+          const instance = new PublicClientApplication(
+            otherConfigs as unknown as Configuration
+          );
+
+          // Need to initialize the instance before setting it
+          await instance.initialize();
+
+          setMsalInstance(instance);
         }
 
         break;
@@ -412,20 +484,30 @@ export const AuthProvider = ({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
-    const activeDomain =
-      localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
     const isGetRequest = config.method === 'get';
+    const activeDomain = useDomainStore.getState().activeDomain;
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-    const currentPath = window.location.pathname;
+    const currentPath = getPathNameFromWindowLocation();
+    const shouldNotIntercept = [
+      '/domain',
+      '/auth/logout',
+      '/auth/refresh',
+    ].reduce((prev, curr) => {
+      return prev || currentPath.startsWith(curr);
+    }, false);
 
-    // Do not intercept requests from domains page
-    if (currentPath.includes('/domain')) {
+    // Do not intercept requests from domains page or /auth endpoints
+    if (shouldNotIntercept) {
       return config;
     }
 
     if (isGetRequest && hasActiveDomain) {
       // Filter ES Query
       if (config.url?.includes('/search/query')) {
+        if (config.params?.index === SearchIndex.TAG) {
+          return config;
+        }
+
         // Parse and update the query parameter
         const queryParams = Qs.parse(config.url.split('?')[1]);
         // adding quotes for exact matching
@@ -468,7 +550,7 @@ export const AuthProvider = ({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       config: InternalAxiosRequestConfig<any>
     ) {
-      const token: string = localState.getOidcToken() || '';
+      const token: string = getOidcToken() || '';
       if (token) {
         if (config.headers) {
           config.headers['Authorization'] = `Bearer ${token}`;
@@ -493,8 +575,12 @@ export const AuthProvider = ({
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
-            storeRedirectPath();
-            resetUserDetails(true);
+            // store the failed request for retry after successful silent signIn
+            if (error.config.url === '/users/loggedInUser') {
+              failedLoggedInUserRequest = true;
+            }
+            handleStoreProtectedRedirectPath();
+            trySilentSignIn(true);
           }
         }
 
@@ -515,20 +601,26 @@ export const AuthProvider = ({
         if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
+          setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);
           setAuthorizerConfig(authorizerConfig);
           updateAuthInstance(configJson);
-          if (!oidcUserToken) {
-            if (isProtectedRoute(location.pathname)) {
-              storeRedirectPath(location.pathname);
-            }
-            setLoading(false);
+          if (!getOidcToken()) {
+            handleStoreProtectedRedirectPath();
+            setApplicationLoading(false);
           } else {
-            getLoggedInUserDetails();
+            // get the user details if token is present and route is not auth callback and saml callback
+            if (
+              ![ROUTES.AUTH_CALLBACK, ROUTES.SAML_CALLBACK].includes(
+                location.pathname
+              )
+            ) {
+              getLoggedInUserDetails();
+            }
           }
         } else {
           // provider is either null or not supported
-          setLoading(false);
+          setApplicationLoading(false);
           showErrorToast(
             t('message.configured-sso-provider-is-not-supported', {
               provider: authConfig?.provider,
@@ -536,11 +628,11 @@ export const AuthProvider = ({
           );
         }
       } else {
-        setLoading(false);
+        setApplicationLoading(false);
         showErrorToast(t('message.auth-configuration-missing'));
       }
     } catch (error) {
-      setLoading(false);
+      setApplicationLoading(false);
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', {
@@ -550,21 +642,21 @@ export const AuthProvider = ({
     }
   };
 
-  const getCallBackComponent = () => {
-    switch (authConfig?.provider) {
-      case AuthProviderEnum.Okta: {
-        return LoginCallback;
-      }
-      case AuthProviderEnum.Auth0: {
-        return Auth0Callback;
-      }
-      default: {
-        return null;
-      }
-    }
-  };
-
   const getProtectedApp = () => {
+    // Show loader if application in loading state
+    const childElement = isApplicationLoading ? (
+      <Loader fullScreen />
+    ) : (
+      children
+    );
+
+    if (clientType === ClientType.Confidential) {
+      return (
+        <GenericAuthenticator ref={authenticatorRef}>
+          {childElement}
+        </GenericAuthenticator>
+      );
+    }
     switch (authConfig?.provider) {
       case AuthProviderEnum.LDAP:
       case AuthProviderEnum.Basic: {
@@ -573,7 +665,7 @@ export const AuthProvider = ({
             onLoginFailure={handleFailedLogin}
             onLoginSuccess={handleSuccessfulLogin}>
             <BasicAuthAuthenticator ref={authenticatorRef}>
-              {children}
+              {childElement}
             </BasicAuthAuthenticator>
           </BasicAuthProvider>
         );
@@ -589,7 +681,7 @@ export const AuthProvider = ({
             <Auth0Authenticator
               ref={authenticatorRef}
               onLogoutSuccess={handleSuccessfulLogout}>
-              {children}
+              {childElement}
             </Auth0Authenticator>
           </Auth0Provider>
         );
@@ -599,7 +691,7 @@ export const AuthProvider = ({
           <SamlAuthenticator
             ref={authenticatorRef}
             onLogoutSuccess={handleSuccessfulLogout}>
-            {children}
+            {childElement}
           </SamlAuthenticator>
         );
       }
@@ -609,7 +701,7 @@ export const AuthProvider = ({
             <OktaAuthenticator
               ref={authenticatorRef}
               onLogoutSuccess={handleSuccessfulLogout}>
-              {children}
+              {childElement}
             </OktaAuthenticator>
           </OktaAuthProvider>
         );
@@ -617,7 +709,7 @@ export const AuthProvider = ({
       case AuthProviderEnum.Google:
       case AuthProviderEnum.CustomOidc:
       case AuthProviderEnum.AwsCognito: {
-        return authConfig ? (
+        return (
           <OidcAuthenticator
             childComponentType={childComponentType}
             ref={authenticatorRef}
@@ -625,10 +717,8 @@ export const AuthProvider = ({
             onLoginFailure={handleFailedLogin}
             onLoginSuccess={handleSuccessfulLogin}
             onLogoutSuccess={handleSuccessfulLogout}>
-            {children}
+            {childElement}
           </OidcAuthenticator>
-        ) : (
-          <Loader />
         );
       }
       case AuthProviderEnum.Azure: {
@@ -639,11 +729,11 @@ export const AuthProvider = ({
               onLoginFailure={handleFailedLogin}
               onLoginSuccess={handleSuccessfulLogin}
               onLogoutSuccess={handleSuccessfulLogout}>
-              {children}
+              {childElement}
             </MsalAuthenticator>
           </MsalProvider>
         ) : (
-          <Loader />
+          <Loader fullScreen />
         );
       }
       default: {
@@ -657,41 +747,36 @@ export const AuthProvider = ({
     startTokenExpiryTimer();
     initializeAxiosInterceptors();
 
+    setHelperFunctionsRef({
+      onLoginHandler,
+      onLogoutHandler,
+      handleSuccessfulLogin,
+      trySilentSignIn,
+      handleFailedLogin,
+      updateAxiosInterceptors: initializeAxiosInterceptors,
+    });
+
     return cleanup;
   }, []);
 
-  const isLoading =
+  useEffect(() => {
+    setHelperFunctionsRef({
+      onLoginHandler,
+      onLogoutHandler,
+      handleSuccessfulLogin,
+      trySilentSignIn,
+      handleFailedLogin,
+      updateAxiosInterceptors: initializeAxiosInterceptors,
+    });
+
+    return cleanup;
+  }, [handleSuccessfulLogin]);
+
+  const isConfigLoading =
     !authConfig ||
     (authConfig.provider === AuthProviderEnum.Azure && !msalInstance);
 
-  const authContext: IAuthContext = {
-    currentUser: currentUser,
-    isAuthenticated: isUserAuthenticated,
-    setIsAuthenticated: setIsUserAuthenticated,
-    newUser: newUserProfile,
-    updateNewUser: setNewUserProfile,
-    authConfig,
-    authorizerConfig,
-    isSigningIn,
-    setIsSigningIn,
-    onLoginHandler,
-    onLogoutHandler,
-    getCallBackComponent,
-    loading,
-    setLoadingIndicator,
-    handleSuccessfulLogin,
-    updateAxiosInterceptors: initializeAxiosInterceptors,
-    jwtPrincipalClaims,
-    updateCurrentUser: setCurrentUser,
-  };
-
-  return (
-    <AuthContext.Provider value={authContext}>
-      {isLoading ? <Loader /> : getProtectedApp()}
-    </AuthContext.Provider>
-  );
+  return <>{isConfigLoading ? <Loader fullScreen /> : getProtectedApp()}</>;
 };
-
-export const useAuthContext = () => useContext(AuthContext);
 
 export default AuthProvider;

@@ -13,9 +13,9 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { mockedGlossaries } from '../../../mocks/Glossary.mock';
-import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import GlossaryDetailsRightPanel from './GlossaryDetailsRightPanel.component';
 
 const mockPermissions = {
@@ -27,7 +27,7 @@ const mockPermissions = {
   EditDescription: true,
   EditDisplayName: true,
   EditLineage: true,
-  EditOwner: true,
+  EditOwners: true,
   EditQueries: true,
   EditSampleData: true,
   EditTags: true,

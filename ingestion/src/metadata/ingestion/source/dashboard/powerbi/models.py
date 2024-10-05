@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 
 class Tile(BaseModel):
@@ -24,11 +25,11 @@ class Tile(BaseModel):
     """
 
     id: str
-    title: Optional[str]
-    subTitle: Optional[str]
-    embedUrl: Optional[str]
-    datasetId: Optional[str]
-    reportId: Optional[str]
+    title: Optional[str] = None
+    subTitle: Optional[str] = None
+    embedUrl: Optional[str] = None
+    datasetId: Optional[str] = None
+    reportId: Optional[str] = None
 
 
 class PowerBIDashboard(BaseModel):
@@ -39,8 +40,8 @@ class PowerBIDashboard(BaseModel):
 
     id: str
     displayName: str
-    webUrl: Optional[str]
-    embedUrl: Optional[str]
+    webUrl: Optional[str] = None
+    embedUrl: Optional[str] = None
     tiles: Optional[List[Tile]] = []
 
 
@@ -52,7 +53,7 @@ class PowerBIReport(BaseModel):
 
     id: str
     name: str
-    datasetId: Optional[str]
+    datasetId: Optional[str] = None
 
 
 class DashboardsResponse(BaseModel):
@@ -92,8 +93,8 @@ class PowerBiColumns(BaseModel):
     """
 
     name: str
-    dataType: Optional[str]
-    columnType: Optional[str]
+    dataType: Optional[str] = None
+    columnType: Optional[str] = None
 
 
 class PowerBiTable(BaseModel):
@@ -103,8 +104,8 @@ class PowerBiTable(BaseModel):
     """
 
     name: str
-    columns: Optional[List[PowerBiColumns]]
-    description: Optional[str]
+    columns: Optional[List[PowerBiColumns]] = None
+    description: Optional[str] = None
 
 
 class TablesResponse(BaseModel):
@@ -126,7 +127,7 @@ class Dataset(BaseModel):
     id: str
     name: str
     tables: Optional[List[PowerBiTable]] = []
-    description: Optional[str]
+    description: Optional[str] = None
 
 
 class DatasetResponse(BaseModel):
@@ -146,9 +147,9 @@ class Group(BaseModel):
     """
 
     id: str
-    name: Optional[str]
-    type: Optional[str]
-    state: Optional[str]
+    name: Optional[str] = None
+    type: Optional[str] = None
+    state: Optional[str] = None
     dashboards: Optional[List[PowerBIDashboard]] = []
     reports: Optional[List[PowerBIReport]] = []
     datasets: Optional[List[Dataset]] = []
@@ -173,7 +174,7 @@ class WorkSpaceScanResponse(BaseModel):
 
     id: str
     createdDateTime: datetime
-    status: Optional[str]
+    status: Optional[str] = None
 
 
 class Workspaces(BaseModel):
@@ -190,5 +191,33 @@ class PowerBiToken(BaseModel):
     PowerBI Token Model
     """
 
-    expires_in: Optional[int]
-    access_token: Optional[str]
+    expires_in: Optional[int] = None
+    access_token: Optional[str] = None
+
+
+class RemoteArtifacts(BaseModel):
+    """
+    PowerBI RemoteArtifacts Model
+    """
+
+    DatasetId: str
+    ReportId: str
+
+
+class ConnectionFile(BaseModel):
+    """
+    PowerBi Connection File Model
+    """
+
+    RemoteArtifacts: Annotated[
+        Optional[List[RemoteArtifacts]], Field(None, description="Remote Artifacts")
+    ]
+
+
+class DataModelSchema(BaseModel):
+    """
+    PowerBi Data Model Schema Model
+    """
+
+    tables: Optional[List[PowerBiTable]] = None
+    connectionFile: Optional[ConnectionFile] = None

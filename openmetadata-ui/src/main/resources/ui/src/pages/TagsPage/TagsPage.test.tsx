@@ -24,12 +24,9 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import React, { ReactNode } from 'react';
-import {
-  deleteTag,
-  getAllClassifications,
-  updateClassification,
-} from '../../rest/tagAPI';
+import React from 'react';
+import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getClassifications } from '../../utils/TagsUtils';
 import TagsPage from './TagsPage';
 import {
@@ -42,12 +39,15 @@ import {
 
 jest.useRealTimers();
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    pathname: '/my-data',
+  }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: jest.fn(),
-  })),
-  useLocation: jest.fn().mockImplementation(() => ({
-    pathname: '/my-data',
   })),
   useParams: jest.fn().mockReturnValue({
     entityTypeFQN: 'entityTypeFQN',
@@ -158,7 +158,7 @@ const mockCategory = [
   },
 ];
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       Create: true,
@@ -231,23 +231,13 @@ jest.mock('../../utils/TagsUtils', () => ({
     .mockImplementation(() => <a href="/">Usage Count</a>),
 }));
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        leftPanel,
-      }: {
-        children: ReactNode;
-        leftPanel: ReactNode;
-      }) => (
-        <div data-testid="PageLayoutV1">
-          <div data-testid="left-panel-content">{leftPanel}</div>
-          {children}
-        </div>
-      )
-    )
+jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div>
+      {firstPanel.children}
+      {secondPanel.children}
+    </div>
+  ))
 );
 
 jest.mock(
@@ -276,7 +266,7 @@ jest.mock('../../components/Modals/FormModal', () => {
     .mockReturnValue(<p data-testid="modal-container">FormModal</p>);
 });
 
-jest.mock('../../components/common/EntityDescription/Description', () => {
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
 });
 
@@ -286,7 +276,7 @@ describe('Test TagsPage page', () => {
       render(<TagsPage />);
     });
     const tagsComponent = await screen.findByTestId('tags-container');
-    const leftPanelContent = await screen.findByTestId('left-panel-content');
+    const leftPanelContent = await screen.findByTestId('tags-left-panel');
     const header = await screen.findByTestId('header');
     const descriptionContainer = await screen.findByTestId(
       'description-container'
@@ -308,7 +298,7 @@ describe('Test TagsPage page', () => {
     render(<TagsPage />);
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
-    const leftPanelContent = screen.getByTestId('left-panel-content');
+    const leftPanelContent = screen.getByTestId('tags-left-panel');
     const sidePanelCategories = await screen.findAllByTestId(
       'side-panel-classification'
     );
@@ -438,41 +428,6 @@ describe('Test TagsPage page', () => {
     expect(errorPlaceholder).toBeInTheDocument();
   });
 
-  it.skip('Should render error placeholder if update categories api fails', async () => {
-    (updateClassification as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject({
-        response: {
-          data: { message: 'Error!' },
-        },
-      })
-    );
-    const { container } = render(<TagsPage />);
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
-
-    const tagsComponent = await findByTestId(container, 'tags-container');
-    const leftPanelContent = await findByTestId(
-      container,
-      'left-panel-content'
-    );
-    const header = await findByTestId(container, 'header');
-    const descriptionContainer = await findByTestId(
-      container,
-      'description-container'
-    );
-    const table = await findByTestId(container, 'table');
-    const sidePanelCategories = await findAllByTestId(
-      container,
-      'side-panel-classification'
-    );
-
-    expect(tagsComponent).toBeInTheDocument();
-    expect(leftPanelContent).toBeInTheDocument();
-    expect(header).toBeInTheDocument();
-    expect(descriptionContainer).toBeInTheDocument();
-    expect(table).toBeInTheDocument();
-    expect(sidePanelCategories).toHaveLength(3);
-  });
-
   it('System tag category should not be renamed', async () => {
     render(<TagsPage />);
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
@@ -496,7 +451,7 @@ describe('Test TagsPage page', () => {
 
     const tagsComponent = screen.getByTestId('tags-container');
     const header = screen.getByTestId('header');
-    const leftPanelContent = screen.getByTestId('left-panel-content');
+    const leftPanelContent = screen.getByTestId('tags-left-panel');
     const editIcon = screen.getByTestId('name-edit-icon');
     const tagCategoryName = screen.getByTestId('classification-name');
 
@@ -554,6 +509,14 @@ describe('Test TagsPage page', () => {
 
     expect(tagName).toBeInTheDocument();
     expect(tagsComponent).toBeInTheDocument();
+  });
+
+  it("Should not render add classification button if doesn't have create permission", async () => {
+    (checkPermission as jest.Mock).mockReturnValueOnce(false);
+
+    render(<TagsPage />);
+
+    expect(screen.queryByTestId('add-classification')).not.toBeInTheDocument();
   });
 
   describe('Render Sad Paths', () => {

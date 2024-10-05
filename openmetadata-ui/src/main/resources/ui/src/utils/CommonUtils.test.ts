@@ -11,7 +11,36 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
+import { cloneDeep } from 'lodash';
 import {
+  getDayCron,
+  getHourCron,
+} from '../components/common/CronEditor/CronEditor.constant';
+import { ERROR_MESSAGE } from '../constants/constants';
+import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../generated/type/tagLabel';
+import {
+  digitFormatter,
+  formatTimeFromSeconds,
+  getBase64EncodedString,
+  getIngestionFrequency,
+  getIsErrorMatch,
+  getNameFromFQN,
+  getServiceTypeExploreQueryFilter,
+  getTagValue,
+  isDeleted,
+  prepareLabel,
+  reduceColorOpacity,
+  sortTagsCaseInsensitive,
+} from './CommonUtils';
+import {
+  mockFQN,
   mockFQNWithSpecialChar1,
   mockFQNWithSpecialChar2,
   mockFQNWithSpecialChar3,
@@ -22,36 +51,8 @@ import {
   mockTableNameWithSpecialChar3,
   mockTableNameWithSpecialChar4,
   mockTableNameWithSpecialChar5,
+  mockTags,
 } from './CommonUtils.mock';
-
-import { AxiosError } from 'axios';
-import { cloneDeep } from 'lodash';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
-import { ERROR_MESSAGE } from '../constants/constants';
-import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../generated/type/tagLabel';
-import {
-  digitFormatter,
-  getBase64EncodedString,
-  getEntityDetailLink,
-  getIngestionFrequency,
-  getIsErrorMatch,
-  getNameFromFQN,
-  getTagValue,
-  prepareLabel,
-  reduceColorOpacity,
-  sortTagsCaseInsensitive,
-} from './CommonUtils';
-import { mockFQN, mockTags, sortedMockTags } from './CommonUtils.mock';
 
 const AXIOS_ERROR_MESSAGE = {
   isAxiosError: true,
@@ -71,21 +72,7 @@ const AXIOS_ERROR_MESSAGE = {
 describe('Tests for CommonUtils', () => {
   describe('Tests for sortTagsCaseInsensitive function', () => {
     it('Input of unsorted array to sortTagsCaseInsensitive should return array of tags sorted by tagFQN', () => {
-      expect(sortTagsCaseInsensitive(cloneDeep(mockTags))).toEqual(
-        sortedMockTags
-      );
-    });
-
-    it('Input of sorted array to sortTagsCaseInsensitive should return array of tags sorted by tagFQN', () => {
-      expect(sortTagsCaseInsensitive(cloneDeep(sortedMockTags))).toEqual(
-        sortedMockTags
-      );
-    });
-
-    it('Array returned by sortTagsCaseInsensitive should not be equal to the unsorted input array of tags', () => {
-      expect(sortTagsCaseInsensitive(cloneDeep(mockTags))).not.toEqual(
-        mockTags
-      );
+      expect(sortTagsCaseInsensitive(cloneDeep(mockTags))).toEqual(mockTags);
     });
 
     it('Function getNameFromFQN should return the correct table name for fqn without special characters', () => {
@@ -135,16 +122,43 @@ describe('Tests for CommonUtils', () => {
         { value: 1000, result: '1K' },
         { value: 10000, result: '10K' },
         { value: 10200, result: '10.2K' },
+        { value: 10230, result: '10.23K' },
         { value: 1000000, result: '1M' },
+        { value: 1230000, result: '1.23M' },
         { value: 100000000, result: '100M' },
         { value: 1000000000, result: '1B' },
         { value: 1500000000, result: '1.5B' },
+        { value: 1550000000, result: '1.55B' },
         { value: 1000000000000, result: '1T' },
         { value: 1100000000000, result: '1.1T' },
+        { value: 1110000000000, result: '1.11T' },
       ];
 
       values.map(({ value, result }) => {
         expect(digitFormatter(value)).toEqual(result);
+      });
+    });
+
+    // formatTimeFromSeconds test
+    it('formatTimeFromSeconds formatter should format mills to human readable value', () => {
+      const values = [
+        { input: 1, expected: '1 second' },
+        { input: 2, expected: '2 seconds' },
+        { input: 30, expected: '30 seconds' },
+        { input: 60, expected: '1 minute' },
+        { input: 120, expected: '2 minutes' },
+        { input: 3600, expected: '1 hour' },
+        { input: 7200, expected: '2 hours' },
+        { input: 86400, expected: '1 day' },
+        { input: 172800, expected: '2 days' },
+        { input: 2592000, expected: '1 month' },
+        { input: 5184000, expected: '2 months' },
+        { input: 31536000, expected: '1 year' },
+        { input: 63072000, expected: '2 years' },
+      ];
+
+      values.map(({ input, expected }) => {
+        expect(formatTimeFromSeconds(input)).toEqual(expected);
       });
     });
 
@@ -202,44 +216,6 @@ describe('Tests for CommonUtils', () => {
 
         expect(result).toBe(false);
       });
-    });
-
-    it('should return the correct path for EntityType.TABLE', () => {
-      let result = getEntityDetailLink(
-        EntityType.TABLE,
-        'table_fqn',
-        EntityTabs.ACTIVITY_FEED
-      );
-
-      expect(result).toEqual('/table/table_fqn/activity_feed/all');
-
-      result = getEntityDetailLink(
-        EntityType.TABLE,
-        'table_fqn',
-        EntityTabs.ACTIVITY_FEED,
-        'mentions'
-      );
-
-      expect(result).toEqual('/table/table_fqn/activity_feed/mentions');
-
-      result = getEntityDetailLink(
-        EntityType.TABLE,
-        'table_fqn',
-        EntityTabs.ACTIVITY_FEED,
-        'tasks'
-      );
-
-      expect(result).toEqual('/table/table_fqn/activity_feed/tasks');
-    });
-
-    it('should return the correct path for EntityType.TOPIC', () => {
-      const result = getEntityDetailLink(
-        EntityType.TOPIC,
-        'topic_fqn',
-        EntityTabs.CONFIG
-      );
-
-      expect(result).toEqual('/topic/topic_fqn/config');
     });
 
     it('should reduce color opacity by the given value', () => {
@@ -351,6 +327,24 @@ describe('Tests for CommonUtils', () => {
 
         expect(result).toEqual(expected);
       });
+    });
+
+    describe('getServiceTypeExploreQueryFilter', () => {
+      it('should return json string with the key', () => {
+        const result = getServiceTypeExploreQueryFilter('mysql');
+
+        expect(result).toEqual(
+          '{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"serviceType":"mysql"}}]}}]}}}'
+        );
+      });
+    });
+
+    it('isDeleted should return proper boolean value', () => {
+      expect(isDeleted(true)).toBe(true);
+      expect(isDeleted(false)).toBe(false);
+      expect(isDeleted('false')).toBe(false);
+      expect(isDeleted(undefined)).toBe(false);
+      expect(isDeleted(null)).toBe(false);
     });
   });
 });

@@ -16,8 +16,9 @@ package org.openmetadata.service.clients.pipeline;
 import java.lang.reflect.InvocationTargetException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 
 @Slf4j
@@ -26,11 +27,11 @@ public final class PipelineServiceClientFactory {
     // Final class
   }
 
-  @Getter private static PipelineServiceClient pipelineServiceClient;
+  @Getter private static PipelineServiceClientInterface pipelineServiceClient;
 
-  public static PipelineServiceClient createPipelineServiceClient(
+  public static PipelineServiceClientInterface createPipelineServiceClient(
       PipelineServiceClientConfiguration config) {
-    if (pipelineServiceClient != null) {
+    if (pipelineServiceClient != null || CommonUtil.nullOrEmpty(config)) {
       return pipelineServiceClient;
     }
 
@@ -38,11 +39,12 @@ public final class PipelineServiceClientFactory {
     LOG.debug("Registering PipelineServiceClient: {}", pipelineServiceClientClass);
 
     try {
-      pipelineServiceClient =
+      PipelineServiceClientInterface client =
           Class.forName(pipelineServiceClientClass)
               .asSubclass(PipelineServiceClient.class)
               .getConstructor(PipelineServiceClientConfiguration.class)
               .newInstance(config);
+      pipelineServiceClient = new MeteredPipelineServiceClient(client);
       return pipelineServiceClient;
     } catch (ClassNotFoundException
         | NoSuchMethodException

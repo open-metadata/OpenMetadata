@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Divider, Row, Space, Typography } from 'antd';
-import { isEmpty } from 'lodash';
+import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
+import { get, isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -89,13 +89,20 @@ function DataAssetsVersionHeader({
     () => getDataAssetsVersionHeaderInfo(entityType, currentVersionData),
     [entityType, currentVersionData]
   );
-  const logo = useMemo(
-    () =>
-      serviceUtilClassBase.getServiceTypeLogo(
-        currentVersionData as SearchSourceAlias
-      ),
-    [currentVersionData]
-  );
+
+  const icon = useMemo(() => {
+    const serviceType = get(currentVersionData, 'serviceType', '');
+
+    return serviceType ? (
+      <img
+        alt="service-icon"
+        className="h-9"
+        src={serviceUtilClassBase.getServiceTypeLogo(
+          currentVersionData as SearchSourceAlias
+        )}
+      />
+    ) : null;
+  }, [currentVersionData]);
 
   return (
     <Row className="p-x-lg" gutter={[8, 12]} justify="space-between">
@@ -108,11 +115,7 @@ function DataAssetsVersionHeader({
             <EntityHeaderTitle
               deleted={deleted}
               displayName={displayName}
-              icon={
-                currentVersionData.serviceType && (
-                  <img className="h-9" src={logo} />
-                )
-              }
+              icon={icon}
               name={currentVersionData?.name}
               serviceName={serviceName ?? ''}
             />
@@ -135,8 +138,8 @@ function DataAssetsVersionHeader({
                 </>
               )}
               <OwnerLabel
-                owner={currentVersionData?.owner ?? ownerRef}
                 ownerDisplayName={ownerDisplayName}
+                owners={currentVersionData?.owners ?? ownerRef}
               />
               <Divider className="self-center m-x-sm" type="vertical" />
 
@@ -161,13 +164,15 @@ function DataAssetsVersionHeader({
       <Col span={3}>
         <Row justify="end">
           <Col>
-            <Button
-              className="w-16 p-0"
-              data-testid="version-button"
-              icon={<Icon component={VersionIcon} />}
-              onClick={onVersionClick}>
-              <Typography.Text>{version}</Typography.Text>
-            </Button>
+            <Tooltip title={t('label.exit-version-history')}>
+              <Button
+                className="w-16 p-0"
+                data-testid="version-button"
+                icon={<Icon component={VersionIcon} />}
+                onClick={onVersionClick}>
+                <Typography.Text>{version}</Typography.Text>
+              </Button>
+            </Tooltip>
           </Col>
         </Row>
       </Col>

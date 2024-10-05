@@ -27,7 +27,11 @@
     border-top: 0;
     background: @white;
     transition: 0.3s ease-in-out;
-    overflow: hidden;
+    overflow: scroll;
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
 
     //  sub menu dropdown will be closed by default
     .ant-menu-sub {
@@ -74,6 +78,14 @@
           .left-panel-label {
             opacity: 1;
           }
+
+          .service-beta-tag {
+            position: static;
+            sup {
+              margin-left: 8px;
+              position: static;
+            }
+          }
         }
       }
 
@@ -101,7 +113,7 @@
 
   .left-sidebar-menu.ant-menu {
     .ant-menu-item {
-      padding: 8px 0 8px 13px !important;
+      padding: 8px 0 8px 8px !important;
       height: auto;
       margin: 4px auto;
       transition: 0.3s ease-in-out;
@@ -127,7 +139,7 @@
           right: 20px;
           sup {
             font-size: 8px;
-            background: @primary-color-hover;
+            background: @primary-1;
             border: 1px solid @primary-color;
             color: @primary-color;
           }
@@ -135,7 +147,7 @@
 
         .anticon {
           svg {
-            font-size: 30px;
+            font-size: 40px;
             fill: transparent;
           }
         }
@@ -153,7 +165,7 @@
       height: auto;
 
       .ant-menu-submenu-title {
-        padding: 8px 0 8px 13px !important;
+        padding: 8px 0 8px 8px !important;
         margin: auto;
         height: auto;
 
@@ -161,7 +173,7 @@
           position: relative;
           .anticon {
             svg {
-              font-size: 30px;
+              font-size: 40px;
               fill: transparent;
             }
           }
@@ -189,7 +201,7 @@
           .left-panel-item {
             .anticon {
               svg {
-                font-size: 22px;
+                font-size: 30px;
                 fill: transparent;
               }
             }
@@ -267,7 +279,54 @@
   padding: 0 0 24px 0 !important;
   border-right: 1px solid @border-color;
   overflow: auto;
-  height: calc(100vh - 64px);
+  height: calc(100vh - @om-navbar-height);
   background-color: @white;
   overflow-x: hidden;
+}
+
+// support for rtl in sidebar
+
+.left-sidebar-col-rtl {
+  .left-sidebar-container {
+    right: 0;
+    left: initial;
+  }
+
+  .brand-logo-container {
+    padding-left: initial;
+    padding-right: 14px;
+  }
+
+  .left-sidebar-menu.ant-menu {
+    .ant-menu-item {
+      padding: 8px 13px 8px 0 !important;
+
+      .left-panel-item {
+        .anticon {
+          margin-right: initial;
+        }
+
+        .service-beta-tag {
+          right: initial;
+          left: 20px;
+        }
+      }
+    }
+
+    .ant-menu-submenu {
+      .ant-menu-submenu-title {
+        padding: 8px 13px 8px 0px !important;
+      }
+
+      .ant-menu-item {
+        padding: 8px 30px 8px 0 !important;
+      }
+
+      .ant-menu-sub.ant-menu-inline {
+        .ant-menu-item {
+          padding: 4px 30px 4px 0 !important;
+        }
+      }
+    }
+  }
 }

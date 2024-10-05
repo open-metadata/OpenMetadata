@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { StoredProcedureVersionProp } from '../components/StoredProcedureVersion/StoredProcedureVersion.interface';
+import { StoredProcedureVersionProp } from '../components/Database/StoredProcedureVersion/StoredProcedureVersion.interface';
 import { DatabaseServiceType, TableType } from '../generated/entity/data/table';
 import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import {
@@ -35,14 +35,16 @@ const mockData = {
   updatedBy: 'admin',
   tableType: TableType.Regular,
   columns: [],
-  owner: {
-    id: '38be030f-f817-4712-bc3b-ff7b9b9b805e',
-    type: 'user',
-    name: 'aaron_johnson0',
-    fullyQualifiedName: 'aaron_johnson0',
-    displayName: 'Aaron Johnson',
-    deleted: false,
-  },
+  owners: [
+    {
+      id: '38be030f-f817-4712-bc3b-ff7b9b9b805e',
+      type: 'user',
+      name: 'aaron_johnson0',
+      fullyQualifiedName: 'aaron_johnson0',
+      displayName: 'Aaron Johnson',
+      deleted: false,
+    },
+  ],
   databaseSchema: {
     id: '3f0d9c39-0926-4028-8070-65b0c03556cb',
     type: 'databaseSchema',
@@ -91,7 +93,7 @@ export const storedProcedureVersionMockProps: StoredProcedureVersionProp = {
   version: '0.3',
   currentVersionData: mockData,
   isVersionLoading: false,
-  owner: mockOwner,
+  owners: mockOwner,
   domain: mockDomain,
   dataProducts: [],
   tier: mockTier,

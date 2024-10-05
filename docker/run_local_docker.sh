@@ -56,10 +56,10 @@ docker compose -f docker/development/docker-compose.yml down
 if [[ $skipMaven == "false" ]]; then
     if [[ $mode == "no-ui" ]]; then
         echo "Maven Build - Skipping Tests and UI"
-        mvn -q -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+        mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
     else
         echo "Maven Build - Skipping Tests"
-        mvn -q -DskipTests clean package
+        mvn -DskipTests clean package
     fi
 else
     echo "Skipping Maven Build"
@@ -97,8 +97,11 @@ echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
     docker compose -f docker/development/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose-postgres.yml up -d
-else
+elif [[ $database == "mysql" ]]; then
     docker compose -f docker/development/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose.yml up -d
+else
+    echo "Invalid database type: $database"
+    exit 1
 fi
 
 RESULT=$?
@@ -107,7 +110,7 @@ if [ $RESULT -ne 0 ]; then
   exit 1
 fi
 
-until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
+until curl -s -f "http://localhost:9200/_cat/indices/openmetadata_team_search_index"; do
   echo 'Checking if Elastic Search instance is up...\n'
   sleep 5
 done
@@ -138,14 +141,10 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/extended_sample_data
 
 echo 'Validate sample data DAG...'
 sleep 5
-python -m pip install ingestion/
+# This validates the sample data DAG flow
+make install
 python docker/validate_compose.py
 
-until curl -s -f --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
-  echo 'Waiting on Sample Data Ingestion to complete...\n'
-  curl -v --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables"
-  sleep 5
-done
 sleep 5
 curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_usage' \
   --header 'Authorization: Basic YWRtaW46YWRtaW4=' \

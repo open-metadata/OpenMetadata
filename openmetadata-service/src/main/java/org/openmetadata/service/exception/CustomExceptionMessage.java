@@ -8,6 +8,10 @@ public class CustomExceptionMessage extends WebServiceException {
     super(status.getStatusCode(), errorType, message);
   }
 
+  public CustomExceptionMessage(Response response, String message) {
+    super(response, message);
+  }
+
   public CustomExceptionMessage(int status, String errorType, String message) {
     super(status, errorType, message);
   }

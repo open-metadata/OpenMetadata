@@ -33,14 +33,16 @@ const MOCK_VERSION = {
   updatedAt: 1681762798036,
   updatedBy: 'suresh',
   reviewers: [],
-  owner: {
-    id: 'eeca9594-abd5-4dde-bc38-8b411e821087',
-    type: 'user',
-    name: 'suresh',
-    fullyQualifiedName: 'suresh',
-    displayName: 'Suresh Srinivas',
-    deleted: false,
-  },
+  owners: [
+    {
+      id: 'eeca9594-abd5-4dde-bc38-8b411e821087',
+      type: 'user',
+      name: 'suresh',
+      fullyQualifiedName: 'suresh',
+      displayName: 'Suresh Srinivas',
+      deleted: false,
+    },
+  ],
   tags: [],
   deleted: false,
   provider: 'user',
@@ -64,6 +66,10 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
+jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () => {
+  return jest.fn().mockReturnValue(<>Version timeline</>);
+});
+
 describe('GlossaryVersion', () => {
   it('renders glossary version', async () => {
     const glossaryName = '305b0130-b9c1-4441-a0fc-6463fd019540';
@@ -82,11 +88,6 @@ describe('GlossaryVersion', () => {
     expect(await screen.findByText('Glossary component')).toBeInTheDocument();
 
     // Check that the version timeline is displayed
-    expect(
-      screen.getByText('label.version-plural-history')
-    ).toBeInTheDocument();
-
-    // check active version visible
-    expect(screen.getByText('v0.1')).toBeInTheDocument();
+    expect(screen.getByText('Version timeline')).toBeInTheDocument();
   });
 });

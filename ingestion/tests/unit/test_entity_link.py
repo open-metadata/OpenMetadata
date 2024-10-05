@@ -13,7 +13,10 @@ Test Entity Link build behavior
 """
 from unittest import TestCase
 
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.table import Table
 from metadata.utils import entity_link
+from metadata.utils.entity_link import get_entity_link
 
 
 class TestEntityLink(TestCase):
@@ -53,6 +56,13 @@ class TestEntityLink(TestCase):
                     "bigquery_gcp.shopify.raw_product_catalog3",
                     "columns",
                     "comment",
+                ],
+            ),
+            EntityLinkTest(
+                "<#E::ingestionPipeline::fivetran_gcp.shopify.raw_product_catalog3>",
+                [
+                    "ingestionPipeline",
+                    "fivetran_gcp.shopify.raw_product_catalog3",
                 ],
             ),
             EntityLinkTest(
@@ -107,3 +117,19 @@ class TestEntityLink(TestCase):
         ]
         for x in xs:
             x.validate(entity_link.split(x.entitylink), x.split_list)
+
+    def test_get_entity_link(self):
+        """We can get entity link for different entities"""
+
+        table_link = get_entity_link(Table, fqn="service.db.schema.table")
+        self.assertEqual(table_link, "<#E::table::service.db.schema.table>")
+
+        dashboard_link = get_entity_link(Dashboard, fqn="service.dashboard")
+        self.assertEqual(dashboard_link, "<#E::dashboard::service.dashboard>")
+
+        column_link = get_entity_link(
+            Table, fqn="service.db.schema.table", column_name="col"
+        )
+        self.assertEqual(
+            column_link, "<#E::table::service.db.schema.table::columns::col>"
+        )

@@ -55,7 +55,7 @@ class UnitycatalogLineageSource(Source):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
         self.client = UnityCatalogClient(self.service_connection)
         self.connection_obj = get_connection(self.service_connection)
@@ -72,10 +72,12 @@ class UnitycatalogLineageSource(Source):
         """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: UnityCatalogConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
             raise InvalidSourceException(
                 f"Expected UnityCatalogConnection, but got {connection}"
@@ -88,7 +90,7 @@ class UnitycatalogLineageSource(Source):
         col_lineage = []
         for column in to_table.columns:
             column_streams = self.client.get_column_lineage(
-                databricks_table_fqn, column_name=column.name.__root__
+                databricks_table_fqn, column_name=column.name.root
             )
             from_columns = []
             for col in column_streams.upstream_cols:
@@ -100,7 +102,7 @@ class UnitycatalogLineageSource(Source):
                 col_lineage.append(
                     ColumnLineage(
                         fromColumns=from_columns,
-                        toColumn=column.fullyQualifiedName.__root__,
+                        toColumn=column.fullyQualifiedName.root,
                     )
                 )
         if col_lineage:
@@ -117,9 +119,9 @@ class UnitycatalogLineageSource(Source):
             entity=Database, params={"service": self.config.serviceName}
         ):
             for table in self.metadata.list_all_entities(
-                entity=Table, params={"database": database.fullyQualifiedName.__root__}
+                entity=Table, params={"database": database.fullyQualifiedName.root}
             ):
-                databricks_table_fqn = f"{table.database.name}.{table.databaseSchema.name}.{table.name.__root__}"
+                databricks_table_fqn = f"{table.database.name}.{table.databaseSchema.name}.{table.name.root}"
                 table_streams: LineageTableStreams = self.client.get_table_lineage(
                     databricks_table_fqn
                 )

@@ -15,7 +15,7 @@ Tableau Source Model module
 
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Extra, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, validator
 
 from metadata.generated.schema.entity.data.chart import ChartType
 
@@ -25,11 +25,10 @@ class TableauBaseModel(BaseModel):
     Tableau basic configurations
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     id: str
-    name: Optional[str]
+    name: Optional[str] = None
 
     def __hash__(self):
         return hash(self.id)
@@ -54,10 +53,17 @@ class TableauTag(BaseModel):
     Aux class for Tag object of the tableau_api_lib response
     """
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     label: str
+
+
+class TableauDataModelTag(BaseModel):
+    """
+    Aux class for Tag object for Tableau Data Model
+    """
+
+    name: str
 
 
 class TableauOwner(TableauBaseModel):
@@ -65,7 +71,7 @@ class TableauOwner(TableauBaseModel):
     Aux class for Owner object of the tableau_api_lib response
     """
 
-    email: Optional[str]
+    email: Optional[str] = None
 
 
 def transform_tags(raw: Union[Dict[str, Any], List[TableauTag]]) -> List[TableauTag]:
@@ -83,57 +89,60 @@ class CustomSQLTable(TableauBaseModel):
     https://help.tableau.com/current/api/metadata_api/en-us/reference/customsqltable.doc.html
     """
 
-    query: Optional[str]
+    query: Optional[str] = None
 
 
 class UpstreamColumn(BaseModel):
     id: str
-    name: Optional[str]
-    remoteType: Optional[str]
+    name: Optional[str] = None
+    remoteType: Optional[str] = None
 
 
 class DatasourceField(BaseModel):
     id: str
-    name: Optional[str]
-    upstreamColumns: Optional[List[Union[UpstreamColumn, None]]]
-    description: Optional[str]
+    name: Optional[str] = None
+    upstreamColumns: Optional[List[Union[UpstreamColumn, None]]] = None
+    description: Optional[str] = None
 
 
 class UpstreamTableColumn(BaseModel):
     id: str
-    name: Optional[str]
+    name: Optional[str] = None
 
 
 class TableauDatabase(BaseModel):
     id: str
-    name: Optional[str]
+    name: Optional[str] = None
 
 
 class UpstreamTable(BaseModel):
     id: str
     luid: str
-    name: Optional[str]
-    fullName: Optional[str]
-    schema_: Optional[str] = Field(..., alias="schema")
-    columns: Optional[List[UpstreamTableColumn]]
-    database: Optional[TableauDatabase]
-    referencedByQueries: Optional[List[CustomSQLTable]]
+    name: Optional[str] = None
+    fullName: Optional[str] = None
+    schema_: Optional[str] = Field(None, alias="schema")
+    columns: Optional[List[UpstreamTableColumn]] = None
+    database: Optional[TableauDatabase] = None
+    referencedByQueries: Optional[List[CustomSQLTable]] = None
 
 
 class DataSource(BaseModel):
     id: str
-    name: Optional[str]
-    fields: Optional[List[DatasourceField]]
-    upstreamTables: Optional[List[UpstreamTable]]
+    name: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[TableauDataModelTag]] = []
+    fields: Optional[List[DatasourceField]] = None
+    upstreamTables: Optional[List[UpstreamTable]] = None
+    upstreamDatasources: Optional[List["DataSource"]] = None
 
 
 class TableauDatasources(BaseModel):
-    nodes: Optional[List[DataSource]]
-    totalCount: Optional[int]
+    nodes: Optional[List[DataSource]] = None
+    totalCount: Optional[int] = None
 
 
 class TableauDatasourcesConnection(BaseModel):
-    embeddedDatasourcesConnection: Optional[TableauDatasources]
+    embeddedDatasourcesConnection: Optional[TableauDatasources] = None
 
 
 class TableauChart(TableauBaseModel):
@@ -141,7 +150,7 @@ class TableauChart(TableauBaseModel):
     Aux class for Chart object of the tableau_api_lib response
     """
 
-    owner: Optional[TableauOwner]
+    owner: Optional[TableauOwner] = None
     tags: Optional[List[TableauTag]] = []
     _extract_tags = validator("tags", pre=True, allow_reuse=True)(transform_tags)
     contentUrl: Optional[str] = ""
@@ -153,14 +162,13 @@ class TableauDashboard(TableauBaseModel):
     Aux class for Dashboard object of the tableau_api_lib response
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
-    project: Optional[TableauBaseModel]
-    description: Optional[str]
-    owner: Optional[TableauOwner]
+    project: Optional[TableauBaseModel] = None
+    description: Optional[str] = None
+    owner: Optional[TableauOwner] = None
     tags: Optional[List[TableauTag]] = []
     _extract_tags = validator("tags", pre=True, allow_reuse=True)(transform_tags)
-    webpageUrl: Optional[str]
-    charts: Optional[List[TableauChart]]
+    webpageUrl: Optional[str] = None
+    charts: Optional[List[TableauChart]] = None
     dataModels: List[DataSource] = []

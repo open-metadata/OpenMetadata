@@ -33,10 +33,15 @@ const mockLocation = {
   search: '',
 };
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    ...mockLocation,
+  }));
+});
+
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParam),
   useHistory: jest.fn().mockImplementation(() => mockHistory),
-  useLocation: jest.fn().mockImplementation(() => mockLocation),
 }));
 
 jest.mock('../../rest/userAPI', () => ({
@@ -74,7 +79,7 @@ jest.mock('../../components/common/Table/Table', () => {
   return jest.fn().mockImplementation(() => <table>mockTable</table>);
 });
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 

@@ -11,24 +11,52 @@
  *  limitations under the License.
  */
 
-export interface QueryFieldValueInterface {
-  term: Record<string, string>;
+import { SortingField } from '../../components/Explore/SortingDropDown';
+import { SORT_ORDER } from '../../enums/common.enum';
+
+export type TabsInfoData = {
+  label: string;
+  sortingFields: SortingField[];
+  sortField: string;
+  sortOrder?: SORT_ORDER;
+  path: string;
+  icon: React.ReactNode;
+};
+
+export type FieldValue = string | boolean | null | number | undefined;
+
+export interface EsTermQuery {
+  value: FieldValue;
+  case_insensitive?: boolean;
+}
+
+export type EsTermsQuery = {
+  [property: string]: string;
+};
+
+export interface EsExistsQuery {
+  field: string;
+}
+
+export interface EsBoolQuery {
+  filter?: QueryFieldInterface | QueryFieldInterface[];
+  must?: QueryFieldInterface | QueryFieldInterface[];
+  must_not?: QueryFieldInterface | QueryFieldInterface[];
+  should?: QueryFieldInterface | QueryFieldInterface[];
 }
 
 export interface QueryFieldInterface {
-  bool: {
-    must?: Array<QueryFieldValueInterface>;
-    must_not?: Array<QueryFieldValueInterface>;
-    should?: Array<QueryFieldValueInterface>;
-  };
+  bool?: EsBoolQuery;
+  term?: Partial<Record<string, EsTermQuery | FieldValue>>;
+  terms?: EsTermsQuery;
+  exists?: EsExistsQuery;
 }
 
 export interface QueryFilterInterface {
-  query: {
-    bool: {
-      must?: QueryFieldInterface[];
-      must_not?: QueryFieldInterface[];
-      should?: QueryFieldInterface[];
-    };
-  };
+  query: QueryFieldInterface;
+}
+
+export enum ExploreSidebarTab {
+  ASSETS = 'assets',
+  TREE = 'tree',
 }

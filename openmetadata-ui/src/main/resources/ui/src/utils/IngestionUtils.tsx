@@ -12,11 +12,13 @@
  */
 
 import { Typography } from 'antd';
+import { ExpandableConfig } from 'antd/lib/table/interface';
 import { t } from 'i18next';
 import { isUndefined, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ConnectionStepCard from '../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { getServiceDetailsPath } from '../constants/constants';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
@@ -34,9 +36,14 @@ import {
 } from '../constants/Ingestions.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../enums/ElasticSearch.enum';
+import { FormSubmitType } from '../enums/form.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { Connection } from '../generated/entity/services/databaseService';
-import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
+import { HiveMetastoreConnectionDetails as Connection } from '../generated/entity/services/databaseService';
+import {
+  IngestionPipeline,
+  StepSummary,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Connection as MetadataConnection } from '../generated/entity/services/metadataService';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
@@ -70,14 +77,14 @@ export const getSettingsPathFromPipelineType = (pipelineType: string) => {
   switch (pipelineType) {
     case PipelineType.DataInsight: {
       return getSettingPath(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         GlobalSettingOptions.DATA_INSIGHT
       );
     }
     case PipelineType.ElasticSearchReindex:
     default: {
       return getSettingsPathWithFqn(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         GlobalSettingOptions.SEARCH,
         ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.SCHEDULE
       );
@@ -136,15 +143,16 @@ export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
   let pipelineType = [];
   const config = serviceDetails?.connection?.config as Connection;
   if (config) {
-    config.supportsMetadataExtraction &&
+    config?.supportsMetadataExtraction &&
       pipelineType.push(PipelineType.Metadata);
-    config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
-    config.supportsLineageExtraction && pipelineType.push(PipelineType.Lineage);
-    config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
-    config.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
-    (config as MetadataConnection).supportsDataInsightExtraction &&
+    config?.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
+    config?.supportsLineageExtraction &&
+      pipelineType.push(PipelineType.Lineage);
+    config?.supportsProfiler && pipelineType.push(PipelineType.Profiler);
+    config?.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
+    (config as MetadataConnection)?.supportsDataInsightExtraction &&
       pipelineType.push(PipelineType.DataInsight);
-    (config as MetadataConnection).supportsElasticSearchReindexingExtraction &&
+    (config as MetadataConnection)?.supportsElasticSearchReindexingExtraction &&
       pipelineType.push(PipelineType.ElasticSearchReindex);
   } else {
     pipelineType = [
@@ -194,6 +202,7 @@ export const getIngestionTypes = (
 
 const getPipelineExtraInfo = (
   isPlatFormDisabled: boolean,
+  theme: UIThemePreference['customTheme'],
   pipelineType?: PipelineType
 ) => {
   switch (pipelineType) {
@@ -207,7 +216,7 @@ const getPipelineExtraInfo = (
                 <a
                   href={DATA_INSIGHTS_PIPELINE_DOCS}
                   rel="noreferrer"
-                  style={{ color: '#1890ff' }}
+                  style={{ color: theme.primaryColor }}
                   target="_blank"
                 />
               }
@@ -228,7 +237,7 @@ const getPipelineExtraInfo = (
                 <a
                   href={ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS}
                   rel="noreferrer"
-                  style={{ color: '#1890ff' }}
+                  style={{ color: theme.primaryColor }}
                   target="_blank"
                 />
               }
@@ -256,7 +265,7 @@ const getPipelineExtraInfo = (
                     : WORKFLOWS_METADATA_DOCS
                 }
                 rel="noreferrer"
-                style={{ color: '#1890ff' }}
+                style={{ color: theme.primaryColor }}
                 target="_blank"
               />
             }
@@ -276,15 +285,15 @@ const getPipelineExtraInfo = (
 };
 
 export const getErrorPlaceHolder = (
-  isRequiredDetailsAvailable: boolean,
   ingestionDataLength: number,
   isPlatFormDisabled: boolean,
+  theme: UIThemePreference['customTheme'],
   pipelineType?: PipelineType
 ) => {
-  if (isRequiredDetailsAvailable && ingestionDataLength === 0) {
+  if (ingestionDataLength === 0) {
     return (
       <ErrorPlaceHolder className="p-y-lg" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        {getPipelineExtraInfo(isPlatFormDisabled, pipelineType)}
+        {getPipelineExtraInfo(isPlatFormDisabled, theme, pipelineType)}
       </ErrorPlaceHolder>
     );
   }
@@ -325,3 +334,64 @@ export const getIngestionButtonText = (
         });
   }
 };
+
+export const getSuccessMessage = (
+  ingestionName: string,
+  status: FormSubmitType,
+  showDeployButton?: boolean
+) => {
+  const updateMessage = showDeployButton
+    ? t('message.action-has-been-done-but-failed-to-deploy', {
+        action: t('label.updated-lowercase'),
+      })
+    : t('message.action-has-been-done-but-deploy-successfully', {
+        action: t('label.updated-lowercase'),
+      });
+  const createMessage = showDeployButton
+    ? t('message.action-has-been-done-but-failed-to-deploy', {
+        action: t('label.created-lowercase'),
+      })
+    : t('message.action-has-been-done-but-deploy-successfully', {
+        action: t('label.created-lowercase'),
+      });
+
+  return (
+    <Typography.Text>
+      <Typography.Text className="font-medium">{`"${ingestionName}"`}</Typography.Text>
+      <Typography.Text>
+        {status === FormSubmitType.ADD ? createMessage : updateMessage}
+      </Typography.Text>
+    </Typography.Text>
+  );
+};
+
+export const getExpandableStatusRow = (
+  expandedKeys: Array<string>
+): ExpandableConfig<StepSummary> => ({
+  expandedRowRender: (record) => {
+    return (
+      record.failures?.map((failure) => (
+        <ConnectionStepCard
+          isTestingConnection={false}
+          key={failure.name}
+          testConnectionStep={{
+            name: failure.name,
+            mandatory: false,
+            description: failure.error,
+          }}
+          testConnectionStepResult={{
+            name: failure.name,
+            passed: false,
+            mandatory: false,
+            message: failure.error,
+            errorLog: failure.stackTrace,
+          }}
+        />
+      )) ?? []
+    );
+  },
+  indentSize: 0,
+  expandIcon: () => null,
+  expandedRowKeys: expandedKeys,
+  rowExpandable: (record) => (record.failures?.length ?? 0) > 0,
+});

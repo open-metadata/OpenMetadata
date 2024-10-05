@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-@primary-color: #0968da;
-@primary-color-hover: #e6f4ff;
-@secondary-color: #b02aac;
-@link-color: #0968da;
-@success-color: #008376;
+@primary-color: ~'var(--ant-primary-color)';
+@success-color: ~'var(--ant-success-color)';
+@warning-color: ~'var(--ant-warning-color)';
+@error-color: ~'var(--ant-error-color)';
+@info-color: ~'var(--ant-info-color)';
+@link-color: ~'var(--ant-primary-color)';
+@primary-1: ~'var(--ant-primary-1)';
+@radio-button-checked-bg: ~'var(--ant-primary-1)';
+@left-nav-item-background: ~'var(--ant-primary-1)';
 @green-1: #28a744;
 @green-2: #ebf9f4;
 @green-3: #48ca9e;
@@ -23,15 +27,14 @@
 @green-5: #91ffd8;
 @green-6: #effffb;
 @green-7: #00b871;
-@warning-color: #ffc34e;
 @yellow-1: #fbf2db;
 @yellow-2: #ffbe0e;
 @yellow-3: #ffbe0e1a;
 @yellow-4: #ffd978;
 @yellow-5: #fff8e6;
 @yellow-6: #c18100;
-@error-color: #ff4c3b;
-@error-light-color: #e5493740;
+@yellow-7: #e7b85d;
+@error-light-color: #ff9a8e40;
 @failed-color: #cb2431;
 @red-1: #cb2531;
 @red-2: #faf1f1;
@@ -46,11 +49,14 @@
 @blue-1: #ebf6fe;
 @blue-2: #3ca2f4;
 @blue-3: #0950c5;
+@blue-4: #f1f9ff;
+@blue-5: #f2f6fc;
+@blue-6: #eff5ff;
+@partial-success-1: #06a4a4;
+@partial-success-2: #bdeeee;
 @black: #000000;
 @aborted-color: #efae2f;
-@info-color: #2196f3;
 @text-color: #292929;
-@text-color-secondary: #292929;
 @text-color-tertiary: #00000080;
 @grey-1: #f8f8f8;
 @grey-2: #f2f2f2;
@@ -58,6 +64,7 @@
 @grey-4: #757575;
 @grey-5: #fbfbfb;
 @grey-6: #f9f9f9;
+@grey-7: #9ca3af;
 @text-grey-muted: @grey-4;
 @font-size-base: 14px;
 @box-shadow-base: 0px 2px 10px rgba(0, 0, 0, 0.12);
@@ -76,14 +83,13 @@
 @global-border: 1px solid @border-color;
 @active-color: #e8f4ff;
 @background-color: #ffffff;
-@radio-button-checked-bg: @primary-color-hover;
-@announcement-background: #e3f2fd30;
-@announcement-background-dark: #9dd6ffd6;
-@announcement-border: #2196f3;
+@announcement-background: #0950c50d;
+@announcement-background-dark: #e1edff;
+@announcement-border: @blue-3;
+@announcement-border-light: #e2e2e2;
 @test-parameter-bg-color: #e7ebf0;
 @group-title-color: #76746f;
 @light-border-color: #f0f0f0;
-@left-nav-item-background: #e6f4ff;
 @code-background: #ebeff480;
 @timestamp-color: #9197b3;
 @left-sidebar-icon-hover: #edecf8;
@@ -97,23 +103,40 @@
 @trigger-btn-hover-bg: #efefef;
 @text-highlighter: #ffc34e40;
 @team-avatar-bg: #0950c51a;
-@navbar-height: 64px;
+@om-navbar-height: ~'var(--ant-navbar-height)';
 @sidebar-width: 60px;
 
 // Sizing
-@page-height: calc(100vh - 64px);
+@page-height: calc(100vh - @om-navbar-height);
 @left-side-panel-width: 230px;
-@entity-details-tab-height: calc(100vh - 236px);
+
+// 172px - navbar height
+@entity-details-tab-height: calc(100vh - 172px - @om-navbar-height);
 @users-page-tabs-height: calc(
-  100vh - 120px
+  100vh - @om-navbar-height - 58px
 ); /* navbar+tab_height+padding = 64+46+12  */
-@glossary-page-height: calc(100vh - 206px);
-@domain-page-height: calc(100vh - 200px);
-@glossary-term-page-height: calc(100vh - 200px);
-@explore-page-height: calc(100vh - 113px);
+
+// 142px - navbar height
+@glossary-page-height: calc(100vh - 142px - @om-navbar-height);
+
+// 136px - navbar height
+@domain-page-height: calc(100vh - 136px - @om-navbar-height);
+
+// 136px - navbar height
+@glossary-term-page-height: calc(100vh - 136px - @om-navbar-height);
+
+// Navbar height - 49px for filter bar on explore page
+@explore-page-height: calc(100vh - @om-navbar-height - 49px);
 @welcome-page-height: calc(100vh - 112px);
-@data-product-page-height: calc(100vh - 156px);
-@glossary-page-tab-height: calc(100vh - 206px);
+
+//  48px - navbar height
+@welcome-page-height: calc(100vh - 48px - @om-navbar-height);
+
+// 152px - navbar height
+@glossary-page-tab-height: calc(100vh - 152px - @om-navbar-height);
+@lineage-sidebar-width: 110px;
+
+@explore-content-height-resizable-panel: calc(100vh - 144px);
 
 // Severity
 @severity-1: #9c0700;
@@ -127,3 +150,17 @@
 @severity-3-background: rgba(255, 165, 33, 0.1);
 @severity-4-background: rgba(255, 206, 41, 0.1);
 @severity-5-background: rgba(181, 198, 33, 0.1);
+
+// vertical paddings
+@padding-lg: 24px; // containers
+@padding-md: 16px; // small containers and buttons
+@padding-sm: 12px; // Form controls and items
+@padding-xs: 8px; // small items
+@padding-xss: 4px; // more small
+
+// vertical margins
+@margin-lg: 24px; // containers
+@margin-md: 16px; // small containers and buttons
+@margin-sm: 12px; // Form controls and items
+@margin-xs: 8px; // small items
+@margin-xss: 4px; // more small

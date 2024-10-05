@@ -13,6 +13,8 @@
 import { Col, Row, Space } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { EntityField } from '../../../../constants/Feeds.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Glossary } from '../../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
@@ -23,10 +25,10 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
-import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
+import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import GlossaryDetailsRightPanel from '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import { GlossaryUpdateConfirmationModal } from '../../GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import GlossaryTermReferences from './GlossaryTermReferences';
@@ -40,6 +42,8 @@ type Props = {
   isGlossary: boolean;
   isVersionView?: boolean;
   onThreadLinkSelect: (value: string) => void;
+  editCustomAttributePermission: boolean;
+  onExtensionUpdate: (updatedTable: GlossaryTerm) => Promise<void>;
 };
 
 const GlossaryOverviewTab = ({
@@ -49,6 +53,8 @@ const GlossaryOverviewTab = ({
   isGlossary,
   isVersionView,
   onThreadLinkSelect,
+  editCustomAttributePermission,
+  onExtensionUpdate,
 }: Props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
@@ -108,87 +114,100 @@ const GlossaryOverviewTab = ({
   };
 
   return (
-    <Row className="glossary-overview-tab h-full" gutter={[32, 16]}>
-      <Col
-        className="border-right"
-        data-testid="updated-by-container"
-        span={18}>
-        <Row className="p-md p-r-0" gutter={[0, 32]}>
-          <Col span={24}>
-            <DescriptionV1
-              description={glossaryDescription}
-              entityFqn={selectedData.fullyQualifiedName}
-              entityName={getEntityName(selectedData)}
-              entityType={EntityType.GLOSSARY_TERM}
-              hasEditAccess={permissions.EditDescription || permissions.EditAll}
-              isEdit={isDescriptionEditable}
-              owner={selectedData?.owner}
-              showActions={!selectedData.deleted}
-              onCancel={() => setIsDescriptionEditable(false)}
-              onDescriptionEdit={() => setIsDescriptionEditable(true)}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-          </Col>
-          <Col span={24}>
-            <Row gutter={[0, 40]}>
-              {!isGlossary && (
-                <>
-                  <Col span={12}>
-                    <GlossaryTermSynonyms
-                      glossaryTerm={selectedData as GlossaryTerm}
-                      isVersionView={isVersionView}
-                      permissions={permissions}
-                      onGlossaryTermUpdate={onUpdate}
+    <Row className="glossary-overview-tab h-full" gutter={[32, 0]}>
+      <Col span={24}>
+        <ResizablePanels
+          firstPanel={{
+            children: (
+              <div data-testid="updated-by-container">
+                <Row className="p-md p-r-0" gutter={[0, 32]}>
+                  <Col span={24}>
+                    <DescriptionV1
+                      description={glossaryDescription}
+                      entityFqn={selectedData.fullyQualifiedName}
+                      entityName={getEntityName(selectedData)}
+                      entityType={EntityType.GLOSSARY_TERM}
+                      hasEditAccess={
+                        permissions.EditDescription || permissions.EditAll
+                      }
+                      isEdit={isDescriptionEditable}
+                      owner={selectedData?.owners}
+                      showActions={!selectedData.deleted}
+                      onCancel={() => setIsDescriptionEditable(false)}
+                      onDescriptionEdit={() => setIsDescriptionEditable(true)}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                      onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </Col>
-                  <Col span={12}>
-                    <RelatedTerms
-                      glossaryTerm={selectedData as GlossaryTerm}
-                      isVersionView={isVersionView}
-                      permissions={permissions}
-                      onGlossaryTermUpdate={onUpdate}
-                    />
-                  </Col>
-                  <Col span={12}>
-                    <GlossaryTermReferences
-                      glossaryTerm={selectedData as GlossaryTerm}
-                      isVersionView={isVersionView}
-                      permissions={permissions}
-                      onGlossaryTermUpdate={onUpdate}
-                    />
-                  </Col>
-                </>
-              )}
+                  <Col span={24}>
+                    <Row gutter={[0, 40]}>
+                      {!isGlossary && (
+                        <>
+                          <Col span={12}>
+                            <GlossaryTermSynonyms
+                              glossaryTerm={selectedData as GlossaryTerm}
+                              isVersionView={isVersionView}
+                              permissions={permissions}
+                              onGlossaryTermUpdate={onUpdate}
+                            />
+                          </Col>
+                          <Col span={12}>
+                            <RelatedTerms
+                              glossaryTerm={selectedData as GlossaryTerm}
+                              isVersionView={isVersionView}
+                              permissions={permissions}
+                              onGlossaryTermUpdate={onUpdate}
+                            />
+                          </Col>
+                          <Col span={12}>
+                            <GlossaryTermReferences
+                              glossaryTerm={selectedData as GlossaryTerm}
+                              isVersionView={isVersionView}
+                              permissions={permissions}
+                              onGlossaryTermUpdate={onUpdate}
+                            />
+                          </Col>
+                        </>
+                      )}
 
-              <Col span={12}>
-                <Space className="w-full" direction="vertical">
-                  <TagsContainerV2
-                    displayType={DisplayType.READ_MORE}
-                    entityFqn={selectedData.fullyQualifiedName}
-                    entityType={EntityType.GLOSSARY_TERM}
-                    permission={hasEditTagsPermissions}
-                    selectedTags={tags ?? []}
-                    tagType={TagSource.Classification}
-                    onSelectionChange={handleTagsUpdate}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                  />
-                </Space>
-              </Col>
-            </Row>
-          </Col>
-        </Row>
-      </Col>
-
-      <Col className="p-t-md" span={6}>
-        <GlossaryDetailsRightPanel
-          entityType={EntityType.GLOSSARY_TERM}
-          isGlossary={false}
-          isVersionView={isVersionView}
-          permissions={permissions}
-          selectedData={selectedData}
-          onThreadLinkSelect={onThreadLinkSelect}
-          onUpdate={onUpdate}
+                      <Col span={12}>
+                        <Space className="w-full" direction="vertical">
+                          <TagsContainerV2
+                            displayType={DisplayType.READ_MORE}
+                            entityFqn={selectedData.fullyQualifiedName}
+                            entityType={EntityType.GLOSSARY_TERM}
+                            permission={hasEditTagsPermissions}
+                            selectedTags={tags ?? []}
+                            tagType={TagSource.Classification}
+                            onSelectionChange={handleTagsUpdate}
+                            onThreadLinkSelect={onThreadLinkSelect}
+                          />
+                        </Space>
+                      </Col>
+                    </Row>
+                  </Col>
+                </Row>
+              </div>
+            ),
+            ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+          }}
+          secondPanel={{
+            children: (
+              <GlossaryDetailsRightPanel
+                editCustomAttributePermission={editCustomAttributePermission}
+                entityType={EntityType.GLOSSARY_TERM}
+                isGlossary={false}
+                isVersionView={isVersionView}
+                permissions={permissions}
+                selectedData={selectedData}
+                onExtensionUpdate={onExtensionUpdate}
+                onThreadLinkSelect={onThreadLinkSelect}
+                onUpdate={onUpdate}
+              />
+            ),
+            ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+            className: 'entity-resizable-right-panel-container',
+          }}
         />
       </Col>
 

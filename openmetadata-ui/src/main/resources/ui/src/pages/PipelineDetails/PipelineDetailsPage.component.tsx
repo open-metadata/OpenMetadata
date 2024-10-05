@@ -17,18 +17,19 @@ import { isUndefined, omitBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
-import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import { getVersionPath } from '../../constants/constants';
+import Loader from '../../components/common/Loader/Loader';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import PipelineDetails from '../../components/Pipeline/PipelineDetails/PipelineDetails.component';
+import { getVersionPath, ROUTES } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Paging } from '../../generated/type/paging';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
@@ -52,7 +53,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const history = useHistory();
 
@@ -135,6 +136,10 @@ const PipelineDetailsPage = () => {
     } catch (error) {
       if ((error as AxiosError).response?.status === 404) {
         setIsError(true);
+      } else if (
+        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+      ) {
+        history.replace(ROUTES.FORBIDDEN);
       } else {
         showErrorToast(
           error as AxiosError,
@@ -149,53 +154,43 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const followPipeline = useCallback(
-    async (fetchCount: () => void) => {
-      try {
-        const res = await addFollower(pipelineId, USERId);
-        const { newValue } = res.changeDescription.fieldsAdded[0];
-        const newFollowers = [...(followers ?? []), ...newValue];
-        setPipelineDetails((prev) => {
-          return { ...prev, followers: newFollowers };
-        });
+  const followPipeline = useCallback(async () => {
+    try {
+      const res = await addFollower(pipelineId, USERId);
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setPipelineDetails((prev) => {
+        return { ...prev, followers: newFollowers };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(pipelineDetails),
+        })
+      );
+    }
+  }, [followers, USERId]);
 
-        fetchCount();
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-follow-error', {
-            entity: getEntityName(pipelineDetails),
-          })
-        );
-      }
-    },
-    [followers, USERId]
-  );
-
-  const unFollowPipeline = useCallback(
-    async (fetchCount: () => void) => {
-      try {
-        const res = await removeFollower(pipelineId, USERId);
-        const { oldValue } = res.changeDescription.fieldsDeleted[0];
-        setPipelineDetails((prev) => ({
-          ...prev,
-          followers: followers.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        }));
-
-        fetchCount();
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-unfollow-error', {
-            entity: getEntityName(pipelineDetails),
-          })
-        );
-      }
-    },
-    [followers, USERId]
-  );
+  const unFollowPipeline = useCallback(async () => {
+    try {
+      const res = await removeFollower(pipelineId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setPipelineDetails((prev) => ({
+        ...prev,
+        followers: followers.filter(
+          (follower) => follower.id !== oldValue[0].id
+        ),
+      }));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(pipelineDetails),
+        })
+      );
+    }
+  }, [followers, USERId]);
 
   const descriptionUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {

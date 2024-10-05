@@ -17,6 +17,7 @@ import { DatabaseServiceType } from '../generated/entity/services/databaseServic
 import athenaConnection from '../jsons/connectionSchemas/connections/database/athenaConnection.json';
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
 import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
+import bigTableConnection from '../jsons/connectionSchemas/connections/database/bigTableConnection.json';
 import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
 import couchbaseConnection from '../jsons/connectionSchemas/connections/database/couchbaseConnection.json';
 import customDatabaseConnection from '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
@@ -27,11 +28,11 @@ import deltaLakeConnection from '../jsons/connectionSchemas/connections/database
 import domoDatabaseConnection from '../jsons/connectionSchemas/connections/database/domoDatabaseConnection.json';
 import dorisConnection from '../jsons/connectionSchemas/connections/database/dorisConnection.json';
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
-import duckdbConnection from '../jsons/connectionSchemas/connections/database/duckdbConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
 import greenplumConnection from '../jsons/connectionSchemas/connections/database/greenplumConnection.json';
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
+import icebergConnection from '../jsons/connectionSchemas/connections/database/icebergConnection.json';
 import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
 import mongoDBConnection from '../jsons/connectionSchemas/connections/database/mongoDBConnection.json';
@@ -43,11 +44,14 @@ import postgresConnection from '../jsons/connectionSchemas/connections/database/
 import prestoConnection from '../jsons/connectionSchemas/connections/database/prestoConnection.json';
 import redshiftConnection from '../jsons/connectionSchemas/connections/database/redshiftConnection.json';
 import salesforceConnection from '../jsons/connectionSchemas/connections/database/salesforceConnection.json';
+import sapErpConnection from '../jsons/connectionSchemas/connections/database/sapErpConnection.json';
 import sapHanaConnection from '../jsons/connectionSchemas/connections/database/sapHanaConnection.json';
 import sasConnection from '../jsons/connectionSchemas/connections/database/sasConnection.json';
 import singleStoreConnection from '../jsons/connectionSchemas/connections/database/singleStoreConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
+import synapseConnection from '../jsons/connectionSchemas/connections/database/synapseConnection.json';
+import teradataConnection from '../jsons/connectionSchemas/connections/database/teradataConnection.json';
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
 import unityCatalogConnection from '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json';
 import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
@@ -68,6 +72,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.BigQuery: {
       schema = bigQueryConnection;
+
+      break;
+    }
+    case DatabaseServiceType.BigTable: {
+      schema = bigTableConnection;
 
       break;
     }
@@ -182,6 +191,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
+    case DatabaseServiceType.Synapse: {
+      schema = synapseConnection;
+
+      break;
+    }
     case DatabaseServiceType.Trino: {
       schema = trinoConnection;
 
@@ -204,6 +218,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.SapHana: {
       schema = sapHanaConnection;
+
+      break;
+    }
+    case DatabaseServiceType.SapERP: {
+      schema = sapErpConnection;
 
       break;
     }
@@ -232,13 +251,18 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
-    case DatabaseServiceType.DuckDB: {
-      schema = duckdbConnection;
+    case DatabaseServiceType.SAS: {
+      schema = sasConnection;
 
       break;
     }
-    case DatabaseServiceType.SAS: {
-      schema = sasConnection;
+    case DatabaseServiceType.Iceberg: {
+      schema = icebergConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Teradata: {
+      schema = teradataConnection;
 
       break;
     }

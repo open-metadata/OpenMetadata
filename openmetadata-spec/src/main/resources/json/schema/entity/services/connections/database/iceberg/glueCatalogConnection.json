@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/iceberg/glueCatalogConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlueCatalogConnection",
+  "description": "Iceberg Glue Catalog configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.iceberg.GlueCatalogConnection",
+  "properties": {
+    "awsConfig": {
+      "$ref": "../../../../../security/credentials/awsCredentials.json"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "awsConfig"
+  ]
+}

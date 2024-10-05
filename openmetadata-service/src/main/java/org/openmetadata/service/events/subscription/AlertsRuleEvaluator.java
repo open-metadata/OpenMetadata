@@ -1,12 +1,14 @@
 package org.openmetadata.service.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELASTIC_SEARCH;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT_PER_ENTITY;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
 import static org.openmetadata.schema.type.ThreadType.Conversation;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
+import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.THREAD;
@@ -15,6 +17,8 @@ import static org.openmetadata.service.Entity.USER;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
@@ -31,6 +35,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
+import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -88,26 +93,28 @@ public class AlertsRuleEvaluator {
     }
 
     EntityInterface entity = getEntity(changeEvent);
-    EntityReference ownerReference = entity.getOwner();
-    if (ownerReference == null) {
+    List<EntityReference> ownerReferences = entity.getOwners();
+    if (nullOrEmpty(ownerReferences)) {
       entity =
           Entity.getEntity(
               changeEvent.getEntityType(), entity.getId(), "owner", Include.NON_DELETED);
-      ownerReference = entity.getOwner();
+      ownerReferences = entity.getOwners();
     }
-    if (ownerReference != null) {
-      if (USER.equals(ownerReference.getType())) {
-        User user = Entity.getEntity(Entity.USER, ownerReference.getId(), "", Include.NON_DELETED);
-        for (String name : ownerNameList) {
-          if (user.getName().equals(name)) {
-            return true;
+    if (!nullOrEmpty(ownerReferences)) {
+      for (EntityReference owner : ownerReferences) {
+        if (USER.equals(owner.getType())) {
+          User user = Entity.getEntity(Entity.USER, owner.getId(), "", Include.NON_DELETED);
+          for (String name : ownerNameList) {
+            if (user.getName().equals(name)) {
+              return true;
+            }
           }
-        }
-      } else if (TEAM.equals(ownerReference.getType())) {
-        Team team = Entity.getEntity(Entity.TEAM, ownerReference.getId(), "", Include.NON_DELETED);
-        for (String name : ownerNameList) {
-          if (team.getName().equals(name)) {
-            return true;
+        } else if (TEAM.equals(owner.getType())) {
+          Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
+          for (String name : ownerNameList) {
+            if (team.getName().equals(name)) {
+              return true;
+            }
           }
         }
       }
@@ -134,7 +141,9 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     for (String name : entityNames) {
-      if (entity.getFullyQualifiedName().equals(name)) {
+      Pattern pattern = Pattern.compile(name);
+      Matcher matcher = pattern.matcher(entity.getFullyQualifiedName());
+      if (matcher.find()) {
         return true;
       }
     }
@@ -249,7 +258,15 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     for (String name : tableNameList) {
-      if (entity.getFullyQualifiedName().contains(name)) {
+      // Escape regex special characters in table name for exact matching
+      String escapedName = Pattern.quote(name);
+
+      // Construct regex to match table name exactly, allowing for end of string or delimiter (.)
+      String regex = "\\b" + escapedName + "(\\b|\\.|$)";
+      Pattern pattern = Pattern.compile(regex);
+
+      Matcher matcher = pattern.matcher(entity.getFullyQualifiedName());
+      if (matcher.find()) {
         return true;
       }
     }
@@ -266,7 +283,7 @@ public class AlertsRuleEvaluator {
       },
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean getTestCaseStatusIfInTestSuite(
-      List<String> testSuiteList, List<String> testResults) {
+      List<String> testResults, List<String> testSuiteList) {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }
@@ -318,7 +335,7 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchIngestionPipelineState",
-      input = "List of comma separated pipeline states",
+      input = "List of comma separated ingestion pipeline states",
       description =
           "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {
@@ -342,10 +359,48 @@ public class AlertsRuleEvaluator {
     for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
       if (fieldChange.getName().equals("pipelineStatus") && fieldChange.getNewValue() != null) {
         PipelineStatus pipelineStatus =
-            JsonUtils.convertValue(fieldChange.getNewValue(), PipelineStatus.class);
+            JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);
         PipelineStatusType status = pipelineStatus.getPipelineState();
         for (String givenStatus : pipelineState) {
-          if (givenStatus.equals(status.value())) {
+          if (givenStatus.equalsIgnoreCase(status.value())) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchPipelineState",
+      input = "List of comma separated pipeline states",
+      description =
+          "Returns true if the change event entity being accessed has following entityId from the List.",
+      examples = {"matchPipelineState({'Successful', 'Failed', 'Pending', 'Skipped'})"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public boolean matchPipelineState(List<String> pipelineState) {
+    if (changeEvent == null || changeEvent.getChangeDescription() == null) {
+      return false;
+    }
+    if (!changeEvent.getEntityType().equals(PIPELINE)) {
+      // in case the entity is not ingestion pipeline return since the filter doesn't apply
+      return true;
+    }
+
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
+      return true;
+    }
+
+    for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
+      if (fieldChange.getName().equals("pipelineStatus") && fieldChange.getNewValue() != null) {
+        org.openmetadata.schema.entity.data.PipelineStatus pipelineStatus =
+            JsonUtils.convertValue(
+                fieldChange.getNewValue(),
+                org.openmetadata.schema.entity.data.PipelineStatus.class);
+        StatusType status = pipelineStatus.getExecutionStatus();
+        for (String givenStatus : pipelineState) {
+          if (givenStatus.equalsIgnoreCase(status.value())) {
             return true;
           }
         }
@@ -382,11 +437,6 @@ public class AlertsRuleEvaluator {
   public boolean matchAnyDomain(List<String> fieldChangeUpdate) {
     if (changeEvent == null) {
       return false;
-    }
-
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
     }
 
     // Filter does not apply to Thread Change Events

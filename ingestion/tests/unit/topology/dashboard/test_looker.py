@@ -119,7 +119,7 @@ MOCK_USER = User(email="user@mail.com")
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="quicksight_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="looker_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("looker_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Looker,
 )
@@ -136,7 +136,7 @@ class LookerUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_LOOKER_CONFIG)
+        self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_LOOKER_CONFIG)
 
         # This already validates that the source can be initialized
         self.looker: LookerSource = LookerSource.create(
@@ -144,9 +144,9 @@ class LookerUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
 
-        self.looker.context.__dict__[
+        self.looker.context.get().__dict__[
             "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_create(self):
         """
@@ -279,8 +279,8 @@ class LookerUnitTest(TestCase):
                 description="description",
                 charts=[],
                 sourceUrl="https://my-looker.com/dashboards/1",
-                service=self.looker.context.dashboard_service,
-                owner=None,
+                service=self.looker.context.get().dashboard_service,
+                owners=None,
             )
 
             self.assertEqual(
@@ -299,6 +299,53 @@ class LookerUnitTest(TestCase):
         self.assertEqual(self.looker._clean_table_name("  my_table"), "my_table")
 
         self.assertEqual(self.looker._clean_table_name("TABLE AS ALIAS"), "table")
+
+    def test_render_table_name(self):
+        """
+        Check that table is rendered correctly if "openmetadata" or default condition apply, or no templating is present
+        """
+        tagged_table_name_template = """
+        {%- if openmetadata -%}
+        `BQ-project.dataset.sample_data`
+        {%- elsif prod -%}
+        `BQ-project.dataset.sample_data`
+        {%- elsif dev -%}
+        `BQ-project.{{_user_attributes['dbt_dev_schema']}}.sample_data`
+        {%- endif -%}
+        """
+        default_table_name_template = """
+        {%- if prod -%}
+        `BQ-project.dataset.sample_data`
+        {%- elsif dev -%}
+        `BQ-project.{{_user_attributes['dbt_dev_schema']}}.sample_data`
+        {%- else -%}
+        `BQ-project.dataset.sample_data`
+        {%- endif -%}
+        """
+        untagged_table_name_template = """
+        {%- if prod -%}
+        `BQ-project.dataset.sample_data`
+        {%- elsif dev -%}
+        `BQ-project.{{_user_attributes['dbt_dev_schema']}}.sample_data`
+        {%- endif -%}
+        """
+        table_name_plain = "`BQ-project.dataset.sample_data`"
+        self.assertEqual(
+            self.looker._render_table_name(tagged_table_name_template),
+            "`BQ-project.dataset.sample_data`",
+        )
+        self.assertEqual(
+            self.looker._render_table_name(default_table_name_template),
+            "`BQ-project.dataset.sample_data`",
+        )
+        self.assertNotEqual(
+            self.looker._render_table_name(untagged_table_name_template),
+            "`BQ-project.dataset.sample_data`",
+        )
+        self.assertEqual(
+            self.looker._render_table_name(table_name_plain),
+            "`BQ-project.dataset.sample_data`",
+        )
 
     def test_get_dashboard_sources(self):
         """
@@ -352,9 +399,9 @@ class LookerUnitTest(TestCase):
                 ).right,
                 AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=table.id.__root__, type="table"),
+                        fromEntity=EntityReference(id=table.id.root, type="table"),
                         toEntity=EntityReference(
-                            id=to_entity.id.__root__, type="dashboard"
+                            id=to_entity.id.root, type="dashboard"
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage
@@ -374,7 +421,7 @@ class LookerUnitTest(TestCase):
             description="subtitle; Some body text; Some note",
             chartType=ChartType.Line,
             sourceUrl="https://my-looker.com/hello",
-            service=self.looker.context.dashboard_service,
+            service=self.looker.context.get().dashboard_service,
         )
 
         self.assertEqual(
@@ -397,7 +444,7 @@ class LookerUnitTest(TestCase):
         Validate the logic for existing or new usage
         """
 
-        self.looker.context.__dict__["dashboard"] = "dashboard_name"
+        self.looker.context.get().__dict__["dashboard"] = "dashboard_name"
         MOCK_LOOKER_DASHBOARD.view_count = 10
 
         # Start checking dashboard without usage

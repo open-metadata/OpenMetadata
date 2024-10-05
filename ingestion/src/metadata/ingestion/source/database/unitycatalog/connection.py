@@ -68,16 +68,20 @@ def test_connection(
             break
 
     def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable):
-        for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
-            table_obj.schema_name = schema.name
-            break
+        for catalog in connection.catalogs.list():
+            for schema in connection.schemas.list(catalog_name=catalog.name):
+                if schema.name:
+                    table_obj.schema_name = schema.name
+                    table_obj.catalog_name = catalog.name
+                    return
 
     def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable):
-        for table in connection.tables.list(
-            catalog_name=table_obj.catalog_name, schema_name=table_obj.schema_name
-        ):
-            table_obj.name = table.name
-            break
+        if table_obj.catalog_name and table_obj.schema_name:
+            for table in connection.tables.list(
+                catalog_name=table_obj.catalog_name, schema_name=table_obj.schema_name
+            ):
+                table_obj.name = table.name
+                break
 
     test_fn = {
         "CheckAccess": connection.catalogs.list,

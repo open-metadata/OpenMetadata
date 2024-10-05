@@ -19,14 +19,14 @@ import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import SettingItemCard from '../../components/Setting/SettingItemCard/SettingItemCard.component';
+import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
+import globalSettingsClassBase from '../../utils/GlobalSettingsClassBase';
 import {
   getGlobalSettingMenuItem,
-  getGlobalSettingsMenuWithPermission,
   SettingMenuItem,
 } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -43,8 +43,9 @@ const GlobalSettingPage = () => {
 
   const settingItems = useMemo(
     () =>
-      getGlobalSettingsMenuWithPermission(permissions, isAdminUser).filter(
-        (curr: SettingMenuItem) => {
+      globalSettingsClassBase
+        .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
+        .filter((curr: SettingMenuItem) => {
           const menuItem = getGlobalSettingMenuItem(curr);
 
           if (!isUndefined(menuItem.isProtected)) {
@@ -56,8 +57,7 @@ const GlobalSettingPage = () => {
           }
 
           return false;
-        }
-      ),
+        }),
     [permissions, isAdminUser]
   );
 

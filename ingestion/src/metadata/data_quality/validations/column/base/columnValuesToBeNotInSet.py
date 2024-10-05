@@ -59,7 +59,7 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         except (ValueError, RuntimeError) as exc:
             msg = (
                 f"Error computing {self.test_case.name} for "
-                f"{get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
+                f"{get_table_fqn(self.test_case.entityLink.root)}: {exc}"
             )
             logger.debug(traceback.format_exc())
             logger.warning(msg)

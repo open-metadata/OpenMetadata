@@ -18,6 +18,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTaskClose } from '../../../assets/svg/complete.svg';
 import { ReactComponent as IconTaskOpen } from '../../../assets/svg/in-progress.svg';
+import { TEXT_BODY_COLOR } from '../../../constants/constants';
 import { ThreadTaskStatus } from '../../../generated/entity/feed/thread';
 import './task-badge.less';
 
@@ -35,11 +36,9 @@ const TaskBadge = ({ status }: { status: ThreadTaskStatus }) => {
         <Icon
           alt="task-status"
           component={isTaskOpen ? IconTaskOpen : IconTaskClose}
-          style={{ fontSize: '12px' }}
+          style={{ fontSize: '12px', color: TEXT_BODY_COLOR }}
         />
-        <Typography.Text className="text-primary">
-          {t('label.task')}
-        </Typography.Text>
+        <Typography.Text>{t('label.task')}</Typography.Text>
       </Space>
     </Tooltip>
   );

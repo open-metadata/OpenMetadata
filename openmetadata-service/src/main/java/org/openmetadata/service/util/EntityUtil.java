@@ -16,6 +16,9 @@ package org.openmetadata.service.util;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import java.io.IOException;
 import java.security.MessageDigest;
@@ -27,12 +30,14 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.SecurityContext;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +47,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
@@ -56,12 +62,13 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public final class EntityUtil {
-
   //
   // Comparators used for sorting list based on the given type
   //
@@ -377,6 +384,16 @@ public final class EntityUtil {
         : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
   }
 
+  public static String getSchemaField(APIEndpoint apiEndpoint, Field field, String fieldName) {
+    // Remove APIEndpoint FQN from schemaField FQN to get the local name
+    String localFieldName =
+        EntityUtil.getLocalColumnName(
+            apiEndpoint.getFullyQualifiedName(), field.getFullyQualifiedName());
+    return fieldName == null
+        ? FullyQualifiedName.build("schemaFields", localFieldName)
+        : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
+  }
+
   /** Return searchIndex field name of format "fields".fieldName.fieldName */
   public static String getSearchIndexField(
       SearchIndex searchIndex, SearchIndexField field, String fieldName) {
@@ -538,7 +555,20 @@ public final class EntityUtil {
     }
     List<EntityReference> references = new ArrayList<>();
     for (String fqn : fqns) {
-      references.add(getEntityReference(entityType, fqn));
+      references.add(Entity.getEntityReferenceByName(entityType, fqn, NON_DELETED));
+    }
+    return references;
+  }
+
+  // Get EntityReference by ID, used in extension(for Page)
+  @SuppressWarnings("unused")
+  public static List<EntityReference> getEntityReferencesById(String entityType, List<UUID> ids) {
+    if (nullOrEmpty(ids)) {
+      return null;
+    }
+    List<EntityReference> references = new ArrayList<>();
+    for (UUID id : ids) {
+      references.add(Entity.getEntityReferenceById(entityType, id, NON_DELETED));
     }
     return references;
   }
@@ -628,6 +658,42 @@ public final class EntityUtil {
     List<T> children = (List<T>) field.getChildren();
     for (T child : listOrEmpty(children)) {
       flattenEntityField(child, flattenedFields);
+    }
+  }
+
+  public static String getCommaSeparatedIdsFromRefs(List<EntityReference> references) {
+    return listOrEmpty(references).stream()
+        .map(item -> "'" + item.getId().toString() + "'")
+        .collect(Collectors.joining(","));
+  }
+
+  public static List<EntityReference> mergedInheritedEntityRefs(
+      List<EntityReference> entityRefs, List<EntityReference> parentRefs) {
+    Set<EntityReference> result = new TreeSet<>(compareEntityReferenceById);
+    result.addAll(listOrEmpty(entityRefs));
+    // Fetch Unique Reviewers from parent as inherited
+    Set<EntityReference> uniqueEntityRefFromParent =
+        listOrEmpty(parentRefs).stream()
+            .filter(parentReviewer -> !result.contains(parentReviewer))
+            .collect(Collectors.toSet());
+    uniqueEntityRefFromParent.forEach(reviewer -> reviewer.withInherited(true));
+
+    result.addAll(uniqueEntityRefFromParent);
+    return result.stream().toList();
+  }
+
+  public static void addDomainQueryParam(SecurityContext securityContext, ListFilter filter) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    // If the User is admin then no need to add domainId in the query param
+    // Also if there are domain restriction on the subject context via role
+    if (!subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+      if (!nullOrEmpty(subjectContext.getUserDomains())) {
+        filter.addQueryParam(
+            "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
+      } else {
+        // TODO: Hack :(
+        filter.addQueryParam("domainId", "null");
+      }
     }
   }
 }

@@ -13,19 +13,22 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row } from 'antd';
+import { cloneDeep, get } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
-import { SearchSourceAlias } from '../../../interface/search.interface';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DRAWER_NAVIGATION_OPTIONS,
@@ -34,9 +37,11 @@ import {
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import APIEndpointSummary from '../../Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
 import ContainerSummary from '../../Explore/EntitySummaryPanel/ContainerSummary/ContainerSummary.component';
 import DashboardSummary from '../../Explore/EntitySummaryPanel/DashboardSummary/DashboardSummary.component';
 import DataModelSummary from '../../Explore/EntitySummaryPanel/DataModelSummary/DataModelSummary.component';
+import MetricSummary from '../../Explore/EntitySummaryPanel/MetricSummary/MetricSummary';
 import MlModelSummary from '../../Explore/EntitySummaryPanel/MlModelSummary/MlModelSummary.component';
 import PipelineSummary from '../../Explore/EntitySummaryPanel/PipelineSummary/PipelineSummary.component';
 import SearchIndexSummary from '../../Explore/EntitySummaryPanel/SearchIndexSummary/SearchIndexSummary.component';
@@ -66,18 +71,16 @@ const EntityInfoDrawer = ({
     [selectedNode]
   );
 
-  const icon = useMemo(
-    () =>
-      selectedNode?.serviceType ? (
-        <img
-          className="h-9"
-          src={serviceUtilClassBase.getServiceTypeLogo(
-            selectedNode as SearchSourceAlias
-          )}
-        />
-      ) : null,
-    [selectedNode]
-  );
+  const icon = useMemo(() => {
+    const serviceType = get(selectedNode, 'serviceType', '');
+
+    return serviceType ? (
+      <img
+        className="h-9"
+        src={serviceUtilClassBase.getServiceTypeLogo(selectedNode)}
+      />
+    ) : null;
+  }, [selectedNode]);
 
   const tags = useMemo(
     () =>
@@ -167,13 +170,36 @@ const EntityInfoDrawer = ({
           />
         );
 
+      case EntityType.API_ENDPOINT:
+        return (
+          <APIEndpointSummary
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+            entityDetails={entityDetail as APIEndpoint}
+          />
+        );
+
+      case EntityType.METRIC:
+        return (
+          <MetricSummary
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+            entityDetails={entityDetail as Metric}
+          />
+        );
+
       default:
         return null;
     }
   }, [entityDetail, tags, selectedNode]);
 
   useEffect(() => {
-    setEntityDetail(selectedNode);
+    const node = cloneDeep(selectedNode);
+    // Since selectedNode is a source object, modify the tags to contain tier information
+    node.tags = [
+      ...(node.tags ?? []),
+      ...(node.tier ? [node.tier as TagLabel] : []),
+    ];
+
+    setEntityDetail(node);
   }, [selectedNode]);
 
   return (

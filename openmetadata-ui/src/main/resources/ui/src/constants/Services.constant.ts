@@ -18,28 +18,32 @@ import airbyte from '../assets/img/Airbyte.png';
 import noDataFound from '../assets/img/no-data-placeholder.svg';
 import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
+import alationsink from '../assets/img/service-icon-alation-sink.png';
 import amazonS3 from '../assets/img/service-icon-amazon-s3.svg';
 import amundsen from '../assets/img/service-icon-amundsen.png';
 import athena from '../assets/img/service-icon-athena.png';
 import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
+import bigtable from '../assets/img/service-icon-bigtable.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
 import datalake from '../assets/img/service-icon-datalake.png';
+import dbt from '../assets/img/service-icon-dbt.png';
 import deltalake from '../assets/img/service-icon-delta-lake.png';
 import domo from '../assets/img/service-icon-domo.png';
 import doris from '../assets/img/service-icon-doris.png';
 import druid from '../assets/img/service-icon-druid.png';
-import duckdb from '../assets/img/service-icon-duckdb.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
+import flink from '../assets/img/service-icon-flink.png';
 import gcs from '../assets/img/service-icon-gcs.png';
 import glue from '../assets/img/service-icon-glue.png';
 import greenplum from '../assets/img/service-icon-greenplum.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
+import iceberge from '../assets/img/service-icon-iceberg.png';
 import impala from '../assets/img/service-icon-impala.png';
 import kafka from '../assets/img/service-icon-kafka.png';
 import kinesis from '../assets/img/service-icon-kinesis.png';
@@ -53,6 +57,7 @@ import msAzure from '../assets/img/service-icon-ms-azure.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import mstr from '../assets/img/service-icon-mstr.png';
 import nifi from '../assets/img/service-icon-nifi.png';
+import openlineage from '../assets/img/service-icon-openlineage.svg';
 import oracle from '../assets/img/service-icon-oracle.png';
 import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
@@ -68,9 +73,11 @@ import redpanda from '../assets/img/service-icon-redpanda.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import sagemaker from '../assets/img/service-icon-sagemaker.png';
 import salesforce from '../assets/img/service-icon-salesforce.png';
+import sapErp from '../assets/img/service-icon-sap-erp.png';
 import sapHana from '../assets/img/service-icon-sap-hana.png';
 import sas from '../assets/img/service-icon-sas.svg';
 import scikit from '../assets/img/service-icon-scikit.png';
+import sigma from '../assets/img/service-icon-sigma.png';
 import singlestore from '../assets/img/service-icon-singlestore.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
 import spark from '../assets/img/service-icon-spark.png';
@@ -78,6 +85,7 @@ import spline from '../assets/img/service-icon-spline.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import sqlite from '../assets/img/service-icon-sqlite.png';
 import superset from '../assets/img/service-icon-superset.png';
+import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import trino from '../assets/img/service-icon-trino.png';
 import vertica from '../assets/img/service-icon-vertica.png';
@@ -86,18 +94,22 @@ import iconDefaultService from '../assets/svg/default-service-icon.svg';
 import elasticSearch from '../assets/svg/elasticsearch.svg';
 import databaseDefault from '../assets/svg/ic-custom-database.svg';
 import mlModelDefault from '../assets/svg/ic-custom-model.svg';
+import searchDefault from '../assets/svg/ic-custom-search.svg';
 import storageDefault from '../assets/svg/ic-custom-storage.svg';
+import restService from '../assets/svg/ic-service-rest-api.svg';
 import logo from '../assets/svg/logo-monogram.svg';
 import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
+import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
+import { APIServiceType } from '../generated/entity/services/apiService';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
@@ -122,6 +134,7 @@ export const SQLITE = sqlite;
 export const MSSQL = mssql;
 export const REDSHIFT = redshift;
 export const BIGQUERY = query;
+export const BIGTABLE = bigtable;
 export const HIVE = hive;
 export const IMPALA = impala;
 export const POSTGRES = postgres;
@@ -137,6 +150,7 @@ export const KAFKA = kafka;
 export const PULSAR = pulsar;
 export const REDPANDA = redpanda;
 export const SUPERSET = superset;
+export const SYNAPSE = synapse;
 export const LOOKER = looker;
 export const MSTR = mstr;
 export const TABLEAU = tableau;
@@ -150,10 +164,12 @@ export const IBMDB2 = ibmdb2;
 export const DORIS = doris;
 export const DRUID = druid;
 export const DYNAMODB = dynamodb;
+export const SIGMA = sigma;
 export const SINGLESTORE = singlestore;
 export const SALESFORCE = salesforce;
 export const MLFLOW = mlflow;
 export const SAP_HANA = sapHana;
+export const SAP_ERP = sapErp;
 export const SCIKIT = scikit;
 export const DELTALAKE = deltalake;
 export const DEFAULT_SERVICE = iconDefaultService;
@@ -162,10 +178,13 @@ export const PINOT = pinot;
 export const DATALAKE = datalake;
 export const MODE = mode;
 export const DAGSTER = dagster;
+export const DBT = dbt;
 export const FIVETRAN = fivetran;
 export const AMUNDSEN = amundsen;
 export const ATLAS = atlas;
+export const ALATIONSINK = alationsink;
 export const SAS = sas;
+export const OPENLINEAGE = openlineage;
 export const LOGO = logo;
 
 export const AIRFLOW = airflow;
@@ -194,9 +213,13 @@ export const COUCHBASE = couchbase;
 export const GREENPLUM = greenplum;
 export const ELASTIC_SEARCH = elasticSearch;
 export const OPEN_SEARCH = openSearch;
-export const DUCKDB = duckdb;
+export const CUSTOM_SEARCH_DEFAULT = searchDefault;
 export const PLUS = plus;
 export const NOSERVICE = noService;
+export const ICEBERGE = iceberge;
+export const TERADATA = teradata;
+export const FLINK = flink;
+export const REST_SERVICE = restService;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -211,6 +234,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'pipelineServices',
   'mlmodelServices',
   'storageServices',
+  'apiServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -222,6 +246,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   metadata: ServiceCategory.METADATA_SERVICES,
   storages: ServiceCategory.STORAGE_SERVICES,
   search: ServiceCategory.SEARCH_SERVICES,
+  apiServices: ServiceCategory.API_SERVICES,
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -252,6 +277,9 @@ export const servicesDisplayName: { [key: string]: string } = {
   dashboardDataModel: i18n.t('label.entity-service', {
     entity: i18n.t('label.data-model'),
   }),
+  apiServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.api-uppercase'),
+  }),
 };
 
 export const DEF_UI_SCHEMA = {
@@ -280,8 +308,10 @@ export const INGESTION_WORKFLOW_NAME_UI_SCHEMA = {
 
 export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  name: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'ui:order': [
     'name',
+    'displayName',
     'databaseFilterPattern',
     'schemaFilterPattern',
     'tableFilterPattern',
@@ -365,6 +395,7 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.STORAGE_SERVICES]: ServiceType.Storage,
   [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
   [ServiceCategory.SEARCH_SERVICES]: ServiceType.Search,
+  [ServiceCategory.API_SERVICES]: ServiceType.API,
 };
 
 export const SERVICE_TYPES_ENUM = {
@@ -376,17 +407,22 @@ export const SERVICE_TYPES_ENUM = {
   [ServiceCategory.STORAGE_SERVICES]: StorageServiceType,
   [ServiceCategory.PIPELINE_SERVICES]: PipelineServiceType,
   [ServiceCategory.SEARCH_SERVICES]: SearchServiceType,
+  [ServiceCategory.API_SERVICES]: APIServiceType,
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.SapHana,
+  DatabaseServiceType.BigTable,
+  DatabaseServiceType.SAS,
   PipelineServiceType.Spline,
-  PipelineServiceType.Spark,
-  DatabaseServiceType.MongoDB,
-  DashboardServiceType.QlikSense,
-  DatabaseServiceType.Couchbase,
-  SearchServiceType.ElasticSearch,
-  DatabaseServiceType.Greenplum,
+  PipelineServiceType.OpenLineage,
+  PipelineServiceType.Flink,
+  DatabaseServiceType.Teradata,
+  APIServiceType.REST,
+  StorageServiceType.Gcs,
+  DatabaseServiceType.SapERP,
+  PipelineServiceType.Flink,
+  MetadataServiceType.AlationSink,
+  DatabaseServiceType.Synapse,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -418,6 +454,14 @@ export const ADVANCED_PROPERTIES = [
   'connectionOptions',
   'scheme',
   'sampleDataStorageConfig',
+  'confidence',
+  'sampleDataCount',
+  'threadCount',
+  'timeoutSeconds',
+  'sslConfig',
+  'sslMode',
+  'schemaRegistrySSL',
+  'verify',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
@@ -431,4 +475,13 @@ export const SERVICE_TYPES = [
   EntityType.METADATA_SERVICE,
   EntityType.STORAGE_SERVICE,
   EntityType.SEARCH_SERVICE,
+  EntityType.API_SERVICE,
+];
+
+export const SERVICE_INGESTION_PIPELINE_TYPES = [
+  PipelineType.Metadata,
+  PipelineType.Usage,
+  PipelineType.Lineage,
+  PipelineType.Profiler,
+  PipelineType.Dbt,
 ];

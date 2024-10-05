@@ -23,7 +23,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -47,7 +46,6 @@ import org.quartz.impl.StdSchedulerFactory;
 public class EventSubscriptionScheduler {
   public static final String ALERT_JOB_GROUP = "OMAlertJobGroup";
   public static final String ALERT_TRIGGER_GROUP = "OMAlertJobGroup";
-  private static final String INVALID_ALERT = "Invalid Alert Type";
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
   private final Scheduler alertsScheduler = new StdSchedulerFactory().getScheduler();
@@ -76,10 +74,6 @@ public class EventSubscriptionScheduler {
   @Transaction
   public void addSubscriptionPublisher(EventSubscription eventSubscription)
       throws SchedulerException {
-    if (eventSubscription.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
-      throw new IllegalArgumentException("Activity Feed is not a valid Alert Type");
-    }
-
     AlertPublisher alertPublisher = new AlertPublisher();
     if (Boolean.FALSE.equals(
         eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
@@ -132,7 +126,8 @@ public class EventSubscriptionScheduler {
   private Trigger trigger(EventSubscription eventSubscription) {
     return TriggerBuilder.newTrigger()
         .withIdentity(eventSubscription.getId().toString(), ALERT_TRIGGER_GROUP)
-        .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(3))
+        .withSchedule(
+            SimpleScheduleBuilder.repeatSecondlyForever(eventSubscription.getPollInterval()))
         .startNow()
         .build();
   }
@@ -146,11 +141,7 @@ public class EventSubscriptionScheduler {
   public void updateEventSubscription(EventSubscription eventSubscription) {
     // Remove Existing Subscription Publisher
     deleteEventSubscriptionPublisher(eventSubscription);
-    // TODO: fix this make AlertActivityFeedPublisher
-    if (Boolean.TRUE.equals(eventSubscription.getEnabled())
-        && (!eventSubscription
-            .getAlertType()
-            .equals(CreateEventSubscription.AlertType.ACTIVITY_FEED))) {
+    if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
       addSubscriptionPublisher(eventSubscription);
     }
   }

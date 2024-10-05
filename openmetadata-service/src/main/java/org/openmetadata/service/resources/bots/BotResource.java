@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.bots;
 
-import static org.openmetadata.service.util.UserUtil.getRoleForBot;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -64,8 +64,11 @@ import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -81,28 +84,41 @@ import org.openmetadata.service.util.UserUtil;
             + "It performs this task as a special user in the system.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "bots", order = 4) // initialize after user resource
+@Collection(name = "bots", order = 4, requiredForOps = true) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
-  public BotResource(Authorizer authorizer) {
-    super(Entity.BOT, authorizer);
+  public BotResource(Authorizer authorizer, Limits limits) {
+    super(Entity.BOT, authorizer, limits);
   }
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // Load system bots
-    List<Bot> bots = repository.getEntitiesFromSeedData();
     String domain = SecurityUtil.getDomain(config);
+    // First, load the bot users and assign their roles
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    List<User> botUsers = userRepository.getEntitiesFromSeedData(".*json/data/botUser/.*\\.json$");
+    for (User botUser : botUsers) {
+      User user =
+          UserUtil.user(botUser.getName(), domain, botUser.getName())
+              .withIsBot(true)
+              .withIsAdmin(false);
+      user.setRoles(
+          listOrEmpty(botUser.getRoles()).stream()
+              .map(entityReference -> RoleResource.getRole(entityReference.getName()))
+              .toList());
+      // Add or update User Bot
+      UserUtil.addOrUpdateBotUser(user);
+    }
+
+    // Then, load the bots and bind them to the users
+    List<Bot> bots = repository.getEntitiesFromSeedData();
     for (Bot bot : bots) {
       String userName = bot.getBotUser().getName();
-      User user = UserUtil.user(userName, domain, userName).withIsBot(true).withIsAdmin(false);
-
-      // Add role corresponding to the bot to the user
-      // we need to set a mutable list here
-      user.setRoles(getRoleForBot(bot.getName()));
-      user = UserUtil.addOrUpdateBotUser(user);
-      bot.withBotUser(user.getEntityReference());
+      bot.withBotUser(
+          userRepository
+              .getByName(null, userName, userRepository.getFields("id"))
+              .getEntityReference());
       repository.initializeEntity(bot);
     }
   }
@@ -335,6 +351,35 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchBot",
+      summary = "Update a bot by name.",
+      description = "Update an existing bot using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the bot", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE

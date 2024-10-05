@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { ROUTES } from '../../../constants/constants';
 import {
   AdvanceSearchProvider,
   useAdvanceSearch,
@@ -42,16 +43,20 @@ jest.mock('../AdvanceSearchModal.component', () => ({
     )),
 }));
 
-jest.mock('../../Loader/Loader', () =>
+jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
 const mockPush = jest.fn();
 
-jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockReturnValue({
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
     search: 'queryFilter={"some":"value"}',
-  }),
+    pathname: ROUTES.EXPLORE,
+  }));
+});
+
+jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     tab: 'tabValue',
   }),

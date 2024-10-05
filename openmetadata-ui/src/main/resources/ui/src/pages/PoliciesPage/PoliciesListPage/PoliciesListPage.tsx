@@ -29,15 +29,19 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+} from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
 } from '../../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
@@ -129,9 +133,12 @@ const PoliciesListPage = () => {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description ?? ''} />
-        ),
+        render: (_, record) =>
+          isEmpty(record?.description) ? (
+            NO_DATA_PLACEHOLDER
+          ) : (
+            <RichTextEditorPreviewer markdown={record?.description || ''} />
+          ),
       },
       {
         title: t('label.role-plural'),
@@ -204,7 +211,13 @@ const PoliciesListPage = () => {
           return (
             <Tooltip
               placement="left"
-              title={!deletePolicyPermission && NO_PERMISSION_FOR_ACTION}>
+              title={
+                deletePolicyPermission
+                  ? t('label.delete-entity', {
+                      entity: t('label.policy'),
+                    })
+                  : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}
                 disabled={!deletePolicyPermission}
@@ -265,7 +278,7 @@ const PoliciesListPage = () => {
       <Row
         className="policies-list-container page-container"
         data-testid="policies-list-container"
-        gutter={[16, 16]}>
+        gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

@@ -22,15 +22,20 @@ import {
   SETTING_ITEM,
   SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
+import { SidebarItem } from '../../../enums/sidebar.enum';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
+import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
 const LeftSidebar = () => {
+  const location = useCustomLocation();
   const { t } = useTranslation();
-  const { onLogoutHandler } = useAuthContext();
+  const { onLogoutHandler } = useApplicationStore();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
 
@@ -59,7 +64,7 @@ const LeftSidebar = () => {
         return {
           key: item.key,
           label: <LeftSidebarItem data={item} />,
-          children: item.children?.map((item) => {
+          children: item.children?.map((item: LeftSidebarItemType) => {
             return {
               key: item.key,
               label: <LeftSidebarItem data={item} />,
@@ -78,7 +83,8 @@ const LeftSidebar = () => {
           <LeftSidebarItem
             data={{
               ...item,
-              onClick: item.key === 'logout' ? handleLogoutClick : noop,
+              onClick:
+                item.key === SidebarItem.LOGOUT ? handleLogoutClick : noop,
             }}
           />
         ),
@@ -113,9 +119,9 @@ const LeftSidebar = () => {
               alt="OpenMetadata Logo"
               className="vertical-middle"
               dataTestId="image"
-              height={isSidebarCollapsed ? 30 : 34}
+              height={30}
               isMonoGram={isSidebarCollapsed}
-              width={isSidebarCollapsed ? 30 : 'auto'}
+              width="auto"
             />
           </Link>
         </Col>

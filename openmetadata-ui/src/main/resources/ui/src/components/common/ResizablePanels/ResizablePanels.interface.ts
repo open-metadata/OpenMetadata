@@ -15,8 +15,12 @@ export interface ResizablePanelsProps {
   orientation?: 'vertical' | 'horizontal';
   firstPanel: PanelProps;
   secondPanel: PanelProps;
-  pageTitle: string;
+  pageTitle?: string;
   hideSecondPanel?: boolean;
+}
+
+export interface ResizablePanelsLeftProps extends ResizablePanelsProps {
+  hideFirstPanel?: boolean;
 }
 
 export interface PanelProps {

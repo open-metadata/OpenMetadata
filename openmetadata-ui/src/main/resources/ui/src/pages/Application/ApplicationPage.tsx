@@ -16,7 +16,6 @@ import { isEmpty, uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -24,6 +23,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -31,6 +31,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -133,7 +134,7 @@ const ApplicationPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.application-plural')}>
-      <Row className="page-container" gutter={[16, 16]}>
+      <Row className="page-container" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -141,7 +142,7 @@ const ApplicationPage = () => {
           <PageHeader data={PAGE_HEADERS.APPLICATION} />
         </Col>
         <Col className="d-flex justify-end" span={8}>
-          <Space>
+          <Space size="middle">
             <div>
               <Switch
                 checked={showDisabled}
@@ -150,21 +151,23 @@ const ApplicationPage = () => {
               />
               <span className="m-l-xs">{t('label.disabled')}</span>
             </div>
-            <Button
-              data-testid="add-application"
-              type="primary"
-              onClick={handleAddApplication}>
-              {t('label.add-entity', {
-                entity: t('label.app-plural'),
-              })}
-            </Button>
+            <LimitWrapper resource="app">
+              <Button
+                data-testid="add-application"
+                type="primary"
+                onClick={handleAddApplication}>
+                {t('label.add-entity', {
+                  entity: t('label.app-plural'),
+                })}
+              </Button>
+            </LimitWrapper>
           </Space>
         </Col>
       </Row>
-      <Row className="m-t-lg">
+      <Row className="page-container m-t-lg">
         {isLoading &&
-          [1, 2].map((key) => (
-            <Col key={key} span={12}>
+          [1, 2, 3].map((key) => (
+            <Col key={key} span={8}>
               <Card className="w-400">
                 <Skeleton active paragraph title />
               </Card>

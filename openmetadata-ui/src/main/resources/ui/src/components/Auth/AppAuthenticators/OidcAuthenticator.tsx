@@ -24,12 +24,11 @@ import React, {
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
-import SigninPage from '../../../pages/LoginPage/index';
-import PageNotFound from '../../../pages/PageNotFound/PageNotFound';
-import localState from '../../../utils/LocalStorageUtils';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import SignInPage from '../../../pages/LoginPage/SignInPage';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../../Loader/Loader';
-import { useAuthContext } from '../AuthProviders/AuthProvider';
+import Loader from '../../common/Loader/Loader';
 import {
   AuthenticatorRef,
   OidcUser,
@@ -66,27 +65,32 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     ref
   ) => {
     const {
-      loading,
       isAuthenticated,
-      setIsAuthenticated,
-      isSigningIn,
-      setIsSigningIn,
-      setLoadingIndicator,
+      isSigningUp,
+      setIsSigningUp,
       updateAxiosInterceptors,
-    } = useAuthContext();
+      currentUser,
+      newUser,
+      setOidcToken,
+      isApplicationLoading,
+    } = useApplicationStore();
     const history = useHistory();
-    const { currentUser, newUser } = useAuthContext();
+    const location = useCustomLocation();
     const userManager = useMemo(
-      () => makeUserManager(userConfig),
+      () => makeUserManager({ ...userConfig, silentRequestTimeout: 20000 }),
       [userConfig]
     );
 
     const login = () => {
-      setIsSigningIn(true);
+      // Clear any stale state in the user manager before starting the sign in flow
+      // Remove the existing user configuration for the user who is different from the user trying to log in
+      userManager.clearStaleState();
+      // Remove the existing user configuration for the same user who is trying to log
+      userManager.removeUser();
+      setIsSigningUp(true);
     };
 
     const logout = () => {
-      setLoadingIndicator(true);
       userManager.removeUser();
       onLogoutSuccess();
     };
@@ -94,21 +98,15 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     // Performs silent signIn and returns with IDToken
     const signInSilently = async () => {
       const user = await userManager.signinSilent();
-      localState.setOidcToken(user.id_token);
+      setOidcToken(user.id_token);
 
       return user.id_token;
     };
 
     useImperativeHandle(ref, () => ({
-      invokeLogin() {
-        login();
-      },
-      invokeLogout() {
-        logout();
-      },
-      renewIdToken() {
-        return signInSilently();
-      },
+      invokeLogin: login,
+      invokeLogout: logout,
+      renewIdToken: signInSilently,
     }));
 
     const AppWithAuth = getAuthenticator(childComponentType, userManager);
@@ -116,17 +114,23 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     return (
       <>
         <Switch>
+          {/* render sign in page if user is not authenticated and not signing up
+           * else redirect to my data page as user is authenticated and not signing up
+           */}
           <Route exact path={ROUTES.HOME}>
-            {!isAuthenticated && !isSigningIn ? (
+            {!isAuthenticated && !isSigningUp ? (
               <Redirect to={ROUTES.SIGNIN} />
             ) : (
               <Redirect to={ROUTES.MY_DATA} />
             )}
           </Route>
-          <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-          {!isSigningIn ? (
-            <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+
+          {/* render the sign in route only if user is not signing up */}
+          {!isSigningUp ? (
+            <Route exact component={SignInPage} path={ROUTES.SIGNIN} />
           ) : null}
+
+          {/* callback route to handle the auth flow after user has successfully provided their consent */}
           <Route
             path={ROUTES.CALLBACK}
             render={() => (
@@ -138,14 +142,15 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     onLoginFailure();
                   }}
                   onSuccess={(user) => {
-                    localState.setOidcToken(user.id_token);
-                    setIsAuthenticated(true);
+                    setOidcToken(user.id_token);
                     onLoginSuccess(user as OidcUser);
                   }}
                 />
               </>
             )}
           />
+
+          {/* silent callback route to handle the silent auth flow */}
           <Route
             path={ROUTES.SILENT_CALLBACK}
             render={() => (
@@ -156,25 +161,35 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     // eslint-disable-next-line no-console
                     console.error(error);
 
+                    onLogoutSuccess();
                     history.push(ROUTES.SIGNIN);
                   }}
                   onSuccess={(user) => {
-                    localState.setOidcToken(user.id_token);
+                    setOidcToken(user.id_token);
                     updateAxiosInterceptors();
                   }}
                 />
               </>
             )}
           />
-          {isAuthenticated ? (
-            <Fragment>{children}</Fragment>
-          ) : !isSigningIn && isEmpty(currentUser) && isEmpty(newUser) ? (
-            <Redirect to={ROUTES.SIGNIN} />
-          ) : (
-            <AppWithAuth />
-          )}
+
+          {!location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
+            // render the children only if user is authenticated
+            (isAuthenticated ? (
+              !location.pathname.includes(ROUTES.SILENT_CALLBACK) && (
+                <Fragment>{children}</Fragment>
+              )
+            ) : // render the sign in page if user is not authenticated and not signing up
+            !isSigningUp && isEmpty(currentUser) && isEmpty(newUser) ? (
+              <Redirect to={ROUTES.SIGNIN} />
+            ) : (
+              // render the authenticator component to handle the auth flow while user is signing in
+              <AppWithAuth />
+            ))}
         </Switch>
-        {loading && isSigningIn && <Loader />}
+
+        {/* show loader when application is loading and user is signing up*/}
+        {isApplicationLoading && isSigningUp && <Loader fullScreen />}
       </>
     );
   }

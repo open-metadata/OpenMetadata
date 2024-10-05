@@ -10,6 +10,19 @@
       "description": "Unique identifier of this application for which the job is ran.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
+    "appName": {
+      "description": "Name of the application.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "timestamp": {
+      "description": "Update time of the job status.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "extension": {
+      "description": "Extension type.",
+      "type": "string",
+      "default": "status"
+    },
     "status": {
       "description": "Status for the Job.",
       "type": "string",
@@ -25,21 +38,8 @@
       ]
     },
     "runType": {
-      "javaType": "org.openmetadata.schema.entity.app.AppRunType",
       "description": "This schema defines the type of application Run.",
-      "type": "string",
-      "enum": [
-        "Scheduled",
-        "OnDemand"
-      ],
-      "javaEnums": [
-        {
-          "name": "Scheduled"
-        },
-        {
-          "name": "OnDemand"
-        }
-      ]
+      "type": "string"
     },
     "startTime": {
       "description": "Start of the job status.",
@@ -51,10 +51,6 @@
     },
     "executionTime": {
       "description": "Execution time of the job status.",
-      "$ref": "../../type/basic.json#/definitions/timestamp"
-    },
-    "timestamp": {
-      "description": "Update time of the job status.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "failureContext": {

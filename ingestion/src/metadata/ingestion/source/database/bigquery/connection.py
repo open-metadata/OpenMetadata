@@ -17,6 +17,7 @@ from datetime import datetime
 from functools import partial
 from typing import Optional
 
+from google.api_core.exceptions import NotFound
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine import Engine
 
@@ -25,6 +26,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
+)
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpCredentialsPath,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
@@ -59,22 +63,31 @@ def get_connection_url(connection: BigQueryConnection) -> str:
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
-            if not connection.credentials.gcpConfig.projectId.__root__:
+            if not connection.credentials.gcpConfig.projectId.root:
                 return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId or ''}"
             if (
                 not connection.credentials.gcpConfig.privateKey
-                and connection.credentials.gcpConfig.projectId.__root__
+                and connection.credentials.gcpConfig.projectId.root
             ):
-                project_id = connection.credentials.gcpConfig.projectId.__root__
+                project_id = connection.credentials.gcpConfig.projectId.root
                 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.__root__}"
+            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
-            for project_id in connection.credentials.gcpConfig.projectId.__root__:
+            for project_id in connection.credentials.gcpConfig.projectId.root:
                 if not connection.credentials.gcpConfig.privateKey and project_id:
                     # Setting environment variable based on project id given by user / set in ADC
                     os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
                 return f"{connection.scheme.value}://{project_id}"
             return f"{connection.scheme.value}://"
+
+    # If gcpConfig is the JSON key path and projectId is defined, we use it by default
+    elif (
+        isinstance(connection.credentials.gcpConfig, GcpCredentialsPath)
+        and connection.credentials.gcpConfig.projectId
+    ):
+        return (
+            f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId}"
+        )
 
     return f"{connection.scheme.value}://"
 
@@ -137,8 +150,8 @@ def test_connection(
         test_fn = {
             "CheckAccess": partial(test_connection_engine_step, engine),
             "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
-            "GetTables": partial(execute_inspector_func, engine, "get_table_names"),
-            "GetViews": partial(execute_inspector_func, engine, "get_view_names"),
+            "GetTables": partial(get_table_view_names, engine),
+            "GetViews": partial(get_table_view_names, engine),
             "GetTags": test_tags,
             "GetQueries": partial(
                 test_query,
@@ -158,3 +171,28 @@ def test_connection(
         )
 
     test_connection_inner(engine)
+
+
+def get_table_view_names(connection, schema=None):
+    with connection.connect() as conn:
+        current_schema = schema
+        client = conn.connection._client
+        item_types = ["TABLE", "EXTERNAL", "VIEW", "MATERIALIZED_VIEW"]
+        datasets = client.list_datasets()
+        result = []
+        for dataset in datasets:
+            if current_schema is not None and current_schema != dataset.dataset_id:
+                continue
+
+            try:
+                tables = client.list_tables(dataset.reference, page_size=1)
+                for table in tables:
+                    if table.table_type in item_types:
+                        break
+            except NotFound:
+                # It's possible that the dataset was deleted between when we
+                # fetched the list of datasets and when we try to list the
+                # tables from it. See:
+                # https://github.com/googleapis/python-bigquery-sqlalchemy/issues/105
+                pass
+        return result

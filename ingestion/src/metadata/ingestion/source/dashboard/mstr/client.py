@@ -30,6 +30,7 @@ from metadata.ingestion.source.dashboard.mstr.models import (
     MstrSearchResult,
     MstrSearchResultList,
 )
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -44,8 +45,8 @@ class MSTRClient:
 
     def _get_base_url(self, path=None):
         if not path:
-            return f"{self.config.hostPort}/{API_VERSION}/"
-        return f"{self.config.hostPort}/{API_VERSION}/{path}"
+            return f"{clean_uri(self.config.hostPort)}/{API_VERSION}/"
+        return f"{clean_uri(self.config.hostPort)}/{API_VERSION}/{path}"
 
     def _get_mstr_session(self) -> MSTRRESTSession:
         try:
@@ -167,7 +168,7 @@ class MSTRClient:
             dashboards = []
             for result in results:
                 dashboards.append(
-                    MstrDashboard(projectName=project_name, **result.dict())
+                    MstrDashboard(projectName=project_name, **result.model_dump())
                 )
 
             dashboards_list = MstrDashboardList(dashboards=dashboards)

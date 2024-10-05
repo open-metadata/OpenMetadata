@@ -21,7 +21,7 @@ To be extended by any other workflow:
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import List, Tuple, cast
+from typing import List, Tuple, Type, cast
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -41,9 +41,17 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
+from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
+)
+from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
+from metadata.utils.importer import (
+    DynamicImportException,
+    MissingPluginException,
+    import_from_module,
+    import_source_class,
 )
 from metadata.utils.logger import ingestion_logger
 from metadata.workflow.base import BaseWorkflow, InvalidWorkflowJSONException
@@ -184,7 +192,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                 )
                 if service:
                     self.config.source.serviceConnection = ServiceConnection(
-                        __root__=service.connection
+                        service.connection
                     )
                 else:
                     raise InvalidWorkflowJSONException(
@@ -201,3 +209,38 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                     f"Unknown error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
+
+    def validate(self):
+        try:
+            if not self.config.source.serviceConnection.root.config.supportsProfiler:
+                raise AttributeError()
+        except AttributeError:
+            if ProfilerProcessorConfig.model_validate(
+                self.config.processor.model_dump().get("config")
+            ).ignoreValidation:
+                logger.debug(
+                    f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
+                )
+                return
+            raise WorkflowExecutionError(
+                f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
+            )
+
+    def import_source_class(self) -> Type[Source]:
+        source_type = self.config.source.type.lower()
+        try:
+            return (
+                import_from_module(
+                    self.config.source.serviceConnection.root.config.sourcePythonClass
+                )
+                if source_type.startswith(CUSTOM_CONNECTOR_PREFIX)
+                else import_source_class(
+                    service_type=self.service_type, source_type=source_type
+                )
+            )
+        except DynamicImportException as e:
+            if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):
+                raise e
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to import source of type '{source_type}'")
+            raise MissingPluginException(source_type)

@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/entity/applications/marketplace/createAppMarketPlaceDefinitionReq.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CreateAppMarketPlaceDefinitionReq",
+  "title": "CreateAppMarketPlaceDefinitionRequest",
   "javaType": "org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
   "description": "This schema defines the applications for Open-Metadata.",
@@ -23,9 +23,9 @@
       "description": "Features of the Application.",
       "$ref": "../../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this workflow.",
-      "$ref": "../../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this workflow.",
+      "$ref": "../../../type/entityReferenceList.json",
       "default": null
     },
     "tags": {
@@ -97,6 +97,20 @@
         "type": "string"
       },
       "uniqueItems": true
+    },
+    "system": {
+      "description": "A system app cannot be uninstalled or modified.",
+      "type": "boolean",
+      "default": false
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
+    },
+    "supportsInterrupt": {
+      "description": "If the app run can be interrupted as part of the execution.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,

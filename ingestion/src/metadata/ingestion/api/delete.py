@@ -12,7 +12,7 @@
 Delete methods
 """
 import traceback
-from typing import Dict, Iterable, Optional, Type
+from typing import Dict, Iterable, List, Optional, Type
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -43,11 +43,43 @@ def delete_entity_from_source(
     try:
         entity_state = metadata.list_all_entities(entity=entity_type, params=params)
         for entity in entity_state:
-            if str(entity.fullyQualifiedName.__root__) not in entity_source_state:
+            if str(entity.fullyQualifiedName.root) not in entity_source_state:
                 yield Either(
                     right=DeleteEntity(
                         entity=entity,
                         mark_deleted_entities=mark_deleted_entity,
+                    )
+                )
+    except Exception as exc:
+        yield Either(
+            left=StackTraceError(
+                name="Delete Entity",
+                error=f"Error deleting {entity_type.__class__}: {exc}",
+                stackTrace=traceback.format_exc(),
+            )
+        )
+
+
+def delete_entity_by_name(
+    metadata: OpenMetadata,
+    entity_type: Type[T],
+    entity_names: List[str],
+    mark_deleted_entity: bool = True,
+) -> Iterable[Either[DeleteEntity]]:
+    """
+    Method to delete the entites contained on a given list
+    :param metadata: OMeta client
+    :param entity_type: Pydantic Entity model
+    :param entity_names: List of FullyQualifiedNames of the entities to be deleted
+    :param mark_deleted_entity: Option to mark the entity as deleted or not
+    """
+    try:
+        for entity_name in entity_names:
+            entity = metadata.get_by_name(entity=entity_type, fqn=entity_name)
+            if entity:
+                yield Either(
+                    right=DeleteEntity(
+                        entity=entity, mark_deleted_entities=mark_deleted_entity
                     )
                 )
     except Exception as exc:

@@ -19,19 +19,20 @@ import itertools
 import re
 import shutil
 import sys
-from datetime import datetime, timedelta
-from functools import wraps
+from datetime import datetime, timedelta, timezone
 from math import floor, log
 from pathlib import Path
-from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import sqlparse
+from pydantic_core import Url
 from sqlparse.sql import Statement
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.feed.suggestion import Suggestion, SuggestionType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.logger import utils_logger
@@ -86,9 +87,11 @@ om_chart_type_dict = {
     "dual_line": ChartType.Line,
     "line_multi": ChartType.Line,
     "table": ChartType.Table,
+    "levelTable": ChartType.Table,
     "dist_bar": ChartType.Bar,
     "bar": ChartType.Bar,
     "box_plot": ChartType.BoxPlot,
+    "box": ChartType.BoxPlot,
     "boxplot": ChartType.BoxPlot,
     "histogram": ChartType.Histogram,
     "treemap": ChartType.Area,
@@ -99,48 +102,17 @@ om_chart_type_dict = {
 }
 
 
-def calculate_execution_time(func):
-    """
-    Method to calculate workflow execution time
-    """
-
-    @wraps(func)
-    def calculate_debug_time(*args, **kwargs):
-        start = perf_counter()
-        result = func(*args, **kwargs)
-        end = perf_counter()
-        logger.debug(
-            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
-        )
-        return result
-
-    return calculate_debug_time
-
-
-def calculate_execution_time_generator(func):
-    """
-    Generator method to calculate workflow execution time
-    """
-
-    def calculate_debug_time(*args, **kwargs):
-        start = perf_counter()
-        yield from func(*args, **kwargs)
-        end = perf_counter()
-        logger.debug(
-            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
-        )
-
-    return calculate_debug_time
-
-
 def pretty_print_time_duration(duration: Union[int, float]) -> str:
     """
     Method to format and display the time
     """
 
     days = divmod(duration, 86400)[0]
+    duration = duration - days * 86400
     hours = divmod(duration, 3600)[0]
+    duration = duration - hours * 3600
     minutes = divmod(duration, 60)[0]
+    duration = duration - minutes * 60
     seconds = round(divmod(duration, 60)[1], 2)
     if days:
         return f"{days}day(s) {hours}h {minutes}m {seconds}s"
@@ -151,12 +123,12 @@ def pretty_print_time_duration(duration: Union[int, float]) -> str:
     return f"{seconds}s"
 
 
-def get_start_and_end(duration: int = 0):
+def get_start_and_end(duration: int = 0) -> Tuple[datetime, datetime]:
     """
     Method to return start and end time based on duration
     """
 
-    today = datetime.utcnow()
+    today = datetime.now(timezone.utc).replace(tzinfo=None)
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
@@ -227,12 +199,38 @@ def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
     return next((elem for elem in container if elem == element), None)
 
 
-def find_column_in_table(column_name: str, table: Table) -> Optional[Column]:
+def find_column_in_table(
+    column_name: str, table: Table, case_sensitive: bool = True
+) -> Optional[Column]:
     """
     If the column exists in the table, return it
     """
+
+    def equals(first: str, second: str) -> bool:
+        if case_sensitive:
+            return first == second
+        return first.lower() == second.lower()
+
     return next(
-        (col for col in table.columns if col.name.__root__ == column_name), None
+        (col for col in table.columns if equals(col.name.root, column_name)), None
+    )
+
+
+def find_suggestion(
+    suggestions: List[Suggestion],
+    suggestion_type: SuggestionType,
+    entity_link: EntityLink,
+) -> Optional[Suggestion]:
+    """Given a list of suggestions, a suggestion type and an entity link, find
+    one suggestion in the list that matches the criteria
+    """
+    return next(
+        (
+            sugg
+            for sugg in suggestions
+            if sugg.root.type == suggestion_type and sugg.root.entityLink == entity_link
+        ),
+        None,
     )
 
 
@@ -252,7 +250,7 @@ def find_column_in_table_with_index(
         (
             (col_index, col)
             for col_index, col in enumerate(table.columns)
-            if str(col.name.__root__).lower() == column_name.lower()
+            if str(col.name.root).lower() == column_name.lower()
         ),
         (None, None),
     )
@@ -333,11 +331,7 @@ def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
     if not tags:
         return None
     return next(
-        (
-            tag.tagFQN.__root__
-            for tag in tags
-            if tag.tagFQN.__root__.lower().startswith("tier")
-        ),
+        (tag.tagFQN.root for tag in tags if tag.tagFQN.root.lower().startswith("tier")),
         None,
     )
 
@@ -354,15 +348,20 @@ def format_large_string_numbers(number: Union[float, int]) -> str:
     units = ["", "K", "M", "B", "T"]
     constant_k = 1000.0
     magnitude = int(floor(log(abs(number), constant_k)))
+    if magnitude >= len(units):
+        return f"{int(number / constant_k**magnitude)}e{magnitude*3}"
     return f"{number / constant_k**magnitude:.3f}{units[magnitude]}"
 
 
-def clean_uri(uri: str) -> str:
+def clean_uri(uri: Union[str, Url]) -> str:
     """
     if uri is like http://localhost:9000/
     then remove the end / and
     make it http://localhost:9000
     """
+    # force a string of the given Uri if needed
+    if isinstance(uri, Url):
+        uri = str(uri)
     return uri[:-1] if uri.endswith("/") else uri
 
 

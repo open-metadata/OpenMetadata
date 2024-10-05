@@ -14,7 +14,7 @@
 import { EntityTags } from 'Models';
 import { ReactElement } from 'react';
 import { ThreadType } from '../../../generated/api/feed/createThread';
-import { TagSource } from '../../../generated/type/tagLabel';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { DisplayType, LayoutType } from '../TagsViewer/TagsViewer.interface';
 
 export type TagsContainerV2Props = {
@@ -32,4 +32,6 @@ export type TagsContainerV2Props = {
   layoutType?: LayoutType;
   onSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
+  defaultState?: State;
+  defaultLabelType?: LabelType;
 };

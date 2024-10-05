@@ -18,6 +18,7 @@ from urllib.parse import quote_plus
 from requests import Session
 from sqlalchemy.engine import Engine
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -48,7 +49,10 @@ def get_connection_url(connection: TrinoConnection) -> str:
     """
     url = f"{connection.scheme.value}://"
     if connection.username:
-        url += f"{quote_plus(connection.username)}"
+        # we need to encode twice because trino dialect internally
+        # url decodes the username and if there is an special char in username
+        # it will fail to authenticate
+        url += f"{quote_plus(quote_plus(connection.username))}"
         if (
             isinstance(connection.authType, basicAuth.BasicAuth)
             and connection.authType.password
@@ -61,13 +65,13 @@ def get_connection_url(connection: TrinoConnection) -> str:
     if isinstance(connection.authType, jwtAuth.JwtAuth):
         if not connection.connectionOptions:
             connection.connectionOptions = init_empty_connection_options()
-        connection.connectionOptions.__root__[
+        connection.connectionOptions.root[
             "access_token"
         ] = connection.authType.jwt.get_secret_value()
     if connection.connectionOptions is not None:
         params = "&".join(
             f"{key}={quote_plus(value)}"
-            for (key, value) in connection.connectionOptions.__root__.items()
+            for (key, value) in connection.connectionOptions.root.items()
             if value
         )
         url = f"{url}?{params}"
@@ -82,7 +86,7 @@ def get_connection_args(connection: TrinoConnection):
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
 
-        connection.connectionArguments.__root__["http_session"] = session
+        connection.connectionArguments.root["http_session"] = session
 
     return get_connection_args_common(connection)
 
@@ -91,6 +95,23 @@ def get_connection(connection: TrinoConnection) -> Engine:
     """
     Create connection
     """
+    if connection.verify:
+        connection.connectionArguments = (
+            connection.connectionArguments or init_empty_connection_arguments()
+        )
+        connection.connectionArguments.root["verify"] = {"verify": connection.verify}
+    if hasattr(connection.authType, "azureConfig"):
+        azure_client = AzureClient(connection.authType.azureConfig).create_client()
+        if not connection.authType.azureConfig.scopes:
+            raise ValueError(
+                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+            )
+        access_token_obj = azure_client.get_token(
+            *connection.authType.azureConfig.scopes.split(",")
+        )
+        if not connection.connectionOptions:
+            connection.connectionOptions = init_empty_connection_options()
+        connection.connectionOptions.root["access_token"] = access_token_obj.token
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,

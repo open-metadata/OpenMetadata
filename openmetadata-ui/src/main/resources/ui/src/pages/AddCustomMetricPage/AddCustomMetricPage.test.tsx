@@ -25,28 +25,33 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../components/CustomMetricForm/CustomMetricForm.component',
+  '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component',
   () => {
     return jest.fn().mockImplementation(() => <div>CustomMetricForm</div>);
   }
 );
 jest.mock(
-  '../../components/TableProfiler/Component/SingleColumnProfile',
+  '../../components/Database/Profiler/TableProfiler/SingleColumnProfile',
   () => {
     return jest.fn().mockImplementation(() => <div>SingleColumnProfile</div>);
   }
 );
-jest.mock('../../components/TableProfiler/Component/TableProfilerChart', () => {
-  return jest.fn().mockImplementation(() => <div>TableProfilerChart</div>);
-});
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock(
+  '../../components/Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart',
+  () => {
+    return jest.fn().mockImplementation(() => <div>TableProfilerChart</div>);
+  }
+);
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
+});
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ search: '' }));
 });
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => mockUseParams),
   useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
-  useLocation: jest.fn().mockReturnValue({ search: '' }),
 }));
 jest.mock('../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest

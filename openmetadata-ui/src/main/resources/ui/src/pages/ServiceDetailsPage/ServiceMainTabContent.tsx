@@ -20,12 +20,14 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
-import Loader from '../../components/Loader/Loader';
-import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { PAGE_SIZE } from '../../constants/constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { Paging } from '../../generated/type/paging';
@@ -151,83 +153,104 @@ function ServiceMainTabContent({
 
   return (
     <Row gutter={[0, 16]} wrap={false}>
-      <Col className="p-t-sm m-x-lg" flex="auto">
-        <Row gutter={[16, 16]}>
-          <Col data-testid="description-container" span={24}>
-            <DescriptionV1
-              description={serviceDetails.description}
-              entityFqn={serviceFQN}
-              entityName={serviceName}
-              entityType={entityType}
-              hasEditAccess={editDescriptionPermission}
-              isEdit={isEdit}
-              showActions={!serviceDetails.deleted}
-              showCommentsIcon={false}
-              onCancel={onCancel}
-              onDescriptionEdit={onDescriptionEdit}
-              onDescriptionUpdate={handleDescriptionUpdate}
-            />
-          </Col>
-          <Col span={24}>
-            <Row justify="end">
-              <Col>
-                <Switch
-                  checked={showDeleted}
-                  data-testid="show-deleted"
-                  onClick={onShowDeletedChange}
+      <Col className="tab-content-height-with-resizable-panel" span={24}>
+        <ResizablePanels
+          firstPanel={{
+            className: 'entity-resizable-panel-container',
+            children: (
+              <div className="p-t-sm m-x-lg">
+                <Row gutter={[16, 16]}>
+                  <Col data-testid="description-container" span={24}>
+                    <DescriptionV1
+                      description={serviceDetails.description}
+                      entityFqn={serviceFQN}
+                      entityName={serviceName}
+                      entityType={entityType}
+                      hasEditAccess={editDescriptionPermission}
+                      isEdit={isEdit}
+                      showActions={!serviceDetails.deleted}
+                      showCommentsIcon={false}
+                      onCancel={onCancel}
+                      onDescriptionEdit={onDescriptionEdit}
+                      onDescriptionUpdate={handleDescriptionUpdate}
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Row justify="end">
+                      <Col>
+                        <Switch
+                          checked={showDeleted}
+                          data-testid="show-deleted"
+                          onClick={onShowDeletedChange}
+                        />
+                        <Typography.Text className="m-l-xs">
+                          {t('label.deleted')}
+                        </Typography.Text>{' '}
+                      </Col>
+                    </Row>
+                  </Col>
+                  <Col data-testid="table-container" span={24}>
+                    <Space
+                      className="w-full m-b-md"
+                      direction="vertical"
+                      size="large">
+                      {isServiceLoading ? (
+                        <Loader />
+                      ) : (
+                        <Table
+                          bordered
+                          columns={tableColumn}
+                          data-testid="service-children-table"
+                          dataSource={data}
+                          locale={{
+                            emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                          }}
+                          pagination={false}
+                          rowKey="id"
+                          size="small"
+                        />
+                      )}
+                      {Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
+                        !isEmpty(data) && (
+                          <NextPrevious
+                            currentPage={currentPage}
+                            pageSize={PAGE_SIZE}
+                            paging={paging}
+                            pagingHandler={pagingHandler}
+                          />
+                        )}
+                    </Space>
+                  </Col>
+                </Row>
+              </div>
+            ),
+            ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+          }}
+          secondPanel={{
+            children: (
+              <div data-testid="entity-right-panel">
+                <EntityRightPanel
+                  dataProducts={
+                    (serviceDetails as DatabaseService)?.dataProducts ?? []
+                  }
+                  domain={(serviceDetails as DatabaseService)?.domain}
+                  editTagPermission={editTagsPermission}
+                  entityFQN={serviceFQN}
+                  entityId={serviceDetails.id}
+                  entityType={entityType}
+                  selectedTags={tags}
+                  showDataProductContainer={
+                    entityType !== EntityType.METADATA_SERVICE
+                  }
+                  showTaskHandler={false}
+                  onTagSelectionChange={handleTagSelection}
                 />
-                <Typography.Text className="m-l-xs">
-                  {t('label.deleted')}
-                </Typography.Text>{' '}
-              </Col>
-            </Row>
-          </Col>
-          <Col data-testid="table-container" span={24}>
-            <Space className="w-full m-b-md" direction="vertical" size="large">
-              {isServiceLoading ? (
-                <Loader />
-              ) : (
-                <Table
-                  bordered
-                  columns={tableColumn}
-                  data-testid="service-children-table"
-                  dataSource={data}
-                  locale={{
-                    emptyText: <ErrorPlaceHolder className="m-y-md" />,
-                  }}
-                  pagination={false}
-                  rowKey="id"
-                  size="small"
-                />
-              )}
-              {Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-                !isEmpty(data) && (
-                  <NextPrevious
-                    currentPage={currentPage}
-                    pageSize={PAGE_SIZE}
-                    paging={paging}
-                    pagingHandler={pagingHandler}
-                  />
-                )}
-            </Space>
-          </Col>
-        </Row>
-      </Col>
-      <Col
-        className="entity-tag-right-panel-container"
-        data-testid="entity-right-panel"
-        flex="320px">
-        <EntityRightPanel
-          dataProducts={(serviceDetails as DatabaseService)?.dataProducts ?? []}
-          domain={(serviceDetails as DatabaseService)?.domain}
-          editTagPermission={editTagsPermission}
-          entityFQN={serviceFQN}
-          entityId={serviceDetails.id}
-          entityType={entityType}
-          selectedTags={tags}
-          showDataProductContainer={entityType !== EntityType.METADATA_SERVICE}
-          showTaskHandler={false}
-          onTagSelectionChange={handleTagSelection}
+              </div>
+            ),
+            ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+            className:
+              'entity-resizable-right-panel-container entity-resizable-panel-container',
+          }}
         />
       </Col>
     </Row>

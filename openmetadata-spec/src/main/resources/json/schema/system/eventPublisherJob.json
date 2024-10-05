@@ -6,25 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.system.EventPublisherJob",
   "definitions": {
-    "failureDetails": {
-      "description": "Failure details are set only when `status` is not `success`.",
-      "type": "object",
-      "properties": {
-        "context": {
-          "description": "Additional Context for Failure.",
-          "type": "string"
-        },
-        "lastFailedAt": {
-          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
-          "$ref": "../type/basic.json#/definitions/timestamp"
-        },
-        "lastFailedReason": {
-          "description": "Last non-successful activity response reason received during callback.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
     "stepStats": {
       "description": "Stats for Different Steps Reader, Processor, Writer.",
       "type": "object",
@@ -98,8 +79,8 @@
       ]
     },
     "failure": {
-      "description": "List of Failures in the Job",
-      "type": "object"
+      "description": "Failure for the job",
+      "$ref": "./indexingError.json"
     },
     "stats": {
       "$ref": "#/definitions/stats"
@@ -119,6 +100,12 @@
     "batchSize": {
       "description": "Maximum number of events sent in a batch (Default 10).",
       "type": "integer"
+    },
+    "payLoadSize": {
+      "description": "Payload size in bytes depending on config.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "default": 104857600
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",

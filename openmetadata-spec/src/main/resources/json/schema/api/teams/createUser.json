@@ -28,7 +28,8 @@
     },
     "isBot": {
       "description": "When true indicates user is a bot with appropriate privileges",
-      "type": "boolean"
+      "type": "boolean",
+      "default": false
     },
     "botName": {
       "description": "User bot name if we want to associate this bot with an specific bot",
@@ -40,6 +41,7 @@
       "default": false
     },
     "profile": {
+      "description": "Profile of the user.",
       "$ref": "../../type/profile.json",
       "default": null
     },
@@ -85,6 +87,14 @@
     "confirmPassword": {
       "description": "Confirm Password for User",
       "type": "string"
+    },
+    "domains" : {
+      "description": "Domains the User belongs to.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/entityName"
+      },
+      "default": null
     }
   },
   "required": ["name", "email"],

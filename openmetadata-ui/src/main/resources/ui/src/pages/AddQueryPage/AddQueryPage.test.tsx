@@ -35,13 +35,13 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
   }
 );
-jest.mock('../../components/SchemaEditor/SchemaEditor', () => {
+jest.mock('../../components/Database/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor</div>);
 });
 jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockImplementation(() => <div>RichTextEditor</div>);
 });
-jest.mock('../../components/AsyncSelect/AsyncSelect', () => ({
+jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest.fn().mockImplementation(() => <div>AsyncSelect</div>),
 }));
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
@@ -52,7 +52,7 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       query: {

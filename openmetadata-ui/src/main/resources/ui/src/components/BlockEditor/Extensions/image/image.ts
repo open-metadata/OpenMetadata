@@ -13,7 +13,7 @@
 import { mergeAttributes, Node, nodeInputRule } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { IMAGE_INPUT_REGEX } from '../../../../constants/BlockEditor.constants';
-import ImageComponent from './component';
+import ImageComponent from './ImageComponent';
 
 export interface ImageOptions {
   inline: boolean;

@@ -31,9 +31,10 @@ import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { getAllFeeds } from '../../../rest/feedsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -41,11 +42,9 @@ import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import ActivityThread from './ActivityThread';
 import ActivityThreadList from './ActivityThreadList';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';
-import AnnouncementThreads from './AnnouncementThreads';
 
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadLink,
-  editAnnouncementPermission,
   onCancel,
   postFeedHandler,
   createThread,
@@ -56,7 +55,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadType,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
@@ -82,8 +81,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const isConversationType = isEqual(threadType, ThreadType.Conversation);
 
   const isTaskClosed = isEqual(taskStatus, ThreadTaskStatus.Closed);
-
-  const isAnnouncementType = threadType === ThreadType.Announcement;
 
   const getThreads = (after?: string) => {
     const status = isTaskType ? taskStatus : undefined;
@@ -163,13 +160,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     setSelectedThread(undefined);
   };
 
-  const onPostThread = (value: string) => {
+  const onPostThread = async (value: string) => {
     const data = {
       message: value,
       from: currentUser?.name ?? '',
       about: threadLink,
     };
-    createThread(data);
+    await createThread(data);
     loadNewThreads();
   };
 
@@ -278,7 +275,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Fragment>
         ) : (
           <Fragment>
-            {showNewConversation || isEqual(threads.length, 0) ? (
+            {showNewConversation ||
+            (isEqual(threads.length, 0) && !isThreadLoading) ? (
               <>
                 {isConversationType && (
                   <Space className="w-full" direction="vertical">
@@ -293,49 +291,29 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                     />
                   </Space>
                 )}
-                {(isAnnouncementType || isTaskType) && (
+                {isTaskType && !isThreadLoading && (
                   <ErrorPlaceHolder
                     className="mt-24"
                     type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                    {isTaskType ? (
-                      <Typography.Paragraph>
-                        {isTaskClosed
-                          ? t('message.no-closed-task')
-                          : t('message.no-open-task')}
-                      </Typography.Paragraph>
-                    ) : (
-                      <Typography.Paragraph data-testid="announcement-error">
-                        {t('message.no-announcement-message')}
-                      </Typography.Paragraph>
-                    )}
+                    <Typography.Paragraph>
+                      {isTaskClosed
+                        ? t('message.no-closed-task')
+                        : t('message.no-open-task')}
+                    </Typography.Paragraph>
                   </ErrorPlaceHolder>
                 )}
               </>
             ) : null}
-            {isAnnouncementType ? (
-              <AnnouncementThreads
-                className={classNames(className)}
-                editAnnouncementPermission={editAnnouncementPermission}
-                postFeed={postFeed}
-                selectedThreadId={selectedThreadId}
-                threads={threads}
-                updateThreadHandler={onUpdateThread}
-                onConfirmation={onConfirmation}
-                onThreadIdSelect={onThreadIdSelect}
-                onThreadSelect={onThreadSelect}
-              />
-            ) : (
-              <ActivityThreadList
-                className={classNames(className)}
-                postFeed={postFeed}
-                selectedThreadId={selectedThreadId}
-                threads={threads}
-                updateThreadHandler={onUpdateThread}
-                onConfirmation={onConfirmation}
-                onThreadIdSelect={onThreadIdSelect}
-                onThreadSelect={onThreadSelect}
-              />
-            )}
+            <ActivityThreadList
+              className={classNames(className)}
+              postFeed={postFeed}
+              selectedThreadId={selectedThreadId}
+              threads={threads}
+              updateThreadHandler={onUpdateThread}
+              onConfirmation={onConfirmation}
+              onThreadIdSelect={onThreadIdSelect}
+              onThreadSelect={onThreadSelect}
+            />
             <div
               data-testid="observer-element"
               id="observer-element"

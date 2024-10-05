@@ -1,0 +1,11 @@
+{
+  "name": "usage-bot",
+  "displayName": "UsageBot",
+  "description": "Bot used for ingesting usage metadata.",
+  "fullyQualifiedName": "usage-bot",
+  "botUser": {
+    "name" : "usage-bot",
+    "type" : "user"
+  },
+  "provider": "system"
+}

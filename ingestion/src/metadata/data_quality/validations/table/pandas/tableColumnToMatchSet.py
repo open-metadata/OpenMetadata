@@ -13,6 +13,7 @@
 Validator for table column name to match set test case
 """
 
+from typing import List
 
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
@@ -30,7 +31,7 @@ class TableColumnToMatchSetValidator(
 ):
     """Validator table column name to match set test case"""
 
-    def _run_results(self):
+    def _run_results(self) -> List[str]:
         """compute result of the test case"""
         names = list(self.runner[0].columns)
         if not names:

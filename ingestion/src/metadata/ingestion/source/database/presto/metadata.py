@@ -15,10 +15,10 @@ Presto source module
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable
+from typing import Iterable, Optional
 
 from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
-from sqlalchemy import inspect, types, util
+from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.data.database import Database
@@ -118,9 +118,11 @@ class PrestoSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: PrestoConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config = WorkflowSource.model_validate(config_dict)
+        connection: PrestoConnection = config.serviceConnection.root.config
         if not isinstance(connection, PrestoConnection):
             raise InvalidSourceException(
                 f"Expected PrestoConnection, but got {connection}"
@@ -138,7 +140,8 @@ class PrestoSource(CommonDbSourceService):
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.catalog = database_name
         self.engine = get_connection(new_service_connection)
-        self.inspector = inspect(self.engine)
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
 
     def get_database_names(self) -> Iterable[str]:
         configured_catalog = self.service_connection.catalog
@@ -153,7 +156,7 @@ class PrestoSource(CommonDbSourceService):
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.context.database_service,
+                        service_name=self.context.get().database_service,
                         database_name=new_catalog,
                     )
                     if filter_by_database(

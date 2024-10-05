@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-@import url('../variables.less');
+@import (reference) url('../variables.less');
+
+.selectTextOverflow() {
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
 
 .query-builder-container {
   &.query-builder {
@@ -228,7 +233,13 @@
   width: 180px;
 
   .ant-select {
-    width: 100% !important;
+    min-width: 100% !important; // override the inline min-width style of the select provided by antd
+    max-width: 100%;
+  }
+  .ant-select-multiple {
+    .ant-select-selection-item-content {
+      .selectTextOverflow();
+    }
   }
 }
 
@@ -248,6 +259,12 @@
   min-width: 180px;
   .ant-select,
   .widget--widget {
-    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .ant-select-multiple {
+    .ant-select-selection-item-content {
+      .selectTextOverflow();
+    }
   }
 }

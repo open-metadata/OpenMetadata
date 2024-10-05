@@ -41,9 +41,16 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataset,
@@ -82,6 +89,7 @@ class PowerbiSource(DashboardServiceSource):
             100, self.service_connection.pagination_entity_per_page
         )
         self.workspace_data = []
+        self.datamodel_file_mappings = []
 
     def prepare(self):
         if self.service_connection.useAdminApis:
@@ -91,6 +99,11 @@ class PowerbiSource(DashboardServiceSource):
         if groups:
             self.workspace_data = self.get_filtered_workspaces(groups)
         return super().prepare()
+
+    def close(self):
+        self.metadata.close()
+        if self.client.file_client:
+            self.client.file_client.delete_tmp_files()
 
     def get_filtered_workspaces(self, groups: List[Group]) -> List[Group]:
         """
@@ -114,16 +127,16 @@ class PowerbiSource(DashboardServiceSource):
         """
         fetch all the group workspace ids
         """
-        groups = self.client.fetch_all_workspaces()
+        groups = self.client.api_client.fetch_all_workspaces()
         for group in groups:
             # add the dashboards to the groups
             group.dashboards.extend(
-                self.client.fetch_all_org_dashboards(group_id=group.id) or []
+                self.client.api_client.fetch_all_org_dashboards(group_id=group.id) or []
             )
             for dashboard in group.dashboards:
                 # add the tiles to the dashboards
                 dashboard.tiles.extend(
-                    self.client.fetch_all_org_tiles(
+                    self.client.api_client.fetch_all_org_tiles(
                         group_id=group.id, dashboard_id=dashboard.id
                     )
                     or []
@@ -131,17 +144,17 @@ class PowerbiSource(DashboardServiceSource):
 
             # add the reports to the groups
             group.reports.extend(
-                self.client.fetch_all_org_reports(group_id=group.id) or []
+                self.client.api_client.fetch_all_org_reports(group_id=group.id) or []
             )
 
             # add the datasets to the groups
             group.datasets.extend(
-                self.client.fetch_all_org_datasets(group_id=group.id) or []
+                self.client.api_client.fetch_all_org_datasets(group_id=group.id) or []
             )
             for dataset in group.datasets:
                 # add the tables to the datasets
                 dataset.tables.extend(
-                    self.client.fetch_dataset_tables(
+                    self.client.api_client.fetch_dataset_tables(
                         group_id=group.id, dataset_id=dataset.id
                     )
                     or []
@@ -153,7 +166,7 @@ class PowerbiSource(DashboardServiceSource):
         fetch all the workspace ids
         """
         groups = []
-        workspaces = self.client.fetch_all_workspaces()
+        workspaces = self.client.api_client.fetch_all_workspaces()
         if workspaces:
             workspace_id_list = [workspace.id for workspace in workspaces]
 
@@ -169,16 +182,16 @@ class PowerbiSource(DashboardServiceSource):
                 logger.info(
                     f"Scanning {count}/{len(workspace_paginated_list)} set of workspaces"
                 )
-                workspace_scan = self.client.initiate_workspace_scan(
+                workspace_scan = self.client.api_client.initiate_workspace_scan(
                     workspace_ids_chunk
                 )
 
                 # Keep polling the scan status endpoint to check if scan is succeeded
-                workspace_scan_status = self.client.wait_for_scan_complete(
+                workspace_scan_status = self.client.api_client.wait_for_scan_complete(
                     scan_id=workspace_scan.id
                 )
                 if workspace_scan_status:
-                    response = self.client.fetch_workspace_scan_result(
+                    response = self.client.api_client.fetch_workspace_scan_result(
                         scan_id=workspace_scan.id
                     )
                     groups.extend(
@@ -196,9 +209,11 @@ class PowerbiSource(DashboardServiceSource):
         return groups or None
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: PowerBIConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config = WorkflowSource.model_validate(config_dict)
+        connection: PowerBIConnection = config.serviceConnection.root.config
         if not isinstance(connection, PowerBIConnection):
             raise InvalidSourceException(
                 f"Expected PowerBIConnection, but got {connection}"
@@ -210,7 +225,7 @@ class PowerbiSource(DashboardServiceSource):
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         for workspace in self.workspace_data:
-            self.context.workspace = workspace
+            self.context.get().workspace = workspace
             for dashboard in self.get_dashboards_list():
                 try:
                     dashboard_details = self.get_dashboard_details(dashboard)
@@ -239,7 +254,10 @@ class PowerbiSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        return self.context.workspace.reports + self.context.workspace.dashboards
+        return (
+            self.context.get().workspace.reports
+            + self.context.get().workspace.dashboards
+        )
 
     def get_dashboard_name(
         self, dashboard: Union[PowerBIDashboard, PowerBIReport]
@@ -317,10 +335,12 @@ class PowerbiSource(DashboardServiceSource):
         """
         try:
             data_model_request = CreateDashboardDataModelRequest(
-                name=dataset.id,
+                name=EntityName(dataset.id),
                 displayName=dataset.name,
-                description=dataset.description,
-                service=self.context.dashboard_service,
+                description=Markdown(dataset.description)
+                if dataset.description
+                else None,
+                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 dataModelType=DataModelType.PowerBIDataModel.value,
                 serviceType=DashboardServiceType.PowerBI.value,
                 columns=self._get_column_info(dataset),
@@ -393,38 +413,46 @@ class PowerbiSource(DashboardServiceSource):
         try:
             if isinstance(dashboard_details, PowerBIDashboard):
                 dashboard_request = CreateDashboardRequest(
-                    name=dashboard_details.id,
-                    sourceUrl=self._get_dashboard_url(
-                        workspace_id=self.context.workspace.id,
-                        dashboard_id=dashboard_details.id,
+                    name=EntityName(dashboard_details.id),
+                    sourceUrl=SourceUrl(
+                        self._get_dashboard_url(
+                            workspace_id=self.context.get().workspace.id,
+                            dashboard_id=dashboard_details.id,
+                        )
                     ),
                     project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.displayName,
                     dashboardType=DashboardType.Dashboard,
                     charts=[
-                        fqn.build(
-                            self.metadata,
-                            entity_type=Chart,
-                            service_name=self.context.dashboard_service,
-                            chart_name=chart,
+                        FullyQualifiedEntityName(
+                            fqn.build(
+                                self.metadata,
+                                entity_type=Chart,
+                                service_name=self.context.get().dashboard_service,
+                                chart_name=chart,
+                            )
                         )
-                        for chart in self.context.charts or []
+                        for chart in self.context.get().charts or []
                     ],
-                    service=self.context.dashboard_service,
-                    owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                    service=FullyQualifiedEntityName(
+                        self.context.get().dashboard_service
+                    ),
+                    owners=self.get_owner_ref(dashboard_details=dashboard_details),
                 )
             else:
                 dashboard_request = CreateDashboardRequest(
-                    name=dashboard_details.id,
+                    name=EntityName(dashboard_details.id),
                     dashboardType=DashboardType.Report,
-                    sourceUrl=self._get_report_url(
-                        workspace_id=self.context.workspace.id,
-                        dashboard_id=dashboard_details.id,
+                    sourceUrl=SourceUrl(
+                        self._get_report_url(
+                            workspace_id=self.context.get().workspace.id,
+                            dashboard_id=dashboard_details.id,
+                        )
                     ),
                     project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.name,
-                    service=self.context.dashboard_service,
-                    owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                    service=self.context.get().dashboard_service,
+                    owners=self.get_owner_ref(dashboard_details=dashboard_details),
                 )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -503,7 +531,7 @@ class PowerbiSource(DashboardServiceSource):
                 datamodel_fqn = fqn.build(
                     self.metadata,
                     entity_type=DashboardDataModel,
-                    service_name=self.config.serviceName,
+                    service_name=self.context.get().dashboard_service,
                     data_model_name=dataset.id,
                 )
                 datamodel_entity = self.metadata.get_by_name(
@@ -516,12 +544,19 @@ class PowerbiSource(DashboardServiceSource):
                         to_entity=report_entity, from_entity=datamodel_entity
                     )
 
-                    # create the lineage between table and datamodel
-                    yield from self.create_table_datamodel_lineage(
-                        db_service_name=db_service_name,
-                        tables=dataset.tables,
-                        datamodel_entity=datamodel_entity,
-                    )
+                    for table in dataset.tables or []:
+                        yield self._get_table_and_datamodel_lineage(
+                            db_service_name=db_service_name,
+                            table=table,
+                            datamodel_entity=datamodel_entity,
+                        )
+
+                    # create the lineage between table and datamodel using the pbit files
+                    if self.client.file_client:
+                        yield from self.create_table_datamodel_lineage_from_files(
+                            db_service_name=db_service_name,
+                            datamodel_entity=datamodel_entity,
+                        )
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -534,43 +569,114 @@ class PowerbiSource(DashboardServiceSource):
                 )
             )
 
-    def create_table_datamodel_lineage(
+    @staticmethod
+    def _get_data_model_column_fqn(
+        data_model_entity: DashboardDataModel, column: str
+    ) -> Optional[str]:
+        """
+        Get fqn of column if exist in data model entity or its child columns
+        """
+        try:
+            if not data_model_entity:
+                return None
+            for tbl_column in data_model_entity.columns:
+                for child_column in tbl_column.children or []:
+                    if column.lower() == child_column.name.root.lower():
+                        return child_column.fullyQualifiedName.root
+            return None
+        except Exception as exc:
+            logger.debug(f"Error to get data_model_column_fqn {exc}")
+            logger.debug(traceback.format_exc())
+
+    def _get_table_and_datamodel_lineage(
         self,
         db_service_name: str,
-        tables: Optional[List[PowerBiTable]],
-        datamodel_entity: Optional[DashboardDataModel],
-    ) -> Iterable[Either[CreateDashboardRequest]]:
-        """Method to create lineage between table and datamodels"""
-        for table in tables or []:
-            try:
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=db_service_name,
-                    database_name=None,
-                    schema_name=None,
-                    table_name=table.name,
+        table: PowerBiTable,
+        datamodel_entity: DashboardDataModel,
+    ) -> Optional[Either[AddLineageRequest]]:
+        """
+        Method to create lineage between table and datamodels
+        """
+        try:
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=db_service_name,
+                database_name=None,
+                schema_name=None,
+                table_name=table.name,
+            )
+            table_entity = self.metadata.get_by_name(
+                entity=Table,
+                fqn=table_fqn,
+            )
+
+            if table_entity and datamodel_entity:
+                columns_list = [column.name for column in table.columns]
+                column_lineage = self._get_column_lineage(
+                    table_entity, datamodel_entity, columns_list
                 )
-                table_entity = self.metadata.get_by_name(
-                    entity=Table,
-                    fqn=table_fqn,
+                return self._get_add_lineage_request(
+                    to_entity=datamodel_entity,
+                    from_entity=table_entity,
+                    column_lineage=column_lineage,
+                )
+        except Exception as exc:  # pylint: disable=broad-except
+            return Either(
+                left=StackTraceError(
+                    name="DataModel Lineage for pbit files",
+                    error=(
+                        "Error to yield datamodel lineage details using pbit files for"
+                        f"datamodel [{datamodel_entity.name}]: {exc}"
+                    ),
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+        return None
+
+    def create_table_datamodel_lineage_from_files(
+        self,
+        db_service_name: str,
+        datamodel_entity: Optional[DashboardDataModel],
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Method to create lineage between table and datamodels using pbit files
+        """
+        try:
+            # check if the datamodel_file_mappings is populated or not
+            # if not, then populate the datamodel_file_mappings and process the lineage
+            if not self.datamodel_file_mappings:
+                self.datamodel_file_mappings = (
+                    self.client.file_client.get_data_model_schema_mappings()
                 )
 
-                if table_entity and datamodel_entity:
-                    yield self._get_add_lineage_request(
-                        to_entity=datamodel_entity, from_entity=table_entity
+            # search which file contains the datamodel and for the given datamodel_entity
+            datamodel_file_list = []
+            for datamodel_schema in self.datamodel_file_mappings or []:
+                for connections in (
+                    datamodel_schema.connectionFile.RemoteArtifacts or []
+                ):
+                    if connections.DatasetId == model_str(datamodel_entity.name):
+                        datamodel_file_list.append(datamodel_schema)
+
+            for datamodel_schema_file in datamodel_file_list:
+                for table in datamodel_schema_file.tables or []:
+                    yield self._get_table_and_datamodel_lineage(
+                        db_service_name=db_service_name,
+                        table=table,
+                        datamodel_entity=datamodel_entity,
                     )
-            except Exception as exc:  # pylint: disable=broad-except
-                yield Either(
-                    left=StackTraceError(
-                        name="DataModel Lineage",
-                        error=(
-                            "Error to yield datamodel lineage details for DB "
-                            f"service name [{db_service_name}]: {exc}"
-                        ),
-                        stackTrace=traceback.format_exc(),
-                    )
+        except Exception as exc:  # pylint: disable=broad-except
+            yield Either(
+                left=StackTraceError(
+                    name="DataModel Lineage",
+                    error=(
+                        "Error to yield datamodel lineage details for DB "
+                        f"service name [{db_service_name}]: {exc}"
+                    ),
+                    stackTrace=traceback.format_exc(),
                 )
+            )
 
     def yield_dashboard_lineage_details(
         self,
@@ -625,15 +731,19 @@ class PowerbiSource(DashboardServiceSource):
                         continue
                     yield Either(
                         right=CreateChartRequest(
-                            name=chart.id,
+                            name=EntityName(chart.id),
                             displayName=chart_display_name,
                             chartType=ChartType.Other.value,
-                            sourceUrl=self._get_chart_url(
-                                report_id=chart.reportId,
-                                workspace_id=self.context.workspace.id,
-                                dashboard_id=dashboard_details.id,
+                            sourceUrl=SourceUrl(
+                                self._get_chart_url(
+                                    report_id=chart.reportId,
+                                    workspace_id=self.context.get().workspace.id,
+                                    dashboard_id=dashboard_details.id,
+                                )
                             ),
-                            service=self.context.dashboard_service,
+                            service=FullyQualifiedEntityName(
+                                self.context.get().dashboard_service
+                            ),
                         )
                     )
                 except Exception as exc:
@@ -705,7 +815,7 @@ class PowerbiSource(DashboardServiceSource):
         Get the project / workspace / folder / collection name of the dashboard
         """
         try:
-            return str(self.context.workspace.name)
+            return str(self.context.get().workspace.name)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(

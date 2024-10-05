@@ -34,7 +34,7 @@ export const EntityExportModalProvider = ({
   const [form] = Form.useForm();
   const { t } = useTranslation();
   const [exportData, setExportData] = useState<ExportData | null>(null);
-
+  const [downloading, setDownloading] = useState<boolean>(false);
   const handleCancel = () => {
     setExportData(null);
   };
@@ -67,12 +67,15 @@ export const EntityExportModalProvider = ({
       return;
     }
     try {
+      setDownloading(true);
       const data = await exportData.onExport(exportData.name);
 
       handleDownload(data, fileName);
       handleCancel();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -97,6 +100,7 @@ export const EntityExportModalProvider = ({
             open
             cancelText={t('label.cancel')}
             closable={false}
+            confirmLoading={downloading}
             data-testid="export-entity-modal"
             maskClosable={false}
             okButtonProps={{

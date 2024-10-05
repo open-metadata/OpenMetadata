@@ -15,12 +15,17 @@ import { SearchedDataProps } from '../components/SearchedData/SearchedData.inter
 import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Query } from '../generated/entity/data/query';
@@ -30,8 +35,10 @@ import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
+import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
+import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingService } from '../generated/entity/services/messagingService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
@@ -39,6 +46,7 @@ import { SearchService } from '../generated/entity/services/searchService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { TestCase } from '../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
 import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
@@ -88,6 +96,8 @@ export interface UserSearchSource extends SearchSourceBase, User {} // extends E
 export interface TeamSearchSource extends SearchSourceBase, Team {} // extends EntityInterface
 
 export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
+
+export interface ChartSearchSource extends SearchSourceBase, Chart {} // extends EntityInterface
 export interface DataBaseSchemaSearchSource
   extends SearchSourceBase,
     DatabaseSchema {} // extends EntityInterface
@@ -113,7 +123,11 @@ export interface TagClassSearchSource extends SearchSourceBase, Tag {
   id: string; // Tag is generated with the `id` field as optional, which is should not
 } // extends EntityInterface
 
-export interface GlossarySearchSource extends SearchSourceBase, GlossaryTerm {} // extends EntityInterface
+export interface GlossarySearchSource extends SearchSourceBase, Glossary {} // extends EntityInterface
+export interface GlossaryTermSearchSource
+  extends SearchSourceBase,
+    GlossaryTerm {} // extends EntityInterface
+
 export interface QuerySearchSource extends SearchSourceBase, Query {} // extends EntityInterface
 export interface TestCaseSearchSource
   extends SearchSourceBase,
@@ -121,6 +135,20 @@ export interface TestCaseSearchSource
   testSuites: TestSuite[];
 } // extends EntityInterface
 export interface TestSuiteSearchSource extends SearchSourceBase, TestSuite {}
+
+export interface TestCaseResolutionStatusSearchSource
+  extends SearchSourceBase,
+    TestCaseResolutionStatus {
+  name: string;
+  displayName: string;
+  fullyQualifiedName: string;
+  serviceType: string;
+  description: string;
+}
+
+export interface IngestionPipelineSearchSource
+  extends SearchSourceBase,
+    IngestionPipeline {}
 
 export interface DatabaseServiceSearchSource
   extends SearchSourceBase,
@@ -145,6 +173,18 @@ export interface SearchServiceSearchSource
 export interface StorageServiceSearchSource
   extends SearchSourceBase,
     SearchService {}
+
+export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
+
+export interface APICollectionSearchSource
+  extends SearchSourceBase,
+    APICollection {}
+
+export interface APIEndpointSearchSource
+  extends SearchSourceBase,
+    APIEndpoint {}
+
+export interface MetricSearchSource extends SearchSourceBase, Metric {}
 
 export type ExploreSearchSource =
   | TableSearchSource
@@ -171,16 +211,22 @@ export type ExploreSearchSource =
   | SearchServiceSearchSource
   | StorageServiceSearchSource
   | DomainSearchSource
-  | SearchIndexSearchSource;
+  | SearchIndexSearchSource
+  | APIServiceSearchSource
+  | APICollectionSearchSource
+  | APIEndpointSearchSource
+  | MetricSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ALL]: TableSearchSource;
   [SearchIndex.DATA_ASSET]: TableSearchSource;
   [SearchIndex.TABLE]: TableSearchSource;
+  [SearchIndex.CHART]: ChartSearchSource;
   [SearchIndex.MLMODEL]: MlmodelSearchSource;
   [SearchIndex.PIPELINE]: PipelineSearchSource;
   [SearchIndex.DASHBOARD]: DashboardSearchSource;
   [SearchIndex.GLOSSARY]: GlossarySearchSource;
+  [SearchIndex.GLOSSARY_TERM]: GlossaryTermSearchSource;
   [SearchIndex.TEAM]: TeamSearchSource;
   [SearchIndex.USER]: UserSearchSource;
   [SearchIndex.TOPIC]: TopicSearchSource;
@@ -203,6 +249,11 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DASHBOARD_DATA_MODEL]: DashboardDataModelSearchSource;
   [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
+  [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
+  [SearchIndex.API_SERVICE_INDEX]: APIServiceSearchSource;
+  [SearchIndex.API_COLLECTION_INDEX]: APICollectionSearchSource;
+  [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointSearchSource;
+  [SearchIndex.METRIC_SEARCH_INDEX]: MetricSearchSource;
 };
 
 export type SearchRequest<

@@ -131,7 +131,7 @@ class DataBaseConnectorInterface(ABC):
         )
         return sorted(
             statuses,
-            key=lambda x: x.startDate.__root__,
+            key=lambda x: x.startDate.root,
             reverse=True if desc else False,
         )
 

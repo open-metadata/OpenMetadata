@@ -12,18 +12,20 @@
  */
 import { Button, Modal } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import React, { FC, useEffect, useMemo } from 'react';
+import { AxiosError } from 'axios';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../../../generated/entity/type';
+import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import AddGlossaryTermForm from '../AddGlossaryTermForm/AddGlossaryTermForm.component';
 import { GlossaryTermForm } from '../AddGlossaryTermForm/AddGlossaryTermForm.interface';
 
 interface Props {
-  glossaryName: string;
-  glossaryTerm: GlossaryTerm | undefined;
-  glossaryReviewers?: EntityReference[];
-  onSave: (value: GlossaryTermForm) => void;
+  glossaryTermFQN?: string;
+  onSave: (value: GlossaryTermForm) => void | Promise<void>;
   onCancel: () => void;
   visible: boolean;
   editMode: boolean;
@@ -31,15 +33,16 @@ interface Props {
 
 const GlossaryTermModal: FC<Props> = ({
   editMode,
-  glossaryName,
   visible,
-  glossaryTerm,
-  glossaryReviewers = [],
+  glossaryTermFQN,
   onSave,
   onCancel,
 }) => {
   const { t } = useTranslation();
   const [form] = useForm();
+  const [isLoading, setIsLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [glossaryTerm, setGlossaryTerm] = useState<GlossaryTerm>();
 
   const dialogTitle = useMemo(() => {
     return editMode
@@ -47,7 +50,39 @@ const GlossaryTermModal: FC<Props> = ({
       : t('label.add-entity', { entity: t('label.glossary-term') });
   }, [editMode]);
 
+  const fetchCurrentEntity = useCallback(async () => {
+    try {
+      const data = await getGlossaryTermByFQN(glossaryTermFQN, {
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.REVIEWERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.RELATED_TERMS,
+        ],
+      });
+      setGlossaryTerm(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [glossaryTermFQN]);
+
+  const handleSave = async (values: GlossaryTermForm) => {
+    setSaving(true);
+    try {
+      await onSave(values);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   useEffect(() => {
+    if (editMode) {
+      fetchCurrentEntity();
+    } else {
+      setIsLoading(false);
+    }
     !visible && form.resetFields();
   }, [visible]);
 
@@ -66,8 +101,9 @@ const GlossaryTermModal: FC<Props> = ({
         <Button
           data-testid="save-glossary-term"
           key="save-btn"
+          loading={saving}
           type="primary"
-          onClick={() => form.submit()}>
+          onClick={form.submit}>
           {t('label.save')}
         </Button>,
       ]}
@@ -77,17 +113,17 @@ const GlossaryTermModal: FC<Props> = ({
       title={dialogTitle}
       width={800}
       onCancel={onCancel}>
-      <AddGlossaryTermForm
-        isFormInModal
-        isLoading
-        editMode={editMode}
-        formRef={form}
-        glossaryName={glossaryName}
-        glossaryReviewers={glossaryReviewers}
-        glossaryTerm={glossaryTerm}
-        onCancel={onCancel}
-        onSave={onSave}
-      />
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <AddGlossaryTermForm
+          editMode={editMode}
+          formRef={form}
+          glossaryTerm={glossaryTerm}
+          onCancel={onCancel}
+          onSave={handleSave}
+        />
+      )}
     </Modal>
   );
 };

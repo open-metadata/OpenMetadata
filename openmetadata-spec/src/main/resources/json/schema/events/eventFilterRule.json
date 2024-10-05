@@ -13,6 +13,15 @@
         "exclude"
       ],
       "default": "include"
+    },
+    "prefixCondition": {
+      "description": "Prefix Condition to be applied to the Condition.",
+      "type": "string",
+      "enum": [
+        "AND",
+        "OR"
+      ],
+      "default": "AND"
     }
   },
   "properties": {
@@ -48,11 +57,15 @@
     },
     "inputType": {
       "type": "string",
-        "enum": [
-          "static",
-          "runtime",
-          "none"
-        ]
+      "enum": [
+        "static",
+        "runtime",
+        "none"
+      ]
+    },
+    "prefixCondition": {
+      "description": "Prefix Condition to be applied to the Condition.",
+      "$ref": "#/definitions/prefixCondition"
     }
   },
   "required": ["effect", "condition"],

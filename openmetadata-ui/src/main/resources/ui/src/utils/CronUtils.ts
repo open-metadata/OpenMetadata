@@ -31,6 +31,7 @@ import {
   StateValue,
   ToDisplay,
 } from '../components/common/CronEditor/CronEditor.interface';
+import { AppType } from '../generated/entity/applications/app';
 
 export const getQuartzCronExpression = (state: StateValue) => {
   const {
@@ -171,4 +172,21 @@ export const getStateValue = (valueStr: string) => {
   }
 
   return stateVal;
+};
+
+export const getCronInitialValue = (appType: AppType, appName: string) => {
+  const value = {
+    min: 0,
+    hour: 0,
+  };
+
+  let initialValue = getHourCron(value);
+
+  if (appName === 'DataInsightsReportApplication') {
+    initialValue = getWeekCron({ ...value, dow: 0 });
+  } else if (appType === AppType.External) {
+    initialValue = getDayCron(value);
+  }
+
+  return initialValue;
 };

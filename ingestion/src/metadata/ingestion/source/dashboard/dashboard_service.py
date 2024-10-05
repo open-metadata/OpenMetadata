@@ -15,7 +15,8 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -40,21 +41,29 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.basic import Uuid
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -91,7 +100,9 @@ class DashboardServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -117,7 +128,9 @@ class DashboardServiceTopology(ServiceTopology):
     # handles them as independent entities.
     # When configuring a new source, we will either implement
     # the yield_bulk_datamodel or yield_datamodel functions.
-    bulk_data_model = TopologyNode(
+    bulk_data_model: Annotated[
+        TopologyNode, Field(description="Write data models in bulk")
+    ] = TopologyNode(
         producer="list_datamodels",
         stages=[
             NodeStage(
@@ -129,7 +142,9 @@ class DashboardServiceTopology(ServiceTopology):
             )
         ],
     )
-    dashboard = TopologyNode(
+    dashboard: Annotated[
+        TopologyNode, Field(description="Process dashboards")
+    ] = TopologyNode(
         producer="get_dashboard",
         stages=[
             NodeStage(
@@ -191,10 +206,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: DashboardConnection.__fields__["config"].type_
+    service_connection: DashboardConnection.model_fields["config"].annotation
 
     topology = DashboardServiceTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
     dashboard_source_state: Set = set()
     datamodel_source_state: Set = set()
 
@@ -206,7 +221,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: DashboardServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -288,13 +303,13 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Returns:
             Lineage request between Data Models and Dashboards
         """
-        if hasattr(self.context, "dataModels") and self.context.dataModels:
-            for datamodel in self.context.dataModels:
+        if hasattr(self.context.get(), "dataModels") and self.context.get().dataModels:
+            for datamodel in self.context.get().dataModels:
                 try:
                     datamodel_fqn = fqn.build(
                         metadata=self.metadata,
                         entity_type=DashboardDataModel,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         data_model_name=datamodel,
                     )
                     datamodel_entity = self.metadata.get_by_name(
@@ -304,8 +319,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     dashboard_fqn = fqn.build(
                         self.metadata,
                         entity_type=Dashboard,
-                        service_name=self.context.dashboard_service,
-                        dashboard_name=self.context.dashboard,
+                        service_name=self.context.get().dashboard_service,
+                        dashboard_name=self.context.get().dashboard,
                     )
                     dashboard_entity = self.metadata.get_by_name(
                         entity=Dashboard, fqn=dashboard_fqn
@@ -316,21 +331,41 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error to yield dashboard lineage details for data model name [{datamodel.name}]: {err}"
+                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"
                     )
+
+    def get_db_service_names(self) -> List[str]:
+        """
+        Get the list of db service names
+        """
+        return (
+            self.source_config.lineageInformation.dbServiceNames or []
+            if self.source_config.lineageInformation
+            else []
+        )
 
     def yield_dashboard_lineage(
         self, dashboard_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[OMetaLineageRequest]]:
         """
         Yields lineage if config is enabled.
 
         We will look for the data in all the services
         we have informed.
         """
-        yield from self.yield_datamodel_dashboard_lineage() or []
+        for lineage in self.yield_datamodel_dashboard_lineage() or []:
+            if lineage.right is not None:
+                yield Either(
+                    right=OMetaLineageRequest(
+                        lineage_request=lineage.right,
+                        override_lineage=self.source_config.overrideLineage,
+                    )
+                )
+            else:
+                yield lineage
 
-        for db_service_name in self.source_config.dbServiceNames or []:
+        db_service_names = self.get_db_service_names()
+        for db_service_name in db_service_names or []:
             yield from self.yield_dashboard_lineage_details(
                 dashboard_details, db_service_name
             ) or []
@@ -380,7 +415,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Dashboard,
                 entity_source_state=self.dashboard_source_state,
                 mark_deleted_entity=self.source_config.markDeletedDashboards,
-                params={"service": self.context.dashboard_service},
+                params={"service": self.context.get().dashboard_service},
             )
 
     def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
@@ -394,12 +429,12 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=DashboardDataModel,
                 entity_source_state=self.datamodel_source_state,
                 mark_deleted_entity=self.source_config.markDeletedDataModels,
-                params={"service": self.context.dashboard_service},
+                params={"service": self.context.get().dashboard_service},
             )
 
     def get_owner_ref(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         """
         Method to process the dashboard owners
         """
@@ -415,8 +450,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         dashboard_fqn = fqn.build(
             self.metadata,
             entity_type=Dashboard,
-            service_name=dashboard_request.service.__root__,
-            dashboard_name=dashboard_request.name.__root__,
+            service_name=dashboard_request.service.root,
+            dashboard_name=dashboard_request.name.root,
         )
 
         self.dashboard_source_state.add(dashboard_fqn)
@@ -430,8 +465,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=datamodel_request.service.__root__,
-            data_model_name=datamodel_request.name.__root__,
+            service_name=datamodel_request.service.root,
+            data_model_name=datamodel_request.name.root,
         )
 
         self.datamodel_source_state.add(datamodel_fqn)
@@ -440,26 +475,42 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def _get_add_lineage_request(
         to_entity: Union[Dashboard, DashboardDataModel],
         from_entity: Union[Table, DashboardDataModel, Dashboard],
+        column_lineage: List[ColumnLineage] = None,
     ) -> Optional[Either[AddLineageRequest]]:
         if from_entity and to_entity:
             return Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
                         fromEntity=EntityReference(
-                            id=from_entity.id.__root__,
+                            id=Uuid(from_entity.id.root),
                             type=LINEAGE_MAP[type(from_entity)],
                         ),
                         toEntity=EntityReference(
-                            id=to_entity.id.__root__,
+                            id=Uuid(to_entity.id.root),
                             type=LINEAGE_MAP[type(to_entity)],
                         ),
                         lineageDetails=LineageDetails(
-                            source=LineageSource.DashboardLineage
+                            source=LineageSource.DashboardLineage,
+                            columnsLineage=column_lineage,
                         ),
                     )
                 )
             )
 
+        return None
+
+    @staticmethod
+    def _get_data_model_column_fqn(
+        data_model_entity: DashboardDataModel, column: str
+    ) -> Optional[str]:
+        """
+        Get fqn of column if exist in table entity
+        """
+        if not data_model_entity:
+            return None
+        for tbl_column in data_model_entity.columns:
+            if tbl_column.displayName.lower() == column.lower():
+                return tbl_column.fullyQualifiedName.root
         return None
 
     def get_dashboard(self) -> Any:
@@ -480,15 +531,15 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
             try:
                 dashboard_details = self.get_dashboard_details(dashboard)
-                self.context.project_name = (  # pylint: disable=assignment-from-none
+                self.context.get().project_name = (  # pylint: disable=E1128
                     self.get_project_name(dashboard_details=dashboard_details)
                 )
                 if filter_by_project(
                     self.source_config.projectFilterPattern,
-                    self.context.project_name,
+                    self.context.get().project_name,
                 ):
                     self.status.filter(
-                        self.context.project_name,
+                        self.context.get().project_name,
                         "Project / Workspace Filtered Out",
                     )
                     continue
@@ -508,30 +559,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing to prepare"""
 
-    def fqn_from_context(self, stage: NodeStage, entity_name: C) -> str:
-        """
-        We are overriding this method since CreateDashboardDataModelRequest needs to add an extra value to the context
-        names.
-
-        Read the context
-        :param stage: Topology node being processed
-        :param entity_request: Request sent to the sink
-        :return: Entity FQN derived from context
-        """
-        context_names = [
-            self.context.__dict__[dependency]
-            for dependency in stage.consumer or []  # root nodes do not have consumers
-        ]
-
-        if isinstance(stage.type_, DashboardDataModel):
-            context_names.append("model")
-
-        return fqn._build(  # pylint: disable=protected-access
-            *context_names, entity_name
-        )
-
     def check_database_schema_name(self, database_schema_name: str):
-
         """
         Check if the input database schema name is equal to "<default>" and return the input name if it is not.
 
@@ -567,7 +595,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         patch_request = PatchRequest(
             original_entity=original_entity,
-            new_entity=original_entity.copy(update=create_request.__dict__),
+            new_entity=original_entity.model_copy(update=create_request.__dict__),
         )
         if isinstance(original_entity, Dashboard):
             # For patch the charts need to be entity ref instead of fqn
@@ -577,11 +605,13 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 if chart_entity:
                     charts_entity_ref_list.append(
                         EntityReference(
-                            id=chart_entity.id.__root__,
+                            id=chart_entity.id.root,
                             type=LINEAGE_MAP[type(chart_entity)],
                         )
                     )
-            patch_request.new_entity.charts = charts_entity_ref_list
+            patch_request.new_entity.charts = EntityReferenceList(
+                charts_entity_ref_list
+            )
 
             # For patch the datamodels need to be entity ref instead of fqn
             datamodel_entity_ref_list = []
@@ -592,9 +622,37 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 if datamodel_entity:
                     datamodel_entity_ref_list.append(
                         EntityReference(
-                            id=datamodel_entity.id.__root__,
+                            id=datamodel_entity.id.root,
                             type=LINEAGE_MAP[type(datamodel_entity)],
                         )
                     )
-            patch_request.new_entity.dataModels = datamodel_entity_ref_list
+            patch_request.new_entity.dataModels = EntityReferenceList(
+                datamodel_entity_ref_list
+            )
         return patch_request
+
+    def _get_column_lineage(
+        self,
+        om_table: Table,
+        data_model_entity: DashboardDataModel,
+        columns_list: List[str],
+    ) -> List[ColumnLineage]:
+        """
+        Get the column lineage from the fields
+        """
+        try:
+            column_lineage = []
+            for field in columns_list or []:
+                from_column = get_column_fqn(table_entity=om_table, column=field)
+                to_column = self._get_data_model_column_fqn(
+                    data_model_entity=data_model_entity,
+                    column=field,
+                )
+                if from_column and to_column:
+                    column_lineage.append(
+                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                    )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(f"Error to get column lineage: {exc}")
+            logger.debug(traceback.format_exc())

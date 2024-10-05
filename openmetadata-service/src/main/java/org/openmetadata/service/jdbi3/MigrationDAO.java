@@ -31,15 +31,6 @@ public interface MigrationDAO {
   Optional<String> getMaxVersion() throws StatementException;
 
   @ConnectionAwareSqlQuery(
-      value = "SELECT MAX(version) FROM SERVER_CHANGE_LOG",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value = "SELECT max(version) FROM SERVER_CHANGE_LOG",
-      connectionType = POSTGRES)
-  @SingleValue
-  Optional<String> getMaxServerMigrationVersion() throws StatementException;
-
-  @ConnectionAwareSqlQuery(
       value = "SELECT checksum FROM SERVER_CHANGE_LOG where version = :version",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
@@ -71,10 +62,10 @@ public interface MigrationDAO {
   @ConnectionAwareSqlUpdate(
       value =
           "INSERT INTO server_change_log (version, migrationFileName, checksum, metrics, installed_on)"
-              + "VALUES (:version, :migrationFileName, :checksum, to_jsonb(:metrics::text), current_timestamp) "
+              + "VALUES (:version, :migrationFileName, :checksum, (:metrics :: jsonb), current_timestamp) "
               + "ON CONFLICT (version) DO UPDATE SET "
               + "migrationFileName = EXCLUDED.migrationFileName, "
-              + "metrics = to_jsonb(:metrics::text),"
+              + "metrics = (:metrics :: jsonb),"
               + "checksum = EXCLUDED.checksum, "
               + "installed_on = EXCLUDED.installed_on",
       connectionType = POSTGRES)
@@ -124,9 +115,13 @@ public interface MigrationDAO {
   String checkIfQueryPreviouslyRan(@Bind("checksum") String checksum);
 
   @SqlQuery(
-      "SELECT installed_rank, version, migrationFileName, checksum, installed_on, metrics FROM SERVER_CHANGE_LOG ORDER BY version ASC")
+      value =
+          "SELECT installed_rank, version, migrationFileName, checksum, installed_on, metrics FROM SERVER_CHANGE_LOG ORDER BY version ASC")
   @RegisterRowMapper(FromServerChangeLogMapper.class)
   List<ServerChangeLog> listMetricsFromDBMigrations();
+
+  @SqlQuery("SELECT version FROM SERVER_CHANGE_LOG")
+  List<String> getMigrationVersions();
 
   @Getter
   @Setter

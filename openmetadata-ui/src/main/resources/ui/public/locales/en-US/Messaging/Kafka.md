@@ -41,6 +41,18 @@ SASL password for use with the PLAIN and SASL-SCRAM mechanisms.
 $$
 
 $$section
+### Security Protocol $(id="securityProtocol")
+
+Security Protocol used in bootstrap server.
+
+Supported: 
+`PLAINTEXT`: Un-authenticated, non-encrypted channel
+`SASL_PLAINTEXT`: SASL authenticated, non-encrypted channel
+`SASL_SSL`: SASL authenticated, SSL channel
+`SSL`: SSL channel
+$$
+
+$$section
 ### SASL Mechanism $(id="saslMechanism")
 
 SASL mechanism to use for authentication. 
@@ -51,7 +63,7 @@ Supported: `GSSAPI`, `PLAIN`, `SCRAM-SHA-256`, `SCRAM-SHA-512`, `OAUTHBEARER`.
 $$
 
 $$section
-### Basic Auth User Info $(id="basicAuthUserInfo")
+### Schema Registry Basic Auth User Info $(id="basicAuthUserInfo")
 
 Schema Registry Client HTTP credentials in the form of `username:password`.
 
@@ -68,4 +80,25 @@ $$section
 ### Schema Registry Config $(id="schemaRegistryConfig")
 
 The accepted additional values for the Schema Registry configuration can be found in the following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient).
+$$
+
+$$section
+### SSL Config $(id="sslConfig")
+
+Client SSL configuration in case we are connection to a host with SSL enabled.
+$$
+
+$$section
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation.
+$$
+
+$$section
+### SSL Certificate $(id="sslCertificate")
+The SSL certificate used for client authentication.
+$$
+
+$$section
+### SSL Key $(id="sslKey")
+The private key associated with the SSL certificate.
 $$

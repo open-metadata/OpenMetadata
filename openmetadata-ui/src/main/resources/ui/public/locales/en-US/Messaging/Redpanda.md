@@ -27,6 +27,18 @@ URL of the Schema Registry used to ingest the schemas of the topics.
 $$
 
 $$section
+### Security Protocol $(id="securityProtocol")
+
+Security Protocol used in bootstrap server.
+
+Supported: 
+`PLAINTEXT`: Un-authenticated, non-encrypted channel
+`SASL_PLAINTEXT`: SASL authenticated, non-encrypted channel
+`SASL_SSL`: SASL authenticated, SSL channel
+`SSL`: SSL channel
+$$
+
+$$section
 ### SASL Username $(id="saslUsername")
 
 SASL username for use with the PLAIN and SASL-SCRAM mechanisms.
@@ -49,7 +61,7 @@ Supported: `GSSAPI`, `PLAIN`, `SCRAM-SHA-256`, `SCRAM-SHA-512`, `OAUTHBEARER`.
 $$
 
 $$section
-### Basic Auth User Info $(id="basicAuthUserInfo")
+### Schema Registry Basic Auth User Info $(id="basicAuthUserInfo")
 
 Schema Registry Client HTTP credentials in the form of `username:password`.
 

@@ -13,6 +13,8 @@
 Custom types' registry for easy access
 without having an import mess
 """
+import math
+
 import sqlalchemy
 from sqlalchemy import Date, DateTime, Integer, Numeric, Time
 from sqlalchemy.sql.sqltypes import Concatenable, Enum
@@ -26,6 +28,7 @@ from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.orm.types.custom_image import CustomImage
 from metadata.profiler.orm.types.custom_ip import CustomIP
 from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
+from metadata.profiler.orm.types.undetermined_type import UndeterminedType
 from metadata.profiler.orm.types.uuid import UUIDString
 from metadata.profiler.registry import TypeRegistry
 
@@ -39,6 +42,7 @@ class CustomTypes(TypeRegistry):
     IMAGE = CustomImage
     IP = CustomIP
     SQADATETIMERANGE = CustomDateTimeRange
+    UNDETERMINED = UndeterminedType
 
 
 class Dialects(Enum):
@@ -64,6 +68,7 @@ class Dialects(Enum):
     Hive = "hive"
     Impala = "impala"
     IbmDbSa = "ibm_db_sa"
+    Ibmi = "ibmi"
     MariaDB = "mariadb"
     MSSQL = "mssql"
     MySQL = "mysql"
@@ -91,10 +96,13 @@ NOT_COMPUTE = {
     sqa_types.SQASet.__name__,
     sqa_types.SQAUnion.__name__,
     sqa_types.SQASGeography.__name__,
+    DataType.GEOMETRY.value,
     DataType.ARRAY.value,
     DataType.JSON.value,
     CustomTypes.ARRAY.value.__name__,
     CustomTypes.SQADATETIMERANGE.value.__name__,
+    DataType.XML.value,
+    CustomTypes.UNDETERMINED.value.__name__,
 }
 FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 
@@ -112,8 +120,6 @@ QUANTIFIABLE_SET = {
 }
 
 CONCATENABLE_SET = {DataType.STRING.value, DataType.TEXT.value}
-
-DATATIME_SET = {DataType.DATETIME.value}
 
 
 # Now, let's define some helper methods to identify
@@ -137,11 +143,16 @@ def is_date_time(_type) -> bool:
     Check if sqlalchemy _type is derived from Date, Time or DateTime Type
     """
     if isinstance(_type, DataType):
-        return _type.value in DATATIME_SET
+        return _type.value in {
+            DataType.DATETIME.value,
+            DataType.TIME.value,
+            DataType.DATE.value,
+        }
     return (
         issubclass(_type.__class__, Date)
         or issubclass(_type.__class__, Time)
         or issubclass(_type.__class__, DateTime)
+        or issubclass(_type.__class__, CustomTimestamp)
     )
 
 
@@ -151,7 +162,9 @@ def is_quantifiable(_type) -> bool:
     """
     if isinstance(_type, DataType):
         return _type.value in QUANTIFIABLE_SET
-    return is_numeric(_type) or is_integer(_type)
+    return (
+        is_numeric(_type) or is_integer(_type) or getattr(_type, "quantifiable", False)
+    )
 
 
 def is_concatenable(_type) -> bool:
@@ -162,3 +175,12 @@ def is_concatenable(_type) -> bool:
     if isinstance(_type, DataType):
         return _type.value in CONCATENABLE_SET
     return issubclass(_type.__class__, Concatenable)
+
+
+def is_value_non_numeric(value) -> bool:
+    try:
+        if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+            return True
+        return False
+    except Exception:
+        return False

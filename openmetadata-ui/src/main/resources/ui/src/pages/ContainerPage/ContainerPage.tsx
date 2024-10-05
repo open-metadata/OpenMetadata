@@ -22,40 +22,50 @@ import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityF
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import ContainerChildren from '../../components/ContainerDetail/ContainerChildren/ContainerChildren';
-import ContainerDataModel from '../../components/ContainerDetail/ContainerDataModel/ContainerDataModel';
+import Loader from '../../components/common/Loader/Loader';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import ContainerChildren from '../../components/Container/ContainerChildren/ContainerChildren';
+import ContainerDataModel from '../../components/Container/ContainerDataModel/ContainerDataModel';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../../components/Lineage/Lineage.component';
-import LineageProvider from '../../components/LineageProvider/LineageProvider';
-import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+  ROUTES,
+} from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
+import LineageProvider from '../../context/LineageProvider/LineageProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import {
-  getContainerDetailPath,
-  getVersionPath,
-} from '../../constants/constants';
-import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
@@ -82,7 +92,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab } = useParams<{ tab: EntityTabs }>();
@@ -115,8 +125,17 @@ const ContainerPage = () => {
     setIsLoading(true);
     try {
       const response = await getContainerByName(containerFQN, {
-        fields:
-          'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
+        fields: [
+          TabSpecificField.PARENT,
+          TabSpecificField.DATAMODEL,
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.FOLLOWERS,
+          TabSpecificField.EXTENSION,
+          TabSpecificField.DOMAIN,
+          TabSpecificField.DATA_PRODUCTS,
+          TabSpecificField.VOTES,
+        ],
         include: Include.All,
       });
       addToRecentViewed({
@@ -134,6 +153,9 @@ const ContainerPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
       setHasError(true);
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -143,7 +165,7 @@ const ContainerPage = () => {
     setIsChildrenLoading(true);
     try {
       const { children } = await getContainerByName(decodedContainerName, {
-        fields: 'children',
+        fields: TabSpecificField.CHILDREN,
       });
       setContainerChildrenData(children);
     } catch (error) {
@@ -153,9 +175,10 @@ const ContainerPage = () => {
     }
   };
 
-  const handleFeedCount = useCallback((data: FeedCounts) => {
-    setFeedCount(data);
-  }, []);
+  const handleFeedCount = useCallback(
+    (data: FeedCounts) => setFeedCount(data),
+    []
+  );
 
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.CONTAINER, decodedContainerName, handleFeedCount);
@@ -188,7 +211,7 @@ const ContainerPage = () => {
 
   const {
     deleted,
-    owner,
+    owners,
     description,
     version,
     entityName,
@@ -198,7 +221,7 @@ const ContainerPage = () => {
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
-      owner: containerData?.owner,
+      owners: containerData?.owners,
       description: containerData?.description,
       version: containerData?.version,
       tier: getTierTags(containerData?.tags ?? []),
@@ -254,7 +277,11 @@ const ContainerPage = () => {
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getContainerDetailPath(decodedContainerName, tabValue),
+        pathname: getEntityDetailsPath(
+          EntityType.CONTAINER,
+          decodedContainerName,
+          tabValue
+        ),
       });
     }
   };
@@ -284,7 +311,6 @@ const ContainerPage = () => {
         description: newDescription,
         version,
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -312,7 +338,6 @@ const ContainerPage = () => {
           version,
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -341,31 +366,29 @@ const ContainerPage = () => {
           followers: [...(containerData?.followers ?? []), ...newValue],
         }));
       }
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
   const handleUpdateOwner = useCallback(
-    async (updatedOwner?: Container['owner']) => {
+    async (updatedOwner?: Container['owners']) => {
       try {
-        const { owner: newOwner, version } = await handleUpdateContainerData({
+        const { owners: newOwner, version } = await handleUpdateContainerData({
           ...(containerData as Container),
-          owner: updatedOwner,
+          owners: updatedOwner,
         });
 
         setContainerData((prev) => ({
           ...(prev as Container),
-          owner: newOwner,
+          owners: newOwner,
           version,
         }));
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [containerData, containerData?.owner]
+    [containerData, containerData?.owners]
   );
 
   const handleUpdateTier = async (updatedTier?: Tag) => {
@@ -381,7 +404,6 @@ const ContainerPage = () => {
         tags: newTags,
         version,
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -453,17 +475,11 @@ const ContainerPage = () => {
           ...response,
           tags: sortTagsCaseInsensitive(response.tags ?? []),
         });
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [
-      containerData,
-      handleUpdateContainerData,
-      getEntityFeedCount,
-      setContainerData,
-    ]
+    [containerData, handleUpdateContainerData, setContainerData]
   );
 
   const handleExtensionUpdate = useCallback(
@@ -481,17 +497,11 @@ const ContainerPage = () => {
           ...response,
           tags: sortTagsCaseInsensitive(response.tags ?? []),
         });
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [
-      containerData,
-      handleUpdateContainerData,
-      getEntityFeedCount,
-      setContainerData,
-    ]
+    [containerData, handleUpdateContainerData, setContainerData]
   );
 
   const handleUpdateDataModel = async (
@@ -509,7 +519,6 @@ const ContainerPage = () => {
         dataModel: newDataModel,
         version,
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -538,7 +547,6 @@ const ContainerPage = () => {
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -571,60 +579,77 @@ const ContainerPage = () => {
         key: isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={description}
-                  entityFqn={decodedContainerName}
-                  entityName={entityName}
-                  entityType={EntityType.CONTAINER}
-                  hasEditAccess={editDescriptionPermission}
-                  isEdit={isEditDescription}
-                  owner={owner}
-                  showActions={!deleted}
-                  onCancel={() => setIsEditDescription(false)}
-                  onDescriptionEdit={() => setIsEditDescription(true)}
-                  onDescriptionUpdate={handleUpdateDescription}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
+              <ResizablePanels
+                firstPanel={{
+                  className: 'entity-resizable-panel-container',
+                  children: (
+                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
+                      <DescriptionV1
+                        description={description}
+                        entityFqn={decodedContainerName}
+                        entityName={entityName}
+                        entityType={EntityType.CONTAINER}
+                        hasEditAccess={editDescriptionPermission}
+                        isDescriptionExpanded={isEmpty(containerChildrenData)}
+                        isEdit={isEditDescription}
+                        owner={owners}
+                        showActions={!deleted}
+                        onCancel={() => setIsEditDescription(false)}
+                        onDescriptionEdit={() => setIsEditDescription(true)}
+                        onDescriptionUpdate={handleUpdateDescription}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
 
-                {isDataModelEmpty ? (
-                  <ContainerChildren
-                    childrenList={containerChildrenData}
-                    fetchChildren={fetchContainerChildren}
-                    isLoading={isChildrenLoading}
-                  />
-                ) : (
-                  <ContainerDataModel
-                    dataModel={containerData?.dataModel}
-                    entityFqn={decodedContainerName}
-                    hasDescriptionEditAccess={editDescriptionPermission}
-                    hasTagEditAccess={editTagsPermission}
-                    isReadOnly={Boolean(deleted)}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                    onUpdate={handleUpdateDataModel}
-                  />
-                )}
-              </div>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel
-                customProperties={containerData}
-                dataProducts={containerData?.dataProducts ?? []}
-                domain={containerData?.domain}
-                editTagPermission={
-                  editTagsPermission && !containerData?.deleted
-                }
-                entityFQN={decodedContainerName}
-                entityId={containerData?.id ?? ''}
-                entityType={EntityType.CONTAINER}
-                selectedTags={tags}
-                viewAllPermission={viewAllPermission}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+                      {isDataModelEmpty ? (
+                        <ContainerChildren
+                          childrenList={containerChildrenData}
+                          fetchChildren={fetchContainerChildren}
+                          isLoading={isChildrenLoading}
+                        />
+                      ) : (
+                        <ContainerDataModel
+                          dataModel={containerData?.dataModel}
+                          entityFqn={decodedContainerName}
+                          hasDescriptionEditAccess={editDescriptionPermission}
+                          hasTagEditAccess={editTagsPermission}
+                          isReadOnly={Boolean(deleted)}
+                          onThreadLinkSelect={onThreadLinkSelect}
+                          onUpdate={handleUpdateDataModel}
+                        />
+                      )}
+                    </div>
+                  ),
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.CONTAINER>
+                        customProperties={containerData}
+                        dataProducts={containerData?.dataProducts ?? []}
+                        domain={containerData?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={
+                          editTagsPermission && !containerData?.deleted
+                        }
+                        entityFQN={decodedContainerName}
+                        entityId={containerData?.id ?? ''}
+                        entityType={EntityType.CONTAINER}
+                        selectedTags={tags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={handleExtensionUpdate}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
+                }}
               />
             </Col>
           </Row>
@@ -675,6 +700,7 @@ const ContainerPage = () => {
             onUpdateEntityDetails={() =>
               fetchContainerDetail(decodedContainerName)
             }
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -727,11 +753,12 @@ const ContainerPage = () => {
       editCustomAttributePermission,
       viewAllPermission,
       deleted,
-      owner,
+      owners,
       isChildrenLoading,
       tags,
       feedCount.totalCount,
       containerChildrenData,
+      handleFeedCount,
       handleUpdateDataModel,
       handleUpdateDescription,
       handleTagSelection,
@@ -745,7 +772,15 @@ const ContainerPage = () => {
       await updateContainerVotes(id, data);
 
       const details = await getContainerByName(decodedContainerName, {
-        fields: 'parent,dataModel,owner,tags,followers,extension,votes',
+        fields: [
+          TabSpecificField.PARENT,
+          TabSpecificField.DATAMODEL,
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.FOLLOWERS,
+          TabSpecificField.EXTENSION,
+          TabSpecificField.VOTES,
+        ],
       });
 
       setContainerData(details);
@@ -817,6 +852,10 @@ const ContainerPage = () => {
             onChange={handleTabChange}
           />
         </Col>
+
+        <LimitWrapper resource="container">
+          <></>
+        </LimitWrapper>
 
         {threadLink ? (
           <ActivityThreadPanel

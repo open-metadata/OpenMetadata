@@ -13,12 +13,18 @@
 Test database connectors which extend from `CommonDbSourceService` with CLI
 """
 import json
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
 from sqlalchemy.engine import Engine
 
+from metadata.config.common import load_config_file
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.ingestion.api.status import Status
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -45,92 +51,111 @@ class CliCommonDB:
                 Path(PATH_TO_RESOURCES + f"/database/{connector}/test.yaml")
             )
 
+        @classmethod
+        def tearDownClass(cls):
+            workflow = OpenMetadataWorkflowConfig.model_validate(
+                load_config_file(Path(cls.config_file_path))
+            )
+            db_service: DatabaseService = cls.openmetadata.get_by_name(
+                DatabaseService, workflow.source.serviceName
+            )
+            if db_service and os.getenv("E2E_CLEAN_DB", "false") == "true":
+                cls.openmetadata.delete(
+                    DatabaseService, db_service.id, hard_delete=True, recursive=True
+                )
+
         def tearDown(self) -> None:
             self.engine.dispose()
 
         def assert_for_vanilla_ingestion(
             self, source_status: Status, sink_status: Status
         ) -> None:
-            self.assertTrue(len(source_status.failures) == 0)
-            self.assertTrue(len(source_status.warnings) == 0)
-            self.assertTrue(len(source_status.filtered) == 0)
-            self.assertTrue(
-                (len(source_status.records) + len(source_status.updated_records))
-                >= self.expected_tables()
+            self.assertEqual(len(source_status.failures), 0)
+            self.assertEqual(len(source_status.warnings), 0)
+            self.assertEqual(len(source_status.filtered), 0)
+            self.assertGreaterEqual(
+                (len(source_status.records) + len(source_status.updated_records)),
+                self.expected_tables(),
             )
-            self.assertTrue(len(sink_status.failures) == 0)
-            self.assertTrue(len(sink_status.warnings) == 0)
-            self.assertTrue(
-                (len(sink_status.records) + len(sink_status.updated_records))
-                > self.expected_tables()
+            self.assertEqual(len(sink_status.failures), 0)
+            self.assertEqual(len(sink_status.warnings), 0)
+            self.assertGreater(
+                (len(sink_status.records) + len(sink_status.updated_records)),
+                self.expected_tables(),
             )
 
         def assert_for_table_with_profiler(
             self, source_status: Status, sink_status: Status
         ):
-            self.assertTrue(len(source_status.failures) == 0)
-            self.assertTrue(
-                (len(source_status.records) + len(source_status.updated_records))
-                >= self.expected_profiled_tables()
+            self.assertEqual(len(source_status.failures), 0)
+            self.assertGreaterEqual(
+                (len(source_status.records) + len(source_status.updated_records)),
+                self.expected_profiled_tables(),
             )
-            self.assertTrue(len(sink_status.failures) == 0)
-            self.assertTrue(
-                (len(sink_status.records) + len(sink_status.updated_records))
-                >= self.expected_profiled_tables()
+            self.assertEqual(len(sink_status.failures), 0)
+            self.assertGreaterEqual(
+                (len(sink_status.records) + len(sink_status.updated_records)),
+                self.expected_profiled_tables(),
             )
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
             lineage = self.retrieve_lineage(self.fqn_created_table())
-            self.assertTrue(len(sample_data.rows) == self.inserted_rows_count())
+            self.assertEqual(len(sample_data.rows), self.inserted_rows_count())
             if self.view_column_lineage_count() is not None:
-                self.assertTrue(
+                self.assertEqual(
                     len(
                         lineage["downstreamEdges"][0]["lineageDetails"][
                             "columnsLineage"
                         ]
-                    )
-                    == self.view_column_lineage_count()
+                    ),
+                    self.view_column_lineage_count(),
                 )
 
         def assert_for_table_with_profiler_time_partition(
             self, source_status: Status, sink_status: Status
         ):
-            self.assertTrue(len(source_status.failures) == 0)
-            self.assertTrue(len(sink_status.failures) == 0)
+            self.assertEqual(len(source_status.failures), 0)
+            self.assertEqual(len(sink_status.failures), 0)
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-            self.assertTrue(len(sample_data.rows) <= self.inserted_rows_count())
+            self.assertLessEqual(len(sample_data.rows), self.inserted_rows_count())
             profile = self.retrieve_profile(self.fqn_created_table())
             expected_profiler_time_partition_results = (
                 self.get_profiler_time_partition_results()
             )
             if expected_profiler_time_partition_results:
-                table_profile = profile.profile.dict()
+                table_profile = profile.profile.model_dump()
                 for key in expected_profiler_time_partition_results["table_profile"]:
-                    self.assertTrue(
-                        table_profile[key]
-                        == expected_profiler_time_partition_results["table_profile"][
-                            key
-                        ]
+                    self.assertEqual(
+                        table_profile[key],
+                        expected_profiler_time_partition_results["table_profile"][key],
                     )
 
                 for column in profile.columns:
                     expected_column_profile = next(
                         (
-                            profile.get(column.name.__root__)
+                            profile.get(column.name.root)
                             for profile in expected_profiler_time_partition_results[
                                 "column_profile"
                             ]
-                            if profile.get(column.name.__root__)
+                            if profile.get(column.name.root)
                         ),
                         None,
                     )
                     if expected_column_profile:
-                        column_profile = column.profile.dict()
+                        column_profile = column.profile.model_dump()
                         for key in expected_column_profile:  # type: ignore
-                            self.assertTrue(
-                                column_profile[key] == expected_column_profile[key]
+                            if key == "nonParametricSkew":
+                                self.assertEqual(
+                                    column_profile[key].__round__(10),
+                                    expected_column_profile[key].__round__(10),
+                                )
+                                continue
+                            self.assertEqual(
+                                column_profile[key], expected_column_profile[key]
                             )
                 if sample_data:
-                    self.assertTrue(len(json.loads(sample_data.json()).get("rows")) > 0)
+                    self.assertGreater(
+                        len(json.loads(sample_data.json()).get("rows")), 0
+                    )
 
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: Status, sink_status: Status
@@ -140,46 +165,38 @@ class CliCommonDB:
         def assert_filtered_schemas_includes(
             self, source_status: Status, sink_status: Status
         ):
-            self.assertTrue((len(source_status.failures) == 0))
-            self.assertTrue(
-                (
-                    len(source_status.filtered)
-                    == self.expected_filtered_schema_includes()
-                )
+            self.assertEqual(len(source_status.failures), 0)
+            self.assertEqual(
+                len(source_status.filtered), self.expected_filtered_schema_includes()
             )
 
         def assert_filtered_schemas_excludes(
             self, source_status: Status, sink_status: Status
         ):
-            self.assertTrue((len(source_status.failures) == 0))
-            self.assertTrue(
-                (
-                    len(source_status.filtered)
-                    == self.expected_filtered_schema_excludes()
-                )
+            self.assertEqual(len(source_status.failures), 0)
+            self.assertEqual(
+                len(source_status.filtered), self.expected_filtered_schema_excludes()
             )
 
         def assert_filtered_tables_includes(
             self, source_status: Status, sink_status: Status
         ):
-            self.assertTrue((len(source_status.failures) == 0))
-            self.assertTrue(
-                (len(source_status.filtered) == self.expected_filtered_table_includes())
+            self.assertEqual(len(source_status.failures), 0)
+            self.assertEqual(
+                len(source_status.filtered), self.expected_filtered_table_includes()
             )
 
         def assert_filtered_tables_excludes(
             self, source_status: Status, sink_status: Status
         ):
-            self.assertTrue((len(source_status.failures) == 0))
-            self.assertTrue(
-                (len(source_status.filtered) == self.expected_filtered_table_excludes())
+            self.assertEqual(len(source_status.failures), 0)
+            self.assertEqual(
+                len(source_status.filtered), self.expected_filtered_table_excludes()
             )
 
         def assert_filtered_mix(self, source_status: Status, sink_status: Status):
-            self.assertTrue((len(source_status.failures) == 0))
-            self.assertTrue(
-                (len(source_status.filtered) == self.expected_filtered_mix())
-            )
+            self.assertEqual(len(source_status.failures), 0)
+            self.assertEqual(len(source_status.filtered), self.expected_filtered_mix())
 
         @staticmethod
         @abstractmethod

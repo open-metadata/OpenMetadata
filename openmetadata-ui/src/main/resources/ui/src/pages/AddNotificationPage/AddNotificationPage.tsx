@@ -13,20 +13,21 @@
  */
 import { Button, Col, Form, Input, Row, Skeleton, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
+import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../components/Loader/Loader';
-import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -35,29 +36,35 @@ import {
   SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createNotificationAlert,
   getAlertsFromName,
   getResourceFunctions,
-  updateNotificationAlert,
+  updateNotificationAlertWithPut,
 } from '../../rest/alertsAPI';
+import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { ModifiedEventSubscription } from '../AddObservabilityPage/AddObservabilityPage.interface';
+import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from '../AddObservabilityPage/AddObservabilityPage.interface';
+import AlertFormSourceItem from '../AddObservabilityPage/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../AddObservabilityPage/DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../AddObservabilityPage/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import ObservabilityFormTriggerItem from '../AddObservabilityPage/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
-import './add-alerts-page.styles.less';
 
 const AddNotificationPage = () => {
   const { t } = useTranslation();
-  const [form] = useForm<EventSubscription>();
+  const [form] = useForm<ModifiedCreateEventSubscription>();
   const history = useHistory();
   const { fqn } = useFqn();
+  const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
+  const { getResourceLimit } = useLimitStore();
 
   const [loadingCount, setLoadingCount] = useState(0);
   const [entityFunctions, setEntityFunctions] = useState<
@@ -65,6 +72,11 @@ const AddNotificationPage = () => {
   >([]);
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
+
+  const isSystemProvider = useMemo(
+    () => alert?.provider === ProviderType.System,
+    [alert]
+  );
 
   const breadcrumb = useMemo(
     () => [
@@ -86,13 +98,14 @@ const AddNotificationPage = () => {
     [fqn]
   );
 
-  const fetchAlerts = async () => {
+  const fetchAlert = async () => {
     try {
       setLoadingCount((count) => count + 1);
 
       const response: EventSubscription = await getAlertsFromName(fqn);
       const modifiedAlertData: ModifiedEventSubscription = {
         ...response,
+        timeout: response.destinations[0].timeout ?? 10,
         destinations: response.destinations.map((destination) => {
           const isExternalDestination =
             destination.category === SubscriptionCategory.External;
@@ -138,86 +151,35 @@ const AddNotificationPage = () => {
     if (!fqn) {
       return;
     }
-    fetchAlerts();
+    fetchAlert();
   }, [fqn]);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
 
-  const handleSave = async (data: CreateEventSubscription) => {
-    try {
-      setIsButtonLoading(true);
+  const handleSave = useCallback(
+    async (data: ModifiedCreateEventSubscription) => {
+      try {
+        setIsButtonLoading(true);
 
-      const destinations = data.destinations?.map((d) => ({
-        type: d.type,
-        config: d.config,
-        category: d.category,
-      }));
-
-      if (fqn && !isUndefined(alert)) {
-        const { resources, ...otherData } = data;
-
-        // Remove 'destinationType' field from the `destination` as it is used for internal UI use
-        const initialDestinations = alert.destinations.map((d) => {
-          const { destinationType, ...originalData } = d;
-
-          return originalData;
+        await handleAlertSave({
+          data,
+          fqn,
+          createAlertAPI: createNotificationAlert,
+          updateAlertAPI: updateNotificationAlertWithPut,
+          afterSaveAction: async () => {
+            !fqn && (await getResourceLimit('eventsubscription', true, true));
+            history.push(getNotificationAlertDetailsPath(data.name));
+          },
+          setInlineAlertDetails,
         });
-
-        const jsonPatch = compare(
-          { ...alert, destinations: initialDestinations },
-          {
-            ...alert,
-            ...otherData,
-            filteringRules: {
-              ...alert.filteringRules,
-              resources,
-            },
-            destinations,
-          }
-        );
-
-        await updateNotificationAlert(alert.id, jsonPatch);
-      } else {
-        await createNotificationAlert({
-          ...data,
-          destinations,
-        });
+      } catch {
+        // Error handling done in "handleAlertSave"
+      } finally {
+        setIsButtonLoading(false);
       }
-
-      showSuccessToast(
-        t(`server.${isEditMode ? 'update' : 'create'}-entity-success`, {
-          entity: t('label.alert-plural'),
-        })
-      );
-      history.push(getNotificationAlertDetailsPath(data.name));
-    } catch (error) {
-      if (
-        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
-      ) {
-        showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.alert'),
-            entityPlural: t('label.alert-lowercase-plural'),
-            name: data.name,
-          })
-        );
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          t(
-            `server.${
-              isEditMode ? 'entity-updating-error' : 'entity-creation-error'
-            }`,
-            {
-              entity: t('label.alert-lowercase'),
-            }
-          )
-        );
-      }
-    } finally {
-      setIsButtonLoading(false);
-    }
-  };
+    },
+    [fqn, history]
+  );
 
   const [selectedTrigger] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
@@ -239,12 +201,26 @@ const AddNotificationPage = () => {
     return <Loader />;
   }
 
+  if (isSystemProvider) {
+    return (
+      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph
+          className="tw-max-w-md"
+          style={{ marginBottom: '0' }}>
+          {t('message.system-alert-edit-message')}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
+  }
+
   return (
     <ResizablePanels
       hideSecondPanel
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
-          <div className="alert-page-container">
+          <div className="steps-form-container">
             <Row className="page-container" gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -261,13 +237,14 @@ const AddNotificationPage = () => {
                 </Typography.Text>
               </Col>
               <Col span={24}>
-                <Form<CreateEventSubscription>
+                <Form<ModifiedCreateEventSubscription>
                   className="alerts-notification-form"
                   form={form}
                   initialValues={{
                     ...alert,
                     resources: alert?.filteringRules?.resources,
                   }}
+                  validateMessages={VALIDATION_MESSAGES}
                   onFinish={handleSave}>
                   {loadingCount > 0 ? (
                     <Skeleton title paragraph={{ rows: 8 }} />
@@ -278,14 +255,11 @@ const AddNotificationPage = () => {
                           label={t('label.name')}
                           labelCol={{ span: 24 }}
                           name="name"
-                          rules={[
-                            { required: true },
-                            {
-                              pattern: ENTITY_NAME_REGEX,
-                              message: t('message.entity-name-validation'),
-                            },
-                          ]}>
-                          <Input placeholder={t('label.name')} />
+                          rules={NAME_FIELD_RULES}>
+                          <Input
+                            disabled={isEditMode}
+                            placeholder={t('label.name')}
+                          />
                         </Form.Item>
                       </Col>
                       <Col span={24}>
@@ -303,7 +277,7 @@ const AddNotificationPage = () => {
                         </Form.Item>
                       </Col>
                       <Col span={24}>
-                        <ObservabilityFormTriggerItem
+                        <AlertFormSourceItem
                           filterResources={entityFunctions}
                         />
                       </Col>
@@ -325,16 +299,15 @@ const AddNotificationPage = () => {
                         name="provider"
                       />
                       <Col span={24}>
-                        <DestinationFormItem
-                          buttonLabel={t('label.add-entity', {
-                            entity: t('label.destination'),
-                          })}
-                          heading={t('label.destination')}
-                          subHeading={t(
-                            'message.alerts-destination-description'
-                          )}
-                        />
+                        <DestinationFormItem />
                       </Col>
+
+                      {!isUndefined(inlineAlertDetails) && (
+                        <Col span={24}>
+                          <InlineAlert {...inlineAlertDetails} />
+                        </Col>
+                      )}
+
                       <Col flex="auto" />
                       <Col flex="300px" pull="right">
                         <Button
@@ -363,7 +336,11 @@ const AddNotificationPage = () => {
         flex: 0.7,
       }}
       pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
-      secondPanel={{ children: <></>, minWidth: 0 }}
+      secondPanel={{
+        children: <></>,
+        minWidth: 0,
+        className: 'content-resizable-panel-container',
+      }}
     />
   );
 };

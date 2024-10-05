@@ -13,10 +13,11 @@ Module centralising logger configs
 """
 
 import logging
+from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
 from types import DynamicClassAttribute
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -37,6 +38,8 @@ BASE_LOGGING_FORMAT = (
 )
 logging.basicConfig(format=BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 
+REDACTED_KEYS = {"serviceConnection", "securityConfig"}
+
 
 class Loggers(Enum):
     """
@@ -52,7 +55,6 @@ class Loggers(Enum):
     GREAT_EXPECTATIONS = "GreatExpectations"
     PROFILER_INTERFACE = "ProfilerInterface"
     TEST_SUITE = "TestSuite"
-    DATA_INSIGHT = "DataInsight"
     QUERY_RUNNER = "QueryRunner"
     APP = "App"
 
@@ -130,14 +132,6 @@ def ingestion_logger():
     return logging.getLogger(Loggers.INGESTION.value)
 
 
-def data_insight_logger():
-    """
-    Function to get the DATA INSIGHT logger
-    """
-
-    return logging.getLogger(Loggers.DATA_INSIGHT.value)
-
-
 def utils_logger():
     """
     Method to get the UTILS logger
@@ -179,10 +173,14 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):
 
 
 def log_ansi_encoded_string(
-    color: Optional[ANSI] = None, bold: bool = False, message: str = ""
+    color: Optional[ANSI] = None,
+    bold: bool = False,
+    message: str = "",
+    level=logging.INFO,
 ):
-    utils_logger().info(
-        f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}"
+    utils_logger().log(
+        level=level,
+        msg=f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}",
     )
 
 
@@ -190,8 +188,8 @@ def log_ansi_encoded_string(
 def get_log_name(record: Entity) -> Optional[str]:
     try:
         if hasattr(record, "name"):
-            return f"{type(record).__name__} [{getattr(record, 'name').__root__}]"
-        return f"{type(record).__name__} [{record.entity.name.__root__}]"
+            return f"{type(record).__name__} [{getattr(record, 'name').root}]"
+        return f"{type(record).__name__} [{record.entity.name.root}]"
     except Exception:
         return str(record)
 
@@ -202,11 +200,7 @@ def _(record: OMetaTagAndClassification) -> str:
     Given a LineageRequest, parse its contents to return
     a string that we can log
     """
-    name = (
-        record.fqn.__root__
-        if record.fqn
-        else record.classification_request.name.__root__
-    )
+    name = record.fqn.root if record.fqn else record.classification_request.name.root
     return f"{type(record).__name__} [{name}]"
 
 
@@ -218,7 +212,7 @@ def _(record: AddLineageRequest) -> str:
     """
 
     # id and type will always be informed
-    id_ = record.edge.fromEntity.id.__root__
+    id_ = record.edge.fromEntity.id.root
     type_ = record.edge.fromEntity.type
 
     # name can be informed or not
@@ -234,7 +228,7 @@ def _(record: DeleteEntity) -> str:
     """
     Capture information about the deleted Entity
     """
-    return f"{type(record.entity).__name__} [{record.entity.name.__root__}]"
+    return f"{type(record.entity).__name__} [{record.entity.name.root}]"
 
 
 @get_log_name.register
@@ -242,28 +236,26 @@ def _(record: OMetaLifeCycleData) -> str:
     """
     Capture the lifecycle changes of an Entity
     """
-    return f"{type(record.entity).__name__} Lifecycle [{record.entity.name.__root__}]"
+    return f"{record.entity.__name__} Lifecycle [{record.entity_fqn}]"
 
 
 @get_log_name.register
 def _(record: TableAndTests) -> str:
     if record.table:
-        return f"Tests for [{record.table.fullyQualifiedName.__root__}]"
+        return f"Tests for [{record.table.fullyQualifiedName.root}]"
 
-    return f"Test Suite [{record.executable_test_suite.name.__root__}]"
+    return f"Test Suite [{record.executable_test_suite.name.root}]"
 
 
 @get_log_name.register
 def _(record: TestCaseResults) -> str:
     """We don't want to log this in the status"""
-    return ",".join(
-        set(result.testCase.name.__root__ for result in record.test_results)
-    )
+    return ",".join(set(result.testCase.name.root for result in record.test_results))
 
 
 @get_log_name.register
 def _(record: TestCaseResultResponse) -> str:
-    return record.testCase.fullyQualifiedName.__root__
+    return record.testCase.fullyQualifiedName.root
 
 
 @get_log_name.register
@@ -275,3 +267,21 @@ def _(record: OMetaPipelineStatus) -> str:
 def _(record: PatchRequest) -> str:
     """Get the log of the new entity"""
     return get_log_name(record.new_entity)
+
+
+def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:
+    config_copy = deepcopy(config)
+
+    def traverse_and_modify(obj):
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if key in REDACTED_KEYS:
+                    obj[key] = "REDACTED"
+                else:
+                    traverse_and_modify(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                traverse_and_modify(item)
+
+    traverse_and_modify(config_copy)
+    return config_copy

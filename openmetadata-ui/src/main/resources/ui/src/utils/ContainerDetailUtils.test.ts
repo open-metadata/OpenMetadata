@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getContainerDetailPath } from '../constants/constants';
+
+import { getEntityDetailsPath } from '../constants/constants';
+import { EntityType } from '../enums/entity.enum';
 import { Column, DataType } from '../generated/entity/data/container';
 import {
   updateContainerColumnDescription,
@@ -147,7 +149,7 @@ const updatedNestedColumnWithTags: Column = {
 describe('getContainerDetailPath', () => {
   it('returns the correct path without tab', () => {
     const containerFQN = 'my-container';
-    const path = getContainerDetailPath(containerFQN);
+    const path = getEntityDetailsPath(EntityType.CONTAINER, containerFQN);
 
     expect(path).toEqual(`/container/${containerFQN}`);
   });
@@ -155,7 +157,7 @@ describe('getContainerDetailPath', () => {
   it('returns the correct path with tab', () => {
     const containerFQN = 'my-container';
     const tab = 'my-tab';
-    const path = getContainerDetailPath(containerFQN, tab);
+    const path = getEntityDetailsPath(EntityType.CONTAINER, containerFQN, tab);
 
     expect(path).toEqual(`/container/${containerFQN}/${tab}`);
   });

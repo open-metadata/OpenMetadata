@@ -12,41 +12,40 @@
  */
 import { Col, Row, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation as PatchOperation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import ActivityFeedProvider from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import IncidentManagerPageHeader from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import IncidentManagerPageHeader from '../../../components/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
-import TestCaseIncidentTab from '../../../components/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component';
-import TestCaseResultTab from '../../../components/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
-import Loader from '../../../components/Loader/Loader';
+import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { EntityReference, TestCase } from '../../../generated/tests/testCase';
+import { EntityReference } from '../../../generated/tests/testCase';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
-import { TestCaseData } from './IncidentManagerDetailPage.interface';
+import testCaseClassBase from './TestCaseClassBase';
+import { useTestCaseStore } from './useTestCase.store';
 
 const IncidentManagerDetailPage = () => {
   const { t } = useTranslation();
@@ -59,81 +58,61 @@ const IncidentManagerDetailPage = () => {
 
   const { fqn: testCaseFQN } = useFqn();
 
-  const decodedTestCaseFQN = useMemo(
-    () => getDecodedFqn(testCaseFQN),
-    [testCaseFQN]
-  );
-
-  const [testCaseData, setTestCaseData] = useState<TestCaseData>({
-    data: undefined,
-    isLoading: true,
-  });
+  const { isLoading, setIsLoading, setTestCase, testCase, reset } =
+    useTestCaseStore();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
 
   const { permissions } = usePermissionProvider();
-  const hasViewPermission = useMemo(() => {
-    return checkPermission(
-      Operation.ViewAll,
-      ResourceEntity.TEST_CASE,
-      permissions
-    );
-  }, [permissions]);
+  const { hasViewPermission, editDisplayNamePermission, hasDeletePermission } =
+    useMemo(() => {
+      return {
+        hasViewPermission: checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TEST_CASE,
+          permissions
+        ),
+        editDisplayNamePermission: checkPermission(
+          Operation.EditDisplayName,
+          ResourceEntity.TEST_CASE,
+          permissions
+        ),
+        hasDeletePermission: checkPermission(
+          Operation.Delete,
+          ResourceEntity.TEST_CASE,
+          permissions
+        ),
+      };
+    }, [permissions]);
 
-  const onTestCaseUpdate = (data: TestCase) => {
-    setTestCaseData((prev) => ({ ...prev, data }));
-  };
+  const tabDetails: TabsProps['items'] = useMemo(() => {
+    const tabs = testCaseClassBase.getTab(feedCount.openTaskCount);
 
-  const tabDetails: TabsProps['items'] = useMemo(
-    () => [
-      {
-        label: (
-          <TabsLabel id="test-case-result" name={t('label.test-case-result')} />
-        ),
-        children: (
-          <TestCaseResultTab
-            testCaseData={testCaseData.data}
-            onTestCaseUpdate={onTestCaseUpdate}
-          />
-        ),
-        key: IncidentManagerTabs.TEST_CASE_RESULTS,
-      },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount.openTaskCount}
-            id="incident"
-            name={t('label.incident')}
-          />
-        ),
-        key: IncidentManagerTabs.ISSUES,
-        children: <TestCaseIncidentTab owner={testCaseData.data?.owner} />,
-      },
-    ],
-    [testCaseData, feedCount.openTaskCount]
-  );
+    return tabs.map(({ LabelComponent, labelProps, key, Tab }) => ({
+      key,
+      label: <LabelComponent {...labelProps} />,
+      children: <Tab />,
+    }));
+  }, [feedCount.openTaskCount, testCaseClassBase.showSqlQueryTab]);
 
   const fetchTestCaseData = async () => {
-    setTestCaseData((prev) => ({ ...prev, isLoading: true }));
+    setIsLoading(true);
     try {
-      const response = await getTestCaseByFqn(decodedTestCaseFQN, {
-        fields: [
-          'testSuite',
-          'testCaseResult',
-          'testDefinition',
-          'owner',
-          'incidentId',
-        ],
+      const response = await getTestCaseByFqn(testCaseFQN, {
+        fields: testCaseClassBase.getFields(),
       });
-      setTestCaseData((prev) => ({ ...prev, data: response }));
+      testCaseClassBase.setShowSqlQueryTab(
+        !isUndefined(response.inspectionQuery)
+      );
+      setTestCase(response);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', { entity: t('label.test-case') })
       );
     } finally {
-      setTestCaseData((prev) => ({ ...prev, isLoading: false }));
+      setIsLoading(false);
     }
   };
 
@@ -151,41 +130,60 @@ const IncidentManagerDetailPage = () => {
     return [
       ...data,
       {
-        name: testCaseData?.data?.name ?? '',
+        name: testCase?.name ?? '',
         url: '',
         activeTitle: true,
       },
     ];
-  }, [testCaseData]);
+  }, [testCase]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       history.push(
         getIncidentManagerDetailPagePath(
-          decodedTestCaseFQN,
+          testCaseFQN,
           activeKey as IncidentManagerTabs
         )
       );
     }
   };
-
-  const handleOwnerChange = async (owner?: EntityReference) => {
-    const data = testCaseData.data;
-    if (data) {
+  const updateTestCase = async (id: string, patch: PatchOperation[]) => {
+    try {
+      const res = await updateTestCaseById(id, patch);
+      setTestCase(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+  const handleOwnerChange = async (owners?: EntityReference[]) => {
+    if (testCase) {
       const updatedTestCase = {
-        ...data,
-        owner,
+        ...testCase,
+        owners,
       };
-      const jsonPatch = compare(data, updatedTestCase);
+      const jsonPatch = compare(testCase, updatedTestCase);
 
-      if (jsonPatch.length) {
-        try {
-          const res = await updateTestCaseById(data.id ?? '', jsonPatch);
-          onTestCaseUpdate(res);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
+      if (jsonPatch.length && testCase.id) {
+        await updateTestCase(testCase.id, jsonPatch);
+      }
+    }
+  };
+
+  const handleDisplayNameChange = async (entityName?: EntityName) => {
+    try {
+      if (testCase) {
+        const updatedTestCase = {
+          ...testCase,
+          ...entityName,
+        };
+        const jsonPatch = compare(testCase, updatedTestCase);
+
+        if (jsonPatch.length && testCase.id) {
+          await updateTestCase(testCase.id, jsonPatch);
         }
       }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -194,19 +192,25 @@ const IncidentManagerDetailPage = () => {
   }, []);
 
   const getEntityFeedCount = useCallback(() => {
-    getFeedCounts(EntityType.TEST_CASE, decodedTestCaseFQN, handleFeedCount);
-  }, [decodedTestCaseFQN]);
+    getFeedCounts(EntityType.TEST_CASE, testCaseFQN, handleFeedCount);
+  }, [testCaseFQN]);
 
   useEffect(() => {
-    if (hasViewPermission && decodedTestCaseFQN) {
+    if (hasViewPermission && testCaseFQN) {
       fetchTestCaseData();
       getEntityFeedCount();
     } else {
-      setTestCaseData((prev) => ({ ...prev, isLoading: false }));
+      setIsLoading(false);
     }
-  }, [decodedTestCaseFQN, hasViewPermission]);
 
-  if (testCaseData.isLoading) {
+    // Cleanup function for unmount
+    return () => {
+      reset();
+      testCaseClassBase.setShowSqlQueryTab(false);
+    };
+  }, [testCaseFQN, hasViewPermission]);
+
+  if (isLoading) {
     return <Loader />;
   }
 
@@ -214,7 +218,7 @@ const IncidentManagerDetailPage = () => {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
-  if (isUndefined(testCaseData.data)) {
+  if (isUndefined(testCase)) {
     return <ErrorPlaceHolder />;
   }
 
@@ -228,18 +232,39 @@ const IncidentManagerDetailPage = () => {
             <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
           </Col>
           <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
-            <EntityHeaderTitle
-              className="w-max-full-45"
-              displayName={testCaseData.data?.displayName}
-              icon={<TestCaseIcon className="h-9" />}
-              name={testCaseData.data?.name ?? ''}
-              serviceName="testCase"
-            />
+            <Row gutter={16}>
+              <Col span={23}>
+                <EntityHeaderTitle
+                  className="w-max-full-45"
+                  displayName={testCase?.displayName}
+                  icon={<TestCaseIcon className="h-9" />}
+                  name={testCase?.name ?? ''}
+                  serviceName="testCase"
+                />
+              </Col>
+              <Col className="d-flex justify-end" span={1}>
+                <ManageButton
+                  isRecursiveDelete
+                  afterDeleteAction={() =>
+                    history.push(ROUTES.INCIDENT_MANAGER)
+                  }
+                  allowSoftDelete={false}
+                  canDelete={hasDeletePermission}
+                  displayName={testCase.displayName}
+                  editDisplayNamePermission={editDisplayNamePermission}
+                  entityFQN={testCase.fullyQualifiedName}
+                  entityId={testCase.id}
+                  entityName={testCase.name}
+                  entityType={EntityType.TEST_CASE}
+                  onEditDisplayName={handleDisplayNameChange}
+                />
+              </Col>
+            </Row>
           </Col>
           <Col className="p-x-lg">
             <IncidentManagerPageHeader
               fetchTaskCount={getEntityFeedCount}
-              testCaseData={testCaseData.data}
+              testCaseData={testCase}
               onOwnerUpdate={handleOwnerChange}
             />
           </Col>

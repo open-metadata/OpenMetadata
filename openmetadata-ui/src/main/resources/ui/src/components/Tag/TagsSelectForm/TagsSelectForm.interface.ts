@@ -12,19 +12,20 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
-import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
 import { Paging } from '../../../generated/type/paging';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
 
 export type TagsSelectFormProps = {
   placeholder: string;
   defaultValue: string[];
   tagData?: SelectOption[];
+  filterOptions?: string[]; // array of fqn
   onChange?: (value: string[]) => void;
   onSubmit: (option: DefaultOptionType | DefaultOptionType[]) => Promise<void>;
   onCancel: () => void;
   tagType?: TagSource;
-  fetchApi: (
+  fetchApi?: (
     search: string,
     page: number
   ) => Promise<{

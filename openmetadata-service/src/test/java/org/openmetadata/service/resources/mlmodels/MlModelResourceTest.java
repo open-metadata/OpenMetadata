@@ -84,8 +84,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   public static final URI SERVER = URI.create("http://localhost.com/mlModel");
   public static final MlStore ML_STORE =
       new MlStore()
-          .withStorage(URI.create("s3://my-bucket.com/mlModel"))
-          .withImageRepository(URI.create("https://12345.dkr.ecr.region.amazonaws.com"));
+          .withStorage(URI.create("s3://my-bucket.com/mlModel").toString())
+          .withImageRepository(URI.create("https://12345.dkr.ecr.region.amazonaws.com").toString());
 
   public static final List<MlFeature> ML_FEATURES =
       Arrays.asList(
@@ -181,7 +181,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   @Test
   void put_MlModelUpdateWithNoChange_200(TestInfo test) throws IOException {
     // Create a Model with POST
-    CreateMlModel request = createRequest(test).withOwner(USER1_REF);
+    CreateMlModel request = createRequest(test).withOwners(List.of(USER1_REF));
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model, NO_CHANGE);
 
@@ -439,7 +439,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     CreateMlModelService createMlModelService =
         serviceTest
             .createRequest(getEntityName(test))
-            .withOwner(DATA_CONSUMER.getEntityReference());
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     MlModelService service = serviceTest.createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create MlModel under it
@@ -458,20 +458,20 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
             ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(
-        model.getOwner(),
+        model.getOwners(),
         model.getDashboard(),
         model.getFollowers(),
         model.getTags(),
         model.getUsageSummary());
 
     // .../models?fields=mlFeatures,mlHyperParameters
-    fields = "owner,dashboard,followers,tags,usageSummary";
+    fields = "owners,followers,tags,usageSummary";
     model =
         byName
             ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(model.getDashboard(), model.getUsageSummary());
-    // Checks for other owner, tags, and followers is done in the base class
+    assertListNotNull(model.getUsageSummary());
+    // Checks for other owners, tags, and followers is done in the base class
     return model;
   }
 
@@ -482,7 +482,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         .withAlgorithm(ALGORITHM)
         .withMlFeatures(ML_FEATURES)
         .withMlHyperParameters(ML_HYPERPARAMS)
-        .withDashboard(DASHBOARD.getFullyQualifiedName())
         .withService(MLFLOW_REFERENCE.getFullyQualifiedName());
   }
 

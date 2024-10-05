@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  render,
-  screen,
-  waitForElementToBeRemoved,
-} from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { ReactNode } from 'react';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -64,8 +59,8 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <>ActivityThreadPanel</>)
 );
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn().mockReturnValue({
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
     id: 'userid',
   }),
 }));
@@ -96,7 +91,7 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 );
 
 jest.mock(
-  '../../components/ContainerDetail/ContainerChildren/ContainerChildren',
+  '../../components/Container/ContainerChildren/ContainerChildren',
   () =>
     jest.fn().mockImplementation(({ isLoading }) => {
       getContainerByName(CONTAINER_DATA_1.fullyQualifiedName, {
@@ -113,7 +108,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/ContainerDetail/ContainerDataModel/ContainerDataModel',
+  '../../components/Container/ContainerDataModel/ContainerDataModel',
   () => jest.fn().mockReturnValue(<span>ContainerDataModel</span>)
 );
 
@@ -139,11 +134,11 @@ jest.mock('../../components/Lineage/Lineage.component', () =>
   jest.fn().mockReturnValue(<>EntityLineage</>)
 );
 
-jest.mock('../../components/LineageProvider/LineageProvider', () =>
+jest.mock('../../context/LineageProvider/LineageProvider', () =>
   jest.fn().mockReturnValue(<>LineageProvider</>)
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
@@ -151,18 +146,18 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   })),
 }));
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
 jest.mock('../../constants/constants', () => ({
-  getContainerDetailPath: jest.fn().mockReturnValue('/container-detail-path'),
+  getEntityDetailsPath: jest.fn().mockReturnValue('/container-detail-path'),
   getVersionPath: jest.fn().mockReturnValue('/version-path'),
 }));
 
@@ -232,13 +227,17 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockUseParams()),
 }));
 
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <>{children}</>);
+});
+
 describe('Container Page Component', () => {
   it('should show error-placeholder, if not have view permission', async () => {
     mockGetEntityPermissionByFqn.mockResolvedValueOnce({
       ViewBasic: false,
     });
 
-    await act(() => {
+    await act(async () => {
       render(<ContainerPage />);
 
       expect(screen.getByText('Loader')).toBeVisible();
@@ -247,8 +246,6 @@ describe('Container Page Component', () => {
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
 
     expect(getContainerByName).not.toHaveBeenCalled();
-
-    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
     expect(
       screen.getByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
@@ -266,8 +263,17 @@ describe('Container Page Component', () => {
     expect(getContainerByName).toHaveBeenCalledWith(
       CONTAINER_DATA.fullyQualifiedName,
       {
-        fields:
-          'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
+        fields: [
+          'parent',
+          'dataModel',
+          'owners',
+          'tags',
+          'followers',
+          'extension',
+          'domain',
+          'dataProducts',
+          'votes',
+        ],
         include: Include.All,
       }
     );

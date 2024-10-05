@@ -33,7 +33,7 @@ jest.mock('../../../constants/constants', () => ({
     .mockImplementation((path) => `/dataset/${path}`),
 }));
 
-jest.mock('../../TableDataCardBody/TableDataCardBody', () => {
+jest.mock('../../Database/TableDataCardBody/TableDataCardBody', () => {
   return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
 });
 

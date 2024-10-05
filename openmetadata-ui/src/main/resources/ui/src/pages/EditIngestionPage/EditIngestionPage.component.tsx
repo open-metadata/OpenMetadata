@@ -12,18 +12,19 @@
  */
 
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import AddIngestion from '../../components/AddIngestion/AddIngestion.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import Loader from '../../components/Loader/Loader';
+import AddIngestion from '../../components/Settings/Services/AddIngestion/AddIngestion.component';
 import {
   DEPLOYED_PROGRESS_VAL,
   getServiceDetailsPath,
@@ -31,10 +32,10 @@ import {
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   IngestionPipeline,
   PipelineType,
@@ -124,7 +125,9 @@ const EditIngestionPage = () => {
 
   const fetchIngestionDetails = () => {
     return new Promise<void>((resolve, reject) => {
-      getIngestionPipelineByFqn(ingestionFQN, { fields: 'pipelineStatuses' })
+      getIngestionPipelineByFqn(ingestionFQN, {
+        fields: TabSpecificField.PIPELINE_STATUSES,
+      })
         .then((res) => {
           if (res) {
             setIngestionData(res);
@@ -180,55 +183,33 @@ const EditIngestionPage = () => {
     });
   };
 
-  const onEditIngestionSave = (data: IngestionPipeline) => {
+  const onEditIngestionSave = async (data: IngestionPipeline) => {
     if (!ingestionData.deployed) {
       setIngestionProgress(INGESTION_PROGRESS_START_VAL);
     }
-    const {
-      airflowConfig,
-      description,
-      displayName,
-      loggerLevel,
-      name,
-      owner,
-      pipelineType,
-      service,
-      sourceConfig,
-    } = data;
-    const updateData = {
-      airflowConfig,
-      description,
-      displayName,
-      loggerLevel,
-      name,
-      owner,
-      pipelineType,
-      service,
-      sourceConfig,
-    };
 
-    return new Promise<void>((resolve, reject) => {
-      return updateIngestionPipeline(updateData as CreateIngestionPipeline)
-        .then((res) => {
-          if (res) {
-            onIngestionDeploy();
-            resolve();
-          } else {
-            throw t('server.entity-updating-error', {
-              entity: t('label.ingestion-workflow-lowercase'),
-            });
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.entity-updating-error', {
-              entity: t('label.ingestion-workflow-lowercase'),
-            })
-          );
-          reject();
+    const jsonPatch = compare(ingestionData, data);
+
+    try {
+      const res = await updateIngestionPipeline(
+        ingestionData.id ?? '',
+        jsonPatch
+      );
+      if (res) {
+        onIngestionDeploy();
+      } else {
+        throw t('server.entity-updating-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
         });
-    });
+      }
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
+        })
+      );
+    }
   };
 
   const goToSettingsPage = () => {
@@ -321,19 +302,21 @@ const EditIngestionPage = () => {
 
   return (
     <ResizablePanels
-      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        children: firstPanelChildren,
+        minWidth: 700,
+        flex: 0.7,
+        className: 'content-resizable-panel-container',
+      }}
       pageTitle={t('label.edit-entity', {
         entity: t('label.ingestion'),
       })}
       secondPanel={{
         children: secondPanelChildren,
-        className: 'service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'service-doc-panel content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

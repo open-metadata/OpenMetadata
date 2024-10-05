@@ -10,16 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { AxiosError } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
 import i18Next from 'i18next';
-import { isEqual, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isUndefined } from 'lodash';
+import React from 'react';
+import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
+import { ReactComponent as EditColored } from '../assets/svg/edit-colored.svg';
+import { ReactComponent as SuccessColored } from '../assets/svg/success-colored.svg';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
   getServiceDetailsPath,
+  getUserPath,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
@@ -33,24 +38,30 @@ import {
   TabSpecificField,
 } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { Glossary } from '../generated/entity/data/glossary';
 import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline, Task } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
 import { Field, Topic } from '../generated/entity/data/topic';
 import { TaskType, Thread } from '../generated/entity/feed/thread';
+import { EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import {
   EntityData,
   Option,
   TaskAction,
   TaskActionMode,
 } from '../pages/TasksPage/TasksPage.interface';
+import { getApiCollectionByFQN } from '../rest/apiCollectionsAPI';
+import { getApiEndPointByFQN } from '../rest/apiEndpointsAPI';
 import { getDashboardByFqn } from '../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
@@ -58,7 +69,8 @@ import {
 } from '../rest/databaseAPI';
 import { getDataModelByFqn } from '../rest/dataModelsAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
-import { getUserSuggestions } from '../rest/miscAPI';
+import { getMetricByFqn } from '../rest/metricsAPI';
+import { getUserAndTeamSearch } from '../rest/miscAPI';
 import { getMlModelByFQN } from '../rest/mlModelAPI';
 import { getPipelineByFqn } from '../rest/pipelineAPI';
 import { getSearchIndexDetailsByFQN } from '../rest/SearchIndexAPI';
@@ -66,7 +78,7 @@ import { getContainerByFQN } from '../rest/storageAPI';
 import { getStoredProceduresByFqn } from '../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
-import { getEntityDetailLink, getPartialNameFromTableFQN } from './CommonUtils';
+import { getPartialNameFromTableFQN } from './CommonUtils';
 import { ContainerFields } from './ContainerDetailUtils';
 import {
   defaultFields as DashboardFields,
@@ -82,6 +94,7 @@ import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
+import { getIncidentManagerDetailPagePath } from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -171,7 +184,28 @@ export const getTaskDetailPath = (task: Thread) => {
   const entityFqn = getEntityFQN(task.about) ?? '';
   const entityType = getEntityType(task.about) ?? '';
 
-  return getEntityDetailLink(
+  if (entityType === EntityType.TEST_CASE) {
+    return getIncidentManagerDetailPagePath(
+      entityFqn,
+      IncidentManagerTabs.ISSUES
+    );
+  } else if (entityType === EntityType.USER) {
+    return getUserPath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  } else if (
+    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(entityType)
+  ) {
+    return getGlossaryTermDetailsPath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  }
+
+  return getEntityDetailsPath(
     entityType as EntityType,
     entityFqn,
     EntityTabs.ACTIVITY_FEED,
@@ -191,25 +225,43 @@ export const fetchOptions = ({
   setOptions,
   onlyUsers,
   currentUserId,
+  initialOptions,
 }: {
   query: string;
   setOptions: (value: React.SetStateAction<Option[]>) => void;
   onlyUsers?: boolean;
   currentUserId?: string;
+  initialOptions?: Option[];
 }) => {
-  getUserSuggestions(query, onlyUsers)
+  if (isEmpty(query) && initialOptions) {
+    setOptions(initialOptions);
+
+    return;
+  }
+  getUserAndTeamSearch(query, onlyUsers)
     .then((res) => {
-      const hits = res.data.suggest['metadata-suggest'][0]['options'];
+      const hits = res.data.hits.hits;
       const suggestOptions = hits.map((hit) => ({
         label: getEntityName(hit._source),
-        value: hit._id,
+        value: hit._id ?? '',
         type: hit._source.entityType,
         name: hit._source.name,
+        displayName: hit._source.displayName,
       }));
 
       setOptions(suggestOptions.filter((item) => item.value !== currentUserId));
     })
     .catch((err: AxiosError) => showErrorToast(err));
+};
+
+export const generateOptions = (assignees: EntityReference[]) => {
+  return assignees.map((assignee) => ({
+    label: getEntityName(assignee),
+    value: assignee.id || '',
+    type: assignee.type,
+    name: assignee.name,
+    displayName: assignee.displayName,
+  }));
 };
 
 export const getEntityColumnsDetails = (
@@ -231,6 +283,17 @@ export const getEntityColumnsDetails = (
 
     case EntityType.CONTAINER:
       return (entityData as Container).dataModel?.columns ?? [];
+
+    case EntityType.API_ENDPOINT: {
+      // API endpoint has two types of schema, request and response
+      const entityDetails = entityData as APIEndpoint;
+      const requestSchemaFields =
+        entityDetails.requestSchema?.schemaFields ?? [];
+      const responseSchemaFields =
+        entityDetails.responseSchema?.schemaFields ?? [];
+
+      return [...requestSchemaFields, ...responseSchemaFields];
+    }
 
     default:
       return (entityData as Table).columns ?? [];
@@ -291,6 +354,9 @@ export const TASK_ENTITIES = [
   EntityType.SEARCH_INDEX,
   EntityType.GLOSSARY,
   EntityType.GLOSSARY_TERM,
+  EntityType.API_COLLECTION,
+  EntityType.API_ENDPOINT,
+  EntityType.METRIC,
 ];
 
 export const getBreadCrumbList = (
@@ -310,7 +376,8 @@ export const getBreadCrumbList = (
       (entityData as Table).database?.fullyQualifiedName || '',
       [FqnPart.Database]
     ),
-    url: getDatabaseDetailsPath(
+    url: getEntityDetailsPath(
+      EntityType.DATABASE,
       (entityData as Table).database?.fullyQualifiedName || ''
     ),
   };
@@ -320,7 +387,8 @@ export const getBreadCrumbList = (
       (entityData as Table).databaseSchema?.fullyQualifiedName || '',
       [FqnPart.Schema]
     ),
-    url: getDatabaseSchemaDetailsPath(
+    url: getEntityDetailsPath(
+      EntityType.DATABASE_SCHEMA,
       (entityData as Table).databaseSchema?.fullyQualifiedName || ''
     ),
   };
@@ -401,6 +469,38 @@ export const getBreadCrumbList = (
       return getGlossaryBreadcrumbs(entityData.fullyQualifiedName ?? '');
     }
 
+    case EntityType.API_ENDPOINT: {
+      const apiCollection = (entityData as APIEndpoint)?.apiCollection;
+
+      return [
+        service(ServiceCategory.API_SERVICES),
+        {
+          name: getEntityName(apiCollection),
+          url: entityUtilClassBase.getEntityLink(
+            entityType,
+            apiCollection?.fullyQualifiedName || ''
+          ),
+        },
+        activeEntity,
+      ];
+    }
+    case EntityType.API_COLLECTION: {
+      return [service(ServiceCategory.API_SERVICES), activeEntity];
+    }
+
+    case EntityType.METRIC: {
+      return [
+        {
+          name: i18Next.t('label.metric-plural'),
+          url: ROUTES.METRICS,
+        },
+        {
+          name: getEntityName(entityData),
+          url: '',
+        },
+      ];
+    }
+
     default:
       return [];
   }
@@ -423,7 +523,7 @@ export const fetchEntityDetail = (
       break;
     case EntityType.TOPIC:
       getTopicByFqn(entityFQN, {
-        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
       })
         .then((res) => {
           setEntityData(res as EntityData);
@@ -516,7 +616,13 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.GLOSSARY:
-      getGlossariesByName(entityFQN, { fields: TabSpecificField.TAGS })
+      getGlossariesByName(entityFQN, {
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.REVIEWERS,
+        ].join(','),
+      })
         .then((res) => {
           setEntityData(res);
         })
@@ -525,7 +631,11 @@ export const fetchEntityDetail = (
       break;
     case EntityType.GLOSSARY_TERM:
       getGlossaryTermByFQN(entityFQN, {
-        fields: TabSpecificField.TAGS,
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.REVIEWERS,
+        ].join(','),
       })
         .then((res) => {
           setEntityData(res);
@@ -534,19 +644,88 @@ export const fetchEntityDetail = (
 
       break;
 
+    case EntityType.API_COLLECTION: {
+      getApiCollectionByFQN(entityFQN, {
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+      })
+        .then((res) => {
+          setEntityData(res as EntityData);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    }
+    case EntityType.API_ENDPOINT: {
+      getApiEndPointByFQN(entityFQN, {
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+      })
+        .then((res) => {
+          setEntityData(res as EntityData);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    }
+    case EntityType.METRIC: {
+      getMetricByFqn(entityFQN, {
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+      })
+        .then((res) => {
+          setEntityData(res as EntityData);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    }
+
     default:
       break;
   }
 };
 
+export const TASK_ACTION_COMMON_ITEM: TaskAction[] = [
+  {
+    label: i18Next.t('label.close'),
+    key: TaskActionMode.CLOSE,
+    icon: CancelColored,
+  },
+];
+
 export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
+    icon: SuccessColored,
   },
   {
     label: i18Next.t('label.edit-amp-accept-suggestion'),
     key: TaskActionMode.EDIT,
+    icon: EditColored,
+  },
+  ...TASK_ACTION_COMMON_ITEM,
+];
+
+export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
+  {
+    label: i18Next.t('label.approve'),
+    key: TaskActionMode.RESOLVE,
+    icon: SuccessColored,
+  },
+  {
+    label: i18Next.t('label.reject'),
+    key: TaskActionMode.CLOSE,
+    icon: CancelColored,
+  },
+];
+
+export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
+  {
+    label: i18Next.t('label.re-assign'),
+    key: TaskActionMode.RE_ASSIGN,
+  },
+  {
+    label: i18Next.t('label.resolve'),
+    key: TaskActionMode.RESOLVE,
   },
 ];
 
@@ -598,6 +777,22 @@ export const getEntityTaskDetails = (
     case EntityType.CONTAINER:
       fqnPartTypes = FqnPart.Topic;
       entityField = EntityField.DATA_MODEL;
+
+      break;
+
+    case EntityType.SEARCH_INDEX:
+      fqnPartTypes = FqnPart.Topic;
+      entityField = EntityField.FIELDS;
+
+      break;
+    case EntityType.API_COLLECTION:
+      fqnPartTypes = FqnPart.Database;
+      entityField = '';
+
+      break;
+    case EntityType.API_ENDPOINT:
+      fqnPartTypes = FqnPart.ApiEndpoint;
+      entityField = 'requestSchema';
 
       break;
 
@@ -709,4 +904,39 @@ export const getTaskMessage = ({
   return `${startMessage} for ${entityType} ${getEntityName(
     entityData
   )} ${entityColumnsName}`;
+};
+
+export const getTaskAssignee = (entityData: Glossary): Option[] => {
+  const { owners, reviewers } = entityData;
+  let assignee: EntityReference[] = [];
+
+  if (!isEmpty(reviewers)) {
+    assignee = reviewers as EntityReference[];
+  } else if (!isEmpty(owners)) {
+    assignee = owners ?? [];
+  }
+
+  let defaultAssignee: Option[] = [];
+  if (!isUndefined(assignee)) {
+    defaultAssignee = assignee.map((item) => ({
+      label: getEntityName(item),
+      value: item.id || '',
+      type: item.type,
+      name: item.name,
+    }));
+  }
+
+  return defaultAssignee;
+};
+
+export const getTaskEntityFQN = (entityType: EntityType, fqn: string) => {
+  if (entityType === EntityType.TABLE) {
+    return getPartialNameFromTableFQN(
+      fqn,
+      [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+      FQN_SEPARATOR_CHAR
+    );
+  }
+
+  return fqn;
 };

@@ -18,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.util.List;
 import javax.validation.constraints.NotNull;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.Paging;
 
 /**
@@ -36,7 +37,7 @@ public class ResultList<T> {
   private Paging paging;
 
   @JsonProperty("errors")
-  private List<String> errors;
+  private List<EntityError> errors;
 
   public ResultList() {}
 
@@ -94,8 +95,19 @@ public class ResultList<T> {
     paging = new Paging().withBefore(null).withAfter(null).withTotal(total).withOffset(offset);
   }
 
+  public ResultList(List<T> data, Integer offset, Integer limit, Integer total) {
+    this.data = data;
+    paging =
+        new Paging()
+            .withBefore(null)
+            .withAfter(null)
+            .withTotal(total)
+            .withOffset(offset)
+            .withLimit(limit);
+  }
+
   public ResultList(
-      List<T> data, List<String> errors, String beforeCursor, String afterCursor, int total) {
+      List<T> data, List<EntityError> errors, String beforeCursor, String afterCursor, int total) {
     this.data = data;
     this.errors = errors;
     paging =
@@ -116,12 +128,12 @@ public class ResultList<T> {
   }
 
   @JsonProperty("errors")
-  public List<String> getErrors() {
+  public List<EntityError> getErrors() {
     return errors;
   }
 
   @JsonProperty("errors")
-  public void setErrors(List<String> data) {
+  public void setErrors(List<EntityError> data) {
     this.errors = data;
   }
 

@@ -1,27 +1,55 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.getEntityFields;
+
+import java.beans.IntrospectionException;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
+import javax.json.JsonPatch;
+import javax.json.JsonValue;
+import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.system.EntityError;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
+@Getter
 @Repository
 public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
-  @Getter protected final String collectionPath;
-  @Getter protected final EntityTimeSeriesDAO timeSeriesDao;
-  @Getter protected final SearchRepository searchRepository;
-  @Getter protected final String entityType;
-  @Getter protected final Class<T> entityClass;
-  @Getter protected final CollectionDAO daoCollection;
+  protected final String collectionPath;
+  protected final EntityTimeSeriesDAO timeSeriesDao;
+  protected final SearchRepository searchRepository;
+  protected final String entityType;
+  protected final Class<T> entityClass;
+  protected final CollectionDAO daoCollection;
+  protected final Set<String> allowedFields;
 
-  protected EntityTimeSeriesRepository(
+  public EntityTimeSeriesRepository(
       String collectionPath,
       EntityTimeSeriesDAO timeSeriesDao,
       Class<T> entityClass,
@@ -32,32 +60,154 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     this.entityType = entityType;
     this.searchRepository = Entity.getSearchRepository();
     this.daoCollection = Entity.getCollectionDAO();
+    this.allowedFields = getEntityFields(entityClass);
     Entity.registerEntity(entityClass, entityType, this);
+  }
+
+  @Transaction
+  public T createNewRecord(T recordEntity, String recordFQN) {
+    return createNewRecord(recordEntity, null, recordFQN);
   }
 
   @Transaction
   public T createNewRecord(T recordEntity, String extension, String recordFQN) {
     recordEntity.setId(UUID.randomUUID());
-    timeSeriesDao.insert(recordFQN, extension, entityType, JsonUtils.pojoToJson(recordEntity));
+    storeInternal(recordEntity, recordFQN, extension);
+    storeRelationshipInternal(recordEntity);
     postCreate(recordEntity);
     return recordEntity;
   }
 
   @Transaction
-  public T createNewRecord(T recordEntity, String recordFQN) {
-    recordEntity.setId(UUID.randomUUID());
-    timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
-    postCreate(recordEntity);
+  protected void storeInternal(T recordEntity, String recordFQN) {
+    storeInternal(recordEntity, recordFQN, null);
+  }
+
+  @Transaction
+  protected void storeInternal(T recordEntity, String recordFQN, String extension) {
+    if (extension != null) {
+      timeSeriesDao.insert(recordFQN, extension, entityType, JsonUtils.pojoToJson(recordEntity));
+    } else {
+      timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
+    }
+  }
+
+  public final EntityUtil.Fields getFields(String fields) {
+    if ("*".equals(fields)) {
+      return new EntityUtil.Fields(allowedFields, String.join(",", allowedFields));
+    }
+    return new EntityUtil.Fields(allowedFields, fields);
+  }
+
+  protected void storeRelationshipInternal(T recordEntity) {
+    storeRelationship(recordEntity);
+  }
+
+  protected void storeRelationship(T recordEntity) {
+    // Nothing to do in the default implementation
+  }
+
+  protected void setInheritedFields(T recordEntity) {
+    // Nothing to do in the default implementation
+  }
+
+  protected T setFieldsInternal(T recordEntity, EntityUtil.Fields fields) {
+    setFields(recordEntity, fields);
     return recordEntity;
   }
 
-  protected void postCreate(T entity) {
-    searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(entity, entityClass));
+  protected void setFields(T recordEntity, EntityUtil.Fields fields) {
+    // Nothing to do in the default implementation
+  }
+
+  protected void clearFieldsInternal(T recordEntity, EntityUtil.Fields fields) {
+    clearFields(recordEntity, fields);
+  }
+
+  protected void clearFields(T recordEntity, EntityUtil.Fields fields) {
+    // Nothing to do in the default implementation
+  }
+
+  protected void setUpdatedFields(T updated, String user) {
+    // Nothing to do in the default implementation
+  }
+
+  protected void validatePatchFields(T updated, T original) {
+    // Nothing to do in the default implementation
+  }
+
+  @Transaction
+  public final void addRelationship(
+      UUID fromId,
+      UUID toId,
+      String fromEntity,
+      String toEntity,
+      Relationship relationship,
+      String json,
+      boolean bidirectional) {
+    UUID from = fromId;
+    UUID to = toId;
+    if (bidirectional && fromId.compareTo(toId) > 0) {
+      // For bidirectional relationship, instead of adding two row fromId -> toId and toId ->
+      // fromId, just add one row where fromId is alphabetically less than toId
+      from = toId;
+      to = fromId;
+    }
+    daoCollection
+        .relationshipDAO()
+        .insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
+  }
+
+  protected void postCreate(T recordEntity) {
+    searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(recordEntity, entityClass));
+  }
+
+  protected void postDelete(T recordEntity) {
+    searchRepository.deleteTimeSeriesEntityById(JsonUtils.deepCopy(recordEntity, entityClass));
+  }
+
+  protected void postUpdate(T updated) {
+    searchRepository.updateTimeSeriesEntity(updated);
+  }
+
+  // Database Repository Methods
+  // -------------------------
+  public final List<CollectionDAO.EntityRelationshipRecord> findFromRecords(
+      UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
+    // When fromEntityType is null, all the relationships from any entity is returned
+    return fromEntityType == null
+        ? daoCollection.relationshipDAO().findFrom(toId, toEntityType, relationship.ordinal())
+        : daoCollection
+            .relationshipDAO()
+            .findFrom(toId, toEntityType, relationship.ordinal(), fromEntityType);
+  }
+
+  protected EntityReference getFromEntityRef(
+      UUID toId, Relationship relationship, String fromEntityType, boolean mustHaveRelationship) {
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFromRecords(toId, entityType, relationship, fromEntityType);
+    EntityRepository.ensureSingleRelationship(
+        entityType, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
+    return !records.isEmpty()
+        ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
+        : null;
+  }
+
+  public final ResultList<T> getResultList(
+      List<T> entities,
+      String beforeCursor,
+      String afterCursor,
+      int total,
+      List<EntityError> errors) {
+    if (errors == null) {
+      return new ResultList<>(entities, beforeCursor, afterCursor, total);
+    }
+    return new ResultList<>(entities, errors, beforeCursor, afterCursor, total);
   }
 
   public final ResultList<T> getResultList(
       List<T> entities, String beforeCursor, String afterCursor, int total) {
-    return new ResultList<>(entities, beforeCursor, afterCursor, total);
+    return getResultList(entities, beforeCursor, afterCursor, total, null);
   }
 
   /**
@@ -65,35 +215,51 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
    *
    * @return ResultList
    */
-  protected ResultList<T> listWithOffset(
-      String offset, ListFilter filter, int limitParam, Long startTs, Long endTs, boolean latest) {
+  public ResultList<T> listWithOffset(
+      String offset,
+      ListFilter filter,
+      int limitParam,
+      Long startTs,
+      Long endTs,
+      boolean latest,
+      boolean skipErrors) {
     int total = timeSeriesDao.listCount(filter, startTs, endTs, latest);
+    return listWithOffsetInternal(
+        offset, filter, limitParam, startTs, endTs, latest, skipErrors, total);
+  }
+
+  public ResultList<T> listWithOffset(
+      String offset, ListFilter filter, int limitParam, boolean skipErrors) {
+    int total = timeSeriesDao.listCount(filter);
+    return listWithOffsetInternal(offset, filter, limitParam, null, null, false, skipErrors, total);
+  }
+
+  private ResultList<T> listWithOffsetInternal(
+      String offset,
+      ListFilter filter,
+      int limitParam,
+      Long startTs,
+      Long endTs,
+      boolean latest,
+      boolean skipErrors,
+      int total) {
     List<T> entityList = new ArrayList<>();
+    List<EntityError> errors = null;
 
-    int offsetInt = offset != null ? Integer.parseInt(RestUtil.decodeCursor(offset)) : 0;
-    int afterOffsetInt = offsetInt + limitParam;
-    int beforeOffsetInt = offsetInt - limitParam;
-
-    // If offset is negative, then set it to 0 if you pass offset 4 and limit 10, then the previous
-    // page will be at offset 0
-    if (beforeOffsetInt < 0) beforeOffsetInt = 0;
-
-    // if offsetInt is 0 (i.e. either no offset or offset is 0), then set it to null as there is no
-    // previous page
-    String beforeOffset = (offsetInt == 0) ? null : String.valueOf(beforeOffsetInt);
-
-    // If afterOffset is greater than total, then set it to null to indicate end of list
-    String afterOffset = afterOffsetInt >= total ? null : String.valueOf(afterOffsetInt);
-
+    int offsetInt = getOffset(offset);
+    String afterOffset = getAfterOffset(offsetInt, limitParam, total);
+    String beforeOffset = getBeforeOffset(offsetInt, limitParam);
     if (limitParam > 0) {
       List<String> jsons =
-          timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, startTs, endTs, latest);
-
-      for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, entityClass);
-        entityList.add(entity);
+          (startTs != null && endTs != null)
+              ? timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, startTs, endTs, latest)
+              : timeSeriesDao.listWithOffset(filter, limitParam, offsetInt);
+      Map<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
+      entityList = (List<T>) entityListMap.get("entityList");
+      if (skipErrors) {
+        errors = (List<EntityError>) entityListMap.get("errors");
       }
-      return getResultList(entityList, beforeOffset, afterOffset, total);
+      return getResultList(entityList, beforeOffset, afterOffset, total, errors);
     } else {
       return getResultList(entityList, null, null, total);
     }
@@ -101,7 +267,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   public ResultList<T> list(
       String offset, Long startTs, Long endTs, int limitParam, ListFilter filter, boolean latest) {
-    return listWithOffset(offset, filter, limitParam, startTs, endTs, latest);
+    return listWithOffset(offset, filter, limitParam, startTs, endTs, latest, false);
   }
 
   public T getLatestRecord(String recordFQN) {
@@ -109,7 +275,9 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     if (jsonRecord == null) {
       return null;
     }
-    return JsonUtils.readValue(jsonRecord, entityClass);
+    T entityRecord = JsonUtils.readValue(jsonRecord, entityClass);
+    setInheritedFields(entityRecord);
+    return entityRecord;
   }
 
   public T getById(UUID id) {
@@ -117,6 +285,217 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     if (jsonRecord == null) {
       return null;
     }
-    return JsonUtils.readValue(jsonRecord, entityClass);
+    T entityRecord = JsonUtils.readValue(jsonRecord, entityClass);
+    setInheritedFields(entityRecord);
+    return entityRecord;
+  }
+
+  public void deleteById(UUID id, boolean hardDelete) {
+    if (!hardDelete) {
+      // time series entities by definition cannot be soft deleted (i.e. they do not have a state,
+      // and they should be immutable) thought they can be contained inside entities that can be
+      // soft deleted
+      return;
+    }
+    T entityRecord = getById(id);
+    if (entityRecord == null) {
+      return;
+    }
+    timeSeriesDao.deleteById(id);
+  }
+
+  private String getAfterOffset(int offsetInt, int limit, int total) {
+    int afterOffset = offsetInt + limit;
+    // If afterOffset is greater than total, then set it to null to indicate end of list
+    return afterOffset >= total ? null : String.valueOf(afterOffset);
+  }
+
+  private String getBeforeOffset(int offsetInt, int limit) {
+    int beforeOffsetInt = offsetInt - limit;
+    // If offset is negative, then set it to 0 if you pass offset 4 and limit 10, then the previous
+    // page will be at offset 0
+    if (beforeOffsetInt < 0) beforeOffsetInt = 0;
+    // if offsetInt is 0 (i.e. either no offset or offset is 0), then set it to null as there is no
+    // previous page
+    return (offsetInt == 0) ? null : String.valueOf(beforeOffsetInt);
+  }
+
+  private int getOffset(String offset) {
+    return offset != null ? Integer.parseInt(RestUtil.decodeCursor(offset)) : 0;
+  }
+
+  private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {
+    List<T> entityList = new ArrayList<>();
+    List<EntityError> errors = new ArrayList<>();
+
+    Map<String, List<?>> resultList = new HashMap<>();
+
+    for (String json : jsons) {
+      try {
+        T recordEntity = JsonUtils.readValue(json, entityClass);
+        setInheritedFields(recordEntity);
+        entityList.add(recordEntity);
+      } catch (Exception e) {
+        if (!skipErrors) {
+          throw e;
+        }
+        errors.add(new EntityError().withMessage(e.getMessage()));
+      }
+    }
+    resultList.put("entityList", entityList);
+    resultList.put("errors", errors);
+    return resultList;
+  }
+
+  public RestUtil.PatchResponse<T> patch(UUID id, JsonPatch patch, String user)
+      throws IntrospectionException, InvocationTargetException, IllegalAccessException {
+    String originalJson = timeSeriesDao.getById(id);
+    if (originalJson == null) {
+      throw new EntityNotFoundException(String.format("Entity with id %s not found", id));
+    }
+    T original = JsonUtils.readValue(originalJson, entityClass);
+    T updated = JsonUtils.applyPatch(original, patch, entityClass);
+
+    setUpdatedFields(updated, user);
+    validatePatchFields(updated, original);
+
+    timeSeriesDao.update(JsonUtils.pojoToJson(updated), id);
+    postUpdate(updated);
+    return new RestUtil.PatchResponse<>(Response.Status.OK, updated, ENTITY_UPDATED);
+  }
+
+  // Search Repository Methods
+  // -------------------------
+  public ResultList<T> listFromSearchWithOffset(
+      EntityUtil.Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q)
+      throws IOException {
+    List<T> entityList = new ArrayList<>();
+    long total;
+
+    setIncludeSearchFields(searchListFilter);
+    setExcludeSearchFields(searchListFilter);
+    if (limit > 0) {
+      SearchClient.SearchResultListMapper results =
+          searchRepository.listWithOffset(
+              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+      total = results.getTotal();
+      for (Map<String, Object> json : results.getResults()) {
+        T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+        setInheritedFields(entity);
+        clearFieldsInternal(entity, fields);
+        entityList.add(entity);
+      }
+      return new ResultList<>(entityList, offset, limit, (int) total);
+    } else {
+      SearchClient.SearchResultListMapper results =
+          searchRepository.listWithOffset(
+              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+      total = results.getTotal();
+      return new ResultList<>(entityList, null, limit, (int) total);
+    }
+  }
+
+  public ResultList<T> listLatestFromSearch(
+      EntityUtil.Fields fields, SearchListFilter searchListFilter, String groupBy, String q)
+      throws IOException {
+    List<T> entityList = new ArrayList<>();
+    setIncludeSearchFields(searchListFilter);
+    setExcludeSearchFields(searchListFilter);
+    String aggregationPath = "$.sterms#byTerms.buckets";
+    String aggregationStr =
+        "{\"aggregations\":{\"byTerms\":{\"terms\": {\"field\":\"%s\",\"size\":100},\"aggs\":{\"latest\":"
+            + "{\"top_hits\":{\"size\":1,\"sort_field\":\"timestamp\",\"sort_order\":\"desc\"}}}}}}";
+    aggregationStr = String.format(aggregationStr, groupBy);
+    JsonObject aggregation = JsonUtils.readJson(aggregationStr).asJsonObject();
+    JsonObject jsonObjResults =
+        searchRepository.aggregate(q, entityType, aggregation, searchListFilter);
+
+    Optional<List> jsonObjects =
+        JsonUtils.readJsonAtPath(jsonObjResults.toString(), aggregationPath, List.class);
+    jsonObjects.ifPresent(
+        jsonObjectList -> {
+          for (Map<String, String> json : (List<Map<String, String>>) jsonObjectList) {
+            String bucketAggregationPath = "top_hits#latest.hits.hits";
+            Optional<List> hits =
+                JsonUtils.readJsonAtPath(
+                    JsonUtils.pojoToJson(json), bucketAggregationPath, List.class);
+            hits.ifPresent(
+                hitList -> {
+                  for (Map<String, String> hit : (List<Map<String, String>>) hitList) {
+                    JsonObject source = getSourceDocument(JsonUtils.pojoToJson(hit));
+                    T entity =
+                        setFieldsInternal(
+                            JsonUtils.readOrConvertValue(source, entityClass), fields);
+                    if (entity != null) {
+                      setInheritedFields(entity);
+                      clearFieldsInternal(entity, fields);
+                      entityList.add(entity);
+                    }
+                  }
+                });
+          }
+        });
+    return new ResultList<>(entityList, null, null, entityList.size());
+  }
+
+  public T latestFromSearch(EntityUtil.Fields fields, SearchListFilter searchListFilter, String q)
+      throws IOException {
+    setIncludeSearchFields(searchListFilter);
+    setExcludeSearchFields(searchListFilter);
+    SearchSortFilter searchSortFilter = new SearchSortFilter("timestamp", "desc", null, null);
+    SearchClient.SearchResultListMapper results =
+        searchRepository.listWithOffset(searchListFilter, 1, 0, entityType, searchSortFilter, q);
+    for (Map<String, Object> json : results.getResults()) {
+      T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+      setInheritedFields(entity);
+      clearFieldsInternal(entity, fields);
+      return entity;
+    }
+    return null;
+  }
+
+  protected void setIncludeSearchFields(SearchListFilter searchListFilter) {
+    // Nothing to do in the default implementation
+  }
+
+  protected void setExcludeSearchFields(SearchListFilter searchListFilter) {
+    // Nothing to do in the default implementation
+  }
+
+  protected List<String> getIncludeSearchFields() {
+    return new ArrayList<>();
+  }
+
+  protected List<String> getExcludeSearchFields() {
+    return new ArrayList<>();
+  }
+
+  private JsonObject getSourceDocument(String hit) {
+    List<String> includeSearchFields = getIncludeSearchFields();
+    List<String> excludeSearchFields = getExcludeSearchFields();
+    JsonObject hitJson = JsonUtils.readJson(hit).asJsonObject();
+    JsonObject source = hitJson.asJsonObject().getJsonObject("_source");
+    // Aggregation results will return all fields by default,
+    // so we need to filter out the fields that are not included
+    // in the search fields
+    if (source != null
+        && (!CommonUtil.nullOrEmpty(includeSearchFields)
+            || !CommonUtil.nullOrEmpty(excludeSearchFields))) {
+      JsonObjectBuilder sourceCopy = Json.createObjectBuilder();
+      for (Map.Entry<String, JsonValue> entry : source.entrySet()) {
+        if (includeSearchFields.contains(entry.getKey())
+            || (CommonUtil.nullOrEmpty(includeSearchFields)
+                && !excludeSearchFields.contains(entry.getKey()))) {
+          sourceCopy.add(entry.getKey(), entry.getValue());
+        }
+      }
+      return sourceCopy.build();
+    }
+    return source;
   }
 }

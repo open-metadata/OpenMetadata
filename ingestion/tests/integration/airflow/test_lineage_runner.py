@@ -19,6 +19,7 @@ from unittest.mock import patch
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from airflow_provider_openmetadata.lineage.runner import AirflowLineageRunner
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -46,8 +47,6 @@ from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
     OMEntity,
     get_xlets_from_dag,
 )
-
-from ..integration_base import int_admin_ometa
 
 SLEEP = "sleep 1"
 PIPELINE_SERVICE_NAME = "test-lineage-runner"
@@ -131,7 +130,7 @@ class TestAirflowLineageRuner(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn=DB_SERVICE_NAME
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -146,7 +145,7 @@ class TestAirflowLineageRuner(TestCase):
         pipeline_service_id = str(
             cls.metadata.get_by_name(
                 entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -157,7 +156,6 @@ class TestAirflowLineageRuner(TestCase):
         )
 
     def test_lineage_runner(self):
-
         with DAG("test_runner", start_date=datetime(2021, 1, 1)) as dag:
             BashOperator(
                 task_id="print_date",
@@ -204,7 +202,7 @@ class TestAirflowLineageRuner(TestCase):
 
             lineage_data = self.metadata.get_lineage_by_name(
                 entity=Table,
-                fqn=self.table_outlet.fullyQualifiedName.__root__,
+                fqn=self.table_outlet.fullyQualifiedName.root,
                 up_depth=1,
                 down_depth=1,
             )
@@ -212,8 +210,8 @@ class TestAirflowLineageRuner(TestCase):
             upstream_ids = [
                 edge["fromEntity"] for edge in lineage_data["upstreamEdges"]
             ]
-            self.assertIn(str(self.table_inlet1.id.__root__), upstream_ids)
-            self.assertIn(str(self.table_inlet2.id.__root__), upstream_ids)
+            self.assertIn(str(self.table_inlet1.id.root), upstream_ids)
+            self.assertIn(str(self.table_inlet2.id.root), upstream_ids)
 
             # We can trigger again without any issues. Nothing will happen here
             with self.assertLogs(level="INFO") as log:

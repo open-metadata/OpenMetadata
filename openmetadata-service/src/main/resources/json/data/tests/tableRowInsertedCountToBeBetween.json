@@ -11,14 +11,22 @@
         "displayName": "Min Row Count",
         "description": "Lower Bound of the Count",
         "dataType": "INT",
-        "required": false
+        "required": false,
+        "validationRule": {
+          "parameterField": "max",
+          "rule": "LESS_THAN_OR_EQUALS"
+        }
       },
       {
         "name": "max",
         "displayName": "Max Row Count",
         "description": "Upper Bound of the Count",
         "dataType": "INT",
-        "required": false
+        "required": false,
+        "validationRule": {
+          "parameterField": "min",
+          "rule": "GREATER_THAN_OR_EQUALS"
+        }
       },
       {
         "name": "columnName",
@@ -41,6 +49,8 @@
         "dataType": "INT",
         "required": true
       }
-    ]
+    ],
+    "provider": "system",
+    "dataQualityDimension": "Integrity"
   }
   

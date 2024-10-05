@@ -50,3 +50,13 @@ export const VALID_OBJECT_KEY_REGEX = /^[_$a-zA-Z][_$a-zA-Z0-9]*$/;
 export const HEX_COLOR_CODE_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
 
 export const TASK_SANITIZE_VALUE_REGEX = /^"|"$/g;
+
+export const TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX = /^\d{13}$/;
+
+export const ALL_ASTERISKS_REGEX = /^\*+$/;
+
+// Split the input into pairs using `;` and handle quoted strings properly
+export const SEMICOLON_SPLITTER = /;(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+
+// Use regex to check if the string starts and ends with escape characters
+export const VALIDATE_ESCAPE_START_END_REGEX = /^(\\+|"+)([\s\S]*?)(\\+|"+)$/;

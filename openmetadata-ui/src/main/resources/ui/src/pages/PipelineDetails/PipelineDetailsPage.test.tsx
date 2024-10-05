@@ -36,9 +36,12 @@ jest.mock('../../rest/pipelineAPI', () => ({
   getPipelineByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../components/PipelineDetails/PipelineDetails.component', () => {
-  return jest.fn().mockReturnValue(<div>PipelineDetails.component</div>);
-});
+jest.mock(
+  '../../components/Pipeline/PipelineDetails/PipelineDetails.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>PipelineDetails.component</div>);
+  }
+);
 
 jest.mock(
   '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -47,7 +50,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
     getEntityPermission: jest.fn().mockResolvedValue({
@@ -59,7 +62,7 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
       EditDescription: true,
       EditDisplayName: true,
       EditLineage: true,
-      EditOwner: true,
+      EditOwners: true,
       EditQueries: true,
       EditSampleData: true,
       EditTags: true,
@@ -85,7 +88,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
     EditDescription: true,
     EditDisplayName: true,
     EditLineage: true,
-    EditOwner: true,
+    EditOwners: true,
     EditQueries: true,
     EditSampleData: true,
     EditTags: true,

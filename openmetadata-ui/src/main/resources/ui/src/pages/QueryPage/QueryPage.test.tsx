@@ -17,14 +17,17 @@ import { MOCK_QUERIES } from '../../mocks/Queries.mock';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
 import QueryPage from './QueryPage.component';
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ search: '' }));
+});
+
 jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({ search: '' })),
   useParams: jest.fn().mockImplementation(() => ({
     fqn: 'testDatasetFQN',
     queryId: 'queryId',
   })),
 }));
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       ViewAll: true,
@@ -41,10 +44,10 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
   }
 );
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
-jest.mock('../../components/TableQueries/QueryCard', () => {
+jest.mock('../../components/Database/TableQueries/QueryCard', () => {
   return jest.fn().mockImplementation(() => <div>QueryCard</div>);
 });
 jest.mock('../../rest/queryAPI', () => ({

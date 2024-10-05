@@ -69,10 +69,17 @@ public class TypeRegistry {
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
     CUSTOM_PROPERTIES.put(customPropertyFQN, customProperty);
 
-    JsonSchema jsonSchema =
-        JsonUtils.getJsonSchema(TYPES.get(customProperty.getPropertyType().getName()).getSchema());
-    CUSTOM_PROPERTY_SCHEMAS.put(customPropertyFQN, jsonSchema);
-    LOG.info("Adding custom property {} with JSON schema {}", customPropertyFQN, jsonSchema);
+    try {
+      JsonSchema jsonSchema =
+          JsonUtils.getJsonSchema(
+              TYPES.get(customProperty.getPropertyType().getName()).getSchema());
+      CUSTOM_PROPERTY_SCHEMAS.put(customPropertyFQN, jsonSchema);
+      LOG.info("Adding custom property {} with JSON schema {}", customPropertyFQN, jsonSchema);
+
+    } catch (Exception e) {
+      CUSTOM_PROPERTIES.remove(customPropertyFQN);
+      LOG.info("Failed to add custom property {}: {}", customPropertyFQN, e.getMessage());
+    }
   }
 
   public JsonSchema getSchema(String entityType, String propertyName) {
@@ -101,5 +108,38 @@ public class TypeRegistry {
 
   public static String getPropertyName(String propertyFQN) {
     return FullyQualifiedName.split(propertyFQN)[2];
+  }
+
+  public static String getCustomPropertyType(String entityType, String propertyName) {
+    Type type = TypeRegistry.TYPES.get(entityType);
+    if (type != null && type.getCustomProperties() != null) {
+      for (CustomProperty property : type.getCustomProperties()) {
+        if (property.getName().equals(propertyName)) {
+          return property.getPropertyType().getName();
+        }
+      }
+    }
+    throw EntityNotFoundException.byMessage(
+        CatalogExceptionMessage.entityNotFound(Entity.TYPE, String.valueOf(type)));
+  }
+
+  public static String getCustomPropertyConfig(String entityType, String propertyName) {
+    Type type = TypeRegistry.TYPES.get(entityType);
+    if (type != null && type.getCustomProperties() != null) {
+      for (CustomProperty property : type.getCustomProperties()) {
+        if (property.getName().equals(propertyName)
+            && property.getCustomPropertyConfig() != null
+            && property.getCustomPropertyConfig().getConfig() != null) {
+          Object config = property.getCustomPropertyConfig().getConfig();
+          if (config instanceof String || config instanceof Integer) {
+            return config.toString(); // for simple type config return as string
+          } else {
+            return JsonUtils.pojoToJson(
+                config); // for complex object in config return as JSON string
+          }
+        }
+      }
+    }
+    return null;
   }
 }

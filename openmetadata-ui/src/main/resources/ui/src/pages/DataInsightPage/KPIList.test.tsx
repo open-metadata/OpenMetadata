@@ -15,13 +15,13 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { mockUserData } from '../../components/Users/mocks/User.mocks';
+import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
 import KPIList from './KPIList';
 import { KPI_DATA } from './mocks/KPIList';
 
 const mockPush = jest.fn();
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     currentUser: { ...mockUserData, isAdmin: true },
   })),
 }));
@@ -51,7 +51,7 @@ jest.mock(
   () => jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 

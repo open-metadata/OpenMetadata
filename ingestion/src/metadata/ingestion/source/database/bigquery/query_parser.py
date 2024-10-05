@@ -45,9 +45,11 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
         self.database = self.project_id
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: BigQueryConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: BigQueryConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
@@ -80,7 +82,7 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
             project_ids = deepcopy(
                 self.service_connection.credentials.gcpConfig.projectId
             )
-            for project_id in project_ids.__root__:
+            for project_id in project_ids.root:
                 inspector_details = get_inspector_details(
                     project_id, self.service_connection
                 )

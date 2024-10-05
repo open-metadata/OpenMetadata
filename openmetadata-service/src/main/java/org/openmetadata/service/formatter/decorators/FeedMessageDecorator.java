@@ -51,22 +51,27 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
   }
 
   @Override
-  public String getEntityUrl(String entityType, String fqn, String additionalParams) {
+  public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "[%s](/%s/%s%s)",
         fqn,
-        entityType,
+        prefix,
         fqn.trim(),
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams));
   }
 
   @Override
-  public FeedMessage buildEntityMessage(ChangeEvent event) {
+  public FeedMessage buildEntityMessage(String publisherName, ChangeEvent event) {
     return null;
   }
 
   @Override
-  public FeedMessage buildThreadMessage(ChangeEvent event) {
+  public FeedMessage buildTestMessage(String publisherName) {
+    return null;
+  }
+
+  @Override
+  public FeedMessage buildThreadMessage(String publisherName, ChangeEvent event) {
     return null;
   }
 }

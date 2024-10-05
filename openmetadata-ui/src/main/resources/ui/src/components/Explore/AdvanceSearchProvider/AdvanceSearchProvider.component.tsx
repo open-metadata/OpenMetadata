@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isEqual, isNil, isString } from 'lodash';
+import { isArray, isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   useCallback,
@@ -27,21 +27,21 @@ import {
   Utils as QbUtils,
   ValueSource,
 } from 'react-awesome-query-builder';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
-import {
-  emptyJsonTree,
-  getQbConfigs,
-} from '../../../constants/AdvancedSearch.constants';
+import { useHistory, useParams } from 'react-router-dom';
+import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import { getTierOptions } from '../../../utils/AdvancedSearchUtils';
 import { EntitiesSupportedCustomProperties } from '../../../utils/CustomProperties/CustomProperty.utils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getEntityTypeFromSearchIndex } from '../../../utils/SearchUtils';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
-import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
+import { UrlParams } from '../ExplorePage.interface';
 import {
   AdvanceSearchContext,
   AdvanceSearchProviderProps,
@@ -53,26 +53,48 @@ const AdvancedSearchContext = React.createContext<AdvanceSearchContext>(
 
 export const AdvanceSearchProvider = ({
   children,
+  isExplorePage = true,
+  modalProps,
+  updateURL = true,
 }: AdvanceSearchProviderProps) => {
   const tierOptions = useMemo(getTierOptions, []);
 
-  const tabsInfo = searchClassBase.getTabsInfo();
-  const location = useLocation();
+  const tabsInfo = useMemo(
+    () => searchClassBase.getTabsInfo(),
+    [searchClassBase]
+  );
+  const location = useCustomLocation();
   const history = useHistory();
   const { tab } = useParams<UrlParams>();
   const [loading, setLoading] = useState(true);
-  const searchIndex = useMemo(() => {
+  const getSearchIndexFromTabInfo = useCallback(() => {
     const tabInfo = Object.entries(tabsInfo).find(
       ([, tabInfo]) => tabInfo.path === tab
     );
     if (isNil(tabInfo)) {
-      return SearchIndex.TABLE;
+      return SearchIndex.DATA_ASSET;
     }
 
-    return tabInfo[0] as ExploreSearchIndex;
-  }, [tab]);
+    return tabInfo[0] as SearchIndex;
+  }, [tabsInfo, tab]);
+
+  const [searchIndex, setSearchIndex] = useState<
+    SearchIndex | Array<SearchIndex>
+  >(getSearchIndexFromTabInfo());
+
+  const changeSearchIndex = useCallback(
+    (index: SearchIndex | Array<SearchIndex>) => {
+      setSearchIndex(index);
+    },
+    []
+  );
+
   const [config, setConfig] = useState<Config>(
-    getQbConfigs(searchIndex, tierOptions)
+    advancedSearchClassBase.getQbConfigs(
+      tierOptions,
+      isArray(searchIndex) ? searchIndex : [searchIndex],
+      isExplorePage
+    )
   );
   const [initialised, setInitialised] = useState(false);
 
@@ -85,7 +107,7 @@ export const AdvanceSearchProvider = ({
     () =>
       Qs.parse(
         location.search.startsWith('?')
-          ? location.search.substr(1)
+          ? location.search.slice(1)
           : location.search
       ),
     [location.search]
@@ -123,8 +145,14 @@ export const AdvanceSearchProvider = ({
   );
 
   useEffect(() => {
-    setConfig(getQbConfigs(searchIndex, tierOptions));
-  }, [searchIndex]);
+    setConfig(
+      advancedSearchClassBase.getQbConfigs(
+        tierOptions,
+        isArray(searchIndex) ? searchIndex : [searchIndex],
+        isExplorePage
+      )
+    );
+  }, [searchIndex, isExplorePage]);
 
   const handleChange = useCallback(
     (nTree, nConfig) => {
@@ -176,6 +204,27 @@ export const AdvanceSearchProvider = ({
     });
   }, [history, location.pathname]);
 
+  const fetchCustomPropertyType = async (entityType: EntityType) => {
+    const subfields: Record<
+      string,
+      { type: string; valueSources: ValueSource[] }
+    > = {};
+
+    const res = await getTypeByFQN(entityType);
+    const customAttributes = res.customProperties;
+
+    if (customAttributes) {
+      customAttributes.forEach((attr) => {
+        subfields[attr.name] = {
+          type: 'text',
+          valueSources: ['value'],
+        };
+      });
+    }
+
+    return subfields;
+  };
+
   async function getCustomAttributesSubfields() {
     const subfields: Record<
       string,
@@ -183,28 +232,39 @@ export const AdvanceSearchProvider = ({
     > = {};
 
     try {
-      if (!EntitiesSupportedCustomProperties.includes(searchIndex)) {
+      if (isArray(searchIndex)) {
+        for await (const index of searchIndex) {
+          if (!EntitiesSupportedCustomProperties.includes(index)) {
+            continue; // Skip if entity type does not support custom properties
+          }
+
+          const entityType = getEntityTypeFromSearchIndex(index);
+
+          if (!entityType) {
+            continue; // Skip if entity type is not found
+          }
+
+          try {
+            const propertyTypes = await fetchCustomPropertyType(entityType);
+            Object.assign(subfields, propertyTypes); // Merge the subfields after each API call
+          } catch (error) {
+            continue; // continue the loop if error occurs in one API call
+          }
+        }
+
         return subfields;
+      } else {
+        if (!EntitiesSupportedCustomProperties.includes(searchIndex)) {
+          return subfields;
+        }
+
+        const entityType = getEntityTypeFromSearchIndex(searchIndex);
+        if (!entityType) {
+          return subfields;
+        }
+
+        return await fetchCustomPropertyType(entityType);
       }
-
-      const entityType = getEntityTypeFromSearchIndex(searchIndex);
-      if (!entityType) {
-        return subfields;
-      }
-
-      const res = await getTypeByFQN(entityType);
-      const customAttributes = res.customProperties;
-
-      if (customAttributes) {
-        customAttributes.forEach((attr) => {
-          subfields[attr.name] = {
-            type: 'text',
-            valueSources: ['value'],
-          };
-        });
-      }
-
-      return subfields;
     } catch (error) {
       // Error
       return subfields;
@@ -212,7 +272,11 @@ export const AdvanceSearchProvider = ({
   }
 
   const loadData = async () => {
-    const actualConfig = getQbConfigs(searchIndex, tierOptions);
+    const actualConfig = advancedSearchClassBase.getQbConfigs(
+      tierOptions,
+      isArray(searchIndex) ? searchIndex : [searchIndex],
+      isExplorePage
+    );
 
     const extensionSubField = await getCustomAttributesSubfields();
 
@@ -245,6 +309,10 @@ export const AdvanceSearchProvider = ({
   );
 
   useEffect(() => {
+    setSearchIndex(getSearchIndexFromTabInfo());
+  }, [tabsInfo, tab]);
+
+  useEffect(() => {
     loadData();
   }, [searchIndex]);
 
@@ -269,9 +337,10 @@ export const AdvanceSearchProvider = ({
     setSQLQuery(
       treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
     );
-    handleTreeUpdate(treeInternal);
+
+    updateURL && handleTreeUpdate(treeInternal);
     setShowModal(false);
-  }, [treeInternal, config, handleTreeUpdate]);
+  }, [treeInternal, config, handleTreeUpdate, updateURL]);
 
   const contextValues = useMemo(
     () => ({
@@ -285,6 +354,9 @@ export const AdvanceSearchProvider = ({
       onReset: handleReset,
       onResetAllFilters: handleResetAllFilters,
       onUpdateConfig: handleConfigUpdate,
+      onChangeSearchIndex: changeSearchIndex,
+      onSubmit: handleSubmit,
+      modalProps,
     }),
     [
       queryFilter,
@@ -297,6 +369,9 @@ export const AdvanceSearchProvider = ({
       handleReset,
       handleResetAllFilters,
       handleConfigUpdate,
+      changeSearchIndex,
+      handleSubmit,
+      modalProps,
     ]
   );
 

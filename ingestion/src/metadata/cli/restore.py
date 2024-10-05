@@ -72,6 +72,13 @@ def run_restore(
     :param sql_file: local path of file to restore the backup
     """
     log_ansi_encoded_string(
+        color=ANSI.BRIGHT_RED,
+        bold=True,
+        message="WARNING: restore is deprecated starting 1.4.0. Use database native tools to restore."
+        "For more information, please visit: "
+        "https://docs.open-metadata.org/v1.4.x/deployment/backup-restore-metadata",
+    )
+    log_ansi_encoded_string(
         color=ANSI.GREEN,
         bold=False,
         message="Restoring OpenMetadata backup for "

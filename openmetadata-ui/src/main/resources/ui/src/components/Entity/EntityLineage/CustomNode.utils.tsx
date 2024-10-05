@@ -10,13 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
+import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { Column } from '../../../generated/entity/data/table';
+import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getConstraintIcon } from '../../../utils/TableUtils';
 import { EdgeTypeEnum } from './EntityLineage.interface';
 
 export const getHandleByType = (
@@ -109,5 +114,47 @@ export const getCollapseHandle = (
         onClickHandler();
       }}
     />
+  );
+};
+
+export const getColumnContent = (
+  column: Column,
+  isColumnTraced: boolean,
+  isConnectable: boolean,
+  onColumnClick: (column: string) => void
+) => {
+  const { fullyQualifiedName } = column;
+
+  return (
+    <div
+      className={classNames(
+        'custom-node-column-container',
+        isColumnTraced
+          ? 'custom-node-header-tracing'
+          : 'custom-node-column-lineage-normal bg-white'
+      )}
+      data-testid={`column-${fullyQualifiedName}`}
+      key={fullyQualifiedName}
+      onClick={(e) => {
+        e.stopPropagation();
+        onColumnClick(fullyQualifiedName ?? '');
+      }}>
+      {getColumnHandle(
+        EntityLineageNodeType.DEFAULT,
+        isConnectable,
+        'lineage-column-node-handle',
+        encodeLineageHandles(fullyQualifiedName ?? '')
+      )}
+
+      <Typography.Text
+        className="p-xss p-x-lg"
+        ellipsis={{ tooltip: true }}
+        style={{ maxWidth: NODE_WIDTH }}>
+        {getConstraintIcon({
+          constraint: column.constraint,
+        })}
+        {getEntityName(column)}
+      </Typography.Text>
+    </div>
   );
 };

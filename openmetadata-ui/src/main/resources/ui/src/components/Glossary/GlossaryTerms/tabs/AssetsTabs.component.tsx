@@ -22,7 +22,6 @@ import {
   notification,
   Row,
   Skeleton,
-  Space,
   Tooltip,
   Typography,
 } from 'antd';
@@ -42,23 +41,22 @@ import React, {
 } from 'react';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
+import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import {
   AssetsFilterOptions,
   ASSET_MENU_KEYS,
 } from '../../../../constants/Assets.constants';
-import {
-  DE_ACTIVE_COLOR,
-  ES_UPDATE_DELAY,
-} from '../../../../constants/constants';
+import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { EntityType } from '../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { Aggregations } from '../../../../interface/search.interface';
 import {
@@ -75,7 +73,7 @@ import {
 } from '../../../../rest/glossaryAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
-import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -83,8 +81,7 @@ import {
 import {
   getAggregations,
   getQuickFilterQuery,
-  getSelectedValuesFromQuickFilter,
-} from '../../../../utils/Explore.utils';
+} from '../../../../utils/ExploreUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -128,6 +125,7 @@ const AssetsTabs = forwardRef(
     }: AssetsTabsProps,
     ref
   ) => {
+    const { theme } = useApplicationStore();
     const [itemCount, setItemCount] = useState<Record<EntityType, number>>(
       {} as Record<EntityType, number>
     );
@@ -208,7 +206,7 @@ const AssetsTabs = forwardRef(
           return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
 
         case AssetsOfEntity.TEAM:
-          return `(owner.fullyQualifiedName:"${escapeESReservedCharacters(
+          return `(owners.fullyQualifiedName:"${escapeESReservedCharacters(
             fqn
           )}")`;
 
@@ -288,6 +286,11 @@ const AssetsTabs = forwardRef(
       }
     };
 
+    const onExploreCardDelete = useCallback((source: SourceType) => {
+      setAssetToDelete(source);
+      setShowDeleteModal(true);
+    }, []);
+
     const handleAssetButtonVisibleChange = (newVisible: boolean) =>
       setVisible(newVisible);
 
@@ -300,7 +303,9 @@ const AssetsTabs = forwardRef(
 
           break;
         case AssetsOfEntity.DATA_PRODUCT:
-          data = await getDataProductByName(fqn, { fields: 'domain,assets' });
+          data = await getDataProductByName(fqn, {
+            fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
+          });
 
           break;
         case AssetsOfEntity.GLOSSARY:
@@ -314,30 +319,6 @@ const AssetsTabs = forwardRef(
       setActiveEntity(data);
     }, [type, entityFqn]);
 
-    const tabs = useMemo(() => {
-      return AssetsFilterOptions.map((option) => {
-        return {
-          label: (
-            <div className="d-flex justify-between">
-              <Space align="center" size="small">
-                {option.label}
-              </Space>
-
-              <span>
-                {getCountBadge(
-                  itemCount[option.key],
-                  '',
-                  activeFilter.includes(option.value)
-                )}
-              </span>
-            </div>
-          ),
-          key: option.value,
-          value: option.value,
-        };
-      });
-    }, [activeFilter, itemCount]);
-
     const items: ItemType[] = [
       {
         label: (
@@ -345,7 +326,7 @@ const AssetsTabs = forwardRef(
             description={t('message.delete-asset-from-entity-type', {
               entityType: entityTypeString,
             })}
-            icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
+            icon={DeleteIcon}
             id="delete-button"
             name={t('label.delete')}
           />
@@ -358,11 +339,6 @@ const AssetsTabs = forwardRef(
         },
       },
     ];
-
-    const onExploreCardDelete = useCallback((source: SourceType) => {
-      setAssetToDelete(source);
-      setShowDeleteModal(true);
-    }, []);
 
     const handleCheckboxChange = (
       selected: boolean,
@@ -408,6 +384,69 @@ const AssetsTabs = forwardRef(
       }
     };
 
+    const onAssetRemove = useCallback(
+      async (assetsData: SourceType[]) => {
+        if (!activeEntity) {
+          return;
+        }
+
+        setAssetRemoving(true);
+
+        try {
+          const entities = [...(assetsData?.values() ?? [])].map((item) => {
+            return getEntityReferenceFromEntity(
+              item as EntityDetailUnion,
+              (item as EntityDetailUnion).entityType
+            );
+          });
+
+          switch (type) {
+            case AssetsOfEntity.DATA_PRODUCT:
+              await removeAssetsFromDataProduct(
+                activeEntity.fullyQualifiedName ?? '',
+                entities
+              );
+
+              break;
+
+            case AssetsOfEntity.GLOSSARY:
+              await removeAssetsFromGlossaryTerm(
+                activeEntity as GlossaryTerm,
+                entities
+              );
+
+              break;
+
+            case AssetsOfEntity.DOMAIN:
+              await removeAssetsFromDomain(
+                activeEntity.fullyQualifiedName ?? '',
+                entities
+              );
+
+              break;
+            default:
+              // Handle other entity types here
+              break;
+          }
+
+          await new Promise((resolve) => {
+            setTimeout(() => {
+              resolve('');
+            }, ES_UPDATE_DELAY);
+          });
+        } catch (err) {
+          showErrorToast(err as AxiosError);
+        } finally {
+          setShowDeleteModal(false);
+          onRemoveAsset?.();
+          setAssetRemoving(false);
+          hideNotification();
+          setSelectedItems(new Map()); // Reset selected items
+        }
+      },
+      [type, activeEntity, entityFqn]
+    );
+
     const deleteSelectedItems = useCallback(() => {
       if (selectedItems) {
         onAssetRemove(Array.from(selectedItems.values()));
@@ -437,7 +476,11 @@ const AssetsTabs = forwardRef(
             type={ERROR_PLACEHOLDER_TYPE.FILTER}
           />
         );
-      } else if (noDataPlaceholder || searchValue || !permissions.Create) {
+      } else if (
+        isObject(noDataPlaceholder) ||
+        searchValue ||
+        !permissions.Create
+      ) {
         return (
           <ErrorPlaceHolder>
             {isObject(noDataPlaceholder) && (
@@ -452,10 +495,11 @@ const AssetsTabs = forwardRef(
           <ErrorPlaceHolder
             icon={<AddPlaceHolderIcon className="h-32 w-32" />}
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph style={{ marginBottom: '0' }}>
-              {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                entity: t('label.asset'),
-              })}
+            <Typography.Paragraph>
+              {noDataPlaceholder ??
+                t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                  entity: t('label.asset'),
+                })}
             </Typography.Paragraph>
             <Typography.Paragraph>
               <Transi18next
@@ -464,7 +508,7 @@ const AssetsTabs = forwardRef(
                   <a
                     href={GLOSSARIES_DOCS}
                     rel="noreferrer"
-                    style={{ color: '#1890ff' }}
+                    style={{ color: theme.primaryColor }}
                     target="_blank"
                   />
                 }
@@ -552,13 +596,18 @@ const AssetsTabs = forwardRef(
                       overlayStyle={{ width: '350px' }}
                       placement="bottomRight"
                       trigger={['click']}>
-                      <Button
-                        className={classNames('flex-center px-1.5')}
-                        data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                        title="Manage"
-                        type="text">
-                        <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                      </Button>
+                      <Tooltip
+                        placement="topRight"
+                        title={t('label.manage-entity', {
+                          entity: t('label.asset'),
+                        })}>
+                        <Button
+                          className={classNames('flex-center px-1.5')}
+                          data-testid={`manage-button-${_source.fullyQualifiedName}`}
+                          type="text">
+                          <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                        </Button>
+                      </Tooltip>
                     </Dropdown>
                   ) : null
                 }
@@ -654,7 +703,6 @@ const AssetsTabs = forwardRef(
       openKeys,
       visible,
       currentPage,
-      tabs,
       itemCount,
       onOpenChange,
       handleAssetButtonVisibleChange,
@@ -669,69 +717,6 @@ const AssetsTabs = forwardRef(
         </>
       );
     }, [assetsHeader, assetListing, selectedCard]);
-
-    const onAssetRemove = useCallback(
-      async (assetsData: SourceType[]) => {
-        if (!activeEntity) {
-          return;
-        }
-
-        setAssetRemoving(true);
-
-        try {
-          const entities = [...(assetsData?.values() ?? [])].map((item) => {
-            return getEntityReferenceFromEntity(
-              item as EntityDetailUnion,
-              (item as EntityDetailUnion).entityType
-            );
-          });
-
-          switch (type) {
-            case AssetsOfEntity.DATA_PRODUCT:
-              await removeAssetsFromDataProduct(
-                activeEntity.fullyQualifiedName ?? '',
-                entities
-              );
-
-              break;
-
-            case AssetsOfEntity.GLOSSARY:
-              await removeAssetsFromGlossaryTerm(
-                activeEntity as GlossaryTerm,
-                entities
-              );
-
-              break;
-
-            case AssetsOfEntity.DOMAIN:
-              await removeAssetsFromDomain(
-                activeEntity.fullyQualifiedName ?? '',
-                entities
-              );
-
-              break;
-            default:
-              // Handle other entity types here
-              break;
-          }
-
-          await new Promise((resolve) => {
-            setTimeout(() => {
-              resolve('');
-            }, ES_UPDATE_DELAY);
-          });
-        } catch (err) {
-          showErrorToast(err as AxiosError);
-        } finally {
-          setShowDeleteModal(false);
-          onRemoveAsset?.();
-          setAssetRemoving(false);
-          hideNotification();
-          setSelectedItems(new Map()); // Reset selected items
-        }
-      },
-      [type, activeEntity, entityFqn]
-    );
 
     const clearFilters = useCallback(() => {
       setQuickFilterQuery(undefined);
@@ -759,15 +744,10 @@ const AssetsTabs = forwardRef(
 
     useEffect(() => {
       const dropdownItems = getAssetsPageQuickFilters(type);
-
       setFilters(
         dropdownItems.map((item) => ({
           ...item,
-          value: getSelectedValuesFromQuickFilter(
-            item,
-            dropdownItems,
-            undefined // pass in state variable
-          ),
+          value: [],
         }))
       );
     }, [type]);
@@ -845,9 +825,8 @@ const AssetsTabs = forwardRef(
                     }}
                     trigger={['click']}>
                     <Button
-                      icon={<PlusOutlined />}
-                      size="small"
-                      type="primary"
+                      className="flex-center"
+                      icon={<FilterIcon height={16} />}
                     />
                   </Dropdown>
                   <div className="flex-1">

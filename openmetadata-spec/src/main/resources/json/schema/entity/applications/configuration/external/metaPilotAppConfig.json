@@ -11,34 +11,6 @@
       "type": "string",
       "enum": ["MetaPilot"],
       "default": "MetaPilot"
-    },
-    "serviceDatabases": {
-      "title": "Service Databases",
-      "description": "Choose the service and its databases you want to generate descriptions from.",
-      "type": "object",
-      "properties": {
-        "service": {
-          "title": "Service Name",
-          "placeholder": "Search Service",
-          "description": "Service Name to get descriptions from.",
-          "$ref": "../../../../type/entityReference.json",
-          "format": "autoComplete",
-          "autoCompleteType": "database_service_search_index"
-        },
-        "databases": {
-          "title": "Databases",
-          "description": "List of database names from the Service to get descriptions from.",
-          "type": "array",
-          "items": {
-            "placeholder": "Search Databases",
-            "$ref": "../../../../type/entityReference.json",
-            "format": "autoComplete",
-            "autoCompleteType": "database_search_index"
-          }
-        }
-      },
-      "additionalProperties": false,
-      "required": ["service", "databases"]
     }
   },
   "properties": {
@@ -48,34 +20,42 @@
       "$ref": "#/definitions/metaPilotAppType",
       "default": "MetaPilot"
     },
-    "waiiInstance": {
-      "title": "WAII Instance",
-      "description": "WAII API host URL",
-      "type": "string",
-      "format": "URI",
-      "default": "https://tweakit.waii.ai/api/"
-    },
-    "collateURL": {
-      "title": "Collate URL",
-      "description": "Collate Server public URL. WAII will use this information to interact with the server. E.g., https://sandbox.getcollate.io",
-      "type": "string",
-      "format": "URI"
-    },
-    "token": {
-      "title": "WAII API Token",
-      "description": "WAII API Token",
-      "type": "string",
-      "format": "password"
-    },
-    "serviceDatabases": {
-      "title": "Service Databases",
+    "descriptionDatabases": {
+      "title": "Databases for Automated Description Generation",
       "description": "Services and Databases configured to get the descriptions from.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/serviceDatabases"
+        "placeholder": "Search Databases",
+        "$ref": "../../../../type/entityReference.json",
+        "format": "autoComplete",
+        "autoCompleteType": "database_search_index"
       }
+    },
+    "patchIfEmpty": {
+      "title": "Patch Description If Empty",
+      "description": "Patch the description if it is empty, instead of raising a suggestion",
+      "type": "boolean",
+      "default": false
+    },
+    "copilotDatabases": {
+      "title": "Databases for SQL Copilot",
+      "description": "Services and Databases configured to get enable the SQL Copilot.",
+      "type": "array",
+      "items": {
+        "placeholder": "Search Databases",
+        "$ref": "../../../../type/entityReference.json",
+        "format": "autoComplete",
+        "autoCompleteType": "database_search_index"
+      }
+    },
+    "defaultScope": {
+      "title": "Default Chatbot Database Scope",
+      "description": "Default database scope for the chatbot.",
+      "$ref": "../../../../type/entityReference.json",
+      "format": "autoComplete",
+      "autoCompleteType": "database_search_index",
+      "placeholder": "Search Databases"
     }
   },
-  "additionalProperties": false,
-  "required": ["token"]
+  "additionalProperties": false
 }

@@ -46,3 +46,19 @@ class S3Reader(Reader):
         to traverse any directories.
         """
         raise NotImplementedError("Not implemented")
+
+    def download(
+        self,
+        path: str,
+        local_file_path: str,
+        *,
+        bucket_name: str = None,
+        verbose: bool = True,
+        **__,
+    ):
+        try:
+            self.client.download_file(bucket_name, path, local_file_path)
+        except Exception as err:
+            if verbose:
+                logger.debug(traceback.format_exc())
+            raise ReadException(f"Error downloading file [{path}] from S3: {err}")

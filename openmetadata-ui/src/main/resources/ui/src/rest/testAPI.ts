@@ -14,10 +14,18 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
+import { SORT_ORDER } from '../enums/common.enum';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
-import { TestCase, TestCaseResult } from '../generated/tests/testCase';
+import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import {
+  TableData,
+  TestCase,
+  TestCaseResult,
+  TestCaseStatus,
+} from '../generated/tests/testCase';
+import {
+  DataQualityDimensions,
   EntityType,
   TestDefinition,
   TestPlatform,
@@ -32,17 +40,46 @@ export enum TestSuiteType {
   executable = 'executable',
   logical = 'logical',
 }
+export enum TestCaseType {
+  all = 'all',
+  table = 'table',
+  column = 'column',
+}
 
 export type ListTestSuitePrams = ListParams & {
   testSuiteType?: TestSuiteType;
   includeEmptyTestSuites?: boolean;
+};
+export type ListTestSuitePramsBySearch = ListTestSuitePrams & {
+  q?: string;
+  sortType?: SORT_ORDER;
+  sortNestedMode?: string[];
+  sortNestedPath?: string;
+  sortField?: string;
+  owner?: string;
+  offset?: number;
 };
 
 export type ListTestCaseParams = ListParams & {
   entityLink?: string;
   testSuiteId?: string;
   includeAllTests?: boolean;
-  orderByLastExecutionDate?: boolean;
+  testCaseStatus?: TestCaseStatus;
+  testCaseType?: TestCaseType;
+};
+export type ListTestCaseParamsBySearch = ListTestCaseParams & {
+  q?: string;
+  sortType?: SORT_ORDER;
+  sortField?: string;
+  startTimestamp?: number;
+  endTimestamp?: number;
+  testPlatforms?: TestPlatform[];
+  offset?: number;
+  owner?: string;
+  tags?: string;
+  tier?: string;
+  serviceName?: string;
+  dataQualityDimension?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -59,9 +96,30 @@ export type ListTestCaseResultsParams = Omit<
   endTs?: number;
 };
 
+export type ListTestCaseSearchResultsParams = {
+  q?: string;
+  startTimestamp?: number;
+  endTimestamp?: number;
+  offset?: number;
+  limit?: number;
+  fields?: string[];
+  testCaseStatus?: TestCaseStatus;
+  testCaseFQN?: string;
+  testSuiteId?: string;
+  latest?: boolean;
+  testCaseType: TestCaseType;
+  dataQualityDimension: DataQualityDimensions;
+};
+
 export type AddTestCaseToLogicalTestSuiteType = {
   testCaseIds: string[];
   testSuiteId: string;
+};
+
+export type DataQualityReportParamsType = {
+  q?: string;
+  aggregationQuery: string;
+  index: string;
 };
 
 const testCaseUrl = '/dataQuality/testCases';
@@ -69,9 +127,11 @@ const testSuiteUrl = '/dataQuality/testSuites';
 const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
-export const getListTestCase = async (params?: ListTestCaseParams) => {
+export const getListTestCaseBySearch = async (
+  params?: ListTestCaseParamsBySearch
+) => {
   const response = await APIClient.get<PagingResponse<TestCase[]>>(
-    testCaseUrl,
+    `${testCaseUrl}/search/list`,
     {
       params,
     }
@@ -91,6 +151,33 @@ export const getListTestCaseResults = async (
   }>(url, {
     params,
   });
+
+  return response.data;
+};
+export const getListTestCaseSearchResults = async (
+  params?: ListTestCaseSearchResultsParams
+) => {
+  const url = `${testCaseUrl}/testCaseResults/search/list`;
+  const response = await APIClient.get<{
+    data: TestCaseResult[];
+    paging: Paging;
+  }>(url, {
+    params,
+  });
+
+  return response.data;
+};
+
+export const getTestCaseFailedSampleData = async (id: string) => {
+  const url = `${testCaseUrl}/${id}/failedRowsSample`;
+  const response = await APIClient.get<TableData>(url);
+
+  return response.data;
+};
+
+export const deleteTestCaseFailedSampleData = async (id: string) => {
+  const url = `${testCaseUrl}/${id}/failedRowsSample`;
+  const response = await APIClient.delete(url);
 
   return response.data;
 };
@@ -208,6 +295,19 @@ export const getListTestSuites = async (params?: ListTestSuitePrams) => {
   return response.data;
 };
 
+export const getListTestSuitesBySearch = async (
+  params?: ListTestSuitePramsBySearch
+) => {
+  const response = await APIClient.get<PagingResponse<TestSuite[]>>(
+    `${testSuiteUrl}/search/list`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
 export const createTestSuites = async (data: CreateTestSuite) => {
   const response = await APIClient.post<
     CreateTestSuite,
@@ -252,6 +352,17 @@ export const restoreTestSuite = async (id: string) => {
     RestoreRequestType,
     AxiosResponse<TestSuite>
   >('/dataQuality/testSuites/restore', { id });
+
+  return response.data;
+};
+
+export const getDataQualityReport = async (
+  params: DataQualityReportParamsType
+) => {
+  const response = await APIClient.get<DataQualityReport>(
+    `${testSuiteUrl}/dataQualityReport`,
+    { params }
+  );
 
   return response.data;
 };

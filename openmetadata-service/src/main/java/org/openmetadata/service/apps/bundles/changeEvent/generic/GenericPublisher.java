@@ -13,9 +13,9 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.generic;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GENERIC;
+import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
+import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import java.net.UnknownHostException;
@@ -27,12 +27,14 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -41,16 +43,22 @@ import org.openmetadata.service.util.RestUtil;
 public class GenericPublisher implements Destination<ChangeEvent> {
   private final Client client;
   private final Webhook webhook;
+  private static final String TEST_MESSAGE_JSON =
+      "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.";
 
   @Getter private final SubscriptionDestination subscriptionDestination;
+  private final EventSubscription eventSubscription;
 
-  public GenericPublisher(SubscriptionDestination subscription) {
-    if (subscription.getType() == GENERIC) {
-      this.subscriptionDestination = subscription;
-      this.webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
+  public GenericPublisher(
+      EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
+    if (subscriptionDestination.getType() == WEBHOOK) {
+      this.eventSubscription = eventSubscription;
+      this.subscriptionDestination = subscriptionDestination;
+      this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
 
       // Build Client
-      this.client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
+      this.client =
+          getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
     } else {
       throw new IllegalArgumentException(
           "GenericWebhook Alert Invoked with Illegal Type and Settings.");
@@ -61,45 +69,98 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
-      // Post Message to default
       String json = JsonUtils.pojoToJson(event);
-      if (webhook.getEndpoint() != null) {
-        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
-          postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
-        } else {
-          postWebhookMessage(this, getTarget(), json);
-        }
-      }
+
+      prepareAndSendMessage(json, getTarget());
 
       // Post to Generic Webhook with Actions
+      List<Invocation.Builder> targets =
+          getTargetsForWebhookAlert(
+              webhook, subscriptionDestination.getCategory(), WEBHOOK, client, event);
       String eventJson = JsonUtils.pojoToJson(event);
-      List<Invocation.Builder> targets = getTargetsForWebhook(webhook, GENERIC, client, event);
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, eventJson);
       }
     } catch (Exception ex) {
-      Throwable cause = ex.getCause();
-      String message = "";
-      if (cause != null && cause.getClass() == UnknownHostException.class) {
-        message =
-            String.format(
-                "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
-                subscriptionDestination.getId(), webhook.getEndpoint());
-        LOG.warn(message);
-        setErrorStatus(attemptTime, 400, "UnknownHostException");
-      } else {
-        message =
-            CatalogExceptionMessage.eventPublisherFailedToPublish(GENERIC, event, ex.getMessage());
-        LOG.error(message);
+      handleException(attemptTime, event, ex);
+    }
+  }
+
+  @Override
+  public void sendTestMessage() throws EventPublisherException {
+    long attemptTime = System.currentTimeMillis();
+    try {
+      prepareAndSendMessage(TEST_MESSAGE_JSON, getTarget());
+    } catch (Exception ex) {
+      handleException(attemptTime, ex);
+    }
+  }
+
+  private void prepareAndSendMessage(String json, Invocation.Builder target) {
+    if (!CommonUtil.nullOrEmpty(webhook.getEndpoint())) {
+
+      // Add HMAC signature header if secret key is present
+      if (!CommonUtil.nullOrEmpty(webhook.getSecretKey())) {
+        String hmac =
+            "sha256="
+                + CommonUtil.calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
+        target.header(RestUtil.SIGNATURE_HEADER, hmac);
       }
-      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+
+      // Add custom headers if they exist
+      Map<String, String> headers = webhook.getHeaders();
+      if (!CommonUtil.nullOrEmpty(headers)) {
+        headers.forEach(target::header);
+      }
+
+      Webhook.HttpMethod httpOperation = webhook.getHttpMethod();
+      postWebhookMessage(this, target, json, httpOperation);
+    }
+  }
+
+  private void handleException(long attemptTime, ChangeEvent event, Exception ex)
+      throws EventPublisherException {
+    handleCommonException(attemptTime, ex);
+
+    String message =
+        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
+    LOG.error(message);
+    throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+  }
+
+  private void handleException(long attemptTime, Exception ex) throws EventPublisherException {
+    handleCommonException(attemptTime, ex);
+
+    String message =
+        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
+    LOG.error(message);
+    throw new EventPublisherException(message);
+  }
+
+  private void handleCommonException(long attemptTime, Exception ex)
+      throws EventPublisherException {
+    Throwable cause = ex.getCause();
+
+    if (cause.getClass() == UnknownHostException.class) {
+      String message =
+          String.format(
+              "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
+              subscriptionDestination.getId(), webhook.getEndpoint());
+
+      LOG.warn(message);
+      setErrorStatus(attemptTime, 400, "UnknownHostException");
+      throw new EventPublisherException(message);
     }
   }
 
   private Invocation.Builder getTarget() {
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
     return SecurityUtil.addHeaders(client.target(webhook.getEndpoint()), authHeaders);
+  }
+
+  @Override
+  public EventSubscription getEventSubscriptionForDestination() {
+    return eventSubscription;
   }
 
   @Override
@@ -111,5 +172,12 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     if (null != client) {
       client.close();
     }
+  }
+
+  public static String decryptWebhookSecretKey(String encryptedSecretkey) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      encryptedSecretkey = Fernet.getInstance().decryptIfApplies(encryptedSecretkey);
+    }
+    return encryptedSecretkey;
   }
 }

@@ -14,17 +14,16 @@
 import { AxiosResponse } from 'axios';
 import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { PAGE_SIZE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
+import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
-import {
-  RawSuggestResponse,
-  SearchResponse,
-} from '../interface/search.interface';
+import { SearchResponse } from '../interface/search.interface';
 import { getSearchAPIQueryParams } from '../utils/SearchUtils';
+import { escapeESReservedCharacters } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const searchData = <SI extends SearchIndex>(
@@ -36,7 +35,8 @@ export const searchData = <SI extends SearchIndex>(
   sortOrder: string,
   searchIndex: SI | SI[],
   onlyDeleted = false,
-  trackTotalHits = false
+  trackTotalHits = false,
+  wildcard = true
 ) => {
   const { q, ...params } = getSearchAPIQueryParams(
     queryString,
@@ -47,7 +47,8 @@ export const searchData = <SI extends SearchIndex>(
     sortOrder,
     searchIndex,
     onlyDeleted,
-    trackTotalHits
+    trackTotalHits,
+    wildcard
   );
 
   return APIClient.get<SearchResponse<SI>>(`/search/query?q=${q}`, {
@@ -87,49 +88,14 @@ export const fetchAirflowConfig = async () => {
   return response.data;
 };
 
-export const getSuggestions = <T extends SearchIndex>(
-  queryString: string,
-  searchIndex?: T
-) => {
-  const params = {
-    q: queryString,
-    index: searchIndex ?? [
-      SearchIndex.DASHBOARD,
-      SearchIndex.TABLE,
-      SearchIndex.TOPIC,
-      SearchIndex.PIPELINE,
-      SearchIndex.MLMODEL,
-      SearchIndex.CONTAINER,
-      SearchIndex.STORED_PROCEDURE,
-      SearchIndex.DASHBOARD_DATA_MODEL,
-      SearchIndex.GLOSSARY,
-      SearchIndex.TAG,
-      SearchIndex.SEARCH_INDEX,
-    ],
-  };
-
-  if (searchIndex) {
-    return APIClient.get<RawSuggestResponse<T>>(`/search/suggest`, {
-      params,
-    });
-  }
-
-  return APIClient.get<RawSuggestResponse<ExploreSearchIndex>>(
-    `/search/suggest`,
-    {
-      params,
-    }
-  );
-};
-
 export const getVersion = async () => {
   const response = await APIClient.get<{ version: string }>('/system/version');
 
   return response.data;
 };
 
-export const postSamlLogout = async (data: { token: string }) => {
-  const response = await APIClient.post(`/users/logout`, { ...data });
+export const postSamlLogout = async () => {
+  const response = await APIClient.get(`/saml/logout`);
 
   return response.data;
 };
@@ -149,32 +115,6 @@ export const deleteLineageEdge = (
   );
 };
 
-export const getSuggestedUsers = (term: string) => {
-  return APIClient.get<RawSuggestResponse<SearchIndex.USER>>(
-    `/search/suggest?q=${term}&index=${SearchIndex.USER}`
-  );
-};
-
-export const getSuggestedTeams = (term: string) => {
-  return APIClient.get<RawSuggestResponse<SearchIndex.TEAM>>(
-    `/search/suggest?q=${term}&index=${SearchIndex.TEAM}`
-  );
-};
-
-export const getUserSuggestions = (term: string, userOnly = false) => {
-  const params = {
-    q: term || WILD_CARD_CHAR,
-    index: userOnly
-      ? SearchIndex.USER
-      : `${SearchIndex.USER},${SearchIndex.TEAM}`,
-  };
-
-  return APIClient.get<RawSuggestResponse<SearchIndex.USER>>(
-    `/search/suggest`,
-    { params }
-  );
-};
-
 export const getTeamsByQuery = async (params: {
   q: string;
   from?: number;
@@ -190,17 +130,6 @@ export const getTeamsByQuery = async (params: {
   });
 
   return response.data;
-};
-
-export const getTagSuggestions = (term: string) => {
-  const params = {
-    q: term,
-    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
-  };
-
-  return APIClient.get<RawSuggestResponse<SearchIndex.TAG>>(`/search/suggest`, {
-    params,
-  });
 };
 
 export const getSearchedUsers = (
@@ -228,17 +157,20 @@ export const getSearchedTeams = (
   );
 };
 
-export const getSearchedUsersAndTeams = async (
-  queryString: string,
-  from: number,
-  size = 10
+export const getUserAndTeamSearch = (
+  term: string,
+  userOnly = false,
+  size = PAGE_SIZE
 ) => {
-  const response = await searchData(queryString, from, size, '', '', '', [
-    SearchIndex.USER,
-    SearchIndex.TEAM,
-  ]);
-
-  return response.data;
+  return searchData(
+    term ?? '',
+    1,
+    size,
+    '',
+    '',
+    '',
+    userOnly ? SearchIndex.USER : [SearchIndex.USER, SearchIndex.TEAM]
+  );
 };
 
 export const deleteEntity = async (
@@ -253,18 +185,6 @@ export const deleteEntity = async (
   };
 
   return APIClient.delete<{ version?: number }>(`/${entityType}/${entityId}`, {
-    params,
-  });
-};
-
-export const getAdvancedFieldOptions = (
-  q: string,
-  index: SearchIndex,
-  field: string | undefined
-) => {
-  const params = { index, field, q };
-
-  return APIClient.get<RawSuggestResponse<typeof index>>(`/search/suggest`, {
     params,
   });
 };
@@ -285,8 +205,15 @@ export const getAggregateFieldOptions = (
   value: string,
   q: string
 ) => {
-  const withWildCardValue = value ? `.*${value}.*` : '.*';
-  const params = { index, field, value: withWildCardValue, q };
+  const withWildCardValue = value
+    ? `.*${escapeESReservedCharacters(value)}.*`
+    : '.*';
+  const params = {
+    index,
+    field,
+    value: withWildCardValue,
+    q,
+  };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,
@@ -324,6 +251,12 @@ export const fetchMarkdownFile = async (filePath: string) => {
       Accept: 'text/markdown',
     },
   });
+
+  return response.data;
+};
+
+export const fetchOMStatus = async () => {
+  const response = await APIClient.get<ValidationResponse>('/system/status');
 
   return response.data;
 };

@@ -24,6 +24,6 @@ export enum UpdateState {
   INITIAL,
   VALIDATING,
   FAILED,
-  UPDATATING,
-  SUCESS,
+  UPDATING,
+  SUCCESS,
 }

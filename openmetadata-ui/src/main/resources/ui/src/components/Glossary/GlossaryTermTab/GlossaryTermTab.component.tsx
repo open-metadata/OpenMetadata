@@ -11,27 +11,23 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Col,
-  Modal,
-  Row,
-  Space,
-  Table,
-  TableProps,
-  Tooltip,
-} from 'antd';
+import { FilterOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Button, Col, Modal, Row, Space, TableProps, Tooltip } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import React, { useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
+import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
@@ -39,32 +35,43 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
-import Loader from '../../../components/Loader/Loader';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  API_RES_MAX_SIZE,
+  DE_ACTIVE_COLOR,
+  TEXT_BODY_COLOR,
+} from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import {
   EntityReference,
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
-import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  getFirstLevelGlossaryTerms,
+  getGlossaryTerms,
+  GlossaryTermWithChildren,
+  patchGlossaryTerm,
+} from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
+  findExpandableKeysForArray,
+  findGlossaryTermByFqn,
   StatusClass,
   StatusFilters,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
-import {
-  FilterIcon,
-  getTableExpandableConfig,
-} from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { DraggableBodyRowProps } from '../../Draggable/DraggableBodyRowProps.interface';
+import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
+import Loader from '../../common/Loader/Loader';
+import Table from '../../common/Table/Table';
+import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
@@ -72,36 +79,39 @@ import {
 } from './GlossaryTermTab.interface';
 
 const GlossaryTermTab = ({
-  childGlossaryTerms = [],
   refreshGlossaryTerms,
   permissions,
   isGlossary,
-  selectedData,
   termsLoading,
   onAddGlossaryTerm,
   onEditGlossaryTerm,
   className,
 }: GlossaryTermTabProps) => {
+  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
+    useGlossaryStore();
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState(true);
-  const [glossaryTerms, setGlossaryTerms] = useState<ModifiedGlossaryTerm[]>(
-    []
-  );
 
-  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const glossaryTerms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
+
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isTableHovered, setIsTableHovered] = useState(false);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const glossaryTermStatus: Status | null = useMemo(() => {
     if (!isGlossary) {
-      return (selectedData as GlossaryTerm).status ?? Status.Approved;
+      return (activeGlossary as GlossaryTerm).status ?? Status.Approved;
     }
 
     return null;
-  }, [isGlossary, selectedData]);
+  }, [isGlossary, activeGlossary]);
+
+  const expandableKeys = useMemo(() => {
+    return findExpandableKeysForArray(glossaryTerms);
+  }, [glossaryTerms]);
 
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
@@ -154,17 +164,23 @@ const GlossaryTermTab = ({
       },
       {
         title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
-        width: '15%',
-        render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+        dataIndex: 'owners',
+        key: 'owners',
+        width: '17%',
+        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
       {
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
         width: '12%',
-        filterIcon: FilterIcon,
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
+          />
+        ),
         filters: StatusFilters,
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
@@ -184,7 +200,7 @@ const GlossaryTermTab = ({
       data.push({
         title: t('label.action-plural'),
         key: 'new-term',
-        width: '12%',
+        width: '10%',
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
           const allowAddTerm = status === Status.Approved;
@@ -234,28 +250,77 @@ const GlossaryTermTab = ({
   }, [glossaryTerms, permissions]);
 
   const handleAddGlossaryTermClick = () => {
-    onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
+    onAddGlossaryTerm(
+      !isGlossary ? (activeGlossary as GlossaryTerm) : undefined
+    );
   };
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
-      ...getTableExpandableConfig<ModifiedGlossaryTerm>(true),
-      expandedRowKeys,
-      onExpand: (expanded, record) => {
-        setExpandedRowKeys(
-          expanded
-            ? [...expandedRowKeys, record.fullyQualifiedName || '']
-            : expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
+      expandIcon: ({ expanded, onExpand, record }) => {
+        const { children, childrenCount } = record;
+
+        return childrenCount ?? children?.length ?? 0 > 0 ? (
+          <>
+            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            <Icon
+              className="m-r-xs vertical-baseline"
+              component={expanded ? IconDown : IconRight}
+              data-testid="expand-icon"
+              style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
+              onClick={(e) => onExpand(record, e)}
+            />
+          </>
+        ) : (
+          <>
+            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            <span className="expand-cell-empty-icon-container" />
+          </>
         );
       },
+      expandedRowKeys: expandedRowKeys,
+      onExpand: async (expanded, record) => {
+        if (expanded) {
+          let children = record.children as GlossaryTermWithChildren[];
+          if (!children?.length) {
+            const { data } = await getFirstLevelGlossaryTerms(
+              record.fullyQualifiedName || ''
+            );
+            const terms = cloneDeep(glossaryTerms) ?? [];
+
+            const item = findGlossaryTermByFqn(
+              terms,
+              record.fullyQualifiedName ?? ''
+            );
+
+            (item as ModifiedGlossary).children = data;
+
+            setGlossaryChildTerms(terms as ModifiedGlossary[]);
+
+            children = data;
+          }
+          setExpandedRowKeys([
+            ...expandedRowKeys,
+            record.fullyQualifiedName || '',
+          ]);
+
+          return children;
+        } else {
+          setExpandedRowKeys(
+            expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
+          );
+        }
+
+        return <Loader />;
+      },
     }),
-    [expandedRowKeys]
+    [glossaryTerms, setGlossaryChildTerms, expandedRowKeys]
   );
 
   const handleMoveRow = useCallback(
     async (dragRecord: GlossaryTerm, dropRecord?: GlossaryTerm) => {
       const dropRecordFqnPart =
-        Fqn.split(dragRecord.fullyQualifiedName).length === 2;
+        Fqn.split(dragRecord.fullyQualifiedName ?? '').length === 2;
 
       if (isUndefined(dropRecord) && dropRecordFqnPart) {
         return;
@@ -318,33 +383,50 @@ const GlossaryTermTab = ({
       handleTableHover,
     } as DraggableBodyRowProps<GlossaryTerm>);
 
-  const toggleExpandAll = () => {
-    if (expandedRowKeys.length === childGlossaryTerms.length) {
-      setExpandedRowKeys([]);
-    } else {
-      setExpandedRowKeys(
-        childGlossaryTerms.map((item) => item.fullyQualifiedName || '')
-      );
-    }
-  };
-
   const onDragConfirmationModalClose = useCallback(() => {
     setIsModalOpen(false);
     setIsTableHovered(false);
   }, []);
 
-  useEffect(() => {
-    if (childGlossaryTerms) {
-      const data = buildTree(childGlossaryTerms);
-      setGlossaryTerms(data as ModifiedGlossaryTerm[]);
-      setExpandedRowKeys(
-        childGlossaryTerms.map((item) => item.fullyQualifiedName || '')
-      );
-    }
-    setIsLoading(false);
-  }, [childGlossaryTerms]);
+  const fetchAllTerms = async () => {
+    setIsTableLoading(true);
+    const key = isGlossary ? 'glossary' : 'parent';
+    const { data } = await getGlossaryTerms({
+      [key]: activeGlossary?.id || '',
+      limit: API_RES_MAX_SIZE,
+      fields: [
+        TabSpecificField.OWNERS,
+        TabSpecificField.PARENT,
+        TabSpecificField.CHILDREN,
+      ],
+    });
+    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
+    const keys = data.reduce((prev, curr) => {
+      if (curr.children?.length) {
+        prev.push(curr.fullyQualifiedName ?? '');
+      }
 
-  if (termsLoading || isLoading) {
+      return prev;
+    }, [] as string[]);
+
+    setExpandedRowKeys(keys);
+
+    setIsTableLoading(false);
+  };
+
+  const toggleExpandAll = () => {
+    if (expandedRowKeys.length === expandableKeys.length) {
+      setExpandedRowKeys([]);
+    } else {
+      fetchAllTerms();
+    }
+  };
+
+  const isAllExpanded = useMemo(() => {
+    return expandedRowKeys.length === expandableKeys.length;
+  }, [expandedRowKeys, expandableKeys]);
+
+  if (termsLoading) {
     return <Loader />;
   }
 
@@ -372,19 +454,18 @@ const GlossaryTermTab = ({
         <div className="d-flex justify-end">
           <Button
             className="text-primary m-b-sm"
+            data-testid="expand-collapse-all-button"
             size="small"
             type="text"
             onClick={toggleExpandAll}>
             <Space align="center" size={4}>
-              {expandedRowKeys.length === childGlossaryTerms.length ? (
+              {isAllExpanded ? (
                 <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
               ) : (
                 <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
               )}
 
-              {expandedRowKeys.length === childGlossaryTerms.length
-                ? t('label.collapse-all')
-                : t('label.expand-all')}
+              {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
             </Space>
           </Button>
         </div>
@@ -431,7 +512,9 @@ const GlossaryTermTab = ({
             renderElement={<strong />}
             values={{
               from: movedGlossaryTerm?.from.name,
-              to: movedGlossaryTerm?.to?.name ?? getEntityName(selectedData),
+              to:
+                movedGlossaryTerm?.to?.name ??
+                (activeGlossary && getEntityName(activeGlossary)),
               entity: isUndefined(movedGlossaryTerm?.to)
                 ? ''
                 : t('label.term-lowercase'),

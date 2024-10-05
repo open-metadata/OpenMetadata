@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     PipelineType,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.metadataIngestion.apiServiceMetadataPipeline import (
+    ApiServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
 )
@@ -65,6 +68,7 @@ from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 
 SERVICE_TYPE_REF = {
+    ServiceType.API.value: "apiService",
     ServiceType.Database.value: "databaseService",
     ServiceType.Dashboard.value: "dashboardService",
     ServiceType.Pipeline.value: "pipelineService",
@@ -76,6 +80,7 @@ SERVICE_TYPE_REF = {
 }
 
 SOURCE_CONFIG_TYPE_INGESTION = {
+    ApiServiceMetadataPipeline.__name__: PipelineType.metadata,
     DatabaseServiceMetadataPipeline.__name__: PipelineType.metadata,
     DatabaseServiceQueryUsagePipeline.__name__: PipelineType.usage,
     DatabaseServiceQueryLineagePipeline.__name__: PipelineType.lineage,
@@ -103,16 +108,14 @@ def _clean(source_type: str):
     return source_type
 
 
-def get_pipeline_type_from_source_config(
-    source_config_type: SourceConfig.__fields__["config"].type_,
-) -> PipelineType:
+def get_pipeline_type_from_source_config(source_config: SourceConfig) -> PipelineType:
     """From the YAML serviceType, get the Ingestion Pipeline Type"""
     pipeline_type = SOURCE_CONFIG_TYPE_INGESTION.get(
-        source_config_type.__class__.__name__
+        source_config.config.__class__.__name__
     )
     if not pipeline_type:
         raise ValueError(
-            f"Cannot find Pipeline Type for SourceConfig {source_config_type}"
+            f"Cannot find Pipeline Type for SourceConfig {source_config.config}"
         )
     return pipeline_type
 

@@ -16,9 +16,7 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import BulkSink, Processor, Source, Stage
 from metadata.utils.importer import (
     import_bulk_sink_type,
-    import_from_module,
     import_processor_class,
-    import_source_class,
     import_stage_class,
 )
 from metadata.utils.logger import ingestion_logger
@@ -33,7 +31,6 @@ class UsageWorkflow(IngestionWorkflow):
     """
 
     def set_steps(self):
-
         # We keep the source registered in the workflow
         self.source = self._get_source()
         processor = self._get_processor()
@@ -52,17 +49,10 @@ class UsageWorkflow(IngestionWorkflow):
                 "configuration here: https://docs.open-metadata.org/connectors"
             )
 
-        source_class = (
-            import_from_module(
-                self.config.source.serviceConnection.__root__.config.sourcePythonClass
-            )
-            if source_type.startswith("custom")
-            else import_source_class(
-                service_type=self.service_type, source_type=source_type
-            )
+        source_class = self.import_source_class()
+        source: Source = source_class.create(
+            self.config.source.model_dump(), self.metadata
         )
-
-        source: Source = source_class.create(self.config.source.dict(), self.metadata)
         logger.debug(f"Source type:{source_type},{source_class} configured")
         source.prepare()
         logger.debug(f"Source type:{source_type},{source_class}  prepared")
@@ -73,12 +63,12 @@ class UsageWorkflow(IngestionWorkflow):
         """Load the processor class"""
         processor_type = self.config.processor.type
         processor_class = import_processor_class(processor_type=processor_type)
-        processor_config = self.config.processor.dict().get("config", {})
+        processor_config = self.config.processor.model_dump().get("config", {})
         processor: Processor = processor_class.create(
             processor_config,
             self.metadata,
             connection_type=str(
-                self.config.source.serviceConnection.__root__.config.type.value
+                self.config.source.serviceConnection.root.config.type.value
             ),
         )
         logger.debug(f"Processor Type: {processor_type}, {processor_class} configured")
@@ -89,7 +79,7 @@ class UsageWorkflow(IngestionWorkflow):
         """Load the Stage class"""
         stage_type = self.config.stage.type
         stage_class = import_stage_class(stage_type=stage_type)
-        stage_config = self.config.stage.dict().get("config", {})
+        stage_config = self.config.stage.model_dump().get("config", {})
         stage: Stage = stage_class.create(stage_config, self.metadata)
         logger.debug(f"Stage Type: {stage_type}, {stage_class} configured")
 
@@ -99,7 +89,7 @@ class UsageWorkflow(IngestionWorkflow):
         """Load the BulkSink class"""
         bulk_sink_type = self.config.bulkSink.type
         bulk_sink_class = import_bulk_sink_type(bulk_sink_type=bulk_sink_type)
-        bulk_sink_config = self.config.bulkSink.dict().get("config", {})
+        bulk_sink_config = self.config.bulkSink.model_dump().get("config", {})
         bulk_sink: BulkSink = bulk_sink_class.create(bulk_sink_config, self.metadata)
         logger.info(
             f"BulkSink type:{self.config.bulkSink.type},{bulk_sink_class} configured"

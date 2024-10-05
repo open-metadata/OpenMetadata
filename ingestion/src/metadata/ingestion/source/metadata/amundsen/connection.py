@@ -40,7 +40,7 @@ def get_connection(connection: AmundsenConnection) -> Neo4jHelper:
         neo4j_config = Neo4JConfig(
             username=connection.username,
             password=connection.password.get_secret_value(),
-            neo4j_url=connection.hostPort,
+            neo4j_url=str(connection.hostPort),
             max_connection_life_time=connection.maxConnectionLifeTime,
             neo4j_encrypted=connection.encrypted,
             neo4j_validate_ssl=connection.validateSSL,

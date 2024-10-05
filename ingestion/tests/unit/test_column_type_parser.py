@@ -18,7 +18,7 @@ from unittest import TestCase
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils.datalake.datalake_utils import fetch_col_types
+from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 
 COLUMN_TYPE_PARSE = [
     "array<string>",
@@ -119,14 +119,16 @@ def test_check_datalake_type():
         "column2": DataType.STRING,
         "column3": DataType.BOOLEAN,
         "column4": DataType.FLOAT,
-        "column5": DataType.STRING,
-        "column6": DataType.STRING,
+        "column5": DataType.DATETIME,
+        "column6": DataType.DATETIME,
         "column7": DataType.INT,
         "column8": DataType.STRING,
         "column9": DataType.STRING,
         "column10": DataType.JSON,
         "column11": DataType.ARRAY,
     }
-    df = pd.read_csv("ingestion/tests/unit/test_column_type_parser.csv")
+    df = pd.read_csv(root + "/test_column_type_parser.csv")
     for column_name in df.columns.values.tolist():
-        assert assert_col_type_dict.get(column_name) == fetch_col_types(df, column_name)
+        assert assert_col_type_dict.get(
+            column_name
+        ) == GenericDataFrameColumnParser.fetch_col_types(df, column_name)

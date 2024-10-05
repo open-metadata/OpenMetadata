@@ -25,24 +25,24 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomPropertyTable';
+import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import SchemaEditor from '../../components/SchemaEditor/SchemaEditor';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
 import {
   ENTITY_PATH,
   getAddCustomPropertyPath,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
 import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
@@ -154,6 +154,15 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.dashboards:
         return PAGE_HEADERS.DASHBOARD_CUSTOM_ATTRIBUTES;
 
+      case ENTITY_PATH.dashboardDataModels:
+        return PAGE_HEADERS.DASHBOARD_DATA_MODEL_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.dataProducts:
+        return PAGE_HEADERS.DATA_PRODUCT_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.metrics:
+        return PAGE_HEADERS.METRIC_CUSTOM_ATTRIBUTES;
+
       case ENTITY_PATH.pipelines:
         return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
 
@@ -177,6 +186,12 @@ const CustomEntityDetailV1 = () => {
 
       case ENTITY_PATH.databaseSchemas:
         return PAGE_HEADERS.DATABASE_SCHEMA_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.apiEndpoints:
+        return PAGE_HEADERS.API_ENDPOINT_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.apiCollections:
+        return PAGE_HEADERS.API_COLLECTION_CUSTOM_ATTRIBUTES;
 
       default:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
@@ -269,9 +284,9 @@ const CustomEntityDetailV1 = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.custom-property')}>
       <Row
-        className="m-y-xs page-container"
+        className="page-container"
         data-testid="custom-entity-container"
-        gutter={[16, 16]}>
+        gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

@@ -13,6 +13,7 @@
 
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
+import process from 'process';
 import {
   getServiceDetailsPath,
   IN_PAGE_SEARCH_ROUTES,
@@ -121,7 +122,7 @@ export const getEditIngestionPath = (
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFQN))
-    .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN)
+    .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, getEncodedFqn(ingestionFQN))
     .replace(PLACEHOLDER_ROUTE_INGESTION_TYPE, ingestionType);
 
   return path;
@@ -139,19 +140,6 @@ export const getDomainPath = (fqn?: string) => {
 
 export const getDomainDetailsPath = (fqn: string, tab?: string) => {
   let path = tab ? ROUTES.DOMAIN_DETAILS_WITH_TAB : ROUTES.DOMAIN_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
-};
-
-export const getDataProductsDetailsPath = (fqn: string, tab?: string) => {
-  let path = tab
-    ? ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB
-    : ROUTES.DATA_PRODUCT_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   if (tab) {
@@ -336,7 +324,8 @@ export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
 
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
-    .replace(PLACEHOLDER_RULE_NAME, ruleName);
+    // rule name is same as entity fqn so we need to encode it to pass it as a param
+    .replace(PLACEHOLDER_RULE_NAME, getEncodedFqn(ruleName));
 
   return path;
 };
@@ -485,18 +474,6 @@ export const getAddQueryPath = (entityFqn: string) => {
   return path;
 };
 
-export const getDataProductVersionsPath = (
-  dataProductFqn: string,
-  version: string
-) => {
-  let path = ROUTES.DATA_PRODUCT_VERSION;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(dataProductFqn))
-    .replace(PLACEHOLDER_ROUTE_VERSION, version);
-
-  return path;
-};
-
 export const getDomainVersionsPath = (domainFqn: string, version: string) => {
   let path = ROUTES.DOMAIN_VERSION;
   path = path
@@ -534,14 +511,6 @@ export const getGlossaryTermsVersionsPath = (
   return path;
 };
 
-export const getTestCaseDetailsPath = (testCaseFqn: string) => {
-  let path = ROUTES.TEST_CASE_DETAILS;
-
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(testCaseFqn));
-
-  return path;
-};
-
 export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
   let path = tab ? ROUTES.DATA_QUALITY_WITH_TAB : ROUTES.DATA_QUALITY;
 
@@ -575,32 +544,6 @@ export const getServiceVersionPath = (
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFqn))
-    .replace(PLACEHOLDER_ROUTE_VERSION, version);
-
-  return path;
-};
-
-export const getDatabaseVersionPath = (
-  databaseFqn: string,
-  version: string
-) => {
-  let path = ROUTES.DATABASE_VERSION;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(databaseFqn))
-    .replace(PLACEHOLDER_ROUTE_VERSION, version);
-
-  return path;
-};
-
-export const getDatabaseSchemaVersionPath = (
-  schemaFqn: string,
-  version: string
-) => {
-  let path = ROUTES.SCHEMA_VERSION;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(schemaFqn))
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
@@ -666,4 +609,8 @@ export const getNotificationAlertDetailsPath = (fqn: string) => {
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
+};
+
+export const getPathNameFromWindowLocation = () => {
+  return window.location.pathname.replace(process.env.APP_SUB_PATH ?? '', '');
 };

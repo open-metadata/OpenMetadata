@@ -21,12 +21,19 @@ import React, {
   useRef,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
-import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
+import { useHistory } from 'react-router-dom';
+import ReactFlow, {
+  Background,
+  Controls,
+  Panel,
+  ReactFlowProvider,
+} from 'reactflow';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
+import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
   customEdges,
   dragHandle,
@@ -37,10 +44,10 @@ import {
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
 import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
+import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
-import { useLineageProvider } from '../LineageProvider/LineageProvider';
-import Loader from '../Loader/Loader';
+import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { LineageProps } from './Lineage.interface';
 
 const Lineage = ({
@@ -52,7 +59,8 @@ const Lineage = ({
   const { t } = useTranslation();
   const history = useHistory();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const location = useLocation();
+
+  const location = useCustomLocation();
   const {
     nodes,
     edges,
@@ -118,7 +126,7 @@ const Lineage = ({
   // considerably. So added an init state for showing loader.
   return (
     <Card
-      className="lineage-card card-body-full w-auto border-none"
+      className="lineage-card card-body-full w-auto border-none card-padding-0"
       data-testid="lineage-details">
       {isFullScreen && (
         <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
@@ -146,8 +154,12 @@ const Lineage = ({
               onlyRenderVisibleElements
               className="custom-react-flow"
               data-testid="react-flow-component"
+              deleteKeyCode={null}
               edgeTypes={customEdges}
               edges={edges}
+              fitViewOptions={{
+                padding: 48,
+              }}
               maxZoom={MAX_ZOOM_VALUE}
               minZoom={MIN_ZOOM_VALUE}
               nodeTypes={nodeTypes}
@@ -184,6 +196,9 @@ const Lineage = ({
               onPaneClick={onPaneClick}>
               <Background gap={12} size={1} />
               <Controls position="bottom-right" showInteractive={false} />
+              <Panel position="bottom-left">
+                <LineageLayers />
+              </Panel>
             </ReactFlow>
           </ReactFlowProvider>
         ) : (

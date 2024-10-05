@@ -7,11 +7,16 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 
 @Slf4j
+@SuppressWarnings("unused")
 public class NoOpTestApplication extends AbstractNativeApplication {
 
+  public NoOpTestApplication(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+    super(collectionDAO, searchRepository);
+  }
+
   @Override
-  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
-    super.init(app, dao, searchRepository);
+  public void init(App app) {
+    super.init(app);
     LOG.info("NoOpTestApplication is initialized");
   }
 }

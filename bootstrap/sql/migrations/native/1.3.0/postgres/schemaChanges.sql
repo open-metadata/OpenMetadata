@@ -18,9 +18,9 @@ CREATE TABLE test_case_resolution_status_time_series (
   entityFQNHash varchar(768) COLLATE "C" DEFAULT NULL,
   CONSTRAINT test_case_resolution_status_unique_constraint UNIQUE (id, timestamp, entityFQNHash)
 );
-create index test_case_resolution_status_time_series_id on test_case_resolution_status_time_series (id);
-create index test_case_resolution_status_time_series_status_type on test_case_resolution_status_time_series  (testCaseResolutionStatusType);
-create index test_case_resolution_status_time_series_id_status_type  on test_case_resolution_status_time_series  (id, testCaseResolutionStatusType);
+CREATE INDEX IF NOT EXISTS test_case_resolution_status_time_series_id on test_case_resolution_status_time_series (id);
+CREATE INDEX IF NOT EXISTS test_case_resolution_status_time_series_status_type on test_case_resolution_status_time_series  (testCaseResolutionStatusType);
+CREATE INDEX IF NOT EXISTS test_case_resolution_status_time_series_id_status_type  on test_case_resolution_status_time_series  (id, testCaseResolutionStatusType);
 
 -- DataInsightsApplication should not allow configuration
 UPDATE apps_marketplace
@@ -180,3 +180,18 @@ where serviceType = 'Mssql';
 DELETE FROM event_subscription_entity;
 DELETE FROM change_event_consumers;
 DELETE FROM consumers_dlq;
+
+CREATE TABLE IF NOT EXISTS suggestions (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL,
+    entityLink VARCHAR(256) GENERATED ALWAYS AS (json ->> 'entityLink') STORED NOT NULL,
+    suggestionType VARCHAR(36) GENERATED ALWAYS AS (json ->> 'type') STORED NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    status VARCHAR(256) GENERATED ALWAYS AS (json ->> 'status') STORED NOT NULL,
+    PRIMARY KEY (id)
+);
+
+UPDATE ingestion_pipeline_entity SET json = JSONB_SET(json::jsonb, '{provider}', '"user"', true)
+WHERE json->>'name' = 'OpenMetadata_dataInsight';

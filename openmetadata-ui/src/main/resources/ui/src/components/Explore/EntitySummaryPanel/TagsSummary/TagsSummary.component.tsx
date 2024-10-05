@@ -16,9 +16,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
+import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TableDataCardV2 from '../../../common/TableDataCardV2/TableDataCardV2';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
-import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { EntityUnion } from '../../ExplorePage.interface';
 import { TagsSummaryProps } from './TagsSummary.interface';
 
@@ -34,7 +34,7 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
         SearchIndex.TOPIC,
         SearchIndex.DASHBOARD,
         SearchIndex.CONTAINER,
-        SearchIndex.GLOSSARY,
+        SearchIndex.GLOSSARY_TERM,
         SearchIndex.MLMODEL,
         SearchIndex.PIPELINE,
         SearchIndex.STORED_PROCEDURE,

@@ -15,9 +15,9 @@ import {
   customFormatDateTime,
   formatDate,
   formatDateTime,
-  formatDateTimeFromSeconds,
   formatDateTimeLong,
   formatTimeDurationFromSeconds,
+  isValidDateFormat,
 } from './DateTimeUtils';
 
 const systemLocale = Settings.defaultLocale;
@@ -46,10 +46,6 @@ describe('DateTimeUtils tests', () => {
     expect(formatDate(0)).toBe(`Jan 1, 1970`);
   });
 
-  it(`formatDateTimeFromSeconds should formate date and time both`, () => {
-    expect(formatDateTimeFromSeconds(0)).toBe(`Jan 1, 1970, 12:00 AM`);
-  });
-
   it(`formatDateShort should formate date and time both`, () => {
     expect(formatDateTimeLong(0)).toBe(`Thu 1th January, 1970, 12:00 AM`);
   });
@@ -60,5 +56,25 @@ describe('DateTimeUtils tests', () => {
 
   it(`customFormatDateTime should formate date and time both`, () => {
     expect(customFormatDateTime(0, 'yyyy/MM/dd')).toBe(`1970/01/01`);
+  });
+});
+
+describe('Date and DateTime Format Validation', () => {
+  it('isValidDateFormat should validate date format correctly', () => {
+    expect(isValidDateFormat('yyyy-MM-dd')).toBe(true);
+    expect(isValidDateFormat('dd-MM-yyyy')).toBe(true);
+    expect(isValidDateFormat('MM/dd/yyyy')).toBe(true);
+    expect(isValidDateFormat('dd/MM/yyyy')).toBe(true);
+    expect(isValidDateFormat('yyyy/MM/dd')).toBe(true);
+    expect(isValidDateFormat('invalid-format')).toBe(false);
+  });
+
+  it('isValidDateFormat should validate dateTime format correctly', () => {
+    expect(isValidDateFormat('yyyy-MM-dd HH:mm:ss')).toBe(true);
+    expect(isValidDateFormat('dd-MM-yyyy HH:mm:ss')).toBe(true);
+    expect(isValidDateFormat('MM/dd/yyyy HH:mm:ss')).toBe(true);
+    expect(isValidDateFormat('dd/MM/yyyy HH:mm:ss')).toBe(true);
+    expect(isValidDateFormat('yyyy/MM/dd HH:mm:ss')).toBe(true);
+    expect(isValidDateFormat('invalid-format')).toBe(false);
   });
 });

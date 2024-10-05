@@ -46,6 +46,9 @@
         },
         {
           "$ref": "./common/jwtAuth.json"
+        },
+        {
+          "$ref": "./common/azureConfig.json"
         }
       ]
     },
@@ -71,6 +74,11 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "verify": {
+      "title": "Verify",
+      "description": "Verify ( Connection Argument for SSL ) to connect to Trino.",
+      "type": "string"
     },
     "connectionOptions": {
       "title": "Connection Options",

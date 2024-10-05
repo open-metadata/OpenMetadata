@@ -1,7 +1,10 @@
 package org.openmetadata.service.resources.domains;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -13,10 +16,12 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -26,7 +31,10 @@ import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.domains.DomainResource.DomainList;
 import org.openmetadata.service.util.JsonUtils;
@@ -105,12 +113,40 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Create a domain with owner data consumer
     CreateDomain create =
-        createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+        createRequest(getEntityName(test)).withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     Domain d = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of domain can create subdomain under it
     create = createRequest("subdomain").withParent(d.getFullyQualifiedName());
     createEntity(create, authHeaders(DATA_CONSUMER.getName()));
+  }
+
+  @Test
+  void testValidateDomain() {
+    UUID rdnUUID = UUID.randomUUID();
+    EntityReference entityReference = new EntityReference().withId(rdnUUID);
+    TableRepository entityRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+
+    assertThatThrownBy(() -> entityRepository.validateDomain(entityReference))
+        .isInstanceOf(EntityNotFoundException.class)
+        .hasMessage(String.format("domain instance for %s not found", rdnUUID));
+  }
+
+  @Test
+  void patchWrongExperts(TestInfo test) throws IOException {
+    Domain entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
+
+    // Add random domain reference
+    EntityReference expertReference =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER);
+    String originalJson = JsonUtils.pojoToJson(entity);
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    entity.setExperts(List.of(expertReference));
+
+    assertResponse(
+        () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
+        NOT_FOUND,
+        String.format("user instance for %s not found", expertReference.getId()));
   }
 
   @Override
@@ -151,9 +187,9 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     assertListNull(
         getDomain.getParent(),
         getDomain.getChildren(),
-        getDomain.getOwner(),
+        getDomain.getOwners(),
         getDomain.getExperts());
-    String fields = "children,owner,parent,experts";
+    String fields = "children,owners,parent,experts";
     getDomain =
         byName
             ? getEntityByName(getDomain.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

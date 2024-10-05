@@ -13,17 +13,21 @@
 import { Col, Popover, Row, Space, Tag, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   NO_DATA_PLACEHOLDER,
   USER_DATA_SIZE,
 } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { ChipProps } from './Chip.interface';
+import './chip.less';
 
 const Chip = ({
   data,
   icon,
+  entityType,
   noDataPlaceholder,
   showNoDataPlaceholder = true,
 }: ChipProps) => {
@@ -35,14 +39,19 @@ const Chip = ({
   );
 
   const getChipElement = (item: EntityReference) => (
-    <Col
-      className="d-flex gap-1 items-center"
-      data-testid={item.name}
-      key={item.name}>
-      {icon}
-      <Typography.Text className="text-left">
-        {getEntityName(item)}
-      </Typography.Text>
+    <Col data-testid="tag-chip" key={item.name}>
+      <Link
+        className="chip-tag-link"
+        data-testid={`${item.name}-link`}
+        to={entityUtilClassBase.getEntityLink(
+          entityType,
+          item.fullyQualifiedName ?? ''
+        )}>
+        {icon}
+        <Typography.Text className="text-left">
+          {getEntityName(item)}
+        </Typography.Text>
+      </Link>
     </Col>
   );
 

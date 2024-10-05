@@ -13,69 +13,43 @@ name: docker-openmetadata-ingestion-base docker
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Input tag"
+      docker_release_tag:
+        description: "Ingestion Base Docker Image Tag (3 digit docker image tag)"
+        required: true
+      pypi_release_version:
+        description: "Provide the Release Version (4 digit docker image tag)"
         required: true
       push_latest_tag_to_release:
         description: "Do you want to update docker image latest tag as well ?"
         type: boolean
-  release:
-    types: [published]
 
 jobs:
   push_to_docker_hub:
     runs-on: ubuntu-latest
-    env:
-      input: ${{ github.event.inputs.tag }}
-      
+
     steps:
-      - name: Check trigger type
-        if: ${{ env.input == '' }}
-        run: echo "input=1.3.0-SNAPSHOT" >> $GITHUB_ENV
-        
       - name: Check out the Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
+      - name: Prepare for Docker Build&Push
+        id: prepare
+        uses: ./.github/actions/prepare-for-docker-build-and-push
         with:
-          username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
-
-      - name: Install Ubuntu dependencies
-        run: |
-          sudo apt-get install -y python3-venv
-
-      - name: Install open-metadata dependencies
-        run: |
-          python3 -m venv env
-          source env/bin/activate
-          pip install --upgrade pip
-          sudo make install_antlr_cli
-          make install_dev generate
-
-      - name: Process Docker Tags
-        id:  input_check
-        run: |
-            if ${{ github.event_name == 'release' }}; then
-                echo "tags=openmetadata/ingestion-base:${{ env.input }},openmetadata/ingestion-base:latest" >> $GITHUB_OUTPUT
-            elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_latest_tag_to_release }}; then
-                echo "tags=openmetadata/ingestion-base:${{inputs.tag}},openmetadata/ingestion-base:latest" >> $GITHUB_OUTPUT
-            else
-                echo "tags=openmetadata/ingestion-base:${{ inputs.tag }}" >> $GITHUB_OUTPUT
-            fi
+          image: openmetadata/ingestion-base
+          tag: ${{ inputs.docker_release_tag }}
+          push_latest: ${{ inputs.push_latest_tag_to_release }}
+          is_ingestion: true
+          release_version: ${{ inputs.pypi_release_version }}
+          dockerhub_username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
 
       - name: Build and push if event is workflow_dispatch and input is checked
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_NO_SUMMARY: true
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
-          tags: ${{ steps.input_check.outputs.tags }}
+          push: true
+          tags: ${{ steps.prepare.outputs.tags }}
           file: ./ingestion/operators/docker/Dockerfile

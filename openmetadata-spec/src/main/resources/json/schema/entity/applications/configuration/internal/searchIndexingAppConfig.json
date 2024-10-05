@@ -34,9 +34,15 @@
       "default": false
     },
     "batchSize": {
-      "description": "Maximum number of events sent in a batch (Default 10).",
+      "description": "Maximum number of events sent in a batch (Default 100).",
       "type": "integer",
       "default": 100
+    },
+    "payLoadSize": {
+      "description": "Maximum number of events sent in a batch (Default 100).",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "default": 104857600
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",

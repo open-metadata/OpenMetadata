@@ -17,11 +17,12 @@ import org.openmetadata.schema.services.connections.dashboard.SupersetConnection
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
+import org.openmetadata.schema.services.connections.database.IcebergConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
+import org.openmetadata.schema.services.connections.database.SalesforceConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
@@ -42,14 +43,15 @@ public class ClassConverterFactoryTest {
         GCSConnection.class,
         ElasticSearchConnection.class,
         LookerConnection.class,
-        OpenMetadataConnection.class,
         SSOAuthMechanism.class,
         SupersetConnection.class,
         GCPCredentials.class,
         TableauConnection.class,
         TestServiceConnectionRequest.class,
         TrinoConnection.class,
-        Workflow.class
+        Workflow.class,
+        SalesforceConnection.class,
+        IcebergConnection.class,
       })
   void testClassConverterIsSet(Class<?> clazz) {
     assertFalse(
@@ -58,6 +60,6 @@ public class ClassConverterFactoryTest {
 
   @Test
   void testClassConvertedMapIsNotModified() {
-    assertEquals(19, ClassConverterFactory.getConverterMap().size());
+    assertEquals(26, ClassConverterFactory.getConverterMap().size());
   }
 }

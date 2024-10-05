@@ -15,26 +15,24 @@ import Card from 'antd/lib/card/Card';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { AddEditPersonaForm } from '../../../components/MyData/Persona/AddEditPersona/AddEditPersona.component';
+import { PersonaDetailsCard } from '../../../components/MyData/Persona/PersonaDetailsCard/PersonaDetailsCard';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { AddEditPersonaForm } from '../../../components/Persona/AddEditPersona/AddEditPersona.component';
-import { PersonaDetailsCard } from '../../../components/Persona/PersonaDetailsCard/PersonaDetailsCard';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { Paging } from '../../../generated/type/paging';
 import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 
 export const PersonaPage = () => {
@@ -46,8 +44,6 @@ export const PersonaPage = () => {
   const [addEditPersona, setAddEditPersona] = useState<Persona>();
 
   const [isLoading, setIsLoading] = useState(false);
-
-  const [personaDeleting, setPersonaDeleting] = useState<Persona>();
   const {
     currentPage,
     handlePageChange,
@@ -72,7 +68,7 @@ export const PersonaPage = () => {
       setIsLoading(true);
       const { data, paging } = await getAllPersonas({
         limit: pageSize,
-        fields: 'users',
+        fields: TabSpecificField.USERS,
         after: params?.after,
         before: params?.before,
       });
@@ -185,18 +181,6 @@ export const PersonaPage = () => {
             onSave={handlePersonaAddEditSave}
           />
         )}
-
-        <DeleteWidgetModal
-          afterDeleteAction={() => fetchPersonas()}
-          allowSoftDelete={false}
-          entityId={personaDeleting?.id ?? ''}
-          entityName={getEntityName(personaDeleting)}
-          entityType={EntityType.PERSONA}
-          visible={Boolean(personaDeleting)}
-          onCancel={() => {
-            setPersonaDeleting(undefined);
-          }}
-        />
       </Row>
     </PageLayoutV1>
   );

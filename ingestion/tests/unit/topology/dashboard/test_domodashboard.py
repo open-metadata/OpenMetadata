@@ -45,7 +45,7 @@ with open(mock_file_path, encoding="UTF-8") as file:
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("domodashboard_source_test"),
     name="domodashboard_source_test",
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.DomoDashboard,
@@ -87,7 +87,7 @@ mock_domopipeline_config = {
 }
 
 MOCK_DASHBOARD = DomoDashboardDetails(
-    id=552315335,
+    id="552315335",
     name="New Dashboard",
     cardIds=["1982511286", "781210736"],
     collection_ids=[],
@@ -101,8 +101,8 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     sourceUrl="https://domain.domo.com/page/552315335",
     charts=[],
     tags=None,
-    owner=None,
-    service=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
+    owners=None,
+    service=FullyQualifiedEntityName("domodashboard_source_test"),
     extension=None,
 )
 
@@ -117,8 +117,8 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="https://domain.domo.com/page/552315335/kpis/details/1982511286",
         tags=None,
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
+        owners=None,
+        service=FullyQualifiedEntityName("domodashboard_source_test"),
     ),
     CreateChartRequest(
         name="781210736",
@@ -130,8 +130,8 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="https://domain.domo.com/page/552315335/kpis/details/781210736",
         tags=None,
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
+        owners=None,
+        service=FullyQualifiedEntityName("domodashboard_source_test"),
     ),
 ]
 
@@ -150,15 +150,17 @@ class DomoDashboardUnitTest(TestCase):
         super().__init__(methodName)
         test_connection.return_value = False
         domo_client.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_domopipeline_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_domopipeline_config
+        )
         self.domodashboard = DomodashboardSource.create(
             mock_domopipeline_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.domodashboard.context.__dict__["dashboard"] = MOCK_DASHBOARD.name
-        self.domodashboard.context.__dict__[
+        self.domodashboard.context.get().__dict__["dashboard"] = MOCK_DASHBOARD.name
+        self.domodashboard.context.get().__dict__[
             "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_dashboard(self):
         dashboard_list = []

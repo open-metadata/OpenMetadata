@@ -73,7 +73,10 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
       width={748}
       onCancel={onCancel}
       onOk={onConfirm}>
-      <Space className="p-x-md w-full" direction="vertical" size={16}>
+      <Space
+        className="p-x-md w-full overflow-hidden"
+        direction="vertical"
+        size={16}>
         <Progress
           className="test-connection-progress-bar"
           format={getProgressFormat}

@@ -41,6 +41,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -66,7 +67,7 @@ class OMetaDomainTest(TestCase):
     user = metadata.create_or_update(
         data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
-    owner = EntityReference(id=user.id, type="user")
+    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreateDashboardServiceRequest(
         name="test-service-dashboard",
@@ -111,8 +112,8 @@ class OMetaDomainTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DashboardService, fqn=cls.service.name.__root__
-            ).id.__root__
+                entity=DashboardService, fqn=cls.service.name.root
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -123,7 +124,7 @@ class OMetaDomainTest(TestCase):
         )
 
         domain: Domain = cls.metadata.get_by_name(
-            entity=Domain, fqn=cls.create_domain.name.__root__
+            entity=Domain, fqn=cls.create_domain.name.root
         )
 
         cls.metadata.delete(
@@ -142,21 +143,21 @@ class OMetaDomainTest(TestCase):
         res: DataProduct = self.metadata.create_or_update(data=self.create_data_product)
         self.assertEqual(res.name, self.create_data_product.name)
         self.assertEqual(res.description, self.create_data_product.description)
-        self.assertEqual(res.domain.name, self.create_data_product.domain.__root__)
+        self.assertEqual(res.domain.name, self.create_data_product.domain.root)
 
     def test_get_name(self):
         """We can fetch Domains & Data Products by name"""
         self.metadata.create_or_update(data=self.create_domain)
 
         res: Domain = self.metadata.get_by_name(
-            entity=Domain, fqn=self.create_domain.name.__root__
+            entity=Domain, fqn=self.create_domain.name.root
         )
         self.assertEqual(res.name, self.create_domain.name)
 
         self.metadata.create_or_update(data=self.create_data_product)
 
         res: DataProduct = self.metadata.get_by_name(
-            entity=DataProduct, fqn=self.create_data_product.name.__root__
+            entity=DataProduct, fqn=self.create_data_product.name.root
         )
         self.assertEqual(res.name, self.create_data_product.name)
 
@@ -165,7 +166,7 @@ class OMetaDomainTest(TestCase):
         self.metadata.create_or_update(data=self.create_domain)
 
         res_name: Domain = self.metadata.get_by_name(
-            entity=Domain, fqn=self.create_domain.name.__root__
+            entity=Domain, fqn=self.create_domain.name.root
         )
         res: Domain = self.metadata.get_by_id(entity=Domain, entity_id=res_name.id)
         self.assertEqual(res.name, self.create_domain.name)
@@ -173,7 +174,7 @@ class OMetaDomainTest(TestCase):
         self.metadata.create_or_update(data=self.create_data_product)
 
         res_name: DataProduct = self.metadata.get_by_name(
-            entity=DataProduct, fqn=self.create_data_product.name.__root__
+            entity=DataProduct, fqn=self.create_data_product.name.root
         )
         res: DataProduct = self.metadata.get_by_id(
             entity=DataProduct, entity_id=res_name.id
@@ -189,4 +190,4 @@ class OMetaDomainTest(TestCase):
             entity=Dashboard, fqn=self.dashboard.fullyQualifiedName, fields=["domain"]
         )
 
-        self.assertEqual(updated_dashboard.domain.name, domain.name.__root__)
+        self.assertEqual(updated_dashboard.domain.name, domain.name.root)

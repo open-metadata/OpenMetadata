@@ -12,15 +12,14 @@
  */
 import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../../components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
-import './activity-feed-list.less';
 
 interface ActivityFeedListV1Props {
   feedList: Thread[];
@@ -31,17 +30,27 @@ interface ActivityFeedListV1Props {
   hidePopover: boolean;
   isForFeedTab?: boolean;
   emptyPlaceholderText: ReactNode;
+  componentsVisibility?: {
+    showThreadIcon?: boolean;
+    showRepliesContainer?: boolean;
+  };
+  selectedThread?: Thread;
 }
 
 const ActivityFeedListV1 = ({
   feedList,
   isLoading,
   showThread = true,
+  componentsVisibility = {
+    showThreadIcon: true,
+    showRepliesContainer: true,
+  },
   onFeedClick,
   activeFeedId,
   hidePopover = false,
   isForFeedTab = false,
   emptyPlaceholderText,
+  selectedThread,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -51,34 +60,19 @@ const ActivityFeedListV1 = ({
   }, [feedList]);
 
   useEffect(() => {
-    if (onFeedClick && entityThread[0]) {
-      onFeedClick(entityThread[0]);
+    if (onFeedClick) {
+      onFeedClick(
+        entityThread.find((feed) => feed.id === selectedThread?.id) ??
+          entityThread[0]
+      );
     }
-  }, [entityThread, onFeedClick]);
+  }, [entityThread, selectedThread, onFeedClick]);
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  return isEmpty(entityThread) ? (
-    <div
-      className="h-full p-x-md"
-      data-testid="no-data-placeholder-container"
-      id="feedData">
-      <ErrorPlaceHolder
-        icon={<FeedEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph
-          className="tw-max-w-md"
-          style={{ marginBottom: '0' }}>
-          {emptyPlaceholderText}
-        </Typography.Paragraph>
-      </ErrorPlaceHolder>
-    </div>
-  ) : (
-    <div className="feed-list-container p-y-md" id="feedData">
-      {entityThread.map((feed) => (
+  const feeds = useMemo(
+    () =>
+      entityThread.map((feed) => (
         <FeedPanelBodyV1
+          componentsVisibility={componentsVisibility}
           feed={feed}
           hidePopover={hidePopover}
           isActive={activeFeedId === feed.id}
@@ -87,7 +81,43 @@ const ActivityFeedListV1 = ({
           showThread={showThread}
           onFeedClick={onFeedClick}
         />
-      ))}
+      )),
+    [
+      entityThread,
+      activeFeedId,
+      componentsVisibility,
+      hidePopover,
+      isForFeedTab,
+      showThread,
+    ]
+  );
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isEmpty(entityThread)) {
+    return (
+      <div
+        className="h-full p-x-md"
+        data-testid="no-data-placeholder-container"
+        id="feedData">
+        <ErrorPlaceHolder
+          icon={<FeedEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />}
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <Typography.Paragraph
+            className="tw-max-w-md"
+            style={{ marginBottom: '0' }}>
+            {emptyPlaceholderText}
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
+      </div>
+    );
+  }
+
+  return (
+    <div className="feed-list-container p-md" id="feedData">
+      {feeds}
     </div>
   );
 };

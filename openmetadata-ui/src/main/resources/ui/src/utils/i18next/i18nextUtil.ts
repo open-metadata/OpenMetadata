@@ -32,7 +32,7 @@ export enum SupportedLocales {
   Português = 'pt-BR',
   Español = 'es-ES',
   Русский = 'ru-RU',
-  Deutsh = 'de-DE',
+  Deutsch = 'de-DE',
   Hebrew = 'he-HE',
   Nederlands = 'nl-NL',
 }

@@ -340,15 +340,17 @@ export const MOCK_METADATA_SERVICE: MetadataService = {
   updatedAt: 1698077526246,
   updatedBy: 'mayur',
   tags: [],
-  owner: {
-    id: '7a12b462-36c7-488a-b4c2-9756918704cb',
-    type: 'user',
-    name: 'mayur',
-    fullyQualifiedName: 'mayur',
-    displayName: 'Mayur Singal',
-    deleted: false,
-    href: 'http://sandbox-beta.open-metadata.org/api/v1/users/7a12b462-36c7-488a-b4c2-9756918704cb',
-  },
+  owners: [
+    {
+      id: '7a12b462-36c7-488a-b4c2-9756918704cb',
+      type: 'user',
+      name: 'mayur',
+      fullyQualifiedName: 'mayur',
+      displayName: 'Mayur Singal',
+      deleted: false,
+      href: 'http://sandbox-beta.open-metadata.org/api/v1/users/7a12b462-36c7-488a-b4c2-9756918704cb',
+    },
+  ],
   href: 'http://sandbox-beta.open-metadata.org/api/v1/services/databaseServices/9b09f404-7713-4f04-b7db-95111bac0c59',
   changeDescription: {
     fieldsAdded: [],
@@ -364,4 +366,440 @@ export const MOCK_METADATA_SERVICE: MetadataService = {
   },
   deleted: false,
   provider: ProviderType.User,
+};
+
+export const MOCK_ATHENA_SERVICE = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  title: 'AthenaConnection',
+  description: 'AWS Athena Connection Config',
+  type: 'object',
+  javaType:
+    'org.openmetadata.schema.services.connections.database.AthenaConnection',
+  definitions: {
+    athenaType: {
+      description: 'Service type.',
+      type: 'string',
+      enum: ['Athena'],
+      default: 'Athena',
+    },
+    athenaScheme: {
+      description: 'SQLAlchemy driver scheme options.',
+      type: 'string',
+      enum: ['awsathena+rest'],
+      default: 'awsathena+rest',
+    },
+  },
+  properties: {
+    type: {
+      title: 'Service Type',
+      description: 'Service Type',
+      default: 'Athena',
+      type: 'string',
+      enum: ['Athena'],
+    },
+    scheme: {
+      title: 'Connection Scheme',
+      description: 'SQLAlchemy driver scheme options.',
+      default: 'awsathena+rest',
+      type: 'string',
+      enum: ['awsathena+rest'],
+    },
+    awsConfig: {
+      title: 'AWS Credentials Configuration',
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      description: 'AWS credentials configs.',
+      type: 'object',
+      javaType: 'org.openmetadata.schema.security.credentials.AWSCredentials',
+      properties: {
+        awsAccessKeyId: {
+          title: 'AWS Access Key ID',
+          description: 'AWS Access key ID.',
+          type: 'string',
+        },
+        awsSecretAccessKey: {
+          title: 'AWS Secret Access Key',
+          description: 'AWS Secret Access Key.',
+          type: 'string',
+          format: 'password',
+        },
+        awsRegion: {
+          title: 'AWS Region',
+          description: 'AWS Region',
+          type: 'string',
+        },
+        awsSessionToken: {
+          title: 'AWS Session Token',
+          description: 'AWS Session Token.',
+          type: 'string',
+        },
+        endPointURL: {
+          title: 'Endpoint URL',
+          description: 'EndPoint URL for the AWS',
+          type: 'string',
+          format: 'uri',
+        },
+        profileName: {
+          title: 'Profile Name',
+          description: 'The name of a profile to use with the boto session.',
+          type: 'string',
+        },
+        assumeRoleArn: {
+          title: 'Role Arn for Assume Role',
+          description:
+            'The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role',
+          type: 'string',
+        },
+        assumeRoleSessionName: {
+          title: 'Role Session Name for Assume Role',
+          description: 'An identifierle',
+          type: 'string',
+          default: 'OpenMetadataSession',
+        },
+        assumeRoleSourceIdentity: {
+          title: 'Source Identity for Assume Role',
+          description:
+            'The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role',
+          type: 'string',
+        },
+      },
+      additionalProperties: false,
+      required: ['awsRegion'],
+    },
+    s3StagingDir: {
+      title: 'S3 Staging Directory',
+      description: 'S3 Staging Directory. Example: s3://postgres/input/',
+      type: 'string',
+      format: 'uri',
+    },
+    workgroup: {
+      title: 'Athena Workgroup',
+      description: 'Athena workgroup.',
+      type: 'string',
+    },
+    databaseName: {
+      title: 'Database Name',
+      description:
+        'Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.',
+      type: 'string',
+    },
+    connectionOptions: {
+      title: 'Connection Options',
+      javaType:
+        'org.openmetadata.schema.services.connections.database.ConnectionOptions',
+      description:
+        'Additional connection options to build the URL that can be sent to service during the connection.',
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+    connectionArguments: {
+      title: 'Connection Arguments',
+      javaType:
+        'org.openmetadata.schema.services.connections.database.ConnectionArguments',
+      description:
+        'Additional connection arguments such as security or protocol configs that can be sent to service during connection.',
+      type: 'object',
+      additionalProperties: {
+        '.{1,}': {
+          type: 'string',
+        },
+      },
+    },
+    supportsMetadataExtraction: {
+      title: 'Supports Metadata Extraction',
+      description: 'Supports Metadata Extraction.',
+      type: 'boolean',
+      default: true,
+    },
+    supportsDBTExtraction: {
+      description: 'Supports DBT Extraction.',
+      type: 'boolean',
+      default: true,
+    },
+    supportsProfiler: {
+      title: 'Supports Profiler',
+      description: 'Supports Profiler',
+      type: 'boolean',
+      default: true,
+    },
+    supportsQueryComment: {
+      title: 'Supports Query Comment',
+      description:
+        'For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.',
+      type: 'boolean',
+      default: true,
+    },
+    supportsUsageExtraction: {
+      description: 'Supports Usage Extraction.',
+      type: 'boolean',
+      default: true,
+    },
+    supportsLineageExtraction: {
+      description: 'Supports Lineage Extraction.',
+      type: 'boolean',
+      default: true,
+    },
+    sampleDataStorageConfig: {
+      title: 'Storage Config for Sample Data',
+      description: 'Storage config to store sample data',
+      type: 'object',
+      javaType:
+        'org.openmetadata.schema.services.connections.database.SampleDataStorageConfig',
+      properties: {
+        config: {
+          oneOf: [
+            {
+              title: 'Sample Data Storage Config',
+              description: 'Storage config to store sample data',
+              type: 'object',
+              properties: {
+                bucketName: {
+                  title: 'Bucket Name',
+                  description: 'Bucket Name',
+                  type: 'string',
+                  default: '',
+                },
+                prefix: {
+                  title: 'Prefix',
+                  description: 'Prefix of the data source.',
+                  type: 'string',
+                  default: '',
+                },
+                overwriteData: {
+                  title: 'Overwrite Sample Data',
+                  description:
+                    'When this field enabled a single parquet file will be created to store sample data, otherwise we will create a new file per day',
+                  type: 'boolean',
+                  default: true,
+                },
+                storageConfig: {
+                  oneOf: [
+                    {
+                      title: 'AWS S3 Storage Config',
+                      $schema: 'http://json-schema.org/draft-07/schema#',
+                      description: 'AWS credentials configs.',
+                      type: 'object',
+                      javaType:
+                        'org.openmetadata.schema.security.credentials.AWSCredentials',
+                      properties: {
+                        awsAccessKeyId: {
+                          title: 'AWS Access Key ID',
+                          description: 'AWS Access key ID.',
+                          type: 'string',
+                        },
+                        awsSecretAccessKey: {
+                          title: 'AWS Secret Access Key',
+                          description: 'AWS Secret Access Key.',
+                          type: 'string',
+                          format: 'password',
+                        },
+                        awsRegion: {
+                          title: 'AWS Region',
+                          description: 'AWS Region',
+                          type: 'string',
+                        },
+                        awsSessionToken: {
+                          title: 'AWS Session Token',
+                          description: 'AWS Session Token.',
+                          type: 'string',
+                        },
+                        endPointURL: {
+                          title: 'Endpoint URL',
+                          description: 'EndPoint URL for the AWS',
+                          type: 'string',
+                          format: 'uri',
+                        },
+                        profileName: {
+                          title: 'Profile Name',
+                          description:
+                            'The name of a profile to use with the boto session.',
+                          type: 'string',
+                        },
+                        assumeRoleArn: {
+                          title: 'Role Arn for Assume Role',
+                          description:
+                            'The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role',
+                          type: 'string',
+                        },
+                        assumeRoleSessionName: {
+                          title: 'Role Session Name for Assume Role',
+                          description:
+                            'An identifier same role is assumed by different principals or for different reasons. Required Field in case of Assume Role',
+                          type: 'string',
+                          default: 'OpenMetadataSession',
+                        },
+                        assumeRoleSourceIdentity: {
+                          title: 'Source Identity for Assume Role',
+                          description:
+                            'The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role',
+                          type: 'string',
+                        },
+                      },
+                      additionalProperties: false,
+                      required: ['awsRegion'],
+                    },
+                    {
+                      title: 'OpenMetadata Storage',
+                      type: 'object',
+                      additionalProperties: false,
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              title: 'No Sample Data Storage Config',
+              type: 'object',
+              additionalProperties: false,
+            },
+          ],
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  additionalProperties: false,
+  required: ['s3StagingDir', 'awsConfig', 'workgroup'],
+};
+
+export const AIR_BYTE_CONNECTION = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  title: 'AirbyteConnection',
+  description: 'Airbyte Metadata Database Connection Config',
+  type: 'object',
+  javaType:
+    'org.openmetadata.schema.services.connections.pipeline.AirbyteConnection',
+  definitions: {
+    AirbyteType: {
+      description: 'Service type.',
+      type: 'string',
+      enum: ['Airbyte'],
+      default: 'Airbyte',
+    },
+  },
+  properties: {
+    type: {
+      title: 'Service Type',
+      description: 'Service Type',
+      default: 'Airbyte',
+      type: 'string',
+      enum: ['Airbyte'],
+    },
+    hostPort: {
+      expose: true,
+      description: 'Pipeline Service Management/UI URL.',
+      type: 'string',
+      format: 'uri',
+    },
+    username: {
+      title: 'Username',
+      description: 'Username to connect to Airbyte.',
+      type: 'string',
+    },
+    password: {
+      title: 'Password',
+      description: 'Password to connect to Airbyte.',
+      type: 'string',
+      format: 'password',
+    },
+    supportsMetadataExtraction: {
+      title: 'Supports Metadata Extraction',
+      description: 'Supports Metadata Extraction.',
+      type: 'boolean',
+      default: true,
+    },
+  },
+  additionalProperties: false,
+  required: ['hostPort'],
+};
+
+export const ATLAS_CONNECTION = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  title: 'AtlasConnection',
+  description: 'Atlas Connection Config',
+  type: 'object',
+  javaType:
+    'org.openmetadata.schema.services.connections.metadata.AtlasConnection',
+  definitions: {
+    atlasType: {
+      description: 'Service type.',
+      type: 'string',
+      enum: ['Atlas'],
+      default: 'Atlas',
+    },
+  },
+  properties: {
+    type: {
+      description: 'Service Type',
+      default: 'Atlas',
+      type: 'string',
+      enum: ['Atlas'],
+    },
+    username: {
+      description:
+        'username to connect  to the Atlas. This user should have privileges to read all the metadata in Atlas.',
+      type: 'string',
+    },
+    password: {
+      description: 'password to connect  to the Atlas.',
+      type: 'string',
+      format: 'password',
+    },
+    hostPort: {
+      description: 'Host and port of the Atlas service.',
+      title: 'Host and Port',
+      type: 'string',
+      format: 'uri',
+      expose: true,
+    },
+    databaseServiceName: {
+      description: 'service type of the data source.',
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    },
+    messagingServiceName: {
+      description: 'service type of the messaging source',
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    },
+    entity_type: {
+      title: 'Entity Type',
+      description: 'Name of the Entity Type available in Atlas.',
+      type: 'string',
+    },
+    connectionOptions: {
+      javaType:
+        'org.openmetadata.schema.services.connections.database.ConnectionOptions',
+      description:
+        'Additional connection options to build the URL that can be sent to service during the connection.',
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+    connectionArguments: {
+      javaType:
+        'org.openmetadata.schema.services.connections.database.ConnectionArguments',
+      description:
+        'Additional connection arguments such as security or protocol configs that can be sent to service during connection.',
+      type: 'object',
+      additionalProperties: {
+        '.{1,}': {
+          type: 'string',
+        },
+      },
+    },
+    supportsMetadataExtraction: {
+      description: 'Supports Metadata Extraction.',
+      type: 'boolean',
+      default: true,
+    },
+  },
+  required: ['entity_type', 'username', 'password'],
+  additionalProperties: false,
 };

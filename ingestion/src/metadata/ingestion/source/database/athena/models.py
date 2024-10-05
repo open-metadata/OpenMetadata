@@ -19,33 +19,33 @@ from pydantic import BaseModel
 
 
 class QueryExecutionIdsResponse(BaseModel):
-    QueryExecutionIds: Optional[List[str]]
+    QueryExecutionIds: Optional[List[str]] = None
 
 
-class Status(BaseModel):
-    State: Optional[str]
-    SubmissionDateTime: Optional[datetime]
+class AthenaStatus(BaseModel):
+    State: Optional[str] = "FAILED"  # Default value
+    SubmissionDateTime: Optional[datetime] = None
 
 
-class Statistics(BaseModel):
-    TotalExecutionTimeInMillis: Optional[int]
+class AthenaStatistics(BaseModel):
+    TotalExecutionTimeInMillis: Optional[int] = None
 
 
 class AthenaQueryExecution(BaseModel):
-    Query: Optional[str]
-    Statistics: Optional[Statistics]
-    Status: Optional[Status]
+    Query: Optional[str] = None
+    Statistics: Optional[AthenaStatistics] = None
+    Status: Optional[AthenaStatus] = None
 
 
 class AthenaQueryExecutionList(BaseModel):
-    QueryExecutions: Optional[List[AthenaQueryExecution]]
+    QueryExecutions: Optional[List[AthenaQueryExecution]] = None
 
 
 class WorkGroup(BaseModel):
-    Name: Optional[str]
-    State: Optional[str]
+    Name: Optional[str] = None
+    State: Optional[str] = None
 
 
 class WorkGroupsList(BaseModel):
     WorkGroups: Optional[List[WorkGroup]] = []
-    NextToken: Optional[str]
+    NextToken: Optional[str] = None

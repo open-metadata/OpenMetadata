@@ -14,7 +14,7 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined, omitBy } from 'lodash';
 import Qs from 'qs';
 import {
   default as React,
@@ -25,10 +25,13 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
-import Loader from '../../components/Loader/Loader';
-import Users from '../../components/Users/Users.component';
+import Loader from '../../components/common/Loader/Loader';
+import Users from '../../components/Settings/Users/Users.component';
+import { ROUTES } from '../../constants/constants';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { User } from '../../generated/entity/teams/user';
+import { Include } from '../../generated/type/include';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { Transi18next } from '../../utils/CommonUtils';
@@ -41,12 +44,20 @@ const UserPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);
-  const { currentUser, updateCurrentUser } = useAuthContext();
+  const { currentUser, updateCurrentUser } = useApplicationStore();
 
   const fetchUserData = async () => {
     try {
       const res = await getUserByName(username, {
-        fields: 'profile,roles,teams,personas,defaultPersona,domain',
+        fields: [
+          TabSpecificField.PROFILE,
+          TabSpecificField.ROLES,
+          TabSpecificField.TEAMS,
+          TabSpecificField.PERSONAS,
+          TabSpecificField.DEFAULT_PERSONA,
+          TabSpecificField.DOMAINS,
+        ],
+        include: Include.All,
       });
       setUserData(res);
     } catch (error) {
@@ -67,8 +78,8 @@ const UserPage = () => {
   const myDataQueryFilter = useMemo(() => {
     const teamsIds = (userData.teams ?? []).map((team) => team.id);
     const mergedIds = [
-      ...teamsIds.map((id) => `owner.id:${id}`),
-      `owner.id:${userData.id}`,
+      ...teamsIds.map((id) => `owners.id:${id}`),
+      `owners.id:${userData.id}`,
     ].join(' OR ');
 
     return `(${mergedIds})`;
@@ -85,8 +96,8 @@ const UserPage = () => {
     });
   };
 
-  const ErrorPlaceholder = () => {
-    return (
+  const errorPlaceholder = useMemo(
+    () => (
       <div
         className="d-flex items-center justify-center h-full"
         data-testid="error">
@@ -100,21 +111,46 @@ const UserPage = () => {
           />
         </Typography.Paragraph>
       </div>
-    );
-  };
+    ),
+    [username]
+  );
 
   const updateUserDetails = useCallback(
-    async (data: Partial<User>) => {
+    async (data: Partial<User>, key: keyof User) => {
       const updatedDetails = { ...userData, ...data };
       const jsonPatch = compare(userData, updatedDetails);
 
       try {
         const response = await updateUserDetail(userData.id, jsonPatch);
         if (response) {
-          if (userData.id === currentUser?.id) {
-            updateCurrentUser(response);
+          let updatedKeyData;
+
+          if (key === 'roles') {
+            updatedKeyData = {
+              roles: response.roles,
+              isAdmin: response.isAdmin,
+            };
+          } else {
+            updatedKeyData = { [key]: response[key] };
           }
-          setUserData((prev) => ({ ...prev, ...response }));
+          const newCurrentUserData = {
+            ...currentUser,
+            ...updatedKeyData,
+          };
+          const newUserData: User = { ...userData, ...updatedKeyData };
+
+          if (key === 'defaultPersona') {
+            if (isUndefined(response.defaultPersona)) {
+              // remove key from object if value is undefined
+              delete newCurrentUserData[key];
+              delete newUserData[key];
+            }
+          }
+          if (userData.id === currentUser?.id) {
+            updateCurrentUser(newCurrentUserData as User);
+          }
+          // Omit the undefined values from the User object
+          setUserData(omitBy(newUserData, isUndefined) as User);
         } else {
           throw t('message.unexpected-error');
         }
@@ -123,6 +159,19 @@ const UserPage = () => {
       }
     },
     [userData, currentUser, updateCurrentUser]
+  );
+
+  const handleToggleDelete = useCallback(() => {
+    setUserData((prev) => ({
+      ...prev,
+      deleted: !prev?.deleted,
+    }));
+  }, [setUserData]);
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete() : history.push(ROUTES.HOME),
+    [handleToggleDelete]
   );
 
   useEffect(() => {
@@ -134,11 +183,12 @@ const UserPage = () => {
   }
 
   if (isError && isEmpty(userData)) {
-    return <ErrorPlaceholder />;
+    return errorPlaceholder;
   }
 
   return (
     <Users
+      afterDeleteAction={afterDeleteAction}
       handlePaginate={handleEntityPaginate}
       queryFilters={{
         myData: myDataQueryFilter,

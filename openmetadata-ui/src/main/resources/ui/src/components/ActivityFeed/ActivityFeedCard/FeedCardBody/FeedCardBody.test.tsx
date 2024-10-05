@@ -15,6 +15,7 @@ import {
   findByTestId,
   findByText,
   fireEvent,
+  getByTestId,
   render,
 } from '@testing-library/react';
 import React from 'react';
@@ -24,6 +25,10 @@ import FeedCardBody from './FeedCardBody';
 const mockCancel = jest.fn();
 
 const mockUpdate = jest.fn();
+
+jest.mock('../../../../utils/FeedUtils', () => ({
+  formatDateTime: jest.fn().mockReturnValue('Jan 1, 1970, 12:00 AM'),
+}));
 
 jest.mock('../../../../utils/FeedUtils', () => ({
   getFrontEndFormat: jest.fn(),
@@ -65,6 +70,26 @@ describe('Test FeedCardBody component', () => {
     const messagePreview = await findByText(container, /RichText Preview/i);
 
     expect(messagePreview).toBeInTheDocument();
+  });
+
+  it('Check if FeedCardBody render announcement data', async () => {
+    const { container } = render(
+      <FeedCardBody
+        {...mockFeedCardBodyProps}
+        announcementDetails={{
+          description: 'description',
+          startTime: 1717070243489,
+          endTime: 1717070248489,
+        }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const announcementData = getByTestId(container, 'announcement-data');
+
+    expect(announcementData).toBeInTheDocument();
   });
 
   it('Should render editor if editpost is true', async () => {

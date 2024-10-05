@@ -16,15 +16,16 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import BotDetails from '../../components/BotDetails/BotDetails.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import Loader from '../../components/common/Loader/Loader';
+import BotDetails from '../../components/Settings/Bot/BotDetails/BotDetails.component';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
@@ -77,7 +78,10 @@ const BotDetailsPage = () => {
 
       const botUserResponse = await getUserByName(
         botResponse.botUser.fullyQualifiedName || '',
-        { fields: 'roles,profile', include: Include.All }
+        {
+          fields: [TabSpecificField.ROLES, TabSpecificField.PROFILE],
+          include: Include.All,
+        }
       );
       setBotUserData(botUserResponse);
       setBotData(botResponse);
@@ -124,15 +128,13 @@ const BotDetailsPage = () => {
     }
   };
 
-  const revokeBotsToken = () => {
-    revokeUserToken(botUserData.id)
-      .then((res) => {
-        const data = res;
-        setBotUserData(data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
+  const revokeBotsToken = async () => {
+    try {
+      const response = await revokeUserToken(botUserData.id);
+      setBotUserData(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   useEffect(() => {

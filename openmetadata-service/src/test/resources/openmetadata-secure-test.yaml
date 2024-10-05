@@ -140,6 +140,7 @@ authorizerConfiguration:
     - "all"
 
 authenticationConfiguration:
+  clientType: "public"
   provider: "basic"
   providerName: ""
   publicKeyUrls:
@@ -167,6 +168,7 @@ authenticationConfiguration:
       callback: ""
     security:
       strictMode: false
+      validateXml: false
       tokenValidity: 3600
       sendEncryptedNameId: false
       sendSignedAuthRequest: false
@@ -174,10 +176,6 @@ authenticationConfiguration:
       wantMessagesSigned: false
       wantAssertionsSigned: false
       wantAssertionEncrypted: false
-      wantNameIdEncrypted: false
-      keyStoreFilePath: ""
-      keyStoreAlias: ""
-      keyStorePassword: ""
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: "src/test/resources/public_key.der"
@@ -214,12 +212,18 @@ pipelineServiceClientConfiguration:
 
 email:
   enableSmtpServer : false
-  emailingEntity: ""
-  supportUrl: ""
+  emailingEntity: "openmetadata"
+  supportUrl: "http://localhost:8585"
   openMetadataUrl: "http://localhost:8585"
-  senderMail: ""
-  serverEndpoint: ""
-  serverPort: ""
-  username: ""
-  password: ""
+  senderMail: "test@openmetadata.org"
+  serverEndpoint: "test.smtp.com"
+  serverPort: "584"
+  username: "test"
+  password: "test"
   transportationStrategy: "SMTP_TLS"
+
+fernetConfiguration:
+  fernetKey: ${FERNET_KEY:-ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ}
+
+dataQualityConfiguration:
+  severityIncidentClassifier: "org.openmetadata.service.util.incidentSeverityClassifier.LogisticRegressionIncidentSeverityClassifier"

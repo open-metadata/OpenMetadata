@@ -25,7 +25,7 @@ jest.mock('react-router-dom', () => ({
     fqn: 'DomainFqn',
   }),
 }));
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       Create: true,
@@ -63,7 +63,7 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../../components/common/LeftPanelCard/LeftPanelCard', () => {
+jest.mock('../../common/LeftPanelCard/LeftPanelCard', () => {
   return jest
     .fn()
     .mockImplementation(({ children }) => (

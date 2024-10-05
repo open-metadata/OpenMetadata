@@ -14,40 +14,39 @@
 import { Button, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
-import { cloneDeep, includes, isArray, isEmpty, uniqWith } from 'lodash';
+import { isArray, isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
-import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
 import TagSelectForm from '../../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
-import TagButton from '../../../../components/TagButton/TagButton.component';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE,
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { SearchIndex } from '../../../../enums/search.enum';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import {
   ChangeDescription,
   EntityReference,
 } from '../../../../generated/entity/type';
-import { Paging } from '../../../../generated/type/paging';
-import { searchData } from '../../../../rest/miscAPI';
-import { formatSearchGlossaryTermResponse } from '../../../../utils/APIUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
-import { getEntityReferenceFromGlossary } from '../../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
+import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
+import TagButton from '../../../common/TagButton/TagButton.component';
 
 interface RelatedTermsProps {
   isVersionView?: boolean;
@@ -64,8 +63,19 @@ const RelatedTerms = ({
 }: RelatedTermsProps) => {
   const history = useHistory();
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
-  const [options, setOptions] = useState<EntityReference[]>([]);
   const [selectedOption, setSelectedOption] = useState<EntityReference[]>([]);
+
+  const initialOptions = useMemo(() => {
+    return (
+      selectedOption.map((item) => {
+        return {
+          label: getEntityName(item),
+          value: item.fullyQualifiedName,
+          data: item,
+        };
+      }) ?? []
+    );
+  }, [selectedOption]);
 
   const handleRelatedTermClick = (fqn: string) => {
     history.push(getGlossaryPath(fqn));
@@ -77,72 +87,25 @@ const RelatedTerms = ({
     if (!isArray(selectedData)) {
       return;
     }
-    const newOptions = uniqWith(
-      options,
-      (arrVal, othVal) => arrVal.id === othVal.id
-    ).filter((item) =>
-      selectedData.find((data) => data.value === item.fullyQualifiedName)
+
+    const newOptions = selectedData.map((value) =>
+      getEntityReferenceFromEntity(
+        isUndefined(value.data)
+          ? glossaryTerm.relatedTerms?.find(
+              (term) => term.fullyQualifiedName === value.value
+            )
+          : value.data,
+        EntityType.GLOSSARY_TERM
+      )
     );
 
-    let updatedGlossaryTerm = cloneDeep(glossaryTerm);
-    const oldTerms = newOptions.filter((d) =>
-      includes(glossaryTerm.relatedTerms, d)
-    );
-    const newTerms = newOptions
-      .filter((d) => !includes(glossaryTerm.relatedTerms, d))
-      .map((d) => ({
-        id: d.id,
-        type: d.type,
-        displayName: d.displayName,
-        name: d.name,
-      }));
-    updatedGlossaryTerm = {
-      ...updatedGlossaryTerm,
-      relatedTerms: [...oldTerms, ...newTerms],
+    const updatedGlossaryTerm = {
+      ...glossaryTerm,
+      relatedTerms: newOptions,
     };
 
     await onGlossaryTermUpdate(updatedGlossaryTerm);
     setIsIconVisible(true);
-  };
-
-  const fetchGlossaryTerms = async (
-    searchText = '',
-    page: number
-  ): Promise<{
-    data: {
-      label: string;
-      value: string;
-    }[];
-    paging: Paging;
-  }> => {
-    const res = await searchData(
-      searchText,
-      page,
-      PAGE_SIZE,
-      '',
-      '',
-      '',
-      SearchIndex.GLOSSARY
-    );
-
-    const termResult = formatSearchGlossaryTermResponse(
-      res.data.hits.hits
-    ).filter(
-      (item) => item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName
-    );
-
-    const results = termResult.map(getEntityReferenceFromGlossary);
-    setOptions((prev) => [...prev, ...results]);
-
-    return {
-      data: results.map((item) => ({
-        label: item.fullyQualifiedName ?? '',
-        value: item.fullyQualifiedName ?? '',
-      })),
-      paging: {
-        total: res.data.hits.total.value,
-      },
-    };
   };
 
   const formatOptions = (data: EntityReference[]) => {
@@ -160,7 +123,6 @@ const RelatedTerms = ({
 
   useEffect(() => {
     if (glossaryTerm) {
-      setOptions(glossaryTerm.relatedTerms ?? []);
       setSelectedOption(formatOptions(glossaryTerm.relatedTerms ?? []));
     }
   }, [glossaryTerm]);
@@ -281,7 +243,11 @@ const RelatedTerms = ({
         {permissions.EditAll && selectedOption.length > 0 && (
           <Tooltip
             title={
-              permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+              permissions.EditAll
+                ? t('label.edit-entity', {
+                    entity: t('label.related-term-plural'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
             }>
             <Button
               className="cursor-pointer flex-center m-l-xss"
@@ -303,10 +269,11 @@ const RelatedTerms = ({
           defaultValue={selectedOption.map(
             (item) => item.fullyQualifiedName ?? ''
           )}
-          fetchApi={fetchGlossaryTerms}
+          filterOptions={[glossaryTerm?.fullyQualifiedName ?? '']}
           placeholder={t('label.add-entity', {
             entity: t('label.related-term-plural'),
           })}
+          tagData={initialOptions as SelectOption[]}
           onCancel={handleCancel}
           onSubmit={handleRelatedTermsSave}
         />

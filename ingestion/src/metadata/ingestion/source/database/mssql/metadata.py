@@ -13,6 +13,7 @@ import traceback
 from typing import Dict, Iterable, List, Optional
 
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
+from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -34,6 +35,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.mssql.constants import (
+    DEFAULT_DATETIME_FORMAT,
+    MSSQL_DATEFORMAT_DATETIME_MAP,
+)
 from metadata.ingestion.source.database.mssql.models import (
     STORED_PROC_LANGUAGE_MAP,
     MssqlStoredProcedure,
@@ -47,6 +52,7 @@ from metadata.ingestion.source.database.mssql.utils import (
     get_columns,
     get_foreign_keys,
     get_pk_constraint,
+    get_sqlalchemy_engine_dateformat,
     get_table_comment,
     get_table_names,
     get_unique_constraints,
@@ -65,7 +71,9 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqa_utils import update_mssql_ischema_names
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_all_view_definitions,
+    get_table_ddl,
 )
 
 logger = ingestion_logger()
@@ -87,6 +95,9 @@ MSDialect.get_foreign_keys = get_foreign_keys
 MSDialect.get_table_names = get_table_names
 MSDialect.get_view_names = get_view_names
 
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
+
 
 class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
     """
@@ -95,10 +106,12 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: MssqlConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: MssqlConnection = config.serviceConnection.root.config
         if not isinstance(connection, MssqlConnection):
             raise InvalidSourceException(
                 f"Expected MssqlConnection, but got {connection}"
@@ -114,9 +127,8 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
     def get_database_names(self) -> Iterable[str]:
-
-        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.__root__.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:
+            configured_db = self.config.serviceConnection.root.config.database
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -124,7 +136,7 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
@@ -151,13 +163,13 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         if self.source_config.includeStoredProcedures:
             results = self.engine.execute(
                 MSSQL_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 )
             ).all()
             for row in results:
                 try:
-                    stored_procedure = MssqlStoredProcedure.parse_obj(dict(row))
+                    stored_procedure = MssqlStoredProcedure.model_validate(dict(row))
                     yield stored_procedure
                 except Exception as exc:
                     logger.error()
@@ -176,7 +188,7 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 description=None,
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
@@ -185,9 +197,9 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
             )
             yield Either(right=stored_procedure_request)
@@ -208,12 +220,27 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         queries they triggered
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
+        current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(
+            server_date_format, DEFAULT_DATETIME_FORMAT
+        )
+        start = start.strftime(current_datetime_format)
         query = MSSQL_GET_STORED_PROCEDURE_QUERIES.format(
             start_date=start,
         )
-
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
+        try:
+            queries_dict = self.procedure_queries_dict(
+                query=query,
+            )
+        except Exception as ex:  # pylint: disable=broad-except
+            logger.debug(f"Error runnning query:\n{query}")
+            self.status.failed(
+                StackTraceError(
+                    name="Stored Procedure",
+                    error=f"Error trying to get stored procedure queries: {ex}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return {}
 
         return queries_dict

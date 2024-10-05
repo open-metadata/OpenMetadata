@@ -12,7 +12,7 @@
  */
 import { Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isString, map } from 'lodash';
+import { isObject, isString, map } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
@@ -58,7 +58,7 @@ export const ExtensionTable = ({
 
           return (
             <Typography.Text className="break-all" data-testid="value">
-              {value}
+              {isObject(value) ? JSON.stringify(value ?? '{}', null, 2) : value}
             </Typography.Text>
           );
         },

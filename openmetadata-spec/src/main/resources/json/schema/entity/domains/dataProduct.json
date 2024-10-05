@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DataProduct",
   "description": "A `Data Product` or `Data as a Product` is a logical unit that contains all components to process and store data for analytical or data-intensive use cases made available to data consumers.",
+  "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.domains.DataProduct",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -46,9 +47,9 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this Data Product.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this Data Product.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "experts": {
       "description": "List of users who are experts for this Data Product.",
@@ -66,6 +67,10 @@
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["id", "name", "description"],

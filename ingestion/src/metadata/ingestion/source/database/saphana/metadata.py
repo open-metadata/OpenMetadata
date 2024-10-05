@@ -11,9 +11,7 @@
 """
 SAP Hana source module
 """
-from typing import Iterable
-
-from sqlalchemy import inspect
+from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaConnection,
@@ -36,9 +34,11 @@ class SaphanaSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SapHanaConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: SapHanaConnection = config.serviceConnection.root.config
         if not isinstance(connection, SapHanaConnection):
             raise InvalidSourceException(
                 f"Expected SapHanaConnection, but got {connection}"
@@ -49,7 +49,8 @@ class SaphanaSource(CommonDbSourceService):
         """
         Check if the db is configured, or query the name
         """
-        self.inspector = inspect(self.engine)
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
 
         if getattr(self.service_connection.connection, "database"):
             yield self.service_connection.connection.database

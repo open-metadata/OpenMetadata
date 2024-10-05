@@ -64,17 +64,17 @@ from metadata.generated.schema.type.tagLabel import TagFQN, TagLabel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.processor import PIIProcessor
-from metadata.profiler.api.models import ProfilerResponse
+from metadata.profiler.api.models import ProfilerResponse, SampleData
 
 table_data = TableData(
     columns=[
-        ColumnName(__root__="customer_id"),
-        ColumnName(__root__="first_name"),
-        ColumnName(__root__="last_name"),
-        ColumnName(__root__="first_order"),
+        ColumnName("customer_id"),
+        ColumnName("first_name"),
+        ColumnName("last_name"),
+        ColumnName("first_order"),
         # Apply a random name to force the NER scanner execution here
-        ColumnName(__root__="random"),
-        ColumnName(__root__="number_of_orders"),
+        ColumnName("random"),
+        ColumnName("number_of_orders"),
     ],
     rows=[
         [
@@ -120,7 +120,7 @@ EXPECTED_COLUMN_TAGS = [
     ColumnTag(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.first_name",
         tag_label=TagLabel(
-            tagFQN=TagFQN(__root__="PII.Sensitive"),
+            tagFQN=TagFQN("PII.Sensitive"),
             source="Classification",
             labelType="Automated",
             state="Suggested",
@@ -129,7 +129,7 @@ EXPECTED_COLUMN_TAGS = [
     ColumnTag(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.first_order",
         tag_label=TagLabel(
-            tagFQN=TagFQN(__root__="PII.NonSensitive"),
+            tagFQN=TagFQN("PII.NonSensitive"),
             source="Classification",
             labelType="Automated",
             state="Suggested",
@@ -138,7 +138,7 @@ EXPECTED_COLUMN_TAGS = [
     ColumnTag(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.random",
         tag_label=TagLabel(
-            tagFQN=TagFQN(__root__="PII.Sensitive"),
+            tagFQN=TagFQN("PII.Sensitive"),
             source="Classification",
             labelType="Automated",
             state="Suggested",
@@ -242,7 +242,7 @@ class PiiProcessorTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test-service-table-patch"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -310,17 +310,15 @@ class PiiProcessorTest(TestCase):
             profile=CreateTableProfileRequest(
                 tableProfile=TableProfile(
                     timestamp=Timestamp(
-                        __root__=int(datetime.datetime.now().timestamp() * 1000)
+                        root=int(datetime.datetime.now().timestamp() * 1000)
                     )
                 )
             ),
-            sample_data=table_data,
+            sample_data=SampleData(data=table_data),
         )
 
         updated_record: ProfilerResponse = self.pii_processor.run(record)
 
-        for _, (expected, original) in enumerate(
-            zip(EXPECTED_COLUMN_TAGS, updated_record.column_tags)
-        ):
-            self.assertEqual(expected.column_fqn, original.column_fqn)
-            self.assertEqual(expected.tag_label.tagFQN, original.tag_label.tagFQN)
+        for expected, updated in zip(EXPECTED_COLUMN_TAGS, updated_record.column_tags):
+            self.assertEqual(expected.column_fqn, updated.column_fqn)
+            self.assertEqual(expected.tag_label.tagFQN, updated.tag_label.tagFQN)

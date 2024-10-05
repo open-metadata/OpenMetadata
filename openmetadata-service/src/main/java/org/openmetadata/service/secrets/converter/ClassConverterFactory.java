@@ -24,12 +24,10 @@ import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
-import org.openmetadata.schema.services.connections.database.BigQueryConnection;
-import org.openmetadata.schema.services.connections.database.DatalakeConnection;
-import org.openmetadata.schema.services.connections.database.MysqlConnection;
-import org.openmetadata.schema.services.connections.database.PostgresConnection;
-import org.openmetadata.schema.services.connections.database.TrinoConnection;
+import org.openmetadata.schema.services.connections.database.*;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
+import org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
@@ -47,23 +45,33 @@ public final class ClassConverterFactory {
         Map.ofEntries(
             Map.entry(AirflowConnection.class, new AirflowConnectionClassConverter()),
             Map.entry(BigQueryConnection.class, new BigQueryConnectionClassConverter()),
+            Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
             Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
-            Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
-            Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
-            Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
+            Map.entry(DeltaLakeConnection.class, new DeltaLakeConnectionClassConverter()),
             Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
             Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
+            Map.entry(ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
             Map.entry(GCSConfig.class, new GCPConfigClassConverter()),
             Map.entry(GCPCredentials.class, new GcpCredentialsClassConverter()),
             Map.entry(GCSConnection.class, new GcpConnectionClassConverter()),
-            Map.entry(ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
+            Map.entry(HiveConnection.class, new HiveConnectionClassConverter()),
+            Map.entry(IcebergConnection.class, new IcebergConnectionClassConverter()),
+            Map.entry(IcebergFileSystem.class, new IcebergFileSystemClassConverter()),
             Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
-            Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
+            Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
+            Map.entry(RedshiftConnection.class, new RedshiftConnectionClassConverter()),
+            Map.entry(GreenplumConnection.class, new GreenplumConnectionClassConverter()),
+            Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
+            Map.entry(SapHanaConnection.class, new SapHanaConnectionClassConverter()),
+            Map.entry(StorageConfig.class, new StorageConfigClassConverter()),
             Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
+            Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
             Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
+            Map.entry(SalesforceConnection.class, new SalesforceConnectorClassConverter()),
             Map.entry(
                 TestServiceConnectionRequest.class,
                 new TestServiceConnectionRequestClassConverter()),
+            Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
             Map.entry(Workflow.class, new WorkflowClassConverter()));
   }
 

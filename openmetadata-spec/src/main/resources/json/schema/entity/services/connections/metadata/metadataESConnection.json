@@ -60,7 +60,7 @@
     },
     "batchSize": {
       "title": "Batch Size",
-      "description": "Maximum number of events sentx in a batch (Default 10).",
+      "description": "Maximum number of events sent in a batch (Default 100).",
       "type": "integer",
       "default": 100
     },

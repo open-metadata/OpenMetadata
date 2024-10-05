@@ -11,7 +11,7 @@ source:
           privateKeyId: privateKeyID
           privateKey: "-----BEGIN PRIVATE KEY-----\nmySuperSecurePrivateKey==\n-----END PRIVATE KEY-----\n"
           clientEmail: client@email.secure
-          clientId: 1234567890
+          clientId: "1234567890"
           authUri: https://accounts.google.com/o/oauth2/auth
           tokenUri: https://oauth2.googleapis.com/token
           authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs
@@ -47,6 +47,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

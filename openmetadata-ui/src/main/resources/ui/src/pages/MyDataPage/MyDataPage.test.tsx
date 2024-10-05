@@ -10,11 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import {
   mockActiveAnnouncementData,
   mockCustomizePageClassBase,
@@ -56,15 +54,12 @@ jest.mock(
       ));
   }
 );
-
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
-
 jest.mock('../../utils/CustomizePageClassBase', () => {
   return mockCustomizePageClassBase;
 });
-
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest
     .fn()
@@ -72,28 +67,30 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
       <div data-testid="page-layout-v1">{children}</div>
     ));
 });
-
-jest.mock('../../components/WelcomeScreen/WelcomeScreen.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ onClose }) => (
-      <div onClick={onClose}>WelcomeScreen</div>
-    ));
-});
-
 jest.mock(
-  '../../components/ApplicationConfigProvider/ApplicationConfigProvider',
-  () => ({
-    useApplicationConfigContext: jest
+  '../../components/MyData/WelcomeScreen/WelcomeScreen.component',
+  () => {
+    return jest
       .fn()
-      .mockImplementation(() => ({ selectedPersona: mockPersonaName })),
-  })
+      .mockImplementation(({ onClose }) => (
+        <div onClick={onClose}>WelcomeScreen</div>
+      ));
+  }
 );
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest
-    .fn()
-    .mockImplementation(() => ({ currentUser: mockUserData })),
+let mockSelectedPersona: Record<string, string> = {
+  fullyQualifiedName: mockPersonaName,
+};
+
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    currentUser: mockUserData,
+    selectedPersona: mockSelectedPersona,
+  })),
+}));
+
+jest.mock('../../hooks/useGridLayoutDirection', () => ({
+  useGridLayoutDirection: jest.fn().mockImplementation(() => 'ltr'),
 }));
 
 jest.mock('../../rest/DocStoreAPI', () => ({
@@ -101,22 +98,30 @@ jest.mock('../../rest/DocStoreAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockDocumentData)),
 }));
-
 jest.mock('../../rest/feedsAPI', () => ({
   getActiveAnnouncement: jest
     .fn()
-    .mockImplementation(() => mockActiveAnnouncementData),
+    .mockImplementation(() => Promise.resolve(mockActiveAnnouncementData)),
 }));
-
 jest.mock('../../rest/userAPI', () => ({
-  getUserById: jest.fn().mockImplementation(() => mockUserData),
+  getUserById: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockUserData)),
 }));
-
-jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({ pathname: '' })),
-}));
-
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '' }));
+});
+jest.mock('../../rest/searchAPI', () => {
+  return {
+    searchQuery: jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ hits: { hits: [], total: { value: 0 } } })
+      ),
+  };
+});
 jest.mock('react-grid-layout', () => ({
+  ...jest.requireActual('react-grid-layout'),
   WidthProvider: jest
     .fn()
     .mockImplementation(() =>
@@ -130,9 +135,28 @@ jest.mock('react-grid-layout', () => ({
   default: '',
 }));
 
-jest.mock('../../hooks/authHooks', () => ({
-  useAuth: jest.fn().mockImplementation(() => ({ isAuthDisabled: false })),
-}));
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
+});
+
+jest.mock('../DataInsightPage/DataInsightProvider', async () => {
+  return jest.fn().mockImplementation(({ children }) => <>{children}</>);
+});
+
+jest.mock('../DataInsightPage/DataInsightProvider', () => {
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+    useDataInsightProvider: jest.fn().mockReturnValue({
+      kpi: {
+        isLoading: false,
+        data: [],
+      },
+    }),
+  };
+});
 
 describe('MyDataPage component', () => {
   beforeEach(() => {
@@ -142,7 +166,6 @@ describe('MyDataPage component', () => {
   it('MyDataPage should only display WelcomeScreen when user logs in for the first time', async () => {
     // Simulate no user is logged in condition
     localStorage.clear();
-
     await act(async () => {
       render(<MyDataPage />);
     });
@@ -154,7 +177,6 @@ describe('MyDataPage component', () => {
   it('MyDataPage should display the main content after the WelcomeScreen is closed', async () => {
     // Simulate no user is logged in condition
     localStorage.clear();
-
     await act(async () => {
       render(<MyDataPage />);
     });
@@ -174,11 +196,15 @@ describe('MyDataPage component', () => {
     await act(async () => {
       render(<MyDataPage />);
 
-      expect(screen.queryByText('WelcomeScreen')).toBeNull();
-      expect(screen.queryByTestId('react-grid-layout')).toBeNull();
-      expect(screen.getByTestId('activity-feed-provider')).toBeInTheDocument();
       expect(screen.getByText('Loader')).toBeInTheDocument();
+      expect(screen.queryByTestId('react-grid-layout')).toBeNull();
     });
+
+    expect(screen.queryByText('WelcomeScreen')).toBeNull();
+
+    expect(
+      await screen.findByTestId('activity-feed-provider')
+    ).toBeInTheDocument();
   });
 
   it('MyDataPage should display all the widgets in the config and the announcements widget if there are announcements', async () => {
@@ -202,10 +228,10 @@ describe('MyDataPage component', () => {
   it('MyDataPage should not render announcement widget if there are no announcements', async () => {
     (getActiveAnnouncement as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
-        response: { ...mockActiveAnnouncementData, data: [] },
+        ...mockActiveAnnouncementData,
+        data: [],
       })
     );
-
     await act(async () => {
       render(<MyDataPage />);
     });
@@ -225,7 +251,6 @@ describe('MyDataPage component', () => {
     (getDocumentByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.reject(new Error('API failure'))
     );
-
     await act(async () => {
       render(<MyDataPage />);
     });
@@ -244,10 +269,7 @@ describe('MyDataPage component', () => {
   });
 
   it('MyDataPage should render default widgets when there is no selected persona', async () => {
-    (useApplicationConfigContext as jest.Mock).mockImplementation(() => ({
-      selectedPersona: {},
-    }));
-
+    mockSelectedPersona = {};
     await act(async () => {
       render(<MyDataPage />);
     });

@@ -21,11 +21,12 @@ import {
 import {
   IngestionPipeline,
   PipelineStatus,
+  Type,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewer/LogsViewer.interfaces';
+import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewerPage/LogsViewerPage.interfaces';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -58,6 +59,7 @@ export const getIngestionPipelines = async (data: {
   testSuite?: string;
   serviceType?: string;
   limit?: number;
+  applicationType?: Type;
 }) => {
   const {
     arrQueryFields,
@@ -67,6 +69,7 @@ export const getIngestionPipelines = async (data: {
     testSuite,
     serviceType,
     limit,
+    applicationType,
   } = data;
 
   const params = {
@@ -76,6 +79,7 @@ export const getIngestionPipelines = async (data: {
     pipelineType: pipelineType?.length ? pipelineType.join(',') : undefined,
     serviceType,
     limit,
+    applicationType,
     ...paging,
   };
 
@@ -102,10 +106,10 @@ export const deployIngestionPipelineById = (
   return APIClient.post(`/services/ingestionPipelines/deploy/${id}`);
 };
 
-export const enableDisableIngestionPipelineById = (
-  id: string
-): Promise<AxiosResponse> => {
-  return APIClient.post(`/services/ingestionPipelines/toggleIngestion/${id}`);
+export const enableDisableIngestionPipelineById = (id: string) => {
+  return APIClient.post<unknown, AxiosResponse<IngestionPipeline>>(
+    `/services/ingestionPipelines/toggleIngestion/${id}`
+  );
 };
 
 export const deleteIngestionPipelineById = (
@@ -115,17 +119,9 @@ export const deleteIngestionPipelineById = (
 };
 
 export const updateIngestionPipeline = async (
-  data: CreateIngestionPipeline
+  id: string,
+  data: Operation[]
 ) => {
-  const response = await APIClient.put<
-    CreateIngestionPipeline,
-    AxiosResponse<IngestionPipeline>
-  >(`/services/ingestionPipelines`, data);
-
-  return response.data;
-};
-
-export const patchIngestionPipeline = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<IngestionPipeline>

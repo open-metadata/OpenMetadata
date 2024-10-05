@@ -12,10 +12,11 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Form, Row, Select, Switch, Typography } from 'antd';
+import { Button, Col, Form, Row, Select, Switch, Typography } from 'antd';
 import { isEmpty, isNil } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import {
   CreateEventSubscription,
   Effect,
@@ -49,47 +50,35 @@ function ObservabilityFormFiltersItem({
   }, [selectedFilters, supportedFilters]);
 
   return (
-    <Card className="alert-form-item-container">
-      <Row gutter={[8, 8]}>
-        <Col span={24}>
-          <Typography.Text className="font-medium">
-            {t('label.filter-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Typography.Text className="text-xs text-grey-muted">
-            {t('message.alerts-filter-description')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Form.List name={['input', 'filters']}>
-            {(fields, { add, remove }, { errors }) => {
-              const showAddFilterButton =
-                fields.length < (supportedFilters?.length ?? 1);
+    <FormCardSection
+      heading={t('label.filter-plural')}
+      subHeading={t('message.alerts-filter-description')}>
+      <Form.List name={['input', 'filters']}>
+        {(fields, { add, remove }, { errors }) => {
+          const showAddFilterButton =
+            fields.length < (supportedFilters?.length ?? 1);
 
-              return (
-                <Row data-testid="filters-list" gutter={[16, 16]} key="filters">
-                  {fields.map(({ key, name }) => {
-                    const effect =
-                      form.getFieldValue([
-                        'input',
-                        'filters',
-                        name,
-                        'effect',
-                      ]) ?? Effect.Include;
+          return (
+            <Row data-testid="filters-list" gutter={[16, 16]} key="filters">
+              {fields.map(({ key, name }) => {
+                const effect =
+                  form.getFieldValue(['input', 'filters', name, 'effect']) ??
+                  Effect.Include;
 
-                    const showConditionalFields =
-                      !isNil(supportedFilters) &&
-                      !isEmpty(selectedFilters) &&
-                      selectedFilters[name];
+                const showConditionalFields =
+                  !isNil(supportedFilters) &&
+                  !isEmpty(selectedFilters) &&
+                  selectedFilters[name];
 
-                    return (
-                      <Col
-                        data-testid={`filter-${name}`}
-                        key={`observability-${key}`}
-                        span={24}>
+                return (
+                  <Col
+                    data-testid={`filter-${name}`}
+                    key={`observability-${key}`}
+                    span={24}>
+                    <div className="flex gap-4">
+                      <div className="flex-1 w-min-0">
                         <Row gutter={[8, 8]}>
-                          <Col span={11}>
+                          <Col span={12}>
                             <Form.Item
                               key={`filter-${key}`}
                               name={[name, 'name']}
@@ -123,59 +112,56 @@ function ObservabilityFormFiltersItem({
                               selectedTrigger,
                               supportedFilters
                             )}
-                          <Col span={2}>
-                            <Button
-                              data-testid={`remove-filter-${name}`}
-                              icon={<CloseOutlined />}
-                              onClick={() => remove(name)}
-                            />
-                          </Col>
                         </Row>
-                        <Form.Item
-                          label={
-                            <Typography.Text>
-                              {t('label.include')}
-                            </Typography.Text>
-                          }
-                          name={[name, 'effect']}
-                          normalize={(value) =>
-                            value ? Effect.Include : Effect.Exclude
-                          }>
-                          <Switch
-                            checked={effect === Effect.Include}
-                            data-testid={`filter-switch-${name}`}
-                          />
-                        </Form.Item>
-                      </Col>
-                    );
-                  })}
-                  {showAddFilterButton ? (
-                    <Col span={24}>
+                      </div>
+
                       <Button
-                        data-testid="add-filters"
-                        disabled={
-                          isEmpty(selectedTrigger) || isNil(selectedTrigger)
-                        }
-                        type="primary"
-                        onClick={() =>
-                          add({
-                            effect: Effect.Include,
-                          })
-                        }>
-                        {t('label.add-entity', {
-                          entity: t('label.filter'),
-                        })}
-                      </Button>
-                    </Col>
-                  ) : null}
-                  <Form.ErrorList errors={errors} />
-                </Row>
-              );
-            }}
-          </Form.List>
-        </Col>
-      </Row>
-    </Card>
+                        data-testid={`remove-filter-${name}`}
+                        icon={<CloseOutlined />}
+                        onClick={() => remove(name)}
+                      />
+                    </div>
+                    <Form.Item
+                      label={
+                        <Typography.Text>{t('label.include')}</Typography.Text>
+                      }
+                      name={[name, 'effect']}
+                      normalize={(value) =>
+                        value ? Effect.Include : Effect.Exclude
+                      }>
+                      <Switch
+                        checked={effect === Effect.Include}
+                        data-testid={`filter-switch-${name}`}
+                      />
+                    </Form.Item>
+                  </Col>
+                );
+              })}
+              {showAddFilterButton ? (
+                <Col span={24}>
+                  <Button
+                    data-testid="add-filters"
+                    disabled={
+                      isEmpty(selectedTrigger) || isNil(selectedTrigger)
+                    }
+                    type="primary"
+                    onClick={() =>
+                      add({
+                        effect: Effect.Include,
+                      })
+                    }>
+                    {t('label.add-entity', {
+                      entity: t('label.filter'),
+                    })}
+                  </Button>
+                </Col>
+              ) : null}
+              <Form.ErrorList errors={errors} />
+            </Row>
+          );
+        }}
+      </Form.List>
+    </FormCardSection>
   );
 }
 

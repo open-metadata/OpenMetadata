@@ -18,8 +18,8 @@ import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
-from requests.utils import quote
 
+from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
 )
@@ -30,7 +30,6 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
@@ -50,6 +49,7 @@ from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMix
 from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
+from metadata.ingestion.ometa.mixins.suggestions_mixin import OMetaSuggestionsMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
@@ -57,7 +57,7 @@ from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.routes import ROUTES
-from metadata.ingestion.ometa.utils import get_entity_type, model_str
+from metadata.ingestion.ometa.utils import get_entity_type, model_str, quote
 from metadata.utils.logger import ometa_logger
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.ssl_registry import get_verify_ssl_fn
@@ -108,6 +108,7 @@ class OpenMetadata(
     OMetaRolePolicyMixin,
     OMetaSearchIndexMixin,
     OMetaCustomPropertyMixin,
+    OMetaSuggestionsMixin,
     Generic[T, C],
 ):
     """
@@ -172,13 +173,16 @@ class OpenMetadata(
 
         return route
 
-    def get_module_path(self, entity: Type[T]) -> str:
+    def get_module_path(self, entity: Type[T]) -> Optional[str]:
         """
         Based on the entity, return the module path
         it is found inside generated
         """
         if issubclass(entity, CreateIngestionPipelineRequest):
             return "services.ingestionPipelines"
+        if issubclass(entity, CreateBot):
+            # Bots schemas don't live inside any subdirectory
+            return None
         return entity.__module__.split(".")[-2]
 
     def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
@@ -222,6 +226,8 @@ class OpenMetadata(
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
             .replace("dashboarddatamodel", "dashboardDataModel")
+            .replace("apiendpoint", "apiEndpoint")
+            .replace("apicollection", "apiCollection")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")
@@ -246,11 +252,9 @@ class OpenMetadata(
         )
         return entity_class
 
-    def create_or_update(self, data: C) -> T:
+    def _create(self, data: C, method: str) -> T:
         """
-        We allow CreateEntity for PUT, so we expect a type C.
-
-        We PUT to the endpoint and return the Entity generated result
+        Internal logic to run POST vs. PUT
         """
         entity = data.__class__
         is_create = "create" in data.__class__.__name__.lower()
@@ -262,14 +266,22 @@ class OpenMetadata(
             raise InvalidEntityException(
                 f"PUT operations need a CreateEntity, not {entity}"
             )
-        resp = self.client.put(
-            self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder)
-        )
+
+        fn = getattr(self.client, method)
+        resp = fn(self.get_suffix(entity), data=data.model_dump_json())
         if not resp:
             raise EmptyPayloadException(
-                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.json()}"
+                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.model_dump_json()}"
             )
         return entity_class(**resp)
+
+    def create_or_update(self, data: C) -> T:
+        """Run a PUT requesting via create request C"""
+        return self._create(data=data, method="put")
+
+    def create(self, data: C) -> T:
+        """Run a POST requesting via create request C"""
+        return self._create(data=data, method="post")
 
     def get_by_name(
         self,
@@ -284,7 +296,7 @@ class OpenMetadata(
 
         return self._get(
             entity=entity,
-            path=f"name/{quote(model_str(fqn), safe='')}",
+            path=f"name/{quote(fqn)}",
             fields=fields,
             nullable=nullable,
         )
@@ -397,7 +409,12 @@ class OpenMetadata(
                 try:
                     entities.append(entity(**elmt))
                 except Exception as exc:
-                    logger.error(f"Error creating entity. Failed with exception {exc}")
+                    logger.error(
+                        f"Error creating entity [{entity.__name__}]. Failed with exception {exc}"
+                    )
+                    logger.debug(
+                        f"Can't create [{entity.__name__}] from [{elmt}]. Skipping."
+                    )
                     continue
         else:
             entities = [entity(**elmt) for elmt in resp["data"]]
@@ -410,7 +427,7 @@ class OpenMetadata(
         self,
         entity: Type[T],
         fields: Optional[List[str]] = None,
-        limit: int = 1000,
+        limit: int = 100,
         params: Optional[Dict[str, str]] = None,
         skip_on_failure: bool = False,
     ) -> Iterable[T]:
@@ -432,8 +449,7 @@ class OpenMetadata(
             params=params,
             skip_on_failure=skip_on_failure,
         )
-        for elem in entity_list.entities:
-            yield elem
+        yield from entity_list.entities
 
         after = entity_list.after
         while after:
@@ -445,8 +461,7 @@ class OpenMetadata(
                 after=after,
                 skip_on_failure=skip_on_failure,
             )
-            for elem in entity_list.entities:
-                yield elem
+            yield from entity_list.entities
             after = entity_list.after
 
     def list_versions(

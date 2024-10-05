@@ -7,6 +7,7 @@
       "dashboard",
       "topic",
       "pipeline",
+      "ingestionPipeline",
       "searchIndex",
       "user",
       "team",
@@ -28,20 +29,28 @@
       "dashboardService",
       "pipelineService",
       "mlmodelService",
+      "storageService",
+      "metadataService",
       "searchService",
       "entityReportData",
       "webAnalyticEntityViewReportData",
       "webAnalyticUserActivityReportData",
       "domain",
       "storedProcedure",
-      "dataProduct"
+      "dataProduct",
+      "testCaseResolutionStatus",
+      "apiService",
+      "apiEndpoint",
+      "apiCollection"
     ],
-    "recreateIndex": true,
+    "recreateIndex": false,
     "batchSize": "100",
+    "payLoadSize": 104857600,
     "searchIndexMappingLanguage": "EN"
   },
   "appSchedule": {
-    "scheduleType": "Custom",
-    "cronExpression": "0 0 0 1/1 * ? *"
-  }
+    "scheduleTimeline": "Custom",
+    "cronExpression": "0 0 * * *"
+  },
+  "supportsInterrupt": true
 }

@@ -35,7 +35,7 @@ jest.mock('../../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => {
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => {
   return {
     usePermissionProvider: jest.fn(() => ({
       permissions: {
@@ -98,12 +98,22 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),
 }));
 
-jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
-  jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
+jest.mock(
+  '../../../components/common/ResizablePanels/ResizableLeftPanels',
+  () =>
+    jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+      <div>
+        {firstPanel.children}
+        {secondPanel.children}
+      </div>
+    ))
+);
+
+jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <div>
-      {leftPanel}
-      {children}
-      {rightPanel}
+      {firstPanel.children}
+      {secondPanel.children}
     </div>
   ))
 );

@@ -15,6 +15,7 @@ package org.openmetadata.service.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
@@ -37,11 +39,13 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.JsonUtils;
 import org.springframework.expression.Expression;
+import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 @Slf4j
 public final class AlertUtil {
@@ -53,8 +57,13 @@ public final class AlertUtil {
     }
     Expression expression = parseExpression(condition);
     AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(null);
+    SimpleEvaluationContext context =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(ruleEvaluator)
+            .build();
     try {
-      expression.getValue(ruleEvaluator, clz);
+      expression.getValue(context, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
       String message =
@@ -70,7 +79,12 @@ public final class AlertUtil {
       String completeCondition = buildCompleteCondition(alertFilterRules);
       AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
       Expression expression = parseExpression(completeCondition);
-      result = Boolean.TRUE.equals(expression.getValue(ruleEvaluator, Boolean.class));
+      SimpleEvaluationContext context =
+          SimpleEvaluationContext.forReadOnlyDataBinding()
+              .withInstanceMethods()
+              .withRootObject(ruleEvaluator)
+              .build();
+      result = Boolean.TRUE.equals(expression.getValue(context, Boolean.class));
       LOG.debug("Alert evaluated as Result : {}", result);
       return result;
     } else {
@@ -81,24 +95,45 @@ public final class AlertUtil {
   public static String buildCompleteCondition(List<EventFilterRule> alertFilterRules) {
     StringBuilder builder = new StringBuilder();
     for (int i = 0; i < alertFilterRules.size(); i++) {
-      EventFilterRule rule = alertFilterRules.get(i);
-      builder.append("(");
-      if (rule.getEffect() == ArgumentsInput.Effect.INCLUDE) {
-        builder.append(rule.getCondition());
-      } else {
-        builder.append("!");
-        builder.append(rule.getCondition());
-      }
-      builder.append(")");
-      if (i != (alertFilterRules.size() - 1)) builder.append(" && ");
+      builder.append(getWrappedCondition(alertFilterRules.get(i), i));
     }
-
     return builder.toString();
   }
 
-  public static boolean shouldTriggerAlert(String entityType, FilteringRules config) {
+  private static String getWrappedCondition(EventFilterRule rule, int index) {
+    String prefixCondition = "";
+
+    // First Condition, no need to add prefix
+    if (index != 0) {
+      String rawCondition = getRawCondition(rule.getPrefixCondition());
+      prefixCondition = nullOrEmpty(rawCondition) ? " && " : rawCondition;
+    }
+
+    StringBuilder builder = new StringBuilder();
+    builder.append("(");
+    if (rule.getEffect() == ArgumentsInput.Effect.INCLUDE) {
+      builder.append(rule.getCondition());
+    } else {
+      builder.append("!");
+      builder.append(rule.getCondition());
+    }
+    builder.append(")");
+    return String.format("%s%s", prefixCondition, builder);
+  }
+
+  private static String getRawCondition(ArgumentsInput.PrefixCondition prefixCondition) {
+    if (prefixCondition.equals(ArgumentsInput.PrefixCondition.AND)) {
+      return " && ";
+    } else if (prefixCondition.equals(ArgumentsInput.PrefixCondition.OR)) {
+      return " || ";
+    } else {
+      return "";
+    }
+  }
+
+  public static boolean shouldTriggerAlert(ChangeEvent event, FilteringRules config) {
     if (config == null) {
-      return false;
+      return true;
     }
     // OpenMetadataWide Setting apply to all ChangeEvents
     if (config.getResources().size() == 1 && config.getResources().get(0).equals("all")) {
@@ -106,22 +141,21 @@ public final class AlertUtil {
     }
 
     // Trigger Specific Settings
-    if (entityType.equals(THREAD)
+    if (event.getEntityType().equals(THREAD)
         && (config.getResources().get(0).equals("announcement")
             || config.getResources().get(0).equals("task")
             || config.getResources().get(0).equals("conversation"))) {
-      return true;
+      Thread thread = AlertsRuleEvaluator.getThread(event);
+      return config.getResources().get(0).equalsIgnoreCase(thread.getType().value());
     }
 
-    return config.getResources().contains(entityType); // Use Trigger Specific Settings
-  }
+    // Test Suite
+    if (config.getResources().get(0).equals(TEST_SUITE)) {
+      return event.getEntityType().equals(TEST_SUITE)
+          || event.getEntityType().equals(Entity.TEST_CASE);
+    }
 
-  public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
-    // Check Trigger Conditions
-    FilteringRules filteringRules =
-        ActivityFeedAlertCache.getActivityFeedAlert().getFilteringRules();
-    return AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules)
-        && AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
+    return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
   }
 
   public static SubscriptionStatus buildSubscriptionStatus(
@@ -153,8 +187,7 @@ public final class AlertUtil {
 
   private static boolean checkIfChangeEventIsAllowed(
       ChangeEvent event, FilteringRules filteringRules) {
-    boolean triggerChangeEvent =
-        AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules);
+    boolean triggerChangeEvent = AlertUtil.shouldTriggerAlert(event, filteringRules);
 
     if (triggerChangeEvent) {
       // Evaluate Rules
@@ -186,92 +219,71 @@ public final class AlertUtil {
   }
 
   public static FilteringRules validateAndBuildFilteringConditions(
-      CreateEventSubscription createEventSubscription) {
-    // Resource Validation
-    List<EventFilterRule> finalRules = new ArrayList<>();
-    List<EventFilterRule> actions = new ArrayList<>();
-    List<String> resource = createEventSubscription.getResources();
-    if (resource.size() > 1) {
+      List<String> resource,
+      CreateEventSubscription.AlertType alertType,
+      AlertFilteringInput input) {
+    if (resource.size() != 1) {
       throw new BadRequestException(
-          "Only one resource can be specified. Multiple resources are not supported.");
+          "One resource can be specified. Zero or Multiple resources are not supported.");
     }
 
-    if (createEventSubscription
-        .getAlertType()
-        .equals(CreateEventSubscription.AlertType.NOTIFICATION)) {
+    if (alertType.equals(CreateEventSubscription.AlertType.NOTIFICATION)) {
       Map<String, EventFilterRule> supportedFilters =
-          EventsSubscriptionRegistry.getEntityNotificationDescriptor(resource.get(0))
-              .getSupportedFilters()
-              .stream()
-              .collect(
-                  Collectors.toMap(
-                      EventFilterRule::getName,
-                      eventFilterRule ->
-                          JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
+          buildFilteringRulesMap(
+              EventsSubscriptionRegistry.getEntityNotificationDescriptor(resource.get(0))
+                  .getSupportedFilters());
       // Input validation
-      if (createEventSubscription.getInput() != null) {
-        listOrEmpty(createEventSubscription.getInput().getFilters())
-            .forEach(
-                argumentsInput ->
-                    finalRules.add(
-                        getFilterRule(
-                            supportedFilters,
-                            argumentsInput,
-                            buildInputArgumentsMap(argumentsInput))));
+      if (input != null) {
+        return new FilteringRules()
+            .withResources(resource)
+            .withRules(buildRulesList(supportedFilters, input.getFilters()))
+            .withActions(Collections.emptyList());
       }
-      return new FilteringRules()
-          .withResources(resource)
-          .withRules(finalRules)
-          .withActions(Collections.emptyList());
-    } else if (createEventSubscription
-        .getAlertType()
-        .equals(CreateEventSubscription.AlertType.OBSERVABILITY)) {
+    } else if (alertType.equals(CreateEventSubscription.AlertType.OBSERVABILITY)) {
       // Build a Map of Entity Filter Name
       Map<String, EventFilterRule> supportedFilters =
-          EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
-              .getSupportedFilters()
-              .stream()
-              .collect(
-                  Collectors.toMap(
-                      EventFilterRule::getName,
-                      eventFilterRule ->
-                          JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
+          buildFilteringRulesMap(
+              EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
+                  .getSupportedFilters());
+
       // Build a Map of Actions
       Map<String, EventFilterRule> supportedActions =
-          EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
-              .getSupportedActions()
-              .stream()
-              .collect(
-                  Collectors.toMap(
-                      EventFilterRule::getName,
-                      eventFilterRule ->
-                          JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
+          buildFilteringRulesMap(
+              EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
+                  .getSupportedActions());
 
       // Input validation
-      if (createEventSubscription.getInput() != null) {
-        listOrEmpty(createEventSubscription.getInput().getFilters())
-            .forEach(
-                argumentsInput ->
-                    finalRules.add(
-                        getFilterRule(
-                            supportedFilters,
-                            argumentsInput,
-                            buildInputArgumentsMap(argumentsInput))));
-        listOrEmpty(createEventSubscription.getInput().getActions())
-            .forEach(
-                argumentsInput ->
-                    actions.add(
-                        getFilterRule(
-                            supportedActions,
-                            argumentsInput,
-                            buildInputArgumentsMap(argumentsInput))));
+      if (input != null) {
+        return new FilteringRules()
+            .withResources(resource)
+            .withRules(buildRulesList(supportedFilters, input.getFilters()))
+            .withActions(buildRulesList(supportedActions, input.getActions()));
       }
-      return new FilteringRules()
-          .withResources(resource)
-          .withRules(finalRules)
-          .withActions(actions);
     }
-    return null;
+    return new FilteringRules()
+        .withResources(resource)
+        .withRules(Collections.emptyList())
+        .withActions(Collections.emptyList());
+  }
+
+  private static Map<String, EventFilterRule> buildFilteringRulesMap(
+      List<EventFilterRule> filteringRules) {
+    return filteringRules.stream()
+        .collect(
+            Collectors.toMap(
+                EventFilterRule::getName,
+                eventFilterRule -> JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
+  }
+
+  private static List<EventFilterRule> buildRulesList(
+      Map<String, EventFilterRule> lookUp, List<ArgumentsInput> input) {
+    List<EventFilterRule> rules = new ArrayList<>();
+    listOrEmpty(input)
+        .forEach(
+            argumentsInput ->
+                rules.add(
+                    getFilterRule(lookUp, argumentsInput, buildInputArgumentsMap(argumentsInput))));
+    return rules;
   }
 
   private static Map<String, List<String>> buildInputArgumentsMap(ArgumentsInput filter) {

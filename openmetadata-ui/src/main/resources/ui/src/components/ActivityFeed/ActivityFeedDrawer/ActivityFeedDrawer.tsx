@@ -15,13 +15,14 @@ import { Col, Drawer, Row } from 'antd';
 import classNames from 'classnames';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../../components/Loader/Loader';
-import { ThreadType } from '../../../generated/api/feed/createThread';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
+import { useReserveSidebar } from '../../../hooks/useReserveSidebar';
+import Loader from '../../common/Loader/Loader';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import './activity-feed-drawer.less';
 
 interface ActivityFeedDrawerProps {
   open?: boolean;
@@ -33,6 +34,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   className,
 }) => {
   const { t } = useTranslation();
+  const { isSidebarReserve } = useReserveSidebar();
   const {
     focusReplyEditor,
     isDrawerLoading,
@@ -60,6 +62,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
           <FeedPanelHeader
             className="p-x-md"
             entityLink={selectedThread?.about ?? ''}
+            feed={selectedThread}
             threadType={selectedThread?.type ?? ThreadType.Conversation}
             onCancel={hideDrawer}
           />
@@ -70,17 +73,30 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       {isDrawerLoading ? (
         <Loader />
       ) : (
-        <Row gutter={[16, 16]} id="feed-panel">
+        <Row
+          className={classNames({
+            ['reserve-right-sidebar']: isSidebarReserve,
+          })}
+          gutter={[0, 16]}
+          id="feed-panel">
           <Col span={24}>
             <FeedPanelBodyV1
               isOpenInDrawer
               showThread
+              componentsVisibility={{
+                showThreadIcon: false,
+                showRepliesContainer: false,
+              }}
               feed={selectedThread as Thread}
               hidePopover={false}
             />
           </Col>
           <Col span={24}>
-            <ActivityFeedEditor focused={focusReplyEditor} onSave={onSave} />
+            <ActivityFeedEditor
+              className="activity-feed-editor-drawer"
+              focused={focusReplyEditor}
+              onSave={onSave}
+            />
           </Col>
         </Row>
       )}
