@@ -110,7 +110,8 @@ public final class CollectionRegistry {
    * those conditions and makes it available for listing them over API to author expressions in Rules.
    */
   private void loadConditionFunctions() {
-    try (ScanResult scanResult = new ClassGraph().enableAllInfo().scan()) {
+    try (ScanResult scanResult =
+        new ClassGraph().enableAllInfo().acceptPackages("org.openmetadata", "io.collate").scan()) {
       for (ClassInfo classInfo : scanResult.getClassesWithMethodAnnotation(Function.class)) {
         List<Method> methods =
             ReflectionUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
@@ -220,7 +221,11 @@ public final class CollectionRegistry {
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
-    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+    try (ScanResult scanResult =
+        new ClassGraph()
+            .enableAnnotationInfo()
+            .acceptPackages("org.openmetadata", "io.collate")
+            .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Collection.class);
       List<Class<?>> collectionClasses = classList.loadClasses();
       List<CollectionDetails> collections = new ArrayList<>();

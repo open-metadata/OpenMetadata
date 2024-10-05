@@ -560,7 +560,11 @@ public final class Entity {
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
   private static List<Class<?>> getRepositories() {
-    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+    try (ScanResult scanResult =
+        new ClassGraph()
+            .enableAnnotationInfo()
+            .acceptPackages("org.openmetadata", "io.collate")
+            .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
       return classList.loadClasses();
     }
