@@ -107,8 +107,8 @@ export type ListTestCaseSearchResultsParams = {
   testCaseFQN?: string;
   testSuiteId?: string;
   latest?: boolean;
-  testCaseType: TestCaseType;
-  dataQualityDimension: DataQualityDimensions;
+  testCaseType?: TestCaseType;
+  dataQualityDimension?: DataQualityDimensions;
 };
 
 export type AddTestCaseToLogicalTestSuiteType = {
