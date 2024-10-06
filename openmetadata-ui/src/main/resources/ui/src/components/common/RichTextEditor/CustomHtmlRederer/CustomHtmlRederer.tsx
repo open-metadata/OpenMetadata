@@ -23,6 +23,12 @@ import {
   LinkMdNode,
   MdNode,
 } from '@toast-ui/editor';
+import CodeMirror from 'codemirror';
+import 'codemirror/addon/runmode/runmode';
+import 'codemirror/mode/javascript/javascript';
+import 'codemirror/mode/python/python';
+import 'codemirror/mode/sql/sql';
+import 'codemirror/mode/yaml/yaml';
 import { t } from 'i18next';
 import katex from 'katex';
 import React from 'react';
@@ -92,11 +98,27 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
     if (fenceLength > 3) {
       codeAttrs['data-backticks'] = fenceLength;
     }
-    if (infoWords.length > 0 && infoWords[0].length > 0) {
-      const [lang] = infoWords;
-
-      preClasses.push(`lang-${lang}`);
+    const lang = (infoWords?.[0] && infoWords[0]) || null;
+    const codeFragments: React.ReactElement[] = [];
+    if (codeText && lang) {
+      preClasses.push('cm-s-default', `lang-${lang}`);
       codeAttrs['data-language'] = lang;
+
+      // apply highlight
+      CodeMirror.runMode(codeText, lang, (text, style) => {
+        if (style) {
+          const className = style
+            .split(/\s+/g)
+            .map((s) => `cm-${s}`)
+            .join(' ');
+          codeFragments.push(<span className={className}>{text}</span>);
+        } else {
+          codeFragments.push(<React.Fragment>{text}</React.Fragment>);
+        }
+      });
+    } else {
+      // plain code block
+      codeFragments.push(<React.Fragment>{codeText}</React.Fragment>);
     }
 
     return [
@@ -109,7 +131,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
         type: 'html',
         content: ReactDOMServer.renderToString(
           <>
-            <code {...codeAttrs}>{codeText}</code>
+            <code {...codeAttrs}>{...codeFragments}</code>
             <span
               className="code-copy-message"
               data-copied="false"
