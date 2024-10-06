@@ -31,6 +31,8 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { INITIAL_PAGING_VALUE } from '../../constants/constants';
+import { DEFAULT_SORT_ORDER } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -86,10 +88,12 @@ const TestSuiteDetailsPage = () => {
     showPagination,
   } = usePaging();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [testSuitePermissions, setTestSuitePermission] =
+  const [testSuitePermissions, setTestSuitePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isTestCaseModalOpen, setIsTestCaseModalOpen] =
     useState<boolean>(false);
+  const [sortOptions, setSortOptions] =
+    useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
 
   const [slashedBreadCrumb, setSlashedBreadCrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -133,7 +137,7 @@ const TestSuiteDetailsPage = () => {
         ResourceEntity.TEST_SUITE,
         testSuiteFQN
       );
-      setTestSuitePermission(response);
+      setTestSuitePermissions(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -152,6 +156,7 @@ const TestSuiteDetailsPage = () => {
           TabSpecificField.INCIDENT_ID,
         ],
         testSuiteId,
+        ...sortOptions,
         ...param,
         limit: pageSize,
       });
@@ -168,6 +173,11 @@ const TestSuiteDetailsPage = () => {
     } finally {
       setIsTestCaseLoading(false);
     }
+  };
+  const handleSortTestCase = async (apiParams?: ListTestCaseParamsBySearch) => {
+    setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
+    await fetchTestCases({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
+    handlePageChange(INITIAL_PAGING_VALUE);
   };
 
   const handleAddTestCaseSubmit = async (testCases: TestCase[]) => {
@@ -391,7 +401,7 @@ const TestSuiteDetailsPage = () => {
           <DataQualityTab
             afterDeleteAction={fetchTestCases}
             breadcrumbData={incidentUrlState}
-            fetchTestCases={fetchTestCases}
+            fetchTestCases={handleSortTestCase}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
             removeFromTestSuite={{ testSuite: testSuite as TestSuite }}

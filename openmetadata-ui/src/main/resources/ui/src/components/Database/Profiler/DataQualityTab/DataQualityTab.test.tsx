@@ -150,6 +150,41 @@ describe('DataQualityTab test', () => {
     expect(mockProps.fetchTestCases).toHaveBeenCalledWith(undefined);
   });
 
+  it('Should send API request with sort params on click of name', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const header = tableRows[0];
+    const lastRunHeader = await findByText(header, 'label.name');
+
+    expect(lastRunHeader).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(lastRunHeader);
+    });
+
+    expect(mockProps.fetchTestCases).toHaveBeenCalledWith({
+      sortField: 'name.keyword',
+      sortType: 'asc',
+    });
+
+    await act(async () => {
+      fireEvent.click(lastRunHeader);
+    });
+
+    expect(mockProps.fetchTestCases).toHaveBeenCalledWith({
+      sortField: 'name.keyword',
+      sortType: 'desc',
+    });
+
+    await act(async () => {
+      fireEvent.click(lastRunHeader);
+    });
+
+    expect(mockProps.fetchTestCases).toHaveBeenCalledWith(undefined);
+  });
+
   it('Table data should be render as per data props', async () => {
     const firstRowData = MOCK_TEST_CASE[0];
     await act(async () => {

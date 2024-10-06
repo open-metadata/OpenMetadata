@@ -153,7 +153,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'name',
         key: 'name',
         width: 300,
-        sorter: (a, b) => a.name.localeCompare(b.name),
+        sorter: true,
         sortDirections: ['ascend', 'descend'],
         render: (name: string, record) => {
           const status = record.testCaseResult?.testCaseStatus;
@@ -426,12 +426,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     _filters: Record<string, FilterValue | null>,
     sorter: SorterResult<TestCase> | SorterResult<TestCase>[]
   ) => {
-    if (!isArray(sorter)) {
-      if (fetchTestCases && sorter?.columnKey === 'lastRun') {
+    if (!isArray(sorter) && fetchTestCases) {
+      if (sorter?.columnKey === 'lastRun' || sorter?.columnKey === 'name') {
         const sortData = isUndefined(sorter.order)
           ? undefined
           : {
-              sortField: 'testCaseResult.timestamp',
+              sortField:
+                sorter?.columnKey === 'lastRun'
+                  ? 'testCaseResult.timestamp'
+                  : 'name.keyword',
               sortType:
                 sorter?.order === 'ascend' ? SORT_ORDER.ASC : SORT_ORDER.DESC,
             };
