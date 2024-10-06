@@ -22,6 +22,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
 import userEvent from '@testing-library/user-event';
+import { CodeMirrorLanguageAliases } from './CustomHtmlRederer/CustomHtmlRederer';
 import { PreviewerProp } from './RichTextEditor.interface';
 import RichTextEditorPreviewer from './RichTextEditorPreviewer';
 
@@ -266,7 +267,11 @@ describe('Test RichTextEditor Previewer Component', () => {
 
   it.each([
     ['javascript', 'const foo = "bar";'],
+    ['js', 'const foo = "bar";'],
+    ['java', 'public static string foo = "bar";'],
+    ['text/x-java', 'public static string foo = "bar";'],
     ['python', 'foo = "bar"'],
+    ['py', 'foo = "bar"'],
     ['sql', 'SELECT "bar" AS foo'],
     ['yaml', 'foo: bar'],
   ])(
@@ -282,6 +287,7 @@ describe('Test RichTextEditor Previewer Component', () => {
           wrapper: MemoryRouter,
         }
       );
+      const cmLang = CodeMirrorLanguageAliases[language] || language;
 
       const markdownParser = await findByTestId(container, 'markdown-parser');
 
@@ -291,13 +297,13 @@ describe('Test RichTextEditor Previewer Component', () => {
       const pre = markdownParser.querySelector('pre.code-block');
 
       expect(pre).toBeInTheDocument();
-      expect(pre).toHaveClass('cm-s-default', `lang-${language}`);
+      expect(pre).toHaveClass('cm-s-default', `lang-${cmLang}`);
 
       // code
       const code = pre?.querySelector('code');
 
       expect(code).toBeInTheDocument();
-      expect(code).toHaveAttribute('data-language', language);
+      expect(code).toHaveAttribute('data-language', cmLang);
 
       // code fragment
       expect(code?.querySelector('span')).toBeInTheDocument();

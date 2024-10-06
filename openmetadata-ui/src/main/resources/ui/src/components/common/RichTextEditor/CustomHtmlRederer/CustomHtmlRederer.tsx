@@ -25,6 +25,7 @@ import {
 } from '@toast-ui/editor';
 import CodeMirror from 'codemirror';
 import 'codemirror/addon/runmode/runmode';
+import 'codemirror/mode/clike/clike';
 import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/python/python';
 import 'codemirror/mode/sql/sql';
@@ -67,6 +68,22 @@ const getHTMLTokens = (node: MdNode): HTMLToken[] => {
   ];
 };
 
+export const CodeMirrorLanguageAliases: Readonly<Record<string, string>> = {
+  // Mappings for C-like languages https://codemirror.net/5/mode/clike/index.html
+  c: 'text/x-csrc',
+  'c++': 'text/x-c++src',
+  java: 'text/x-java',
+  csharp: 'text/x-csharp',
+  scala: 'text/x-scala',
+  kotlin: 'text/x-kotlin',
+  objectivec: 'text/x-objectivec',
+  'objectivec++': 'text/x-objectivec++',
+  // Aliases for convenience
+  js: 'javascript',
+  py: 'python',
+  cpp: 'text/x-c++src',
+};
+
 export const customHTMLRenderer: CustomHTMLRenderer = {
   note(node) {
     return getHTMLTokens(node);
@@ -101,11 +118,15 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
     const lang = (infoWords?.[0] && infoWords[0]) || null;
     const codeFragments: React.ReactElement[] = [];
     if (codeText && lang) {
-      preClasses.push('cm-s-default', `lang-${lang}`);
-      codeAttrs['data-language'] = lang;
+      // normalize CodeMirror language (mode) specifier
+      const cmLang = CodeMirrorLanguageAliases[lang] || lang;
+
+      // set attributes
+      preClasses.push('cm-s-default', `lang-${cmLang}`);
+      codeAttrs['data-language'] = cmLang;
 
       // apply highlight
-      CodeMirror.runMode(codeText, lang, (text, style) => {
+      CodeMirror.runMode(codeText, cmLang, (text, style) => {
         if (style) {
           const className = style
             .split(/\s+/g)
