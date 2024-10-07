@@ -387,7 +387,9 @@ class RedshiftSource(
                 )
             ).all()
             for row in results:
-                stored_procedure = RedshiftStoredProcedure.model_validate(model_dump(row))
+                stored_procedure = RedshiftStoredProcedure.model_validate(
+                    model_dump(row)
+                )
                 yield stored_procedure
 
     @calculate_execution_time_generator()

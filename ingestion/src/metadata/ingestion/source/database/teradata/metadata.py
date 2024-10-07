@@ -83,7 +83,9 @@ class TeradataSource(CommonDbSourceService):
             ).all()
             for row in results:
                 try:
-                    stored_procedure = TeradataStoredProcedure.model_validate(model_dump(row))
+                    stored_procedure = TeradataStoredProcedure.model_validate(
+                        model_dump(row)
+                    )
                     stored_procedure.definition = self.describe_procedure_definition(
                         stored_procedure
                     )

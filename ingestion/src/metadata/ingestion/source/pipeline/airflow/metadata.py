@@ -215,7 +215,9 @@ class AirflowSource(PipelineServiceSource):
             )
 
         task_instance_dict = (
-            [model_dump(elem) for elem in task_instance_list] if task_instance_list else []
+            [model_dump(elem) for elem in task_instance_list]
+            if task_instance_list
+            else []
         )
 
         return [
