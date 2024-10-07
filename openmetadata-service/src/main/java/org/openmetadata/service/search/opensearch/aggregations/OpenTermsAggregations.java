@@ -2,7 +2,7 @@ package org.openmetadata.service.search.opensearch.aggregations;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import javax.json.JsonObject;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
@@ -11,8 +11,6 @@ import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
 import os.org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
 import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-
-import java.util.Map;
 
 @Setter
 @Getter
@@ -30,7 +28,7 @@ public class OpenTermsAggregations implements OpenAggregations {
     if (!nullOrEmpty(includesStr)) includes = includesStr.split(",");
     if (!nullOrEmpty(sizeStr)) size = Integer.parseInt(params.get("size"));
     TermsAggregationBuilder termsAggregationBuilder =
-            AggregationBuilders.terms(node.getName()).field(params.get("field"));
+        AggregationBuilders.terms(node.getName()).field(params.get("field"));
 
     if (size > 0) termsAggregationBuilder.size(size);
     if (!nullOrEmpty(includes)) {

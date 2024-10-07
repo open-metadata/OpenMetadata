@@ -4,12 +4,10 @@ import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import es.org.elasticsearch.search.sort.SortOrder;
-import javax.json.JsonObject;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
-
-import java.util.Map;
 
 @Setter
 @Getter
@@ -21,11 +19,9 @@ public class ElasticTopHitsAggregations implements ElasticAggregations {
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
     AggregationBuilder aggregationBuilder =
-            AggregationBuilders.topHits(node.getName())
-                    .size(Integer.parseInt(params.get("size")))
-                    .sort(
-                            params.get("sort_field"),
-                            SortOrder.fromString(params.get("sort_order")));
+        AggregationBuilders.topHits(node.getName())
+            .size(Integer.parseInt(params.get("size")))
+            .sort(params.get("sort_field"), SortOrder.fromString(params.get("sort_order")));
     setElasticAggregationBuilder(aggregationBuilder);
   }
 

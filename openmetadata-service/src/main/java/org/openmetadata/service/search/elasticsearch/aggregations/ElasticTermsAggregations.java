@@ -7,12 +7,10 @@ import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import javax.json.JsonObject;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
-
-import java.util.Map;
 
 @Setter
 @Getter
@@ -30,7 +28,7 @@ public class ElasticTermsAggregations implements ElasticAggregations {
     String sizeStr = params.get("size");
     if (!nullOrEmpty(sizeStr)) size = Integer.parseInt(params.get("size"));
     TermsAggregationBuilder termsAggregationBuilder =
-            AggregationBuilders.terms(node.getName()).field(params.get("field"));
+        AggregationBuilders.terms(node.getName()).field(params.get("field"));
 
     if (size > 0) termsAggregationBuilder.size(size);
     if (!nullOrEmpty(includes)) {

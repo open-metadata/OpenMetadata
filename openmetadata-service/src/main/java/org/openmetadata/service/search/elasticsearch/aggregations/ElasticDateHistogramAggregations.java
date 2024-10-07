@@ -4,12 +4,10 @@ import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
-import javax.json.JsonObject;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
-
-import java.util.Map;
 
 @Setter
 @Getter
@@ -23,9 +21,9 @@ public class ElasticDateHistogramAggregations implements ElasticAggregations {
     String calendarInterval = params.get("calendar_interval");
     String field = params.get("field");
     AggregationBuilder aggregationBuilder =
-            AggregationBuilders.dateHistogram(node.getName())
-                    .field(field)
-                    .calendarInterval(new DateHistogramInterval(calendarInterval));
+        AggregationBuilders.dateHistogram(node.getName())
+            .field(field)
+            .calendarInterval(new DateHistogramInterval(calendarInterval));
     setElasticAggregationBuilder(aggregationBuilder);
   }
 

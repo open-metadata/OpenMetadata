@@ -4,8 +4,6 @@ import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import org.openmetadata.service.search.SearchAggregationNode;
 
-import javax.json.JsonObject;
-
 public interface ElasticAggregations {
   void createAggregation(SearchAggregationNode node);
 

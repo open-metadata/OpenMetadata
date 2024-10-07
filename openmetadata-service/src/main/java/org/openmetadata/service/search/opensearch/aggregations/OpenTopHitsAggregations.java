@@ -1,6 +1,6 @@
 package org.openmetadata.service.search.opensearch.aggregations;
 
-import javax.json.JsonObject;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
@@ -8,8 +8,6 @@ import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
 import os.org.opensearch.search.sort.SortOrder;
-
-import java.util.Map;
 
 @Setter
 @Getter
@@ -21,11 +19,9 @@ public class OpenTopHitsAggregations implements OpenAggregations {
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
     AggregationBuilder aggregationBuilder =
-            AggregationBuilders.topHits(node.getName())
-                    .size(Integer.parseInt(params.get("size")))
-                    .sort(
-                            params.get("sort_field"),
-                            SortOrder.fromString(params.get("sort_order")));
+        AggregationBuilders.topHits(node.getName())
+            .size(Integer.parseInt(params.get("size")))
+            .sort(params.get("sort_field"), SortOrder.fromString(params.get("sort_order")));
     setElasticAggregationBuilder(aggregationBuilder);
   }
 

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -231,49 +230,54 @@ public final class SearchIndexUtils {
       List<Map<String, String>> siblingAggregationsMetadata = new ArrayList<>();
       SearchAggregationNode currentNode = root;
       String[] nestedAggregations = sibling.split(Utilities.doubleQuoteRegexEscape(","), -1);
-        for (String aggregation : nestedAggregations) {
-            SearchAggregationNode bucketNode = new SearchAggregationNode();
-            String[] nestedAggregationSiblings = aggregation.split("::");
-            for (int j = 0; j < nestedAggregationSiblings.length; j++) {
-                Map<String, String> nestedAggregationMetadata = new HashMap<>();
+      for (String aggregation : nestedAggregations) {
+        SearchAggregationNode bucketNode = new SearchAggregationNode();
+        String[] nestedAggregationSiblings = aggregation.split("::");
+        for (int j = 0; j < nestedAggregationSiblings.length; j++) {
+          Map<String, String> nestedAggregationMetadata = new HashMap<>();
 
-                String nestedAggregationSibling = nestedAggregationSiblings[j];
-                String[] parts = nestedAggregationSibling.split(":(?!:)");
-                for (String part : parts) {
-                    if (part.contains("&")) {
-                        String[] subParts = part.split("&");
-                        Map<String, String> params = new HashMap<>();
-                        for (String subPart : subParts) {
-                            String[] kvPairs = subPart.split(Utilities.doubleQuoteRegexEscape("="), -1);
-                            params.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
-                            nestedAggregationMetadata.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
-                        }
-                        bucketNode.setValue(params);
-                    } else {
-                        String[] kvPairs = part.split(Utilities.doubleQuoteRegexEscape("="), -1);
-                        switch (kvPairs[0]) {
-                            case "aggType":
-                                bucketNode.setType(Utilities.cleanUpDoubleQuotes(kvPairs[1]));
-                                nestedAggregationMetadata.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
-                                break;
-                            case "bucketName":
-                                bucketNode.setName(Utilities.cleanUpDoubleQuotes(kvPairs[1]));
-                                nestedAggregationMetadata.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
-                                break;
-                            default:
-                                nestedAggregationMetadata.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
-                                bucketNode.setValue(Map.of(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1])));
-                        }
-                    }
-                }
-                currentNode.addChild(bucketNode);
-                if (j < nestedAggregationSiblings.length - 1) {
-                    bucketNode = new SearchAggregationNode();
-                }
-                siblingAggregationsMetadata.add(nestedAggregationMetadata);
+          String nestedAggregationSibling = nestedAggregationSiblings[j];
+          String[] parts = nestedAggregationSibling.split(":(?!:)");
+          for (String part : parts) {
+            if (part.contains("&")) {
+              String[] subParts = part.split("&");
+              Map<String, String> params = new HashMap<>();
+              for (String subPart : subParts) {
+                String[] kvPairs = subPart.split(Utilities.doubleQuoteRegexEscape("="), -1);
+                params.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                nestedAggregationMetadata.put(
+                    kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+              }
+              bucketNode.setValue(params);
+            } else {
+              String[] kvPairs = part.split(Utilities.doubleQuoteRegexEscape("="), -1);
+              switch (kvPairs[0]) {
+                case "aggType":
+                  bucketNode.setType(Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                  nestedAggregationMetadata.put(
+                      kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                  break;
+                case "bucketName":
+                  bucketNode.setName(Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                  nestedAggregationMetadata.put(
+                      kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                  break;
+                default:
+                  nestedAggregationMetadata.put(
+                      kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                  bucketNode.setValue(
+                      Map.of(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1])));
+              }
             }
-            currentNode = bucketNode;
+          }
+          currentNode.addChild(bucketNode);
+          if (j < nestedAggregationSiblings.length - 1) {
+            bucketNode = new SearchAggregationNode();
+          }
+          siblingAggregationsMetadata.add(nestedAggregationMetadata);
         }
+        currentNode = bucketNode;
+      }
       aggregationsMetadata.add(siblingAggregationsMetadata);
     }
     return new SearchAggregation(root, aggregationsMetadata);

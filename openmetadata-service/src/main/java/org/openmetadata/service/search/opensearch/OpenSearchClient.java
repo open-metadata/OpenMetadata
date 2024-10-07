@@ -31,7 +31,6 @@ import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
-import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
@@ -83,7 +82,6 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
 import org.openmetadata.service.search.indexes.APIEndpointIndex;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
@@ -106,6 +104,7 @@ import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
+import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator;
@@ -1149,7 +1148,8 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
-    List<OpenAggregations> aggregationBuilder = OpenAggregationsBuilder.buildAggregation(
+    List<OpenAggregations> aggregationBuilder =
+        OpenAggregationsBuilder.buildAggregation(
             aggregationMetadata.getAggregationTree(), null, new ArrayList<>());
 
     // Create search request
@@ -1184,18 +1184,19 @@ public class OpenSearchClient implements SearchClient {
     Optional<JsonObject> aggregationResults =
         Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
     return SearchIndexUtils.parseAggregationResults(
-        aggregationResults,
-            aggregationMetadata.getAggregationMetadata());
+        aggregationResults, aggregationMetadata.getAggregationMetadata());
   }
 
   @Override
-  public JsonObject aggregate(String query, String index, SearchAggregation searchAggregation, String filter)
+  public JsonObject aggregate(
+      String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
     if (searchAggregation == null) {
       return null;
     }
 
-    List<OpenAggregations> aggregationBuilder = OpenAggregationsBuilder.buildAggregation(
+    List<OpenAggregations> aggregationBuilder =
+        OpenAggregationsBuilder.buildAggregation(
             searchAggregation.getAggregationTree(), null, new ArrayList<>());
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(

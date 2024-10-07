@@ -1157,20 +1157,20 @@ public class ElasticSearchClient implements SearchClient {
     Optional<JsonObject> aggregationResults =
         Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
     return SearchIndexUtils.parseAggregationResults(
-        aggregationResults,
-        aggregationMetadata.getAggregationMetadata());
+        aggregationResults, aggregationMetadata.getAggregationMetadata());
   }
 
   @Override
-  public JsonObject aggregate(String query, String index, SearchAggregation searchAggregation, String filter)
+  public JsonObject aggregate(
+      String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
     if (searchAggregation == null) {
       return null;
     }
 
     List<ElasticAggregations> aggregationBuilder =
-            ElasticAggregationsBuilder.buildAggregation(
-                    searchAggregation.getAggregationTree(), null, new ArrayList<>());
+        ElasticAggregationsBuilder.buildAggregation(
+            searchAggregation.getAggregationTree(), null, new ArrayList<>());
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(index));

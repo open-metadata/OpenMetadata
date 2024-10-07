@@ -3,12 +3,10 @@ package org.openmetadata.service.search.elasticsearch.aggregations;
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.aggregations.bucket.nested.NestedAggregationBuilder;
-import javax.json.JsonObject;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
-
-import java.util.Map;
 
 @Setter
 @Getter
@@ -20,7 +18,7 @@ public class ElasticNestedAggregations implements ElasticAggregations {
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
     NestedAggregationBuilder aggregationBuilders =
-            AggregationBuilders.nested(params.get("path"), params.get("path"));
+        AggregationBuilders.nested(params.get("path"), params.get("path"));
     setElasticAggregationBuilder(aggregationBuilders);
   }
 

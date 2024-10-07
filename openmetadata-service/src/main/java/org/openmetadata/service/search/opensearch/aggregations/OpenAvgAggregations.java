@@ -1,14 +1,12 @@
 package org.openmetadata.service.search.opensearch.aggregations;
 
-import javax.json.JsonObject;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
 import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
-
-import java.util.Map;
 
 @Setter
 @Getter

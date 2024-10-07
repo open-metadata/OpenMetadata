@@ -1,6 +1,6 @@
 package org.openmetadata.service.search.opensearch.aggregations;
 
-import javax.json.JsonObject;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
@@ -8,8 +8,6 @@ import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
 import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
-
-import java.util.Map;
 
 @Setter
 @Getter
@@ -22,9 +20,9 @@ public class OpenDateHistogramAggregations implements OpenAggregations {
     Map<String, String> params = node.getValue();
     String calendarInterval = params.get("calendar_interval");
     AggregationBuilder aggregationBuilder =
-            AggregationBuilders.dateHistogram(node.getName())
-                    .field(params.get("field"))
-                    .calendarInterval(new DateHistogramInterval(calendarInterval));
+        AggregationBuilders.dateHistogram(node.getName())
+            .field(params.get("field"))
+            .calendarInterval(new DateHistogramInterval(calendarInterval));
     setElasticAggregationBuilder(aggregationBuilder);
   }
 

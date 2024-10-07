@@ -14,7 +14,6 @@ import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonArray;
@@ -248,14 +247,16 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     try {
       TestSummary testSummary;
       if (testSuiteId == null) {
-        String aggregationStr = "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
+        String aggregationStr =
+            "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
         SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
         JsonObject testCaseResultSummary =
             searchRepository.aggregate(null, TEST_CASE, searchAggregation, new SearchListFilter());
         testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
       } else {
-        String aggregationStr = "bucketName=entityLink:aggType=terms:field=entityLink.nonNormalized," +
-                "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
+        String aggregationStr =
+            "bucketName=entityLink:aggType=terms:field=entityLink.nonNormalized,"
+                + "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
         SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
         String query = ENTITY_EXECUTION_SUMMARY_FILTER.formatted(testSuiteId);
         // don't want to get it from the cache as test results summary may be stale

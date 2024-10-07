@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import javax.json.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
@@ -30,14 +29,14 @@ public class OpenBucketSelectorAggregations implements OpenAggregations {
 
     if (!validateParams(pathKeys, pathValues, scriptStr)) {
       throw new IllegalArgumentException(
-              "Invalid parameters. pathKeys & pathValues should be non-empty arrays of equal length"
-                      + " and script should be non-empty");
+          "Invalid parameters. pathKeys & pathValues should be non-empty arrays of equal length"
+              + " and script should be non-empty");
     }
 
     Map<String, String> bucketsPaths = getBucketsPaths(pathKeys, pathValues);
     Script script = new Script(scriptStr);
     BucketSelectorPipelineAggregationBuilder bucketSelectorPipelineAggregationBuilder =
-            PipelineAggregatorBuilders.bucketSelector(node.getName(), bucketsPaths, script);
+        PipelineAggregatorBuilders.bucketSelector(node.getName(), bucketsPaths, script);
     setElasticPipelineAggregationBuilder(bucketSelectorPipelineAggregationBuilder);
   }
 

@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.opensearch.aggregations;
 
-import javax.json.JsonObject;
-
 import org.openmetadata.service.search.SearchAggregationNode;
 import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;

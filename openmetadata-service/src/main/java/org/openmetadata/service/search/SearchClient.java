@@ -163,7 +163,8 @@ public interface SearchClient {
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
-  JsonObject aggregate(String query, String index, SearchAggregation searchAggregation, String filters)
+  JsonObject aggregate(
+      String query, String index, SearchAggregation searchAggregation, String filters)
       throws IOException;
 
   DataQualityReport genericAggregation(
