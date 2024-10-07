@@ -14,7 +14,6 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import com.slack.api.model.block.Blocks;
@@ -24,14 +23,12 @@ import com.slack.api.model.block.composition.PlainTextObject;
 import com.slack.api.model.block.composition.TextObject;
 import com.slack.api.model.block.element.ImageElement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
@@ -124,8 +121,6 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
 
     return switch (event.getEntityType()) {
-      case Entity.INGESTION_PIPELINE -> createIngestionPipelineMessage(
-          publisherName, event, outgoingMessage);
       case Entity.TEST_CASE -> createDQTemplateMessage(publisherName, event, outgoingMessage);
       default -> createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
     };
@@ -355,76 +350,6 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                     List.of(
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
                         BlockCompositions.markdownText(TEMPLATE_FOOTER)))));
-    return blocks;
-  }
-
-  private SlackMessage createIngestionPipelineMessage(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-
-    IngestionPipeline ingestionPipeline = (IngestionPipeline) getEntity(event);
-
-    // Create the message with general change event body
-    SlackMessage message = new SlackMessage();
-    message.setBlocks(createGeneralChangeEventBody(event, outgoingMessage));
-
-    // Check if pipelineStatuses is null and handle accordingly
-    PipelineStatus pipelineStatus = ingestionPipeline.getPipelineStatuses();
-    String color = "#808080"; // Default to gray if no status is found
-    if (pipelineStatus != null && pipelineStatus.getPipelineState() != null) {
-      color = getPipelineStatusColor(pipelineStatus.getPipelineState());
-    }
-
-    // Create the attachment with pipeline-specific details and color
-    SlackMessage.Attachment attachment = new SlackMessage.Attachment();
-    attachment.setColor(color);
-    attachment.setBlocks(createIngestionPipelineBody(ingestionPipeline));
-
-    message.setAttachments(Collections.singletonList(attachment));
-
-    return message;
-  }
-
-  private List<LayoutBlock> createIngestionPipelineBody(IngestionPipeline ingestionPipeline) {
-    List<LayoutBlock> blocks = new ArrayList<>();
-
-    // Header
-    addIngestionPipelineAttachmentHeader(blocks);
-
-    // Divider
-    blocks.add(Blocks.divider());
-
-    List<TextObject> pipelineFields =
-        Arrays.asList(
-            BlockCompositions.markdownText(
-                String.format(getBold(), "Pipeline ID")
-                    + getLineBreak()
-                    + ingestionPipeline.getId()),
-            BlockCompositions.markdownText(
-                String.format(getBold(), "Pipeline Name")
-                    + getLineBreak()
-                    + ingestionPipeline.getDisplayName()),
-            BlockCompositions.markdownText(
-                String.format(getBold(), "Pipeline Type")
-                    + getLineBreak()
-                    + ingestionPipeline.getPipelineType()),
-            BlockCompositions.markdownText(
-                String.format(getBold(), "Status")
-                    + getLineBreak()
-                    + buildPipelineStatusMessage(ingestionPipeline.getPipelineStatuses())));
-
-    blocks.add(Blocks.section(section -> section.fields(pipelineFields)));
-
-    blocks.add(Blocks.divider());
-
-    // Context Block
-    blocks.add(
-        Blocks.context(
-            context ->
-                context.elements(
-                    List.of(
-                        ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
-                        BlockCompositions.markdownText("Change Event By OpenMetadata")))));
-
     return blocks;
   }
 
@@ -852,12 +777,6 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   private void addDQAlertHeader(List<LayoutBlock> blocks) {
-    blocks.add(
-        Blocks.section(
-            section -> section.text(BlockCompositions.markdownText(applyBoldFormat("TEST CASE")))));
-  }
-
-  private void addIngestionPipelineAttachmentHeader(List<LayoutBlock> blocks) {
     blocks.add(
         Blocks.section(
             section -> section.text(BlockCompositions.markdownText(applyBoldFormat("TEST CASE")))));
