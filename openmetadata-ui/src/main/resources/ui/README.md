@@ -29,6 +29,16 @@ Using the command below, spin up the server locally from the directory `openmeta
 >
 > Since typescript is heavily used in the OpenMetadata project, we generate the typescript types and the interface from JSON schema. We use the `QuickType` tool to generate the typescript types and interfaces. You can view the complete instructions [here](https://docs.open-metadata.org/developers/contribute/build-code-and-run-tests/generate-typescript-types-from-json-schema).
 
+Alternatively, you can connect to an already started OpenMetadata Server to develop UI by setting the `DEV_SERVER_TARGET` environment variable.
+```shell
+# For example, the openmetedata server service launched with docker compose:
+# https://github.com/open-metadata/OpenMetadata/blob/main/docker/development/docker-compose.yml
+export DEV_SERVER_TARGET=http://openmetadata-server:8585/
+
+# Follow the steps to Run OpenMetadata UI...
+make yarn_start_dev_ui
+```
+
 ## Steps to Run OpenMetadata UI
 
 Once the node and yarn are installed in the system, you can perform the following steps to run OpenMetadata UI.
