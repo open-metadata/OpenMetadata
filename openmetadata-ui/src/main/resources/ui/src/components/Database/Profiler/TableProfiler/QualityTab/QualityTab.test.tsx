@@ -165,6 +165,8 @@ describe('QualityTab', () => {
       offset: 10,
       testCaseStatus: undefined,
       testCaseType: 'all',
+      sortField: 'testCaseResult.timestamp',
+      sortType: 'desc',
     });
   });
 
