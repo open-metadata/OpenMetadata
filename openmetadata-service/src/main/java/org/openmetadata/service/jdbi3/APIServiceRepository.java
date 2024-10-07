@@ -6,8 +6,7 @@ import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.apiservices.APIServiceResource;
 
-public class APIServiceRepository
-    extends ServiceEntityRepository<ApiService, ApiConnection> {
+public class APIServiceRepository extends ServiceEntityRepository<ApiService, ApiConnection> {
   public APIServiceRepository() {
     super(
         APIServiceResource.COLLECTION_PATH,

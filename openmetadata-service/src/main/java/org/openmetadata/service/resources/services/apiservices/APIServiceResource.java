@@ -185,7 +185,7 @@ public class APIServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-      ApiService apiService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    ApiService apiService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, apiService);
   }
 
@@ -222,7 +222,7 @@ public class APIServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-      ApiService apiService =
+    ApiService apiService =
         getByNameInternal(
             uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
     return decryptOrNullify(securityContext, apiService);
@@ -252,7 +252,7 @@ public class APIServiceResource
       @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-      ApiService service = repository.addTestConnectionResult(id, testConnectionResult);
+    ApiService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 
@@ -283,7 +283,7 @@ public class APIServiceResource
             .map(
                 json -> {
                   try {
-                      ApiService apiService = JsonUtils.readValue((String) json, ApiService.class);
+                    ApiService apiService = JsonUtils.readValue((String) json, ApiService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, apiService));
                   } catch (Exception e) {
                     return json;
@@ -322,7 +322,7 @@ public class APIServiceResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-      ApiService apiService = super.getVersionInternal(securityContext, id, version);
+    ApiService apiService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, apiService);
   }
 
@@ -345,7 +345,7 @@ public class APIServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateApiService create) {
-      ApiService service = getService(create, securityContext.getUserPrincipal().getName());
+    ApiService service = getService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (ApiService) response.getEntity());
     return response;
@@ -370,7 +370,7 @@ public class APIServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateApiService update) {
-      ApiService service = getService(update, securityContext.getUserPrincipal().getName());
+    ApiService service = getService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (ApiService) response.getEntity());
     return response;

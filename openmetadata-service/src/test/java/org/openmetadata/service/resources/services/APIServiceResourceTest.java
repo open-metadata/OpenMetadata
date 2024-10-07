@@ -18,8 +18,6 @@ import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
-
-import com.google.protobuf.Api;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -166,7 +164,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<ApiService, Crea
 
   @Override
   public void validateCreatedEntity(
-          ApiService service, CreateApiService createRequest, Map<String, String> authHeaders) {
+      ApiService service, CreateApiService createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
     ApiConnection expectedConnection = createRequest.getConnection();
     ApiConnection actualConnection = service.getConnection();
@@ -175,7 +173,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<ApiService, Crea
 
   @Override
   public void compareEntities(
-          ApiService expected, ApiService updated, Map<String, String> authHeaders) {
+      ApiService expected, ApiService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
 
