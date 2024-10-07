@@ -882,6 +882,7 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     Map<String, Object> responseMap =
         searchEntityRelationshipInternal(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+    return Response.status(OK).entity(responseMap).build();
   }
 
   @Override
