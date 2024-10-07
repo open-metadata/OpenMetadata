@@ -47,7 +47,7 @@ public class MigrationUtil {
                 try {
                   UUID appId = UUID.fromString(row.get("appid").toString());
                   // Ignore if this has already been migrated
-                  JsonObject json = JsonUtils.readJson((String) row.get("json")).asJsonObject();
+                  JsonObject json = JsonUtils.readJson(row.get("json").toString()).asJsonObject();
                   if (json.containsKey("appName")) {
                     return;
                   }
