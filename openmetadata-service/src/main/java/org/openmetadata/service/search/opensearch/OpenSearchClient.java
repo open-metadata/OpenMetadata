@@ -11,6 +11,7 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD_KEYWORD;
@@ -66,6 +67,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
@@ -76,6 +78,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -225,6 +229,32 @@ public class OpenSearchClient implements SearchClient {
           "fqnParts",
           "chart_suggest",
           "field_suggest");
+
+  private static final Set<String> FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP =
+      Set.of(
+          "suggest",
+          "service_suggest",
+          "column_suggest",
+          "schema_suggest",
+          "database_suggest",
+          "lifeCycle",
+          "fqnParts",
+          "chart_suggest",
+          "field_suggest",
+          "lineage",
+          "entityRelationship",
+          "customMetrics",
+          "descriptionStatus",
+          "columnNames",
+          "totalVotes",
+          "usageSummary",
+          "entityType",
+          "dataProducts",
+          "tags",
+          "followers",
+          "domain",
+          "votes",
+          "tier");
   private static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
       Stream.concat(
               FIELDS_TO_REMOVE.stream(),
@@ -775,7 +805,8 @@ public class OpenSearchClient implements SearchClient {
       Set<Map<String, Object>> nodes,
       String queryFilter,
       String direction,
-      boolean deleted)
+      boolean deleted,
+      boolean add_nodes)
       throws IOException {
     if (depth <= 0) {
       return;
@@ -813,9 +844,11 @@ public class OpenSearchClient implements SearchClient {
     for (var hit : searchResponse.getHits().getHits()) {
       List<Map<String, Object>> entityRelationship =
           (List<Map<String, Object>>) hit.getSourceAsMap().get("entityRelationship");
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
-      nodes.add(tempMap);
+      if (add_nodes) {
+        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+        tempMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
+        nodes.add(tempMap);
+      }
       for (Map<String, Object> er : entityRelationship) {
         Map<String, String> entity = (HashMap<String, String>) er.get("entity");
         Map<String, String> relatedEntity = (HashMap<String, String>) er.get("relatedEntity");
@@ -823,13 +856,27 @@ public class OpenSearchClient implements SearchClient {
           if (!edges.contains(er) && entity.get("fqn").equals(fqn)) {
             edges.add(er);
             getEntityRelationship(
-                relatedEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+                relatedEntity.get("fqn"),
+                depth - 1,
+                edges,
+                nodes,
+                queryFilter,
+                direction,
+                deleted,
+                add_nodes);
           }
         } else {
           if (!edges.contains(er) && relatedEntity.get("fqn").equals(fqn)) {
             edges.add(er);
             getEntityRelationship(
-                entity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+                entity.get("fqn"),
+                depth - 1,
+                edges,
+                nodes,
+                queryFilter,
+                direction,
+                deleted,
+                add_nodes);
           }
         }
       }
@@ -862,7 +909,8 @@ public class OpenSearchClient implements SearchClient {
         nodes,
         queryFilter,
         "entityRelationship.entity.fqnHash.keyword",
-        deleted);
+        deleted,
+        true);
     getEntityRelationship(
         fqn,
         upstreamDepth,
@@ -870,7 +918,8 @@ public class OpenSearchClient implements SearchClient {
         nodes,
         queryFilter,
         "entityRelationship.relatedEntity.fqnHash.keyword",
-        deleted);
+        deleted,
+        true);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return responseMap;
@@ -894,6 +943,66 @@ public class OpenSearchClient implements SearchClient {
     searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
+    return Response.status(OK).entity(responseMap).build();
+  }
+
+  public Map<String, Object> searchSchemaEntityRelationshipInternal(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    Set<Map<String, Object>> edges = new HashSet<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
+    searchRequest.source(searchSourceBuilder.size(1000));
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+      responseMap.put("entity", tempMap);
+    }
+    TableRepository repository = (TableRepository) Entity.getEntityRepository(TABLE);
+    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("databaseSchema", fqn);
+    List<Table> tables =
+        repository.listAll(repository.getFields("tableConstraints, displayName, owners"), filter);
+    for (Table table : tables) {
+      Map<String, Object> tableMap = JsonUtils.getMap(table);
+      tableMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
+      nodes.add(tableMap);
+      getEntityRelationship(
+          table.getFullyQualifiedName(),
+          downstreamDepth,
+          edges,
+          nodes,
+          queryFilter,
+          "entityRelationship.entity.fqnHash.keyword",
+          deleted,
+          false);
+      getEntityRelationship(
+          table.getFullyQualifiedName(),
+          upstreamDepth,
+          edges,
+          nodes,
+          queryFilter,
+          "entityRelationship.relatedEntity.fqnHash.keyword",
+          deleted,
+          false);
+    }
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
+    return responseMap;
+  }
+
+  public Response searchSchemaEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap =
+        searchSchemaEntityRelationshipInternal(
+            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
     return Response.status(OK).entity(responseMap).build();
   }
 

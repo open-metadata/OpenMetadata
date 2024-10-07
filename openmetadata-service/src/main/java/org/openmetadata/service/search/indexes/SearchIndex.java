@@ -30,6 +30,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -186,30 +187,34 @@ public interface SearchIndex {
         continue;
       }
       String relatedEntityFQN = getParentFQN(tableConstraint.getReferredColumns().get(0));
-      Table relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", NON_DELETED);
-      IndexMapping destinationIndexMapping =
-          Entity.getSearchRepository()
-              .getIndexMapping(relatedEntity.getEntityReference().getType());
-      String destinationIndexName =
-          destinationIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
-      Map<String, Object> relationshipsMap = buildRelationshipsMap(entity, relatedEntity);
-      int relatedEntityIndex =
-          checkRelatedEntity(relatedEntity.getFullyQualifiedName(), constraints);
-      if (relatedEntityIndex >= 0) {
-        updateExistingConstraint(
-            entity,
-            tableConstraint,
-            constraints.get(relatedEntityIndex),
-            destinationIndexName,
-            relatedEntity);
-      } else {
-        addNewConstraint(
-            entity,
-            tableConstraint,
-            constraints,
-            relationshipsMap,
-            destinationIndexName,
-            relatedEntity);
+      Table relatedEntity;
+      try {
+        relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", NON_DELETED);
+        IndexMapping destinationIndexMapping =
+            Entity.getSearchRepository()
+                .getIndexMapping(relatedEntity.getEntityReference().getType());
+        String destinationIndexName =
+            destinationIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+        Map<String, Object> relationshipsMap = buildRelationshipsMap(entity, relatedEntity);
+        int relatedEntityIndex =
+            checkRelatedEntity(relatedEntity.getFullyQualifiedName(), constraints);
+        if (relatedEntityIndex >= 0) {
+          updateExistingConstraint(
+              entity,
+              tableConstraint,
+              constraints.get(relatedEntityIndex),
+              destinationIndexName,
+              relatedEntity);
+        } else {
+          addNewConstraint(
+              entity,
+              tableConstraint,
+              constraints,
+              relationshipsMap,
+              destinationIndexName,
+              relatedEntity);
+        }
+      } catch (EntityNotFoundException ex) {
       }
     }
     return constraints;

@@ -810,6 +810,13 @@ public class SearchRepository {
     return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
   }
 
+  public Response searchSchemaEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchClient.searchSchemaEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
   public Map<String, Object> searchLineageForExport(
       String fqn,
       int upstreamDepth,
