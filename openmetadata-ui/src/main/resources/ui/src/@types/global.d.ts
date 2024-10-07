@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-declare global {
-  interface Window {
-    BASE_PATH?: string;
-  }
+
+interface Window {
+  BASE_PATH?: string;
 }
 
 window.BASE_PATH = window.BASE_PATH || '/';
