@@ -12,6 +12,7 @@
  */
 import { Settings } from 'luxon';
 import {
+  calculateInterval,
   customFormatDateTime,
   formatDate,
   formatDateTime,
@@ -76,5 +77,55 @@ describe('Date and DateTime Format Validation', () => {
     expect(isValidDateFormat('dd/MM/yyyy HH:mm:ss')).toBe(true);
     expect(isValidDateFormat('yyyy/MM/dd HH:mm:ss')).toBe(true);
     expect(isValidDateFormat('invalid-format')).toBe(false);
+  });
+});
+
+describe('calculateInterval', () => {
+  it('should return "0 Days, 0 Hours" for the same start and end time', () => {
+    const startTime = 1710831125922;
+    const endTime = 1710831125922;
+    const result = calculateInterval(startTime, endTime);
+
+    expect(result).toBe('0 Days, 0 Hours');
+  });
+
+  it('should return "0 Days, 0 Hours" for a small interval', () => {
+    const startTime = 1710831125922;
+    const endTime = 1710831125924;
+    const result = calculateInterval(startTime, endTime);
+
+    expect(result).toBe('0 Days, 0 Hours');
+  });
+
+  it('should return "1 Days, 0 Hours" for a 24-hour interval', () => {
+    const startTime = 1710831125922;
+    const endTime = startTime + 24 * 60 * 60 * 1000; // 24 hours later
+    const result = calculateInterval(startTime, endTime);
+
+    expect(result).toBe('1 Days, 0 Hours');
+  });
+
+  it('should return "2 Days, 8 Hours" for a 56-hour interval', () => {
+    const startTime = 1710831125922;
+    const endTime = startTime + 56 * 60 * 60 * 1000; // 56 hours later
+    const result = calculateInterval(startTime, endTime);
+
+    expect(result).toBe('2 Days, 8 Hours');
+  });
+
+  it('should handle invalid timestamps gracefully', () => {
+    const startTime = NaN;
+    const endTime = NaN;
+    const result = calculateInterval(startTime, endTime);
+
+    expect(result).toBe('Invalid interval');
+  });
+
+  it('should return correct interval when start and end time are in seconds', () => {
+    const startTimeInSeconds = 1710831125;
+    const endTimeInSeconds = startTimeInSeconds + 56 * 60 * 60; // 56 hours later
+    const result = calculateInterval(startTimeInSeconds, endTimeInSeconds);
+
+    expect(result).toBe('0 Days, 0 Hours');
   });
 });
