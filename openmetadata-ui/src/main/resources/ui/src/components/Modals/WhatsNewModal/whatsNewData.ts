@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_5'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_6'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1005,6 +1005,31 @@ To continue pursuing this objective, the application was completely refactored t
 -   **Fix**: Export with new line in description ${CollateIconWithLinkMD}
 -   **Minor**: Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
 `,
+    },
+  },
+  {
+    id: 48,
+    version: 'v1.5.6',
+    description: 'Released on 3rd October 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   **Minor**: MSTR connector import fix.
+-   **Minor**: Show displayName for database and databaseSchema in explore tree.
+-   **Minor**: Allow PowerBI datamodel children in col.lineage.
+-   **Fix**: Manifest is not parsed correctly on dbt versionless.
+-   **Minor**: Fixed lineage & queries in dbt.
+-   **Improvement**: Added DBT tests with versionless and fixed v7 parsing.
+-   **Minor**: Reset displayName to avoid being persisted.
+-   **Fix**: Fixed incorrect @Schema implementations in Swagger annotations.
+-   **Fix**: Resolved type null exception on user feed.
+-   **Fix**: Addressed missing cast to str.
+-   **Minor**: DI Missing Dashboard Description Status.
+-   **Fix**: SAML redirect leads to 404 page on UI.
+-   **Minor**: Fixed General Profiler Bugs.
+-   **Improvement**: Change time format for the created_at of the DBT cloud pipeline status.
+-   **Minor**: Fixed role page size from 10 to 50.
+-   **Fix**: Search Indexing Fixes.
+-   **Improvement**: Collate API with Knowledge Center routes ${CollateIconWithLinkMD}.`,
     },
   },
 ];

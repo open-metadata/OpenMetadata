@@ -803,6 +803,11 @@ public class SearchRepository {
       throws IOException {
     return searchClient.searchEntityRelationship(
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+      }
+      
+  public Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
+    return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
   }
 
   public Map<String, Object> searchLineageForExport(
