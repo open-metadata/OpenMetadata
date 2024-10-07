@@ -134,7 +134,6 @@ export const INLINE_PROPERTY_TYPES = [
   'dateTime-cp',
   'duration',
   'email',
-  'entityReference',
   'integer',
   'number',
   'string',

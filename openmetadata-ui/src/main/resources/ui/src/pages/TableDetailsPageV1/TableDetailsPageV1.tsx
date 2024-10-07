@@ -52,6 +52,7 @@ import {
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -584,8 +585,7 @@ const TableDetailsPageV1: React.FC = () => {
                   />
                 </div>
               ),
-              minWidth: 800,
-              flex: 0.87,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
             }}
             secondPanel={{
               children: (
@@ -625,8 +625,7 @@ const TableDetailsPageV1: React.FC = () => {
                   />
                 </div>
               ),
-              minWidth: 320,
-              flex: 0.13,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
               className:
                 'entity-resizable-panel-container entity-resizable-right-panel-container ',
             }}
