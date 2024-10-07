@@ -13,12 +13,14 @@
 
 import { createBrowserHistory } from 'history';
 
-const subPath = window.BASE_PATH ?? '';
+export const getBasePath = () => {
+  return window.BASE_PATH?.slice(0, -1) ?? '';
+};
 
 export const history = createBrowserHistory(
-  subPath
+  getBasePath()
     ? {
-        basename: subPath,
+        basename: getBasePath(),
       }
     : {}
 );

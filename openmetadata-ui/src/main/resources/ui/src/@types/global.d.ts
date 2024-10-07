@@ -14,5 +14,3 @@
 interface Window {
   BASE_PATH?: string;
 }
-
-window.BASE_PATH = window.BASE_PATH || '/';

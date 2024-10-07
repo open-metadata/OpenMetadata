@@ -13,11 +13,10 @@
 
 import axios from 'axios';
 import Qs from 'qs';
-
-const basePath = window.BASE_PATH ?? '/';
+import { getBasePath } from '../utils/HistoryUtils';
 
 const axiosClient = axios.create({
-  baseURL: `${basePath}api/v1`,
+  baseURL: `${getBasePath()}/api/v1`,
   paramsSerializer: (params) => Qs.stringify(params, { arrayFormat: 'comma' }),
 });
 

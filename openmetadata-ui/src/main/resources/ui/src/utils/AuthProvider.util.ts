@@ -33,13 +33,14 @@ import {
 } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
+import { getBasePath } from './HistoryUtils';
 
 const cookieStorage = new CookieStorage();
 
 // 1 minutes for client auth approach
 export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
 
-const subPath = window.BASE_PATH ?? '';
+const subPath = getBasePath();
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
