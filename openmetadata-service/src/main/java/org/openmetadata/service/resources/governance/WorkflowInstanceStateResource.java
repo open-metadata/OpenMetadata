@@ -39,7 +39,7 @@ import org.openmetadata.service.util.ResultList;
 @Path("/v1/governance/workflowInstanceStates")
 @Tag(
     name = "Workflow Instance States",
-    description = "A Workflow Instance State is a specific instance of a Workflow Definition.")
+    description = "A Workflow Instance State is a specific state of a Workflow Instance.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "governanceWorkflows")
@@ -60,8 +60,7 @@ public class WorkflowInstanceStateResource
       operationId = "listWorkflowInstanceStates",
       summary = "List the Workflow Instance States",
       description =
-          "Get a list of all the workflow instances states, filtered by `startTs` and `endTs` of the creation, "
-              + "and Workflow Definition FQN. "
+          "Get a list of all the workflow instances states, filtered by `startTs` and `endTs` of the creation. "
               + "Use cursor-based pagination to limit the number of "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
@@ -105,25 +104,19 @@ public class WorkflowInstanceStateResource
               schema = @Schema(type = "Boolean"))
           @DefaultValue("false")
           @QueryParam("latest")
-          Boolean latest,
-      @Parameter(
-              description = "Workflow Definition ID",
-              schema = @Schema(type = "UUID"))
-          @QueryParam("workflowDefinitionId")
-          UUID workflowDefinitionId) {
+          Boolean latest) {
     OperationContext operationContext =
         new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     ListFilter filter = new ListFilter(null);
-    filter.addQueryParam("workflowDefinitionId", workflowDefinitionId.toString());
 
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
   }
 
   @GET
-  @Path("/workflowInstanceId/{workflowInstanceId}")
+  @Path("/{workflowDefinitionName}/{workflowInstanceId}")
   @Operation(
       operationId = "getWorkflowInstanceStatesForAWorkflowInstanceId",
       summary = "Get all the Workflow Instance States for a Workflow Instance id",
@@ -139,6 +132,9 @@ public class WorkflowInstanceStateResource
       })
   public ResultList<WorkflowInstanceState> listForStateId(
       @Context SecurityContext securityContext,
+      @Parameter(description = "Workflow Definition Name", schema = @Schema(type = "String"))
+          @PathParam("workflowDefinitionName")
+          String workflowDefinitionName,
       @Parameter(description = "Workflow Instance ID", schema = @Schema(type = "UUID"))
           @PathParam("workflowInstanceId")
           UUID workflowInstanceId) {
@@ -146,8 +142,7 @@ public class WorkflowInstanceStateResource
         new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    return repository.listWorkflowInstanceStatesForWorkflowInstanceId(workflowInstanceId);
+    return repository.listWorkflowInstanceStatesForWorkflowInstanceId(FullyQualifiedName.buildHash(workflowDefinitionName, workflowInstanceId.toString()));
   }
 
   @GET
@@ -177,51 +172,4 @@ public class WorkflowInstanceStateResource
 
     return repository.getById(workflowInstanceStateId);
   }
-
-//  @POST
-//  @Operation(
-//      operationId = "createWorkflowInstanceState",
-//      summary = "Create a new Workflow Instance State",
-//      description = "Create a new Workflow Instance State",
-//      responses = {
-//        @ApiResponse(
-//            responseCode = "200",
-//            description = "The created Workflow Instance State",
-//            content =
-//                @Content(
-//                    mediaType = "application/json",
-//                    schema = @Schema(implementation = WorkflowInstanceState.class)))
-//      })
-//  public Response create(
-//      @Context UriInfo uriInfo,
-//      @Context SecurityContext securityContext,
-//      @Valid CreateWorkflowInstanceState createWorkflowInstanceState) {
-//    OperationContext operationContext =
-//        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
-//    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
-//    authorizer.authorize(securityContext, operationContext, resourceContext);
-//
-//    WorkflowDefinition workflowDefinitionEntity =
-//        Entity.getEntityByName(
-//            Entity.WORKFLOW_DEFINITION,
-//            createWorkflowInstanceState.getWorkflowDefinitionReference(),
-//            null,
-//            Include.ALL);
-//    WorkflowInstanceState workflowInstanceState =
-//        getWorkflowInstanceState(
-//            workflowDefinitionEntity, securityContext.getUserPrincipal().getName());
-//
-//    return create(workflowInstanceState, workflowDefinitionEntity.getFullyQualifiedName());
-//  }
-//
-//  private WorkflowInstanceState getWorkflowInstanceState(
-//      WorkflowDefinition workflowDefinitionEntity, String userName) {
-//
-//    return new WorkflowInstanceState()
-//        .withWorkflowInstanceId()
-//        .withTimestamp(System.currentTimeMillis())
-//        .withUpdatedBy(userName)
-//        .withUpdatedAt(System.currentTimeMillis())
-//        .withWorkflowDefinitionReference(workflowDefinitionEntity.getEntityReference());
-//  }
 }

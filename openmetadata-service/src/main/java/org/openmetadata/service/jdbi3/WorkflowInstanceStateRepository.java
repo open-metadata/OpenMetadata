@@ -8,10 +8,9 @@ import java.util.UUID;
 
 import org.openmetadata.schema.governance.workflows.Stage;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowInstanceStateResource;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -26,11 +25,11 @@ public class WorkflowInstanceStateRepository
   }
 
   public ResultList<WorkflowInstanceState> listWorkflowInstanceStatesForWorkflowInstanceId(
-      UUID workflowInstanceId) {
+      String entityFQNHash) {
     List<WorkflowInstanceState> workflowInstanceStates = new ArrayList<>();
     List<String> jsons =
             ((CollectionDAO.WorkflowInstanceStateTimeSeriesDAO) timeSeriesDao)
-                    .listWorkflowInstanceStatesForWorkflowInstanceId(workflowInstanceId);
+                    .listWorkflowInstanceStatesForWorkflowInstanceId(entityFQNHash);
 
     for (String json : jsons) {
       WorkflowInstanceState workflowInstanceState =
@@ -48,10 +47,9 @@ public class WorkflowInstanceStateRepository
     return recordEntity;
   }
 
-  public UUID addNewStageToInstance(String workflowInstanceStage, String workflowInstanceId, String workflowDefinitionName, Long startedAt) {
+  public UUID addNewStageToInstance(String workflowInstanceStage, UUID workflowInstanceId, String workflowDefinitionName, Long startedAt) {
     WorkflowDefinitionRepository workflowDefinitionRepository = (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    EntityReference workflowDefinitionReference = workflowDefinitionRepository.getByName(null, workflowDefinitionName, new EntityUtil.Fields(Set.of("*"))).getEntityReference();
-
+    UUID workflowDefinitionId = workflowDefinitionRepository.getIdFromName(workflowDefinitionName);
     Stage stage = new Stage()
             .withName(workflowInstanceStage)
             .withStartedAt(startedAt);
@@ -59,9 +57,9 @@ public class WorkflowInstanceStateRepository
     WorkflowInstanceState createdRecord = createNewRecord(
             new WorkflowInstanceState()
                     .withStage(stage)
-                    .withWorkflowInstanceId(UUID.fromString(workflowInstanceId))
+                    .withWorkflowInstanceId(workflowInstanceId)
                     .withTimestamp(System.currentTimeMillis())
-                    .withWorkflowDefinitionReference(workflowDefinitionReference), buildWorkflowInstanceFqn(workflowDefinitionName, workflowInstanceId.toString()));
+                    .withWorkflowDefinitionId(workflowDefinitionId), buildWorkflowInstanceFqn(workflowDefinitionName, workflowInstanceId.toString()));
 
     return createdRecord.getId();
   }
@@ -92,6 +90,6 @@ public class WorkflowInstanceStateRepository
   }
 
   private String buildWorkflowInstanceFqn(String workflowDefinitionName, String workflowInstanceId) {
-    return String.format("%s.%s", workflowDefinitionName, workflowInstanceId);
+    return FullyQualifiedName.build(workflowDefinitionName, workflowInstanceId);
   }
 }

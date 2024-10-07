@@ -358,6 +358,8 @@ public interface CollectionDAO {
   WorkflowDefinitionDAO workflowDefinitionDAO();
 
   @CreateSqlObject
+  WorkflowInstanceTimeSeriesDAO workflowInstanceTimeSeriesDAO();
+  @CreateSqlObject
   WorkflowInstanceStateTimeSeriesDAO workflowInstanceStateTimeSeriesDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
@@ -5211,6 +5213,13 @@ public interface CollectionDAO {
     }
   }
 
+  interface WorkflowInstanceTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "workflow_instance_time_series";
+    }
+  }
+
   interface WorkflowInstanceStateTimeSeriesDAO extends EntityTimeSeriesDAO {
     @Override
     default String getTimeSeriesTableName() {
@@ -5220,8 +5229,8 @@ public interface CollectionDAO {
     @SqlQuery(
             value =
                     "SELECT json FROM workflow_instance_state_time_series "
-                            + "WHERE workflowInstanceId = :workflowInstanceId ORDER BY timestamp DESC")
-    List<String> listWorkflowInstanceStatesForWorkflowInstanceId(@BindUUID("workflowInstanceId") UUID workflowInstanceId);
+                            + "WHERE entityFQNHash = :entityFQNHash ORDER BY timestamp DESC")
+    List<String> listWorkflowInstanceStatesForWorkflowInstanceId(@Bind("entityFQNHash") String entityFQNHash);
 
   }
 }

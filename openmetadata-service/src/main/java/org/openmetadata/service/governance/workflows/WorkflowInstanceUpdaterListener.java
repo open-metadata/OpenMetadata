@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 
 import java.util.UUID;
@@ -14,12 +15,11 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 public class WorkflowInstanceUpdaterListener implements JavaDelegate {
     @Override
     public void execute(DelegateExecution execution) {
-        WorkflowInstanceStateRepository workflowInstanceStateRepository = (WorkflowInstanceStateRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
-        updateBusinessKey(execution.getProcessInstanceId());
+        WorkflowInstanceRepository workflowInstanceRepository = (WorkflowInstanceRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
 
         switch (execution.getEventName()) {
-            case "start" -> addNewStage(execution, workflowInstanceStateRepository);
-            case "end" -> updateStage(execution, workflowInstanceStateRepository);
+            case "start" -> addNewStage(execution, workflowInstanceRepository);
+            case "end" -> updateStage(execution, workflowInstanceRepository);
             default -> LOG.debug(String.format("WorkflowStageUpdaterListener does not support listening for the event: '%s'", execution.getEventName()));
         }
     }
@@ -29,17 +29,17 @@ public class WorkflowInstanceUpdaterListener implements JavaDelegate {
         WorkflowHandler.getInstance().updateBusinessKey(processInstanceId, workflowInstanceBusinessKey);
     }
 
-    private void addNewStage(DelegateExecution execution, WorkflowInstanceStateRepository workflowInstanceStateRepository) {
-        String processDefinitionKey = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
-        String processInstanceBusinessKey = execution.getProcessInstanceBusinessKey();
-        String stage = "Workflow";
+    private void addNewStage(DelegateExecution execution, WorkflowInstanceRepository workflowInstanceRepository) {
+        updateBusinessKey(execution.getProcessInstanceId());
 
-        UUID workflowInstanceStateId = workflowInstanceStateRepository.addNewStageToInstance(stage, processInstanceBusinessKey, processDefinitionKey, System.currentTimeMillis());
-        execution.setVariable("workflowInstanceStateId", workflowInstanceStateId);
+        String workflowDefinitionName = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+        UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
+
+        workflowInstanceRepository.addNewWorkflowInstance(workflowDefinitionName, workflowInstanceId, System.currentTimeMillis());
     }
 
-    private void updateStage(DelegateExecution execution, WorkflowInstanceStateRepository workflowInstanceStateRepository) {
-        UUID workflowInstanceStateId = (UUID) execution.getVariable("workflowInstanceStateId");
-        workflowInstanceStateRepository.updateStage(workflowInstanceStateId, System.currentTimeMillis(), execution.getVariables());
+    private void updateStage(DelegateExecution execution, WorkflowInstanceRepository workflowInstanceRepository) {
+        UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
+        workflowInstanceRepository.updateWorkflowInstance(workflowInstanceId, System.currentTimeMillis());
     }
 }

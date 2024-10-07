@@ -226,6 +226,7 @@ public final class Entity {
   public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
   public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA =
       "aggregatedCostAnalysisReportData";
+  public static final String WORKFLOW_INSTANCE = "workflowInstance";
   public static final String WORKFLOW_INSTANCE_STATE = "workflowInstanceState";
 
   //

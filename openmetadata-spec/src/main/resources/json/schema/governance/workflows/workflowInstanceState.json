@@ -15,9 +15,9 @@
       "description": "Workflow Instance ID.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
-    "workflowDefinitionReference": {
+    "workflowDefinitionId": {
       "description": "Workflow Definition Reference.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "stage": {
       "type": "object",

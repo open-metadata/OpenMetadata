@@ -13,14 +13,14 @@ CREATE TABLE IF NOT EXISTS workflow_definition_entity (
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Create Workflow Instance Time Series
-  CREATE TABLE IF NOT EXISTS workflow_definition_entity (
+  CREATE TABLE IF NOT EXISTS workflow_instance_time_series (
       id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-      workflowDefinitionId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowDefinitionReference.id'))) STORED NOT NULL,
+      workflowDefinitionId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowDefinitionId'))) STORED NOT NULL,
       json JSON NOT NULL,
       jsonSchema varchar(256) NOT NULL,
       timestamp bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.timestamp'))) STORED NOT NULL,
       startedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.startedAt'))) STORED NOT NULL,
-      endedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.endedAt'))) STORED NOT NULL,
+      endedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.endedAt'))) STORED NULL,
       entityFQNHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
       CONSTRAINT workflow_instance_time_series_unique_constraint UNIQUE (id,entityFQNHash),
       PRIMARY KEY (id),
@@ -30,8 +30,8 @@ CREATE TABLE IF NOT EXISTS workflow_definition_entity (
 -- Workflow Instance State Time Series
 CREATE TABLE workflow_instance_state_time_series (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.id'))) STORED NOT NULL,
-  workflowDefinitionId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowDefinitionReference.id'))) STORED NOT NULL,
   workflowInstanceId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowInstanceId'))) STORED NOT NULL,
+  workflowDefinitionId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowDefinitionId'))) STORED NOT NULL,
   stage varchar(256) GENERATED ALWAYS AS (json_unquote(json_Extract(json, '$.stage.name'))) STORED NOT NULL,
   stageStartedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.stage.startedAt'))) STORED NOT NULL,
   stageEndedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.stage.endedAt'))) STORED NULL,

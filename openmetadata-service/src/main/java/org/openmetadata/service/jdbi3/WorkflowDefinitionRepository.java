@@ -2,9 +2,13 @@ package org.openmetadata.service.jdbi3;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
+
+import java.util.Set;
+import java.util.UUID;
 
 @Slf4j
 public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
@@ -35,4 +39,9 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void storeRelationships(WorkflowDefinition entity) {}
+
+  public UUID getIdFromName(String workflowDefinitionName) {
+    EntityReference workflowDefinitionReference = getByName(null, workflowDefinitionName, new EntityUtil.Fields(Set.of("*"))).getEntityReference();
+    return workflowDefinitionReference.getId();
+  }
 }

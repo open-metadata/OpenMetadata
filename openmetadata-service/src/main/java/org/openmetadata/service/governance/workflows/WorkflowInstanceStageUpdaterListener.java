@@ -24,10 +24,10 @@ public class WorkflowInstanceStageUpdaterListener implements JavaDelegate {
     }
 
     private void addNewStage(DelegateExecution execution, WorkflowInstanceStateRepository workflowInstanceStateRepository) {
-        String processDefinitionKey = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
-        String processInstanceBusinessKey = execution.getProcessInstanceBusinessKey();
-        String stage = Optional.ofNullable(execution.getCurrentActivityId()).orElse(processDefinitionKey);
-        UUID workflowInstanceStateId = workflowInstanceStateRepository.addNewStageToInstance(stage,  processInstanceBusinessKey, processDefinitionKey, System.currentTimeMillis());
+        String workflowDefinitionName = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+        UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
+        String stage = Optional.ofNullable(execution.getCurrentActivityId()).orElse(workflowDefinitionName);
+        UUID workflowInstanceStateId = workflowInstanceStateRepository.addNewStageToInstance(stage,  workflowInstanceId, workflowDefinitionName, System.currentTimeMillis());
         execution.setVariable("stageInstanceStateId", workflowInstanceStateId);
     }
 
