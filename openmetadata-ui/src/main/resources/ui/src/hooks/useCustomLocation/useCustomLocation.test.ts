@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react-hooks';
-import process from 'process';
 import { useLocation } from 'react-router-dom';
 import useCustomLocation from './useCustomLocation';
 
@@ -22,7 +21,7 @@ jest.mock('react-router-dom', () => ({
 describe('useCustomLocation', () => {
   it('should modify the pathname correctly', () => {
     // Mock the environment variable
-    process.env.APP_SUB_PATH = '/app';
+    window.BASE_PATH = '/app/';
 
     // Mock the useLocation hook
     (useLocation as jest.Mock).mockReturnValue({
@@ -65,7 +64,7 @@ describe('useCustomLocation', () => {
 
   it('should return the original location object if APP_SUB_PATH is not set', () => {
     // Mock the environment variable
-    delete process.env.APP_SUB_PATH;
+    delete window.BASE_PATH;
 
     // Mock the useLocation hook
     (useLocation as jest.Mock).mockReturnValue({
@@ -91,7 +90,7 @@ describe('useCustomLocation', () => {
 
   it('should return the original location object if APP_SUB_PATH is empty', () => {
     // Mock the environment variable
-    process.env.APP_SUB_PATH = '';
+    window.BASE_PATH = '';
 
     // Mock the useLocation hook
     (useLocation as jest.Mock).mockReturnValue({
@@ -117,7 +116,7 @@ describe('useCustomLocation', () => {
 
   it('should return the original location object if APP_SUB_PATH is not a prefix', () => {
     // Mock the environment variable
-    process.env.APP_SUB_PATH = '/test';
+    window.BASE_PATH = '/test';
 
     // Mock the useLocation hook
     (useLocation as jest.Mock).mockReturnValue({
@@ -143,7 +142,7 @@ describe('useCustomLocation', () => {
 
   it('should return the updated pathname on second render', () => {
     // Mock the environment variable
-    process.env.APP_SUB_PATH = '/app';
+    window.BASE_PATH = '/app/';
 
     // Mock the useLocation hook
     (useLocation as jest.Mock).mockReturnValue({
