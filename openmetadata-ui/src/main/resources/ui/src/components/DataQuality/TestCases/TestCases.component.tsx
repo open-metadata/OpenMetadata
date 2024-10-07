@@ -53,13 +53,14 @@ import {
   TIER_CATEGORY,
 } from '../../../constants/constants';
 import {
+  DEFAULT_SORT_ORDER,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
@@ -68,7 +69,10 @@ import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocatio
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import {
+  getListTestCaseBySearch,
+  ListTestCaseParamsBySearch,
+} from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
@@ -94,6 +98,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const [tagOptions, setTagOptions] = useState<DefaultOptionType[]>([]);
   const [tierOptions, setTierOptions] = useState<DefaultOptionType[]>([]);
   const [serviceOptions, setServiceOptions] = useState<DefaultOptionType[]>([]);
+  const [sortOptions, setSortOptions] =
+    useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
 
   const params = useMemo(() => {
     const search = location.search;
@@ -146,7 +152,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const fetchTestCases = async (
     currentPage = INITIAL_PAGING_VALUE,
-    filters?: string[]
+    filters?: string[],
+    apiParams?: ListTestCaseParamsBySearch
   ) => {
     const updatedParams = getTestCaseFiltersValue(
       params,
@@ -157,6 +164,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     try {
       const { data, paging } = await getListTestCaseBySearch({
         ...updatedParams,
+        ...sortOptions,
+        ...apiParams,
         testCaseStatus: isEmpty(params?.testCaseStatus)
           ? undefined
           : params?.testCaseStatus,
@@ -169,8 +178,6 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         ],
         q: searchValue ? `*${searchValue}*` : undefined,
         offset: (currentPage - 1) * pageSize,
-        sortType: SORT_ORDER.DESC,
-        sortField: 'testCaseResult.timestamp',
       });
       setTestCase(data);
       handlePagingChange(paging);
@@ -180,6 +187,16 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const sortTestCase = async (apiParams?: TestCaseSearchParams) => {
+    const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
+    await fetchTestCases(
+      INITIAL_PAGING_VALUE,
+      updatedValue,
+      apiParams ?? DEFAULT_SORT_ORDER
+    );
+    setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
   };
 
   const handleStatusSubmit = (testCase: TestCase) => {
@@ -620,6 +637,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
             },
           ]}
+          fetchTestCases={sortTestCase}
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}
