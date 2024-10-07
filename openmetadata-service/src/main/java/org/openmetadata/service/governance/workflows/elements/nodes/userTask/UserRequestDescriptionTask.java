@@ -1,4 +1,4 @@
-package org.openmetadata.service.governance.workflows.elements.nodes.userTasks;
+package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.Process;

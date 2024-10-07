@@ -1,4 +1,4 @@
-package org.openmetadata.service.governance.workflows.elements.nodes.userTasks.impl;
+package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import org.flowable.engine.delegate.TaskListener;
 import org.flowable.identitylink.api.IdentityLink;
@@ -6,7 +6,6 @@ import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskDetails;

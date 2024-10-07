@@ -1,4 +1,4 @@
-package org.openmetadata.service.governance.workflows.elements.nodes.triggers;
+package org.openmetadata.service.governance.workflows.elements.nodes.trigger;
 
 import static org.openmetadata.service.governance.workflows.Workflow.getMetadataExtension;
 
@@ -9,7 +9,7 @@ import org.flowable.bpmn.model.SignalEventDefinition;
 import org.flowable.bpmn.model.StartEvent;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.service.governance.workflows.elements.WorkflowNodeInterface;
-import org.openmetadata.schema.governance.workflows.elements.nodes.triggers.EntityEventTriggerDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.trigger.EntityEventTriggerDefinition;
 
 public class EntityEventTrigger implements WorkflowNodeInterface {
   private final StartEvent startEvent;

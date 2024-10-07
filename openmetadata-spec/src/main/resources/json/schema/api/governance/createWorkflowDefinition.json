@@ -29,19 +29,19 @@
       "type": "array",
       "oneOf": [
         {
-          "$ref": "../../governance/workflows/elements/nodes/automatedTasks/checkEntityHasReviewersTask.json"
+          "$ref": "../../governance/workflows/elements/nodes/automatedTask/checkEntityHasReviewersTask.json"
         },
         {
-          "$ref": "../../governance/workflows/elements/nodes/automatedTasks/setGlossaryTermStatusTask.json"
+          "$ref": "../../governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask.json"
         },
         {
-          "$ref": "../../governance/workflows/elements/nodes/userTasks/userApprovalTask.json"
+          "$ref": "../../governance/workflows/elements/nodes/userTask/userApprovalTask.json"
         },
         {
-          "$ref": "../../governance/workflows/elements/nodes/triggers/entityEventTrigger.json"
+          "$ref": "../../governance/workflows/elements/nodes/trigger/entityEventTrigger.json"
         },
         {
-          "$ref": "../../governance/workflows/elements/nodes/endEvents/endEvent.json"
+          "$ref": "../../governance/workflows/elements/nodes/endEvent/endEvent.json"
         }
       ]
     },

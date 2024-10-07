@@ -1,4 +1,4 @@
-package org.openmetadata.service.governance.workflows.elements.nodes.userTasks;
+package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
 import static org.openmetadata.service.governance.workflows.Workflow.getMetadataExtension;
 
@@ -13,11 +13,11 @@ import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.flowable.bpmn.model.UserTask;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
-import org.openmetadata.schema.governance.workflows.elements.nodes.userTasks.UserApprovalTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.WorkflowNodeInterface;
-import org.openmetadata.service.governance.workflows.elements.nodes.userTasks.impl.CreateApprovalTaskImpl;
-import org.openmetadata.service.governance.workflows.elements.nodes.userTasks.impl.SetApprovalAssigneesImpl;
-import org.openmetadata.service.governance.workflows.elements.nodes.userTasks.impl.SetCandidateUsersImpl;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateApprovalTaskImpl;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
 import org.openmetadata.service.util.JsonUtils;
 
 public class UserApprovalTask implements WorkflowNodeInterface {

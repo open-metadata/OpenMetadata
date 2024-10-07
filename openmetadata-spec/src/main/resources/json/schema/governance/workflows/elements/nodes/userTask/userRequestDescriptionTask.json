@@ -1,12 +1,12 @@
 {
-  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/userTasks/userApprovalTask.json",
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/userTask/userRequestDescriptionTask.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "UserApprovalTaskDefinition",
-  "description": "Defines a Task for a given User to approve.",
+  "title": "UserRequestDescriptionTaskDefinition",
+  "description": "Defines a Request Description Task for a given User to approve.",
   "javaInterfaces": [
     "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
   ],
-  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.userTasks.UserApprovalTaskDefinition",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserRequestDescriptionTaskDefinition",
   "type": "object",
   "properties": {
     "type": {
@@ -15,7 +15,7 @@
     },
     "subType": {
       "type": "string",
-      "default": "userApprovalTask"
+      "default": "userRequestDescriptionTask"
     },
     "name": {
       "description": "Name that identifies this Node.",
@@ -36,8 +36,8 @@
           "description": "People/Teams assigned to the Task.",
           "type": "object",
           "properties": {
-            "addReviewers": {
-              "description": "Add the Reviewers to the assignees List.",
+            "addOwners": {
+              "description": "Add the Owners to the assignees List.",
               "type": "boolean",
               "default": false
             },
@@ -65,7 +65,7 @@
     "output": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["approved", "resolvedBy"],
+      "default": ["updatedEntityDescription", "resolvedBy"],
       "additionalItems": false,
       "minItems": 2,
       "maxItems": 2

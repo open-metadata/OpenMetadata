@@ -1,4 +1,4 @@
-package org.openmetadata.service.governance.workflows.elements.nodes.userTasks.impl;
+package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
