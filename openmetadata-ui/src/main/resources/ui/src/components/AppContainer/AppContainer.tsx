@@ -23,12 +23,14 @@ import Appbar from '../AppBar/Appbar';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
+import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './app-container.less';
 
 const AppContainer = () => {
   const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
   const { currentUser } = useApplicationStore();
+  const { applications } = useApplicationsProvider();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
@@ -53,11 +55,13 @@ const AppContainer = () => {
     if (currentUser?.id) {
       fetchLimitConfig();
     }
+  }, [currentUser?.id]);
 
-    if (applicationsClassBase.isFloatingButtonPresent()) {
+  useEffect(() => {
+    if (applicationsClassBase.isFloatingButtonPresent(applications)) {
       appendReserveRightSidebarClass();
     }
-  }, [currentUser?.id]);
+  }, [applications]);
 
   return (
     <Layout>
