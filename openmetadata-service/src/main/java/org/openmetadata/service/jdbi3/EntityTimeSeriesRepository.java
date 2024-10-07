@@ -409,11 +409,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     String aggregationPath = "$.sterms#byTerms.buckets";
-    //    String aggregationStr =
-    //        "{\"aggregations\":{\"byTerms\":{\"terms\":
-    // {\"field\":\"%s\",\"size\":100},\"aggs\":{\"latest\":"
-    //            +
-    // "{\"top_hits\":{\"size\":1,\"sort_field\":\"timestamp\",\"sort_order\":\"desc\"}}}}}}";
     String aggregationStr =
         "bucketName=byTerms:aggType=terms:field=%s&size=100,"
             + "bucketName=latest:aggType=top_hits:size=1&sort_field=timestamp&sort_order=desc";
