@@ -84,6 +84,7 @@ const CreateErrorPlaceHolder = ({
                 className="p-x-lg"
                 data-testid={buttonId ?? 'add-placeholder-button'}
                 icon={<PlusOutlined />}
+                id="add-new-user"
                 type="primary"
                 onClick={onClick}>
                 {t('label.add')}

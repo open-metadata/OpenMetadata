@@ -54,6 +54,7 @@ import {
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -135,6 +136,7 @@ const NavBar = ({
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
   const [version, setVersion] = useState<string>();
+  const { updateIsTourOpen } = useTourProvider();
 
   const fetchOMVersion = async () => {
     try {
@@ -576,7 +578,7 @@ const NavBar = ({
 
           <Dropdown
             menu={{
-              items: getHelpDropdownItems(version),
+              items: getHelpDropdownItems(updateIsTourOpen, version),
               onClick: handleSupportClick,
             }}
             overlayStyle={{ width: 175 }}

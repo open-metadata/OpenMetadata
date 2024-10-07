@@ -289,3 +289,123 @@ export const getTourSteps = ({
     selector: `[data-testid="lineage-details"]`,
   },
 ];
+
+export const getUserTourSteps = () => [
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-settings-click"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.setting-plural'),
+          }}
+        />
+      </p>
+    ),
+    actionType: 'click',
+    selector: '#settings',
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-member-click"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.member-plural'),
+          }}
+        />
+      </p>
+    ),
+    actionType: 'click',
+    selector: '[data-testid="members"]',
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-user-click"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.user-plural'),
+          }}
+        />
+      </p>
+    ),
+    selector: '[data-testid="members.users"]',
+    actionType: 'click',
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-add-btn"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.add-user'),
+          }}
+        />
+      </p>
+    ),
+    selector: '#add-new-user',
+    actionType: 'click',
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-enter-email"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.email'),
+          }}
+        />
+      </p>
+    ),
+    selector: "[data-testid='user-bot-email']",
+    actionType: 'typing',
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-enter-email"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.display-name'),
+          }}
+        />
+      </p>
+    ),
+    selector: "[data-testid='user-bot-display-name']",
+    actionType: 'typing',
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-add-description"
+          renderElement={<strong />}
+        />
+      </p>
+    ),
+    selector: "[data-testid='user-bot-description']",
+    actionType: 'typing',
+  },
+  {
+    content: () => (
+      <p>
+        <Transi18next
+          i18nKey="message.tour-save-user"
+          renderElement={<strong />}
+          values={{
+            text: i18next.t('label.save'),
+          }}
+        />
+      </p>
+    ),
+    actionType: 'click',
+    selector: "[data-testid='save-user']",
+  },
+];

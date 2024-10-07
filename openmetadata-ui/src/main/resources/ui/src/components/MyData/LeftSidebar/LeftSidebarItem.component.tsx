@@ -25,11 +25,12 @@ interface LeftSidebarItemProps {
     icon: SvgComponent;
     isBeta?: boolean;
     onClick?: () => void;
+    id?: string;
   };
 }
 
 const LeftSidebarItem = ({
-  data: { label, redirect_url, dataTestId, icon, isBeta, onClick },
+  data: { label, redirect_url, dataTestId, icon, isBeta, onClick, id },
 }: LeftSidebarItemProps) => {
   const { t } = useTranslation();
 
@@ -37,6 +38,7 @@ const LeftSidebarItem = ({
     <NavLink
       className="left-panel-item no-underline"
       data-testid={dataTestId}
+      id={id}
       to={{
         pathname: redirect_url,
       }}>

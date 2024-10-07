@@ -16,11 +16,14 @@ import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useReserveSidebar } from '../../hooks/useReserveSidebar';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
+import { getUserTourSteps } from '../../utils/TourUtils';
 import Appbar from '../AppBar/Appbar';
+import Tour from '../AppTour/Tour';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
@@ -35,6 +38,7 @@ const AppContainer = () => {
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
   const { setConfig, bannerDetails } = useLimitStore();
+  const { isTourOpen } = useTourProvider();
 
   const fetchLimitConfig = useCallback(async () => {
     try {
@@ -55,6 +59,7 @@ const AppContainer = () => {
   return (
     <Layout>
       <LimitBanner />
+      {isTourOpen && <Tour steps={getUserTourSteps()} />}
       <Layout
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
