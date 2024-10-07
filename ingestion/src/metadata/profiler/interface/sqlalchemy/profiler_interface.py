@@ -269,9 +269,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 return None
             if col_metric.metric_type == dict:
                 results = runner.select_all_from_query(metric_query)
-                data = {
-                    k: [result[k] for result in results] for k in dict(results[0])
-                }
+                data = {k: [result[k] for result in results] for k in dict(results[0])}
                 return {metric.name(): data}
 
             row = runner.select_first_from_query(metric_query)
