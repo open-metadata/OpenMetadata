@@ -332,8 +332,8 @@ MOCK_COLUMN_DATA = [
 ]
 
 MOCK_PK_CONSTRAINT: Dict[str, Dict] = {
-    "customers": model_dump({"constrained_columns": ("customer_id",)}),
-    "orders": model_dump({"constrained_columns": ()}),
+    "customers": dict({"constrained_columns": ("customer_id",)}),
+    "orders": dict({"constrained_columns": ()}),
 }
 
 MOCK_FK_CONSTRAINT = {
