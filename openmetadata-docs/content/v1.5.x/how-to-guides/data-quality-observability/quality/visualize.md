@@ -1,6 +1,6 @@
 ---
-title: Adding test suits through the UI
-slug: /how-to-guides/data-quality-observability/quality/adding-test-suits
+title: How to Visualize Test Results
+slug: /how-to-guides/data-quality-observability/quality/visualize
 ---
 
 # How to Visualize Test Results

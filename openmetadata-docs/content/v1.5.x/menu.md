@@ -697,6 +697,14 @@ site_menu:
     color: violet-70
     icon: openmetadata
 
+  - category: How-to Guides / Data Quality Observability / Visualize  
+    url: /how-to-guides/data-quality-observability/visualize
+  - category: How-to Guides / Data Quality Observability / Test Cases From YAML Config  
+    url: /how-to-guides/data-quality-observability/quality/test-cases-from-yaml-config
+  - category: How-to Guides / Data Quality Observability / Adding Test Suits  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-suits
+  - category: How-to Guides / Data Quality Observability / Adding Test Cases  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-cases
   - category: How-to Guides / Getting Started  
     url: /how-to-guides/getting-started
   - category: How-to Guides / Day 1  
