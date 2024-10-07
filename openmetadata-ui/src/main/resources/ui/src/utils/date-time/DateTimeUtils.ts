@@ -185,3 +185,30 @@ export const isValidDateFormat = (format: string) => {
     return false;
   }
 };
+
+/**
+ * Calculates the interval between two timestamps in milliseconds
+ * and returns the result as a formatted string "X Days, Y Hours".
+ *
+ * @param startTime - The start time in milliseconds.
+ * @param endTime - The end time in milliseconds.
+ * @returns A formatted string representing the interval in "X Days, Y Hours".
+ */
+export const calculateInterval = (
+  startTime: number,
+  endTime: number
+): string => {
+  try {
+    const startDateTime = DateTime.fromMillis(startTime);
+    const endDateTime = DateTime.fromMillis(endTime);
+
+    const interval = endDateTime.diff(startDateTime);
+    const duration = Duration.fromMillis(interval.milliseconds);
+    const days = Math.floor(duration.as('days'));
+    const hours = Math.floor(duration.as('hours')) % 24;
+
+    return `${days} Days, ${hours} Hours`;
+  } catch (error) {
+    return 'Invalid interval';
+  }
+};
