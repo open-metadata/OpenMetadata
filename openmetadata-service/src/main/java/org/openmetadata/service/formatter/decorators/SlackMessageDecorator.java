@@ -34,17 +34,13 @@ import java.util.stream.Stream;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
-import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackAttachment;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.jdbi3.TestCaseRepository;
-import org.openmetadata.service.util.EntityUtil;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
@@ -201,15 +197,14 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
   private SlackMessage createGeneralChangeEventMessage(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-    List<LayoutBlock> generalChangeEventBody =
-        createGeneralChangeEventBody(publisherName, event, outgoingMessage);
+    List<LayoutBlock> generalChangeEventBody = createGeneralChangeEventBody(event, outgoingMessage);
     SlackMessage message = new SlackMessage();
     message.setBlocks(generalChangeEventBody);
     return message;
   }
 
   private List<LayoutBlock> createGeneralChangeEventBody(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+      ChangeEvent event, OutgoingMessage outgoingMessage) {
     List<LayoutBlock> blocks = new ArrayList<>();
 
     // Header
@@ -236,7 +231,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       blocks.add(Blocks.section(section -> section.fields(sublist)));
     }
 
-    String fqnForChangeEventEntity = getFQNForChangeEventEntity(event);
+    String fqnForChangeEventEntity = MessageDecorator.getFQNForChangeEventEntity(event);
 
     blocks.add(
         Blocks.section(
@@ -288,14 +283,12 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       Map<Enum<?>, Object> testCaseDetails =
           templateData.get(DQ_Template_Section.TEST_CASE_DETAILS);
       String testName = String.valueOf(testCaseDetails.get(DQ_TestCaseDetailsKeys.NAME));
-      String message =
-          String.format("\"%s\" test completed with status: %s", testName, statusWithEmoji);
+      String message = String.format("\"%s\" test having status: %s", testName, statusWithEmoji);
       blocks.add(Blocks.header(header -> header.text(BlockCompositions.plainText(message))));
     }
   }
 
   private List<LayoutBlock> createDQBodyBlocks(
-      String publisherName,
       ChangeEvent event,
       OutgoingMessage outgoingMessage,
       Map<DQ_Template_Section, Map<Enum<?>, Object>> data) {
@@ -325,7 +318,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       blocks.add(Blocks.section(section -> section.fields(sublist)));
     }
 
-    String fqnForChangeEventEntity = getFQNForChangeEventEntity(event);
+    String fqnForChangeEventEntity = MessageDecorator.getFQNForChangeEventEntity(event);
 
     blocks.add(
         Blocks.section(
@@ -372,7 +365,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
     // Create the message with general change event body
     SlackMessage message = new SlackMessage();
-    message.setBlocks(createGeneralChangeEventBody(publisherName, event, outgoingMessage));
+    message.setBlocks(createGeneralChangeEventBody(event, outgoingMessage));
 
     // Check if pipelineStatuses is null and handle accordingly
     PipelineStatus pipelineStatus = ingestionPipeline.getPipelineStatuses();
@@ -440,10 +433,9 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
 
     Map<DQ_Template_Section, Map<Enum<?>, Object>> dqTemplateData =
-        buildDQTemplateData(publisherName, event, outgoingMessage);
+        MessageDecorator.buildDQTemplateData(event, outgoingMessage);
 
-    List<LayoutBlock> body =
-        createDQBodyBlocks(publisherName, event, outgoingMessage, dqTemplateData);
+    List<LayoutBlock> body = createDQBodyBlocks(event, outgoingMessage, dqTemplateData);
 
     SlackMessage message = new SlackMessage();
     message.setBlocks(body);
@@ -453,8 +445,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       SlackMessage.Attachment attachment =
           createDQAttachment(publisherName, event, outgoingMessage, dqTemplateData);
 
-      attachment.setColor(
-          determineColorBasedOnStatus(enumObjectMap.get(DQ_TestCaseResultKeys.STATUS)));
+      attachment.setColor("#ffcc00");
 
       message.setAttachments(Collections.singletonList(attachment));
     }
@@ -527,61 +518,6 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     attachment.setBlocks(blocks);
 
     return attachment;
-  }
-
-  // todo complete buildDQTemplateData fn
-  private Map<DQ_Template_Section, Map<Enum<?>, Object>> buildDQTemplateData(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-
-    TemplateDataBuilder<DQ_Template_Section> builder = new TemplateDataBuilder<>();
-    builder
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.EVENT_TYPE,
-            event.getEventType().value())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.UPDATED_BY, event.getUserName())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.ENTITY_TYPE, event.getEntityType())
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.ENTITY_FQN,
-            getFQNForChangeEventEntity(event))
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.PUBLISHER, publisherName)
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.TIME,
-            new Date(event.getTimestamp()).toString())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.OUTGOING_MESSAGE, outgoingMessage);
-
-    TestCase testCase = fetchTestCaseResult(getFQNForChangeEventEntity(event));
-
-    builder
-        .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.ID, testCase.getId())
-        .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.NAME, testCase.getName())
-        .add(
-            DQ_Template_Section.TEST_CASE_DETAILS,
-            DQ_TestCaseDetailsKeys.OWNERS,
-            testCase.getOwners())
-        .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.TAGS, testCase.getTags())
-        .add(
-            DQ_Template_Section.TEST_CASE_DETAILS,
-            DQ_TestCaseDetailsKeys.TEST_CASE_FQN,
-            testCase.getFullyQualifiedName())
-        .add(
-            DQ_Template_Section.TEST_CASE_DETAILS,
-            DQ_TestCaseDetailsKeys.INSPECTION_QUERY,
-            testCase.getInspectionQuery())
-        .add(
-            DQ_Template_Section.TEST_CASE_DETAILS,
-            DQ_TestCaseDetailsKeys.SAMPLE_DATA,
-            testCase.getFailedRowsSample());
-    return builder.build();
-  }
-
-  private TestCase fetchTestCaseResult(String fqn) {
-    TestCaseRepository testCaseRepository =
-        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-    EntityUtil.Fields fields = testCaseRepository.getFields("*");
-    return testCaseRepository.getByName(null, fqn, fields, Include.NON_DELETED, false);
   }
 
   // Updated Method to Create Both Sections

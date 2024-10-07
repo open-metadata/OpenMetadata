@@ -126,6 +126,11 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
     }
   }
 
+  /**
+   * Slack messages sent via webhook require some keys in snake_case, while the Slack
+   * app accepts them as they are (camelCase). Using Layout blocks (from com.slack.api.model.block) restricts control over key
+   * aliases within the class.
+   **/
   public String convertCamelCaseToSnakeCase(String jsonString) {
     JsonNode rootNode = JsonUtils.readTree(jsonString);
     JsonNode modifiedNode = convertKeys(rootNode);
@@ -156,7 +161,7 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       ArrayNode arrayNode = (ArrayNode) node;
       ArrayNode newArrayNode = JsonUtils.getObjectNode().arrayNode();
 
-      // Iterate over the array and recursively convert elements
+      // recursively convert elements
       for (int i = 0; i < arrayNode.size(); i++) {
         newArrayNode.add(convertKeys(arrayNode.get(i)));
       }

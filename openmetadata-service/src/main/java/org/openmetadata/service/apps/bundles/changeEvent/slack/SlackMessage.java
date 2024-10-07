@@ -14,8 +14,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SlackMessage {
-  private List<LayoutBlock> blocks; // The main message blocks
-
+  private List<LayoutBlock> blocks;
   private List<Attachment> attachments;
 
   @Getter
@@ -25,7 +24,6 @@ public class SlackMessage {
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Attachment {
     private String color;
-    // LayoutBlock can be used both in message as well attachments.
-    private List<LayoutBlock> blocks; // Blocks within the attachment
+    private List<LayoutBlock> blocks;
   }
 }

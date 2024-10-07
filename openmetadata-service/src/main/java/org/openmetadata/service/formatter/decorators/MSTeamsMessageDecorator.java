@@ -117,7 +117,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
     return switch (entityType) {
       case Entity.TEST_CASE -> createDQMessage(publisherName, event, outgoingMessage);
-      default -> createDQMessage(publisherName, event, outgoingMessage);
+      default -> createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
     };
   }
 
@@ -312,7 +312,6 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         createFact("Event Type:", String.valueOf(detailsMap.get(EventDetailsKeys.EVENT_TYPE))),
         createFact("Updated By:", String.valueOf(detailsMap.get(EventDetailsKeys.UPDATED_BY))),
         createFact("Entity Type:", String.valueOf(detailsMap.get(EventDetailsKeys.ENTITY_TYPE))),
-        createFact("Publisher:", String.valueOf(detailsMap.get(EventDetailsKeys.PUBLISHER))),
         createFact("Time:", String.valueOf(detailsMap.get(EventDetailsKeys.TIME))),
         createFact("FQN:", String.valueOf(detailsMap.get(EventDetailsKeys.ENTITY_FQN))));
   }
@@ -508,8 +507,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         .add(
             General_Template_Section.EVENT_DETAILS,
             EventDetailsKeys.ENTITY_FQN,
-            getFQNForChangeEventEntity(event))
-        .add(General_Template_Section.EVENT_DETAILS, EventDetailsKeys.PUBLISHER, publisherName)
+            MessageDecorator.getFQNForChangeEventEntity(event))
         .add(
             General_Template_Section.EVENT_DETAILS,
             EventDetailsKeys.TIME,
@@ -539,8 +537,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         .add(
             DQ_Template_Section.EVENT_DETAILS,
             EventDetailsKeys.ENTITY_FQN,
-            getFQNForChangeEventEntity(event))
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.PUBLISHER, publisherName)
+            MessageDecorator.getFQNForChangeEventEntity(event))
         .add(
             DQ_Template_Section.EVENT_DETAILS,
             EventDetailsKeys.TIME,

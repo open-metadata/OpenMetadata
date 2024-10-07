@@ -26,6 +26,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -43,7 +44,9 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FeedUtils;
 
 public interface MessageDecorator<T> {
@@ -154,7 +157,7 @@ public interface MessageDecorator<T> {
     return fqn;
   }
 
-  default String getFQNForChangeEventEntity(ChangeEvent event) {
+  static String getFQNForChangeEventEntity(ChangeEvent event) {
     return Optional.ofNullable(event.getEntityFullyQualifiedName())
         .filter(fqn -> !CommonUtil.nullOrEmpty(fqn))
         .orElseGet(
@@ -471,21 +474,29 @@ public interface MessageDecorator<T> {
   }
 
   /**
-   * A builder class for creating a map of template data organized by sections and keys.
-   * @param <S> The type of template sections (must be an enum).
+   * A builder class for constructing a nested map structure that organizes each template data
+   * into sections and corresponding keys, where both the sections and keys are represented as enums.
+   * This class ensures type safety by using EnumMaps for both sections and keys.
+   *
+   * @param <S> The enum type representing the sections of the template.
    */
   class TemplateDataBuilder<S extends Enum<S>> {
-    private final Map<S, Map<Enum<?>, Object>> templateMap = new HashMap<>();
+
+    // Map to store sections and their corresponding keys and values
+    private final Map<S, Map<Enum<?>, Object>> sectionToKeyDataMap = new HashMap<>();
 
     /**
-     * @param section The section of the template.
-     * @param key     The key for the section, represented as an enum.
-     * @param <K>     The type of the enum used as the key (must extend Enum).
+     * Adds a key-value pair to the specified section of the template.
+     * Ensures that the key is stored in a type-safe EnumMap, and the section is only created if it doesn't already exist.
+     *
+     * @param section The section of the template represented as an enum.
+     * @param key     The key within the section, represented as an enum.
+     * @param value   The value associated with the given key.
+     * @param <K>     The enum type representing the keys (must extend Enum).
      */
     @SuppressWarnings("unchecked")
     public <K extends Enum<K>> TemplateDataBuilder<S> add(S section, K key, Object value) {
-      // Ensure type-safe EnumMap by explicitly specifying EnumMap<K, Object>
-      templateMap
+      sectionToKeyDataMap
           .computeIfAbsent(
               section, k -> (Map<Enum<?>, Object>) new EnumMap<>(key.getDeclaringClass()))
           .put(key, value);
@@ -493,7 +504,7 @@ public interface MessageDecorator<T> {
     }
 
     public Map<S, Map<Enum<?>, Object>> build() {
-      return Collections.unmodifiableMap(templateMap);
+      return Collections.unmodifiableMap(sectionToKeyDataMap);
     }
   }
 
@@ -513,7 +524,6 @@ public interface MessageDecorator<T> {
     UPDATED_BY,
     ENTITY_TYPE,
     ENTITY_FQN,
-    PUBLISHER,
     TIME,
     OUTGOING_MESSAGE
   }
@@ -538,5 +548,91 @@ public interface MessageDecorator<T> {
   enum DQ_TestDefinitionKeys {
     TEST_DEFINITION_NAME,
     TEST_DEFINITION_DESCRIPTION
+  }
+
+  static Map<DQ_Template_Section, Map<Enum<?>, Object>> buildDQTemplateData(
+      ChangeEvent event, OutgoingMessage outgoingMessage) {
+
+    TemplateDataBuilder<DQ_Template_Section> builder = new TemplateDataBuilder<>();
+    builder
+        .add(
+            DQ_Template_Section.EVENT_DETAILS,
+            EventDetailsKeys.EVENT_TYPE,
+            event.getEventType().value())
+        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.UPDATED_BY, event.getUserName())
+        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.ENTITY_TYPE, event.getEntityType())
+        .add(
+            DQ_Template_Section.EVENT_DETAILS,
+            EventDetailsKeys.ENTITY_FQN,
+            getFQNForChangeEventEntity(event))
+        .add(
+            DQ_Template_Section.EVENT_DETAILS,
+            EventDetailsKeys.TIME,
+            new Date(event.getTimestamp()).toString())
+        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.OUTGOING_MESSAGE, outgoingMessage);
+
+    // fetch TEST_CASE_DETAILS
+    TestCase testCase = fetchTestCase(getFQNForChangeEventEntity(event));
+
+    // build TEST_CASE_DETAILS
+    builder
+        .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.ID, testCase.getId())
+        .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.NAME, testCase.getName())
+        .add(
+            DQ_Template_Section.TEST_CASE_DETAILS,
+            DQ_TestCaseDetailsKeys.OWNERS,
+            testCase.getOwners())
+        .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.TAGS, testCase.getTags())
+        .add(
+            DQ_Template_Section.TEST_CASE_DETAILS,
+            DQ_TestCaseDetailsKeys.DESCRIPTION,
+            testCase.getTestDefinition())
+        .add(
+            DQ_Template_Section.TEST_CASE_DETAILS,
+            DQ_TestCaseDetailsKeys.TEST_CASE_FQN,
+            testCase.getFullyQualifiedName())
+        .add(
+            DQ_Template_Section.TEST_CASE_DETAILS,
+            DQ_TestCaseDetailsKeys.INSPECTION_QUERY,
+            testCase.getInspectionQuery())
+        .add(
+            DQ_Template_Section.TEST_CASE_DETAILS,
+            DQ_TestCaseDetailsKeys.SAMPLE_DATA,
+            testCase.getTestCaseResult().getSampleData());
+
+    // build TEST_CASE_RESULT
+    builder
+        .add(
+            DQ_Template_Section.TEST_CASE_RESULT,
+            DQ_TestCaseResultKeys.STATUS,
+            testCase.getTestCaseStatus())
+        .add(
+            DQ_Template_Section.TEST_CASE_RESULT,
+            DQ_TestCaseResultKeys.PARAMETER_VALUE,
+            testCase.getParameterValues())
+        .add(
+            DQ_Template_Section.TEST_CASE_RESULT,
+            DQ_TestCaseResultKeys.RESULT_MESSAGE,
+            testCase.getTestCaseResult().getResult());
+
+    // build TEST_DEFINITION
+    builder
+        .add(
+            DQ_Template_Section.TEST_DEFINITION,
+            DQ_TestDefinitionKeys.TEST_DEFINITION_NAME,
+            testCase.getTestDefinition().getName())
+        .add(
+            DQ_Template_Section.TEST_DEFINITION,
+            DQ_TestDefinitionKeys.TEST_DEFINITION_DESCRIPTION,
+            testCase.getTestDefinition().getDescription());
+
+    return builder.build();
+  }
+
+  static TestCase fetchTestCase(String fqn) {
+    TestCaseRepository testCaseRepository =
+        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    EntityUtil.Fields fields = testCaseRepository.getFields("*");
+    return testCaseRepository.getByName(null, fqn, fields, Include.NON_DELETED, false);
   }
 }

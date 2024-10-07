@@ -19,11 +19,13 @@ import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
@@ -169,8 +171,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
         .add(
             General_Template_Section.EVENT_DETAILS,
             EventDetailsKeys.ENTITY_FQN,
-            getFQNForChangeEventEntity(event))
-        .add(General_Template_Section.EVENT_DETAILS, EventDetailsKeys.PUBLISHER, publisherName)
+            MessageDecorator.getFQNForChangeEventEntity(event))
         .add(
             General_Template_Section.EVENT_DETAILS,
             EventDetailsKeys.TIME,
@@ -204,7 +205,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
 
     Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData =
-        buildDQTemplateData(publisherName, event, outgoingMessage);
+        MessageDecorator.buildDQTemplateData(event, outgoingMessage);
 
     List<Section> sections = new ArrayList<>();
     Header header = createHeader();
@@ -232,32 +233,6 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
     // Create the card with all sections
     Card card = new Card(header, sections);
     return new GChatMessage(List.of(card));
-  }
-
-  // todo complete buildDQTemplateData fn
-  private Map<DQ_Template_Section, Map<Enum<?>, Object>> buildDQTemplateData(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-
-    TemplateDataBuilder<DQ_Template_Section> builder = new TemplateDataBuilder<>();
-    builder
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.EVENT_TYPE,
-            event.getEventType().value())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.UPDATED_BY, event.getUserName())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.ENTITY_TYPE, event.getEntityType())
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.ENTITY_FQN,
-            getFQNForChangeEventEntity(event))
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.PUBLISHER, publisherName)
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.TIME,
-            new Date(event.getTimestamp()).toString())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.OUTGOING_MESSAGE, outgoingMessage);
-
-    return builder.build();
   }
 
   private void addChangeEventDetailsSection(
@@ -328,8 +303,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
     statusParameterWidgets.add(
         createWidget(
-            "Status:",
-            String.valueOf(testCaseResult.getOrDefault(DQ_TestCaseResultKeys.STATUS, "-"))));
+            "Status:", getStatusWithEmoji(testCaseResult.get(DQ_TestCaseResultKeys.STATUS))));
 
     statusParameterWidgets.add(
         createWidget(
@@ -338,6 +312,19 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
                 testCaseResult.getOrDefault(DQ_TestCaseResultKeys.RESULT_MESSAGE, "-"))));
 
     sections.add(new Section(statusParameterWidgets));
+  }
+
+  private String getStatusWithEmoji(Object object) {
+    if (object instanceof TestCaseStatus status) {
+      return switch (status) {
+        case Success -> "Success \u2705"; // Green checkmark for success
+        case Failed -> "Failed \u274C"; // Red cross for failure
+        case Aborted -> "Aborted \u26A0"; // Warning sign for aborted
+        case Queued -> "Queued \u23F3"; // Hourglass for queued
+        default -> "Unknown \u2753"; // Gray question mark for unknown cases
+      };
+    }
+    return "Unknown \u2753"; // Default to unknown if the object is not a valid TestCaseStatus
   }
 
   private void addParameterValuesSection(
@@ -354,7 +341,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
     }
 
     List<TestCaseParameterValue> parameterValues = (List<TestCaseParameterValue>) result;
-    if (parameterValues == null || parameterValues.isEmpty()) {
+    if (nullOrEmpty(parameterValues)) {
       return;
     }
 
@@ -431,16 +418,12 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   private List<Widget> createEventDetailsWidgets(Map<Enum<?>, Object> detailsMap) {
     List<Widget> widgets = new ArrayList<>();
 
-    // Define a map of display labels for each EventDetailsKey
-    Map<Enum<?>, String> labelsMap =
-        Map.of(
-            EventDetailsKeys.EVENT_TYPE, "Event Type:",
-            EventDetailsKeys.UPDATED_BY, "Updated By:",
-            EventDetailsKeys.ENTITY_TYPE, "Entity Type:",
-            EventDetailsKeys.PUBLISHER, "Publisher:",
-            EventDetailsKeys.TIME, "Time:");
+    Map<Enum<?>, String> labelsMap = new LinkedHashMap<>();
+    labelsMap.put(EventDetailsKeys.EVENT_TYPE, "Event Type:");
+    labelsMap.put(EventDetailsKeys.UPDATED_BY, "Updated By:");
+    labelsMap.put(EventDetailsKeys.ENTITY_TYPE, "Entity Type:");
+    labelsMap.put(EventDetailsKeys.TIME, "Time:");
 
-    // Iterate over the defined keys and add widgets if present in the detailsMap
     labelsMap.forEach(
         (key, label) -> {
           if (detailsMap.containsKey(key)) {
