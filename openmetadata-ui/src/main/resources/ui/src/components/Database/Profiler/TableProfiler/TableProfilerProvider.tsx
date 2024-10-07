@@ -26,7 +26,10 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
-import { DEFAULT_RANGE_DATA } from '../../../../constants/profiler.constant';
+import {
+  DEFAULT_RANGE_DATA,
+  DEFAULT_SORT_ORDER,
+} from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
@@ -209,6 +212,7 @@ export const TableProfilerProvider = ({
     setIsTestsLoading(true);
     try {
       const { data, paging } = await getListTestCaseBySearch({
+        ...DEFAULT_SORT_ORDER,
         ...params,
         fields: [
           TabSpecificField.TEST_CASE_RESULT,
