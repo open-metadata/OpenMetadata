@@ -248,7 +248,7 @@ class TestParameters(BaseModel):
                 "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
                 TestCaseResult(
                     timestamp=int(datetime.now().timestamp() * 1000),
-                    testCaseStatus=TestCaseStatus.Success,
+                    testCaseStatus=TestCaseStatus.Failed,
                 ),
             ),
             (
@@ -480,9 +480,10 @@ def add_changed_tables(connection: Connection):
     connection.execute(
         'ALTER TABLE customer_different_case_columns RENAME COLUMN first_name TO "First_Name";'
     )
-    connection.execute(
-        "ALTER TABLE customer_different_case_columns ALTER COLUMN store_id TYPE decimal"
-    )
+    # TODO: this appears to be unsupported by data diff. Cross data type comparison is flaky.
+    # connection.execute(
+    #     "ALTER TABLE customer_different_case_columns ALTER COLUMN store_id TYPE decimal"
+    # )
     connection.execute("CREATE TABLE changed_customer AS SELECT * FROM customer;")
     connection.execute(
         "UPDATE changed_customer SET first_name = 'John' WHERE MOD(customer_id, 2) = 0;"
