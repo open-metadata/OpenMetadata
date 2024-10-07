@@ -55,7 +55,7 @@ class TableRowInsertedCountToBeBetweenValidator(
             get_partition_col_type(column_name.name, self.runner.table.__table__.c),  # type: ignore
         )
 
-        return model_dump(
+        return dict(
             self.runner.dispatch_query_select_first(
                 Metrics.ROW_COUNT.value().fn(),
                 query_filter_={

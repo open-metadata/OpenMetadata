@@ -269,7 +269,7 @@ def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str
     split_original = [
         (elem.split(sep)[0], elem.split(sep)[1]) for elem in original if sep in elem
     ]
-    return model_dump(split_original)
+    return dict(split_original)
 
 
 def clean_up_starting_ending_double_quotes_in_string(string: str) -> str:
