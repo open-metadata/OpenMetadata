@@ -255,7 +255,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
       } else {
         String aggregationStr =
-            "bucketName=entityLink:aggType=terms:field=entityLink.nonNormalized,"
+            "bucketName=entityLinks:aggType=terms:field=entityLink.nonNormalized,"
                 + "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
         SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
         String query = ENTITY_EXECUTION_SUMMARY_FILTER.formatted(testSuiteId);
