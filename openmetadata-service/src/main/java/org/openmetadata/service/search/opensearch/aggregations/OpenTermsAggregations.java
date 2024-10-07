@@ -5,11 +5,14 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import javax.json.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.service.search.SearchAggregationNode;
 import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
 import os.org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
 import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+
+import java.util.Map;
 
 @Setter
 @Getter
@@ -18,14 +21,16 @@ public class OpenTermsAggregations implements OpenAggregations {
   AggregationBuilder elasticAggregationBuilder;
 
   @Override
-  public void createAggregation(JsonObject jsonAggregation, String key) {
+  public void createAggregation(SearchAggregationNode node) {
     String[] includes = null;
-    JsonObject termAggregation = jsonAggregation.getJsonObject(aggregationType);
-    String includesStr = termAggregation.getString("include", null);
+    int size = -1;
+    Map<String, String> params = node.getValue();
+    String includesStr = params.get("include");
+    String sizeStr = params.get("size");
     if (!nullOrEmpty(includesStr)) includes = includesStr.split(",");
-    int size = termAggregation.getInt("size", -1);
+    if (!nullOrEmpty(sizeStr)) size = Integer.parseInt(params.get("size"));
     TermsAggregationBuilder termsAggregationBuilder =
-        AggregationBuilders.terms(key).field(termAggregation.getString("field"));
+            AggregationBuilders.terms(node.getName()).field(params.get("field"));
 
     if (size > 0) termsAggregationBuilder.size(size);
     if (!nullOrEmpty(includes)) {

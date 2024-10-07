@@ -157,14 +157,14 @@ import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
+import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
-import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsFactory;
-import org.openmetadata.service.search.elasticsearch.aggregations.ElasticNestedAggregations;
+import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator;
@@ -1116,61 +1116,12 @@ public class ElasticSearchClient implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
-  /*
-  Build dynamic aggregation from elasticsearch JSON like aggregation query.
-  See TestSuiteResourceTest for example usage (ln. 506) for tested aggregation query.
-
-  @param aggregations - JsonObject containing the aggregation query
-   */
-  public static List<ElasticAggregations> buildAggregation(JsonObject aggregations) {
-    List<ElasticAggregations> aggregationsList = new ArrayList<>();
-    for (String key : aggregations.keySet()) {
-      JsonObject aggregation = aggregations.getJsonObject(key);
-      Set<String> keySet = aggregation.keySet();
-      for (String aggregationType : keySet) {
-        if ((aggregationType.equals("aggs"))) {
-          if (keySet.contains("nested")) continue;
-          JsonObject subAggregation = aggregation.getJsonObject("aggs");
-          if (!nullOrEmpty(aggregationsList)) {
-            ElasticAggregations agg = aggregationsList.get(aggregationsList.size() - 1);
-            List<ElasticAggregations> subAggregationBuilders = buildAggregation(subAggregation);
-            for (ElasticAggregations subAggregationBuilder : subAggregationBuilders) {
-              if (!subAggregationBuilder.isPipelineAggregation()) {
-                agg.setSubAggregation(subAggregationBuilder.getElasticAggregationBuilder());
-              } else {
-                agg.setSubAggregation(subAggregationBuilder.getElasticPipelineAggregationBuilder());
-              }
-            }
-          }
-          continue;
-        }
-
-        ElasticAggregations agg = ElasticAggregationsFactory.getAggregation(aggregationType);
-        if (agg == null) continue;
-        agg.createAggregation(aggregation, key);
-        aggregationsList.add(agg);
-
-        if (aggregationType.equals(ElasticNestedAggregations.aggregationType)) {
-          JsonObject nestedAggregations = aggregation.getJsonObject("aggs");
-          List<ElasticAggregations> nestedAggregationBuilders =
-              buildAggregation(nestedAggregations);
-          for (ElasticAggregations nestedAggregationBuilder : nestedAggregationBuilders) {
-            if (!nestedAggregationBuilder.isPipelineAggregation()) {
-              agg.setSubAggregation(nestedAggregationBuilder.getElasticAggregationBuilder());
-            }
-          }
-        }
-      }
-    }
-    return aggregationsList;
-  }
-
   @Override
   public DataQualityReport genericAggregation(
-      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
-    String aggregationStr = (String) aggregationMetadata.get("aggregationStr");
-    JsonObject aggregationObj = JsonUtils.readJson("{%s}".formatted(aggregationStr)).asJsonObject();
-    List<ElasticAggregations> aggregationBuilder = buildAggregation(aggregationObj);
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException {
+    List<ElasticAggregations> aggregationBuilder =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregationMetadata.getAggregationTree(), null, new ArrayList<>());
 
     // Create search request
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
@@ -1207,18 +1158,19 @@ public class ElasticSearchClient implements SearchClient {
         Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
     return SearchIndexUtils.parseAggregationResults(
         aggregationResults,
-        (List<List<Map<String, String>>>) aggregationMetadata.get("aggregationMapList"));
+        aggregationMetadata.getAggregationMetadata());
   }
 
   @Override
-  public JsonObject aggregate(String query, String index, JsonObject aggregationJson, String filter)
+  public JsonObject aggregate(String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
-    JsonObject aggregations = aggregationJson.getJsonObject("aggregations");
-    if (aggregations == null) {
+    if (searchAggregation == null) {
       return null;
     }
 
-    List<ElasticAggregations> aggregationBuilder = buildAggregation(aggregations);
+    List<ElasticAggregations> aggregationBuilder =
+            ElasticAggregationsBuilder.buildAggregation(
+                    searchAggregation.getAggregationTree(), null, new ArrayList<>());
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(index));

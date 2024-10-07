@@ -6,6 +6,9 @@ import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import javax.json.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.service.search.SearchAggregationNode;
+
+import java.util.Map;
 
 @Setter
 @Getter
@@ -14,10 +17,10 @@ public class ElasticAvgAggregations implements ElasticAggregations {
   AggregationBuilder elasticAggregationBuilder;
 
   @Override
-  public void createAggregation(JsonObject jsonAggregation, String key) {
-    JsonObject avgAggregation = jsonAggregation.getJsonObject(aggregationType);
+  public void createAggregation(SearchAggregationNode node) {
+    Map<String, String> params = node.getValue();
     AggregationBuilder aggregationBuilders =
-        AggregationBuilders.avg(key).field(avgAggregation.getString("field"));
+            AggregationBuilders.avg(node.getName()).field(params.get("field"));
     setElasticAggregationBuilder(aggregationBuilders);
   }
 

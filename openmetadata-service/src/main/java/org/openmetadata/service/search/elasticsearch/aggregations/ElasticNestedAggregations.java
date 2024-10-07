@@ -6,6 +6,9 @@ import es.org.elasticsearch.search.aggregations.bucket.nested.NestedAggregationB
 import javax.json.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.service.search.SearchAggregationNode;
+
+import java.util.Map;
 
 @Setter
 @Getter
@@ -14,11 +17,10 @@ public class ElasticNestedAggregations implements ElasticAggregations {
   AggregationBuilder elasticAggregationBuilder;
 
   @Override
-  public void createAggregation(JsonObject jsonAggregation, String key) {
-    JsonObject nestedAggregation = jsonAggregation.getJsonObject(aggregationType);
+  public void createAggregation(SearchAggregationNode node) {
+    Map<String, String> params = node.getValue();
     NestedAggregationBuilder aggregationBuilders =
-        AggregationBuilders.nested(
-            nestedAggregation.getString("path"), nestedAggregation.getString("path"));
+            AggregationBuilders.nested(params.get("path"), params.get("path"));
     setElasticAggregationBuilder(aggregationBuilders);
   }
 

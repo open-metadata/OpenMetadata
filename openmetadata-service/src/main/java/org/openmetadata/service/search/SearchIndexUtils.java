@@ -112,51 +112,6 @@ public final class SearchIndexUtils {
   }
 
   /*
-   * Get the metadata for the aggregation results. We'll use the metadata to build the report and
-   * to traverse the aggregation tree. 3 types of metadata are returned:
-   *   1. dimensions: the list of dimensions
-   *   2. metrics: the list of metrics
-   *   3. keys: the list of keys to traverse the aggregation tree
-   *
-   * @param aggregationMapList the list of aggregations
-   * @return the metadata
-   */
-  private static DataQualityReportMetadata getAggregationMetadata(
-      List<List<Map<String, String>>> aggregationMapList) {
-    DataQualityReportMetadata metadata = new DataQualityReportMetadata();
-    List<String> dimensions = new ArrayList<>();
-    List<String> metrics = new ArrayList<>();
-    List<String> keys = new ArrayList<>();
-
-    for (List<Map<String, String>> aggregationsMap : aggregationMapList) {
-      for (int j = 0; j < aggregationsMap.size(); j++) {
-        Map<String, String> aggregationMap = aggregationsMap.get(j);
-        String aggType = aggregationMap.get("aggType");
-        String field = aggregationMap.get("field");
-
-        boolean isLeaf = j == aggregationsMap.size() - 1;
-        if (isLeaf) {
-          // leaf aggregation
-          if (!aggType.contains("term")) {
-            metrics.add(field);
-          } else {
-            dimensions.add(field);
-            metrics.add("document_count");
-          }
-        } else {
-          dimensions.add(field);
-        }
-        String formattedAggType = aggType.contains("term") ? "s%s".formatted(aggType) : aggType;
-        keys.add("%s#%s".formatted(formattedAggType, aggregationMap.get("bucketName")));
-      }
-    }
-
-    metadata.withKeys(keys).withDimensions(dimensions).withMetrics(metrics);
-
-    return metadata;
-  }
-
-  /*
    * Traverse the aggregation results and build the report data. Note that the method supports
    * n levels of nested aggregations, but does not support sibling aggregations.
    *
@@ -244,8 +199,7 @@ public final class SearchIndexUtils {
   }
 
   public static DataQualityReport parseAggregationResults(
-      Optional<JsonObject> aggregationResults, List<List<Map<String, String>>> aggregationMapList) {
-    DataQualityReportMetadata metadata = getAggregationMetadata(aggregationMapList);
+      Optional<JsonObject> aggregationResults, DataQualityReportMetadata metadata) {
     List<Datum> reportData = new ArrayList<>();
 
     aggregationResults.ifPresent(
@@ -262,88 +216,66 @@ public final class SearchIndexUtils {
     return report.withMetadata(metadata).withData(reportData);
   }
 
-  /*
-   * Build the aggregation string for the given aggregation
-   *
-   * @param aggregation the aggregation to build the string for.
-   *   The aggregation string is in the form
-   * `bucketName:aggType:key=value,bucketName:aggType:key=value;bucketName:aggType:key=value`
-   * where `,` represents a nested aggregation and `;` represents a sibling aggregation
-   * NOTE: As of 07/25/2024 sibling aggregation parsing and processing has not been added
-   * @return the aggregation string
-   */
-  public static Map<String, Object> buildAggregationString(String aggregation) {
-    Map<String, Object> metadata = new HashMap<>();
-
-    StringBuilder aggregationString = new StringBuilder();
-    String[] siblings = aggregation.split(";");
-    List<List<Map<String, String>>> aggregationsMapList = new ArrayList<>();
-
-    for (String sibling : siblings) {
-      List<Map<String, String>> aggregationsMap = new ArrayList<>();
-      String[] nested = sibling.split(Utilities.doubleQuoteRegexEscape(","), -1);
-      for (int i = 0; i < nested.length; i++) {
-        String[] nestedSiblingParts = nested[i].split("::");
-
-        for (int j = 0; j < nestedSiblingParts.length; j++) {
-          Map<String, String> aggregationMap = new HashMap<>();
-          String[] parts = nestedSiblingParts[j].split(":(?!:)");
-          Iterator<String> partsIterator = Arrays.stream(parts).iterator();
-
-          while (partsIterator.hasNext()) {
-            String part = partsIterator.next();
-            if (!partsIterator.hasNext()) {
-              // last element = key=value pairs of the aggregation
-              String[] subParts = part.split("&");
-              Arrays.stream(subParts)
-                  .forEach(
-                      subPart -> {
-                        String[] kvPairs = subPart.split(Utilities.doubleQuoteRegexEscape("="), -1);
-                        aggregationString
-                            .append("\"")
-                            .append(kvPairs[0])
-                            .append("\":\"")
-                            .append(Utilities.cleanUpDoubleQuotes(kvPairs[1]))
-                            .append("\"");
-                        // bucket selector are neither metrics nor dimensions but filters and should
-                        // not be added to the metadata
-                        if (!Arrays.asList(parts).contains("aggType=bucket_selector"))
-                          aggregationMap.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
-                        // add comma if not the last element
-                        if (Arrays.asList(subParts).indexOf(subPart) < subParts.length - 1)
-                          aggregationString.append(",");
-                      });
-              aggregationString.append("}");
-            } else {
-              String[] kvPairs = part.split("=");
-              aggregationString.append("\"").append(kvPairs[1]).append("\":{");
-              // bucket selector are neither metrics nor dimensions but filters and should not be
-              // added to the metadata
-              if (!Arrays.asList(parts).contains("aggType=bucket_selector"))
-                aggregationMap.put(kvPairs[0], kvPairs[1]);
-            }
-          }
-          if (j != nestedSiblingParts.length - 1) aggregationString.append("},");
-          if (!aggregationMap.isEmpty()) aggregationsMap.add(aggregationMap);
-        }
-
-        if (i < nested.length - 1) {
-          aggregationString.append(",\"aggs\":{");
-        }
-      }
-      // nested aggregations will add the "aggs" key if nested.length > 1, hence *2
-      aggregationString.append("}".repeat(((nested.length - 1) * 2) + 1));
-      aggregationsMapList.add(aggregationsMap);
-    }
-    metadata.put("aggregationStr", aggregationString.toString());
-    metadata.put("aggregationMapList", aggregationsMapList);
-    return metadata;
-  }
-
   public static List<TagLabel> parseTags(List<TagLabel> tags) {
     if (tags == null) {
       return Collections.emptyList();
     }
     return tags;
+  }
+
+  public static SearchAggregation buildAggregationTree(String aggregationString) {
+    List<List<Map<String, String>>> aggregationsMetadata = new ArrayList<>();
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+    String[] siblings = aggregationString.split(";");
+    for (String sibling : siblings) {
+      List<Map<String, String>> siblingAggregationsMetadata = new ArrayList<>();
+      SearchAggregationNode currentNode = root;
+      String[] nestedAggregations = sibling.split(Utilities.doubleQuoteRegexEscape(","), -1);
+        for (String aggregation : nestedAggregations) {
+            SearchAggregationNode bucketNode = new SearchAggregationNode();
+            String[] nestedAggregationSiblings = aggregation.split("::");
+            for (int j = 0; j < nestedAggregationSiblings.length; j++) {
+                Map<String, String> nestedAggregationMetadata = new HashMap<>();
+
+                String nestedAggregationSibling = nestedAggregationSiblings[j];
+                String[] parts = nestedAggregationSibling.split(":(?!:)");
+                for (String part : parts) {
+                    if (part.contains("&")) {
+                        String[] subParts = part.split("&");
+                        Map<String, String> params = new HashMap<>();
+                        for (String subPart : subParts) {
+                            String[] kvPairs = subPart.split(Utilities.doubleQuoteRegexEscape("="), -1);
+                            params.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                            nestedAggregationMetadata.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                        }
+                        bucketNode.setValue(params);
+                    } else {
+                        String[] kvPairs = part.split(Utilities.doubleQuoteRegexEscape("="), -1);
+                        switch (kvPairs[0]) {
+                            case "aggType":
+                                bucketNode.setType(Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                                nestedAggregationMetadata.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                                break;
+                            case "bucketName":
+                                bucketNode.setName(Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                                nestedAggregationMetadata.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                                break;
+                            default:
+                                nestedAggregationMetadata.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                                bucketNode.setValue(Map.of(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1])));
+                        }
+                    }
+                }
+                currentNode.addChild(bucketNode);
+                if (j < nestedAggregationSiblings.length - 1) {
+                    bucketNode = new SearchAggregationNode();
+                }
+                siblingAggregationsMetadata.add(nestedAggregationMetadata);
+            }
+            currentNode = bucketNode;
+        }
+      aggregationsMetadata.add(siblingAggregationsMetadata);
+    }
+    return new SearchAggregation(root, aggregationsMetadata);
   }
 }

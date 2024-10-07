@@ -7,6 +7,9 @@ import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramIn
 import javax.json.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.service.search.SearchAggregationNode;
+
+import java.util.Map;
 
 @Setter
 @Getter
@@ -15,13 +18,14 @@ public class ElasticDateHistogramAggregations implements ElasticAggregations {
   AggregationBuilder elasticAggregationBuilder;
 
   @Override
-  public void createAggregation(JsonObject jsonAggregation, String key) {
-    JsonObject dateHistogramAggregation = jsonAggregation.getJsonObject(aggregationType);
-    String calendarInterval = dateHistogramAggregation.getString("calendar_interval");
+  public void createAggregation(SearchAggregationNode node) {
+    Map<String, String> params = node.getValue();
+    String calendarInterval = params.get("calendar_interval");
+    String field = params.get("field");
     AggregationBuilder aggregationBuilder =
-        AggregationBuilders.dateHistogram(key)
-            .field(dateHistogramAggregation.getString("field"))
-            .calendarInterval(new DateHistogramInterval(calendarInterval));
+            AggregationBuilders.dateHistogram(node.getName())
+                    .field(field)
+                    .calendarInterval(new DateHistogramInterval(calendarInterval));
     setElasticAggregationBuilder(aggregationBuilder);
   }
 

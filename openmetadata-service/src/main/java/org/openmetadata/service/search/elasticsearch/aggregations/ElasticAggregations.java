@@ -2,10 +2,12 @@ package org.openmetadata.service.search.elasticsearch.aggregations;
 
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
+import org.openmetadata.service.search.SearchAggregationNode;
+
 import javax.json.JsonObject;
 
 public interface ElasticAggregations {
-  void createAggregation(JsonObject jsonAggregation, String key);
+  void createAggregation(SearchAggregationNode node);
 
   default Boolean isPipelineAggregation() {
     return false;

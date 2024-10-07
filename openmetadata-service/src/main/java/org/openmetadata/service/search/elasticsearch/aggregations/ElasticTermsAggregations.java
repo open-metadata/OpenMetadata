@@ -10,6 +10,9 @@ import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBui
 import javax.json.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.service.search.SearchAggregationNode;
+
+import java.util.Map;
 
 @Setter
 @Getter
@@ -18,14 +21,16 @@ public class ElasticTermsAggregations implements ElasticAggregations {
   AggregationBuilder elasticAggregationBuilder;
 
   @Override
-  public void createAggregation(JsonObject jsonAggregation, String key) {
+  public void createAggregation(SearchAggregationNode node) {
     String[] includes = null;
-    JsonObject termAggregation = jsonAggregation.getJsonObject(aggregationType);
-    String includesStr = termAggregation.getString("include", null);
+    int size = -1;
+    Map<String, String> params = node.getValue();
+    String includesStr = params.get("include");
     if (!nullOrEmpty(includesStr)) includes = includesStr.split(",");
-    int size = termAggregation.getInt("size", -1);
+    String sizeStr = params.get("size");
+    if (!nullOrEmpty(sizeStr)) size = Integer.parseInt(params.get("size"));
     TermsAggregationBuilder termsAggregationBuilder =
-        AggregationBuilders.terms(key).field(termAggregation.getString("field"));
+            AggregationBuilders.terms(node.getName()).field(params.get("field"));
 
     if (size > 0) termsAggregationBuilder.size(size);
     if (!nullOrEmpty(includes)) {

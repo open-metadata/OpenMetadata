@@ -1,11 +1,13 @@
 package org.openmetadata.service.search.opensearch.aggregations;
 
 import javax.json.JsonObject;
+
+import org.openmetadata.service.search.SearchAggregationNode;
 import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
 
 public interface OpenAggregations {
-  void createAggregation(JsonObject jsonAggregation, String key);
+  void createAggregation(SearchAggregationNode node);
 
   default Boolean isPipelineAggregation() {
     return false;
