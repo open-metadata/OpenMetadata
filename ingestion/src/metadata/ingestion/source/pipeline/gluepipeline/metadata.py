@@ -93,6 +93,7 @@ STORAGE_MODEL_MAP = {
     "S3ParquetSource": S3Source,
     "S3HudiSource": S3Source,
     "S3DeltaSource": S3Source,
+    "S3DirectTarget": S3Target,
     "S3DeltaDirectTarget": S3Target,
     "S3GlueParquetTarget": S3Target,
     "S3HudiDirectTarget": S3Target,
