@@ -34,6 +34,10 @@ class ApplicationsClassBase {
     return null;
   }
 
+  public isFloatingButtonPresent() {
+    return false;
+  }
+
   public importAppScreenshot(screenshotName: string) {
     return import(`../../../../assets/img/appScreenshots/${screenshotName}`);
   }
