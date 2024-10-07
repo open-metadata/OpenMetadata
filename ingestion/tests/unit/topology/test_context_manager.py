@@ -37,7 +37,7 @@ class TopologyContextManagerTest(TestCase):
 
     def test_main_thread_is_set_correctly(self):
         """Asserts self.main_thread is set accordingly."""
-        self.assertEquals(self.manager.main_thread, MAIN_THREAD)
+        self.assertEqual(self.manager.main_thread, MAIN_THREAD)
 
     def test_get_returns_correct_context(self):
         """Asserts get and get_global returns the correct context even on a different thread."""
@@ -49,8 +49,8 @@ class TopologyContextManagerTest(TestCase):
 
             self.manager.get_global().database = MOCK_DATABASE_NAME
 
-            self.assertEquals(self.manager.get().database, None)
-            self.assertEquals(self.manager.get_global().database, MOCK_DATABASE_NAME)
+            self.assertEqual(self.manager.get().database, None)
+            self.assertEqual(self.manager.get_global().database, MOCK_DATABASE_NAME)
 
     def test_thread_is_created_correctly(self):
         """Asserts copy_from copies correctly the context from parent thread."""
@@ -64,7 +64,7 @@ class TopologyContextManagerTest(TestCase):
             self.manager.copy_from(MAIN_THREAD)
 
             # Check we are retrieving the right thread
-            self.assertEquals(self.manager.get().database, MOCK_DATABASE_NAME)
+            self.assertEqual(self.manager.get().database, MOCK_DATABASE_NAME)
 
     def test_pop_removes_the_correct_thread(self):
         """Asserts pop removes the correct thread and not another one."""
@@ -72,10 +72,10 @@ class TopologyContextManagerTest(TestCase):
         with patch("threading.get_ident", return_value=OTHER_THREAD):
             self.manager.copy_from(MAIN_THREAD)
 
-        self.assertEquals(
+        self.assertEqual(
             list(self.manager.contexts.keys()), [MAIN_THREAD, OTHER_THREAD]
         )
 
         self.manager.pop(OTHER_THREAD)
 
-        self.assertEquals(list(self.manager.contexts.keys()), [MAIN_THREAD])
+        self.assertEqual(list(self.manager.contexts.keys()), [MAIN_THREAD])
