@@ -97,7 +97,6 @@ import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.resources.system.IndexResource;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
@@ -335,11 +334,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         EnumSet.allOf(DispatcherType.class), true, eventMonitorConfiguration.getPathPattern());
   }
 
-  private void registerAssetServlet( OpenMetadataApplicationConfig config, OMWebConfiguration webConfiguration, Environment environment) {
+  private void registerAssetServlet(
+      OpenMetadataApplicationConfig config,
+      OMWebConfiguration webConfiguration,
+      Environment environment) {
 
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet =
-        new OpenMetadataAssetServlet(config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
+        new OpenMetadataAssetServlet(
+            config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
     String pathPattern = "/" + '*';
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
   }

@@ -30,8 +30,12 @@ public class OpenMetadataAssetServlet extends AssetServlet {
 
   private final String basePath;
 
-  public OpenMetadataAssetServlet( String basePath,
-      String resourcePath, String uriPath, @Nullable String indexFile, OMWebConfiguration webConf) {
+  public OpenMetadataAssetServlet(
+      String basePath,
+      String resourcePath,
+      String uriPath,
+      @Nullable String indexFile,
+      OMWebConfiguration webConf) {
     super(resourcePath, uriPath, indexFile, "text/html", StandardCharsets.UTF_8);
     this.webConfiguration = webConf;
     this.basePath = basePath;
