@@ -92,7 +92,7 @@ def _get_column_info(self, *args, **kwargs):
         **kwargs:
     Returns
     """
-    kwdrs = kwargs.copy()
+    kwdrs = kwargs.model_copy()
     encode = kwdrs.pop("encode", None)
     if sa_version >= Version("1.3.16"):
         kwdrs["generated"] = ""

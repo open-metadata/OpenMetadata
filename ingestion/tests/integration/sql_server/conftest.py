@@ -56,7 +56,7 @@ def mssql_container(tmp_path_factory, db_name):
         "mcr.microsoft.com/mssql/server:2022-latest", dbname="master"
     )
     data_dir = tmp_path_factory.mktemp("data")
-    shutil.copy(
+    shutil.model_copy(
         os.path.join(os.path.dirname(__file__), "data", f"{db_name}.bak"),
         str(data_dir),
     )
