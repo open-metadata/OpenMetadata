@@ -23,6 +23,36 @@ import static org.openmetadata.service.security.SecurityUtil.validatePrincipalCl
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
 
+import java.net.URL;
+import java.security.AuthProvider;
+import java.security.interfaces.RSAPublicKey;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+import javax.ws.rs.container.ContainerRequestContext;
+import javax.ws.rs.container.ContainerRequestFilter;
+import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.ext.Provider;
+
+import org.apache.commons.lang.StringUtils;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.LogoutRequest;
+import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
 import com.auth0.jwt.JWT;
@@ -32,29 +62,10 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import java.net.URL;
-import java.security.interfaces.RSAPublicKey;
-import java.util.*;
-import java.util.stream.Collectors;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
-import javax.ws.rs.ext.Provider;
+
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration;
-import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.auth.LogoutRequest;
-import org.openmetadata.schema.auth.ServiceTokenType;
-import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.service.security.auth.BotTokenCache;
-import org.openmetadata.service.security.auth.CatalogSecurityContext;
-import org.openmetadata.service.security.auth.UserTokenCache;
-import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 
 @Slf4j
 @Provider

@@ -14,7 +14,7 @@
 import axios from 'axios';
 import Qs from 'qs';
 
-const basePath = window.BASE_PATH || '/';
+const basePath = window.BASE_PATH ?? '/';
 
 const axiosClient = axios.create({
   baseURL: `${basePath}api/v1`,
