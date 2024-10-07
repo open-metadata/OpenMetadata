@@ -99,7 +99,7 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('submit-test').click();
       await createTestCaseResponse;
       const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?fields=*`
+        `/api/v1/dataQuality/testCases/search/list?*fields=*`
       );
       await page.getByTestId('view-service-button').click();
       await tableTestResponse;
@@ -196,7 +196,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('submit-test').click();
       await createTestCaseResponse;
       const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?fields=*`
+        `/api/v1/dataQuality/testCases/search/list?*fields=*`
       );
       await page.getByTestId('view-service-button').click();
       await tableTestResponse;
@@ -300,7 +300,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
       await page.waitForSelector('[data-testid="success-line"]');
       await page.waitForSelector('[data-testid="view-service-button"]');
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page.click(`[data-testid="view-service-button"]`);
       await testCaseResponse;

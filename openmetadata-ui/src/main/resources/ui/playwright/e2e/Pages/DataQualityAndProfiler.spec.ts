@@ -130,7 +130,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     ).toBeVisible();
 
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list?fields=*'
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
     );
     await page.click(`[data-testid="view-service-button"]`);
     await testCaseResponse;
@@ -210,7 +210,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.waitForSelector('[data-testid="view-service-button"]');
 
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list?fields=*'
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
     );
     await page.click(`[data-testid="view-service-button"]`);
     await testCaseResponse;
