@@ -880,8 +880,8 @@ public class ElasticSearchClient implements SearchClient {
       throws IOException {
     Map<String, Object> responseMap =
         searchEntityRelationshipInternal(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
-      }
-  
+  }
+
   @Override
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {

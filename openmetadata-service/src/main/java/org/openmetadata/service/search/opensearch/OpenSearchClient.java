@@ -882,7 +882,7 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     Map<String, Object> responseMap =
         searchEntityRelationshipInternal(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
-      }
+  }
 
   @Override
   public Response searchDataQualityLineage(
