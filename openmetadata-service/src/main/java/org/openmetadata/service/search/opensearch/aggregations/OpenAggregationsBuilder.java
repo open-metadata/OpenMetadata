@@ -1,0 +1,56 @@
+package org.openmetadata.service.search.opensearch.aggregations;
+
+import org.openmetadata.service.search.SearchAggregationNode;
+import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
+import org.openmetadata.service.search.opensearch.aggregations.OpenAvgAggregations;
+import org.openmetadata.service.search.opensearch.aggregations.OpenBucketSelectorAggregations;
+import org.openmetadata.service.search.opensearch.aggregations.OpenCardinalityAggregations;
+import org.openmetadata.service.search.opensearch.aggregations.OpenDateHistogramAggregations;
+import org.openmetadata.service.search.opensearch.aggregations.OpenNestedAggregations;
+import org.openmetadata.service.search.opensearch.aggregations.OpenTermsAggregations;
+import org.openmetadata.service.search.opensearch.aggregations.OpenTopHitsAggregations;
+import org.openmetadata.service.search.opensearch.aggregations.OpenMinAggregations;
+
+import java.util.List;
+
+public class OpenAggregationsBuilder {
+    public static List<OpenAggregations> buildAggregation(SearchAggregationNode node,
+                                                          OpenAggregations aggregation,
+                                                          List<OpenAggregations> aggregations) {
+        String type = node.getType();
+        if (type == "root") {
+            for (SearchAggregationNode child : node.getChildren()) {
+                buildAggregation(child, null, aggregations);
+            }
+            return aggregations;
+        }
+        OpenAggregations OpenAggregations = getAggregation(type);
+        OpenAggregations.createAggregation(node);
+        if (aggregation != null) {
+            if (OpenAggregations.isPipelineAggregation()) {
+                aggregation.setSubAggregation(OpenAggregations.getElasticPipelineAggregationBuilder());
+            } else {
+                aggregation.setSubAggregation(OpenAggregations.getElasticAggregationBuilder());
+            }
+        }
+        if (aggregation == null) aggregations.add(OpenAggregations);
+        for (SearchAggregationNode child : node.getChildren()) {
+            buildAggregation(child, OpenAggregations, aggregations);
+        }
+        return aggregations;
+    }
+
+    public static OpenAggregations getAggregation(String aggregationType) {
+        return switch (aggregationType) {
+            case "bucket_selector" -> new OpenBucketSelectorAggregations();
+            case "date_histogram" -> new OpenDateHistogramAggregations();
+            case "terms" -> new OpenTermsAggregations();
+            case "avg" -> new OpenAvgAggregations();
+            case "min" -> new OpenMinAggregations();
+            case "cardinality" -> new OpenCardinalityAggregations();
+            case "nested" -> new OpenNestedAggregations();
+            case "top_hits" -> new OpenTopHitsAggregations();
+            default -> throw new IllegalArgumentException("Invalid aggregation type: " + aggregationType);
+        };
+    }
+}
