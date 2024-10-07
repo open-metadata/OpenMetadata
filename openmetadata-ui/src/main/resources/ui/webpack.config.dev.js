@@ -18,6 +18,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const process = require('process');
 
 const outputPath = path.join(__dirname, 'build');
+const devServerTarget = process.env.DEV_SERVER_TARGET ?? 'http://localhost:8585/';
 
 module.exports = {
   // Development mode
@@ -188,7 +189,7 @@ module.exports = {
     proxy: [
       {
         context: '/api/',
-        target: 'http://localhost:8585/',
+        target: devServerTarget,
         changeOrigin: true,
       },
     ],

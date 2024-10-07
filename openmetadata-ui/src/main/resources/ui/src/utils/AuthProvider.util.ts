@@ -12,6 +12,7 @@
  */
 
 import {
+  AuthenticationResult,
   BrowserCacheLocation,
   Configuration,
   PopupRequest,
@@ -32,6 +33,7 @@ import {
   ClientType,
 } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import { isDev } from './EnvironmentUtils';
 import { getBasePath } from './HistoryUtils';
 
@@ -414,4 +416,27 @@ export const prepareUserProfileFromClaims = ({
   } as OidcUser;
 
   return newUser;
+};
+
+// Responsible for parsing the response from MSAL AuthenticationResult
+export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
+  // Call your API with the access token and return the data you need to save in state
+  const { idToken, scopes, account } = response;
+  const { setOidcToken } = useApplicationStore.getState();
+
+  const user = {
+    id_token: idToken,
+    scope: scopes.join(),
+    profile: {
+      email: get(account, 'idTokenClaims.email', ''),
+      name: account?.name ?? '',
+      picture: '',
+      preferred_username: get(account, 'idTokenClaims.preferred_username', ''),
+      sub: get(account, 'idTokenClaims.sub', ''),
+    } as UserProfile,
+  };
+
+  setOidcToken(idToken);
+
+  return user;
 };
