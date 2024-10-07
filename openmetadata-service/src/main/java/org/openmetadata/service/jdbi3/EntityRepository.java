@@ -146,6 +146,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
+import org.openmetadata.schema.type.customproperties.TableTypeConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -1430,19 +1431,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
       String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
 
-      try {
-        validateAndUpdateExtensionBasedOnPropertyType(
-            entity,
-            (ObjectNode) jsonNode,
-            fieldName,
-            fieldValue,
-            customPropertyType,
-            propertyConfig);
-      } catch (DateTimeParseException e) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.dateTimeValidationError(fieldName, propertyConfig));
-      }
-
+      validateAndUpdateExtensionBasedOnPropertyType(
+          entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
       Set<ValidationMessage> validationMessages = jsonSchema.validate(entry.getValue());
       if (!validationMessages.isEmpty()) {
         throw new IllegalArgumentException(
@@ -1468,6 +1458,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       case "enumWithDescriptions" -> handleEnumWithDescriptions(
           fieldName, fieldValue, propertyConfig, jsonNode, entity);
+      case "table-type" -> validateTableType(fieldValue, propertyConfig);
       default -> {}
     }
   }
@@ -1536,6 +1527,45 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       jsonNode.replace(fieldName, newArray);
       entity.setExtension(JsonUtils.treeToValue(jsonNode, Object.class));
+    }
+  }
+
+  private void validateTableType(JsonNode fieldValue, String propertyConfig) {
+    TableTypeConfig tableTypeConfig =
+        JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableTypeConfig.class);
+    Set<String> configColumns = tableTypeConfig.getColumns();
+
+    JsonNode columnsNode = fieldValue.get("columns");
+    if (columnsNode == null
+        || !columnsNode.isArray() && columnsNode.size() < tableTypeConfig.getMinColumns()) {
+      throw new IllegalArgumentException(
+          "Minimum " + tableTypeConfig.getMinColumns() + " column required");
+    }
+
+    Set<String> fieldColumns = new HashSet<>();
+    columnsNode.forEach(column -> fieldColumns.add(column.asText()));
+
+    fieldColumns.removeAll(configColumns);
+    if (!fieldColumns.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Expected columns: " + configColumns + ", but found undefined columns: " + fieldColumns);
+    }
+
+    JsonNode rowsNode = fieldValue.get("rows");
+    if (rowsNode == null || !rowsNode.isArray() && rowsNode.size() < tableTypeConfig.getMinRows()) {
+      throw new IllegalArgumentException(
+          "Minimum " + tableTypeConfig.getMinRows() + " row required");
+    }
+
+    Set<String> rowFieldNames = new HashSet<>();
+    rowsNode.forEach(
+        row -> {
+          row.fieldNames().forEachRemaining(rowFieldNames::add);
+        });
+
+    rowFieldNames.removeAll(configColumns);
+    if (!rowFieldNames.isEmpty()) {
+      throw new IllegalArgumentException("Rows contain undefined columns: " + rowFieldNames);
     }
   }
 

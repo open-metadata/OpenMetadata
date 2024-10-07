@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/type/customProperties/complexTypes.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Basic",
+  "title": "ComplexTypes",
   "description": "This schema defines custom properties complex types.",
   "definitions": {
     "entityReference": {
@@ -99,6 +99,41 @@
           }
         }
       }
+    },
+    "table-type": {
+      "$comment": "@om-field-type",
+      "title": "TableType",
+      "description": "A table-type custom property where all column data types are strings.",
+      "type": "object",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "description": "List of column names defined at the entity type level.",
+          "items": {
+            "type": "string",
+            "description": "The name of the column."
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "rows": {
+          "type": "array",
+          "description": "List of rows added at the entity instance level.",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "description": "A cell in the table.",
+            "properties": {},
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": ["columns"],
+      "additionalProperties": false
     }
   }
 }

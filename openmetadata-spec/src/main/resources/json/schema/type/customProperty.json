@@ -36,6 +36,9 @@
             },
             {
               "$ref": "../type/customProperties/enumWithDescriptionsConfig.json"
+            },
+            {
+              "$ref": "../type/customProperties/tableTypeConfig.json"
             }
           ]
         }

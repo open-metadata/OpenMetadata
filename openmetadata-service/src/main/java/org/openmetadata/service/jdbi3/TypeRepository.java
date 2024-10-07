@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.customproperties.EnumConfig;
 import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
+import org.openmetadata.schema.type.customproperties.TableTypeConfig;
 import org.openmetadata.schema.type.customproperties.Value;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
@@ -175,6 +176,7 @@ public class TypeRepository extends EntityRepository<Type> {
       case "enum" -> validateEnumConfig(customProperty.getCustomPropertyConfig());
       case "enumWithDescriptions" -> validateEnumWithDescriptionsConfig(
           customProperty.getCustomPropertyConfig());
+      case "table-type" -> validateTableTypeConfig(customProperty.getCustomPropertyConfig());
       case "date-cp" -> validateDateFormat(
           customProperty.getCustomPropertyConfig(), getDateTokens(), "Invalid date format");
       case "dateTime-cp" -> validateDateFormat(
@@ -252,6 +254,29 @@ public class TypeRepository extends EntityRepository<Type> {
     } else {
       throw new IllegalArgumentException(
           "EnumWithDescriptions Custom Property Type must have customPropertyConfig.");
+    }
+  }
+
+  private void validateTableTypeConfig(CustomPropertyConfig config) {
+    if (config != null) {
+      TableTypeConfig tableTypeConfig =
+          JsonUtils.convertValue(config.getConfig(), TableTypeConfig.class);
+      if (tableTypeConfig == null) {
+        throw new IllegalArgumentException(
+            "TableType Custom Property Type must have TableTypeConfig populated.");
+      }
+      if (tableTypeConfig.getColumns() == null || tableTypeConfig.getColumns().isEmpty()) {
+        throw new IllegalArgumentException(
+            "TableType must have at least " + tableTypeConfig.getMinColumns() + " column.");
+      }
+      if (tableTypeConfig.getColumns().size() > tableTypeConfig.getMaxColumns()) {
+        throw new IllegalArgumentException(
+            "TableType can have a maximum of " + tableTypeConfig.getMaxColumns() + " columns.");
+      }
+
+    } else {
+      throw new IllegalArgumentException(
+          "TableType Custom Property Type must have TableTypeConfig.");
     }
   }
 
