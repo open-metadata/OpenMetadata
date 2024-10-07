@@ -9,7 +9,7 @@ SET json = jsonb_set(
    'dataType', 'BOOLEAN',
    'required', false,
    'description', 'Use case sensitivity when comparing the columns. (default: true)',
-   'displayName', 'Case sensitive columns'
+   'displayName', 'Case sensitive columns',
    'optionValues', jsonb_build_array()
   )
  )
