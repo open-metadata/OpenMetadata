@@ -56,7 +56,7 @@ class TestConfig(TestCase):
         with self.assertRaises(ConfigurationError):
             load_config_file(bad_suffix)
 
-    @mock.patch.model_dump(os.environ, {"PASSWORD": "super_safe"})
+    @mock.patch.dict(os.environ, {"PASSWORD": "super_safe"})
     def test_env(self):
         """
         We can load env vars correctly

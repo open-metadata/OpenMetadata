@@ -24,7 +24,7 @@ class TestIngestionFileLoad(TestCase):
 
     resources_path = Path(__file__).parent.absolute() / "resources"
 
-    @mock.patch.model_dump(
+    @mock.patch.dict(
         os.environ,
         {
             "PROJECT_ID": "my-project-id",

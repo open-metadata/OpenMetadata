@@ -65,7 +65,7 @@ class TestSecretsManagerFactory(TestCase):
             secrets_manager_factory.get_secrets_manager(), DBSecretsManager
         )
 
-    @patch.model_dump(os.environ, {"AZURE_KEY_VAULT_NAME": "test"})
+    @patch.dict(os.environ, {"AZURE_KEY_VAULT_NAME": "test"})
     @patch("metadata.clients.aws_client.boto3")
     def test_all_providers_has_implementation(self, mocked_boto3):
         mocked_boto3.s3_client.return_value = {}
