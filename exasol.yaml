@@ -9,6 +9,8 @@ source:
       hostPort: localhost:8563
       connectionOptions: {}
       connectionArguments: {}
+      sslMode: disable
+      verifySSL: no-ssl
   sourceConfig:
     config:
       markDeletedTables: true
