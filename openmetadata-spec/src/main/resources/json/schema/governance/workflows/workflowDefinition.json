@@ -6,27 +6,6 @@
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "javaType": "org.openmetadata.schema.governance.workflows.WorkflowDefinition",
   "type": "object",
-  "definitions": {
-    "nodeItem": {
-      "oneOf": [
-        {
-          "$ref": "./elements/nodes/automatedTasks/checkEntityHasReviewersTask.json"
-        },
-        {
-          "$ref": "./elements/nodes/automatedTasks/setGlossaryTermStatusTask.json"
-        },
-        {
-          "$ref": "./elements/nodes/userTasks/userApprovalTask.json"
-        },
-        {
-          "$ref": "./elements/nodes/triggers/entityEventTrigger.json"
-        },
-        {
-          "$ref": "./elements/nodes/endEvents/endEvent.json"
-        }
-      ]
-    }
-  },
   "properties": {
     "id": {
       "description": "Unique identifier of this workflow definition.",
@@ -79,11 +58,7 @@
       "default": false
     },
     "nodes": {
-      "description": "List of nodes used on the workflow.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/nodeItem"
-      }
+      "description": "List of nodes used on the workflow."
     },
     "edges": {
       "description": "List of edges that connect the workflow elements and guide its flow.",

@@ -7,10 +7,12 @@ import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.Process;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
+import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.service.governance.workflows.elements.Edge;
 import org.openmetadata.service.governance.workflows.elements.WorkflowNodeFactory;
 import org.openmetadata.service.util.JsonUtils;
 
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -47,7 +49,7 @@ public class Workflow {
     process.getExecutionListeners().add(endListener);
 
     // Add Nodes
-    for (Object nodeDefinitionObj : workflowDefinition.getNodes()) {
+    for (Object nodeDefinitionObj : (List<WorkflowNodeDefinitionInterface>) workflowDefinition.getNodes()) {
       WorkflowNodeFactory.createNode(JsonUtils.readOrConvertValue(nodeDefinitionObj, Map.class)).addToWorkflow(model, process);
     }
 

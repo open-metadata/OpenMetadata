@@ -49,7 +49,7 @@ public class WorkflowInstanceStateRepository
   }
 
   public UUID addNewStageToInstance(String workflowInstanceStage, String workflowInstanceId, String workflowDefinitionName, Long startedAt) {
-     WorkflowDefinitionRepository workflowDefinitionRepository = (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    WorkflowDefinitionRepository workflowDefinitionRepository = (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
     EntityReference workflowDefinitionReference = workflowDefinitionRepository.getByName(null, workflowDefinitionName, new EntityUtil.Fields(Set.of("*"))).getEntityReference();
 
     Stage stage = new Stage()
@@ -59,9 +59,9 @@ public class WorkflowInstanceStateRepository
     WorkflowInstanceState createdRecord = createNewRecord(
             new WorkflowInstanceState()
                     .withStage(stage)
-                    .withWorkflowInstanceId(workflowInstanceId)
+                    .withWorkflowInstanceId(UUID.fromString(workflowInstanceId))
                     .withTimestamp(System.currentTimeMillis())
-                    .withWorkflowDefinitionReference(workflowDefinitionReference), buildWorkflowInstanceFqn(workflowDefinitionName, workflowInstanceId));
+                    .withWorkflowDefinitionReference(workflowDefinitionReference), buildWorkflowInstanceFqn(workflowDefinitionName, workflowInstanceId.toString()));
 
     return createdRecord.getId();
   }

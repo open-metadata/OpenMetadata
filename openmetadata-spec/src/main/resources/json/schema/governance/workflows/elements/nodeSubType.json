@@ -8,7 +8,9 @@
   "enum": [
     "entityEventTrigger",
     "userApprovalTask",
+    "userRequestDescriptionTask",
     "checkEntityHasReviewersTask",
+    "setEntityDescriptionTask",
     "setGlossaryTermStatusTask",
     "endEvent"
   ]

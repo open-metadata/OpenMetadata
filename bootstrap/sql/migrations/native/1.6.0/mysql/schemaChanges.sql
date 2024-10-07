@@ -10,9 +10,24 @@ CREATE TABLE IF NOT EXISTS workflow_definition_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash),
     INDEX (name)
-);
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Workflow Instance extension time series
+-- Create Workflow Instance Time Series
+  CREATE TABLE IF NOT EXISTS workflow_definition_entity (
+      id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+      workflowDefinitionId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowDefinitionReference.id'))) STORED NOT NULL,
+      json JSON NOT NULL,
+      jsonSchema varchar(256) NOT NULL,
+      timestamp bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.timestamp'))) STORED NOT NULL,
+      startedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.startedAt'))) STORED NOT NULL,
+      endedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.endedAt'))) STORED NOT NULL,
+      entityFQNHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+      CONSTRAINT workflow_instance_time_series_unique_constraint UNIQUE (id,entityFQNHash),
+      PRIMARY KEY (id),
+      INDEX (workflowDefinitionId)
+  ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Workflow Instance State Time Series
 CREATE TABLE workflow_instance_state_time_series (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.id'))) STORED NOT NULL,
   workflowDefinitionId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowDefinitionReference.id'))) STORED NOT NULL,
@@ -24,7 +39,7 @@ CREATE TABLE workflow_instance_state_time_series (
   jsonSchema varchar(256) NOT NULL,
   json json NOT NULL,
   entityFQNHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
-  CONSTRAINT workflow_instance_time_series_unique_constraint UNIQUE (id,timestamp,entityFQNHash),
+  CONSTRAINT workflow_instance_state_time_series_unique_constraint UNIQUE (id,entityFQNHash),
   PRIMARY KEY (id),
   INDEX (workflowDefinitionId),
   INDEX (workflowInstanceId)

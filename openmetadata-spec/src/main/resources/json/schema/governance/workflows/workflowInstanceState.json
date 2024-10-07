@@ -12,8 +12,12 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "workflowInstanceId": {
-      "description": "Unique identifier of this workflow instance.",
-      "type": "string"
+      "description": "Workflow Instance ID.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "workflowDefinitionReference": {
+      "description": "Workflow Definition Reference.",
+      "$ref": "../../type/entityReference.json"
     },
     "stage": {
       "type": "object",
@@ -42,10 +46,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "workflowDefinitionReference": {
-      "description": "Workflow Definition Reference.",
-      "$ref": "../../type/entityReference.json"
     },
     "timestamp": {
       "description": "Timestamp on which the workflow instance state was created.",
