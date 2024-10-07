@@ -49,7 +49,7 @@ const TreeSelectWidget: FC<WidgetProps> = ({
       treeDefaultExpandAll
       data-testid="tree-select-widget"
       disabled={rest.disabled}
-      filterTreeNode={false}
+      showCheckedStrategy={TreeSelect.SHOW_PARENT}
       style={{
         width: '100%',
       }}
