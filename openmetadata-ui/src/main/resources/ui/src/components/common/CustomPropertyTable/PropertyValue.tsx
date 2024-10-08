@@ -26,7 +26,6 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -60,12 +59,11 @@ import {
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
-import { ENUM_WITH_DESCRIPTION } from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { EnumConfig, ValueClass } from '../../../generated/type/customProperty';
+import { EnumConfig } from '../../../generated/type/customProperty';
 import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -78,7 +76,6 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
-import Table from '../Table/Table';
 import {
   PropertyValueProps,
   PropertyValueType,
@@ -135,16 +132,14 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
   const onInputSave = async (updatedValue: PropertyValueType) => {
     const isEnum = propertyType.name === 'enum';
-    const isEnumWithDescription = propertyType.name === ENUM_WITH_DESCRIPTION;
 
     const isArrayType = isArray(updatedValue);
 
     const enumValue = isArrayType ? updatedValue : [updatedValue];
 
-    const propertyValue =
-      isEnum || isEnumWithDescription
-        ? (enumValue as string[]).filter(Boolean)
-        : updatedValue;
+    const propertyValue = isEnum
+      ? (enumValue as string[]).filter(Boolean)
+      : updatedValue;
 
     try {
       // Omit undefined and empty values
@@ -261,60 +256,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 <Select
                   allowClear
                   data-testid="enum-select"
-                  disabled={isLoading}
-                  mode={isMultiSelect ? 'multiple' : undefined}
-                  options={options}
-                  placeholder={t('label.enum-value-plural')}
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
-
-      case ENUM_WITH_DESCRIPTION: {
-        const enumConfig = property.customPropertyConfig?.config as EnumConfig;
-
-        const isMultiSelect = Boolean(enumConfig?.multiSelect);
-
-        const values = (enumConfig?.values as ValueClass[]) ?? [];
-
-        const options = values.map((option) => ({
-          label: (
-            <Tooltip title={option.description}>
-              <span>{option.key}</span>
-            </Tooltip>
-          ),
-          value: option.key,
-        }));
-
-        const initialValues = {
-          enumWithDescriptionValues: (isArray(value) ? value : [value]).filter(
-            Boolean
-          ),
-        };
-
-        return (
-          <InlineEdit
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: 'enum-with-description-form',
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id="enum-with-description-form"
-              initialValues={initialValues}
-              layout="vertical"
-              onFinish={(values: {
-                enumWithDescriptionValues: string | string[];
-              }) => onInputSave(values.enumWithDescriptionValues)}>
-              <Form.Item name="enumWithDescriptionValues" style={commonStyle}>
-                <Select
-                  allowClear
-                  data-testid="enum-with-description-select"
                   disabled={isLoading}
                   mode={isMultiSelect ? 'multiple' : undefined}
                   options={options}
@@ -790,42 +731,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             )}
           </>
         );
-
-      case ENUM_WITH_DESCRIPTION: {
-        const enumWithDescriptionValues = (value as ValueClass[]) ?? [];
-
-        const columns: ColumnsType<ValueClass> = [
-          {
-            title: 'Key',
-            dataIndex: 'key',
-            key: 'key',
-            render: (key: string) => <Typography>{key}</Typography>,
-          },
-          {
-            title: 'Description',
-            dataIndex: 'description',
-            key: 'description',
-            render: (description: string) => (
-              <RichTextEditorPreviewer markdown={description || ''} />
-            ),
-          },
-        ];
-
-        return (
-          <Table
-            bordered
-            resizableColumns
-            className="w-full"
-            columns={columns}
-            data-testid="enum-with-description-table"
-            dataSource={enumWithDescriptionValues}
-            pagination={false}
-            rowKey="name"
-            scroll={isRenderedInRightPanel ? { x: true } : undefined}
-            size="small"
-          />
-        );
-      }
 
       case 'sqlQuery':
         return (

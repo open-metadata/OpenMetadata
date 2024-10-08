@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Input, Row } from 'antd';
+import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isUndefined, map, omit, omitBy, startCase } from 'lodash';
@@ -24,10 +23,8 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import {
   ENTITY_REFERENCE_OPTIONS,
-  ENUM_WITH_DESCRIPTION,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
   SUPPORTED_FORMAT_MAP,
@@ -58,7 +55,6 @@ import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUt
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 
@@ -112,7 +108,6 @@ const AddCustomProperty = () => {
     hasFormatConfig,
     hasEntityReferenceConfig,
     watchedOption,
-    hasEnumWithDescriptionConfig,
   } = useMemo(() => {
     const watchedOption = propertyTypeOptions.find(
       (option) => option.value === watchedPropertyType
@@ -120,9 +115,6 @@ const AddCustomProperty = () => {
     const watchedOptionKey = watchedOption?.key ?? '';
 
     const hasEnumConfig = watchedOptionKey === 'enum';
-
-    const hasEnumWithDescriptionConfig =
-      watchedOptionKey === ENUM_WITH_DESCRIPTION;
 
     const hasFormatConfig =
       PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
@@ -135,7 +127,6 @@ const AddCustomProperty = () => {
       hasFormatConfig,
       hasEntityReferenceConfig,
       watchedOption,
-      hasEnumWithDescriptionConfig,
     };
   }, [watchedPropertyType, propertyTypeOptions]);
 
@@ -205,15 +196,6 @@ const AddCustomProperty = () => {
       if (hasEntityReferenceConfig) {
         customPropertyConfig = {
           config: data.entityReferenceConfig,
-        };
-      }
-
-      if (hasEnumWithDescriptionConfig) {
-        customPropertyConfig = {
-          config: {
-            multiSelect: Boolean(data?.multiSelect),
-            values: data.enumWithDescriptionsConfig,
-          },
         };
       }
 
@@ -415,94 +397,6 @@ const AddCustomProperty = () => {
             generateFormFields([entityReferenceConfigField])
         }
 
-        {hasEnumWithDescriptionConfig && (
-          <>
-            <Form.List name="enumWithDescriptionsConfig">
-              {(fields, { add, remove }) => (
-                <>
-                  <Form.Item
-                    className="form-item-horizontal"
-                    colon={false}
-                    label={t('label.property')}>
-                    <Button
-                      data-testid="add-enum-description-config"
-                      icon={
-                        <PlusOutlined
-                          style={{ color: 'white', fontSize: '12px' }}
-                        />
-                      }
-                      size="small"
-                      type="primary"
-                      onClick={() => {
-                        add();
-                      }}
-                    />
-                  </Form.Item>
-
-                  {fields.map((field, index) => (
-                    <Row gutter={[8, 0]} key={field.key}>
-                      <Col span={23}>
-                        <Row gutter={[8, 0]}>
-                          <Col span={24}>
-                            <Form.Item
-                              name={[field.name, 'key']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: `${t(
-                                    'message.field-text-is-required',
-                                    {
-                                      fieldText: t('label.key'),
-                                    }
-                                  )}`,
-                                },
-                              ]}>
-                              <Input
-                                id={`key-${index}`}
-                                placeholder={t('label.key')}
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col span={24}>
-                            <Form.Item
-                              name={[field.name, 'description']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: `${t(
-                                    'message.field-text-is-required',
-                                    {
-                                      fieldText: t('label.description'),
-                                    }
-                                  )}`,
-                                },
-                              ]}
-                              trigger="onTextChange"
-                              valuePropName="initialValue">
-                              <RichTextEditor height="200px" />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-                      </Col>
-                      <Col span={1}>
-                        <Button
-                          data-testid={`remove-enum-description-config-${index}`}
-                          icon={<DeleteIcon width={16} />}
-                          size="small"
-                          type="text"
-                          onClick={() => {
-                            remove(field.name);
-                          }}
-                        />
-                      </Col>
-                    </Row>
-                  ))}
-                </>
-              )}
-            </Form.List>
-            {generateFormFields([multiSelectField])}
-          </>
-        )}
         {generateFormFields([descriptionField])}
         <Row justify="end">
           <Col>
