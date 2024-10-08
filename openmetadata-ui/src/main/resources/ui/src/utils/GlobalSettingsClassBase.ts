@@ -17,7 +17,6 @@ import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
-import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
@@ -267,14 +266,6 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ADMINS}`,
             icon: AdminIcon,
           },
-
-          {
-            label: t('label.persona-plural'),
-            description: t('message.page-sub-header-for-persona'),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.PERSONA}`,
-            icon: PersonasIcon,
-          },
         ],
       },
       {
@@ -311,17 +302,6 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APPEARANCE}`,
             icon: AppearanceIcon,
-          },
-          {
-            label: t('label.customize-entity', {
-              entity: t('label.landing-page'),
-            }),
-            description: t(
-              'message.page-sub-header-for-customize-landing-page'
-            ),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
-            icon: CustomDashboardLogoIcon,
           },
           {
             label: t('label.email'),
@@ -515,6 +495,13 @@ class GlobalSettingsClassBase {
         isProtected: Boolean(isAdminUser),
         key: GlobalSettingOptions.BOTS,
         icon: BotIcon,
+      },
+      {
+        category: t('label.persona-plural'),
+        description: t('message.page-sub-header-for-persona'),
+        isProtected: Boolean(isAdminUser),
+        key: GlobalSettingOptions.PERSONA,
+        icon: PersonasIcon,
       },
     ];
   }
