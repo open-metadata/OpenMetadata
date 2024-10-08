@@ -20,41 +20,15 @@
       "$ref": "#/definitions/metaPilotAppType",
       "default": "MetaPilot"
     },
-    "descriptionDatabases": {
-      "title": "Databases for Automated Description Generation",
-      "description": "Services and Databases configured to get the descriptions from.",
-      "type": "array",
-      "items": {
-        "placeholder": "Search Databases",
-        "$ref": "../../../../type/entityReference.json",
-        "format": "autoComplete",
-        "autoCompleteType": "database_search_index"
-      }
+    "queryFilter": {
+      "description": "Query filter to be passed to ES. E.g., `{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"domain.displayName.keyword\":\"DG Anim\"}}]}}]}}}`. This is the same payload as in the Explore page.",
+      "type": "string"
     },
     "patchIfEmpty": {
       "title": "Patch Description If Empty",
       "description": "Patch the description if it is empty, instead of raising a suggestion",
       "type": "boolean",
       "default": false
-    },
-    "copilotDatabases": {
-      "title": "Databases for SQL Copilot",
-      "description": "Services and Databases configured to get enable the SQL Copilot.",
-      "type": "array",
-      "items": {
-        "placeholder": "Search Databases",
-        "$ref": "../../../../type/entityReference.json",
-        "format": "autoComplete",
-        "autoCompleteType": "database_search_index"
-      }
-    },
-    "defaultScope": {
-      "title": "Default Chatbot Database Scope",
-      "description": "Default database scope for the chatbot.",
-      "$ref": "../../../../type/entityReference.json",
-      "format": "autoComplete",
-      "autoCompleteType": "database_search_index",
-      "placeholder": "Search Databases"
     }
   },
   "additionalProperties": false
