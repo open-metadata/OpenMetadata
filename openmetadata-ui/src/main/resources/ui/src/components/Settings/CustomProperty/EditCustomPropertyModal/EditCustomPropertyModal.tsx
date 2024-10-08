@@ -19,8 +19,8 @@ import {
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
 } from '../../../../constants/CustomProperty.constants';
 import {
+  Config,
   CustomProperty,
-  EnumConfig,
   ValueClass,
 } from '../../../../generated/type/customProperty';
 import {
@@ -97,7 +97,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       placeholder: t('label.enum-value-plural'),
       onChange: (value: string[]) => {
         const enumConfig = customProperty.customPropertyConfig
-          ?.config as EnumConfig;
+          ?.config as Config;
         const updatedValues = uniq([...value, ...(enumConfig?.values ?? [])]);
         form.setFieldsValue({ customPropertyConfig: updatedValues });
       },
@@ -157,8 +157,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
 
   const initialValues = useMemo(() => {
     if (hasEnumConfig) {
-      const enumConfig = customProperty.customPropertyConfig
-        ?.config as EnumConfig;
+      const enumConfig = customProperty.customPropertyConfig?.config as Config;
 
       return {
         description: customProperty.description,

@@ -989,6 +989,7 @@
     "role-name": "Наименование роли",
     "role-plural": "Роли",
     "row": "Строка",
+    "row-count": "Row Count",
     "row-count-lowercase": "количество строк",
     "row-plural": "Строки",
     "rtl-ltr-direction": "RTL/LTR direction",

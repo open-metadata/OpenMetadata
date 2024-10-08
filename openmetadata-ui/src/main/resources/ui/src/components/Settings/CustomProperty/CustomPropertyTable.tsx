@@ -140,6 +140,29 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
 
           // If config is an object, then it is a enum config
           if (!isString(config) && !isArray(config)) {
+            if (config?.columns) {
+              return (
+                <div className="w-full d-flex gap-2 flex-column">
+                  <Typography.Text>
+                    <span className="font-medium">{`${t(
+                      'label.column-plural'
+                    )}:`}</span>
+                    <ul className="m-b-0">
+                      {config.columns.map((column) => (
+                        <li key={column}>{column}</li>
+                      ))}
+                    </ul>
+                  </Typography.Text>
+                  <Typography.Text>
+                    <span className="font-medium">{`${t(
+                      'label.row-count'
+                    )}: `}</span>
+                    {config?.rowCount ?? 10}
+                  </Typography.Text>
+                </div>
+              );
+            }
+
             return (
               <div
                 className="w-full d-flex gap-2 flex-column"

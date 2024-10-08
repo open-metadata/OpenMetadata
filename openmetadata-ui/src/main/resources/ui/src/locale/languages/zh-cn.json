@@ -989,6 +989,7 @@
     "role-name": "角色名",
     "role-plural": "角色",
     "row": "行",
+    "row-count": "Row Count",
     "row-count-lowercase": "行计数",
     "row-plural": "行",
     "rtl-ltr-direction": "RTL/LTR direction",

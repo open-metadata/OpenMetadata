@@ -63,7 +63,7 @@ import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.c
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { EnumConfig } from '../../../generated/type/customProperty';
+import { Config } from '../../../generated/type/customProperty';
 import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -222,7 +222,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'enum': {
-        const enumConfig = property.customPropertyConfig?.config as EnumConfig;
+        const enumConfig = property.customPropertyConfig?.config as Config;
 
         const isMultiSelect = Boolean(enumConfig?.multiSelect);
 

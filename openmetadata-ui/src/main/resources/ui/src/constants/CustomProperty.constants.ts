@@ -126,3 +126,5 @@ export const SUPPORTED_FORMAT_MAP = {
   'dateTime-cp': SUPPORTED_DATE_TIME_FORMATS,
   'time-cp': SUPPORTED_TIME_FORMATS,
 };
+
+export const TABLE_TYPE_CUSTOM_PROPERTY = 'table-type';

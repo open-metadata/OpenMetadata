@@ -989,6 +989,7 @@
     "role-name": "Nom du Rôle",
     "role-plural": "Rôles",
     "row": "Ligne",
+    "row-count": "Row Count",
     "row-count-lowercase": "Nombre de Ligne",
     "row-plural": "Lignes",
     "rtl-ltr-direction": "RTL/LTR direction",

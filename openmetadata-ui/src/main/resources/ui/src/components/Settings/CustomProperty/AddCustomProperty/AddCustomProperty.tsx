@@ -14,7 +14,7 @@
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isUndefined, map, omit, omitBy, startCase } from 'lodash';
+import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import React, {
   FocusEvent,
   useCallback,
@@ -28,6 +28,7 @@ import {
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
   SUPPORTED_FORMAT_MAP,
+  TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../../../../constants/CustomProperty.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../../constants/regex.constants';
@@ -107,6 +108,7 @@ const AddCustomProperty = () => {
     hasFormatConfig,
     hasEntityReferenceConfig,
     watchedOption,
+    hasTableTypeConfig,
   } = useMemo(() => {
     const watchedOption = propertyTypeOptions.find(
       (option) => option.value === watchedPropertyType
@@ -114,6 +116,8 @@ const AddCustomProperty = () => {
     const watchedOptionKey = watchedOption?.key ?? '';
 
     const hasEnumConfig = watchedOptionKey === 'enum';
+
+    const hasTableTypeConfig = watchedOptionKey === TABLE_TYPE_CUSTOM_PROPERTY;
 
     const hasFormatConfig =
       PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
@@ -126,6 +130,7 @@ const AddCustomProperty = () => {
       hasFormatConfig,
       hasEntityReferenceConfig,
       watchedOption,
+      hasTableTypeConfig,
     };
   }, [watchedPropertyType, propertyTypeOptions]);
 
@@ -166,6 +171,8 @@ const AddCustomProperty = () => {
       formatConfig: string;
       entityReferenceConfig: string[];
       multiSelect?: boolean;
+      rowCount: number;
+      columns: string[];
     }
   ) => {
     if (isUndefined(typeDetail)) {
@@ -197,6 +204,15 @@ const AddCustomProperty = () => {
         };
       }
 
+      if (hasTableTypeConfig) {
+        customPropertyConfig = {
+          config: {
+            columns: data.columns,
+            rowCount: data.rowCount ?? 10,
+          },
+        };
+      }
+
       const payload = omitBy(
         {
           ...omit(data, [
@@ -204,6 +220,8 @@ const AddCustomProperty = () => {
             'formatConfig',
             'entityReferenceConfig',
             'enumConfig',
+            'rowCount',
+            'columns',
           ]),
           propertyType: {
             id: data.propertyType,
@@ -367,6 +385,66 @@ const AddCustomProperty = () => {
     },
   };
 
+  const tableTypePropertyConfig: FieldProp[] = [
+    {
+      name: 'columns',
+      required: true,
+      label: t('label.column-plural'),
+      id: 'root/columns',
+      type: FieldTypes.SELECT,
+      props: {
+        'data-testid': 'columns',
+        mode: 'tags',
+        placeholder: t('label.column-plural'),
+      },
+      rules: [
+        {
+          required: true,
+          validator: async (_, value) => {
+            if (isArray(value)) {
+              if (value.length > 3) {
+                return Promise.reject('Max 3 columns are allowed');
+              }
+
+              return Promise.resolve();
+            } else {
+              return Promise.reject(
+                t('label.field-required', {
+                  field: t('label.column-plural'),
+                })
+              );
+            }
+          },
+        },
+      ],
+    },
+    {
+      name: 'rowCount',
+      label: t('label.row-count'),
+      type: FieldTypes.NUMBER,
+      required: false,
+      id: 'root/rowCount',
+      props: {
+        'data-testid': 'rowCount',
+        size: 'default',
+        style: { width: '100%' },
+        placeholder: t('label.row-count'),
+      },
+      rules: [
+        {
+          min: 1,
+          type: 'number',
+          max: 10,
+          message: t('message.entity-size-in-between', {
+            entity: t('label.row-count'),
+            min: 1,
+            max: 10,
+          }),
+        },
+      ],
+    },
+  ];
+
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
@@ -393,6 +471,8 @@ const AddCustomProperty = () => {
           hasEntityReferenceConfig &&
             generateFormFields([entityReferenceConfigField])
         }
+
+        {hasTableTypeConfig && generateFormFields(tableTypePropertyConfig)}
 
         {generateFormFields([descriptionField])}
         <Row justify="end">
