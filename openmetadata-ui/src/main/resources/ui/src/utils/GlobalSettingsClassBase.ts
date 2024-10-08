@@ -94,6 +94,10 @@ class GlobalSettingsClassBase {
       name: t('label.application-plural'),
       url: GlobalSettingsMenuCategory.APPLICATIONS,
     },
+    [GlobalSettingsMenuCategory.PERSONA]: {
+      name: t('label.persona'),
+      url: GlobalSettingsMenuCategory.PERSONA,
+    },
   };
 
   protected updateSettingCategories(
