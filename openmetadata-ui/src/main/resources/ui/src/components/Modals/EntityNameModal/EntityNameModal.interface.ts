@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Rule } from 'antd/lib/form';
+
 export type EntityName = { name: string; displayName: string };
 
 export interface EntityNameModalProps {
@@ -19,4 +21,5 @@ export interface EntityNameModalProps {
   onSave: (obj: EntityName) => void | Promise<void>;
   entity: Partial<EntityName>;
   title: string;
+  nameValidationRules?: Rule[];
 }
