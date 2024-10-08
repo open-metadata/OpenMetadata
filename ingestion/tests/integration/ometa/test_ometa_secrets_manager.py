@@ -51,7 +51,7 @@ class OMetaSecretManagerTest(TestCase):
         assert type(self.metadata.secrets_manager_client) is DBSecretsManager
         assert type(self.metadata._auth_provider) is OpenMetadataAuthenticationProvider
 
-    @mock.patch.model_dump(os.environ, {"AWS_DEFAULT_REGION": "us-east-2"}, clear=True)
+    @mock.patch.dict(os.environ, {"AWS_DEFAULT_REGION": "us-east-2"}, clear=True)
     def test_ometa_with_aws_secret_manager(self):
         self._init_aws_secret_manager()
         assert type(self.metadata.secrets_manager_client) is AWSSecretsManager

@@ -55,7 +55,7 @@ INGESTION_PIPELINE = IngestionPipeline(
 )
 
 
-@patch.model_dump(os.environ, {"AWS_DEFAULT_REGION": "us-east-2"})
+@patch.dict(os.environ, {"AWS_DEFAULT_REGION": "us-east-2"})
 def test_deploy_ingestion_pipeline():
     """We can dump an ingestion pipeline to a file without exposing secrets"""
     # Instantiate the Secrets Manager

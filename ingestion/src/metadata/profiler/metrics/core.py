@@ -75,7 +75,7 @@ def add_props(**kwargs):
         # Create a new cls instance to avoid updating the original ref
         # In these scenarios, deepcopy(cls) just returns a pointer
         # to the same reference
-        _new_cls = type("_new_cls", cls.__bases__, model_dump(cls.__dict__))
+        _new_cls = type("_new_cls", cls.__bases__, dict(cls.__dict__))
         _orig = cls.__init__
 
         def _new_init(self, *args, **kw):
