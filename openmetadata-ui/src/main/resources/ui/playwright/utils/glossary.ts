@@ -37,6 +37,8 @@ import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
 import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
 
+const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
+
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 
@@ -607,7 +609,7 @@ export const updateNameForGlossaryTerm = async (
   await page.locator('#name').fill(INVALID_NAMES.MAX_LENGTH);
 
   await expect(page.locator('#name_help')).toHaveText(
-    NAME_MAX_LENGTH_VALIDATION_ERROR
+    GLOSSARY_NAME_VALIDATION_ERROR
   );
 
   await page.fill('#name', name);
