@@ -23,8 +23,7 @@ import {
 } from 'react-router-dom';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
-import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
-import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../constants/constants';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import './data-quality-page.less';
@@ -45,32 +44,14 @@ const DataQualityPage = () => {
 
       return {
         key: value.key,
-        label: value.label,
+        label: <TabsLabel id={value.id} name={value.label} />,
         icon: <SvgIcon {...value.iconProps} height={16} width={16} />,
       };
     });
   }, []);
 
   const tabDetailsComponent = useMemo(() => {
-    const tab = [
-      {
-        component: TestSuites,
-        key: DataQualityPageTabs.TABLES,
-        path: getDataQualityPagePath(DataQualityPageTabs.TABLES),
-      },
-      {
-        key: DataQualityPageTabs.TEST_CASES,
-        component: TestCases,
-        path: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
-      },
-      {
-        key: DataQualityPageTabs.TEST_SUITES,
-        component: TestSuites,
-        path: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
-      },
-    ];
-
-    return tab;
+    return DataQualityClassBase.getDataQualityTab();
   }, []);
 
   const handleTabChange: MenuProps['onClick'] = (event) => {
