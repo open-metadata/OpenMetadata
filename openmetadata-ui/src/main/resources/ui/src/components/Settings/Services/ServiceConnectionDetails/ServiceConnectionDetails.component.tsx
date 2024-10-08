@@ -64,8 +64,11 @@ const ServiceConnectionDetails = ({
       if (isObject(value)) {
         if (
           serviceCategory.slice(0, -1) === EntityType.PIPELINE_SERVICE &&
-          key === 'connection'
+          key === 'connection' &&
+          value.type &&
+          value.type.toLowerCase() === 'airflow'
         ) {
+          // Specific to Airflow
           const newSchemaPropertyObject = schemaPropertyObject[
             key
           ].oneOf.filter((item) => item.title === `${value.type}Connection`)[0]

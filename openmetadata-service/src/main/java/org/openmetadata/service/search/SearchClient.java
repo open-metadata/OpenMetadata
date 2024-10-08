@@ -108,6 +108,8 @@ public interface SearchClient {
 
   void createAliases(IndexMapping indexMapping);
 
+  void addIndexAlias(IndexMapping indexMapping, String... aliasName);
+
   Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
   Response getDocByID(String indexName, String entityId) throws IOException;
@@ -161,11 +163,12 @@ public interface SearchClient {
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
-  JsonObject aggregate(String query, String index, JsonObject aggregationJson, String filters)
+  JsonObject aggregate(
+      String query, String index, SearchAggregation searchAggregation, String filters)
       throws IOException;
 
   DataQualityReport genericAggregation(
-      String query, String index, Map<String, Object> aggregationMetadata) throws IOException;
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
   Response suggest(SearchRequest request) throws IOException;
 
