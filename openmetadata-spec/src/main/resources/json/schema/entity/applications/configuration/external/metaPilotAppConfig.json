@@ -31,5 +31,6 @@
       "default": false
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["queryFilter"]
 }
