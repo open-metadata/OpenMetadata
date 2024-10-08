@@ -7,10 +7,7 @@ source:
       username: sys
       password: exasol
       hostPort: localhost:8563
-      connectionOptions: {}
-      connectionArguments: {}
-      sslMode: disable
-      verifySSL: no-ssl
+      tls: ignore-certificate
   sourceConfig:
     config:
       markDeletedTables: true

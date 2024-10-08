@@ -53,14 +53,16 @@
       "type": "string",
       "default": "127.0.0.1:8563"
     },
-    "verifySSL": {
-      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL"
-    },
-    "sslMode": {
-      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
-    },
-    "sslConfig": {
-      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    "tls": {
+      "title": "SSL/TLS Settings",
+      "description": "Client SSL/TLS settings.",
+      "type": "string",
+      "enum": [
+        "disable-tls",
+        "ignore-certificate",
+        "validate-certificate"
+      ],
+      "default": "validate-certificate"
     },
     "connectionOptions": {
       "title": "Connection Options",

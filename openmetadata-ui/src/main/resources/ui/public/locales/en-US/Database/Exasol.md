@@ -35,35 +35,16 @@ If you are running the OpenMetadata ingestion in a docker and your services are 
 $$
 
 $$section
-### Verify SSL $(id="verifySSL")
-Mode/setting for ssl validation:
+### SSL/TLS Settings $(id="tls")
+Mode/setting for SSL validation:
 
-* no-ssl
-* ignore
-* validate
+#### validate-certificate (**default**)
+Uses Transport Layer Security (TLS) and validates the server certificate using system certificate stores.
 
-$$section
-### SSL Mode $(id="sslMode")
+#### ignore-certificate
+Uses Transport Layer Security (TLS) but disables the validation of the server certificate. This should not be used in production. It can be useful during testing with self-signed certificates.
 
-SSL Mode to connect to the Exasol database:
+#### disable-tls
+Does not use any Transport Layer Security (TLS). Data will be sent in plain text (no encryption).
+While this may be helpful in rare cases of debugging, make sure you do not use this in production.
 
-* disable
-* allow
-* prefer
-* require
-* verify-ca
-* verify-full
-
-$$
-
-$$section
-### Connection Arguments $(id="connectionArguments")
-
-Additional connection arguments such as security or protocol configs that can be sent to service during connection.
-$$
-
-$$section
-### Connection Options $(id="connectionOptions")
-
-Additional connection options to build the URL that can be sent to service during the connection.
-$$

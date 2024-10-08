@@ -22,6 +22,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 from urllib.parse import quote_plus
 
+from ingestion.src.metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
+
 logger = ingestion_logger()
 
 
@@ -47,9 +49,12 @@ def get_connection_url(connection: ExasolConnection) -> str:
     if hasattr(connection, "databaseSchema"):
         url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
 
-    # FIXME: Decide based on user provided settings/options
-    # options = get_connection_options_dict(connection)
-    options = {"SSLCertificate":"SSL_VERIFY_NONE"}
+    tls_settings = {
+        "validate-certificate": {},
+        "ignore-certificate": {"SSLCertificate": "SSL_VERIFY_NONE"},
+        "disable-tls": {"SSLCertificate": "SSL_VERIFY_NONE", "ENCRYPTION": "no"},
+    }
+    options = tls_settings[connection.tls.value]
     if options:
         if (hasattr(connection, "database") and not connection.database) or (
                 hasattr(connection, "databaseSchema") and not connection.databaseSchema
@@ -60,6 +65,7 @@ def get_connection_url(connection: ExasolConnection) -> str:
         )
         url = f"{url}?{params}"
     return url
+
 
 def get_connection(connection: ExasolConnection) -> Engine:
     """
