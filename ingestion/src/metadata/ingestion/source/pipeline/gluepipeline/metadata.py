@@ -231,7 +231,7 @@ class GluepipelineSource(PipelineServiceSource):
                             ) in self.get_storage_service_names():
                                 for path in storage_model.Paths or [storage_model.Path]:
                                     storage_entity = self.metadata.get_by_name(
-                                        entity=Table,
+                                        entity=Container,
                                         fqn=fqn.build(
                                             self.metadata,
                                             entity_type=Container,
@@ -245,11 +245,11 @@ class GluepipelineSource(PipelineServiceSource):
                                     if storage_entity:
                                         if key.endswith("Source"):
                                             lineage_details["sources"].append(
-                                                (storage_entity, "table")
+                                                (storage_entity, "container")
                                             )
                                         else:
                                             lineage_details["targets"].append(
-                                                (storage_entity, "table")
+                                                (storage_entity, "container")
                                             )
                                         break
 
@@ -326,25 +326,24 @@ class GluepipelineSource(PipelineServiceSource):
         Get lineage between pipeline and data sources
         """
         try:
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
+            )
+
+            pipeline_entity = self.metadata.get_by_name(
+                entity=Pipeline, fqn=pipeline_fqn
+            )
+
+            lineage_details = LineageDetails(
+                pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
+                source=LineageSource.PipelineLineage,
+            )
+
             for job in self.job_name_list:
                 lineage_enities = self.get_lineage_details(job)
-                pipeline_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Pipeline,
-                    service_name=self.context.get().pipeline_service,
-                    pipeline_name=self.context.get().pipeline,
-                )
-
-                pipeline_entity = self.metadata.get_by_name(
-                    entity=Pipeline, fqn=pipeline_fqn
-                )
-
-                lineage_details = LineageDetails(
-                    pipeline=EntityReference(
-                        id=pipeline_entity.id.root, type="pipeline"
-                    ),
-                    source=LineageSource.PipelineLineage,
-                )
                 for source in lineage_enities.get("sources"):
                     for target in lineage_enities.get("targets"):
                         yield Either(
