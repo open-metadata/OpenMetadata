@@ -273,7 +273,7 @@ class TopologyRunnerTest(TestCase):
             )
 
         self.assertEqual(
-            model_dump(local_source.cache),
+            dict(local_source.cache),
             {
                 MockTable: {
                     "schema1.table1": "c238b14e87fe6d54e35dbca4a97e1e83",
