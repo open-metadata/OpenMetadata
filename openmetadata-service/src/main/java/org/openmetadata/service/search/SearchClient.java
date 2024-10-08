@@ -84,6 +84,8 @@ public interface SearchClient {
           + "ctx._source.owners = params.updatedOwners; "
           + "}";
 
+  String PROPAGATE_TEST_SUITES_SCRIPT = "ctx._source.testSuites = params.testSuites";
+
   String REMOVE_OWNERS_SCRIPT =
       "if (ctx._source.owners != null && !ctx._source.owners.isEmpty()) { "
           + "ctx._source.owners.removeIf(owner -> "
@@ -105,6 +107,8 @@ public interface SearchClient {
   void deleteIndex(IndexMapping indexMapping);
 
   void createAliases(IndexMapping indexMapping);
+
+  void addIndexAlias(IndexMapping indexMapping, String... aliasName);
 
   Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
@@ -134,6 +138,9 @@ public interface SearchClient {
       String entityType)
       throws IOException;
 
+  Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException;
+
   /*
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
   */
@@ -156,10 +163,12 @@ public interface SearchClient {
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
-  JsonObject aggregate(String query, String index, JsonObject aggregationJson) throws IOException;
+  JsonObject aggregate(
+      String query, String index, SearchAggregation searchAggregation, String filters)
+      throws IOException;
 
   DataQualityReport genericAggregation(
-      String query, String index, Map<String, Object> aggregationMetadata) throws IOException;
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
   Response suggest(SearchRequest request) throws IOException;
 

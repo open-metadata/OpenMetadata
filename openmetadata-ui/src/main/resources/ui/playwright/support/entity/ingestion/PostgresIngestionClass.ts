@@ -132,7 +132,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
           .then((res) => res.json());
 
         // need manual wait to settle down the deployed pipeline, before triggering the pipeline
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(3000);
         await page.click(
           `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
         );
@@ -140,6 +140,9 @@ class PostgresIngestionClass extends ServiceBaseClass {
         await page.getByTestId('run-button').click();
 
         await toastNotification(page, `Pipeline triggered successfully!`);
+
+        // need manual wait to make sure we are awaiting on latest run results
+        await page.waitForTimeout(2000);
 
         await this.handleIngestionRetry('usage', page);
       });

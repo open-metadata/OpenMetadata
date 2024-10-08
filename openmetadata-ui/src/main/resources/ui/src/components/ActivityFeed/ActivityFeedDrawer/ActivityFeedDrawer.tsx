@@ -85,7 +85,11 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
             />
           </Col>
           <Col span={24}>
-            <ActivityFeedEditor focused={focusReplyEditor} onSave={onSave} />
+            <ActivityFeedEditor
+              className="activity-feed-editor-drawer"
+              focused={focusReplyEditor}
+              onSave={onSave}
+            />
           </Col>
         </Row>
       )}

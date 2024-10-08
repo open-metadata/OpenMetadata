@@ -42,7 +42,7 @@ import {
 } from '../../../../interface/FormUtils.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
-  getListTestCase,
+  getListTestCaseBySearch,
   getListTestDefinitions,
 } from '../../../../rest/testAPI';
 import {
@@ -133,7 +133,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
   const fetchAllTestCases = async () => {
     try {
-      const { data } = await getListTestCase({
+      const { data } = await getListTestCaseBySearch({
         limit: PAGE_SIZE_LARGE,
         entityLink: generateEntityLink(
           isColumnFqn ? `${decodedEntityFQN}.${columnName}` : decodedEntityFQN,

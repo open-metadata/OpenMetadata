@@ -58,7 +58,11 @@ const mockProps = {
     },
   ],
 };
-
+jest.mock('../../../../../utils/DataInsightUtils', () => {
+  return jest.fn().mockImplementation(() => {
+    return <div>CustomTooltip</div>;
+  });
+});
 jest.mock(
   '../../../../DataQuality/CustomMetricForm/CustomMetricForm.component',
   () => {

@@ -15,10 +15,10 @@ authenticationConfiguration:
   provider: "okta"
   publicKeyUrls:
     - "{ISSUER_URL}/v1/keys"
-    - "{your domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
+    - "https://{your domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
   authority: "{ISSUER_URL}"
   clientId: "{CLIENT_ID - SPA APP}"
-  callbackUrl: "http://localhost:8585/callback"
+  callbackUrl: "https://{your domain}/callback"
 ```
 
 Then, 
@@ -36,34 +36,10 @@ authorizerConfiguration:
   principalDomain: "open-metadata.org"
 ```
 
-In `0.12.1` the `className` and `containerRequestFilter` must replace `org.openmetadata.catalog` by `org.openmetadata.service`.
-
-Finally, update the Airflow information:
-
-**Before 0.12.1**
-
-```yaml
-airflowConfiguration:
-  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
-  username: ${AIRFLOW_USERNAME:-admin}
-  password: ${AIRFLOW_PASSWORD:-admin}
-  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: okta
-  authConfig:
-    okta:
-      clientId: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
-      orgURL: ${OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}
-      privateKey: ${OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY:-""}
-      email: ${OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
-      scopes: ${OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
-```
-
-**After 0.12.1**
-
 ```yaml
 pipelineServiceClientConfiguration:
   apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
-  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+  metadataApiEndpoint: ${SERVER_HOST_API_URL:-https://{your domain}/api}
   ingestionIpInfoEnabled: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
   hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
   healthCheckInterval: ${PIPELINE_SERVICE_CLIENT_HEALTH_CHECK_INTERVAL:-300}
@@ -79,7 +55,15 @@ pipelineServiceClientConfiguration:
     # If we need to use SSL to reach Airflow
     truststorePath: ${AIRFLOW_TRUST_STORE_PATH:-""}
     truststorePassword: ${AIRFLOW_TRUST_STORE_PASSWORD:-""}
+
 ```
+
+{% note %}
+
+`AUTHENTICATION_PUBLIC_KEYS` and `AUTHENTICATION_CALLBACK_URL` refers to https://{your domain} this is referring to your OpenMetdata installation domain name
+and please make sure to correctly put http or https depending on your installation.
+
+{% /note %}
 
 **Note:** Follow [this](/developers/bots) guide to configure the `ingestion-bot` credentials for
 ingesting data from Airflow.

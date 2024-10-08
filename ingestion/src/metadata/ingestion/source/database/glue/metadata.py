@@ -39,7 +39,11 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -79,6 +83,7 @@ class GlueSource(DatabaseServiceSource):
         self.glue = get_connection(self.service_connection)
 
         self.connection_obj = self.glue
+        self.schema_description_map = {}
         self.test_connection()
 
     @classmethod
@@ -191,6 +196,10 @@ class GlueSource(DatabaseServiceSource):
                     ):
                         self.status.filter(schema_fqn, "Schema Filtered Out")
                         continue
+                    if schema.Description:
+                        self.schema_description_map[schema.Name] = Markdown(
+                            schema.Description
+                        )
                     yield schema.Name
                 except Exception as exc:
                     self.status.failed(
@@ -211,6 +220,7 @@ class GlueSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=EntityName(schema_name),
+                description=self.schema_description_map.get(schema_name),
                 database=FullyQualifiedEntityName(
                     fqn.build(
                         metadata=self.metadata,

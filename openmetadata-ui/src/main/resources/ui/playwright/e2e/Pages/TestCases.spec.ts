@@ -53,10 +53,14 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
+      const tableListSearchResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*index=table_search_index*`
+      );
       await page.getByTitle('Compare 2 tables for').click();
+      await tableListSearchResponse;
       await page.click('#tableTestForm_params_table2');
       const tableSearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*index=table_search_index*`
+        `/api/v1/search/query?q=*${testCase.table2}*index=table_search_index*`
       );
       await page.fill(`#tableTestForm_params_table2`, testCase.table2);
       await tableSearchResponse;
@@ -95,7 +99,7 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('submit-test').click();
       await createTestCaseResponse;
       const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?fields=*`
+        `/api/v1/dataQuality/testCases/search/list?*fields=*`
       );
       await page.getByTestId('view-service-button').click();
       await tableTestResponse;
@@ -192,7 +196,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('submit-test').click();
       await createTestCaseResponse;
       const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?fields=*`
+        `/api/v1/dataQuality/testCases/search/list?*fields=*`
       );
       await page.getByTestId('view-service-button').click();
       await tableTestResponse;
@@ -296,7 +300,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
       await page.waitForSelector('[data-testid="success-line"]');
       await page.waitForSelector('[data-testid="view-service-button"]');
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page.click(`[data-testid="view-service-button"]`);
       await testCaseResponse;

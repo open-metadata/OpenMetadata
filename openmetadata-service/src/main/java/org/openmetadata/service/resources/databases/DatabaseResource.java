@@ -51,7 +51,6 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Database;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityHistory;
@@ -566,7 +565,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "addDataProfilerConfig",
       summary = "Add database profile config",
-      description = "Add database profile config to the table.",
+      description = "Add database profile config to the database.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -574,7 +573,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = Database.class)))
       })
   public Database addDataProfilerConfig(
       @Context UriInfo uriInfo,
@@ -595,7 +594,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "getDataProfilerConfig",
       summary = "Get database profile config",
-      description = "Get database profile config to the table.",
+      description = "Get database profile config to the database.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -603,7 +602,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = Database.class)))
       })
   public Database getDataProfilerConfig(
       @Context UriInfo uriInfo,
@@ -633,7 +632,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = Database.class)))
       })
   public Database deleteDataProfilerConfig(
       @Context UriInfo uriInfo,

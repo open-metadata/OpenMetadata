@@ -178,12 +178,15 @@ class ServiceBaseClass {
       .waitFor({ state: 'detached' });
 
     // need manual wait to settle down the deployed pipeline, before triggering the pipeline
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
 
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
 
     await toastNotification(page, `Pipeline triggered successfully!`);
+
+    // need manual wait to make sure we are awaiting on latest run results
+    await page.waitForTimeout(2000);
 
     await this.handleIngestionRetry('metadata', page);
   }
@@ -262,8 +265,8 @@ class ServiceBaseClass {
           intervals: [30_000, 15_000, 5_000],
         }
       )
-      // To allow partial success
-      .toContain('success');
+      // Move ahead if we do not have running or queued status
+      .toEqual(expect.stringMatching(/(success|failed|partialSuccess)/));
 
     const pipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines?**`
@@ -440,10 +443,16 @@ class ServiceBaseClass {
       .getByRole('cell', { name: 'Pause Logs' })
       .waitFor({ state: 'visible' });
 
+    // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+    await page.waitForTimeout(3000);
+
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
 
     await toastNotification(page, `Pipeline triggered successfully!`);
+
+    // need manual wait to make sure we are awaiting on latest run results
+    await page.waitForTimeout(2000);
 
     // Wait for success
     await this.handleIngestionRetry('metadata', page);

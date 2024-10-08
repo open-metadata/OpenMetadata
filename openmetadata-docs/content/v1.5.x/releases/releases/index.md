@@ -14,6 +14,71 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.5/releases/latest.md" /%}
 
+# 1.5.5 Release
+
+{% note noteType="Tip" %}
+**Sep 25th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.5-release).
+
+# What's Changed
+
+- Made the type optional in ES Response.
+- Added support for refresh tokens with multiple tabs open.
+- Resolved issue of overriding user info after login.
+- Updated the custom property entities data model, along with the data product and database schema icons.
+- Ensured Teams and Owner fields are correctly passed in the policy API call.
+- Enhanced PII logging information.
+- Addressed the paginate_es issue in OpenSearch.
+- Decrypted JWT internally for system health checks.
+- Implemented multithreading in View Lineage Processing.
+- Improved search relevancy.
+- Resolved issue with owners patch.
+- Fixed Snowflake data diff issue.
+- Updated Presidio Analyzer version and validated support for legal entities.
+- Added validations for Salesforce connection.
+- Allowed PII Processor to operate without storing sample data.
+- Added seconds to the human-readable format scale for test case graphs.
+- Added missing field in glossary term.
+- Excluded defaultPersona if not present in personas.
+- Resolved team export issue.
+- Updated Python lineage SDK to work with UUID and FQN models.
+- Fixed LDAP login issue.
+- Column sizing of data quality and pipeline widget ${CollateIconWithLinkMD}
+- Export with new line in description ${CollateIconWithLinkMD}
+- Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.4-release...1.5.5-release
+
+# 1.5.4 Release
+
+{% note noteType="Tip" %}
+**Sep 13th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.4-release).
+
+# What's Changed
+
+## OpenMetadata
+- Hotfix to the Term Aggregation size on Data Insights
+- ES pagination with error handling
+- Updated Domain in Docker Compose & Docs
+- Fix Classification API returns Table class for restore
+- Fix Redshift View Def regex_replace Error
+- Make ingestion pipeline APIs public
+- Updating the domain PRINCIPAL DOMAIN
+- Glossary list selector for bulk import
+- Unable to access the import glossary page
+
+## Collate
+- Fix token limitations using config
+- Fix Automator pagination
+- Fix MetaPilot push for no constraint
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.3-release...1.5.4-release
+
 # 1.5.3 Release
 
 {% note noteType="Tip" %}

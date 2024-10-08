@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime
 
 import pytest
 from pydantic import BaseModel
@@ -67,6 +68,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=0,
                     passedRows=599,
@@ -85,6 +87,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     failedRows=321,
                     passedRows=278,
@@ -99,6 +102,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     failedRows=321,
                     passedRows=278,
@@ -114,6 +118,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=321,
                 ),
@@ -128,6 +133,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     failedRows=321,
                 ),
@@ -146,6 +152,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                 ),
             ),
@@ -158,6 +165,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                     testResultValue=[
                         TestResultValue(name="removedColumns", value="1"),
@@ -179,6 +187,7 @@ class TestParameters(BaseModel):
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                 ),
             ),
@@ -208,6 +217,7 @@ class TestParameters(BaseModel):
                 ),
                 "MYSQL_SERVICE.default.test.customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                 ),
             ),
@@ -220,6 +230,20 @@ class TestParameters(BaseModel):
                 ),
                 "MYSQL_SERVICE.default.test.changed_customer",
                 TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Failed,
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="table_from_another_db",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[],
+                ),
+                "POSTGRES_SERVICE.other_db.public.customer",
+                TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
                 ),
             ),
@@ -290,6 +314,9 @@ def test_happy_paths(
         fields=["*"],
     )
     assert "ERROR: Unexpected error" not in test_case_entity.testCaseResult.result
+    parameters.expected.timestamp = (
+        test_case_entity.testCaseResult.timestamp
+    )  # timestamp is not deterministic
     assert_equal_pydantic_objects(parameters.expected, test_case_entity.testCaseResult)
 
 
@@ -313,6 +340,7 @@ def test_happy_paths(
                 ],
             ),
             TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Aborted,
                 result="Unsupported dialect in param table2.serviceUrl: mongodb",
             ),
@@ -331,6 +359,7 @@ def test_happy_paths(
                 ],
             ),
             TestCaseResult(
+                timestamp=int(datetime.now().timestamp() * 1000),
                 testCaseStatus=TestCaseStatus.Failed,
                 result="Tables have 1 different columns:"
                 "\n  Changed columns:"
@@ -405,6 +434,9 @@ def test_error_paths(
     test_case_entity: TestCase = metadata.get_or_create_test_case(
         f"{table1.fullyQualifiedName.root}.{parameters.name}"
     )
+    expected.timestamp = (
+        test_case_entity.testCaseResult.timestamp
+    )  # timestamp is not deterministic
     assert_equal_pydantic_objects(expected, test_case_entity.testCaseResult)
 
 
@@ -431,21 +463,28 @@ def add_changed_tables(connection: Connection):
 
 @pytest.fixture(scope="module")
 def prepare_data(postgres_container, mysql_container):
-    postgres_engine = create_engine(
-        make_url(postgres_container.get_connection_url()).set(database="dvdrental")
+    dvdrental = create_engine(
+        make_url(postgres_container.get_connection_url()).set(database="dvdrental"),
+        isolation_level="AUTOCOMMIT",
     )
-    with postgres_engine.connect() as conn:
+    dvdrental.execute("CREATE DATABASE other_db")
+    with dvdrental.connect() as conn:
         add_changed_tables(conn)
+    other = create_engine(
+        make_url(postgres_container.get_connection_url()).set(database="other_db"),
+        isolation_level="AUTOCOMMIT",
+    )
+    copy_table_between_postgres(dvdrental, other, "customer", 10)
     mysql_container = create_engine(
         make_url(mysql_container.get_connection_url()).set(
             database=mysql_container.dbname
         )
     )
-    postgres_engine = create_engine(
+    dvdrental = create_engine(
         make_url(postgres_container.get_connection_url()).set(database="dvdrental")
     )
-    copy_table(postgres_engine, mysql_container, "customer")
-    copy_table(postgres_engine, mysql_container, "changed_customer")
+    copy_table(dvdrental, mysql_container, "customer")
+    copy_table(dvdrental, mysql_container, "changed_customer")
 
 
 def copy_table(source_engine, destination_engine, table_name):
@@ -520,3 +559,28 @@ def patched_metadata(metadata, postgres_service, ingest_mysql_service, monkeypat
     )
 
     return metadata
+
+
+def copy_table_between_postgres(
+    source_conn: Connection, dest_conn: Connection, table_name: str, limit: int
+):
+    # Reflect the source table
+    source_metadata = MetaData()
+    source_table = SQATable(table_name, source_metadata, autoload_with=source_conn)
+
+    # Create the destination table
+    dest_metadata = MetaData()
+    dest_table = SQATable(table_name, dest_metadata)
+
+    for column in source_table.columns:
+        dest_table.append_column(column.copy())
+
+    dest_metadata.create_all(dest_conn)
+
+    # Fetch data from the source table
+    query = source_table.select().limit(limit)
+    data = source_conn.execute(query).fetchall()
+
+    # Insert data into the destination table
+    if data:
+        dest_conn.execute(dest_table.insert(), [dict(row) for row in data])

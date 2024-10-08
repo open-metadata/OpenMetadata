@@ -14,15 +14,21 @@
 import Icon from '@ant-design/icons';
 import {
   Button,
+  Card,
+  Col,
   DatePicker,
   Form,
   Input,
+  Row,
   Select,
+  Tag,
   TimePicker,
   Tooltip,
   Typography,
 } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { t } from 'i18next';
 import {
   isArray,
@@ -35,19 +41,32 @@ import {
   toUpper,
 } from 'lodash';
 import moment, { Moment } from 'moment';
-import React, { CSSProperties, FC, Fragment, useState } from 'react';
+import React, {
+  CSSProperties,
+  FC,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as ArrowIconComponent } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as EndTimeArrowIcon } from '../../../assets/svg/end-time-arrow.svg';
+import { ReactComponent as EndTimeIcon } from '../../../assets/svg/end-time.svg';
+import { ReactComponent as StartTimeIcon } from '../../../assets/svg/start-time.svg';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
+import { ENUM_WITH_DESCRIPTION } from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { EnumConfig } from '../../../generated/type/customProperty';
+import { EnumConfig, ValueClass } from '../../../generated/type/customProperty';
+import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -59,6 +78,7 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import Table from '../Table/Table';
 import {
   PropertyValueProps,
   PropertyValueType,
@@ -76,28 +96,55 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const propertyName = property.name;
-  const propertyType = property.propertyType;
+  const { propertyName, propertyType, value } = useMemo(() => {
+    const propertyName = property.name;
+    const propertyType = property.propertyType;
 
-  const value = extension?.[propertyName];
+    const value = extension?.[propertyName];
+
+    return {
+      propertyName,
+      propertyType,
+      value,
+    };
+  }, [property, extension]);
 
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const onShowInput = () => setShowInput(true);
 
   const onHideInput = () => setShowInput(false);
 
+  const findOptionReference = (
+    item: DataAssetOption | string,
+    options: DataAssetOption[]
+  ) => {
+    if (typeof item === 'string') {
+      const option = options.find((option) => option.value === item);
+
+      return option?.reference;
+    }
+
+    return item?.reference;
+  };
+
   const onInputSave = async (updatedValue: PropertyValueType) => {
     const isEnum = propertyType.name === 'enum';
+    const isEnumWithDescription = propertyType.name === ENUM_WITH_DESCRIPTION;
 
     const isArrayType = isArray(updatedValue);
 
     const enumValue = isArrayType ? updatedValue : [updatedValue];
 
-    const propertyValue = isEnum
-      ? (enumValue as string[]).filter(Boolean)
-      : updatedValue;
+    const propertyValue =
+      isEnum || isEnumWithDescription
+        ? (enumValue as string[]).filter(Boolean)
+        : updatedValue;
 
     try {
       // Omit undefined and empty values
@@ -214,6 +261,60 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 <Select
                   allowClear
                   data-testid="enum-select"
+                  disabled={isLoading}
+                  mode={isMultiSelect ? 'multiple' : undefined}
+                  options={options}
+                  placeholder={t('label.enum-value-plural')}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+
+      case ENUM_WITH_DESCRIPTION: {
+        const enumConfig = property.customPropertyConfig?.config as EnumConfig;
+
+        const isMultiSelect = Boolean(enumConfig?.multiSelect);
+
+        const values = (enumConfig?.values as ValueClass[]) ?? [];
+
+        const options = values.map((option) => ({
+          label: (
+            <Tooltip title={option.description}>
+              <span>{option.key}</span>
+            </Tooltip>
+          ),
+          value: option.key,
+        }));
+
+        const initialValues = {
+          enumWithDescriptionValues: (isArray(value) ? value : [value]).filter(
+            Boolean
+          ),
+        };
+
+        return (
+          <InlineEdit
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: 'enum-with-description-form',
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id="enum-with-description-form"
+              initialValues={initialValues}
+              layout="vertical"
+              onFinish={(values: {
+                enumWithDescriptionValues: string | string[];
+              }) => onInputSave(values.enumWithDescriptionValues)}>
+              <Form.Item name="enumWithDescriptionValues" style={commonStyle}>
+                <Select
+                  allowClear
+                  data-testid="enum-with-description-select"
                   disabled={isLoading}
                   mode={isMultiSelect ? 'multiple' : undefined}
                   options={options}
@@ -389,6 +490,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={commonStyle}>
@@ -444,6 +546,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={{ ...commonStyle, marginBottom: '16px' }}>
@@ -461,6 +564,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={commonStyle}>
@@ -521,6 +625,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="sql-query-custom-property"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -609,13 +714,22 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: {
                 entityReference: DataAssetOption | DataAssetOption[];
               }) => {
-                if (isArray(values.entityReference)) {
-                  onInputSave(
-                    values.entityReference.map((item) => item.reference)
-                  );
-                } else {
-                  onInputSave(values?.entityReference?.reference);
+                const { entityReference } = values;
+
+                if (Array.isArray(entityReference)) {
+                  const references = entityReference
+                    .map((item) => findOptionReference(item, initialOptions))
+                    .filter(Boolean) as EntityReference[];
+                  onInputSave(references);
+
+                  return;
                 }
+
+                const reference = findOptionReference(
+                  entityReference,
+                  initialOptions
+                );
+                onInputSave(reference as EntityReference);
               }}>
               <Form.Item name="entityReference" style={commonStyle}>
                 <DataAssetAsyncSelectList
@@ -656,10 +770,62 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
       case 'enum':
         return (
-          <Typography.Text className="break-all" data-testid="enum-value">
-            {isArray(value) ? value.join(', ') : value}
-          </Typography.Text>
+          <>
+            {isArray(value) ? (
+              <div
+                className="w-full d-flex gap-2 flex-wrap"
+                data-testid="enum-value">
+                {value.map((val) => (
+                  <Tooltip key={val} title={val} trigger="hover">
+                    <Tag className="enum-key-tag">{val}</Tag>
+                  </Tooltip>
+                ))}
+              </div>
+            ) : (
+              <Tooltip key={value} title={value} trigger="hover">
+                <Tag className="enum-key-tag" data-testid="enum-value">
+                  {value}
+                </Tag>
+              </Tooltip>
+            )}
+          </>
         );
+
+      case ENUM_WITH_DESCRIPTION: {
+        const enumWithDescriptionValues = (value as ValueClass[]) ?? [];
+
+        const columns: ColumnsType<ValueClass> = [
+          {
+            title: 'Key',
+            dataIndex: 'key',
+            key: 'key',
+            render: (key: string) => <Typography>{key}</Typography>,
+          },
+          {
+            title: 'Description',
+            dataIndex: 'description',
+            key: 'description',
+            render: (description: string) => (
+              <RichTextEditorPreviewer markdown={description || ''} />
+            ),
+          },
+        ];
+
+        return (
+          <Table
+            bordered
+            resizableColumns
+            className="w-full"
+            columns={columns}
+            data-testid="enum-with-description-table"
+            dataSource={enumWithDescriptionValues}
+            pagination={false}
+            rowKey="name"
+            scroll={isRenderedInRightPanel ? { x: true } : undefined}
+            size="small"
+          />
+        );
+      }
 
       case 'sqlQuery':
         return (
@@ -690,7 +856,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                         item.fullyQualifiedName as string
                       )}>
                       <Button
-                        className="entity-button flex-center p-0 m--ml-1"
+                        className="entity-button flex-center p-0"
                         icon={
                           <div className="entity-button-icon m-r-xs">
                             {['user', 'team'].includes(item.type) ? (
@@ -708,7 +874,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                         }
                         type="text">
                         <Typography.Text
-                          className="text-left text-xs"
+                          className="text-left text-primary truncate w-68"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
@@ -739,11 +905,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 item.fullyQualifiedName as string
               )}>
               <Button
-                className="entity-button flex-center p-0 m--ml-1"
+                className="entity-button flex-center p-0"
                 icon={
                   <div
                     className="entity-button-icon m-r-xs"
-                    style={{ width: '18px', display: 'flex' }}>
+                    style={{ width: '20px', display: 'flex' }}>
                     {['user', 'team'].includes(item.type) ? (
                       <ProfilePicture
                         className="d-flex"
@@ -759,7 +925,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 }
                 type="text">
                 <Typography.Text
-                  className="text-left text-xs"
+                  className="text-left text-primary truncate w-68 "
                   data-testid="entityReference-value-name"
                   ellipsis={{ tooltip: true }}>
                   {getEntityName(item)}
@@ -777,13 +943,41 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         }
 
         return (
-          <Typography.Text
-            className="break-all"
+          <div
+            className="d-flex justify-between"
             data-testid="time-interval-value">
-            {`StartTime: ${timeInterval.start}`}
-            <br />
-            {`EndTime: ${timeInterval.end}`}
-          </Typography.Text>
+            <div className="d-flex flex-column gap-2 items-center">
+              <StartTimeIcon height={30} width={30} />
+              <Typography.Text className="property-value">{`${t(
+                'label.start-entity',
+                {
+                  entity: t('label.time'),
+                }
+              )}`}</Typography.Text>
+              <Typography.Text className="text-sm text-grey-body property-value">
+                {timeInterval.start}
+              </Typography.Text>
+            </div>
+            <div className="d-flex items-center">
+              <EndTimeArrowIcon />
+              <Tag className="time-interval-separator">
+                {calculateInterval(timeInterval.start, timeInterval.end)}
+              </Tag>
+              <EndTimeArrowIcon />
+            </div>
+            <div className="d-flex flex-column gap-2 items-center">
+              <EndTimeIcon height={30} width={30} />
+              <Typography.Text className="property-value">{`${t(
+                'label.end-entity',
+                {
+                  entity: t('label.time'),
+                }
+              )}`}</Typography.Text>
+              <Typography.Text className="text-sm text-grey-body property-value">
+                {timeInterval.end}
+              </Typography.Text>
+            </div>
+          </div>
         );
       }
 
@@ -791,14 +985,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'integer':
       case 'number':
       case 'date-cp':
-      case 'dateTime-cp':
       case 'time-cp':
       case 'email':
       case 'timestamp':
       case 'duration':
+      case 'dateTime-cp':
       default:
         return (
-          <Typography.Text className="break-all" data-testid="value">
+          <Typography.Text
+            className="break-all text-grey-body property-value"
+            data-testid="value">
             {value}
           </Typography.Text>
         );
@@ -817,15 +1013,39 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     );
   };
 
-  return (
-    <div>
-      {showInput ? (
-        getPropertyInput()
-      ) : (
-        <Fragment>
-          <div className="d-flex gap-2 items-center">
-            {getValueElement()}
-            {hasEditPermissions && (
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  useEffect(() => {
+    if (!contentRef.current || !property) {
+      return;
+    }
+
+    const isMarkdownWithValue = propertyType.name === 'markdown' && value;
+    const isOverflowing =
+      (contentRef.current.scrollHeight > 30 || isMarkdownWithValue) &&
+      propertyType.name !== 'entityReference' &&
+      !isRenderedInRightPanel;
+
+    setIsOverflowing(isOverflowing);
+  }, [property, extension, contentRef, value]);
+
+  const containerStyleFlag = useMemo(() => {
+    return isExpanded || showInput || isRenderedInRightPanel;
+  }, [isExpanded, showInput, isRenderedInRightPanel]);
+
+  const customPropertyElement = (
+    <Row data-testid={propertyName} gutter={[0, 8]}>
+      <Col span={24}>
+        <Row gutter={[0, 2]}>
+          <Col className="d-flex justify-between items-center w-full" span={24}>
+            <Typography.Text
+              className="text-grey-body property-name"
+              data-testid="property-name">
+              {getEntityName(property)}
+            </Typography.Text>
+            {hasEditPermissions && !showInput && (
               <Tooltip
                 placement="left"
                 title={t('label.edit-entity', { entity: propertyName })}>
@@ -839,9 +1059,71 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 />
               </Tooltip>
             )}
+          </Col>
+          {!isRenderedInRightPanel && (
+            <Col span={24}>
+              <RichTextEditorPreviewer
+                className="text-grey-muted property-description"
+                markdown={property.description || ''}
+                maxLength={70}
+                reducePreviewLineClass="max-one-line"
+              />
+            </Col>
+          )}
+        </Row>
+      </Col>
+
+      <Col span={24}>
+        <div
+          className={classNames(
+            'd-flex justify-between w-full gap-2',
+            {
+              'items-end': isExpanded,
+            },
+            {
+              'items-center': !isExpanded,
+            }
+          )}>
+          <div
+            className="w-full"
+            ref={contentRef}
+            style={{
+              height: containerStyleFlag ? 'auto' : '30px',
+              overflow: containerStyleFlag ? 'visible' : 'hidden',
+            }}>
+            {showInput ? getPropertyInput() : getValueElement()}
           </div>
-        </Fragment>
-      )}
-    </div>
+          {isOverflowing && !showInput && (
+            <Icon
+              className={classNames('custom-property-value-toggle-btn', {
+                active: isExpanded,
+              })}
+              component={ArrowIconComponent}
+              data-testid={`toggle-${propertyName}`}
+              style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+              onClick={toggleExpand}
+            />
+          )}
+        </div>
+      </Col>
+    </Row>
+  );
+
+  if (isRenderedInRightPanel) {
+    return (
+      <div
+        className="custom-property-card custom-property-card-right-panel"
+        data-testid="custom-property-right-panel-card">
+        {customPropertyElement}
+      </div>
+    );
+  }
+
+  return (
+    <Card
+      className="w-full custom-property-card"
+      data-testid={`custom-property-${propertyName}-card`}>
+      {customPropertyElement}
+    </Card>
   );
 };

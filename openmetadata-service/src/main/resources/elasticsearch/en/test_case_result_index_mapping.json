@@ -57,6 +57,9 @@
       "timestamp": {
         "type": "date"
       },
+      "@timestamp": {
+          "type": "date"
+      },
       "testResultValue": {
         "properties": {
           "name": {
@@ -69,10 +72,10 @@
             }
           },
           "value": {
-            "type": "double"
+            "type": "text"
           },
           "predictedValue": {
-            "type": "double"
+            "type": "text"
           }
         }
       },
@@ -126,6 +129,15 @@
           "entityFQN": {
             "type": "keyword",
             "normalizer": "lowercase_normalizer"
+          },
+          "entityLink": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "nonNormalized": {
+                "type": "keyword"
+              }
+            }
           },
           "parameterValues": {
             "properties": {

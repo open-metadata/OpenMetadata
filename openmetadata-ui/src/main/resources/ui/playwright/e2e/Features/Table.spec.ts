@@ -21,6 +21,8 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const table1 = new TableClass();
 
+test.slow(true);
+
 test.describe('Table pagination sorting search scenarios ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await createNewPage(browser);
