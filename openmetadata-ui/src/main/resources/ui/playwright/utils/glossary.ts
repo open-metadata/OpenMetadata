@@ -146,7 +146,7 @@ export const setupGlossaryAndTerms = async (page: Page) => {
   return { glossary, term1, term2, cleanup };
 };
 
-export const validateForm = async (page) => {
+export const validateForm = async (page: Page) => {
   // Error messages
   await expect(page.locator('#name_help')).toHaveText('Name is required');
   await expect(page.locator('#description_help')).toHaveText(
@@ -602,6 +602,13 @@ export const updateNameForGlossaryTerm = async (
   await page.click('[data-testid="rename-button"]');
 
   await expect(page.locator('#name')).toBeVisible();
+
+  // Max length validation
+  await page.locator('#name').fill(INVALID_NAMES.MAX_LENGTH);
+
+  await expect(page.locator('#name_help')).toHaveText(
+    NAME_MAX_LENGTH_VALIDATION_ERROR
+  );
 
   await page.fill('#name', name);
   const updateNameResponsePromise = page.waitForResponse(

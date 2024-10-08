@@ -657,6 +657,17 @@ const GlossaryHeader = ({
       <EntityNameModal
         allowRename
         entity={selectedData as EntityReference}
+        nameValidationRules={[
+          {
+            min: 1,
+            max: 128,
+            message: t('message.entity-size-in-between', {
+              entity: t('label.name'),
+              min: 1,
+              max: 128,
+            }),
+          },
+        ]}
         title={t('label.edit-entity', {
           entity: t('label.name'),
         })}
