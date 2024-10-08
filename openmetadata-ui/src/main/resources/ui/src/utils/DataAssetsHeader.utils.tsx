@@ -105,6 +105,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {dashboardDetails.sourceUrl && (
             <ExtraInfoLink
+              newTab
               href={dashboardDetails.sourceUrl}
               label=""
               value={getEntityName(dashboardDetails)}
@@ -147,6 +148,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {pipelineDetails.sourceUrl && (
             <ExtraInfoLink
+              newTab
               href={pipelineDetails.sourceUrl}
               label=""
               value={getEntityName(pipelineDetails)}
@@ -178,6 +180,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail.server && (
             <ExtraInfoLink
+              newTab
               href={mlModelDetail.server}
               label={t('label.server')}
               value={mlModelDetail.server}
@@ -185,6 +188,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail.dashboard && (
             <ExtraInfoLink
+              newTab
               href={getEntityDetailsPath(
                 EntityType.DASHBOARD,
                 mlModelDetail.dashboard?.fullyQualifiedName as string
@@ -388,6 +392,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {storedProcedureDetails.sourceUrl && (
             <ExtraInfoLink
+              newTab
               href={storedProcedureDetails.sourceUrl}
               label=""
               value={getEntityName(storedProcedureDetails)}
@@ -422,6 +427,7 @@ export const getDataAssetsHeaderInfo = (
         <>
           {apiCollection.endpointURL && (
             <ExtraInfoLink
+              newTab
               href={apiCollection.endpointURL}
               label={t('label.endpoint-url')}
               value={apiCollection.endpointURL}
@@ -451,6 +457,7 @@ export const getDataAssetsHeaderInfo = (
           )}
           {apiEndpoint.endpointURL && (
             <ExtraInfoLink
+              newTab
               href={apiEndpoint.endpointURL}
               label={t('label.endpoint-url')}
               value={apiEndpoint.endpointURL}
