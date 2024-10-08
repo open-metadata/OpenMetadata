@@ -18,7 +18,6 @@ from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -222,21 +221,18 @@ class GluepipelineSource(PipelineServiceSource):
                                         lineage_details["targets"].append(table_entity)
                                     break
                         if storage_model:
-                            for (
-                                storage_service_name
-                            ) in self.get_storage_service_names():
-                                for path in storage_model.Paths or [storage_model.Path]:
-                                    storage_entity = self.metadata.get_entity_reference(
-                                        entity=Container,
-                                        fqn=fqn.build(
-                                            self.metadata,
-                                            entity_type=Container,
-                                            service_name=storage_service_name,
-                                            parent_container="",
-                                            container_name=path.split("/")[-1]
-                                            if "/" in path
-                                            else None,
-                                        ),
+                            for path in storage_model.Paths or [storage_model.Path]:
+                                container = self.metadata.es_search_container_by_path(
+                                    full_path=path
+                                )
+                                if container and container[0]:
+                                    storage_entity = EntityReference(
+                                        id=container[0].id,
+                                        type="container",
+                                        name=container[0].name.root,
+                                        fullyQualifiedName=container[
+                                            0
+                                        ].fullyQualifiedName.root,
                                     )
                                     if storage_entity:
                                         if key.endswith("Source"):
