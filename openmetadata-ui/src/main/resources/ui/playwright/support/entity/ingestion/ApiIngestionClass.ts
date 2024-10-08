@@ -20,7 +20,6 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class ApiIngestionClass extends ServiceBaseClass {
-  name: string;
   constructor() {
     super(Services.API, `pw-api-with-%-${uuid()}`, 'Rest', 'Containers');
   }

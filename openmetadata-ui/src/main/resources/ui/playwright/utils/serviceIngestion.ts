@@ -67,7 +67,7 @@ export const getServiceCategoryFromService = (service: Services) => {
     case Services.Pipeline:
       return 'pipelineService';
     case Services.API:
-      return 'apiServices';
+      return 'apiService';
     default:
       return 'databaseService';
   }
