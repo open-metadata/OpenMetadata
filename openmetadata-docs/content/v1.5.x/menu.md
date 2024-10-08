@@ -577,10 +577,6 @@ site_menu:
     url: /connectors/storage/gcs
   - category: Connectors / Storage / GCS / Run Externally
     url: /connectors/storage/gcs/yaml
-  - category: Connectors / Storage / ADLS
-    url: /connectors/storage/adls
-  - category: Connectors / Storage / ADLS / Run Externally
-    url: /connectors/storage/adls/yaml
 
   - category: Connectors / Search
     url: /connectors/search
@@ -599,10 +595,6 @@ site_menu:
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
-  - category: Connectors / Metadata / Alation
-    url: /connectors/metadata/alation
-  - category: Connectors / Metadata / Alation / Run Externally
-    url: /connectors/metadata/alation/yaml
   - category: Connectors / Metadata / Alation Sink
     url: /connectors/metadata/alationsink
   - category: Connectors / Metadata / Alation Sink / Run Externally
