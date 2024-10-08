@@ -188,7 +188,6 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail.dashboard && (
             <ExtraInfoLink
-              newTab
               href={getEntityDetailsPath(
                 EntityType.DASHBOARD,
                 mlModelDetail.dashboard?.fullyQualifiedName as string
