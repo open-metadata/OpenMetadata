@@ -97,13 +97,13 @@ import EntityLink from '../../utils/EntityLink';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import tableClassBase from '../../utils/TableClassBase';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import './table-details-page-v1.less';
 import TableConstraints from './TableConstraints/TableConstraints';
-import tableDetailPageClassBase from './TableDetailPageClassBase';
 
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
@@ -645,8 +645,8 @@ const TableDetailsPageV1: React.FC = () => {
   );
 
   const tabs = useMemo(() => {
-    return tableDetailPageClassBase
-      .getPageTabs({
+    return tableClassBase
+      .getTableDetailPageTabs({
         schemaTab,
         queryCount,
         isTourOpen,
