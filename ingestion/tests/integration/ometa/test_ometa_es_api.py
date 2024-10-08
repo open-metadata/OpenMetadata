@@ -53,7 +53,7 @@ from metadata.generated.schema.type.basic import EntityName, SqlQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 
-from ..integration_base import get_create_entity, TIER1_TAG
+from ..integration_base import TIER1_TAG, get_create_entity
 
 
 class OMetaESTest(TestCase):
@@ -382,11 +382,12 @@ class OMetaESTest(TestCase):
                 self.metadata.patch(entity=Table, source=table, destination=dest)
 
         query_filter = (
-            "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}}]}}]}}}"
+            '{"query":{"bool":{"must":[{"bool":{"must":['
+            '{"term":{"tier.tagFQN":"Tier.Tier1"}},'
+            f'{{"term":{{"service.displayName.keyword":"{self.service_entity.name.root}"}}}}'
+            "]}}]}}}"
         )
         assets = list(
-            self.metadata.paginate_es(
-                entity=Table, query_filter=query_filter, size=2
-            )
+            self.metadata.paginate_es(entity=Table, query_filter=query_filter, size=2)
         )
         assert len(assets) == 5

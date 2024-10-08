@@ -18,7 +18,6 @@ from typing import Any, List, Optional, Type
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from metadata.generated.schema.type.tagLabel import TagLabel, TagFQN, TagSource, LabelType, State
 
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -99,6 +98,13 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     Markdown,
     TestCaseEntityName,
+)
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagFQN,
+    TagLabel,
+    TagSource,
 )
 from metadata.ingestion.ometa.ometa_api import C, T
 from metadata.utils.dispatch import class_register
