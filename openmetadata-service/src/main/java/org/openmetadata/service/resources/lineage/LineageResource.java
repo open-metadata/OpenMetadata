@@ -380,7 +380,7 @@ public class LineageResource {
     authorizer.authorize(
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext(toEntity, toId));
+        new LineageResourceContext(toEntity, UUID.fromString(toId)));
 
     boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
     if (!deleted) {
