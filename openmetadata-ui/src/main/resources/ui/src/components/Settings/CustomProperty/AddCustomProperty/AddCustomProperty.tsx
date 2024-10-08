@@ -38,7 +38,6 @@ import {
 import { EntityType } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { Category, Type } from '../../../../generated/entity/type';
-import { EnumWithDescriptionsConfig } from '../../../../generated/type/customProperties/enumWithDescriptionsConfig';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import {
   FieldProp,
@@ -167,7 +166,6 @@ const AddCustomProperty = () => {
       formatConfig: string;
       entityReferenceConfig: string[];
       multiSelect?: boolean;
-      enumWithDescriptionsConfig?: EnumWithDescriptionsConfig['values'];
     }
   ) => {
     if (isUndefined(typeDetail)) {
@@ -206,7 +204,6 @@ const AddCustomProperty = () => {
             'formatConfig',
             'entityReferenceConfig',
             'enumConfig',
-            'enumWithDescriptionsConfig',
           ]),
           propertyType: {
             id: data.propertyType,
