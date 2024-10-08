@@ -3,11 +3,11 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.schema.entity.services.APIService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.models.SearchSuggest;
 
-public record APIServiceIndex(APIService apiService) implements SearchIndex {
+public record APIServiceIndex(org.openmetadata.schema.entity.services.ApiService apiService)
+    implements SearchIndex {
 
   @Override
   public List<SearchSuggest> getSuggest() {

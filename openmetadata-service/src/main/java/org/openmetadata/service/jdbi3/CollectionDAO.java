@@ -98,7 +98,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
-import org.openmetadata.schema.entity.services.APIService;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -288,7 +288,7 @@ public interface CollectionDAO {
   SearchServiceDAO searchServiceDAO();
 
   @CreateSqlObject
-  APIServiceDAO apiServiceDAO();
+  ApiServiceDAO apiServiceDAO();
 
   @CreateSqlObject
   ContainerDAO containerDAO();
@@ -636,15 +636,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface APIServiceDAO extends EntityDAO<APIService> {
+  interface ApiServiceDAO extends EntityDAO<ApiService> {
     @Override
     default String getTableName() {
       return "api_service_entity";
     }
 
     @Override
-    default Class<APIService> getEntityClass() {
-      return APIService.class;
+    default Class<ApiService> getEntityClass() {
+      return ApiService.class;
     }
 
     @Override

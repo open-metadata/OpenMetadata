@@ -417,7 +417,6 @@ export const BETA_SERVICES = [
   PipelineServiceType.OpenLineage,
   PipelineServiceType.Flink,
   DatabaseServiceType.Teradata,
-  APIServiceType.REST,
   StorageServiceType.Gcs,
   DatabaseServiceType.SapERP,
   PipelineServiceType.Flink,

@@ -9,7 +9,7 @@
       "description": "Supported services",
       "oneOf": [
         {
-          "$ref": "../apiService.json#/definitions/apiServiceConnection"
+          "$ref": "../apiService.json#/definitions/apiConnection"
         },
         {
           "$ref": "../dashboardService.json#/definitions/dashboardConnection"

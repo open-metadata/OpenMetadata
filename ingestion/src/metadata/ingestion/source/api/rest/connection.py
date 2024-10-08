@@ -20,8 +20,8 @@ from requests.models import Response
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.services.connections.apiService.restConnection import (
-    RESTConnection,
+from metadata.generated.schema.entity.services.connections.api.restConnection import (
+    RestConnection,
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -39,7 +39,7 @@ class InvalidOpenAPISchemaError(Exception):
     """
 
 
-def get_connection(connection: RESTConnection) -> Response:
+def get_connection(connection: RestConnection) -> Response:
     """
     Create connection
     """
@@ -52,7 +52,7 @@ def get_connection(connection: RESTConnection) -> Response:
 def test_connection(
     metadata: OpenMetadata,
     client: Response,
-    service_connection: RESTConnection,
+    service_connection: RestConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
     """

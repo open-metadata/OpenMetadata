@@ -1021,22 +1021,21 @@ const ServiceDetailsPage: FunctionComponent = () => {
       });
     }
 
-    if (serviceCategory !== ServiceCategory.API_SERVICES) {
-      tabs.push({
+    tabs.push(
+      {
         name: t('label.ingestion-plural'),
         key: EntityTabs.INGESTIONS,
         isHidden: !showIngestionTab,
         count: ingestionPaging.total,
         children: ingestionTab,
-      });
-    }
-
-    tabs.push({
-      name: t('label.connection'),
-      isHidden: !servicePermission.EditAll,
-      key: EntityTabs.CONNECTION,
-      children: testConnectionTab,
-    });
+      },
+      {
+        name: t('label.connection'),
+        isHidden: !servicePermission.EditAll,
+        key: EntityTabs.CONNECTION,
+        children: testConnectionTab,
+      }
+    );
 
     return tabs
       .filter((tab) => !tab.isHidden)

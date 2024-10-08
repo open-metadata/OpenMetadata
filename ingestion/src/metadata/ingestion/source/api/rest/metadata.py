@@ -23,8 +23,8 @@ from metadata.generated.schema.api.data.createAPIEndpoint import (
 )
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import ApiRequestMethod
-from metadata.generated.schema.entity.services.connections.apiService.restConnection import (
-    RESTConnection,
+from metadata.generated.schema.entity.services.connections.api.restConnection import (
+    RestConnection,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -62,10 +62,10 @@ class RestSource(ApiServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: RESTConnection = config.serviceConnection.root.config
-        if not isinstance(connection, RESTConnection):
+        connection: RestConnection = config.serviceConnection.root.config
+        if not isinstance(connection, RestConnection):
             raise InvalidSourceException(
-                f"Expected RESTConnection, but got {connection}"
+                f"Expected RestConnection, but got {connection}"
             )
         return cls(config, metadata)
 

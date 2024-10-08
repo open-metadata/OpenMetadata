@@ -24,6 +24,7 @@ export enum Services {
   MLModels = GlobalSettingOptions.MLMODELS,
   Storage = GlobalSettingOptions.STORAGES,
   Search = GlobalSettingOptions.SEARCH,
+  API = GlobalSettingOptions.APIS,
 }
 
 export const getEntityTypeFromService = (service: Services) => {
@@ -42,6 +43,8 @@ export const getEntityTypeFromService = (service: Services) => {
       return EntityTypeEndpoint.MlModelService;
     case Services.Pipeline:
       return EntityTypeEndpoint.PipelineService;
+    case Services.API:
+      return EntityTypeEndpoint.ApiService;
     default:
       return EntityTypeEndpoint.DatabaseService;
   }
@@ -63,6 +66,8 @@ export const getServiceCategoryFromService = (service: Services) => {
       return 'mlmodelService';
     case Services.Pipeline:
       return 'pipelineService';
+    case Services.API:
+      return 'apiService';
     default:
       return 'databaseService';
   }

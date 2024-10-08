@@ -26,8 +26,8 @@ from metadata.generated.schema.api.data.createAPIEndpoint import (
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.services.apiService import (
+    ApiConnection,
     ApiService,
-    ApiServiceConnection,
 )
 from metadata.generated.schema.metadataIngestion.apiServiceMetadataPipeline import (
     ApiServiceMetadataPipeline,
@@ -112,7 +112,7 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: ApiServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: ApiServiceConnection.model_fields["config"].annotation
+    service_connection: ApiConnection.model_fields["config"].annotation
 
     topology = ApiServiceTopology()
     context = TopologyContextManager(topology)
