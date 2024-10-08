@@ -16,6 +16,7 @@ export enum DataQualityPageTabs {
   TEST_SUITES = 'test-suites',
   TABLES = 'tables',
   TEST_CASES = 'test-cases',
+  DASHBOARD = 'dashboard',
 }
 
 export interface DataQualityContextInterface {
