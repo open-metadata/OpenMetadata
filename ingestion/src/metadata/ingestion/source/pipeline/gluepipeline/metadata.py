@@ -204,7 +204,7 @@ class GluepipelineSource(PipelineServiceSource):
                             )
                         if table_model:
                             for db_service_name in self.get_db_service_names():
-                                table_entity = self.metadata.get_by_name(
+                                table_entity = self.metadata.get_entity_reference(
                                     entity=Table,
                                     fqn=fqn.build(
                                         metadata=self.metadata,
@@ -217,20 +217,16 @@ class GluepipelineSource(PipelineServiceSource):
                                 )
                                 if table_entity:
                                     if key.endswith("Source"):
-                                        lineage_details["sources"].append(
-                                            (table_entity, "table")
-                                        )
+                                        lineage_details["sources"].append(table_entity)
                                     else:
-                                        lineage_details["targets"].append(
-                                            (table_entity, "table")
-                                        )
+                                        lineage_details["targets"].append(table_entity)
                                     break
                         if storage_model:
                             for (
                                 storage_service_name
                             ) in self.get_storage_service_names():
                                 for path in storage_model.Paths or [storage_model.Path]:
-                                    storage_entity = self.metadata.get_by_name(
+                                    storage_entity = self.metadata.get_entity_reference(
                                         entity=Container,
                                         fqn=fqn.build(
                                             self.metadata,
@@ -245,11 +241,11 @@ class GluepipelineSource(PipelineServiceSource):
                                     if storage_entity:
                                         if key.endswith("Source"):
                                             lineage_details["sources"].append(
-                                                (storage_entity, "container")
+                                                storage_entity
                                             )
                                         else:
                                             lineage_details["targets"].append(
-                                                (storage_entity, "container")
+                                                storage_entity
                                             )
                                         break
 
@@ -349,14 +345,8 @@ class GluepipelineSource(PipelineServiceSource):
                         yield Either(
                             right=AddLineageRequest(
                                 edge=EntitiesEdge(
-                                    fromEntity=EntityReference(
-                                        id=source[0].id,
-                                        type=source[1],
-                                    ),
-                                    toEntity=EntityReference(
-                                        id=target[0].id,
-                                        type=target[1],
-                                    ),
+                                    fromEntity=source,
+                                    toEntity=target,
                                     lineageDetails=lineage_details,
                                 )
                             )
