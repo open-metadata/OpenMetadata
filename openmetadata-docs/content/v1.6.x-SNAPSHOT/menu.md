@@ -590,10 +590,6 @@ site_menu:
     url: /connectors/storage/gcs
   - category: Connectors / Storage / GCS / Run Externally
     url: /connectors/storage/gcs/yaml
-  - category: Connectors / Storage / ADLS
-    url: /connectors/storage/adls
-  - category: Connectors / Storage / ADLS / Run Externally
-    url: /connectors/storage/adls/yaml
 
   - category: Connectors / Search
     url: /connectors/search
@@ -612,10 +608,6 @@ site_menu:
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
-  - category: Connectors / Metadata / Alation
-    url: /connectors/metadata/alation
-  - category: Connectors / Metadata / Alation / Run Externally
-    url: /connectors/metadata/alation/yaml
   - category: Connectors / Metadata / Alation Sink
     url: /connectors/metadata/alationsink
   - category: Connectors / Metadata / Alation Sink / Run Externally
@@ -710,6 +702,14 @@ site_menu:
     color: violet-70
     icon: openmetadata
 
+ - category: How-to Guides / Data Quality Observability / Visualize  
+    url: /how-to-guides/data-quality-observability/visualize
+  - category: How-to Guides / Data Quality Observability / Test Cases From YAML Config  
+    url: /how-to-guides/data-quality-observability/quality/test-cases-from-yaml-config
+  - category: How-to Guides / Data Quality Observability / Adding Test Suits  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-suits
+  - category: How-to Guides / Data Quality Observability / Adding Test Cases  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-cases
   - category: How-to Guides / Getting Started  
     url: /how-to-guides/getting-started
   - category: How-to Guides / Day 1  
@@ -944,6 +944,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.5 Release
+    url: /releases/all-releases/#1.5.5-release
   - category: Releases / All Releases / 1.5.4 Release
     url: /releases/all-releases/#1.5.4-release
   - category: Releases / All Releases / 1.5.3 Release
