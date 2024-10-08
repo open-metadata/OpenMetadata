@@ -77,6 +77,7 @@ import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
+import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
@@ -102,6 +103,8 @@ import org.openmetadata.service.search.indexes.TestCaseResultIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
+import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator;
@@ -188,7 +191,6 @@ import os.org.opensearch.search.aggregations.bucket.terms.Terms;
 import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
-import os.org.opensearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -1143,87 +1145,12 @@ public class OpenSearchClient implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
-  /*
-  Build dynamic aggregation from elasticsearch JSON like aggregation query.
-  See TestSuiteResourceTest for example usage (ln. 506) for tested aggregation query.
-
-  @param aggregations - JsonObject containing the aggregation query
-  */
-  public static List<AggregationBuilder> buildAggregation(JsonObject aggregations) {
-    List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
-    for (String key : aggregations.keySet()) {
-      JsonObject aggregation = aggregations.getJsonObject(key);
-      Set<String> keySet = aggregation.keySet();
-      for (String aggregationType : keySet) {
-        switch (aggregationType) {
-          case "terms":
-            JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
-            TermsAggregationBuilder termsAggregationBuilder =
-                AggregationBuilders.terms(key).field(termAggregation.getString("field"));
-            aggregationBuilders.add(termsAggregationBuilder);
-            break;
-          case "nested":
-            JsonObject nestedAggregation = aggregation.getJsonObject("nested");
-            AggregationBuilder nestedAggregationBuilder =
-                AggregationBuilders.nested(
-                    nestedAggregation.getString("path"), nestedAggregation.getString("path"));
-            JsonObject nestedAggregations = aggregation.getJsonObject("aggs");
-
-            List<AggregationBuilder> nestedAggregationBuilders =
-                buildAggregation(nestedAggregations);
-            for (AggregationBuilder nestedAggregationBuilder1 : nestedAggregationBuilders) {
-              nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
-            }
-            aggregationBuilders.add(nestedAggregationBuilder);
-            break;
-          case "date_histogram":
-            JsonObject dateHistogramAggregation = aggregation.getJsonObject(aggregationType);
-            String calendarInterval = dateHistogramAggregation.getString("calendar_interval");
-            DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
-                AggregationBuilders.dateHistogram(key)
-                    .field(dateHistogramAggregation.getString("field"))
-                    .calendarInterval(new DateHistogramInterval(calendarInterval));
-            aggregationBuilders.add(dateHistogramAggregationBuilder);
-            break;
-          case "top_hits":
-            JsonObject topHitsAggregation = aggregation.getJsonObject(aggregationType);
-            TopHitsAggregationBuilder topHitsAggregationBuilder =
-                AggregationBuilders.topHits(key)
-                    .size(topHitsAggregation.getInt("size"))
-                    .sort(
-                        topHitsAggregation.getString("sort_field"),
-                        SortOrder.fromString(topHitsAggregation.getString("sort_order")));
-            aggregationBuilders.add(topHitsAggregationBuilder);
-            break;
-          case "aggs":
-            // Sub aggregation logic
-            if (!keySet.contains("nested")) {
-              JsonObject subAggregation = aggregation.getJsonObject("aggs");
-              if (!nullOrEmpty(aggregationBuilders)) {
-                AggregationBuilder aggregationBuilder =
-                    aggregationBuilders.get(aggregationBuilders.size() - 1);
-                List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
-                for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
-                  aggregationBuilder.subAggregation(subAggregationBuilder);
-                }
-              }
-              break;
-            }
-            break;
-          default:
-            break;
-        }
-      }
-    }
-    return aggregationBuilders;
-  }
-
   @Override
   public DataQualityReport genericAggregation(
-      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
-    String aggregationStr = (String) aggregationMetadata.get("aggregationStr");
-    JsonObject aggregationObj = JsonUtils.readJson("{%s}".formatted(aggregationStr)).asJsonObject();
-    List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregationObj);
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException {
+    List<OpenAggregations> aggregationBuilder =
+        OpenAggregationsBuilder.buildAggregation(
+            aggregationMetadata.getAggregationTree(), null, new ArrayList<>());
 
     // Create search request
     os.org.opensearch.action.search.SearchRequest searchRequest =
@@ -1243,8 +1170,12 @@ public class OpenSearchClient implements SearchClient {
     }
     searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
 
-    for (AggregationBuilder aggregation : aggregationBuilder) {
-      searchSourceBuilder.aggregation(aggregation);
+    for (OpenAggregations aggregation : aggregationBuilder) {
+      if (!aggregation.isPipelineAggregation()) {
+        searchSourceBuilder.aggregation(aggregation.getElasticAggregationBuilder());
+      } else {
+        searchSourceBuilder.aggregation(aggregation.getElasticPipelineAggregationBuilder());
+      }
     }
 
     searchRequest.source(searchSourceBuilder);
@@ -1253,19 +1184,20 @@ public class OpenSearchClient implements SearchClient {
     Optional<JsonObject> aggregationResults =
         Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
     return SearchIndexUtils.parseAggregationResults(
-        aggregationResults,
-        (List<List<Map<String, String>>>) aggregationMetadata.get("aggregationMapList"));
+        aggregationResults, aggregationMetadata.getAggregationMetadata());
   }
 
   @Override
-  public JsonObject aggregate(String query, String index, JsonObject aggregationJson, String filter)
+  public JsonObject aggregate(
+      String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
-    JsonObject aggregations = aggregationJson.getJsonObject("aggregations");
-    if (aggregations == null) {
+    if (searchAggregation == null) {
       return null;
     }
 
-    List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregations);
+    List<OpenAggregations> aggregationBuilder =
+        OpenAggregationsBuilder.buildAggregation(
+            searchAggregation.getAggregationTree(), null, new ArrayList<>());
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(index));
@@ -1283,8 +1215,12 @@ public class OpenSearchClient implements SearchClient {
 
     searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
 
-    for (AggregationBuilder aggregation : aggregationBuilder) {
-      searchSourceBuilder.aggregation(aggregation);
+    for (OpenAggregations aggregation : aggregationBuilder) {
+      if (!aggregation.isPipelineAggregation()) {
+        searchSourceBuilder.aggregation(aggregation.getElasticAggregationBuilder());
+      } else {
+        searchSourceBuilder.aggregation(aggregation.getElasticPipelineAggregationBuilder());
+      }
     }
 
     searchRequest.source(searchSourceBuilder);
