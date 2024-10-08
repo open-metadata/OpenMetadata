@@ -12,7 +12,7 @@
  */
 
 import { FC } from 'react';
-import { AppType } from '../../../../generated/entity/applications/app';
+import { App, AppType } from '../../../../generated/entity/applications/app';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 
 class ApplicationsClassBase {
@@ -32,6 +32,16 @@ class ApplicationsClassBase {
    */
   public getApplicationExtension(): FC | null {
     return null;
+  }
+
+  public getFloatingApplicationEntityList(): string[] {
+    return [];
+  }
+
+  public isFloatingButtonPresent(applications: App[]) {
+    return applications.some((app) =>
+      this.getFloatingApplicationEntityList().includes(app.name)
+    );
   }
 
   public importAppScreenshot(screenshotName: string) {
