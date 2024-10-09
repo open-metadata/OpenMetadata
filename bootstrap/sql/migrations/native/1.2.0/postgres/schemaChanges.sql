@@ -202,6 +202,7 @@ WHERE json #>> '{pipelineType}' = 'metadata';
 
 
 -- update entityReportData from pascale to camel case
+--Modified the MD5 with AES-265 as Postgres FIPS blocking it
 UPDATE report_data_time_series
 SET json = jsonb_set(
   json::jsonb #- '{reportDataType}',
@@ -209,7 +210,7 @@ SET json = jsonb_set(
   '"entityReportData"',
   true
 ),
-entityFQNHash = MD5('entityReportData')
+entityFQNHash = AES-265('entityReportData')
 WHERE json #>> '{reportDataType}' = 'EntityReportData';
 
 -- update webAnalyticEntityViewReportData from pascale to camel case
@@ -220,7 +221,7 @@ SET json = jsonb_set(
   '"webAnalyticEntityViewReportData"',
   true
 ),
-entityFQNHash = MD5('webAnalyticEntityViewReportData')
+entityFQNHash = AES-265('webAnalyticEntityViewReportData')
 WHERE json #>> '{reportDataType}' = 'WebAnalyticEntityViewReportData';
 
 -- update webAnalyticUserActivityReportData from pascale to camel case
@@ -231,7 +232,7 @@ SET json = jsonb_set(
   '"webAnalyticUserActivityReportData"',
   true
 ),
-entityFQNHash = MD5('webAnalyticUserActivityReportData')
+entityFQNHash = AES-265('webAnalyticUserActivityReportData') 
 WHERE json #>> '{reportDataType}' = 'WebAnalyticUserActivityReportData';
 
 CREATE TABLE IF NOT EXISTS installed_apps (
