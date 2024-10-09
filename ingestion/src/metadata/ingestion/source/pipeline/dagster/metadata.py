@@ -55,7 +55,7 @@ from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
 
@@ -181,12 +181,12 @@ class DagsterSource(PipelineServiceSource):
                     run.status.lower(), StatusType.Pending.value
                 ),
                 startTime=(
-                    round(convert_timestamp_to_milliseconds(run.startTime))
+                    round(datetime_to_timestamp(run.startTime))
                     if run.startTime
                     else None
                 ),
                 endTime=(
-                    round(convert_timestamp_to_milliseconds(run.endTime))
+                    round(datetime_to_timestamp(run.endTime))
                     if run.endTime
                     else None
                 ),
@@ -197,7 +197,7 @@ class DagsterSource(PipelineServiceSource):
                     run.status.lower(), StatusType.Pending.value
                 ),
                 timestamp=Timestamp(
-                    round(convert_timestamp_to_milliseconds(timestamp=run.startTime))
+                    round(datetime_to_timestamp(timestamp=run.startTime))
                 ),
             )
             pipeline_fqn = fqn.build(
