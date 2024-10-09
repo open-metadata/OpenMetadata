@@ -23,6 +23,10 @@
       "description": "Timestamp on which the workflow instance ended.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
+    "variables": {
+      "type": "object",
+      "existingJavaType": "java.util.Map<java.lang.String, java.lang.Object>"
+    },
     "timestamp": {
       "description": "Timestamp on which the workflow instance state was created.",
       "$ref": "../../type/basic.json#/definitions/timestamp"

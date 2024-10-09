@@ -5,6 +5,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.service.resources.governance.WorkflowInstanceResource;
 import org.openmetadata.service.util.JsonUtils;
 
+import java.util.Map;
 import java.util.UUID;
 
 public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<WorkflowInstance> {
@@ -22,7 +23,7 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
         return recordEntity;
     }
 
-    public void addNewWorkflowInstance(String workflowDefinitionName, UUID workflowInstanceId, Long startedAt) {
+    public void addNewWorkflowInstance(String workflowDefinitionName, UUID workflowInstanceId, Long startedAt, Map<String, Object> variables) {
         WorkflowDefinitionRepository workflowDefinitionRepository = (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
         UUID workflowDefinitionId = workflowDefinitionRepository.getIdFromName(workflowDefinitionName);
 
@@ -31,6 +32,7 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
                         .withId(workflowInstanceId)
                         .withWorkflowDefinitionId(workflowDefinitionId)
                         .withStartedAt(startedAt)
+                        .withVariables(variables)
                         .withTimestamp(System.currentTimeMillis()),
                 workflowDefinitionName);
     }

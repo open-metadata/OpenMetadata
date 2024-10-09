@@ -35,7 +35,7 @@ public class WorkflowInstanceUpdaterListener implements JavaDelegate {
         String workflowDefinitionName = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
         UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
 
-        workflowInstanceRepository.addNewWorkflowInstance(workflowDefinitionName, workflowInstanceId, System.currentTimeMillis());
+        workflowInstanceRepository.addNewWorkflowInstance(workflowDefinitionName, workflowInstanceId, System.currentTimeMillis(), execution.getVariables());
     }
 
     private void updateStage(DelegateExecution execution, WorkflowInstanceRepository workflowInstanceRepository) {
