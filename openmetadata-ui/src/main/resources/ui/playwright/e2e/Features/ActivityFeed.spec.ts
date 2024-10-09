@@ -30,6 +30,7 @@ import {
 } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  clickOutside,
   descriptionBox,
   redirectToHomePage,
   removeLandingBanner,
@@ -877,6 +878,7 @@ base.describe('Activity feed with Data Consumer User', () => {
         const dropdownValue = page2.getByTestId(`tag-PII.None`);
         await dropdownValue.hover();
         await dropdownValue.click();
+        await clickOutside(page2);
 
         await expect(page2.getByTestId('selected-tag-PII.None')).toBeVisible();
 
