@@ -21,7 +21,7 @@ class TestDeprecatedSimpleWorkflow:
     def test_workflow_print_status(self):
         workflow = SimpleWorkflow(config=config)
         workflow.execute()
-        print_status(workflow)
+        workflow.print_status(workflow)
 
     def test_workflow_print_init_error(self):
         print_init_error(Exception(), config.model_dump())
