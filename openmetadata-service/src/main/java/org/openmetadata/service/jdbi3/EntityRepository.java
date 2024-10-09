@@ -1460,7 +1460,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       case "enumWithDescriptions" -> handleEnumWithDescriptions(
           fieldName, fieldValue, propertyConfig, jsonNode, entity);
-      case "table-type" -> validateTableType(fieldValue, propertyConfig);
+      case "table-type" -> validateTableType(fieldValue, customPropertyType, propertyConfig);
       default -> {}
     }
   }
@@ -1532,7 +1532,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void validateTableType(JsonNode fieldValue, String propertyConfig) {
+  private void validateTableType(
+      JsonNode fieldValue, String customPropertyType, String propertyConfig) {
     TableTypeConfig tableTypeConfig =
         JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableTypeConfig.class);
     TableType tableTypeValue =
@@ -1575,7 +1576,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .collect(Collectors.joining(", "));
 
       throw new IllegalArgumentException(
-          CatalogExceptionMessage.customPropertyConfigError("table-type", validationErrors));
+          CatalogExceptionMessage.customPropertyConfigError(customPropertyType, validationErrors));
     }
   }
 
