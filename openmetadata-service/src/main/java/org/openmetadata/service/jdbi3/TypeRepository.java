@@ -22,6 +22,8 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.validation.ConstraintViolationException;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
@@ -46,6 +49,7 @@ import org.openmetadata.schema.type.customproperties.TableTypeConfig;
 import org.openmetadata.schema.type.customproperties.Value;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -258,25 +262,31 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   private void validateTableTypeConfig(CustomPropertyConfig config) {
-    if (config != null) {
-      TableTypeConfig tableTypeConfig =
-          JsonUtils.convertValue(config.getConfig(), TableTypeConfig.class);
-      if (tableTypeConfig == null) {
-        throw new IllegalArgumentException(
-            "TableType Custom Property Type must have TableTypeConfig populated.");
-      }
-      if (tableTypeConfig.getColumns() == null || tableTypeConfig.getColumns().isEmpty()) {
-        throw new IllegalArgumentException(
-            "TableType must have at least " + tableTypeConfig.getMinColumns() + " column.");
-      }
-      if (tableTypeConfig.getColumns().size() > tableTypeConfig.getMaxColumns()) {
-        throw new IllegalArgumentException(
-            "TableType can have a maximum of " + tableTypeConfig.getMaxColumns() + " columns.");
-      }
-
-    } else {
+    if (config == null) {
       throw new IllegalArgumentException(
-          "TableType Custom Property Type must have TableTypeConfig.");
+          "TableType Custom Property Type must have TableTypeConfig populated.");
+    }
+
+    JsonNode configNode = JsonUtils.valueToTree(config.getConfig());
+    TableTypeConfig tableTypeConfig =
+        JsonUtils.convertValue(config.getConfig(), TableTypeConfig.class);
+
+    // rowCount is optional, if not present set it to the default value
+    if (!configNode.has("rowCount")) {
+      ((ObjectNode) configNode).put("rowCount", tableTypeConfig.getRowCount());
+      config.setConfig(configNode);
+    }
+
+    try {
+      JsonUtils.validateJsonSchema(config.getConfig(), TableTypeConfig.class);
+    } catch (ConstraintViolationException e) {
+      String validationErrors =
+          e.getConstraintViolations().stream()
+              .map(violation -> violation.getPropertyPath() + " " + violation.getMessage())
+              .collect(Collectors.joining(", "));
+
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.customPropertyConfigError("table-type", validationErrors));
     }
   }
 

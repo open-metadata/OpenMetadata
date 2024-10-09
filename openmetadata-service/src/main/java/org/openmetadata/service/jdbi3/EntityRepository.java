@@ -103,6 +103,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import javax.json.JsonPatch;
+import javax.validation.ConstraintViolationException;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
@@ -146,6 +147,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
+import org.openmetadata.schema.type.customproperties.TableType;
 import org.openmetadata.schema.type.customproperties.TableTypeConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -1533,39 +1535,42 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void validateTableType(JsonNode fieldValue, String propertyConfig) {
     TableTypeConfig tableTypeConfig =
         JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableTypeConfig.class);
+    TableType tableTypeValue =
+        JsonUtils.convertValue(JsonUtils.readTree(String.valueOf(fieldValue)), TableType.class);
     Set<String> configColumns = tableTypeConfig.getColumns();
 
-    JsonNode columnsNode = fieldValue.get("columns");
-    if (columnsNode == null
-        || !columnsNode.isArray() && columnsNode.size() < tableTypeConfig.getMinColumns()) {
+    try {
+      JsonUtils.validateJsonSchema(tableTypeValue, TableType.class);
+
+      Set<String> fieldColumns = new HashSet<>();
+      fieldValue.get("columns").forEach(column -> fieldColumns.add(column.asText()));
+
+      Set<String> undefinedColumns = new HashSet<>(fieldColumns);
+      undefinedColumns.removeAll(configColumns);
+      if (!undefinedColumns.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Expected columns: "
+                + configColumns
+                + ", but found undefined columns: "
+                + undefinedColumns);
+      }
+
+      Set<String> rowFieldNames = new HashSet<>();
+      fieldValue.get("rows").forEach(row -> row.fieldNames().forEachRemaining(rowFieldNames::add));
+
+      undefinedColumns = new HashSet<>(rowFieldNames);
+      undefinedColumns.removeAll(configColumns);
+      if (!undefinedColumns.isEmpty()) {
+        throw new IllegalArgumentException("Rows contain undefined columns: " + undefinedColumns);
+      }
+    } catch (ConstraintViolationException e) {
+      String validationErrors =
+          e.getConstraintViolations().stream()
+              .map(violation -> violation.getPropertyPath() + " " + violation.getMessage())
+              .collect(Collectors.joining(", "));
+
       throw new IllegalArgumentException(
-          "Minimum " + tableTypeConfig.getMinColumns() + " column required");
-    }
-
-    Set<String> fieldColumns = new HashSet<>();
-    columnsNode.forEach(column -> fieldColumns.add(column.asText()));
-
-    fieldColumns.removeAll(configColumns);
-    if (!fieldColumns.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Expected columns: " + configColumns + ", but found undefined columns: " + fieldColumns);
-    }
-
-    JsonNode rowsNode = fieldValue.get("rows");
-    if (rowsNode == null || !rowsNode.isArray() && rowsNode.size() < tableTypeConfig.getMinRows()) {
-      throw new IllegalArgumentException(
-          "Minimum " + tableTypeConfig.getMinRows() + " row required");
-    }
-
-    Set<String> rowFieldNames = new HashSet<>();
-    rowsNode.forEach(
-        row -> {
-          row.fieldNames().forEachRemaining(rowFieldNames::add);
-        });
-
-    rowFieldNames.removeAll(configColumns);
-    if (!rowFieldNames.isEmpty()) {
-      throw new IllegalArgumentException("Rows contain undefined columns: " + rowFieldNames);
+          CatalogExceptionMessage.customPropertyConfigError("table-type", validationErrors));
     }
   }
 

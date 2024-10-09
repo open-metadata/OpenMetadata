@@ -17,35 +17,10 @@
       "maxItems": 3,
       "uniqueItems": true
     },
-    "rows": {
-      "type": "array",
-      "description": "List of rows added at the entity instance level.",
-      "minItems": 1,
-      "maxItems": 10,
-      "items": {
-        "type": "object",
-        "description": "A cell in the table.",
-        "properties": {},
-        "additionalProperties": {
-          "type": "string"
-        }
-      }
-    },
-    "minColumns": {
+    "rowCount": {
       "type": "integer",
-      "default": 1
-    },
-    "maxColumns": {
-      "type": "integer",
-      "default": 3
-    },
-    "minRows": {
-      "type": "integer",
-      "default": 1
-    },
-    "maxRows": {
-      "type": "integer",
-      "default": 10
+      "default": 1,
+      "description": "Number of rows. Defaults to minRows if not explicitly set."
     }
   },
   "required": ["columns"],
