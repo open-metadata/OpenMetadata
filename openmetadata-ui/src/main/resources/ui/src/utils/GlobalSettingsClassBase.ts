@@ -121,6 +121,16 @@ class GlobalSettingsClassBase {
         description: t('message.service-description'),
         items: [
           {
+            label: t('label.api-uppercase-plural'),
+            description: t('message.page-sub-header-for-apis'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.API_SERVICE,
+              permissions
+            ),
+            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
+            icon: IconAPI,
+          },
+          {
             label: t('label.database-plural'),
             description: t('message.page-sub-header-for-databases'),
             isProtected: userPermissions.hasViewPermissions(
@@ -199,17 +209,6 @@ class GlobalSettingsClassBase {
             ),
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
             icon: OpenMetadataIcon,
-          },
-          {
-            label: t('label.api-uppercase-plural'),
-            description: t('message.page-sub-header-for-apis'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.API_SERVICE,
-              permissions
-            ),
-            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
-            icon: IconAPI,
-            isBeta: true,
           },
           {
             label: t('label.data-observability'),
