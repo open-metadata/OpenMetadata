@@ -15,6 +15,6 @@
     }
   ],
   "provider" : "system",
-  "pollInterval" : 30,
+  "pollInterval" : 10,
   "enabled" : true
 }

@@ -11,6 +11,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.JsonUtils;
 
 import java.util.HashMap;
@@ -43,15 +44,14 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
         EventType eventType = event.getEventType();
 
         if (validEventTypes.contains(eventType)) {
-            String entityType = event.getEntityType();
-            String signal = String.format("%s-%s", entityType, eventType.toString());
+            String signal = String.format("%s-%s", event.getEntityType(), eventType.toString());
 
-            EntityReference relatedEntity = Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
+            EntityReference entityReference = Entity.getEntityReferenceById(event.getEntityType(), event.getEntityId(), Include.ALL);
+            MessageParser.EntityLink entityLink = new MessageParser.EntityLink(event.getEntityType(), entityReference.getFullyQualifiedName());
 
             Map<String, Object> variables = new HashMap<>();
 
-            variables.put("entityType", entityType);
-            variables.put("relatedEntity", JsonUtils.pojoToJson(relatedEntity));
+            variables.put("relatedEntity", entityLink.getLinkString());
 
             WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
         }

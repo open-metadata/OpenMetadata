@@ -3,11 +3,13 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.JsonUtils;
 
 import javax.json.JsonPatch;
@@ -19,8 +21,8 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
     private Expression statusExpr;
     @Override
     public void execute(DelegateExecution execution) {
-        EntityReference entityReference = JsonUtils.readOrConvertValue(execution.getVariable("relatedEntity"), EntityReference.class);
-        GlossaryTerm glossaryTerm = Entity.getEntity(entityReference, "*", Include.ALL);
+        MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse((String) execution.getVariable("relatedEntity"));
+        GlossaryTerm glossaryTerm = Entity.getEntity(entityLink, "*", Include.ALL);
 
         String status = (String) statusExpr.getValue(execution);
         String user = Optional.ofNullable((String) execution.getVariable("resolvedBy"))

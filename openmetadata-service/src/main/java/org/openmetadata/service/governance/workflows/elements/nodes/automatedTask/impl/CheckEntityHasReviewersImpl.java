@@ -7,18 +7,19 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.JsonUtils;
 
 
 public class CheckEntityHasReviewersImpl implements JavaDelegate {
     @Override
     public void execute(DelegateExecution execution) {
-        EntityReference entityReference = JsonUtils.readOrConvertValue(execution.getVariable("relatedEntity"), EntityReference.class);
-        execution.setVariable("checkPassed", hasReviewers(entityReference));
+        MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse((String) execution.getVariable("relatedEntity"));
+        execution.setVariable("checkPassed", hasReviewers(entityLink));
     }
 
-    private Boolean hasReviewers(EntityReference entityReference) {
-        EntityInterface entity = Entity.getEntity(entityReference, "*", Include.ALL);
+    private Boolean hasReviewers(MessageParser.EntityLink entityLink) {
+        EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
         return !CommonUtil.nullOrEmpty(entity.getReviewers());
     }
 }

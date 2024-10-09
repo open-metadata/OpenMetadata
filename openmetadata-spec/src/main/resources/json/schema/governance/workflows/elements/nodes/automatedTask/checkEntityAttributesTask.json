@@ -41,10 +41,10 @@
     "input": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["entityType", "relatedEntity"],
+      "default": ["relatedEntity"],
       "additionalItems": false,
-      "minItems": 2,
-      "maxItems": 2
+      "minItems": 1,
+      "maxItems": 1
     },
     "output": {
       "type": "array",

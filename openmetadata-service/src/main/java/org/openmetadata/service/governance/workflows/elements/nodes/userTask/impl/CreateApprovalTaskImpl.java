@@ -33,8 +33,9 @@ public class CreateApprovalTaskImpl implements TaskListener {
     @Override
     public void notify(DelegateTask delegateTask) {
         List<EntityReference> assignees = getAssignees(delegateTask);
+        MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse((String) delegateTask.getVariable("relatedEntity"));
         GlossaryTerm entity = Entity.getEntity(
-                JsonUtils.readOrConvertValue(delegateTask.getVariable("relatedEntity"), EntityReference.class),
+                entityLink,
                 "*",
                 Include.ALL
         );

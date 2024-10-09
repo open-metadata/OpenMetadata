@@ -7,6 +7,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.JsonUtils;
 
 import java.util.ArrayList;
@@ -26,8 +27,8 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         List<String> assignees = new ArrayList<>();
 
         if (addReviewers) {
-            EntityReference entityReference = JsonUtils.readOrConvertValue(execution.getVariable("relatedEntity"), EntityReference.class);
-            EntityInterface entity = Entity.getEntity(entityReference, "*", Include.ALL);
+            MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse((String) execution.getVariable("relatedEntity"));
+            EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
             assignees.addAll(entity.getReviewers().stream().map(EntityReference::getName).toList());
         }
 

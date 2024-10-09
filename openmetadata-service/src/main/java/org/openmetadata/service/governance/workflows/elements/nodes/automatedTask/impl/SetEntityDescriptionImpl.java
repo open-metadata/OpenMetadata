@@ -8,6 +8,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.JsonUtils;
 
 import javax.json.JsonPatch;
@@ -17,15 +18,14 @@ public class SetEntityDescriptionImpl implements JavaDelegate {
     private Expression descriptionExpr;
     @Override
     public void execute(DelegateExecution execution) {
-        String entityType = (String) execution.getVariable("entityType");
-        EntityReference entityReference = JsonUtils.readOrConvertValue(execution.getVariable("relatedEntity"), EntityReference.class);
-        EntityInterface entity = Entity.getEntity(entityReference, "*", Include.ALL);
+        MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse((String) execution.getVariable("relatedEntity"));
+        EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
         String description = (String) descriptionExpr.getValue(execution);
         String user = Optional.ofNullable((String) execution.getVariable("resolvedBy"))
                 .orElse(entity.getUpdatedBy());
 
-        setDescription(entityType, entity, user, description);
+        setDescription(entityLink.getEntityType(), entity, user, description);
     }
 
     private void setDescription(String entityType, EntityInterface entity, String user, String description) {
