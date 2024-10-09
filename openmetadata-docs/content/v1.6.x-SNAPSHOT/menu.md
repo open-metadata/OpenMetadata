@@ -817,7 +817,8 @@ site_menu:
     isCollateOnly: true
   - category: How-to Guides / Data Quality and Profiler / Data Quality / How to Write and Deploy No-Code Test Cases
     url: /how-to-guides/data-quality-observability/quality/test
-   url: /how-to-guides/data-quality-observability/quality/configure
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
+    url: /how-to-guides/data-quality-observability/quality/configure
   - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Cases  
     url: /how-to-guides/data-quality-observability/quality/adding-test-cases
   - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Suits  
