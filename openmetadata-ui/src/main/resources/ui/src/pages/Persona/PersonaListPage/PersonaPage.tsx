@@ -55,11 +55,7 @@ export const PersonaPage = () => {
   } = usePaging();
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () =>
-      getSettingPageEntityBreadCrumb(
-        GlobalSettingsMenuCategory.MEMBERS,
-        t('label.persona-plural')
-      ),
+    () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.PERSONA),
     []
   );
 
