@@ -59,6 +59,7 @@ import {
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
+import { TABLE_TYPE_CUSTOM_PROPERTY } from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -83,6 +84,8 @@ import {
 } from './CustomPropertyTable.interface';
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
+import EditTableTypePropertyModal from './TableTypeProperty/EditTableTypePropertyModal';
+import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
 
 export const PropertyValue: FC<PropertyValueProps> = ({
   isVersionView,
@@ -93,9 +96,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const { propertyName, propertyType, value } = useMemo(() => {
+  const { propertyName, propertyType, value, isTableType } = useMemo(() => {
     const propertyName = property.name;
     const propertyType = property.propertyType;
+    const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
 
     const value = extension?.[propertyName];
 
@@ -103,13 +107,15 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       propertyName,
       propertyType,
       value,
+      isTableType,
     };
   }, [property, extension]);
 
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const [isExpanded, setIsExpanded] = useState(false);
+  // expand the property value by default if it is a "table-type" custom property
+  const [isExpanded, setIsExpanded] = useState(isTableType);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -689,6 +695,32 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
+      case TABLE_TYPE_CUSTOM_PROPERTY: {
+        const config = property.customPropertyConfig?.config as Config;
+
+        const columns = value?.columns ?? [];
+        const rows = value?.rows ?? [];
+
+        return (
+          <>
+            {showInput && (
+              <TableTypePropertyView columns={columns} rows={rows} />
+            )}
+            <EditTableTypePropertyModal
+              columns={config?.columns ?? []}
+              isUpdating={isLoading}
+              isVisible={showInput}
+              // update this based on coming config
+              maxRowCount={10}
+              property={property}
+              rows={value?.rows ?? []}
+              onCancel={onHideInput}
+              onSave={onInputSave}
+            />
+          </>
+        );
+      }
+
       default:
         return null;
     }
@@ -884,6 +916,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             </div>
           </div>
         );
+      }
+
+      case TABLE_TYPE_CUSTOM_PROPERTY: {
+        const columns = value?.columns ?? [];
+        const rows = value?.rows ?? [];
+
+        return <TableTypePropertyView columns={columns} rows={rows} />;
       }
 
       case 'string':
