@@ -50,12 +50,12 @@ class DashboardResp(BaseModel):
     RequestId: Optional[str] = None
 
 
-class DataSource(BaseModel):
+class DataSourceModel(BaseModel):
     DataSourceId: str
     DataSourceParameters: Optional[dict] = None
 
 
 class DescribeDataSourceResponse(BaseModel):
-    DataSource: Optional[DataSource] = None
+    DataSource: Optional[DataSourceModel] = None
     RequestId: Optional[str] = None
     Status: Optional[int] = None
