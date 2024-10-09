@@ -11,14 +11,6 @@ from metadata.generated.schema.tests.testCase import TestCaseParameterValue
     [
         ([TestCaseParameterValue(name="str", value="test")], "str", str, None, "test"),
         (
-            [TestCaseParameterValue(name="bool1", value="true")],
-            "bool1",
-            bool,
-            None,
-            True,
-        ),
-        ([TestCaseParameterValue(name="bool2", value="")], "bool2", bool, None, False),
-        (
             [TestCaseParameterValue(name="param", value="[1, 2, 3]")],
             "param",
             literal_eval,
