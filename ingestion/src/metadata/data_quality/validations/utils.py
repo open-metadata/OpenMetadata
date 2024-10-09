@@ -13,8 +13,7 @@ def get_test_case_param_value(
     default: Optional[R] = None,
     pre_processor: Optional[Callable] = None,
 ) -> Optional[Union[R, T]]:
-    """Give a column and a type return the value with the appropriate type casting for the
-    test case definition.
+    """Return a test case parameter value with the appropriate type casting for the test case definition.
 
     Args:
         test_case_param_vals: list of test case parameter values
@@ -35,3 +34,21 @@ def get_test_case_param_value(
 
     pre_processed_value = pre_processor(value)
     return type_(pre_processed_value)
+
+
+def get_bool_test_case_param(
+    test_case_param_vals: list[TestCaseParameterValue],
+    name: str,
+    default: Optional[R] = None,
+) -> Optional[Union[R, T]]:
+    """Return a test case parameter value as a boolean.
+
+    Args:
+        test_case_param_vals: list of test case parameter values
+        name (str): column name
+        default (_type_, optional): Default value to return if column is not found
+    """
+    str_val: str = get_test_case_param_value(test_case_param_vals, name, str, None)
+    if str_val is None:
+        return default
+    return str_val.lower() == "true"
