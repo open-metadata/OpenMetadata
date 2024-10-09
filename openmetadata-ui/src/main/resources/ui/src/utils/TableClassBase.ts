@@ -41,50 +41,10 @@ export interface TableDetailPageTabProps {
 }
 
 class TableClassBase {
-  public getTableDetailPageTabs({
-    schemaTab,
-    queryCount,
-    isTourOpen,
-    tablePermissions,
-    activeTab,
-    deleted,
-    tableDetails,
-    totalFeedCount,
-    onExtensionUpdate,
-    getEntityFeedCount,
-    handleFeedCount,
-    viewAllPermission,
-    editCustomAttributePermission,
-    viewSampleDataPermission,
-    viewQueriesPermission,
-    viewProfilerPermission,
-    editLineagePermission,
-    fetchTableDetails,
-    testCaseSummary,
-    isViewTableType,
-  }: TableDetailPageTabProps) {
-    return geTableDetailPageBaseTabs({
-      schemaTab,
-      queryCount,
-      isTourOpen,
-      tablePermissions,
-      activeTab,
-      deleted,
-      tableDetails,
-      totalFeedCount,
-      onExtensionUpdate,
-      getEntityFeedCount,
-      handleFeedCount,
-      viewAllPermission,
-      editCustomAttributePermission,
-      viewSampleDataPermission,
-      viewQueriesPermission,
-      viewProfilerPermission,
-      editLineagePermission,
-      fetchTableDetails,
-      testCaseSummary,
-      isViewTableType,
-    });
+  public getTableDetailPageTabs(
+    tableDetailsPageProps: TableDetailPageTabProps
+  ) {
+    return geTableDetailPageBaseTabs(tableDetailsPageProps);
   }
 }
 
