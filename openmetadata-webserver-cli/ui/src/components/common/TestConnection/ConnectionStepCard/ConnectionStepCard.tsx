@@ -131,33 +131,33 @@ const ConnectionStepCard = ({
       {(isMandatoryStepsFailing ||
         isNonMandatoryStepsFailing ||
         testConnectionStepResult?.message) && (
-        <div className="connection-step-card-content">
-          <Typography.Text className="text-body">
-            {testConnectionStepResult?.message}
-          </Typography.Text>
-          {testConnectionStepResult?.errorLog && (
-            <>
-              <Divider className="connection-step-card-content-divider" />
-              <Collapse ghost>
-                <Panel
-                  className="connection-step-card-content-logs"
-                  data-testid="lazy-log"
-                  header={t('label.show-log-plural')}
-                  key="show-log">
-                  <LazyLog
-                    caseInsensitive
-                    enableSearch
-                    selectableLines
-                    extraLines={1} // 1 is to be add so that linux users can see last line of the log
-                    height={300}
-                    text={logs}
-                  />
-                </Panel>
-              </Collapse>
-            </>
-          )}
-        </div>
-      )}
+          <div className="connection-step-card-content">
+            <Typography.Text className="text-body">
+              {testConnectionStepResult?.message}
+            </Typography.Text>
+            {testConnectionStepResult?.errorLog && (
+              <>
+                <Divider className="connection-step-card-content-divider" />
+                <Collapse ghost>
+                  <Panel
+                    className="connection-step-card-content-logs"
+                    data-testid="lazy-log"
+                    header={t('label.show-log-plural')}
+                    key="show-log">
+                    <LazyLog
+                      caseInsensitive
+                      enableSearch
+                      selectableLines
+                      extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                      height={300}
+                      text={logs}
+                    />
+                  </Panel>
+                </Collapse>
+              </>
+            )}
+          </div>
+        )}
     </div>
   );
 };

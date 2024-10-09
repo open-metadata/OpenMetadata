@@ -15,8 +15,6 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../components/common/Loader/Loader';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -24,17 +22,13 @@ import { TitleBreadcrumbProps } from '../components/common/TitleBreadcrumb/Title
 import AddIngestion from '../components/Settings/Services/AddIngestion/AddIngestion.component';
 import {
   getServiceDetailsPath,
-  INGESTION_PROGRESS_START_VAL,
 } from '../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../constants/Ingestions.constant';
 import { FormSubmitType } from '../enums/form.enum';
-import { IngestionActionMessage } from '../enums/ingestion.enum';
 import { ServiceCategory } from '../enums/service.enum';
-import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useFqn } from '../hooks/useFqn';
 import { DataObj } from '../interface/service.interface';
-import { getEntityMissingError } from '../utils/CommonUtils';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
@@ -50,18 +44,10 @@ const AddIngestionPage = () => {
   const { fqn: serviceFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
-  const [serviceData, setServiceData] = useState<DataObj>();
+  const [serviceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
-  const [isLoading, setIsloading] = useState(true);
-  const [isError, setIsError] = useState(false);
-  const [ingestionProgress, setIngestionProgress] = useState(0);
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
-  const [isIngestionDeployed, setIsIngestionDeployed] = useState(false);
-  const [ingestionAction, setIngestionAction] = useState(
-    IngestionActionMessage.CREATING
-  );
-  const [ingestionId, setIngestionId] = useState('');
-  const [showIngestionButton, setShowIngestionButton] = useState(false);
+
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -74,98 +60,13 @@ const AddIngestionPage = () => {
     [ingestionType]
   );
 
-  const fetchServiceDetails = () => {
-    setIsloading(false);
-  };
+
 
   const onIngestionDeploy = (id?: string) => {
     return new Promise<void>((resolve) => {
       setIsIngestionCreated(true);
       resolve();
-      // setIngestionProgress(INGESTION_PROGRESS_END_VAL);
-      // setIngestionAction(IngestionActionMessage.DEPLOYING);
-
-      // deployIngestionPipelineById(id ?? ingestionId)
-      //   .then(() => {
-      //     setIsIngestionDeployed(true);
-      //     setShowIngestionButton(false);
-      //     setIngestionProgress(DEPLOYED_PROGRESS_VAL);
-      //     setIngestionAction(IngestionActionMessage.DEPLOYED);
-      //   })
-      //   .catch((err: AxiosError) => {
-      //     setShowIngestionButton(true);
-      //     setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
-      //     showErrorToast(
-      //       err,
-      //       t('server.deploy-entity-error', {
-      //         entity: t('label.ingestion-workflow-lowercase'),
-      //       })
-      //     );
-      //   })
-      //   .finally(() => resolve());
     });
-  };
-
-  const onAddIngestionSave = (data: CreateIngestionPipeline) => {
-    setIngestionProgress(INGESTION_PROGRESS_START_VAL);
-    return new Promise<void>((resolve, reject) => {
-      if (resolve && data) {
-        resolve();
-      } else {
-        reject();
-      }
-    )
-    // return new Promise<void>((resolve, reject) => {
-    //   return addIngestionPipeline(data)
-    //     .then((res) => {
-    //       if (res) {
-    //         setIngestionId(res.id ?? '');
-    //         onIngestionDeploy(res.id).finally(() => resolve());
-    //       } else {
-    //         showErrorToast(
-    //           t('server.create-entity-error', {
-    //             entity: t('label.ingestion-workflow'),
-    //           })
-    //         );
-    //         reject();
-    //       }
-    //     })
-    //     .catch((err: AxiosError) => {
-    //       if (err.response?.status === 409) {
-    //         showErrorToast(
-    //           err,
-    //           t('message.entity-already-exists', {
-    //             entity: t('label.data-asset'),
-    //           })
-    //         );
-    //         reject();
-    //       } else {
-    //         getIngestionPipelineByFqn(`${serviceData?.name}.${data.name}`)
-    //           .then((res) => {
-    //             if (res) {
-    //               resolve();
-    //               showErrorToast(
-    //                 err,
-    //                 t('server.deploy-entity-error', {
-    //                   entity: t('label.ingestion-workflow'),
-    //                 })
-    //               );
-    //             } else {
-    //               throw t('server.unexpected-response');
-    //             }
-    //           })
-    //           .catch(() => {
-    //             showErrorToast(
-    //               err,
-    //               t('server.create-entity-error', {
-    //                 entity: t('label.ingestion-workflow'),
-    //               })
-    //             );
-    //             reject();
-    //           });
-    //       }
-    //     });
-    // });
   };
 
   const goToSettingsPage = () => {
@@ -213,17 +114,17 @@ const AddIngestionPage = () => {
             ingestionType,
             INGESTION_ACTION_TYPE.ADD
           )}
-          ingestionAction={ingestionAction}
-          ingestionProgress={ingestionProgress}
+          ingestionAction={"something"}
+          ingestionProgress={0}
           isIngestionCreated={isIngestionCreated}
-          isIngestionDeployed={isIngestionDeployed}
+          isIngestionDeployed={false}
           pipelineType={ingestionType as PipelineType}
           serviceCategory={serviceCategory as ServiceCategory}
           serviceData={serviceData as DataObj}
           setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
-          showDeployButton={showIngestionButton}
+          showDeployButton={false}
           status={FormSubmitType.ADD}
-          onAddIngestionSave={onAddIngestionSave}
+          onAddIngestionSave={() => Promise.resolve()}
           onFocus={handleFieldFocus}
           onIngestionDeploy={onIngestionDeploy}
         />
@@ -241,10 +142,6 @@ const AddIngestionPage = () => {
     />
   );
 
-
-  if (isLoading) {
-    return <Loader />;
-  }
 
   return (
     <ResizablePanels

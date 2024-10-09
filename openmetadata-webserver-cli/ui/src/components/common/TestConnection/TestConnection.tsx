@@ -13,7 +13,6 @@
 import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, toNumber } from 'lodash';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
@@ -22,39 +21,31 @@ import { ReactComponent as SuccessIcon } from '../../../assets/svg/success-badge
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,
-  FETCH_INTERVAL,
   TEST_CONNECTION_FAILURE_MESSAGE,
   TEST_CONNECTION_INFO_MESSAGE,
   TEST_CONNECTION_INITIAL_MESSAGE,
   TEST_CONNECTION_PROGRESS_PERCENTAGE,
-  TEST_CONNECTION_SUCCESS_MESSAGE,
   TEST_CONNECTION_TESTING_MESSAGE,
-  TEST_CONNECTION_WARNING_MESSAGE,
   WORKFLOW_COMPLETE_STATUS,
 } from '../../../constants/Services.constant';
-import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
-import { ConfigClass } from '../../../generated/entity/automations/testServiceConnection';
 import {
   StatusType,
   TestConnectionStepResult,
   Workflow,
   WorkflowStatus,
-  WorkflowType,
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
-import {
-  addWorkflow,
-  deleteWorkflowById,
-  getTestConnectionDefinitionByName,
-  getWorkflowById,
-  triggerWorkflowById,
-} from '../../../rest/workflowAPI';
+// import {
+//   addWorkflow,
+//   deleteWorkflowById,
+//   getTestConnectionDefinitionByName,
+//   getWorkflowById,
+//   triggerWorkflowById,
+// } from '../../../rest/workflowAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
-import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
 import {
   getServiceType,
-  getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -108,9 +99,9 @@ const TestConnection: FC<TestConnectionProps> = ({
    */
   const currentWorkflowRef = useRef(currentWorkflow);
 
-  const serviceType = useMemo(() => {
-    return getServiceType(serviceCategory);
-  }, [serviceCategory]);
+  // const serviceType = useMemo(() => {
+  //   return getServiceType(serviceCategory);
+  // }, [serviceCategory]);
 
   const allowTestConn = useMemo(() => {
     return shouldTestConnection(connectionType);
@@ -124,35 +115,6 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   // data fetch handlers
 
-  const fetchConnectionDefinition = async () => {
-    try {
-      // Test Connection FQN is built as <connectionType>.testConnectionDefinition. E.g., Mysql.testConnectionDefinition
-      const response = await getTestConnectionDefinitionByName(
-        `${connectionType}.testConnectionDefinition`
-      );
-
-      setTestConnectionStep(response.steps);
-      setDialogOpen(true);
-    } catch (error) {
-      throw t('message.test-connection-cannot-be-triggered');
-    }
-  };
-
-  const getWorkflowData = async (workflowId: string) => {
-    try {
-      const response = await getWorkflowById(workflowId);
-      const testConnectionStepResult = response.response?.steps ?? [];
-
-      setTestConnectionStepResult(testConnectionStepResult);
-
-      setCurrentWorkflow(response);
-
-      return response;
-    } catch (error) {
-      throw error as AxiosError;
-    }
-  };
-
   const handleResetState = () => {
     // reset states for workflow ans steps result
     setCurrentWorkflow(undefined);
@@ -162,63 +124,41 @@ const TestConnection: FC<TestConnectionProps> = ({
     setProgress(0);
   };
 
-  const handleDeleteWorkflow = async (workflowId: string) => {
-    if (isEmpty(workflowId)) {
-      return;
-    }
-
-    try {
-      await deleteWorkflowById(workflowId, true);
-    } catch (error) {
-      // do not throw error for this API
-    }
-  };
-
   // handlers
   const testConnection = async () => {
     setIsTestingConnection(true);
     setMessage(TEST_CONNECTION_TESTING_MESSAGE);
     handleResetState();
 
-    const updatedFormData = formatFormDataForSubmit(getData());
+    // const updatedFormData = formatFormDataForSubmit(getData());
 
     // current interval id
     let intervalId: number | undefined;
 
     try {
-      const createWorkflowData: CreateWorkflow = {
-        name: getTestConnectionName(connectionType),
-        workflowType: WorkflowType.TestConnection,
-        request: {
-          connection: { config: updatedFormData as ConfigClass },
-          serviceType,
-          connectionType,
-          serviceName,
-        },
-      };
-
-      // fetch the connection steps for current connectionType
-      await fetchConnectionDefinition();
+      // const createWorkflowData: CreateWorkflow = {
+      //   name: getTestConnectionName(connectionType),
+      //   workflowType: WorkflowType.TestConnection,
+      //   request: {
+      //     connection: { config: updatedFormData as ConfigClass },
+      //     serviceType,
+      //     connectionType,
+      //     serviceName,
+      //   },
+      // };
 
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TEN);
 
-      // create the workflow
-      const response = await addWorkflow(createWorkflowData);
-
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TWENTY);
 
-      // trigger the workflow
-      const status = await triggerWorkflowById(response.id);
-
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.FORTY);
+
+      const status = 200;
 
       if (status !== 200) {
         setTestStatus(StatusType.Failed);
         setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
         setIsTestingConnection(false);
-
-        // delete the workflow if workflow is not triggered successfully
-        await handleDeleteWorkflow(response.id);
 
         return;
       }
@@ -227,53 +167,53 @@ const TestConnection: FC<TestConnectionProps> = ({
        * fetch workflow repeatedly with 2s interval
        * until status is either Failed or Successful
        */
-      intervalId = toNumber(
-        setInterval(async () => {
-          setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
-          const workflowResponse = await getWorkflowData(response.id);
-          const { response: testConnectionResponse } = workflowResponse;
-          const { status: testConnectionStatus, steps = [] } =
-            testConnectionResponse || {};
+      // intervalId = toNumber(
+      //   setInterval(async () => {
+      //     setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
+      //     const workflowResponse = await getWorkflowData(response.id);
+      //     const { response: testConnectionResponse } = workflowResponse;
+      //     const { status: testConnectionStatus, steps = [] } =
+      //       testConnectionResponse || {};
 
-          const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
-            workflowResponse.status as WorkflowStatus
-          );
+      //     const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
+      //       workflowResponse.status as WorkflowStatus
+      //     );
 
-          const isTestConnectionSuccess =
-            testConnectionStatus === StatusType.Successful;
+      //     const isTestConnectionSuccess =
+      //       testConnectionStatus === StatusType.Successful;
 
-          if (!isWorkflowCompleted) {
-            return;
-          }
+      //     if (!isWorkflowCompleted) {
+      //       return;
+      //     }
 
-          setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-          if (isTestConnectionSuccess) {
-            setTestStatus(StatusType.Successful);
-            setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
-          } else {
-            const isMandatoryStepsFailing = steps.some(
-              (step) => step.mandatory && !step.passed
-            );
-            setTestStatus(
-              isMandatoryStepsFailing ? StatusType.Failed : 'Warning'
-            );
-            setMessage(
-              isMandatoryStepsFailing
-                ? TEST_CONNECTION_FAILURE_MESSAGE
-                : TEST_CONNECTION_WARNING_MESSAGE
-            );
-          }
+      //     setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+      //     if (isTestConnectionSuccess) {
+      //       setTestStatus(StatusType.Successful);
+      //       setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
+      //     } else {
+      //       const isMandatoryStepsFailing = steps.some(
+      //         (step) => step.mandatory && !step.passed
+      //       );
+      //       setTestStatus(
+      //         isMandatoryStepsFailing ? StatusType.Failed : 'Warning'
+      //       );
+      //       setMessage(
+      //         isMandatoryStepsFailing
+      //           ? TEST_CONNECTION_FAILURE_MESSAGE
+      //           : TEST_CONNECTION_WARNING_MESSAGE
+      //       );
+      //     }
 
-          // clear the current interval
-          clearInterval(intervalId);
+      //     // clear the current interval
+      //     clearInterval(intervalId);
 
-          // set testing connection to false
-          setIsTestingConnection(false);
+      //     // set testing connection to false
+      //     setIsTestingConnection(false);
 
-          // delete the workflow once it's finished
-          await handleDeleteWorkflow(workflowResponse.id);
-        }, FETCH_INTERVAL)
-      );
+      //     // delete the workflow once it's finished
+      //     await handleDeleteWorkflow(workflowResponse.id);
+      //   }, FETCH_INTERVAL)
+      // );
 
       // stop fetching the workflow after 2 minutes
       setTimeout(() => {
@@ -307,7 +247,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       // delete the workflow if there is an exception
       const workflowId = currentWorkflowRef.current?.id;
       if (workflowId) {
-        await handleDeleteWorkflow(workflowId);
+        // await handleDeleteWorkflow(workflowId);
       }
     }
   };
@@ -335,7 +275,7 @@ const TestConnection: FC<TestConnectionProps> = ({
        */
       const workflowId = currentWorkflowRef.current?.id;
       if (workflowId) {
-        handleDeleteWorkflow(workflowId);
+        // handleDeleteWorkflow(workflowId);
       }
     };
   }, []);

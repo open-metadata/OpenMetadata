@@ -15,13 +15,8 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   AuthenticationConfigurationWithScope,
   IAuthContext,
-  OidcUser,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import {
-  EntityUnion,
-  ExploreSearchIndex,
-} from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
@@ -34,7 +29,7 @@ import { EntityReference } from '../generated/entity/type';
 export interface HelperFunctions {
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
-  handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
+  handleSuccessfulLogin: (user: string) => Promise<void>;
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
   trySilentSignIn: (forceLogout?: boolean) => Promise<void>;
@@ -47,13 +42,13 @@ export interface ApplicationStore
   isApplicationLoading: boolean;
   setApplicationLoading: (loading: boolean) => void;
   userProfilePics: Record<string, User>;
-  cachedEntityData: Record<string, EntityUnion>;
+  cachedEntityData: Record<string, string>;
   selectedPersona: EntityReference;
   oidcIdToken: string;
   refreshTokenKey: string;
   authConfig?: AuthenticationConfigurationWithScope;
   applicationConfig?: UIThemePreference;
-  searchCriteria: ExploreSearchIndex | '';
+  searchCriteria: string | '';
   theme: UIThemePreference['customTheme'];
   inlineAlertDetails?: InlineAlertProps;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
@@ -72,7 +67,7 @@ export interface ApplicationStore
   updateUserProfilePics: (data: { id: string; user: User }) => void;
   updateCachedEntityData: (data: {
     id: string;
-    entityDetails: EntityUnion;
+    entityDetails: string;
   }) => void;
 
   getRefreshToken: () => string;
@@ -81,7 +76,7 @@ export interface ApplicationStore
   setOidcToken: (oidcToken: string) => void;
   removeOidcToken: () => void;
   removeRefreshToken: () => void;
-  updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
+  updateSearchCriteria: (criteria: string | '') => void;
   trySilentSignIn: (forceLogout?: boolean) => void;
 }
 

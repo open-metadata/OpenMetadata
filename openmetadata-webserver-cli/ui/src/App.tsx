@@ -11,7 +11,7 @@ function App() {
     <Router>
       <Switch>
         <Route path="/" component={LandingPage} />
-        <Route path="/" component={ServicesPage} />
+        <Route path="/services" component={ServicesPage} />
         {/* <Route path="/services" element={<Services />} />
         <Route path="/add-service" element={<AddService />} />
         <Route path="/config-service" element={<ConfigureService />} /> */}

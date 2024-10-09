@@ -11,19 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
-import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
-import { PAGE_SIZE } from '../constants/constants';
-import { SearchIndex } from '../enums/search.enum';
-import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
-import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
-import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
-import { ValidationResponse } from '../generated/system/validationResponse';
-import { Paging } from '../generated/type/paging';
-import { SearchResponse } from '../interface/search.interface';
-import { getSearchAPIQueryParams } from '../utils/SearchUtils';
-import { escapeESReservedCharacters } from '../utils/StringsUtils';
+
 import APIClient from './index';
 
 // export const searchData = <SI extends SearchIndex>(

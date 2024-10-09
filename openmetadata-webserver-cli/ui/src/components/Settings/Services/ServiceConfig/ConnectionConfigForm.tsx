@@ -20,7 +20,6 @@ import { LoadingState } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
-  useEffect,
   useRef,
   useState,
 } from 'react';
@@ -34,18 +33,16 @@ import { DatabaseServiceType } from '../../../../generated/entity/services/datab
 import { MessagingServiceType } from '../../../../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../../../../generated/entity/services/searchService';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   ConfigData,
   ServicesType,
 } from '../../../../interface/service.interface';
-import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
-import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import FormBuilder from '../../../FormBuilder/FormBuilder';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import TestConnection from '../../../common/TestConnection/TestConnection';
 
@@ -81,27 +78,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
   const formRef = useRef<Form<ConfigData>>(null);
 
-  const { isAirflowAvailable } = useAirflowStatus();
+  // const { isAirflowAvailable } = useAirflowStatus();
+  const isAirflowAvailable = false;
   const [hostIp, setHostIp] = useState<string>();
-
-  const fetchHostIp = async () => {
-    try {
-      const { status, data } = await getPipelineServiceHostIp();
-      if (status === 200) {
-        setHostIp(data?.ip || '[unknown]');
-      } else {
-        setHostIp(undefined);
-      }
-    } catch (error) {
-      setHostIp('[error - unknown]');
-    }
-  };
-
-  useEffect(() => {
-    if (isAirflowAvailable) {
-      fetchHostIp();
-    }
-  }, [isAirflowAvailable]);
 
   const handleRequiredFieldsValidation = () => {
     return Boolean(formRef.current?.validateForm());

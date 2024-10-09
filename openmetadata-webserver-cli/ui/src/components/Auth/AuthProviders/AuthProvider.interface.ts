@@ -11,36 +11,16 @@
  *  limitations under the License.
  */
 
-import { Profile } from 'oidc-client';
 import { ComponentType, ReactNode } from 'react';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
-import { AccessTokenResponse } from '../../../rest/auth-API';
 
 export interface AuthProviderProps {
   childComponentType: ComponentType;
   children?: ReactNode;
 }
 
-export type UserProfile = {
-  email: string;
-  name: string;
-  picture: string;
-  locale?: string;
-} & Pick<Profile, 'preferred_username' | 'sub'>;
-
-export type OidcUser = {
-  id_token: string;
-  scope: string;
-  profile: UserProfile;
-};
-
-export interface AuthenticatorRef {
-  invokeLogin: () => void;
-  invokeLogout: () => void;
-  renewIdToken: () => Promise<string> | Promise<AccessTokenResponse>;
-}
 
 export enum JWT_PRINCIPAL_CLAIMS {
   EMAIL = 'email',
@@ -58,9 +38,9 @@ export interface IAuthContext {
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
   currentUser?: User;
-  newUser?: UserProfile;
-  updateNewUser: (user: UserProfile) => void;
-  handleSuccessfulLogin: (user: OidcUser) => void;
+  newUser?: string;
+  updateNewUser: (user: string) => void;
+  handleSuccessfulLogin: (user: string) => void;
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
   updateCurrentUser: (user: User) => void;

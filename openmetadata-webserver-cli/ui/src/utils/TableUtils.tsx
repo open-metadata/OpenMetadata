@@ -81,7 +81,6 @@ import { ReactComponent as TeamIcon } from '../assets/svg/teams.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-// import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { /*DE_ACTIVE_COLOR,*/ TEXT_BODY_COLOR } from '../constants/constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
@@ -100,8 +99,6 @@ import {
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
-import EntityLink from './EntityLink';
-// import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
@@ -381,17 +378,6 @@ export const getDataTypeString = (dataType: string): string => {
       return PrimaryTableDataTypes.BOOLEAN;
     default:
       return dataType;
-  }
-};
-
-export const generateEntityLink = (fqn: string, includeColumn = false) => {
-  if (includeColumn) {
-    const tableFqn = getTableFQNFromColumnFQN(fqn);
-    const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
-
-    return EntityLink.getTableEntityLink(tableFqn, columnName);
-  } else {
-    return EntityLink.getTableEntityLink(fqn);
   }
 };
 

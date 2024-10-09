@@ -27,18 +27,13 @@ import {
   toLower,
   toNumber,
 } from 'lodash';
-import { Duration } from 'luxon';
+// import { Duration } from 'luxon';
 import {
   CurrentState,
   ExtraInfo,
-  RecentlySearched,
-  RecentlySearchedData,
-  RecentlyViewed,
-  RecentlyViewedData,
 } from 'Models';
 import React, { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
-import { reactLocalStorage } from 'reactjs-localstorage';
 import {
   getDayCron,
   getHourCron,
@@ -50,10 +45,8 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
   imageTypes,
-  LOCALSTORAGE_RECENTLY_SEARCHED,
-  LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
-// import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
+
 import {
   UrlEntityCharRegEx,
   VALIDATE_ESCAPE_START_END_REGEX,
@@ -63,15 +56,10 @@ import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
-import { FeedCounts } from '../interface/feed.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
-// import { getFeedCount } from '../rest/feedsAPI';
-// import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-// import { TASK_ENTITIES } from './TasksUtils';
-// import { showErrorToast } from './ToastUtils';
 
 export const arraySorterByKey = <T extends object>(
   key: keyof T,
@@ -244,105 +232,6 @@ export const getCountBadge = (
   );
 };
 
-export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
-  const recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_VIEWED
-  ) as RecentlyViewed;
-
-  if (recentlyViewed?.data) {
-    return recentlyViewed.data;
-  }
-
-  return [];
-};
-
-export const getRecentlySearchedData = (): Array<RecentlySearchedData> => {
-  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_SEARCHED
-  ) as RecentlySearched;
-  if (recentlySearch?.data) {
-    return recentlySearch.data;
-  }
-
-  return [];
-};
-
-export const setRecentlyViewedData = (
-  recentData: Array<RecentlyViewedData>
-): void => {
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_VIEWED, {
-    data: recentData,
-  });
-};
-
-export const setRecentlySearchedData = (
-  recentData: Array<RecentlySearchedData>
-): void => {
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_SEARCHED, {
-    data: recentData,
-  });
-};
-
-export const addToRecentSearched = (searchTerm: string): void => {
-  if (searchTerm.trim()) {
-    const searchData = { term: searchTerm, timestamp: Date.now() };
-    const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-      LOCALSTORAGE_RECENTLY_SEARCHED
-    ) as RecentlySearched;
-    let arrSearchedData: RecentlySearched['data'] = [];
-    if (recentlySearch?.data) {
-      const arrData = recentlySearch.data
-        // search term is not case-insensitive.
-        .filter((item) => item.term !== searchData.term)
-        .sort(arraySorterByKey<RecentlySearchedData>('timestamp', true));
-      arrData.unshift(searchData);
-
-      if (arrData.length > 5) {
-        arrData.pop();
-      }
-      arrSearchedData = arrData;
-    } else {
-      arrSearchedData = [searchData];
-    }
-    setRecentlySearchedData(arrSearchedData);
-  }
-};
-
-export const removeRecentSearchTerm = (searchTerm: string) => {
-  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_SEARCHED
-  ) as RecentlySearched;
-  if (recentlySearch?.data) {
-    const arrData = recentlySearch.data.filter(
-      (item) => item.term !== searchTerm
-    );
-    setRecentlySearchedData(arrData);
-  }
-};
-
-export const addToRecentViewed = (eData: RecentlyViewedData): void => {
-  const entityData = { ...eData, timestamp: Date.now() };
-  let recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_VIEWED
-  ) as RecentlyViewed;
-  if (recentlyViewed?.data) {
-    const arrData = recentlyViewed.data
-      .filter((item) => item.fqn !== entityData.fqn)
-      .sort(arraySorterByKey<RecentlyViewedData>('timestamp', true));
-    arrData.unshift(entityData);
-
-    if (arrData.length > 8) {
-      arrData.pop();
-    }
-    recentlyViewed.data = arrData;
-  } else {
-    recentlyViewed = {
-      data: [entityData],
-    };
-  }
-  setRecentlyViewedData(recentlyViewed.data);
-};
-
 export const errorMsg = (value: string) => {
   return (
     <div>
@@ -509,76 +398,7 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
   return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
 };
 
-/**
- * Get feed counts for given entity type and fqn
- * @param entityType - entity type
- * @param entityFQN - entity fqn
- * @param onDataFetched - callback function which return FeedCounts object
- */
 
-export const getFeedCounts = (
-  entityType: string,
-  entityFQN: string,
-  feedCountCallback: (countValue: FeedCounts) => void
-) => {
-  return {
-    conversationCount: 0,
-    totalTasksCount: 0,
-    openTaskCount: 0,
-    closedTaskCount: 0,
-    totalCount: 0,
-    mentionCount: 0,
-  };
-  // getFeedCount(getEntityFeedLink(entityType, entityFQN))
-  //   .then((res) => {
-  //     if (res) {
-  //       const {
-  //         conversationCount,
-  //         openTaskCount,
-  //         closedTaskCount,
-  //         totalTasksCount,
-  //         totalCount,
-  //         mentionCount,
-  //       } = res.reduce((acc, item) => {
-  //         const conversationCount =
-  //           acc.conversationCount + (item.conversationCount || 0);
-  //         const totalTasksCount =
-  //           acc.totalTasksCount + (item.totalTaskCount || 0);
-
-  //         return {
-  //           conversationCount: 0,
-  //           totalTasksCount: 0,
-  //           openTaskCount: 0,
-  //           closedTaskCount: 0,
-  //           totalCount: 0,
-  //           mentionCount: 0,
-  //         };
-  //       }, FEED_COUNT_INITIAL_DATA);
-
-  //       feedCountCallback({
-  //         conversationCount,
-  //         totalTasksCount,
-  //         openTaskCount,
-  //         closedTaskCount,
-  //         totalCount,
-  //         mentionCount,
-  //       });
-  //     } else {
-  //       throw t('server.entity-feed-fetch-error');
-  //     }
-  //   })
-  //   .catch((err: AxiosError) => {
-  //     showErrorToast(err, t('server.entity-feed-fetch-error'));
-  //   });
-};
-
-/**
- *
- * @param entityType type of the entity
- * @returns true if entity type exists in TASK_ENTITIES otherwise false
- */
-export const isTaskSupported = (entityType: EntityType) =>
-  TASK_ENTITIES.includes(entityType);
 
 export const formatNumberWithComma = (number: number) => {
   return new Intl.NumberFormat('en-US').format(number);
@@ -625,27 +445,28 @@ export const digitFormatter = (value: number) => {
  * formatTimeFromSeconds(86400); // returns "1 day"
  */
 export const formatTimeFromSeconds = (seconds: number): string => {
-  const duration = Duration.fromObject({ seconds });
-  let unit: keyof Duration;
+  // const duration = Duration.fromObject({ seconds });
+  // let unit: keyof Duration;
 
-  if (duration.as('years') >= 1) {
-    unit = 'years';
-  } else if (duration.as('months') >= 1) {
-    unit = 'months';
-  } else if (duration.as('days') >= 1) {
-    unit = 'days';
-  } else if (duration.as('hours') >= 1) {
-    unit = 'hours';
-  } else if (duration.as('minutes') >= 1) {
-    unit = 'minutes';
-  } else {
-    unit = 'seconds';
-  }
+  // if (duration.as('years') >= 1) {
+  //   unit = 'years';
+  // } else if (duration.as('months') >= 1) {
+  //   unit = 'months';
+  // } else if (duration.as('days') >= 1) {
+  //   unit = 'days';
+  // } else if (duration.as('hours') >= 1) {
+  //   unit = 'hours';
+  // } else if (duration.as('minutes') >= 1) {
+  //   unit = 'minutes';
+  // } else {
+  //   unit = 'seconds';
+  // }
 
-  const value = Math.round(duration.as(unit));
-  const unitSingular = unit.slice(0, -1);
+  // const value = Math.round(duration.as(unit));
+  // const unitSingular = unit.slice(0, -1);
 
-  return `${value} ${value === 1 ? unitSingular : unit}`;
+  // return `${value} ${value === 1 ? unitSingular : unit}`;
+  return `${seconds}` || `0`;
 };
 
 export const getTeamsUser = (
@@ -844,7 +665,7 @@ export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
       errorMessage = get(error, 'response.data.responseMessage', '');
     }
     if (!errorMessage) {
-      errorMessage = get(error, 'response.data', '');
+      errorMessage = 'error';
       errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
     }
   }

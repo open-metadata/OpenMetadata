@@ -28,7 +28,6 @@ import { FormSubmitType } from '../../../../enums/form.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getServiceLogo } from '../../../../utils/CommonUtils';
 import { handleEntityCreationError } from '../../../../utils/formUtils';
@@ -68,7 +67,6 @@ const AddService = ({
   handleAddIngestion,
 }: AddServiceProps) => {
   const history = useHistory();
-  const { currentUser, setInlineAlertDetails } = useApplicationStore();
   const { fetchAirflowStatus } = useAirflowStatus();
 
   const [showErrorMessage, setShowErrorMessage] = useState(
@@ -135,7 +133,7 @@ const AddService = ({
       description: serviceConfig.description,
       owners: [
         {
-          id: currentUser?.id ?? '',
+          id: '',
           type: 'user',
         },
       ],
@@ -154,12 +152,13 @@ const AddService = ({
 
       await fetchAirflowStatus();
     } catch (error) {
+
       handleEntityCreationError({
         error: error as AxiosError,
         entity: t('label.service'),
         entityLowercase: t('label.service-lowercase'),
         entityLowercasePlural: t('label.service-lowercase-plural'),
-        setInlineAlertDetails,
+        setInlineAlertDetails: () => void,
         name: serviceConfig.serviceName,
         defaultErrorType: 'create',
       });
