@@ -11,7 +11,6 @@
 # pylint: disable=missing-module-docstring
 import logging
 import traceback
-from ast import literal_eval
 from decimal import Decimal
 from itertools import islice
 from typing import Dict, Iterable, List, Optional, Tuple, cast

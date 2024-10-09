@@ -262,7 +262,9 @@ class TestParameters(BaseModel):
                     testDefinitionName="tableDiff",
                     computePassedFailedRowCount=True,
                     parameterValues=[
-                        TestCaseParameterValue(name="caseSensitiveColumns", value="false")
+                        TestCaseParameterValue(
+                            name="caseSensitiveColumns", value="false"
+                        )
                     ],
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
