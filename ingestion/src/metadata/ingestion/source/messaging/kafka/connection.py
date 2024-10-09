@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import Optional, Union
 
 from confluent_kafka.admin import AdminClient, KafkaException
-from confluent_kafka.avro import AvroDeserializer
+from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
 
 from metadata.generated.schema.entity.automations.workflow import (
