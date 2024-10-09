@@ -59,11 +59,11 @@ class Neo4jHelper:
         """
         Create a Neo4j connection to Database
         """
-        trusted_certificates = (
-            neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
-            if self.conf.neo4j_validate_ssl
-            else neo4j.TRUST_ALL_CERTIFICATES
-        )
+        if self.conf.neo4j_validate_ssl:
+            trusted_certificates = neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+        else:
+            trusted_certificates = neo4j.TRUST_ALL_CERTIFICATES
+            
         return GraphDatabase.driver(
             self.graph_url,
             auth=(self.conf.username, self.conf.password),
