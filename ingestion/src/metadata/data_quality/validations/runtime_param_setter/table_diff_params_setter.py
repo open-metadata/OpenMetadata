@@ -13,6 +13,7 @@ from ast import literal_eval
 from typing import List, Optional
 from urllib.parse import urlparse
 
+from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.models import (
     Column,
     TableDiffRuntimeParameters,
@@ -54,8 +55,8 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             DatabaseService, self.table_entity.service.id, nullable=False
         )
         table2_fqn = self.get_parameter(test_case, "table2")
-        case_sensitive_columns = bool(
-            self.get_parameter(test_case, "caseSensitiveColumns", True)
+        case_sensitive_columns: bool = utils.get_test_case_param_value(
+            test_case.parameterValues, "caseSensitiveColumns", literal_eval, None
         )
         if table2_fqn is None:
             raise ValueError("table2 not set")

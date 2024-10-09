@@ -11,6 +11,7 @@
 # pylint: disable=missing-module-docstring
 import logging
 import traceback
+from ast import literal_eval
 from decimal import Decimal
 from itertools import islice
 from typing import Dict, Iterable, List, Optional, Tuple, cast
@@ -23,6 +24,7 @@ from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
 from sqlalchemy import Column as SAColumn
 
+from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -466,6 +468,6 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                     pass
 
     def get_case_sensitive(self):
-        return self.get_test_case_param_value(
-            self.test_case.parameterValues, "§", str, None
+        return utils.get_test_case_param_value(
+            self.test_case.parameterValues, "caseSensitiveColumns", literal_eval, None
         )

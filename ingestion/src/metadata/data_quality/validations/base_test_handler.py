@@ -20,6 +20,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import TYPE_CHECKING, Callable, List, Optional, Type, TypeVar, Union
 
+from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
@@ -73,29 +74,9 @@ class BaseTestValidator(ABC):
         default: Optional[R] = None,
         pre_processor: Optional[Callable] = None,
     ) -> Optional[Union[R, T]]:
-        """Give a column and a type return the value with the appropriate type casting for the
-        test case definition.
-
-        Args:
-            test_case_param_vals: list of test case parameter values
-            test_case: the test case
-            type_ (Union[float, int, str]): type for the value
-            name (str): column name
-            default (_type_, optional): Default value to return if column is not found
-            pre_processor: pre processor function/type to use against the value before casting to type_
-        """
-        value = next(
-            (param.value for param in test_case_param_vals if param.name == name), None
+        return utils.get_test_case_param_value(
+            test_case_param_vals, name, type_, default, pre_processor
         )
-
-        if value is None:
-            return default if default is not None else None
-
-        if not pre_processor:
-            return type_(value)
-
-        pre_processed_value = pre_processor(value)
-        return type_(pre_processed_value)
 
     def get_test_case_result_object(  # pylint: disable=too-many-arguments
         self,

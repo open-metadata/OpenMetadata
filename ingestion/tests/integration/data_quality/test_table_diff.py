@@ -241,7 +241,7 @@ class TestParameters(BaseModel):
                     computePassedFailedRowCount=True,
                     parameterValues=[
                         TestCaseParameterValue(
-                            name="caseSensitiveColumns", value="true"
+                            name="caseSensitiveColumns", value="True"
                         )
                     ],
                 ),
@@ -249,6 +249,11 @@ class TestParameters(BaseModel):
                 TestCaseResult(
                     timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Failed,
+                    testResultValue=[
+                        TestResultValue(name="removedColumns", value="1"),
+                        TestResultValue(name="addedColumns", value="0"),
+                        TestResultValue(name="changedColumns", value="0"),
+                    ],
                 ),
             ),
             (
@@ -257,7 +262,7 @@ class TestParameters(BaseModel):
                     testDefinitionName="tableDiff",
                     computePassedFailedRowCount=True,
                     parameterValues=[
-                        TestCaseParameterValue(name="caseSensitiveColumns", value="")
+                        TestCaseParameterValue(name="caseSensitiveColumns", value="False")
                     ],
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
@@ -334,7 +339,7 @@ def test_happy_paths(
         },
         "processor": {
             "type": "orm-test-runner",
-            "config": {"testCases": [parameters.test_case_defintion.dict()]},
+            "config": {"testCases": [parameters.test_case_defintion.model_dump()]},
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
