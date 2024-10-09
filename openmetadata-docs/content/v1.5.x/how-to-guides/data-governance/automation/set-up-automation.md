@@ -1,6 +1,7 @@
 ---
 title: How to Set Up Automations in OpenMetadata
 slug: /how-to-guides/data-governance/automation/set-up-automation
+collate: true
 ---
 
 # How to Set Up Automations in Collate

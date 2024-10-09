@@ -1,6 +1,7 @@
 ---
 title: Collate Automations Documentation
 slug: /how-to-guides/data-governance/automation
+collate: true
 ---
 
 # Collate Automations
