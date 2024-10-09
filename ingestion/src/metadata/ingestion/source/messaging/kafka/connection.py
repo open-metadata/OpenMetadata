@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import Optional, Union
 
 from confluent_kafka.admin import AdminClient, KafkaException
-from confluent_kafka.avro import AvroConsumer
+from confluent_kafka.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -104,7 +104,7 @@ def get_connection(
             consumer_config["auto.offset.reset"] = "largest"
         consumer_config["enable.auto.commit"] = False
         logger.debug(f"Using Kafka consumer config: {consumer_config}")
-        consumer_client = AvroConsumer(
+        consumer_client = AvroDeserializer(
             consumer_config, schema_registry=schema_registry_client
         )
 
