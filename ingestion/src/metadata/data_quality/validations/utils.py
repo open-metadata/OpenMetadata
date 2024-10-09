@@ -11,7 +11,7 @@ R = TypeVar("R")
 
 
 def get_test_case_param_value(
-    test_case_param_vals: list[TestCaseParameterValue],
+    test_case_param_vals: List[TestCaseParameterValue],
     name: str,
     type_: T,
     default: Optional[R] = None,
