@@ -200,21 +200,15 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         executionStatus=STATUS_MAP.get(
                             run.state.result_state, StatusType.Failed
                         ),
-                        startTime=Timestamp(
-                            datetime_to_timestamp(run.start_time)
-                        ),
-                        endTime=Timestamp(
-                            datetime_to_timestamp(run.end_time)
-                        ),
+                        startTime=Timestamp(datetime_to_timestamp(run.start_time)),
+                        endTime=Timestamp(datetime_to_timestamp(run.end_time)),
                         logLink=run.run_page_url,
                     )
                     for task in run.tasks or []
                 ]
                 pipeline_status = PipelineStatus(
                     taskStatus=task_status,
-                    timestamp=Timestamp(
-                        datetime_to_timestamp(run.start_time)
-                    ),
+                    timestamp=Timestamp(datetime_to_timestamp(run.start_time)),
                     executionStatus=STATUS_MAP.get(
                         run.state.result_state,
                         StatusType.Failed,

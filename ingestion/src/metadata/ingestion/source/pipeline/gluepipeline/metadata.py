@@ -161,9 +161,7 @@ class GluepipelineSource(PipelineServiceSource):
                                 attempt["JobRunState"].lower(), StatusType.Pending
                             ).value,
                             startTime=Timestamp(
-                                datetime_to_timestamp(
-                                    attempt["StartedOn"].timestamp()
-                                )
+                                datetime_to_timestamp(attempt["StartedOn"].timestamp())
                             ),
                             endTime=Timestamp(
                                 datetime_to_timestamp(
@@ -175,9 +173,7 @@ class GluepipelineSource(PipelineServiceSource):
                     pipeline_status = PipelineStatus(
                         taskStatus=task_status,
                         timestamp=Timestamp(
-                            datetime_to_timestamp(
-                                attempt["StartedOn"].timestamp()
-                            )
+                            datetime_to_timestamp(attempt["StartedOn"].timestamp())
                         ),
                         executionStatus=STATUS_MAP.get(
                             attempt["JobRunState"].lower(), StatusType.Pending

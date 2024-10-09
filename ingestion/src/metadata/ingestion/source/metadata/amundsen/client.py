@@ -63,7 +63,7 @@ class Neo4jHelper:
             trusted_certificates = neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
         else:
             trusted_certificates = neo4j.TRUST_ALL_CERTIFICATES
-            
+
         return GraphDatabase.driver(
             self.graph_url,
             auth=(self.conf.username, self.conf.password),
