@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "outDir": "./build",
+    "rootDir": "./src",
+    "typeRoots": [
+      "./src/@types",
+      "./node_modules/@types"
+    ],
+    "target": "ES5",
+    "module": "esnext",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es2018.promise",
+      "es2018"
+    ],
+    "allowJs": true,
+    "jsx": "react",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": false,
+    "removeComments": false,
+    "noEmit": true,
+    "importHelpers": true,
+    "downlevelIteration": true,
+    "isolatedModules": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowUnreachableCode": false,
+    "skipLibCheck": true,
+    "noImplicitAny": true
+  },
+  "include": [
+    "src"
+  ]
+}
