@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,4 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// keeping same name as variable.less
-
-import { DEFAULT_THEME } from './Appearance.constants';
-
-export const GREEN_3 = '#48ca9e';
-export const GREEN_3_OPACITY = '#48ca9e30';
-export const YELLOW_2 = '#ffbe0e';
-export const RED_3 = '#f24822';
-export const RED_3_OPACITY = '#FF7C501A';
-export const PURPLE_2 = '#7147e8';
-export const TEXT_COLOR = '#292929';
-export const GRAY_COLOR = '#CFD6DD';
-export const WHITE_SMOKE = '#F8F8F8';
-export const PRIMARY_COLOR = DEFAULT_THEME.primaryColor;
+export const CHART_BASE_SIZE = 300;

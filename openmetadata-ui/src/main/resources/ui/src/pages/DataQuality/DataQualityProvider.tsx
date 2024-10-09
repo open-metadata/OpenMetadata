@@ -22,7 +22,7 @@ import { useParams } from 'react-router-dom';
 import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TestSummary } from '../../generated/tests/testCase';
-import { getTestCaseExecutionSummary } from '../../rest/testAPI';
+import { getDataQualityReport } from '../../rest/testAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DataQualityContextInterface,
@@ -52,9 +52,39 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
   }, [testCaseSummary, isTestCaseSummaryLoading, activeTab]);
 
   const fetchTestSummary = async () => {
+    setIsTestCaseSummaryLoading(true);
     try {
-      const response = await getTestCaseExecutionSummary();
-      setTestCaseSummary(response);
+      const { data } = await getDataQualityReport({
+        index: 'testCase',
+        aggregationQuery:
+          'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+      });
+      // Initialize output data with zeros
+      const outputData = {
+        success: 0,
+        failed: 0,
+        aborted: 0,
+        total: 0,
+      };
+
+      // Use reduce to process input data and calculate the counts
+      const updatedData = data.reduce((acc, item) => {
+        const count = parseInt(item.document_count);
+        const status = item['testCaseResult.testCaseStatus'];
+
+        if (status === 'success') {
+          acc.success += count;
+        } else if (status === 'failed') {
+          acc.failed += count;
+        } else if (status === 'aborted') {
+          acc.aborted += count;
+        }
+
+        acc.total += count; // Update total count
+
+        return acc;
+      }, outputData);
+      setTestCaseSummary(updatedData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
