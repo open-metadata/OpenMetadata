@@ -689,14 +689,6 @@ site_menu:
     color: violet-70
     icon: openmetadata
 
-  - category: How-to Guides / Data Quality Observability / Visualize  
-    url: /how-to-guides/data-quality-observability/visualize
-  - category: How-to Guides / Data Quality Observability / Test Cases From YAML Config  
-    url: /how-to-guides/data-quality-observability/quality/test-cases-from-yaml-config
-  - category: How-to Guides / Data Quality Observability / Adding Test Suits  
-    url: /how-to-guides/data-quality-observability/quality/adding-test-suits
-  - category: How-to Guides / Data Quality Observability / Adding Test Cases  
-    url: /how-to-guides/data-quality-observability/quality/adding-test-cases
   - category: How-to Guides / Getting Started  
     url: /how-to-guides/getting-started
   - category: How-to Guides / Day 1  
@@ -814,6 +806,14 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
     url: /how-to-guides/data-quality-observability/quality/configure
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Cases  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-cases
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Suites  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-suites
+  - category: How-to Guides / Data Quality Observability / Data Quality / Test Cases From YAML Config  
+    url: /how-to-guides/data-quality-observability/quality/test-cases-from-yaml-config
+  - category: How-to Guides / Data Quality Observability / Data Quality / How to Visualize Test Results
+    url: /how-to-guides/data-quality-observability/quality/visualize
   - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
     url: /how-to-guides/data-quality-observability/quality/tests-yaml
   - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
