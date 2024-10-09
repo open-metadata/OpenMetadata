@@ -698,7 +698,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case TABLE_TYPE_CUSTOM_PROPERTY: {
         const config = property.customPropertyConfig?.config as Config;
 
-        const columns = value?.columns ?? [];
+        const columns = config?.columns ?? [];
         const rows = value?.rows ?? [];
 
         return (
@@ -707,11 +707,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               <TableTypePropertyView columns={columns} rows={rows} />
             )}
             <EditTableTypePropertyModal
-              columns={config?.columns ?? []}
+              columns={columns}
               isUpdating={isLoading}
               isVisible={showInput}
-              // update this based on coming config
-              maxRowCount={10}
+              maxRowCount={config?.rowCount ?? 10}
               property={property}
               rows={value?.rows ?? []}
               onCancel={onHideInput}
@@ -919,7 +918,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case TABLE_TYPE_CUSTOM_PROPERTY: {
-        const columns = value?.columns ?? [];
+        const columns =
+          (property.customPropertyConfig?.config as Config)?.columns ?? [];
         const rows = value?.rows ?? [];
 
         return <TableTypePropertyView columns={columns} rows={rows} />;

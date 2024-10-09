@@ -452,6 +452,9 @@ const AddCustomProperty = () => {
         className="m-t-md"
         data-testid="custom-property-form"
         form={form}
+        initialValues={{
+          rowCount: 10,
+        }}
         layout="vertical"
         onFinish={handleSubmit}
         onFocus={handleFieldFocus}>
