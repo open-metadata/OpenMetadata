@@ -29,7 +29,6 @@ import { ServiceCategory } from '../enums/service.enum';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
-import { APIServiceType } from '../generated/entity/services/apiService';
 import {
   DashboardService,
   DashboardServiceType,
@@ -100,8 +99,7 @@ export const shouldTestConnection = (serviceType: string) => {
     serviceType !== DashboardServiceType.CustomDashboard &&
     serviceType !== MlModelServiceType.CustomMlModel &&
     serviceType !== PipelineServiceType.CustomPipeline &&
-    serviceType !== StorageServiceType.CustomStorage &&
-    serviceType !== APIServiceType.REST
+    serviceType !== StorageServiceType.CustomStorage
   );
 };
 
@@ -348,7 +346,7 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
     return GlobalSettingOptions.SEARCH;
   }
 
-  if (type === 'apiServices') {
+  if (type === ServiceCategory.API_SERVICES) {
     return GlobalSettingOptions.APIS;
   }
 
@@ -387,7 +385,6 @@ export const getResourceEntityFromServiceCategory = (
     case ServiceCategory.STORAGE_SERVICES:
       return ResourceEntity.STORAGE_SERVICE;
 
-    case 'apiServices':
     case ServiceCategory.API_SERVICES:
       return ResourceEntity.API_SERVICE;
   }
