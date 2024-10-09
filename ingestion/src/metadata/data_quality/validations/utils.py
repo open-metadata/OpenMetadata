@@ -1,7 +1,8 @@
 """
 Data quality validation utility functions.
 """
-from typing import Callable, Optional, TypeVar, Union
+
+from typing import Callable, List, Optional, TypeVar, Union
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 
@@ -40,7 +41,7 @@ def get_test_case_param_value(
 
 
 def get_bool_test_case_param(
-    test_case_param_vals: list[TestCaseParameterValue],
+    test_case_param_vals: List[TestCaseParameterValue],
     name: str,
     default: Optional[R] = None,
 ) -> Optional[Union[R, T]]:
