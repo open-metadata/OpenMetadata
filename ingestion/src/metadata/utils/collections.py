@@ -9,10 +9,10 @@ class CaseInsensitiveString(str):
     """
 
     def __eq__(self, other):
-        return self.lower() == other.lower()
+        return self.casefold() == other.casefold()
 
     def __hash__(self):
-        return hash(self.lower())
+        return hash(self.casefold())
 
 
 class CaseInsensitiveList(list):
