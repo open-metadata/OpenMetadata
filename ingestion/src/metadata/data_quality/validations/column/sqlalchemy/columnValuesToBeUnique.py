@@ -63,7 +63,7 @@ class ColumnValuesToBeUniqueValidator(
         )  # type: ignore
 
         try:
-            self.value = model_dump(self.runner.dispatch_query_select_first(count, unique_count.scalar_subquery().label("uniqueCount")))  # type: ignore
+            self.value = dict(self.runner.dispatch_query_select_first(count, unique_count.scalar_subquery().label("uniqueCount")))  # type: ignore
             res = self.value.get(Metrics.COUNT.name)
         except Exception as exc:
             raise SQLAlchemyError(exc)

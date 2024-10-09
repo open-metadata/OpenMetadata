@@ -106,7 +106,7 @@ class SQAValidatorMixin:
         Returns:
         """
         try:
-            value = model_dump(
+            value = dict(
                 runner.dispatch_query_select_first(
                     Metrics.ROW_COUNT(column).fn(),
                     query_filter_=query_filter,
