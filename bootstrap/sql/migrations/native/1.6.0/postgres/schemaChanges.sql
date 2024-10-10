@@ -13,3 +13,8 @@ CREATE TABLE IF NOT EXISTS apps_data_store (
     type VARCHAR(256) NOT NULL,   
     json JSON NOT NULL
 );
+
+-- Migrate api service type from 'REST' to 'Rest'
+UPDATE api_service_entity
+SET json = jsonb_set(json, '{connection,config,type}', '"Rest"')
+WHERE jsonb_extract_path_text(json, 'connection', 'config', 'type') = 'REST';

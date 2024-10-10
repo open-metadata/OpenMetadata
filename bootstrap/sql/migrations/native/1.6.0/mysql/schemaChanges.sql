@@ -13,3 +13,8 @@ CREATE TABLE IF NOT EXISTS apps_data_store (
     type VARCHAR(256) NOT NULL,   
     json JSON NOT NULL
 );
+
+-- Migrate api service type from 'REST' to 'Rest'
+UPDATE api_service_entity
+SET json = JSON_SET(json, '$.connection.config.type', 'Rest')
+WHERE JSON_EXTRACT(json, '$.connection.config.type') in ('REST');
