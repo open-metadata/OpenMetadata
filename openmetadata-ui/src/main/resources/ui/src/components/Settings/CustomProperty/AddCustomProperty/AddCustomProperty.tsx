@@ -403,7 +403,12 @@ const AddCustomProperty = () => {
           validator: async (_, value) => {
             if (isArray(value)) {
               if (value.length > 3) {
-                return Promise.reject('Max 3 columns are allowed');
+                return Promise.reject(
+                  t('message.maximum-count-allowed', {
+                    count: 3,
+                    label: t('label.column-plural'),
+                  })
+                );
               }
 
               return Promise.resolve();

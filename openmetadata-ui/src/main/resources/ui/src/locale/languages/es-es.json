@@ -1602,6 +1602,7 @@
     "mark-deleted-table-message": "Esta es una configuración opcional para habilitar la eliminación suave de tablas. Cuando se habilita esta opción, sólo se eliminarán suavemente las tablas que se hayan eliminado de la fuente, y esto se aplicará únicamente al esquema que se esté ingiriendo actualmente a través de la canalización. Cualquier entidad relacionada, como tests o información de linaje que estuvieran asociados con esas tablas, también se eliminarán.",
     "markdown-editor-placeholder": "Usa @mención para etiquetar a un usuario o equipo.\n Usa #mención para etiquetar un activo de datos.",
     "marketplace-verify-msg": "OpenMetadata ha verificado que el editor controla el dominio y cumple con otros requisitos.",
+    "maximum-count-allowed": "Maximum {{count}} {{label}} are allowed",
     "maximum-value-error": "The maximum value should be greater than the minimum value.",
     "member-description": "Optimiza el acceso a usuarios y equipos en OpenMetadata.",
     "mentioned-you-on-the-lowercase": "te mencionó en",

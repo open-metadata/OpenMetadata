@@ -1602,6 +1602,7 @@
     "mark-deleted-table-message": "Dit is een optionele configuratie voor het inschakelen van zachte verwijdering van tabellen. Wanneer deze optie is ingeschakeld, worden alleen tabellen die zijn verwijderd uit de bron zacht verwijderd, en dit is uitsluitend van toepassing op het schema dat momenteel wordt ingenomen via de pipeline. Elke gerelateerde entiteit, zoals testsuites of lineage-informatie, die met die tabellen was geassocieerd, wordt ook verwijderd.",
     "markdown-editor-placeholder": "Gebruik @mention om een gebruiker of een team te taggen.\nGebruik #mention om een data-asset te taggen.",
     "marketplace-verify-msg": "OpenMetadata heeft geverifieerd dat de publisher het domein beheert en aan andere eisen voldoet.",
+    "maximum-count-allowed": "Maximum {{count}} {{label}} are allowed",
     "maximum-value-error": "The maximum value should be greater than the minimum value.",
     "member-description": "Stroomlijn toegang voor gebruikers en teams in OpenMetadata.",
     "mentioned-you-on-the-lowercase": "noemde je op de",

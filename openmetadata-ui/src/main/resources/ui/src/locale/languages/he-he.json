@@ -1602,6 +1602,7 @@
     "mark-deleted-table-message": "זו הגדרת אופציונלית לאפשר מחיקה רכה של טבלאות. כאשר האפשרות מופעלת, רק טבלאות שנמחקו ממקור הנתונים יימחקו רכה, וזה יחול באופן בלעדי על הסכמה הנמצאת כעת בתהליך קליטת הנתונים דרך הצנרת נתונים. יימחקו גם יישויות קשורות כמו סוויטי ניסויים או מידע של שקפיות המשוייכים לטבלאות אלו.",
     "markdown-editor-placeholder": "השתמש ב-@תייג לתייג משתמש או צוות.\nהשתמש ב-#תייג לתייג נכס נתונים.",
     "marketplace-verify-msg": "OpenMetadata אישרה שהמוציא לפועל שולט בדומיין ועומד בדרישות האחרות.",
+    "maximum-count-allowed": "Maximum {{count}} {{label}} are allowed",
     "maximum-value-error": "The maximum value should be greater than the minimum value.",
     "member-description": "Streamline access to users and teams in OpenMetadata.",
     "mentioned-you-on-the-lowercase": "ציין אותך ב",
