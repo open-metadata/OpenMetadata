@@ -43,3 +43,18 @@ UPDATE installed_apps SET json = JSON_SET(json, '$.supportsInterrupt', true) whe
 UPDATE apps_marketplace  SET json = JSON_SET(json, '$.supportsInterrupt', true) where name = 'SearchIndexingApplication';
 
 ALTER TABLE apps_extension_time_series ADD COLUMN appName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.appName') STORED NOT NULL;
+
+-- Update serviceType in api_endpoint_entity table
+UPDATE api_endpoint_entity
+SET json = JSON_SET(json, '$.serviceType', 'Rest')
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.serviceType')) = 'REST';
+
+-- Update serviceType in api_service_entity table
+UPDATE api_service_entity
+SET json = JSON_SET(json, '$.serviceType', 'Rest')
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.serviceType')) = 'REST';
+
+-- Update serviceType in api_collection_entity table
+UPDATE api_collection_entity
+SET json = JSON_SET(json, '$.serviceType', 'Rest')
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.serviceType')) = 'REST';
