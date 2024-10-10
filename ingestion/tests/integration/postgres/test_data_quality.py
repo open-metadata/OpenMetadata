@@ -226,6 +226,7 @@ def test_all_definition_exists(metadata, run_data_quality_workflow, db_service):
     test_definitions: List[str] = []
     for test_definition_file in glob.glob(test_difinitions_glob, recursive=False):
         test_definitions.append(json.load(open(test_definition_file))["name"])
+    assert len(test_definitions) > 0
     table: Table = metadata.get_by_name(
         Table,
         f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
@@ -263,9 +264,13 @@ def test_all_definition_exists(metadata, run_data_quality_workflow, db_service):
     }
     missing = set()
     for test_definition in test_definitions:
-        if test_definition in excluded:
-            continue
-        if not test_definition in tcs_dict:
+        if test_definition in tcs_dict:
+            assert (
+                test_definition not in excluded
+            ), f"Remove test from excluded list: {test_definition}"
+        else:
+            if test_definition in excluded:
+                continue
             missing.add(test_definition.fullyQualifiedName.root)
     assert not missing, f"Missing test cases: {missing}"
 
