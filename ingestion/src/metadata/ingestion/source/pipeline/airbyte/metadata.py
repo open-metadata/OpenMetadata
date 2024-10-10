@@ -50,7 +50,6 @@ from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceS
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -149,12 +148,12 @@ class AirbyteSource(PipelineServiceSource):
                 continue
             for attempt in job["attempts"]:
                 created_at = (
-                    convert_timestamp_to_milliseconds(attempt["createdAt"])
+                    datetime_to_timestamp(attempt["createdAt"])
                     if attempt.get("createdAt")
                     else None
                 )
                 ended_at = (
-                    convert_timestamp_to_milliseconds(attempt["endedAt"])
+                    datetime_to_timestamp(attempt["endedAt"])
                     if attempt.get("endedAt")
                     else None
                 )
