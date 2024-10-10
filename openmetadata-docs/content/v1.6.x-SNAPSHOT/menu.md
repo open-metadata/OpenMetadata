@@ -2106,4 +2106,12 @@ site_menu:
     url: /sdk/java
   - category: SDK / Go
     url: /sdk/go
+  
+  - category: Metapilot
+    url: /metapilot
+    isCollateOnly: true
+  
+   category: Metapilot / How to Use MetaPilot
+    url: /metapilot/how-to-use-metapilot
+    isCollateOnly: true
 ---
