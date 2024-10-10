@@ -14,7 +14,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -23,20 +25,24 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
   private static TableResourceTest tableResourceTest;
+  private static TestCaseResourceTest testCaseResourceTest;
 
   @BeforeAll
   public static void setup(TestInfo test) throws URISyntaxException, IOException {
     tableResourceTest = new TableResourceTest();
     tableResourceTest.setup(test);
+    testCaseResourceTest = new TestCaseResourceTest();
   }
 
   @Test
@@ -47,6 +53,7 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
             .withRootObject(alertsRuleEvaluator)
             .build();
     assertTrue(evaluateExpression("matchAnySource('alert')", evaluationContext));
@@ -73,6 +80,7 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
             .withRootObject(alertsRuleEvaluator)
             .build();
     assertTrue(
@@ -81,12 +89,25 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     assertFalse(evaluateExpression("matchAnyOwnerName('tempName')", evaluationContext));
   }
 
-  // issue: https://github.com/open-metadata/OpenMetadata/issues/10376
-  void test_matchAnyEntityFqn(TestInfo test) throws IOException {
+  @Test
+  void test_matchAnyEntityFqn() throws IOException {
     // Create Table Entity
+    // SpEl parsing fails for non-basic UTF-8
+    // https://github.com/open-metadata/OpenMetadata/issues/10376
     List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
-    CreateTable create = tableResourceTest.createRequest(test).withColumns(columns);
+    CreateTable create = tableResourceTest.createRequest("table").withColumns(columns);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    createdTable.setFullyQualifiedName(
+        "ServiceName.DatabaseName.SchemaName." + createdTable.getName());
+    CreateTestCase createTestCase = testCaseResourceTest.createRequest("testCase");
+    TestCase testCase =
+        testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+    testCase = Entity.getEntity(testCase.getEntityReference(), "testSuites", Include.ALL);
+    testCase.setFullyQualifiedName(
+        "ServiceName.DatabaseName.SchemaName.table." + testCase.getName());
+    String testSuiteFqn =
+        "ServiceName.DatabaseName.SchemaName.table." + testCase.getName() + ".testSuite";
+    testCase.getTestSuites().get(0).setFullyQualifiedName(testSuiteFqn);
 
     // Create a change Event with the Entity Table
     ChangeEvent changeEvent = new ChangeEvent();
@@ -97,11 +118,27 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
             .withRootObject(alertsRuleEvaluator)
             .build();
     String fqn = createdTable.getFullyQualifiedName();
-    assertTrue(evaluateExpression("matchAnyEntityFqn('" + fqn + "')", evaluationContext));
-    assertFalse(evaluateExpression("matchAnyEntityFqn('testFQN1')", evaluationContext));
+    assertTrue(evaluateExpression("matchAnyEntityFqn({'" + fqn + "'})", evaluationContext));
+    assertFalse(evaluateExpression("(matchAnyEntityFqn({'FOO'}))", evaluationContext));
+
+    // Create a change Event with the Entity Test Case
+    changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setEntity(testCase);
+    // Test Entity FQN match for test case
+    alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+    assertTrue(
+        evaluateExpression("matchAnyEntityFqn({'" + testSuiteFqn + "'})", evaluationContext));
+    assertFalse(evaluateExpression("(matchAnyEntityFqn({'FOO'}))", evaluationContext));
   }
 
   @Test
@@ -120,6 +157,7 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
             .withRootObject(alertsRuleEvaluator)
             .build();
     String id = createdTable.getId().toString();
@@ -138,6 +176,7 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
             .withRootObject(alertsRuleEvaluator)
             .build();
     assertTrue(evaluateExpression("matchAnyEventType('entityCreated')", evaluationContext));
@@ -164,6 +203,7 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
             .withRootObject(alertsRuleEvaluator)
             .build();
     assertTrue(evaluateExpression("matchTestResult('Success')", evaluationContext));
@@ -180,6 +220,7 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
             .withRootObject(alertsRuleEvaluator)
             .build();
     assertTrue(evaluateExpression("matchUpdatedBy('test')", evaluationContext));
@@ -200,6 +241,7 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
             .withRootObject(alertsRuleEvaluator)
             .build();
     assertTrue(evaluateExpression("matchAnyFieldChange('test')", evaluationContext));
