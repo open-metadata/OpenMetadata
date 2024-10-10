@@ -24,9 +24,11 @@ from typing_extensions import Annotated
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import quote
+from metadata.ingestion.source.models import TableView
 from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ometa_logger
 
@@ -90,7 +92,7 @@ class ESMixin(Generic[T]):
 
     # sort_field needs to be unique for the pagination to work, so we can use the FQN
     paginate_query = (
-        "/search/query?q=&size={size}&deleted=false{filter}&index={index}"
+        "/search/query?q=&size={size}&deleted=false{filter}&index={index}{include_fields}"
         "&sort_field=fullyQualifiedName{after}"
     )
 
@@ -301,13 +303,19 @@ class ESMixin(Generic[T]):
             logger.warning(f"Unknown error extracting results from ES query [{err}]")
             return None
 
-    def paginate_es(
+    def _get_include_fields_query(self, fields: Optional[List[str]]) -> str:
+        """Get the include fields query"""
+        if fields:
+            return "&include_source_fields=" + "&include_source_fields=".join(fields)
+        return ""
+
+    def _paginate_es_internal(
         self,
         entity: Type[T],
         query_filter: Optional[str] = None,
         size: int = 100,
-        fields: Optional[List[str]] = None,
-    ) -> Iterator[T]:
+        include_fields: Optional[List[str]] = None,
+    ) -> Iterator[ESResponse]:
         """Paginate through the ES results, ignoring individual errors"""
         after: Optional[str] = None
         error_pages = 0
@@ -316,6 +324,7 @@ class ESMixin(Generic[T]):
             index=ES_INDEX_MAP[entity.__name__],
             filter="&query_filter=" + quote_plus(query_filter) if query_filter else "",
             size=size,
+            include_fields=self._get_include_fields_query(include_fields),
         )
         while True:
             query_string = query(
@@ -330,10 +339,7 @@ class ESMixin(Generic[T]):
                     continue
                 else:
                     break
-
-            yield from self._yield_hits_from_api(
-                response=response, entity=entity, fields=fields
-            )
+            yield response
 
             # Get next page
             last_hit = response.hits.hits[-1] if response.hits.hits else None
@@ -342,6 +348,18 @@ class ESMixin(Generic[T]):
                 break
 
             after = ",".join(last_hit.sort)
+
+    def paginate_es(
+        self,
+        entity: Type[T],
+        query_filter: Optional[str] = None,
+        size: int = 100,
+        fields: Optional[List[str]] = None,
+    ) -> Iterator[T]:
+        for response in self._paginate_es_internal(entity, query_filter, size):
+            yield from self._yield_hits_from_api(
+                response=response, entity=entity, fields=fields
+            )
 
     def _get_es_response(self, query_string: str) -> Optional[ESResponse]:
         """Get the Elasticsearch response"""
@@ -368,4 +386,43 @@ class ESMixin(Generic[T]):
             except Exception as exc:
                 logger.warning(
                     f"Error while getting {hit.source['fullyQualifiedName']} - {exc}"
+                )
+
+    def yield_es_view_def(
+        self,
+        service_name: str,
+    ) -> Iterable[TableView]:
+        """
+        Get the view definition from ES
+        """
+
+        from metadata.utils import fqn
+
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"term": {"service.name.keyword": service_name}},
+                        {"term": {"tableType": TableType.View.value}},
+                        {"exists": {"field": "schemaDefinition"}},
+                    ]
+                }
+            }
+        }
+        query = json.dumps(query)
+        for response in self._paginate_es_internal(
+            entity=Table,
+            query_filter=query,
+            include_fields=["schemaDefinition", "fullyQualifiedName"],
+        ):
+            for hit in response.hits.hits:
+                _, database_name, schema_name, table_name = fqn.split(
+                    hit.source["fullyQualifiedName"]
+                )
+                yield TableView(
+                    view_definition=hit.source["schemaDefinition"],
+                    service_name=service_name,
+                    db_name=database_name,
+                    schema_name=schema_name,
+                    table_name=table_name,
                 )
