@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/system/onboarding/onboardingWorkflow.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Onboarding Workflow",
+  "type": "object",
+  "description": "Defines the onboarding process for a specific persona.",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the onboarding flow."
+    },
+    "persona": {
+      "type": "string",
+      "description": "User persona associated with this onboarding flow."
+    },
+    "checklist": {
+      "$ref": "checklist.json",
+      "description": "Checklist of items for the onboarding flow."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata for the onboarding flow."
+    }
+  },
+  "required": ["id", "persona", "checklist"]
+}

@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/system/onboarding/onboardingStatus.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Onboarding Status",
+  "type": "object",
+  "description": "Tracks the user's progress through the onboarding flow.",
+  "properties": {
+    "userId": {
+      "type": "string",
+      "description": "Unique identifier for the user."
+    },
+    "onboardingFlowId": {
+      "type": "string",
+      "description": "Identifier of the onboarding flow the user is following."
+    },
+    "progress": {
+      "type": "array",
+      "items": {
+        "$ref": "checklistItemProgress.json"
+      },
+      "description": "List of checklist items and their completion status."
+    }
+  },
+  "required": ["userId", "onboardingFlowId", "progress"]
+}
