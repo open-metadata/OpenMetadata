@@ -13,6 +13,12 @@ site_menu:
     url: /quick-start/local-kubernetes-deployment
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
+  - category: Quickstart / Getting Started  
+    url: /quick-start/getting-started
+  - category: Quickstart / Day 1  
+    url: /quick-start/getting-started/day-1
+  - category: Quickstart / Day 1 / Database Service Setup
+    url: /quick-start/getting-started/day-1/database-service-setup
 
   - category: Deployment
     url: /deployment
@@ -689,12 +695,6 @@ site_menu:
     color: violet-70
     icon: openmetadata
 
-  - category: How-to Guides / Getting Started  
-    url: /how-to-guides/getting-started
-  - category: How-to Guides / Day 1  
-    url: /how-to-guides/getting-started/day-1
-  - category: How-to Guides / Day 1 / Database Service Setup
-    url: /how-to-guides/getting-started/day-1/database-service-setup
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
   - category: How-to Guides / Admin Guide / How to Ingest Metadata

@@ -44,3 +44,14 @@ Get OpenMetadata up and running with kubernetes in under 5 minutes!
 {% /inlineCallout %}
 
 {% /inlineCalloutContainer %}
+
+Set up and explore OpenMetadata's core features, from basic configuration to advanced functionalities, for a seamless onboarding experience.
+
+{% tilesContainer %}
+{% tile
+    title="Getting Started"
+    description="Unlock metadata insights for informed business decisions."
+    link="/how-to-guides/getting-started"
+    icon="discovery"
+/%}
+{% /tilesContainer %}
