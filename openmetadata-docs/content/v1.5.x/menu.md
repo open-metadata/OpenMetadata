@@ -386,12 +386,6 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
-  - category: Connectors / Database / Synapse
-    url: /connectors/database/synapse
-  - category: Connectors / Database / Synapse / Run Externally
-    url: /connectors/database/synapse/yaml
-  - category: Connectors / Database / Synapse / Troubleshooting
-    url: /connectors/database/synapse/troubleshooting
   - category: Connectors / Database / S3 Datalake
     url: /connectors/database/s3-datalake
   - category: Connectors / Database / S3 Datalake / Run Externally
@@ -872,12 +866,6 @@ site_menu:
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
-  - category: How-to Guides / Data Governance / Automation
-    url: /how-to-guides/data-governance/automation
-    isCollateOnly: true
-  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate 
-    url: /how-to-guides/data-governance/automation/set-up-automation
-    isCollateOnly: true
   - category: How-to Guides / Data Governance / Glossary
     url: /how-to-guides/data-governance/glossary
   - category: How-to Guides / Data Governance / Glossary / What is a Glossary Term
