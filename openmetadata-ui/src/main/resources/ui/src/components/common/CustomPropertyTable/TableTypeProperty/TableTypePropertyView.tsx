@@ -13,7 +13,9 @@
 import { isArray, isEmpty } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import Table from '../../Table/Table';
+import './table-type-property-view.less';
 
 interface TableTypePropertyViewProps {
   columns: string[];
@@ -42,13 +44,14 @@ const TableTypePropertyView: FC<TableTypePropertyViewProps> = ({
     title: column,
     dataIndex: column,
     key: column,
+    render: (text: string) => text ?? NO_DATA_PLACEHOLDER,
   }));
 
   return (
     <Table
       bordered
       resizableColumns
-      className="w-full"
+      className="w-full table-type-custom-property"
       columns={tableColumns}
       data-testid="table-type-property-value"
       dataSource={rows}
