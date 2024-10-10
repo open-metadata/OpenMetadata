@@ -7,6 +7,13 @@ CREATE INDEX IF NOT EXISTS apps_extension_time_series_extension ON apps_extensio
 -- Clean dangling workflows not removed after test connection
 truncate automations_workflow;
 
+-- App Data Store
+CREATE TABLE IF NOT EXISTS apps_data_store (
+    identifier VARCHAR(256) NOT NULL,      
+    type VARCHAR(256) NOT NULL,   
+    json JSON NOT NULL
+);
+
 -- Migrate api service type from 'REST' to 'Rest'
 UPDATE api_service_entity
 SET json = jsonb_set(json, '{connection,config,type}', '"Rest"')
