@@ -21,7 +21,6 @@ import {
 import {
   Config,
   CustomProperty,
-  ValueClass,
 } from '../../../../generated/type/customProperty';
 import {
   FieldProp,
@@ -32,7 +31,7 @@ import { generateFormFields } from '../../../../utils/formUtils';
 
 export interface FormData {
   description: string;
-  customPropertyConfig: string[] | ValueClass[];
+  customPropertyConfig: string[];
   multiSelect?: boolean;
 }
 
