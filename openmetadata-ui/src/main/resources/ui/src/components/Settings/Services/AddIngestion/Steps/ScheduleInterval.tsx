@@ -12,18 +12,34 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Button, Col, Form, FormProps } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  FormProps,
+  Radio,
+  Row,
+  Space,
+  Typography,
+} from 'antd';
+import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SCHEDULAR_OPTIONS } from '../../../../../constants/Schedular.constants';
 import { LOADING_STATE } from '../../../../../enums/common.enum';
+import { SchedularOptions } from '../../../../../enums/Schedular.enum';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
 } from '../../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../../utils/formUtils';
+import { getDefaultIngestionSchedule } from '../../../../../utils/IngestionUtils';
 import CronEditor from '../../../../common/CronEditor/CronEditor';
 import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
+import './schedule-interval.less';
 
 const ScheduleInterval = ({
   disabledCronChange,
@@ -31,14 +47,42 @@ const ScheduleInterval = ({
   onBack,
   onChange,
   onDeploy,
+  savedScheduleInterval,
   scheduleInterval,
   status,
   submitButtonLabel,
   children,
   allowEnableDebugLog = false,
   debugLogInitialValue = false,
+  isEditMode = false,
 }: ScheduleIntervalProps) => {
   const { t } = useTranslation();
+  const [selectedSchedular, setSelectedSchedular] =
+    React.useState<SchedularOptions>(
+      isEmpty(scheduleInterval)
+        ? SchedularOptions.ON_DEMAND
+        : SchedularOptions.SCHEDULE
+    );
+
+  const handleSelectedSchedular = useCallback(
+    (value: SchedularOptions) => {
+      setSelectedSchedular(value);
+      if (value === SchedularOptions.ON_DEMAND) {
+        onChange('');
+      } else {
+        onChange(
+          isEditMode && !isEmpty(savedScheduleInterval)
+            ? savedScheduleInterval
+            : getDefaultIngestionSchedule({
+                scheduleInterval,
+                isEditMode,
+              })
+        );
+      }
+    },
+    [isEditMode, selectedSchedular, scheduleInterval]
+  );
+
   const formFields: FieldProp[] = useMemo(
     () => [
       {
@@ -73,46 +117,78 @@ const ScheduleInterval = ({
       data-testid="schedule-intervel-container"
       layout="vertical"
       onFinish={handleFormSubmit}>
-      <CronEditor
-        disabledCronChange={disabledCronChange}
-        includePeriodOptions={includePeriodOptions}
-        value={scheduleInterval}
-        onChange={onChange}
-      />
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Radio.Group
+            className="schedular-card-container"
+            value={selectedSchedular}>
+            {SCHEDULAR_OPTIONS.map(({ description, title, value }) => (
+              <Card
+                className={classNames('schedular-card', {
+                  active: value === selectedSchedular,
+                })}
+                key={value}
+                onClick={() => handleSelectedSchedular(value)}>
+                <Radio value={value}>
+                  <Space direction="vertical" size={6}>
+                    <Typography.Text className="font-medium text-md">
+                      {title}
+                    </Typography.Text>
+                    <Typography.Text className="text-grey-muted">
+                      {description}
+                    </Typography.Text>
+                  </Space>
+                </Radio>
+              </Card>
+            ))}
+          </Radio.Group>
+        </Col>
 
-      {allowEnableDebugLog && (
-        <div className="mt-4">{generateFormFields(formFields)}</div>
-      )}
-
-      {children}
-
-      <Col className="d-flex justify-end mt-4" span={24}>
-        <Button
-          className="m-r-xs"
-          data-testid="back-button"
-          type="link"
-          onClick={onBack}>
-          <span>{t('label.back')}</span>
-        </Button>
-
-        {status === 'success' ? (
-          <Button
-            disabled
-            className="w-16 opacity-100 p-x-md p-y-xxs"
-            type="primary">
-            <CheckOutlined />
-          </Button>
-        ) : (
-          <Button
-            className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-            data-testid="deploy-button"
-            htmlType="submit"
-            loading={status === LOADING_STATE.WAITING}
-            type="primary">
-            {submitButtonLabel}
-          </Button>
+        {selectedSchedular === SchedularOptions.SCHEDULE && (
+          <Col span={24}>
+            <CronEditor
+              disabledCronChange={disabledCronChange}
+              includePeriodOptions={includePeriodOptions}
+              value={scheduleInterval}
+              onChange={onChange}
+            />
+          </Col>
         )}
-      </Col>
+
+        {allowEnableDebugLog && (
+          <Col span={24}>{generateFormFields(formFields)}</Col>
+        )}
+
+        {children && <Col span={24}>{children}</Col>}
+
+        <Col className="d-flex justify-end" span={24}>
+          <Button
+            className="m-r-xs"
+            data-testid="back-button"
+            type="link"
+            onClick={onBack}>
+            <span>{t('label.back')}</span>
+          </Button>
+
+          {status === 'success' ? (
+            <Button
+              disabled
+              className="w-16 opacity-100 p-x-md p-y-xxs"
+              type="primary">
+              <CheckOutlined />
+            </Button>
+          ) : (
+            <Button
+              className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+              data-testid="deploy-button"
+              htmlType="submit"
+              loading={status === LOADING_STATE.WAITING}
+              type="primary">
+              {submitButtonLabel}
+            </Button>
+          )}
+        </Col>
+      </Row>
     </Form>
   );
 };

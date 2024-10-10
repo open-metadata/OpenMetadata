@@ -13,7 +13,7 @@
 
 import { Form, Input, Typography } from 'antd';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
@@ -26,16 +26,16 @@ import {
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
-import { getSuccessMessage } from '../../../../utils/IngestionUtils';
+import {
+  getDefaultIngestionSchedule,
+  getSuccessMessage,
+} from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
-import {
-  getDayCron,
-  getWeekCron,
-} from '../../../common/CronEditor/CronEditor.constant';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
@@ -70,8 +70,11 @@ const AddIngestion = ({
   onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
+  const { ingestionFQN } = useFqn();
   const { currentUser } = useApplicationStore();
   const { config: limitConfig } = useLimitStore();
+
+  const isEditMode = !isEmpty(ingestionFQN);
 
   const { pipelineSchedules } =
     limitConfig?.limits?.config.featureLimits.find(
@@ -94,12 +97,15 @@ const AddIngestion = ({
   );
 
   const [scheduleInterval, setScheduleInterval] = useState(() =>
-    data?.airflowConfig.scheduleInterval ?? limitConfig?.enable
-      ? getWeekCron({ hour: 0, min: 0, dow: 1 })
-      : getDayCron({
-          min: 0,
-          hour: 0,
-        })
+    getDefaultIngestionSchedule({
+      isEditMode,
+      scheduleInterval: data?.airflowConfig.scheduleInterval,
+    })
+  );
+
+  const handleScheduleIntervalChange = useCallback(
+    (value?: string) => setScheduleInterval(value),
+    []
   );
 
   const { ingestionName, retries } = useMemo(
@@ -312,16 +318,17 @@ const AddIngestion = ({
                 ? ['day']
                 : periodOptions
             }
+            isEditMode={isEditMode}
+            savedScheduleInterval={data?.airflowConfig.scheduleInterval}
             scheduleInterval={scheduleInterval}
             status={saveState}
             submitButtonLabel={
               isUndefined(data) ? t('label.add-deploy') : t('label.submit')
             }
             onBack={() => handlePrev(1)}
-            onChange={(data) => setScheduleInterval(data)}
+            onChange={handleScheduleIntervalChange}
             onDeploy={handleScheduleIntervalDeployClick}>
             <Form.Item
-              className="m-t-xs"
               colon={false}
               initialValue={retries}
               label={t('label.number-of-retries')}

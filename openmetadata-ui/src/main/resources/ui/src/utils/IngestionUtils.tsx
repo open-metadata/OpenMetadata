@@ -14,9 +14,10 @@
 import { Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { t } from 'i18next';
-import { isUndefined, startCase } from 'lodash';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
+import { getDayCron } from '../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ConnectionStepCard from '../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { getServiceDetailsPath } from '../constants/constants';
@@ -395,3 +396,32 @@ export const getExpandableStatusRow = (
   expandedRowKeys: expandedKeys,
   rowExpandable: (record) => (record.failures?.length ?? 0) > 0,
 });
+
+export const getDefaultIngestionSchedule = ({
+  isEditMode = false,
+  scheduleInterval,
+  defaultSchedule,
+}: {
+  isEditMode?: boolean;
+  scheduleInterval?: string;
+  defaultSchedule?: string;
+}) => {
+  // If it is edit mode, then return the schedule interval from the ingestion data
+  if (isEditMode) {
+    return scheduleInterval;
+  }
+
+  // If it is not edit mode and schedule interval is not empty, then return the schedule interval
+  if (!isEmpty(scheduleInterval)) {
+    return scheduleInterval;
+  }
+
+  // If it is not edit mode, then return the default schedule
+  return (
+    defaultSchedule ??
+    getDayCron({
+      min: 0,
+      hour: 0,
+    })
+  );
+};
