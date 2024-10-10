@@ -232,31 +232,6 @@ public class OpenSearchClient implements SearchClient {
           "chart_suggest",
           "field_suggest");
 
-  private static final Set<String> FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP =
-      Set.of(
-          "suggest",
-          "service_suggest",
-          "column_suggest",
-          "schema_suggest",
-          "database_suggest",
-          "lifeCycle",
-          "fqnParts",
-          "chart_suggest",
-          "field_suggest",
-          "lineage",
-          "entityRelationship",
-          "customMetrics",
-          "descriptionStatus",
-          "columnNames",
-          "totalVotes",
-          "usageSummary",
-          "entityType",
-          "dataProducts",
-          "tags",
-          "followers",
-          "domain",
-          "votes",
-          "tier");
   private static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
       Stream.concat(
               FIELDS_TO_REMOVE.stream(),
@@ -807,8 +782,7 @@ public class OpenSearchClient implements SearchClient {
       Set<Map<String, Object>> nodes,
       String queryFilter,
       String direction,
-      boolean deleted,
-      boolean add_nodes)
+      boolean deleted)
       throws IOException {
     if (depth <= 0) {
       return;
@@ -846,39 +820,23 @@ public class OpenSearchClient implements SearchClient {
     for (var hit : searchResponse.getHits().getHits()) {
       List<Map<String, Object>> entityRelationship =
           (List<Map<String, Object>>) hit.getSourceAsMap().get("entityRelationship");
-      if (add_nodes) {
-        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-        tempMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
-        nodes.add(tempMap);
-      }
+      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      tempMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
+      nodes.add(tempMap);
       for (Map<String, Object> er : entityRelationship) {
         Map<String, String> entity = (HashMap<String, String>) er.get("entity");
         Map<String, String> relatedEntity = (HashMap<String, String>) er.get("relatedEntity");
-        if (direction.equalsIgnoreCase("entityRelationship.entity.fqnHash.keyword")) {
+        if (direction.equalsIgnoreCase(ENTITY_RELATIONSHIP_DIRECTION_ENTITY)) {
           if (!edges.contains(er) && entity.get("fqn").equals(fqn)) {
             edges.add(er);
             getEntityRelationship(
-                relatedEntity.get("fqn"),
-                depth - 1,
-                edges,
-                nodes,
-                queryFilter,
-                direction,
-                deleted,
-                add_nodes);
+                relatedEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
           }
         } else {
           if (!edges.contains(er) && relatedEntity.get("fqn").equals(fqn)) {
             edges.add(er);
             getEntityRelationship(
-                entity.get("fqn"),
-                depth - 1,
-                edges,
-                nodes,
-                queryFilter,
-                direction,
-                deleted,
-                add_nodes);
+                entity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
           }
         }
       }
@@ -910,18 +868,16 @@ public class OpenSearchClient implements SearchClient {
         edges,
         nodes,
         queryFilter,
-        "entityRelationship.entity.fqnHash.keyword",
-        deleted,
-        true);
+        ENTITY_RELATIONSHIP_DIRECTION_ENTITY,
+        deleted);
     getEntityRelationship(
         fqn,
         upstreamDepth,
         edges,
         nodes,
         queryFilter,
-        "entityRelationship.relatedEntity.fqnHash.keyword",
-        deleted,
-        true);
+        ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY,
+        deleted);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return responseMap;
@@ -972,27 +928,22 @@ public class OpenSearchClient implements SearchClient {
     List<Table> tables =
         repository.listAll(repository.getFields("tableConstraints, displayName, owners"), filter);
     for (Table table : tables) {
-      Map<String, Object> tableMap = JsonUtils.getMap(table);
-      tableMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
-      nodes.add(tableMap);
       getEntityRelationship(
           table.getFullyQualifiedName(),
           downstreamDepth,
           edges,
           nodes,
           queryFilter,
-          "entityRelationship.entity.fqnHash.keyword",
-          deleted,
-          false);
+          ENTITY_RELATIONSHIP_DIRECTION_ENTITY,
+          deleted);
       getEntityRelationship(
           table.getFullyQualifiedName(),
           upstreamDepth,
           edges,
           nodes,
           queryFilter,
-          "entityRelationship.relatedEntity.fqnHash.keyword",
-          deleted,
-          false);
+          ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY,
+          deleted);
     }
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);

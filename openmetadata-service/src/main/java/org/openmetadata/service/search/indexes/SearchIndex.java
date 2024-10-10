@@ -221,13 +221,14 @@ public interface SearchIndex {
   }
 
   static int checkRelatedEntity(String relatedEntityFQN, List<Map<String, Object>> constraints) {
-    for (int i = 0; i < constraints.size(); i++) {
-      Map<String, Object> constraint = constraints.get(i);
+    int index = 0;
+    for (Map<String, Object> constraint : constraints) {
       Map<String, Object> relatedConstraintEntity =
           (Map<String, Object>) constraint.get("relatedEntity");
       if (relatedConstraintEntity.get("fqn").equals(relatedEntityFQN)) {
-        return i;
+        return index;
       }
+      index++;
     }
     return -1;
   }

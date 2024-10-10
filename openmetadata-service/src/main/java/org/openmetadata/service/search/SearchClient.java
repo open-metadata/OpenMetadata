@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.security.KeyStoreException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.json.JsonArray;
@@ -95,6 +96,38 @@ public interface SearchClient {
           + "}";
 
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
+
+  String ENTITY_RELATIONSHIP_DIRECTION_ENTITY = "entityRelationship.entity.fqnHash.keyword";
+
+  String ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY =
+      "entityRelationship.relatedEntity.fqnHash.keyword";
+
+  Set<String> FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP =
+      Set.of(
+          "suggest",
+          "service_suggest",
+          "column_suggest",
+          "schema_suggest",
+          "database_suggest",
+          "lifeCycle",
+          "fqnParts",
+          "chart_suggest",
+          "field_suggest",
+          "lineage",
+          "entityRelationship",
+          "customMetrics",
+          "descriptionStatus",
+          "columnNames",
+          "totalVotes",
+          "usageSummary",
+          "entityType",
+          "dataProducts",
+          "tags",
+          "followers",
+          "domain",
+          "votes",
+          "tier",
+          "changeDescription");
 
   boolean isClientAvailable();
 
