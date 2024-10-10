@@ -2,7 +2,6 @@ export const CUSTOM_PROPERTIES_TYPES = {
   STRING: 'String',
   MARKDOWN: 'Markdown',
   SQL_QUERY: 'Sql Query',
-  ENUM_WITH_DESCRIPTIONS: 'Enum With Descriptions',
 };
 
 export const FIELD_VALUES_CUSTOM_PROPERTIES = {

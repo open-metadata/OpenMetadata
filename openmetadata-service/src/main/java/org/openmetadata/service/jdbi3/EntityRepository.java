@@ -67,7 +67,6 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
@@ -101,8 +100,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import javax.json.JsonPatch;
+import javax.validation.ConstraintViolationException;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
@@ -147,7 +146,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
+import org.openmetadata.schema.type.customproperties.TableConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -1493,8 +1492,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
         jsonNode.put(fieldName, formattedValue);
       }
-      case "enumWithDescriptions" -> handleEnumWithDescriptions(
-          fieldName, fieldValue, propertyConfig, jsonNode, entity);
+      case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
       default -> {}
     }
   }
@@ -1532,37 +1530,54 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void handleEnumWithDescriptions(
-      String fieldName, JsonNode fieldValue, String propertyConfig, ObjectNode jsonNode, T entity) {
-    JsonNode propertyConfigNode = JsonUtils.readTree(propertyConfig);
-    EnumWithDescriptionsConfig config =
-        JsonUtils.treeToValue(propertyConfigNode, EnumWithDescriptionsConfig.class);
+  private void validateTableType(JsonNode fieldValue, String propertyConfig, String fieldName) {
+    TableConfig tableConfig =
+        JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
+    org.openmetadata.schema.type.customproperties.Table tableValue =
+        JsonUtils.convertValue(
+            JsonUtils.readTree(String.valueOf(fieldValue)),
+            org.openmetadata.schema.type.customproperties.Table.class);
+    Set<String> configColumns = tableConfig.getColumns();
 
-    if (!config.getMultiSelect() && fieldValue.size() > 1) {
+    try {
+      JsonUtils.validateJsonSchema(
+          tableValue, org.openmetadata.schema.type.customproperties.Table.class);
+
+      Set<String> fieldColumns = new HashSet<>();
+      fieldValue.get("columns").forEach(column -> fieldColumns.add(column.asText()));
+
+      Set<String> undefinedColumns = new HashSet<>(fieldColumns);
+      undefinedColumns.removeAll(configColumns);
+      if (!undefinedColumns.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Expected columns: "
+                + configColumns
+                + ", but found undefined columns: "
+                + undefinedColumns);
+      }
+
+      if (fieldValue.get("rows").size() > tableConfig.getRowCount()) {
+        throw new IllegalArgumentException(
+            "Number of rows should be less than or equal to the expected row count "
+                + tableConfig.getRowCount());
+      }
+
+      Set<String> rowFieldNames = new HashSet<>();
+      fieldValue.get("rows").forEach(row -> row.fieldNames().forEachRemaining(rowFieldNames::add));
+
+      undefinedColumns = new HashSet<>(rowFieldNames);
+      undefinedColumns.removeAll(configColumns);
+      if (!undefinedColumns.isEmpty()) {
+        throw new IllegalArgumentException("Rows contain undefined columns: " + undefinedColumns);
+      }
+    } catch (ConstraintViolationException e) {
+      String validationErrors =
+          e.getConstraintViolations().stream()
+              .map(violation -> violation.getPropertyPath() + " " + violation.getMessage())
+              .collect(Collectors.joining(", "));
+
       throw new IllegalArgumentException(
-          "Only one key is allowed for non-multiSelect enumWithDescriptions");
-    }
-    // Replace each enumWithDescriptions key in the fieldValue with the corresponding object from
-    // the propertyConfig
-    Map<String, JsonNode> keyToObjectMap =
-        StreamSupport.stream(propertyConfigNode.get("values").spliterator(), false)
-            .collect(Collectors.toMap(node -> node.get("key").asText(), node -> node));
-
-    if (fieldValue.isArray()) {
-      ArrayNode newArray = JsonUtils.getObjectNode().arrayNode();
-      fieldValue.forEach(
-          valueNode -> {
-            String key = valueNode.isTextual() ? valueNode.asText() : valueNode.get("key").asText();
-            JsonNode valueObject = keyToObjectMap.get(key);
-
-            if (valueObject == null) {
-              throw new IllegalArgumentException("Key not found in propertyConfig: " + key);
-            }
-            newArray.add(valueNode.isTextual() ? valueObject : valueNode);
-          });
-
-      jsonNode.replace(fieldName, newArray);
-      entity.setExtension(JsonUtils.treeToValue(jsonNode, Object.class));
+          CatalogExceptionMessage.jsonValidationError(fieldName, validationErrors));
     }
   }
 
