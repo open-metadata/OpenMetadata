@@ -1,7 +1,5 @@
-import { TestSummary } from '../../generated/tests/testCase';
-
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,15 +10,4 @@ import { TestSummary } from '../../generated/tests/testCase';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export enum DataQualityPageTabs {
-  TEST_SUITES = 'test-suites',
-  TABLES = 'tables',
-  TEST_CASES = 'test-cases',
-  DASHBOARD = 'dashboard',
-}
-
-export interface DataQualityContextInterface {
-  isTestCaseSummaryLoading: boolean;
-  testCaseSummary: TestSummary;
-  activeTab: DataQualityPageTabs;
-}
+export const CHART_BASE_SIZE = 300;

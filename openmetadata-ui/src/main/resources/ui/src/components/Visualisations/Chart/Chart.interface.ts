@@ -26,3 +26,14 @@ export interface DataDistributionHistogramProps {
     currentDayData?: ColumnProfile;
   };
 }
+
+export type CustomPieChartData = {
+  name: string;
+  value: number;
+  color: string;
+};
+export interface CustomPieChartProps {
+  name: string;
+  data: CustomPieChartData[];
+  label?: React.ReactNode;
+}
