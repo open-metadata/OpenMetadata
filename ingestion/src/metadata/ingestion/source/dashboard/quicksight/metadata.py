@@ -92,7 +92,7 @@ class QuicksightSource(DashboardServiceSource):
         entity_summary_list.extend(entity_response[entity_key])
         while entity_response.get("NextToken"):
             try:
-                copied_def_args = self.default_args.copy()
+                copied_def_args = self.default_args.model_copy()
                 copied_def_args.update({"NextToken": entity_response.get("NextToken")})
                 entity_response = listing_method(copied_def_args)
                 entity_summary_list.extend(entity_response[entity_key])

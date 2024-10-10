@@ -296,7 +296,8 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             actual_profiles = sorted(actual_profiles, key=lambda x: x.timestamp.root)
             actual_profiles = actual_profiles[-len(expected_profile) :]
             actual_profiles = [
-                p.copy(update={"timestamp": Timestamp(root=0)}) for p in actual_profiles
+                p.model_copy(update={"timestamp": Timestamp(root=0)})
+                for p in actual_profiles
             ]
             try:
                 assert_equal_pydantic_objects(expected_profile, actual_profiles)
