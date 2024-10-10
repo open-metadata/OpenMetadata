@@ -285,6 +285,16 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             else []
         )
 
+    def get_storage_service_names(self) -> List[str]:
+        """
+        Get the list of storage service names
+        """
+        return (
+            self.source_config.lineageInformation.storageServiceNames or []
+            if self.source_config.lineageInformation
+            else []
+        )
+
     def prepare(self):
         """
         Method to implement any required logic before starting the ingestion process
