@@ -220,6 +220,12 @@ site_menu:
 
   - category: Connectors / Database
     url: /connectors/database
+  - category: Connectors / Database / ADLS Datalake
+    url: /connectors/database/adls-datalake
+  - category: Connectors / Database / ADLS Datalake / Run Externally
+    url: /connectors/database/adls-datalake/yaml
+  - category: Connectors / Database / ADLS Datalake / Troubleshooting
+    url: /connectors/database/adls-datalake/troubleshooting
   - category: Connectors / Database / Athena
     url: /connectors/database/athena
   - category: Connectors / Database / Athena / Run Externally
@@ -256,12 +262,6 @@ site_menu:
     url: /connectors/database/databricks/yaml
   - category: Connectors / Database / Databricks / Troubleshooting
     url: /connectors/database/databricks/troubleshooting
-  - category: Connectors / Database / Datalake
-    url: /connectors/database/datalake
-  - category: Connectors / Database / Datalake / Run Externally
-    url: /connectors/database/datalake/yaml
-  - category: Connectors / Database / Datalake / Troubleshooting
-    url: /connectors/database/datalake/troubleshooting
   - category: Connectors / Database / DB2
     url: /connectors/database/db2
   - category: Connectors / Database / DB2 / Run Externally
@@ -288,6 +288,10 @@ site_menu:
     url: /connectors/database/dynamodb
   - category: Connectors / Database / DynamoDB / Run Externally
     url: /connectors/database/dynamodb/yaml
+  - category: Connectors / Database / GCS Datalake
+    url: /connectors/database/gcs-datalake
+  - category: Connectors / Database / GCS Datalake / Run Externally
+    url: /connectors/database/gcs-datalake/yaml
   - category: Connectors / Database / Glue
     url: /connectors/database/glue
   - category: Connectors / Database / Glue / Run Externally
@@ -388,6 +392,12 @@ site_menu:
     url: /connectors/database/synapse/yaml
   - category: Connectors / Database / Synapse / Troubleshooting
     url: /connectors/database/synapse/troubleshooting
+  - category: Connectors / Database / S3 Datalake
+    url: /connectors/database/s3-datalake
+  - category: Connectors / Database / S3 Datalake / Run Externally
+    url: /connectors/database/s3-datalake/yaml
+  - category: Connectors / Database / S3 Datalake / Troubleshooting
+    url: /connectors/database/s3-datalake/troubleshooting
   - category: Connectors / Database / Teradata
     url: /connectors/database/teradata
   - category: Connectors / Database / Teradata / Run Externally
@@ -505,9 +515,9 @@ site_menu:
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
-  - category: Connectors / Pipeline / DBTCloud
+  - category: Connectors / Pipeline / dbt Cloud
     url: /connectors/pipeline/dbtcloud
-  - category: Connectors / Pipeline / DBTCloud / Run Externally
+  - category: Connectors / Pipeline / dbt Cloud / Run Externally
     url: /connectors/pipeline/dbtcloud/yaml
   - category: Connectors / Pipeline / KafkaConnect
     url: /connectors/pipeline/kafkaconnect
@@ -559,18 +569,14 @@ site_menu:
 
   - category: Connectors / Storage
     url: /connectors/storage
-  - category: Connectors / Storage / S3
+  - category: Connectors / Storage / S3 Storage
     url: /connectors/storage/s3
-  - category: Connectors / Storage / S3 / Run Externally
+  - category: Connectors / Storage / S3 Storage / Run Externally
     url: /connectors/storage/s3/yaml
   - category: Connectors / Storage / GCS
     url: /connectors/storage/gcs
   - category: Connectors / Storage / GCS / Run Externally
     url: /connectors/storage/gcs/yaml
-  - category: Connectors / Storage / ADLS
-    url: /connectors/storage/adls
-  - category: Connectors / Storage / ADLS / Run Externally
-    url: /connectors/storage/adls/yaml
 
   - category: Connectors / Search
     url: /connectors/search
@@ -589,10 +595,6 @@ site_menu:
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
-  - category: Connectors / Metadata / Alation
-    url: /connectors/metadata/alation
-  - category: Connectors / Metadata / Alation / Run Externally
-    url: /connectors/metadata/alation/yaml
   - category: Connectors / Metadata / Alation Sink
     url: /connectors/metadata/alationsink
   - category: Connectors / Metadata / Alation Sink / Run Externally
@@ -687,6 +689,12 @@ site_menu:
     color: violet-70
     icon: openmetadata
 
+  - category: How-to Guides / Getting Started  
+    url: /how-to-guides/getting-started
+  - category: How-to Guides / Day 1  
+    url: /how-to-guides/getting-started/day-1
+  - category: How-to Guides / Day 1 / Database Service Setup
+    url: /how-to-guides/getting-started/day-1/database-service-setup
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
   - category: How-to Guides / Admin Guide / How to Ingest Metadata
@@ -798,6 +806,14 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
     url: /how-to-guides/data-quality-observability/quality/configure
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Cases  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-cases
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Suites  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-suites
+  - category: How-to Guides / Data Quality Observability / Data Quality / Test Cases From YAML Config  
+    url: /how-to-guides/data-quality-observability/quality/test-cases-from-yaml-config
+  - category: How-to Guides / Data Quality Observability / Data Quality / How to Visualize Test Results
+    url: /how-to-guides/data-quality-observability/quality/visualize
   - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
     url: /how-to-guides/data-quality-observability/quality/tests-yaml
   - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
@@ -849,8 +865,6 @@ site_menu:
     url: /how-to-guides/data-insights/ingestion
   - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
     url: /how-to-guides/data-insights/kpi
-  - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
-    url: /how-to-guides/data-insights/airflow-sdk
   - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
     url: /how-to-guides/data-insights/elasticsearch-reindex
   - category: How-to Guides / Data Insights / Data Insights Report
@@ -866,6 +880,12 @@ site_menu:
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
+  - category: How-to Guides / Data Governance / Automation
+    url: /how-to-guides/data-governance/automation
+    isCollateOnly: true
+  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate 
+    url: /how-to-guides/data-governance/automation/set-up-automation
+    isCollateOnly: true
   - category: How-to Guides / Data Governance / Glossary
     url: /how-to-guides/data-governance/glossary
   - category: How-to Guides / Data Governance / Glossary / What is a Glossary Term
@@ -917,6 +937,10 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.5 Release
+    url: /releases/all-releases/#1.5.5-release
+  - category: Releases / All Releases / 1.5.4 Release
+    url: /releases/all-releases/#1.5.4-release
   - category: Releases / All Releases / 1.5.3 Release
     url: /releases/all-releases/#1.5.3-release
   - category: Releases / All Releases / 1.5.2 Release

@@ -183,7 +183,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
-    "db2": {"ibm-db-sa~=0.3"},
+    "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=2.0.0"},
     "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
     "databricks": {
         VERSIONS["sqlalchemy-databricks"],
@@ -236,7 +236,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        "pyiceberg>=0.5",
+        "pyiceberg==0.5.1",
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],
@@ -258,6 +258,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["lkml"],
         "gitpython~=3.1.34",
         VERSIONS["giturlparse"],
+        "python-liquid",
     },
     "mlflow": {"mlflow-skinny>=2.3.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
@@ -299,6 +300,7 @@ plugins: Dict[str, Set[str]] = {
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
+    "mstr": {"mstr-rest-requests==0.14.1"},
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11"},
     "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},
@@ -378,7 +380,7 @@ test = {
     "kafka-python==2.0.2",
     *plugins["pii-processor"],
     "requests==2.31.0",
-    f"{DATA_DIFF['mysql']}==0.11.2",
+    f"{DATA_DIFF['mysql']}",
     *plugins["deltalake"],
     *plugins["datalake-gcs"],
     *plugins["pgspider"],

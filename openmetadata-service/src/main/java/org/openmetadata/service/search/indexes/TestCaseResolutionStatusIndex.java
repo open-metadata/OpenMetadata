@@ -33,6 +33,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
             testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
+    doc.put("@timestamp", testCaseResolutionStatus.getTimestamp());
     setParentRelationships(doc);
     return doc;
   }

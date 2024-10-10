@@ -62,7 +62,6 @@ import org.openmetadata.service.jdbi3.PipelineRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
@@ -444,7 +443,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseResource.TestCaseList.class)))
+                    schema = @Schema(implementation = PipelineResource.PipelineStatusList.class)))
       })
   public ResultList<PipelineStatus> list(
       @Context UriInfo uriInfo,

@@ -1,7 +1,7 @@
-# 1.5.4 Release 🎉
+# 1.5.6 Release 🎉
 
 {% note noteType="Tip" %}
-**Sep 13th, 2024**
+**Oct 3rd, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,28 +10,34 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.4!
+Learn how to upgrade your OpenMetadata instance to 1.5.6!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.4-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.6-release).
 
 # What's Changed
 
-## OpenMetadata
-- Hotfix to the Term Aggregation size on Data Insights
-- ES pagination with error handling
-- Updated Domain in Docker Compose & Docs
-- Fix Classification API returns Table class for restore
-- Fix Redshift View Def regex_replace Error
-- Make ingestion pipeline APIs public
-- Updating the domain PRINCIPAL DOMAIN
-- Glossary list selector for bulk import
-- Unable to access the import glossary page
+- Fixed MSTR connector import.
+- Show displayName for database and databaseSchema in explore tree.
+- Allow PowerBI datamodel children in column lineage.
+- Fixed manifest is not parsed correctly on dbt versionless.
+- Fixed lineage & queries in dbt.
+- Added DBT tests with versionless and fixed v7 parsing.
+- Reset displayName to avoid being persisted while editing user display name.
+- Fixed incorrect schema implementations in Swagger annotations.
+- Resolved type null exception on user feed.
+- Addressed missing cast to str.
+- Fixed DI Missing Dashboard Description Status.
+- Fixed SAML redirect leads to 404 page on UI.
+- Fixed General Profiler Bugs.
+- Fixed time format for the created_at of the DBT cloud pipeline status.
+- Fixed role page size from 10 to 50.
+- Fixed Search Indexing.
+- Improved AlationSink connector.
+- Fixed sktime version to fix AUT
+- Fixed Expected ColumnLineage but got dict
+- Improved Collate API with Knowledge Center routes.  ${CollateIconWithLinkMD}
 
-## Collate
-- Fix token limitations using config
-- Fix Automator pagination
-- Fix MetaPilot push for no constraint
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.3-release...1.5.4-release
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.5-release...1.5.6-release

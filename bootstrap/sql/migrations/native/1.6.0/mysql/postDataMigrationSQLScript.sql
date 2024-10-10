@@ -24,7 +24,10 @@ CREATE INDEX data_quality_data_time_series_id_index ON data_quality_data_time_se
 -- Remove VIRTUAL status column from test_case table and remove
 -- testCaseResult state from testCase; fetch from search repo.
 ALTER TABLE test_case DROP COLUMN status;
-UPDATE test_case SET json = JSON_SET(json, '$.testCaseStatus', JSON_EXTRACT(json, '$.testCaseResult.testCaseStatus'));
+
+UPDATE test_case SET json = JSON_SET(json, '$.testCaseStatus', JSON_EXTRACT(json, '$.testCaseResult.testCaseStatus'))
+WHERE JSON_EXTRACT(json, '$.testCaseResult.testCaseStatus') IS NOT NULL;
+
 ALTER TABLE test_case ADD COLUMN status VARCHAR(56) GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(json, '$.testCaseStatus'))) STORED;
 
 
@@ -34,3 +37,9 @@ SET json = JSON_REMOVE(json, '$.testCaseResultSummary');
 
 UPDATE test_case
 SET json = JSON_REMOVE(json, '$.testCaseResult');
+
+-- Add Supports interrupts to SearchIndexingApplication
+UPDATE installed_apps SET json = JSON_SET(json, '$.supportsInterrupt', true) where name = 'SearchIndexingApplication'; 
+UPDATE apps_marketplace  SET json = JSON_SET(json, '$.supportsInterrupt', true) where name = 'SearchIndexingApplication';
+
+ALTER TABLE apps_extension_time_series ADD COLUMN appName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.appName') STORED NOT NULL;

@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -107,10 +107,12 @@ export const ExtraInfoLink = ({
   label,
   value,
   href,
+  newTab = false,
 }: {
   label: string;
   value: string | number;
   href: string;
+  newTab?: boolean;
 }) => (
   <>
     <Divider className="self-center" type="vertical" />
@@ -118,7 +120,11 @@ export const ExtraInfoLink = ({
       {!isEmpty(label) && (
         <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
       )}
-      <Typography.Link href={href} style={{ fontSize: '12px' }}>
+      <Typography.Link
+        href={href}
+        rel={newTab ? 'noopener noreferrer' : undefined}
+        style={{ fontSize: '12px' }}
+        target={newTab ? '_blank' : undefined}>
         {value}{' '}
       </Typography.Link>
       <Icon
@@ -161,18 +167,18 @@ export const DataAssetsHeader = ({
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
-  const icon = useMemo(
-    () =>
-      'serviceType' in dataAsset ? (
-        <img
-          className="h-9"
-          src={serviceUtilClassBase.getServiceTypeLogo(
-            dataAsset as SearchSourceAlias
-          )}
-        />
-      ) : null,
-    [dataAsset]
-  );
+  const icon = useMemo(() => {
+    const serviceType = get(dataAsset, 'serviceType', '');
+
+    return serviceType ? (
+      <img
+        className="h-9"
+        src={serviceUtilClassBase.getServiceTypeLogo(
+          dataAsset as SearchSourceAlias
+        )}
+      />
+    ) : null;
+  }, [dataAsset]);
   const [copyTooltip, setCopyTooltip] = useState<string>();
 
   const excludeEntityService = useMemo(

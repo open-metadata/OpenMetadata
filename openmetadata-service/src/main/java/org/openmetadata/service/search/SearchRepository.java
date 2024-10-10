@@ -798,6 +798,11 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
+  public Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
+    return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+  }
+
   public Map<String, Object> searchLineageForExport(
       String fqn,
       int upstreamDepth,
@@ -821,14 +826,14 @@ public class SearchRepository {
   }
 
   public JsonObject aggregate(
-      String query, String entityType, JsonObject aggregationJson, SearchListFilter filter)
+      String query, String entityType, SearchAggregation searchAggregation, SearchListFilter filter)
       throws IOException {
     return searchClient.aggregate(
-        query, entityType, aggregationJson, filter.getCondition(entityType));
+        query, entityType, searchAggregation, filter.getCondition(entityType));
   }
 
   public DataQualityReport genericAggregation(
-      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
   }
 
