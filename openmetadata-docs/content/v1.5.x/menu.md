@@ -577,10 +577,6 @@ site_menu:
     url: /connectors/storage/gcs
   - category: Connectors / Storage / GCS / Run Externally
     url: /connectors/storage/gcs/yaml
-  - category: Connectors / Storage / ADLS
-    url: /connectors/storage/adls
-  - category: Connectors / Storage / ADLS / Run Externally
-    url: /connectors/storage/adls/yaml
 
   - category: Connectors / Search
     url: /connectors/search
@@ -599,10 +595,6 @@ site_menu:
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
-  - category: Connectors / Metadata / Alation
-    url: /connectors/metadata/alation
-  - category: Connectors / Metadata / Alation / Run Externally
-    url: /connectors/metadata/alation/yaml
   - category: Connectors / Metadata / Alation Sink
     url: /connectors/metadata/alationsink
   - category: Connectors / Metadata / Alation Sink / Run Externally
@@ -697,14 +689,6 @@ site_menu:
     color: violet-70
     icon: openmetadata
 
-  - category: How-to Guides / Data Quality Observability / Visualize  
-    url: /how-to-guides/data-quality-observability/visualize
-  - category: How-to Guides / Data Quality Observability / Test Cases From YAML Config  
-    url: /how-to-guides/data-quality-observability/quality/test-cases-from-yaml-config
-  - category: How-to Guides / Data Quality Observability / Adding Test Suits  
-    url: /how-to-guides/data-quality-observability/quality/adding-test-suits
-  - category: How-to Guides / Data Quality Observability / Adding Test Cases  
-    url: /how-to-guides/data-quality-observability/quality/adding-test-cases
   - category: How-to Guides / Getting Started  
     url: /how-to-guides/getting-started
   - category: How-to Guides / Day 1  
@@ -822,6 +806,14 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
     url: /how-to-guides/data-quality-observability/quality/configure
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Cases  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-cases
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Suites  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-suites
+  - category: How-to Guides / Data Quality Observability / Data Quality / Test Cases From YAML Config  
+    url: /how-to-guides/data-quality-observability/quality/test-cases-from-yaml-config
+  - category: How-to Guides / Data Quality Observability / Data Quality / How to Visualize Test Results
+    url: /how-to-guides/data-quality-observability/quality/visualize
   - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
     url: /how-to-guides/data-quality-observability/quality/tests-yaml
   - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
@@ -888,6 +880,12 @@ site_menu:
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
+  - category: How-to Guides / Data Governance / Automation
+    url: /how-to-guides/data-governance/automation
+    isCollateOnly: true
+  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate 
+    url: /how-to-guides/data-governance/automation/set-up-automation
+    isCollateOnly: true
   - category: How-to Guides / Data Governance / Glossary
     url: /how-to-guides/data-governance/glossary
   - category: How-to Guides / Data Governance / Glossary / What is a Glossary Term
