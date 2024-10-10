@@ -1,3 +1,6 @@
+import glob
+import json
+import os.path
 import sys
 from dataclasses import dataclass
 from typing import List
@@ -26,7 +29,6 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import ComponentConfig
 from metadata.ingestion.api.status import TruncatedStackTraceError
@@ -216,9 +218,14 @@ def run_data_quality_workflow(
 
 
 def test_all_definition_exists(metadata, run_data_quality_workflow, db_service):
-    test_definitions: List[TestDefinition] = metadata.list_entities(
-        TestDefinition, fields=["*"], skip_on_failure=True
-    ).entities
+    test_difinitions_glob = (
+        os.path.dirname(__file__)
+        + "/../../../.."
+        + "/openmetadata-service/src/main/resources/json/data/tests/**.json"
+    )
+    test_definitions: List[str] = []
+    for test_definition_file in glob.glob(test_difinitions_glob, recursive=False):
+        test_definitions.append(json.load(open(test_definition_file))["name"])
     table: Table = metadata.get_by_name(
         Table,
         f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
@@ -256,9 +263,9 @@ def test_all_definition_exists(metadata, run_data_quality_workflow, db_service):
     }
     missing = set()
     for test_definition in test_definitions:
-        if test_definition.fullyQualifiedName.root in excluded:
+        if test_definition in excluded:
             continue
-        if not test_definition.fullyQualifiedName.root in tcs_dict:
+        if not test_definition in tcs_dict:
             missing.add(test_definition.fullyQualifiedName.root)
     assert not missing, f"Missing test cases: {missing}"
 
