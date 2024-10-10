@@ -1556,9 +1556,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 + undefinedColumns);
       }
 
-      if (fieldValue.get("rows").size() != tableTypeConfig.getRowCount()) {
+      if (fieldValue.get("rows").size() > tableTypeConfig.getRowCount()) {
         throw new IllegalArgumentException(
-            "Number of rows does not match expected row count " + tableTypeConfig.getRowCount());
+            "Number of rows should be less than or equal to the expected row count "
+                + tableTypeConfig.getRowCount());
       }
 
       Set<String> rowFieldNames = new HashSet<>();

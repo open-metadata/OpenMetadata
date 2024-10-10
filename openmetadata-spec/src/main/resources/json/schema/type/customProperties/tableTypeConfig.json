@@ -19,7 +19,7 @@
     },
     "rowCount": {
       "type": "integer",
-      "default": 1,
+      "default": 10,
       "description": "Number of rows. Defaults to minRows if not explicitly set."
     }
   },
