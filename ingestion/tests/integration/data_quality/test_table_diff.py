@@ -236,6 +236,45 @@ class TestParameters(BaseModel):
             ),
             (
                 TestCaseDefinition(
+                    name="postgres_different_case_columns_fail",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="caseSensitiveColumns", value="true"
+                        )
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
+                TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Failed,
+                    testResultValue=[
+                        TestResultValue(name="removedColumns", value="1"),
+                        TestResultValue(name="addedColumns", value="0"),
+                        TestResultValue(name="changedColumns", value="0"),
+                    ],
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="postgres_different_case_columns_success",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="caseSensitiveColumns", value="false"
+                        )
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
+                TestCaseResult(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Success,
+                ),
+            ),
+            (
+                TestCaseDefinition(
                     name="table_from_another_db",
                     testDefinitionName="tableDiff",
                     computePassedFailedRowCount=True,
@@ -302,7 +341,7 @@ def test_happy_paths(
         },
         "processor": {
             "type": "orm-test-runner",
-            "config": {"testCases": [parameters.test_case_defintion.dict()]},
+            "config": {"testCases": [parameters.test_case_defintion.model_dump()]},
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
@@ -442,6 +481,16 @@ def test_error_paths(
 
 def add_changed_tables(connection: Connection):
     connection.execute("CREATE TABLE customer_200 AS SELECT * FROM customer LIMIT 200;")
+    connection.execute(
+        "CREATE TABLE customer_different_case_columns AS SELECT * FROM customer;"
+    )
+    connection.execute(
+        'ALTER TABLE customer_different_case_columns RENAME COLUMN first_name TO "First_Name";'
+    )
+    # TODO: this appears to be unsupported by data diff. Cross data type comparison is flaky.
+    # connection.execute(
+    #     "ALTER TABLE customer_different_case_columns ALTER COLUMN store_id TYPE decimal"
+    # )
     connection.execute("CREATE TABLE changed_customer AS SELECT * FROM customer;")
     connection.execute(
         "UPDATE changed_customer SET first_name = 'John' WHERE MOD(customer_id, 2) = 0;"

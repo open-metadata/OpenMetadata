@@ -73,7 +73,7 @@ def run_data_quality_workflow(
                             "columnName": "first_name",
                             "parameterValues": [
                                 {"name": "allowedValues", "value": "['Tom', 'Jerry']"},
-                                {"name": "matchEnum", "value": ""},
+                                {"name": "matchEnum", "value": "false"},
                             ],
                         },
                         {
@@ -82,7 +82,7 @@ def run_data_quality_workflow(
                             "columnName": "first_name",
                             "parameterValues": [
                                 {"name": "allowedValues", "value": "['Tom', 'Jerry']"},
-                                {"name": "matchEnum", "value": "True"},
+                                {"name": "matchEnum", "value": "true"},
                             ],
                         },
                         {
