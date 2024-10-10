@@ -9,6 +9,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
+import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -70,8 +72,9 @@ public class WorkflowDefinitionResource
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
-    WorkflowHandler.initialize(config);
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+      WorkflowHandler.initialize(config);
+      repository.initSeedDataFromResources();
   }
 
   @GET
@@ -279,8 +282,6 @@ public class WorkflowDefinitionResource
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
         getWorkflowDefinition(create, securityContext.getUserPrincipal().getName());
-
-    WorkflowHandler.getInstance().deploy(new Workflow(workflowDefinition));
     return create(uriInfo, securityContext, workflowDefinition);
   }
 

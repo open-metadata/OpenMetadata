@@ -9,6 +9,7 @@
     "entityEventTrigger",
     "userApprovalTask",
     "userRequestDescriptionTask",
+    "checkEntityAttributesTask",
     "checkEntityHasReviewersTask",
     "setEntityDescriptionTask",
     "setGlossaryTermStatusTask",

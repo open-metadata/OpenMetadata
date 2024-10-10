@@ -4,9 +4,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,6 +25,20 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         Entity.getCollectionDAO().workflowDefinitionDAO(),
         "",
         "");
+  }
+  @Override
+  public List<WorkflowDefinition> getEntitiesFromSeedData() throws IOException {
+    return getEntitiesFromSeedData(".*json/data/governance/workflows/.*\\.json$");
+  }
+
+  @Override
+  protected void postCreate(WorkflowDefinition entity) {
+    WorkflowHandler.getInstance().deploy(new Workflow(entity));
+  }
+
+  @Override
+  protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
+    WorkflowHandler.getInstance().deploy(new Workflow(updated));
   }
 
   @Override

@@ -659,7 +659,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private void checkUpdatedByReviewer(GlossaryTerm term, String updatedBy) {
     // Only list of allowed reviewers can change the status from DRAFT to APPROVED
     List<EntityReference> reviewers = term.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
+    if (!nullOrEmpty(reviewers) && !updatedBy.equals("governance-bot")) {
       // Updating user must be one of the reviewers
       boolean isReviewer =
           reviewers.stream()
@@ -678,6 +678,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                           || e.getFullyQualifiedName().equals(updatedBy);
                     }
                   });
+      // TODO: Think how to better handle that governance-bot is updating the Status
       if (!isReviewer) {
         throw new AuthorizationException(notReviewer(updatedBy));
       }

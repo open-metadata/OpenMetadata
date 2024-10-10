@@ -1,0 +1,130 @@
+{
+  "name": "GlossaryTermApprovalWorkflow",
+  "displayName": "Glossary Term Approval Workflow",
+  "description": "When a Glossary Term is Created or Updated, this Workflow will be triggered for the Term to be Approved.",
+  "nodes": [
+    {
+      "type": "trigger",
+      "subType": "entityEventTrigger",
+      "name": "GlossaryTermCreated",
+      "displayName": "Glossary Term Created",
+      "config": {
+        "entityType": "glossaryTerm",
+        "events": ["Created", "Updated"]
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovedEnd"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "RejectedEnd"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "DraftEnd"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckGlossaryTermHasReviewers",
+      "config": {
+        "rules": "{ \"!!\": [ { \"var\": \"reviewers\" } ] }"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckGlossaryTermIsReadyToBeReviewed",
+      "config": {
+        "rules": "{ \"in\": [ \"Bar\", { \"var\": \"extension.foo\" } ] }"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToInReview",
+      "config": {
+        "glossaryTermStatus": "In Review"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "ApproveGlossaryTerm",
+      "config": {
+        "assignees": {
+          "addReviewers": true
+        }
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToApproved",
+      "config": {
+        "glossaryTermStatus": "Approved"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToRejected",
+      "config": {
+        "glossaryTermStatus": "Rejected"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "GlossaryTermCreated",
+      "to": "CheckGlossaryTermHasReviewers"
+    },
+    {
+      "from": "CheckGlossaryTermHasReviewers",
+      "to": "SetGlossaryTermStatusToApproved",
+      "condition": "${!checkPassed}"
+    },
+    {
+      "from": "CheckGlossaryTermHasReviewers",
+      "to": "CheckGlossaryTermIsReadyToBeReviewed",
+      "condition": "${checkPassed}"
+    },
+    {
+      "from": "CheckGlossaryTermIsReadyToBeReviewed",
+      "to": "DraftEnd",
+      "condition": "${!checkPassed}"
+    },
+    {
+      "from": "CheckGlossaryTermIsReadyToBeReviewed",
+      "to": "SetGlossaryTermStatusToInReview",
+      "condition": "${checkPassed}"
+    },
+    {
+      "from": "SetGlossaryTermStatusToInReview",
+      "to": "ApproveGlossaryTerm"
+    },
+    {
+      "from": "ApproveGlossaryTerm",
+      "to": "SetGlossaryTermStatusToApproved",
+      "condition": "${approved}"
+    },
+    {
+      "from": "ApproveGlossaryTerm",
+      "to": "SetGlossaryTermStatusToRejected",
+      "condition": "${!approved}"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApproved",
+      "to": "ApprovedEnd"
+    },
+    {
+      "from": "SetGlossaryTermStatusToRejected",
+      "to": "RejectedEnd"
+    }
+  ]
+}

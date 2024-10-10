@@ -25,8 +25,9 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
         GlossaryTerm glossaryTerm = Entity.getEntity(entityLink, "*", Include.ALL);
 
         String status = (String) statusExpr.getValue(execution);
-        String user = Optional.ofNullable((String) execution.getVariable("resolvedBy"))
-                .orElse(glossaryTerm.getUpdatedBy());
+//        String user = Optional.ofNullable((String) execution.getVariable("resolvedBy"))
+//                .orElse(glossaryTerm.getUpdatedBy());
+        String user = "governance-bot";
 
         setStatus(glossaryTerm, user, status);
     }

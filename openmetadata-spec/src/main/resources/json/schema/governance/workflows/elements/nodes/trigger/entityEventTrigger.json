@@ -25,11 +25,16 @@
           "description": "Entity Type for which it should be triggered.",
           "type": "string"
         },
-        "event": {
-          "$ref": "#/definitions/event"
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/event"
+          },
+          "uniqueItems": true
         }
       },
-      "required": ["entityType", "event"]
+      "required": ["entityType", "events"],
+      "additionalProperties": false
     }
   },
   "properties": {
