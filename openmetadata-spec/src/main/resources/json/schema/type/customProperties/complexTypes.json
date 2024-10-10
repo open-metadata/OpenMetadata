@@ -99,12 +99,12 @@
         }
       }
     },
-    "table-type": {
+    "table-cp": {
       "$comment": "@om-field-type",
-      "title": "TableType",
-      "description": "A table-type custom property where all column data types are strings.",
+      "title": "Table",
+      "description": "A table-type custom property having rows and columns where all column data types are strings.",
       "type": "object",
-      "javaType": "org.openmetadata.schema.type.customproperties.TableType",
+      "javaType": "org.openmetadata.schema.type.customproperties.Table",
       "properties": {
         "columns": {
           "type": "array",
@@ -137,8 +137,8 @@
     }
   },
   "properties": {
-    "table-type": {
-      "$ref": "#/definitions/table-type"
+    "table-cp": {
+      "$ref": "#/definitions/table-cp"
     }
   }
 }

@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/type/customProperties/tableTypeConfig.json",
+  "$id": "https://open-metadata.org/schema/type/customProperties/tableConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "TableTypeConfig",
-  "description": "A table-type custom property where all column data types are strings.",
+  "title": "TableConfig",
+  "description": "Custom property configuration for table-type property where all column data types are strings.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.type.customproperties.TableTypeConfig",
+  "javaType": "org.openmetadata.schema.type.customproperties.TableConfig",
   "properties": {
     "columns": {
       "type": "array",
@@ -20,7 +20,7 @@
     "rowCount": {
       "type": "integer",
       "default": 10,
-      "description": "Number of rows. Defaults to minRows if not explicitly set."
+      "description": "Number of rows. Defaults to maxRows if not explicitly set."
     }
   },
   "required": ["columns"],

@@ -45,7 +45,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.customproperties.EnumConfig;
 import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
-import org.openmetadata.schema.type.customproperties.TableTypeConfig;
+import org.openmetadata.schema.type.customproperties.TableConfig;
 import org.openmetadata.schema.type.customproperties.Value;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
@@ -180,7 +180,7 @@ public class TypeRepository extends EntityRepository<Type> {
       case "enum" -> validateEnumConfig(customProperty.getCustomPropertyConfig());
       case "enumWithDescriptions" -> validateEnumWithDescriptionsConfig(
           customProperty.getCustomPropertyConfig());
-      case "table-type" -> validateTableTypeConfig(customProperty.getCustomPropertyConfig());
+      case "table-cp" -> validateTableTypeConfig(customProperty.getCustomPropertyConfig());
       case "date-cp" -> validateDateFormat(
           customProperty.getCustomPropertyConfig(), getDateTokens(), "Invalid date format");
       case "dateTime-cp" -> validateDateFormat(
@@ -263,22 +263,20 @@ public class TypeRepository extends EntityRepository<Type> {
 
   private void validateTableTypeConfig(CustomPropertyConfig config) {
     if (config == null) {
-      throw new IllegalArgumentException(
-          "TableType Custom Property Type must have TableTypeConfig populated.");
+      throw new IllegalArgumentException("Table Custom Property Type must have config populated.");
     }
 
     JsonNode configNode = JsonUtils.valueToTree(config.getConfig());
-    TableTypeConfig tableTypeConfig =
-        JsonUtils.convertValue(config.getConfig(), TableTypeConfig.class);
+    TableConfig tableConfig = JsonUtils.convertValue(config.getConfig(), TableConfig.class);
 
     // rowCount is optional, if not present set it to the default value
     if (!configNode.has("rowCount")) {
-      ((ObjectNode) configNode).put("rowCount", tableTypeConfig.getRowCount());
+      ((ObjectNode) configNode).put("rowCount", tableConfig.getRowCount());
       config.setConfig(configNode);
     }
 
     try {
-      JsonUtils.validateJsonSchema(config.getConfig(), TableTypeConfig.class);
+      JsonUtils.validateJsonSchema(config.getConfig(), TableConfig.class);
     } catch (ConstraintViolationException e) {
       String validationErrors =
           e.getConstraintViolations().stream()
@@ -286,7 +284,7 @@ public class TypeRepository extends EntityRepository<Type> {
               .collect(Collectors.joining(", "));
 
       throw new IllegalArgumentException(
-          CatalogExceptionMessage.customPropertyConfigError("table-type", validationErrors));
+          CatalogExceptionMessage.customPropertyConfigError("table", validationErrors));
     }
   }
 

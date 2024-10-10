@@ -147,8 +147,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
-import org.openmetadata.schema.type.customproperties.TableType;
-import org.openmetadata.schema.type.customproperties.TableTypeConfig;
+import org.openmetadata.schema.type.customproperties.TableConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -1460,7 +1459,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       case "enumWithDescriptions" -> handleEnumWithDescriptions(
           fieldName, fieldValue, propertyConfig, jsonNode, entity);
-      case "table-type" -> validateTableType(fieldValue, customPropertyType, propertyConfig);
+      case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
       default -> {}
     }
   }
@@ -1532,16 +1531,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void validateTableType(
-      JsonNode fieldValue, String customPropertyType, String propertyConfig) {
-    TableTypeConfig tableTypeConfig =
-        JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableTypeConfig.class);
-    TableType tableTypeValue =
-        JsonUtils.convertValue(JsonUtils.readTree(String.valueOf(fieldValue)), TableType.class);
-    Set<String> configColumns = tableTypeConfig.getColumns();
+  private void validateTableType(JsonNode fieldValue, String propertyConfig, String fieldName) {
+    TableConfig tableConfig =
+        JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
+    org.openmetadata.schema.type.customproperties.Table tableValue =
+        JsonUtils.convertValue(
+            JsonUtils.readTree(String.valueOf(fieldValue)),
+            org.openmetadata.schema.type.customproperties.Table.class);
+    Set<String> configColumns = tableConfig.getColumns();
 
     try {
-      JsonUtils.validateJsonSchema(tableTypeValue, TableType.class);
+      JsonUtils.validateJsonSchema(
+          tableValue, org.openmetadata.schema.type.customproperties.Table.class);
 
       Set<String> fieldColumns = new HashSet<>();
       fieldValue.get("columns").forEach(column -> fieldColumns.add(column.asText()));
@@ -1556,10 +1557,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 + undefinedColumns);
       }
 
-      if (fieldValue.get("rows").size() > tableTypeConfig.getRowCount()) {
+      if (fieldValue.get("rows").size() > tableConfig.getRowCount()) {
         throw new IllegalArgumentException(
             "Number of rows should be less than or equal to the expected row count "
-                + tableTypeConfig.getRowCount());
+                + tableConfig.getRowCount());
       }
 
       Set<String> rowFieldNames = new HashSet<>();
@@ -1577,7 +1578,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .collect(Collectors.joining(", "));
 
       throw new IllegalArgumentException(
-          CatalogExceptionMessage.customPropertyConfigError(customPropertyType, validationErrors));
+          CatalogExceptionMessage.jsonValidationError(fieldName, validationErrors));
     }
   }
 
