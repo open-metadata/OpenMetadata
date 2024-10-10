@@ -24,7 +24,7 @@ public class MigrationUtil {
   private static final String UPDATE_MYSQL_APP_EXTENSION =
       "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.appName', :appName) WHERE appId = :appId AND extension = 'status'";
   private static final String UPDATE_PG_APP_EXTENSION =
-      "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{appName}', :appName::jsonb) WHERE appId = :appId AND extension = 'status'";
+      "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{appName}', to_jsonb(:appName)) WHERE appId = :appId AND extension = 'status'";
 
   // We'll list the entries in app_extension_time_series, clean those whose appId
   // is not installed, and for those that appId matches from installed Apps, we'll
