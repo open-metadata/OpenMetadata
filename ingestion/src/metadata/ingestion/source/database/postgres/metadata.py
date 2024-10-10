@@ -255,7 +255,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource, StoredProcedureMixin)
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector
     ) -> Tuple[bool, TablePartition]:
-        result = self.engine.execute(
+        result = self.connection.execute(
             POSTGRES_PARTITION_DETAILS, table_name=table_name, schema_name=schema_name
         ).all()
 
@@ -283,7 +283,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource, StoredProcedureMixin)
         Fetch Tags
         """
         try:
-            result = self.engine.execute(
+            result = self.connection.execute(
                 POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
                     database_name=self.context.get().database,
                     schema_name=schema_name,
