@@ -1,6 +1,6 @@
 ---
 title: Day 1
-slug: /how-to-guides/getting-started/day-1
+slug: /quick-start/getting-started/day-1
 ---
 
 # Getting Started: Day 1

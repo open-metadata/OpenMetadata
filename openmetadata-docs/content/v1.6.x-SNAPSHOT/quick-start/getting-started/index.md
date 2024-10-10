@@ -1,6 +1,6 @@
 ---
 title: Getting Started with OpenMetadata for Data cataloging
-slug: /how-to-guides/getting-started
+slug: /quick-start/getting-started
 ---
 
 # Getting Started
