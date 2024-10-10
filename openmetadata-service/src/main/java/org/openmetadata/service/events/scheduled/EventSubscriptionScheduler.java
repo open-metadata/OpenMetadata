@@ -17,19 +17,25 @@ import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventCon
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -156,54 +162,136 @@ public class EventSubscriptionScheduler {
   }
 
   public SubscriptionStatus getStatusForEventSubscription(UUID subscriptionId, UUID destinationId) {
-    EventSubscription eventSubscription = getEventSubscriptionFromScheduledJob(subscriptionId);
-    if (eventSubscription == null) {
-      EntityRepository<? extends EntityInterface> subscriptionRepository =
-          Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
-      EventSubscription subscription =
-          (EventSubscription)
-              subscriptionRepository.get(
-                  null, subscriptionId, subscriptionRepository.getFields("id"));
-      if (subscription != null && (Boolean.FALSE.equals(subscription.getEnabled()))) {
-        return new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED);
-      }
-    } else {
-      List<SubscriptionDestination> subscriptions =
-          eventSubscription.getDestinations().stream()
-              .filter(sub -> sub.getId().equals(destinationId))
-              .toList();
-      if (subscriptions.size() == 1) {
-        // We have unique Ids per destination
-        return subscriptions.get(0).getStatusDetails();
-      }
+    Optional<EventSubscription> eventSubscriptionOpt =
+        getEventSubscriptionFromScheduledJob(subscriptionId);
+
+    if (eventSubscriptionOpt.isPresent()) {
+      return eventSubscriptionOpt.get().getDestinations().stream()
+          .filter(destination -> destination.getId().equals(destinationId))
+          .map(SubscriptionDestination::getStatusDetails)
+          .findFirst()
+          .orElse(null);
     }
-    return null;
+
+    EntityRepository<? extends EntityInterface> subscriptionRepository =
+        Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
+
+    // If the event subscription was not found in the scheduled job, check the repository
+    Optional<EventSubscription> subscriptionOpt =
+        Optional.ofNullable(
+            (EventSubscription)
+                subscriptionRepository.get(
+                    null, subscriptionId, subscriptionRepository.getFields("id")));
+
+    return subscriptionOpt
+        .filter(subscription -> Boolean.FALSE.equals(subscription.getEnabled()))
+        .map(
+            subscription -> new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED))
+        .orElse(null);
   }
 
-  public EventSubscription getEventSubscriptionFromScheduledJob(UUID id) {
-    try {
-      JobDetail jobDetail =
-          alertsScheduler.getJobDetail(new JobKey(id.toString(), ALERT_JOB_GROUP));
-      if (jobDetail != null) {
-        return ((EventSubscription) jobDetail.getJobDataMap().get(ALERT_INFO_KEY));
-      }
-    } catch (SchedulerException ex) {
-      LOG.error("Failed to get Event Subscription from Job, Subscription Id : {}", id);
+  public List<SubscriptionDestination> listAlertDestinations(UUID subscriptionId) {
+    Optional<EventSubscription> eventSubscriptionOpt =
+        getEventSubscriptionFromScheduledJob(subscriptionId);
+
+    // If the EventSubscription is not found in the scheduled job, retrieve it from the repository
+    EventSubscription eventSubscription =
+        eventSubscriptionOpt.orElseGet(
+            () -> {
+              EntityRepository<? extends EntityInterface> subscriptionRepository =
+                  Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
+
+              return (EventSubscription)
+                  subscriptionRepository.get(
+                      null,
+                      subscriptionId,
+                      subscriptionRepository.getFields("id,destinations,enabled"));
+            });
+
+    if (eventSubscription != null && Boolean.FALSE.equals(eventSubscription.getEnabled())) {
+      return Collections.emptyList();
     }
-    return null;
+
+    return eventSubscription.getDestinations();
+  }
+
+  public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(UUID subscriptionId) {
+    boolean isAllEventsPublished = checkIfPublisherPublishedAllEvents(subscriptionId);
+    EventSubscriptionOffset latestOffset = getLatestOffset();
+    long currentOffset =
+        getEventSubscriptionOffset(subscriptionId)
+            .map(EventSubscriptionOffset::getOffset)
+            .orElse(
+                latestOffset.getOffset()); // Fallback to latest offset if current offset not found
+    long unpublishedEventCount = getUnpublishedEventCount(subscriptionId);
+    List<ChangeEvent> unprocessedEvents =
+        Optional.ofNullable(getUnpublishedEvents(subscriptionId)).orElse(Collections.emptyList());
+
+    return new EventSubscriptionDiagnosticInfo()
+        .withCurrentOffset(currentOffset)
+        .withLatestOffset(latestOffset.getOffset())
+        .withHasProcessedAllEvents(isAllEventsPublished)
+        .withUnprocessedEventsCount(unpublishedEventCount)
+        .withUnprocessedEventsList(unprocessedEvents);
+  }
+
+  public static EventSubscriptionOffset getLatestOffset() {
+    return new EventSubscriptionOffset()
+        .withOffset(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
   }
 
   public boolean checkIfPublisherPublishedAllEvents(UUID subscriptionID) {
     long countOfEvents = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+
+    return getEventSubscriptionOffset(subscriptionID)
+        .map(offset -> offset.getOffset() == countOfEvents)
+        .orElse(false);
+  }
+
+  public long getUnpublishedEventCount(UUID subscriptionID) {
+    long countOfEvents = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+
+    return getEventSubscriptionOffset(subscriptionID)
+        .map(offset -> Math.abs(countOfEvents - offset.getOffset()))
+        .orElse(countOfEvents);
+  }
+
+  public List<ChangeEvent> getUnpublishedEvents(UUID subscriptionId) {
+    long offset =
+        getEventSubscriptionOffset(subscriptionId)
+            .map(EventSubscriptionOffset::getOffset)
+            .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
+
+    List<String> unprocessedEventJsonList =
+        Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset);
+
+    return unprocessedEventJsonList.stream()
+        .map(eventJson -> JsonUtils.readValue(eventJson, ChangeEvent.class))
+        .collect(Collectors.toList());
+  }
+
+  public Optional<EventSubscription> getEventSubscriptionFromScheduledJob(UUID id) {
+    try {
+      JobDetail jobDetail =
+          alertsScheduler.getJobDetail(new JobKey(id.toString(), ALERT_JOB_GROUP));
+
+      return Optional.ofNullable(jobDetail)
+          .map(detail -> (EventSubscription) detail.getJobDataMap().get(ALERT_INFO_KEY));
+
+    } catch (SchedulerException ex) {
+      LOG.error("Failed to get Event Subscription from Job, Subscription Id : {}", id, ex);
+    }
+
+    return Optional.empty();
+  }
+
+  public Optional<EventSubscriptionOffset> getEventSubscriptionOffset(UUID subscriptionID) {
     try {
       JobDetail jobDetail =
           alertsScheduler.getJobDetail(new JobKey(subscriptionID.toString(), ALERT_JOB_GROUP));
       if (jobDetail != null) {
-        EventSubscriptionOffset offset =
-            ((EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY));
-        if (offset != null) {
-          return offset.getOffset() == countOfEvents;
-        }
+        return Optional.ofNullable(
+            (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY));
       }
     } catch (Exception ex) {
       LOG.error(
@@ -211,7 +299,7 @@ public class EventSubscriptionScheduler {
           subscriptionID.toString(),
           ex);
     }
-    return false;
+    return Optional.empty();
   }
 
   public static void shutDown() throws SchedulerException {

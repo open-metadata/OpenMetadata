@@ -3772,6 +3772,10 @@ public interface CollectionDAO {
   }
 
   interface ChangeEventDAO {
+    @SqlQuery(
+        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC")
+    List<String> listUnprocessedEvents(@Bind("offset") long offset);
+
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json)",
         connectionType = MYSQL)

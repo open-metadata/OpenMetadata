@@ -60,6 +60,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest;
+import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -626,6 +627,157 @@ public class EventSubscriptionResource
     AlertUtil.validateExpression(expression, Boolean.class);
   }
 
+  @GET
+  @Path("/id/{subscriptionId}/diagnosticInfo")
+  @Operation(
+      operationId = "getEventSubscriptionDiagnosticInfoById",
+      summary = "Get event subscription diagnostic info",
+      description =
+          "Retrieve diagnostic information for a given event subscription ID, including current and latest offsets, unprocessed events count, and more.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Event subscription diagnostic info retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventSubscriptionDiagnosticInfo.class))),
+        @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getEventSubscriptionDiagnosticInfoById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "UUID of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("subscriptionId")
+          UUID subscriptionId) {
+    authorizer.authorizeAdmin(securityContext);
+    try {
+      EventSubscriptionDiagnosticInfo diagnosticInfo =
+          EventSubscriptionScheduler.getInstance()
+              .getEventSubscriptionDiagnosticInfo(subscriptionId);
+
+      return Response.ok().entity(diagnosticInfo).build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving diagnostic info for subscription ID: {}", subscriptionId, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              "An error occurred while retrieving diagnostic info for subscription ID: "
+                  + subscriptionId)
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/name/{subscriptionName}/diagnosticInfo")
+  @Operation(
+      operationId = "getEventSubscriptionDiagnosticInfoByName",
+      summary = "Get event subscription diagnostic info by name",
+      description =
+          "Retrieve diagnostic information for a given event subscription name, including current and latest offsets, unprocessed events count, and more.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Event subscription diagnostic info retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventSubscriptionDiagnosticInfo.class))),
+        @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getEventSubscriptionDiagnosticInfoByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("subscriptionName")
+          String subscriptionName) {
+    authorizer.authorizeAdmin(securityContext);
+    try {
+      EventSubscription subscription =
+          repository.getByName(null, subscriptionName, repository.getFields("id"));
+
+      if (subscription == null) {
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity("Event subscription not found for name: " + subscriptionName)
+            .build();
+      }
+
+      EventSubscriptionDiagnosticInfo diagnosticInfo =
+          EventSubscriptionScheduler.getInstance()
+              .getEventSubscriptionDiagnosticInfo(subscription.getId());
+
+      return Response.ok().entity(diagnosticInfo).build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving diagnostic info for subscription name: {}", subscriptionName, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              "An error occurred while retrieving diagnostic info for subscription name: "
+                  + subscriptionName)
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/id/{eventSubscriptionId}/destinations")
+  @Valid
+  @Operation(
+      operationId = "getAllDestinationForEventSubscription",
+      summary = "Get the destinations for a specific Event Subscription",
+      description =
+          "Retrieve the status of all destinations associated with the given Event Subscription ID",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Returns the destinations for the Event Subscription",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SubscriptionDestination.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Event Subscription for instance {eventSubscriptionId} is not found")
+      })
+  public List<SubscriptionDestination> getAllDestinationForSubscriptionById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ID of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("eventSubscriptionId")
+          UUID id) {
+    return EventSubscriptionScheduler.getInstance().listAlertDestinations(id);
+  }
+
+  @GET
+  @Path("name/{eventSubscriptionName}/destinations")
+  @Valid
+  @Operation(
+      operationId = "getAllDestinationForEventSubscriptionByName",
+      summary = "Get the destinations for a specific Event Subscription by its name",
+      description =
+          "Retrieve the status of all destinations associated with the given Event Subscription's fully qualified name (FQN)",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Returns the destinations for the Event Subscription",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SubscriptionDestination.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Event Subscription with the name {fqn} is not found")
+      })
+  public List<SubscriptionDestination> getAllDestinationStatusesForSubscriptionByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("eventSubscriptionName")
+          String name) {
+    authorizer.authorizeAdmin(securityContext);
+    EventSubscription sub = repository.getByName(null, name, repository.getFields("id"));
+    return EventSubscriptionScheduler.getInstance().listAlertDestinations(sub.getId());
+  }
+
   @POST
   @Path("/testDestination")
   @Operation(
@@ -642,8 +794,12 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       EventSubscriptionDestinationTestRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+
     EventSubscription eventSubscription =
         new EventSubscription().withFullyQualifiedName(request.getAlertName());
+
+    List<SubscriptionDestination> resultDestinations = new ArrayList<>();
 
     // by-pass AbstractEventConsumer - covers external destinations as of now
     request
@@ -654,12 +810,13 @@ public class EventSubscriptionResource
                   AlertFactory.getAlert(eventSubscription, destination);
               try {
                 alert.sendTestMessage();
+                resultDestinations.add(destination);
               } catch (EventPublisherException e) {
                 LOG.error(e.getMessage());
               }
             });
 
-    return Response.ok().build();
+    return Response.ok(resultDestinations).build();
   }
 
   private EventSubscription getEventSubscription(CreateEventSubscription create, String user) {
