@@ -1,35 +1,29 @@
 package org.openmetadata.service.apps.bundles.changeEvent.slack;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.slack.api.model.block.LayoutBlock;
+import java.util.List;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class SlackMessage {
-  @Getter @Setter private String username;
+  private List<LayoutBlock> blocks;
+  private List<Attachment> attachments;
 
-  @JsonProperty("icon_emoji")
   @Getter
   @Setter
-  private String iconEmoji;
-
-  @Getter @Setter private String channel;
-  @Getter @Setter private String text;
-
-  @JsonProperty("response_type")
-  @Getter
-  @Setter
-  private String responseType;
-
-  @Getter @Setter private SlackAttachment[] attachments;
-
-  public SlackMessage() {}
-
-  public SlackMessage(String text) {
-    this.text = text;
-  }
-
-  public SlackMessage encodedMessage() {
-    this.setText(this.getText().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"));
-    return this;
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public static class Attachment {
+    private String color;
+    private List<LayoutBlock> blocks;
   }
 }

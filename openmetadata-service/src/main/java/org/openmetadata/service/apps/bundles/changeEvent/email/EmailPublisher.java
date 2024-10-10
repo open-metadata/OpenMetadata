@@ -81,11 +81,10 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   public void sendTestMessage() throws EventPublisherException {
     try {
       Set<String> receivers = emailAlertConfig.getReceivers();
-      EmailMessage emailMessage =
-          emailDecorator.buildOutgoingTestMessage(eventSubscription.getFullyQualifiedName());
+      EmailUtil.testConnection();
+
       for (String email : receivers) {
-        EmailUtil.sendChangeEventMail(
-            eventSubscription.getFullyQualifiedName(), email, emailMessage);
+        EmailUtil.sendTestEmail(email, false);
       }
       setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {
