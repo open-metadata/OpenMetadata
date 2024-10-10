@@ -88,7 +88,7 @@ def get_columns(  # pylint: disable=too-many-locals
 
     # dictionary with (name, ) if default search path or (schema, name)
     # as keys
-    enums = dict(
+    enums = model_dump(
         ((rec["name"],), rec) if rec["visible"] else ((rec["schema"], rec["name"]), rec)
         for rec in self._load_enums(connection, schema="*")
     )

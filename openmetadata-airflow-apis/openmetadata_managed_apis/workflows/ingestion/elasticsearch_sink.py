@@ -36,12 +36,12 @@ def build_elasticsearch_sink(
     """
 
     elasticsearch_service_config_dict = (
-        openmetadata_service_connection.elasticsSearch.config.dict()
+        openmetadata_service_connection.elasticsSearch.config.model_dump()
     )
 
     elasticsearch_source_config_dict = {
         ES_SOURCE_TO_ES_OBJ_ARGS[key]: value
-        for key, value in ingestion_pipeline.sourceConfig.config.dict().items()
+        for key, value in ingestion_pipeline.sourceConfig.config.model_dump().items()
         if value and key not in ES_SOURCE_IGNORE_KEYS
     }
 

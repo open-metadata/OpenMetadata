@@ -71,7 +71,7 @@ class Row:
         self.QUERY_TEXT = query_text
 
     def __iter__(self):
-        """implementation to support dict(row)"""
+        """implementation to support model_dump(row)"""
         yield "QUERY_ID", self.QUERY_ID
         yield "QUERY_TYPE", self.QUERY_TYPE
         yield "START_TIME", self.START_TIME
@@ -92,7 +92,7 @@ class LowerRow:
         self.QUERY_TEXT = query_text
 
     def __iter__(self):
-        """implementation to support dict(row)"""
+        """implementation to support model_dump(row)"""
         yield "query_id", self.QUERY_ID
         yield "query_type", self.QUERY_TYPE
         yield "start_time", self.START_TIME

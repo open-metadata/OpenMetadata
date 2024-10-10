@@ -80,7 +80,7 @@ class HiveSource(CommonDbSourceService):
         only after hive 2.2.0 version
         """
         if not self.service_connection.metastoreConnection:
-            result = dict(self.engine.execute("SELECT VERSION()").fetchone())
+            result = model_dump(self.engine.execute("SELECT VERSION()").fetchone())
 
             version = result.get("_c0", "").split()
             if version and self._parse_version(version[0]) >= self._parse_version(
