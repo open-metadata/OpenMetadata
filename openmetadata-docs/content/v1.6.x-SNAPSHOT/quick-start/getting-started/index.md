@@ -1,6 +1,6 @@
 ---
 title: Getting Started with OpenMetadata for Data cataloging
-slug: /how-to-guides/getting-started
+slug: /quick-start/getting-started
 ---
 
 # Getting Started
@@ -65,7 +65,7 @@ In this section, you will find a series of guides to help you get started with O
 {% tile
   title="Day 1: Connect your Data Sources and invite users"
   description="Discover the right data assets to make timely business decisions."
-  link="/how-to-guides/getting-started/day-1"
+  link="/quick-start/getting-started/day-1"
   icon="discovery"
 /%}
 {% /tilesContainer %}

@@ -1,6 +1,6 @@
 ---
 title: Day 1
-slug: /how-to-guides/getting-started/day-1
+slug: /quick-start/getting-started/day-1
 ---
 
 # Getting Started: Day 1
@@ -39,7 +39,7 @@ There's two options on how to set up a data connector:
 {% tile
   title="Run the connector in OpenMetadata"
   description="Guide to start ingesting metadata seamlessly from your data sources."
-  link="/how-to-guides/getting-started/day-1/database-service-setup"
+  link="/quick-start/getting-started/day-1/database-service-setup"
   icon="discovery"
 /%}
 {% /tilesContainer %}
