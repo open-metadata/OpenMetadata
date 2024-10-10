@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../styles/variables.less');
+@import (reference) url('../../styles/variables.less');
 
 @border_color_1: #ffffff;
 @border_right_color_1: transparent;
@@ -21,6 +21,7 @@
   from {
     transform: rotate(0);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -53,9 +54,11 @@
   &.loader-success {
     border-left-color: @border_left_color_2;
   }
+
   &.loader-error {
     border-left-color: @error-color;
   }
+
   &.loader-white {
     border-color: @border_color_1;
     border-right-color: @border_right_color_1;

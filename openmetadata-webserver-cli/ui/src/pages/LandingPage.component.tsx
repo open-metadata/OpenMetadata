@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 // import axios from 'axios';
 
-const LandingPage: React.FC = () => {
+const LandingPage = () => {
   const [serverUrl, setServerUrl] = useState('');
   const [ingestionToken, setIngestionToken] = useState('');
   const history = useHistory();
@@ -15,7 +15,7 @@ const LandingPage: React.FC = () => {
       //   ingestion_token: ingestionToken,
       // });
       // console.log(response.data);
-      history.push('/services'); // Redirect to Services page
+      history.push('/service'); // Redirect to Services page
     } catch (error) {
       console.error('Error creating ingestion:', error);
     }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,24 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { FC } from 'react';
-import { Helmet, HelmetData } from 'react-helmet-async';
-import { useTranslation } from 'react-i18next';
-
-interface DocumentTitleProps {
-  title: string;
-}
-
-const helmetData = new HelmetData({});
-
-const DocumentTitle: FC<DocumentTitleProps> = ({ title }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Helmet helmetData={helmetData}>
-      <title>{`${title} | ${t('label.open-metadata')}`}</title>
-    </Helmet>
-  );
+export const DEFAULT_THEME = {
+  primaryColor: '#0968da',
+  infoColor: '#2196f3',
+  successColor: '#008376',
+  warningColor: '#ffc34e',
+  errorColor: '#ff4c3b',
 };
-
-export default DocumentTitle;

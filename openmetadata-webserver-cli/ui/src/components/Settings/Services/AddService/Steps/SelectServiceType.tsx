@@ -94,7 +94,7 @@ const SelectServiceType = ({
 
   return (
     <Row>
-      <Col span={24}>
+      {/* <Col span={24}>
         <Select
           className="w-full"
           data-testid="service-category"
@@ -106,7 +106,7 @@ const SelectServiceType = ({
             serviceCategoryHandler(value as ServiceCategory);
           }}
         />
-      </Col>
+      </Col> */}
       <Col className="m-t-lg" span={24}>
         <Searchbar
           removeMargin
@@ -126,7 +126,9 @@ const SelectServiceType = ({
               })}
               data-testid={type}
               key={type}
-              onClick={() => handleServiceTypeClick(type)}>
+              onClick={() => {
+                handleServiceTypeClick(type);
+              }}>
               <div data-testid="service-icon">
                 {getServiceLogo(type || '', 'h-9')}
               </div>

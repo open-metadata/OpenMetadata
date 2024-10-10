@@ -21,6 +21,7 @@ import {
 } from '../../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../../utils/formUtils';
 import { ConfigureServiceProps } from './Steps.interface';
+import { useHistory } from 'react-router-dom';
 
 const ConfigureService = ({
   serviceName,
@@ -28,6 +29,7 @@ const ConfigureService = ({
   onNext,
 }: ConfigureServiceProps) => {
   const [form] = Form.useForm();
+  const history = useHistory();
 
   const formFields: FieldProp[] = [
     {
@@ -65,6 +67,7 @@ const ConfigureService = ({
 
   const handleSubmit: FormProps['onFinish'] = (data) => {
     onNext({ serviceName: data.name, description: data.description ?? '' });
+    // history.push('/addIngestion');
   };
 
   return (

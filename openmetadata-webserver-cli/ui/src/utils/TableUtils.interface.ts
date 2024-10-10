@@ -10,24 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { FC } from 'react';
-import { Helmet, HelmetData } from 'react-helmet-async';
-import { useTranslation } from 'react-i18next';
 
-interface DocumentTitleProps {
-  title: string;
-}
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import { Column } from '../generated/entity/data/table';
+import { Field } from '../generated/entity/data/topic';
 
-const helmetData = new HelmetData({});
-
-const DocumentTitle: FC<DocumentTitleProps> = ({ title }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Helmet helmetData={helmetData}>
-      <title>{`${title} | ${t('label.open-metadata')}`}</title>
-    </Helmet>
-  );
-};
-
-export default DocumentTitle;
+export type TableFieldsInfoCommonEntities = SearchIndexField | Column | Field;

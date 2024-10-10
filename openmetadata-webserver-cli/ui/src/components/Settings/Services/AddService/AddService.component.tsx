@@ -48,6 +48,8 @@ import ConnectionConfigForm from "../ServiceConfig/ConnectionConfigForm";
 import { AddServiceProps, ServiceConfig } from "./AddService.interface";
 import ConfigureService from "./Steps/ConfigureService";
 import SelectServiceType from "./Steps/SelectServiceType";
+import { ServiceType } from '../../../../generated/entity/services/serviceType';
+import axios from "axios";
 
 const AddService = ({
   serviceCategory,
@@ -115,6 +117,12 @@ const AddService = ({
     }
   };
 
+  useEffect(() => {
+    if (selectServiceType) {
+      handleSelectServiceNextClick();
+    }
+  }, [selectServiceType]);
+
   // Configure service name
   const handleConfigureServiceBackClick = () => setActiveServiceStep(1);
   const handleConfigureServiceNextClick = (value: ServiceConfig) => {
@@ -129,12 +137,6 @@ const AddService = ({
       name: serviceConfig.serviceName,
       serviceType: selectServiceType,
       description: serviceConfig.description,
-      // owners: [
-      //   {
-      //     id: currentUser?.id ?? "",
-      //     type: "user",
-      //   },
-      // ],
     };
     const configData = {
       ...data,
@@ -143,23 +145,24 @@ const AddService = ({
       },
     };
     setSaveServiceState("waiting");
-    try {
-      await onAddServiceSave(configData);
 
-      setActiveServiceStep(4);
+    axios.post('/save-config', configData, { withCredentials: true })
+      .then(response => {
+        console.log('Configuration saved:', response.data);
+        history.push("/addIngestion");
+      })
+      .catch(error => {
+        console.error('Error saving configuration:', error);
+      });
 
-      await fetchAirflowStatus();
-    } catch (error) {
-      // error handling
-    } finally {
-      setSaveServiceState("initial");
-    }
+    setSaveServiceState("initial");
+
   };
 
   // View new service
   const handleViewServiceClick = () => {
     if (!isUndefined(newServiceData)) {
-      history.push(getServiceDetailsPath(newServiceData.name, serviceCategory));
+      history.push("/addIngestion");
     }
   };
 
@@ -199,7 +202,7 @@ const AddService = ({
           <SelectServiceType
             handleServiceTypeClick={handleServiceTypeClick}
             selectServiceType={selectServiceType}
-            serviceCategory={serviceCategory}
+            serviceCategory={ServiceCategory.DATABASE_SERVICES}
             serviceCategoryHandler={handleServiceCategoryChange}
             showError={showErrorMessage.serviceType}
             onCancel={handleSelectServiceCancel}
@@ -218,7 +221,7 @@ const AddService = ({
         {activeServiceStep === 3 && (
           <ConnectionConfigForm
             cancelText={t("label.back")}
-            serviceCategory={serviceCategory}
+            serviceCategory={ServiceCategory.DATABASE_SERVICES}
             serviceType={selectServiceType}
             status={saveServiceState}
             onCancel={handleConnectionDetailsBackClick}
@@ -226,20 +229,6 @@ const AddService = ({
             onSave={async (e) => {
               e.formData && (await handleConfigUpdate(e.formData));
             }}
-          />
-        )}
-
-        {activeServiceStep > 3 && (
-          <SuccessScreen
-            handleIngestionClick={() => handleAddIngestion(true)}
-            handleViewServiceClick={handleViewServiceClick}
-            name={serviceConfig.serviceName}
-            // API Service does not support ingestion workflows
-            showIngestionButton={
-              serviceCategory !== ServiceCategory.API_SERVICES
-            }
-            state={FormSubmitType.ADD}
-            suffix={getServiceCreatedLabel(serviceCategory)}
           />
         )}
       </div>
@@ -302,7 +291,7 @@ const AddService = ({
             activeField={activeField}
             isWorkflow={addIngestion}
             serviceName={selectServiceType}
-            serviceType={getServiceType(serviceCategory)}
+            serviceType={ServiceType.Database}
             workflowType={PipelineType.Metadata}
           />
         ),

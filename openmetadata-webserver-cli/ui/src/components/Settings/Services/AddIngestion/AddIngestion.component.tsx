@@ -78,21 +78,21 @@ const AddIngestion = ({
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
     () => ({
-      ...(data?.sourceConfig.config ?? {}),
-      name: data?.name ?? generateUUID(),
+      ...({}),
+      name: generateUUID(),
       displayName:
-        data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
-      enableDebugLog: data?.loggerLevel === LogLevels.Debug,
+        getIngestionName(serviceData.name, pipelineType),
+      enableDebugLog: true,
     })
   );
 
   const [scheduleInterval, setScheduleInterval] = useState(() =>
-    data?.airflowConfig.scheduleInterval ?? limitConfig?.enable
+    limitConfig?.enable
       ? getWeekCron({ hour: 0, min: 0, dow: 1 })
       : getDayCron({
-          min: 0,
-          hour: 0,
-        })
+        min: 0,
+        hour: 0,
+      })
   );
 
   const { ingestionName, retries } = useMemo(
@@ -116,8 +116,8 @@ const AddIngestion = ({
     () =>
       isSettingsPipeline
         ? t("label.view-entity", {
-            entity: t("label.pipeline-detail-plural"),
-          })
+          entity: t("label.pipeline-detail-plural"),
+        })
         : undefined,
 
     [isSettingsPipeline, t]
@@ -227,7 +227,7 @@ const AddIngestion = ({
             // clean the data to remove empty fields
             ...cleanWorkFlowData(
               omit(workflowData, ["name", "enableDebugLog", "displayName"]) ??
-                {}
+              {}
             ),
           },
         },
@@ -346,15 +346,6 @@ const AddIngestion = ({
             viewServiceText={viewServiceText}
           />
         )}
-
-        {/* <DeployIngestionLoaderModal
-          action={ingestionAction}
-          ingestionName={ingestionName}
-          isDeployed={isIngestionDeployed}
-          isIngestionCreated={isIngestionCreated}
-          progress={ingestionProgress}
-          visible={showDeployModal}
-        /> */}
       </div>
     </div>
   );

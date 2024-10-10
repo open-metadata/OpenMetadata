@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import TitleBreadcrumb from '../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -28,6 +28,8 @@ const ServicesPage = () => {
     [tab]
   );
 
+  console.log("Service name", serviceName);
+
   return (
     <PageLayoutV1 pageTitle={serviceName}>
       <Row className="page-container" gutter={[0, 16]}>
@@ -35,10 +37,28 @@ const ServicesPage = () => {
           <TitleBreadcrumb titleLinks={[]} />
         </Col>
         <Col span={24}>
-          <Services serviceName={serviceName} />
+          <Tabs
+            destroyInactiveTabPane
+            items={[
+              ...([
+                {
+                  key: 'services',
+                  children: <Services serviceName={serviceName} />,
+                  label: 'Services',
+                },
+              ]),
+              // pipelines are not supported for apiServices so don't show pipelines tab for apiServices
+              ...([]),
+            ]}
+            onChange={(activeKey) =>
+              null
+            }
+          />
+
+          {/* <Services serviceName={serviceName} /> */}
         </Col>
-      </Row>
-    </PageLayoutV1>
+      </Row >
+    </PageLayoutV1 >
   )
 };
 

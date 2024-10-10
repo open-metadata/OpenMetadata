@@ -62,7 +62,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   );
 
   const validator = useMemo(
-    () => customizeValidator<IngestionWorkflowData>(),
+    () => customizeValidator<any>(),
     []
   );
 

@@ -45,7 +45,7 @@ const AddIngestionPage = () => {
   const history = useHistory();
   const [serviceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
-  const [isLoading] = useState(true);
+  const [isLoading] = useState(false);
 
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
 

@@ -10,24 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { FC } from 'react';
-import { Helmet, HelmetData } from 'react-helmet-async';
-import { useTranslation } from 'react-i18next';
+import { TableProps } from 'antd';
+import { ReactNode } from 'react';
 
-interface DocumentTitleProps {
-  title: string;
+interface SearchProps {
+  onSearch: ((search: string) => void) | ((search: string) => Promise<void>);
+  search?: string;
 }
 
-const helmetData = new HelmetData({});
+export interface ListViewProps<T> {
+  tableProps: TableProps<T>;
+  cardRenderer: (data: T) => ReactNode;
+  searchProps: SearchProps;
+  deleted?: boolean;
+  handleDeletedSwitchChange?: () => void;
+}
 
-const DocumentTitle: FC<DocumentTitleProps> = ({ title }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Helmet helmetData={helmetData}>
-      <title>{`${title} | ${t('label.open-metadata')}`}</title>
-    </Helmet>
-  );
-};
-
-export default DocumentTitle;
+export enum ListViewOptions {
+  CARD = 1,
+  TABLE = 2,
+}
