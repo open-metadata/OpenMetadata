@@ -316,7 +316,7 @@ public class FormatterUtil {
           JsonUtils.readOrConvertValue(entityTimeSeries, TestCaseResult.class);
       TestCase testCase =
           Entity.getEntityByName(
-              TEST_CASE, testCaseResult.getTestCaseFQN(), TEST_CASE_RESULT, Include.ALL);
+              TEST_CASE, testCaseResult.getTestCaseFQN(), TEST_CASE_RESULT + ",testSuites", Include.ALL);
       ChangeEvent changeEvent =
           getChangeEvent(updateBy, eventType, testCase.getEntityReference().getType(), testCase);
       return changeEvent
