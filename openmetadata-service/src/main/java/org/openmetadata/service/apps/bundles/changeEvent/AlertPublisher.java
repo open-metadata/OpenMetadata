@@ -13,7 +13,11 @@ public class AlertPublisher extends AbstractEventConsumer {
     if (destinationMap.containsKey(receiverId)) {
       Destination<ChangeEvent> destination = destinationMap.get(receiverId);
       if (Boolean.TRUE.equals(destination.getEnabled())) {
-        destination.sendMessage(event);
+        try {
+          destination.sendMessage(event);
+        } catch (EventPublisherException ex) {
+          handleFailedEvent(ex, true);
+        }
       } else {
         LOG.debug(
             "Event Subscription:{} Skipping sending message since, disabled subscription with Id: {}",
