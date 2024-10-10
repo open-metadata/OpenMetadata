@@ -822,6 +822,7 @@
     "owner": "Owner",
     "owner-kpi": "Owner KPI",
     "owner-lowercase": "owner",
+    "owner-lowercase-plural": "owners",
     "owner-plural": "Owners",
     "page-not-found": "Page Not Found",
     "page-views-by-data-asset-plural": "Page Views by Data Assets",
