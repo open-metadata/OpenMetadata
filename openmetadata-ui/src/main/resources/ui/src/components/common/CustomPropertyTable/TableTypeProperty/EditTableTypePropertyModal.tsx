@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import { TableTypePropertyValueType } from '../CustomPropertyTable.interface';
 import './edit-table-type-property.less';
+import TableTypePropertyView from './TableTypePropertyView';
 
 interface EditTableTypePropertyModalProps {
   isVisible: boolean;
@@ -154,7 +155,8 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
   const handleUpdate = useCallback(async () => {
     const modifiedRows = dataSource
       .map((row) => omit(row, 'id'))
-      .filter((row) => !isEmpty(row));
+      // if the row is empty, filter it out
+      .filter((row) => !isEmpty(row) && Object.values(row).some(Boolean));
     await onSave({ rows: modifiedRows, columns });
   }, [onSave, dataSource, columns]);
 
@@ -205,21 +207,25 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
         </Typography.Text>
       }
       width={800}>
-      <ReactDataGrid
-        editable
-        className="edit-table-type-property"
-        columns={filterColumns}
-        dataSource={dataSource}
-        handle={setGridRef}
-        idProperty="id"
-        minRowHeight={30}
-        showZebraRows={false}
-        style={{ height: '180px' }}
-        onEditComplete={onEditComplete}
-        onEditStart={onEditStart}
-        onEditStop={onEditStop}
-        onKeyDown={onKeyDown}
-      />
+      {isEmpty(dataSource) ? (
+        <TableTypePropertyView isInModal columns={columns} rows={rows} />
+      ) : (
+        <ReactDataGrid
+          editable
+          className="edit-table-type-property"
+          columns={filterColumns}
+          dataSource={dataSource}
+          handle={setGridRef}
+          idProperty="id"
+          minRowHeight={30}
+          showZebraRows={false}
+          style={{ height: '180px' }}
+          onEditComplete={onEditComplete}
+          onEditStart={onEditStart}
+          onEditStop={onEditStop}
+          onKeyDown={onKeyDown}
+        />
+      )}
     </Modal>
   );
 };

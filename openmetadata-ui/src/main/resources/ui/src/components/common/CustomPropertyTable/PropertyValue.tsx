@@ -948,7 +948,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   const getValueElement = () => {
     const propertyValue = getPropertyValue();
 
-    return !isUndefined(value) ? (
+    // if value is not undefined or property is a table type(at least show the columns), return the property value
+    return !isUndefined(value) || isTableType ? (
       propertyValue
     ) : (
       <span className="text-grey-muted" data-testid="no-data">

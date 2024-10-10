@@ -127,4 +127,4 @@ export const SUPPORTED_FORMAT_MAP = {
   'time-cp': SUPPORTED_TIME_FORMATS,
 };
 
-export const TABLE_TYPE_CUSTOM_PROPERTY = 'table-type';
+export const TABLE_TYPE_CUSTOM_PROPERTY = 'table-cp';

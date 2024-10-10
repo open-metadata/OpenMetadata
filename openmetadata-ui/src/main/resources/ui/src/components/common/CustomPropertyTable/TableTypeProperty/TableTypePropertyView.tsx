@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isArray } from 'lodash';
+import { isArray, isEmpty } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import Table from '../../Table/Table';
@@ -18,11 +18,13 @@ import Table from '../../Table/Table';
 interface TableTypePropertyViewProps {
   columns: string[];
   rows: Record<string, string>[];
+  isInModal?: boolean;
 }
 
 const TableTypePropertyView: FC<TableTypePropertyViewProps> = ({
   columns,
   rows,
+  isInModal = false,
 }) => {
   const { t } = useTranslation();
 
@@ -54,6 +56,7 @@ const TableTypePropertyView: FC<TableTypePropertyViewProps> = ({
       rowKey="name"
       scroll={{ x: true }}
       size="small"
+      style={{ width: isEmpty(rows) && !isInModal ? '98%' : '100%' }}
     />
   );
 };
