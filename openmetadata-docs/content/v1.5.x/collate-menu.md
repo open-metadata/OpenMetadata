@@ -682,6 +682,10 @@ site_menu:
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
+  - category: How-to Guides / Data Governance / Automation
+    url: /how-to-guides/data-governance/automation
+  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate 
+    url: /how-to-guides/data-governance/automation/set-up-automation
   - category: How-to Guides / Data Governance / Glossary
     url: /how-to-guides/data-governance/glossary
   - category: How-to Guides / Data Governance / Glossary / What is a Glossary Term
