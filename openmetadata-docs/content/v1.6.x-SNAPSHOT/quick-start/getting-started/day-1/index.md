@@ -39,7 +39,7 @@ There's two options on how to set up a data connector:
 {% tile
   title="Run the connector in OpenMetadata"
   description="Guide to start ingesting metadata seamlessly from your data sources."
-  link="/how-to-guides/getting-started/day-1/database-service-setup"
+  link="/quick-start/getting-started/day-1/database-service-setup"
   icon="discovery"
 /%}
 {% /tilesContainer %}
@@ -48,7 +48,7 @@ There's two options on how to set up a data connector:
 
 ## Step 2: Ingest Metadata
 
-Once the connector is set up, configure a [metadata ingestion pipeline](/how-to-guides/admin-guide/how-to-ingest-metadata) 
+Once the connector is set up, configure a [metadata ingestion pipeline](/quick-start/admin-guide/how-to-ingest-metadata) 
 to import metadata into OpenMetadata on a regular schedule.
 
 - Navigate to **Settings > Services > Databases** and select the service you added.
@@ -92,14 +92,14 @@ To invite users you will need to ensure that you have an SMTP server available. 
 To update the details from the UI, navigate to Settings > Preferences > Email
 
 {% image
-src="/images/v1.6/how-to-guides/admin-guide/email.png"
+src="/images/v1.6/quick-start/admin-guide/email.png"
 alt="Email Configuration"
 caption="Email Configuration"
 /%}
 
 ### Inviting Users
 
-After metadata has been ingested into OpenMetadata, you can [invite users](/how-to-guides/admin-guide/teams-and-users/invite-users) to collaborate on the data and assign different roles.
+After metadata has been ingested into OpenMetadata, you can [invite users](/quick-start/admin-guide/teams-and-users/invite-users) to collaborate on the data and assign different roles.
 
 - Go to **Settings > Team & User Management > Users**.
 
@@ -141,37 +141,37 @@ Explore these features and unlock the full potential of your data using OpenMeta
 {% tile
     title="Data Discovery"
     description="Discover the right data assets to make timely business decisions."
-    link="/how-to-guides/data-discovery"
+    link="/quick-start/data-discovery"
     icon="discovery"
 /%}
 {% tile
     title="Data Collaboration"
     description="Foster data team collaboration to enhance data understanding."
-    link="/how-to-guides/data-collaboration"
+    link="/quick-start/data-collaboration"
     icon="collaboration"
 /%}
 {% tile
     title="Data Quality & Observability"
     description="Trust your data with quality tests & monitor the health of your data systems."
-    link="/how-to-guides/data-quality-observability"
+    link="/quick-start/data-quality-observability"
     icon="observability"
 /%}
 {% tile
     title="Data Lineage"
     description="Trace the path of data across tables, pipelines, and dashboards."
-    link="/how-to-guides/data-lineage"
+    link="/quick-start/data-lineage"
     icon="lineage"
 /%}
 {% tile
     title="Data Insights"
     description="Define KPIs and set goals to proactively hone the data culture of your company."
-    link="/how-to-guides/data-insights"
+    link="/quick-start/data-insights"
     icon="discovery"
 /%}
 {% tile
     title="Data Governance"
     description="Enhance your data platform governance using OpenMetadata."
-    link="/how-to-guides/data-governance"
+    link="/quick-start/data-governance"
     icon="governance"
 /%}
 {% /tilesContainer %}
@@ -182,13 +182,13 @@ Explore these features and unlock the full potential of your data using OpenMeta
 {% tile
     title="Admin Guide"
     description="Admin users can get started with OpenMetadata with just three quick and easy steps & know-it-all with the advanced guides."
-    link="/how-to-guides/admin-guide"
+    link="/quick-start/admin-guide"
     icon="administration"
 /%}
 {% tile
     title="Guide for Data Users"
     description="Get to know the basics of OpenMetadata and about the data assets that you can explore in the all-in-one platform."
-    link="/how-to-guides/guide-for-data-users"
+    link="/quick-start/guide-for-data-users"
     icon="steward"
 /%}
 {% /tilesContainer %}
