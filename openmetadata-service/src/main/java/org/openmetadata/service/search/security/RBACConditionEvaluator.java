@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.security;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.*;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.teams.User;
@@ -25,6 +27,7 @@ public class RBACConditionEvaluator {
   private final QueryBuilderFactory queryBuilderFactory;
   private final ExpressionParser spelParser = new SpelExpressionParser();
   private final StandardEvaluationContext spelContext;
+  private static final String DOMAIN_ONLY_ACCESS_RULE = "DomainOnlyAccessRule";
   private static final Set<MetadataOperation> SEARCH_RELEVANT_OPS =
       Set.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL);
 
@@ -43,8 +46,9 @@ public class RBACConditionEvaluator {
         it.hasNext(); ) {
       SubjectContext.PolicyContext context = it.next();
       for (CompiledRule rule : context.getRules()) {
-        if (rule.getCondition() != null
-            && rule.getOperations().stream().anyMatch(SEARCH_RELEVANT_OPS::contains)) {
+        if ((rule.getCondition() != null
+                && rule.getOperations().stream().anyMatch(SEARCH_RELEVANT_OPS::contains))
+            || rule.getName().equalsIgnoreCase(DOMAIN_ONLY_ACCESS_RULE)) {
           ConditionCollector ruleCollector = new ConditionCollector(queryBuilderFactory);
           if (!rule.getResources().isEmpty() && !rule.getResources().contains("All")) {
             OMQueryBuilder indexFilter = getIndexFilter(rule.getResources());
@@ -224,12 +228,12 @@ public class RBACConditionEvaluator {
 
   public void hasDomain(ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
-    if (user.getDomain() == null) {
+    if (nullOrEmpty(user.getDomains())) {
       OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domain.id");
       collector.addMustNot(existsQuery);
     } else {
-      String userDomainId = user.getDomain().getId().toString();
-      OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domain.id", userDomainId);
+      List<String> userIds = user.getDomains().stream().map(ref -> ref.getId().toString()).toList();
+      OMQueryBuilder domainQuery = queryBuilderFactory.termsQuery("domain.id", userIds);
       collector.addMust(domainQuery);
     }
   }

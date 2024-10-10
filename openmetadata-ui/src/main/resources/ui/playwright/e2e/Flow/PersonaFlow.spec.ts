@@ -82,7 +82,7 @@ test.describe.serial('Persona operations', () => {
 
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-    await page.waitForSelector('[data-testid="selectable-list"]');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     const searchUser = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(
@@ -90,8 +90,8 @@ test.describe.serial('Persona operations', () => {
       )}*`
     );
     await page.getByTestId('searchbar').fill(user.responseData.displayName);
-
     await searchUser;
+
     await page
       .getByRole('listitem', { name: user.responseData.displayName })
       .click();
