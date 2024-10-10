@@ -14,7 +14,7 @@ import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import { TypeComputedProps } from '@inovua/reactdatagrid-community/types';
 import { Button, Modal, Tooltip, Typography } from 'antd';
-import { omit } from 'lodash';
+import { isEmpty, omit } from 'lodash';
 import React, { FC, MutableRefObject, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomProperty } from '../../../../generated/type/customProperty';
@@ -152,7 +152,9 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
   }, [gridRef]);
 
   const handleUpdate = useCallback(async () => {
-    const modifiedRows = dataSource.map((row) => omit(row, 'id'));
+    const modifiedRows = dataSource
+      .map((row) => omit(row, 'id'))
+      .filter((row) => !isEmpty(row));
     await onSave({ rows: modifiedRows, columns });
   }, [onSave, dataSource, columns]);
 
