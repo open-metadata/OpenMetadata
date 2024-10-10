@@ -311,7 +311,8 @@ const NavBar = ({
         return;
       }
       const newVersion = await getVersion();
-      if (version !== newVersion.version) {
+      // Compare version only if version is set previously to have fair comparison
+      if (version && version !== newVersion.version) {
         setShowVersionMissMatchAlert(true);
       }
     };
