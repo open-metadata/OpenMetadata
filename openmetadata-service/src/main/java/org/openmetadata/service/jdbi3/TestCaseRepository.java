@@ -206,7 +206,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return records.stream()
         .map(
             testSuiteId ->
-                Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "owners,domain", Include.ALL, false)
+                Entity.<TestSuite>getEntity(
+                        TEST_SUITE, testSuiteId.getId(), "owners,domain", Include.ALL, false)
                     .withInherited(true)
                     .withChangeDescription(null))
         .toList();

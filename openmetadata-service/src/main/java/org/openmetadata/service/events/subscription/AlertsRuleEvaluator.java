@@ -109,8 +109,12 @@ public class AlertsRuleEvaluator {
     if (changeEvent.getEntityType().equals(TEST_CASE)) {
       // If we did not match on the owner name and are dealing with a test case,
       // check if the match happens on the test suite owner name
-      TestCase testCase = Entity.getEntity(
-              changeEvent.getEntityType(), entity.getId(), "testSuites,owners", Include.NON_DELETED);
+      TestCase testCase =
+          Entity.getEntity(
+              changeEvent.getEntityType(),
+              entity.getId(),
+              "testSuites,owners",
+              Include.NON_DELETED);
       Optional<List<TestSuite>> testSuites = Optional.ofNullable(testCase.getTestSuites());
       return testSuites.filter(suites -> testSuiteOwnerMatcher(suites, ownerNameList)).isPresent();
     }
@@ -142,7 +146,6 @@ public class AlertsRuleEvaluator {
         return true;
       }
     }
-
 
     if (changeEvent.getEntityType().equals(TEST_CASE)) {
       // If we did not match on the entity FQN and are dealing with a test case,
@@ -565,7 +568,7 @@ public class AlertsRuleEvaluator {
         if (matcherTestSuiteFQN.find()) return true;
         if (testSuite.getDomain() != null) {
           Matcher matcherDomainFQN = pattern.matcher(testSuite.getDomain().getFullyQualifiedName());
-            if (matcherDomainFQN.find()) return true;
+          if (matcherDomainFQN.find()) return true;
         }
       }
     }

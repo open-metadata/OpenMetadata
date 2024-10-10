@@ -53,7 +53,7 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding()
-                .withInstanceMethods()
+            .withInstanceMethods()
             .withRootObject(alertsRuleEvaluator)
             .build();
     assertTrue(evaluateExpression("matchAnySource('alert')", evaluationContext));
@@ -80,7 +80,7 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding()
-                .withInstanceMethods()
+            .withInstanceMethods()
             .withRootObject(alertsRuleEvaluator)
             .build();
     assertTrue(
@@ -92,18 +92,22 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
   @Test
   void test_matchAnyEntityFqn() throws IOException {
     // Create Table Entity
-    // SpEl parsing fails for non-basic UTF-8 https://github.com/open-metadata/OpenMetadata/issues/10376
+    // SpEl parsing fails for non-basic UTF-8
+    // https://github.com/open-metadata/OpenMetadata/issues/10376
     List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
     CreateTable create = tableResourceTest.createRequest("table").withColumns(columns);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    createdTable.setFullyQualifiedName("ServiceName.DatabaseName.SchemaName." + createdTable.getName());
+    createdTable.setFullyQualifiedName(
+        "ServiceName.DatabaseName.SchemaName." + createdTable.getName());
     CreateTestCase createTestCase = testCaseResourceTest.createRequest("testCase");
-    TestCase testCase = testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+    TestCase testCase =
+        testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
     testCase = Entity.getEntity(testCase.getEntityReference(), "testSuites", Include.ALL);
-    testCase.setFullyQualifiedName("ServiceName.DatabaseName.SchemaName.table." + testCase.getName());
-    String testSuiteFqn = "ServiceName.DatabaseName.SchemaName.table." + testCase.getName() + ".testSuite";
-    testCase.getTestSuites().get(0)
-            .setFullyQualifiedName(testSuiteFqn);
+    testCase.setFullyQualifiedName(
+        "ServiceName.DatabaseName.SchemaName.table." + testCase.getName());
+    String testSuiteFqn =
+        "ServiceName.DatabaseName.SchemaName.table." + testCase.getName() + ".testSuite";
+    testCase.getTestSuites().get(0).setFullyQualifiedName(testSuiteFqn);
 
     // Create a change Event with the Entity Table
     ChangeEvent changeEvent = new ChangeEvent();
@@ -121,7 +125,6 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     assertTrue(evaluateExpression("matchAnyEntityFqn({'" + fqn + "'})", evaluationContext));
     assertFalse(evaluateExpression("(matchAnyEntityFqn({'FOO'}))", evaluationContext));
 
-
     // Create a change Event with the Entity Test Case
     changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TEST_CASE);
@@ -129,11 +132,12 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     // Test Entity FQN match for test case
     alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     evaluationContext =
-            SimpleEvaluationContext.forReadOnlyDataBinding()
-                    .withInstanceMethods()
-                    .withRootObject(alertsRuleEvaluator)
-                    .build();
-    assertTrue(evaluateExpression("matchAnyEntityFqn({'" + testSuiteFqn + "'})", evaluationContext));
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+    assertTrue(
+        evaluateExpression("matchAnyEntityFqn({'" + testSuiteFqn + "'})", evaluationContext));
     assertFalse(evaluateExpression("(matchAnyEntityFqn({'FOO'}))", evaluationContext));
   }
 
