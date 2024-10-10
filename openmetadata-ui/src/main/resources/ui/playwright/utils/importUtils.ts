@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
   FIELD_VALUES_CUSTOM_PROPERTIES,
@@ -171,32 +170,6 @@ const editGlossaryCustomProperty = async (
       .getByTestId('code-mirror-container')
       .getByRole('textbox')
       .fill(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
-
-    await page.getByTestId('inline-save-btn').click();
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.ENUM_WITH_DESCRIPTIONS) {
-    await page.getByTestId('enum-with-description-select').click();
-
-    await page.waitForSelector('.ant-select-dropdown', {
-      state: 'visible',
-    });
-
-    // await page
-    //   .getByRole('option', {
-    //     name: CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm
-    //       .enumWithDescriptionConfig.values[0].key,
-    //   })
-    //   .click();
-
-    await page
-      .locator('span')
-      .filter({
-        hasText:
-          CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm
-            .enumWithDescriptionConfig.values[0].key,
-      })
-      .click();
 
     await page.getByTestId('inline-save-btn').click();
   }

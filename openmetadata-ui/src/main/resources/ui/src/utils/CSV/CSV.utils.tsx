@@ -19,15 +19,12 @@ import {
   ExtensionDataProps,
   ExtensionDataTypes,
 } from '../../components/Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
-import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { SEMICOLON_SPLITTER } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   CustomProperty,
   EntityReference,
-  EnumConfig,
   Type,
-  ValueClass,
 } from '../../generated/entity/type';
 import { Status } from '../../generated/type/csvImportResult';
 import { removeOuterEscapes } from '../CommonUtils';
@@ -193,21 +190,6 @@ const convertCustomPropertyStringToValueExtensionBasedOnType = (
       }
     }
 
-    case 'enumWithDescriptions': {
-      const propertyEnumValues =
-        ((customProperty?.customPropertyConfig?.config as EnumConfig)
-          .values as ValueClass[]) ?? [];
-
-      const keyAndValue: Record<string, ValueClass> = {};
-
-      propertyEnumValues.forEach((cp) => (keyAndValue[cp.key] = cp));
-
-      return value.split('|').map((item) => ({
-        key: item,
-        description: keyAndValue[item].description ?? NO_DATA_PLACEHOLDER,
-      }));
-    }
-
     case 'timeInterval': {
       const [start, end] = value.split(':');
 
@@ -245,11 +227,6 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
     }
     case 'enum':
       return (value as unknown as string[]).map((item) => item).join('|');
-
-    case 'enumWithDescriptions':
-      return (value as unknown as ValueClass[])
-        .map((item) => item.key)
-        .join('|');
 
     case 'timeInterval': {
       const interval = value as { start: string; end: string };

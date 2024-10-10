@@ -17,8 +17,8 @@ import {
   ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
 import {
-  EntityTypeEndpoint,
   ENTITY_PATH,
+  EntityTypeEndpoint,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { clickOutside, descriptionBox, uuid } from './common';
@@ -44,7 +44,6 @@ export enum CustomPropertyTypeByName {
   TIME_CP = 'time-cp',
   DATE_CP = 'date-cp',
   DATE_TIME_CP = 'dateTime-cp',
-  ENUM_WITH_DESCRIPTION = 'enumWithDescriptions',
 }
 
 export interface CustomProperty {
@@ -118,15 +117,6 @@ export const setValueForProperty = async (data: {
       await page.click('#enumValues');
       await page.fill('#enumValues', value, { force: true });
       await page.press('#enumValues', 'Enter');
-      await clickOutside(page);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'enumWithDescriptions':
-      await page.click('#enumWithDescriptionValues');
-      await page.fill('#enumWithDescriptionValues', value, { force: true });
-      await page.press('#enumWithDescriptionValues', 'Enter');
       await clickOutside(page);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -251,18 +241,6 @@ export const validateValueForProperty = async (data: {
     );
   } else if (propertyType === 'sqlQuery') {
     await expect(container.locator('.CodeMirror-scroll')).toContainText(value);
-  } else if (propertyType === 'enumWithDescriptions') {
-    await expect(
-      container.locator('[data-testid="enum-with-description-table"]')
-    ).toBeVisible();
-
-    await expect(
-      container
-        .locator('[data-testid="enum-with-description-table"]')
-        .getByText(value, {
-          exact: true,
-        })
-    ).toBeVisible();
   } else if (
     ![
       'entityReference',
@@ -315,11 +293,6 @@ export const getPropertyValues = (
       return {
         value: 'small',
         newValue: 'medium',
-      };
-    case 'enumWithDescriptions':
-      return {
-        value: 'enumWithDescription1',
-        newValue: 'enumWithDescription2',
       };
     case 'sqlQuery':
       return {
@@ -443,25 +416,6 @@ export const createCustomPropertyForEntity = async (
                   config: {
                     multiSelect: true,
                     values: ['small', 'medium', 'large'],
-                  },
-                },
-              }
-            : {}),
-          ...(item.name === 'enumWithDescriptions'
-            ? {
-                customPropertyConfig: {
-                  config: {
-                    multiSelect: true,
-                    values: [
-                      {
-                        key: 'enumWithDescription1',
-                        description: 'This is enumWithDescription1',
-                      },
-                      {
-                        key: 'enumWithDescription2',
-                        description: 'This is enumWithDescription2',
-                      },
-                    ],
                   },
                 },
               }

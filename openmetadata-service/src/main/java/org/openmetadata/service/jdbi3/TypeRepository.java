@@ -22,6 +22,8 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.validation.ConstraintViolationException;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
@@ -41,10 +44,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.customproperties.EnumConfig;
-import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
-import org.openmetadata.schema.type.customproperties.Value;
+import org.openmetadata.schema.type.customproperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -173,8 +176,7 @@ public class TypeRepository extends EntityRepository<Type> {
   private void validateProperty(CustomProperty customProperty) {
     switch (customProperty.getPropertyType().getName()) {
       case "enum" -> validateEnumConfig(customProperty.getCustomPropertyConfig());
-      case "enumWithDescriptions" -> validateEnumWithDescriptionsConfig(
-          customProperty.getCustomPropertyConfig());
+      case "table-cp" -> validateTableTypeConfig(customProperty.getCustomPropertyConfig());
       case "date-cp" -> validateDateFormat(
           customProperty.getCustomPropertyConfig(), getDateTokens(), "Invalid date format");
       case "dateTime-cp" -> validateDateFormat(
@@ -233,25 +235,37 @@ public class TypeRepository extends EntityRepository<Type> {
     }
   }
 
-  private void validateEnumWithDescriptionsConfig(CustomPropertyConfig config) {
-    if (config != null) {
-      EnumWithDescriptionsConfig enumWithDescriptionsConfig =
-          JsonUtils.convertValue(config.getConfig(), EnumWithDescriptionsConfig.class);
-      if (enumWithDescriptionsConfig == null
-          || (enumWithDescriptionsConfig.getValues() != null
-              && enumWithDescriptionsConfig.getValues().isEmpty())) {
-        throw new IllegalArgumentException(
-            "EnumWithDescriptions Custom Property Type must have customPropertyConfig populated with values.");
-      }
-      JsonUtils.validateJsonSchema(config.getConfig(), EnumWithDescriptionsConfig.class);
-      if (enumWithDescriptionsConfig.getValues().stream().map(Value::getKey).distinct().count()
-          != enumWithDescriptionsConfig.getValues().size()) {
-        throw new IllegalArgumentException(
-            "EnumWithDescriptions Custom Property key cannot have duplicates.");
-      }
-    } else {
+  private void validateTableTypeConfig(CustomPropertyConfig config) {
+    if (config == null) {
+      throw new IllegalArgumentException("Table Custom Property Type must have config populated.");
+    }
+
+    JsonNode configNode = JsonUtils.valueToTree(config.getConfig());
+    TableConfig tableConfig = JsonUtils.convertValue(config.getConfig(), TableConfig.class);
+
+    // rowCount is optional, if not present set it to the default value
+    if (!configNode.has("rowCount")) {
+      ((ObjectNode) configNode).put("rowCount", tableConfig.getRowCount());
+      config.setConfig(configNode);
+    }
+
+    List<String> columns = new ArrayList<>();
+    configNode.path("columns").forEach(node -> columns.add(node.asText()));
+    Set<String> uniqueColumns = new HashSet<>(columns);
+    if (uniqueColumns.size() != columns.size()) {
+      throw new IllegalArgumentException("Column names must be unique.");
+    }
+
+    try {
+      JsonUtils.validateJsonSchema(config.getConfig(), TableConfig.class);
+    } catch (ConstraintViolationException e) {
+      String validationErrors =
+          e.getConstraintViolations().stream()
+              .map(violation -> violation.getPropertyPath() + " " + violation.getMessage())
+              .collect(Collectors.joining(", "));
+
       throw new IllegalArgumentException(
-          "EnumWithDescriptions Custom Property Type must have customPropertyConfig.");
+          CatalogExceptionMessage.customPropertyConfigError("table", validationErrors));
     }
   }
 
@@ -412,27 +426,6 @@ public class TypeRepository extends EntityRepository<Type> {
         } else if (!updatedValues.containsAll(origConfig.getValues())) {
           throw new IllegalArgumentException(
               "Existing Enum Custom Property values cannot be removed.");
-        }
-      } else if (origProperty.getPropertyType().getName().equals("enumWithDescriptions")) {
-        EnumWithDescriptionsConfig origConfig =
-            JsonUtils.convertValue(
-                origProperty.getCustomPropertyConfig().getConfig(),
-                EnumWithDescriptionsConfig.class);
-        EnumWithDescriptionsConfig updatedConfig =
-            JsonUtils.convertValue(
-                updatedProperty.getCustomPropertyConfig().getConfig(),
-                EnumWithDescriptionsConfig.class);
-        HashSet<String> updatedValues =
-            updatedConfig.getValues().stream()
-                .map(Value::getKey)
-                .collect(Collectors.toCollection(HashSet::new));
-        if (updatedValues.size() != updatedConfig.getValues().size()) {
-          throw new IllegalArgumentException(
-              "EnumWithDescriptions Custom Property values cannot have duplicates.");
-        } else if (!updatedValues.containsAll(
-            origConfig.getValues().stream().map(Value::getKey).collect(Collectors.toSet()))) {
-          throw new IllegalArgumentException(
-              "Existing EnumWithDescriptions Custom Property values cannot be removed.");
         }
       }
     }
