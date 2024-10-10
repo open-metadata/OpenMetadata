@@ -167,7 +167,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
           <Tooltip
             title={
               dataSource.length === maxRowCount
-                ? 'Maximum 10 rows are allowed'
+                ? `Maximum ${maxRowCount} rows are allowed`
                 : t('label.add-entity', { entity: t('label.row') })
             }>
             <Button
