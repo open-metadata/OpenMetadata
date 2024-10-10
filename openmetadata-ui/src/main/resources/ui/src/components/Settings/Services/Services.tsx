@@ -344,7 +344,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       ),
     },
     {
-      title: t('label.owner'),
+      title: t('label.owner-plural'),
       dataIndex: 'owners',
       key: 'owners',
       width: 200,

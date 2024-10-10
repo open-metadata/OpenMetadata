@@ -434,7 +434,7 @@ const PipelineDetails = ({
         ),
       },
       {
-        title: t('label.owner'),
+        title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
         width: 120,
