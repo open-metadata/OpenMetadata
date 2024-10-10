@@ -86,7 +86,7 @@ const TableQueryRightPanel = ({
             <Space className="relative" direction="vertical" size={4}>
               <Space align="center" className="w-full" size={0}>
                 <Typography.Text className="right-panel-label">
-                  {t('label.owner')}
+                  {t('label.owner-plural')}
                 </Typography.Text>
 
                 {(EditAll || EditOwners) && (
@@ -99,7 +99,7 @@ const TableQueryRightPanel = ({
                     }>
                     <Tooltip
                       title={t('label.edit-entity', {
-                        entity: t('label.owner-lowercase'),
+                        entity: t('label.owner-lowercase-plural'),
                       })}>
                       <Button
                         className="cursor-pointer flex-center"

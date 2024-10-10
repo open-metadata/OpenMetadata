@@ -354,7 +354,7 @@ describe('Services', () => {
       await screen.findByTestId('service-name-pipelineServices')
     ).toHaveTextContent('Glue');
 
-    expect(await screen.findByText('label.owner')).toBeInTheDocument();
+    expect(await screen.findByText('label.owner-plural')).toBeInTheDocument();
     expect(await screen.findByText('OwnerLabel')).toBeInTheDocument();
   });
 

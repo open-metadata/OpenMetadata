@@ -118,7 +118,7 @@ describe('EntityUtils unit tests', () => {
         getEntityOverview(ExplorePageTabs.CHARTS, MOCK_CHART_DATA)
       );
 
-      expect(result).toContain('label.owner');
+      expect(result).toContain('label.owner-plural');
       expect(result).toContain('label.chart');
       expect(result).toContain('label.url-uppercase');
       expect(result).toContain('Are you an ethnic minority in your city?');
@@ -140,7 +140,7 @@ describe('EntityUtils unit tests', () => {
         })
       );
 
-      expect(result).toContain('label.owner');
+      expect(result).toContain('label.owner-plural');
       expect(result).toContain('label.type');
       expect(result).toContain('label.service');
       expect(result).toContain('label.database');

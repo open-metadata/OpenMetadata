@@ -66,8 +66,8 @@ test.describe('Explore Tree scenarios ', () => {
       await expect(
         page.getByTestId('search-dropdown-Domain').locator('span')
       ).toContainText('Domain');
-      await expect(page.getByTestId('search-dropdown-Owner')).toContainText(
-        'Owner'
+      await expect(page.getByTestId('search-dropdown-Owners')).toContainText(
+        'Owners'
       );
       await expect(
         page.getByTestId('search-dropdown-Tag').locator('span')

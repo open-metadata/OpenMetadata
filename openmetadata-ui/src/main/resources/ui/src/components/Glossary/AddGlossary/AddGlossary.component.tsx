@@ -196,7 +196,7 @@ const AddGlossary = ({
     name: 'owners',
     id: 'root/owner',
     required: false,
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,

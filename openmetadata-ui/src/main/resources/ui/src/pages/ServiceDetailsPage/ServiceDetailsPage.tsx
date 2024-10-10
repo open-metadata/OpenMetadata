@@ -668,7 +668,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-updating-error', {
-            entity: t('label.owner-lowercase'),
+            entity: t('label.owner-lowercase-plural'),
           })
         );
       }

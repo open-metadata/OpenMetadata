@@ -61,7 +61,9 @@ describe('AlertsUtil tests', () => {
   });
 
   it('getFunctionDisplayName should return correct text for matchAnyOwnerName', () => {
-    expect(getFunctionDisplayName('matchAnyOwnerName')).toBe('label.owner');
+    expect(getFunctionDisplayName('matchAnyOwnerName')).toBe(
+      'label.owner-plural'
+    );
   });
 
   it('getFunctionDisplayName should return correct text for matchAnyEventType', () => {
