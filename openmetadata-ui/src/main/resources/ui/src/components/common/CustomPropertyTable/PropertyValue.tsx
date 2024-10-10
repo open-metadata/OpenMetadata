@@ -1034,7 +1034,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             ref={contentRef}
             style={{
               height: containerStyleFlag ? 'auto' : '30px',
-              overflow: containerStyleFlag ? 'visible' : 'hidden',
+              overflow: 'hidden',
             }}>
             {showInput ? getPropertyInput() : getValueElement()}
           </div>
