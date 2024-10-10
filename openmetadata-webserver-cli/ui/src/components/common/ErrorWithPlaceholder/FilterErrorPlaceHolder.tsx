@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
-import classNames from 'classnames';
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterPlaceHolderIcon } from '../../../assets/svg/no-search-placeholder.svg';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { Transi18next } from '../../../utils/CommonUtils';
-import { FilterPlaceholderProps } from './placeholder.interface';
+import { Space, Typography } from "antd";
+import classNames from "classnames";
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { ReactComponent as FilterPlaceHolderIcon } from "../../../assets/svg/no-search-placeholder.svg";
+import { Transi18next } from "../../../utils/CommonUtils";
+import { FilterPlaceholderProps } from "./placeholder.interface";
 
 const FilterErrorPlaceHolder = ({
   className,
@@ -27,12 +26,12 @@ const FilterErrorPlaceHolder = ({
   placeholderText,
 }: FilterPlaceholderProps) => {
   const { t } = useTranslation();
-  const { theme } = useApplicationStore();
 
   return (
     <div
-      className={classNames(className, 'h-full flex-center mt-24')}
-      data-testid="search-error-placeholder">
+      className={classNames(className, "h-full flex-center mt-24")}
+      data-testid="search-error-placeholder"
+    >
       <Space align="center" direction="vertical" size={10}>
         <FilterPlaceHolderIcon
           data-testid="no-search-image"
@@ -44,11 +43,11 @@ const FilterErrorPlaceHolder = ({
             <Typography.Paragraph>{placeholderText}</Typography.Paragraph>
           ) : (
             <>
-              <Typography.Paragraph style={{ marginBottom: '0' }}>
-                {t('label.no-result-found')}
+              <Typography.Paragraph style={{ marginBottom: "0" }}>
+                {t("label.no-result-found")}
               </Typography.Paragraph>
-              <Typography.Paragraph style={{ marginBottom: '0' }}>
-                {t('message.try-adjusting-filter')}
+              <Typography.Paragraph style={{ marginBottom: "0" }}>
+                {t("message.try-adjusting-filter")}
               </Typography.Paragraph>
             </>
           )}
@@ -57,20 +56,15 @@ const FilterErrorPlaceHolder = ({
               <Transi18next
                 i18nKey="message.refer-to-our-doc"
                 renderElement={
-                  <a
-                    href={doc}
-                    rel="noreferrer"
-                    style={{ color: theme.primaryColor }}
-                    target="_blank"
-                  />
+                  <a href={doc} rel="noreferrer" target="_blank" />
                 }
                 values={{
-                  doc: t('label.doc-plural-lowercase'),
+                  doc: t("label.doc-plural-lowercase"),
                 }}
               />
             </Typography.Paragraph>
           ) : (
-            ''
+            ""
           )}
         </div>
       </Space>

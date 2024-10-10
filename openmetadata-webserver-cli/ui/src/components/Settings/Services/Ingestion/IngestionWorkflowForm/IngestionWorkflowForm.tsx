@@ -10,33 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
-import { customizeValidator } from '@rjsf/validator-ajv8';
-import { Button, Space } from 'antd';
-import classNames from 'classnames';
-import { isUndefined, omit, omitBy } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import Form, { IChangeEvent } from "@rjsf/core";
+import { RegistryFieldsType } from "@rjsf/utils";
+import { customizeValidator } from "@rjsf/validator-ajv8";
+import { Button, Space } from "antd";
+import classNames from "classnames";
+import { isUndefined, omit, omitBy } from "lodash";
+import React, { FC, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
-} from '../../../../../constants/Services.constant';
+} from "../../../../../constants/Services.constant";
 import {
   DbtConfigType,
   PipelineType,
-} from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+} from "../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline";
 import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
-} from '../../../../../interface/service.interface';
-import { transformErrors } from '../../../../../utils/formUtils';
-import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
-import BooleanFieldTemplate from '../../../../Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
-import DescriptionFieldTemplate from '../../../../Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
-import { FieldErrorTemplate } from '../../../../Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
-import { ObjectFieldTemplate } from '../../../../Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
-import WorkflowArrayFieldTemplate from '../../../../Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
+} from "../../../../../interface/service.interface";
+import { transformErrors } from "../../../../../utils/formUtils";
+import { getSchemaByWorkflowType } from "../../../../../utils/IngestionWorkflowUtils";
+import BooleanFieldTemplate from "../../../../Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate";
+import DescriptionFieldTemplate from "../../../../Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate";
+import { FieldErrorTemplate } from "../../../../Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate";
+import { ObjectFieldTemplate } from "../../../../Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate";
+import WorkflowArrayFieldTemplate from "../../../../Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate";
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,
@@ -81,7 +81,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     }
 
     return commonSchema;
-  }, [pipeLineType, operationType]);
+  }, [isElasticSearchPipeline]);
 
   const handleOnChange = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
@@ -91,12 +91,12 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       if (isElasticSearchPipeline) {
         formData = {
           ...omit(formData, [
-            'useSSL',
-            'verifyCerts',
-            'timeout',
-            'caCerts',
-            'useAwsCredentials',
-            'regionName',
+            "useSSL",
+            "verifyCerts",
+            "timeout",
+            "caCerts",
+            "useAwsCredentials",
+            "regionName",
           ]),
         };
       }
@@ -125,12 +125,12 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       if (isElasticSearchPipeline) {
         formData = {
           ...omit(formData, [
-            'useSSL',
-            'verifyCerts',
-            'timeout',
-            'caCerts',
-            'useAwsCredentials',
-            'regionName',
+            "useSSL",
+            "verifyCerts",
+            "timeout",
+            "caCerts",
+            "useAwsCredentials",
+            "regionName",
           ]),
         };
       }
@@ -153,7 +153,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     <Form
       focusOnFirstError
       noHtml5Validate
-      className={classNames('rjsf no-header', className)}
+      className={classNames("rjsf no-header", className)}
       fields={customFields}
       formContext={{ handleFocus: onFocus }}
       formData={internalData}
@@ -170,15 +170,16 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       validator={validator}
       onChange={handleOnChange}
       onFocus={onFocus}
-      onSubmit={handleSubmit}>
+      onSubmit={handleSubmit}
+    >
       <div className="d-flex w-full justify-end">
         <Space>
           <Button type="link" onClick={onCancel}>
-            {cancelText ?? t('label.cancel')}
+            {cancelText ?? t("label.cancel")}
           </Button>
 
           <Button data-testid="submit-btn" htmlType="submit" type="primary">
-            {okText ?? t('label.submit')}
+            {okText ?? t("label.submit")}
           </Button>
         </Space>
       </div>

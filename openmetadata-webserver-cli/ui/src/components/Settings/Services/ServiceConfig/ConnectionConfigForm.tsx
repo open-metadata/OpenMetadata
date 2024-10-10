@@ -11,40 +11,39 @@
  *  limitations under the License.
  */
 
-import Form, { IChangeEvent } from '@rjsf/core';
-import validator from '@rjsf/validator-ajv8';
-import { Alert } from 'antd';
-import { t } from 'i18next';
-import { cloneDeep, isEmpty, isNil, isUndefined } from 'lodash';
-import { LoadingState } from 'Models';
+import Form, { IChangeEvent } from "@rjsf/core";
+import validator from "@rjsf/validator-ajv8";
+import { Alert } from "antd";
+import { t } from "i18next";
+import { cloneDeep, isEmpty, isNil } from "lodash";
+import { LoadingState } from "Models";
 import React, {
   Fragment,
   FunctionComponent,
+  useEffect,
   useRef,
   useState,
-} from 'react';
-import { ServiceCategory } from '../../../../enums/service.enum';
-import { MetadataServiceType } from '../../../../generated/api/services/createMetadataService';
-import { MlModelServiceType } from '../../../../generated/api/services/createMlModelService';
-import { StorageServiceType } from '../../../../generated/entity/data/container';
-import { APIServiceType } from '../../../../generated/entity/services/apiService';
-import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
-import { DatabaseServiceType } from '../../../../generated/entity/services/databaseService';
-import { MessagingServiceType } from '../../../../generated/entity/services/messagingService';
-import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
-import { SearchServiceType } from '../../../../generated/entity/services/searchService';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+} from "react";
+import { ServiceCategory } from "../../../../enums/service.enum";
+import { MetadataServiceType } from "../../../../generated/api/services/createMetadataService";
+import { MlModelServiceType } from "../../../../generated/api/services/createMlModelService";
+import { StorageServiceType } from "../../../../generated/entity/data/container";
+import { APIServiceType } from "../../../../generated/entity/services/apiService";
+import { DashboardServiceType } from "../../../../generated/entity/services/dashboardService";
+import { DatabaseServiceType } from "../../../../generated/entity/services/databaseService";
+import { MessagingServiceType } from "../../../../generated/entity/services/messagingService";
+import { PipelineServiceType } from "../../../../generated/entity/services/pipelineService";
+import { SearchServiceType } from "../../../../generated/entity/services/searchService";
 import {
   ConfigData,
   ServicesType,
-} from '../../../../interface/service.interface';
-import { Transi18next } from '../../../../utils/CommonUtils';
-import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
-import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
-import FormBuilder from '../../../FormBuilder/FormBuilder';
-import InlineAlert from '../../../common/InlineAlert/InlineAlert';
-import TestConnection from '../../../common/TestConnection/TestConnection';
+} from "../../../../interface/service.interface";
+import { Transi18next } from "../../../../utils/CommonUtils";
+import { formatFormDataForSubmit } from "../../../../utils/JSONSchemaFormUtils";
+import serviceUtilClassBase from "../../../../utils/ServiceUtilClassBase";
+import AirflowMessageBanner from "../../../common/AirflowMessageBanner/AirflowMessageBanner";
+import TestConnection from "../../../common/TestConnection/TestConnection";
+import FormBuilder from "../../../FormBuilder/FormBuilder";
 
 interface Props {
   data?: ServicesType;
@@ -61,8 +60,8 @@ interface Props {
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
-  okText = 'Save',
-  cancelText = 'Cancel',
+  okText = "Save",
+  cancelText = "Cancel",
   serviceType,
   serviceCategory,
   status,
@@ -74,13 +73,31 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   const config = !isNil(data)
     ? ((data as ServicesType).connection?.config as ConfigData)
     : ({} as ConfigData);
-  const { inlineAlertDetails } = useApplicationStore();
 
   const formRef = useRef<Form<ConfigData>>(null);
 
   // const { isAirflowAvailable } = useAirflowStatus();
   const isAirflowAvailable = false;
   const [hostIp, setHostIp] = useState<string>();
+
+  const fetchHostIp = async () => {
+    try {
+      // const { status, data } = await getPipelineServiceHostIp();
+      // if (status === 200) {
+      //   setHostIp(data?.ip || '[unknown]');
+      // } else {
+      //   setHostIp(undefined);
+      // }
+    } catch (error) {
+      setHostIp("[error - unknown]");
+    }
+  };
+
+  useEffect(() => {
+    if (isAirflowAvailable) {
+      fetchHostIp();
+    }
+  }, [isAirflowAvailable]);
 
   const handleRequiredFieldsValidation = () => {
     return Boolean(formRef.current?.validateForm());
@@ -186,12 +203,14 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         validator={validator}
         onCancel={onCancel}
         onFocus={onFocus}
-        onSubmit={handleSave}>
+        onSubmit={handleSave}
+      >
         {isEmpty(connSch.schema) && (
           <div
             className="text-grey-muted text-center"
-            data-testid="no-config-available">
-            {t('message.no-config-available')}
+            data-testid="no-config-available"
+          >
+            {t("message.no-config-available")}
           </div>
         )}
         {!isEmpty(connSch.schema) && isAirflowAvailable && hostIp && (
@@ -221,9 +240,6 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
               onValidateFormRequiredFields={handleRequiredFieldsValidation}
             />
           )}
-        {!isUndefined(inlineAlertDetails) && (
-          <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
-        )}
       </FormBuilder>
     );
   };

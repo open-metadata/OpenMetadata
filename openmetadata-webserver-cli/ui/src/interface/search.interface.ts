@@ -11,45 +11,44 @@
  *  limitations under the License.
  */
 
-import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
-import { DataInsightIndex } from '../enums/DataInsight.enum';
-import { SearchIndex } from '../enums/search.enum';
-import { Tag } from '../generated/entity/classification/tag';
-import { APICollection } from '../generated/entity/data/apiCollection';
-import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
-import { Chart } from '../generated/entity/data/chart';
-import { Container } from '../generated/entity/data/container';
-import { Dashboard } from '../generated/entity/data/dashboard';
-import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
-import { Database } from '../generated/entity/data/database';
-import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
-import { Glossary } from '../generated/entity/data/glossary';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { Metric } from '../generated/entity/data/metric';
-import { Mlmodel } from '../generated/entity/data/mlmodel';
-import { Pipeline } from '../generated/entity/data/pipeline';
-import { Query } from '../generated/entity/data/query';
-import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
-import { StoredProcedure } from '../generated/entity/data/storedProcedure';
-import { Table } from '../generated/entity/data/table';
-import { Topic } from '../generated/entity/data/topic';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
-import { Domain } from '../generated/entity/domains/domain';
-import { APIService } from '../generated/entity/services/apiService';
-import { DashboardService } from '../generated/entity/services/dashboardService';
-import { DatabaseService } from '../generated/entity/services/databaseService';
-import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { MessagingService } from '../generated/entity/services/messagingService';
-import { MlmodelService } from '../generated/entity/services/mlmodelService';
-import { PipelineService } from '../generated/entity/services/pipelineService';
-import { SearchService } from '../generated/entity/services/searchService';
-import { Team } from '../generated/entity/teams/team';
-import { User } from '../generated/entity/teams/user';
-import { TestCase } from '../generated/tests/testCase';
-import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
-import { TestSuite } from '../generated/tests/testSuite';
-import { TagLabel } from '../generated/type/tagLabel';
-import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
+import { SearchedDataProps } from "../components/SearchedData/SearchedData.interface";
+import { DataInsightIndex } from "../enums/DataInsight.enum";
+import { SearchIndex } from "../enums/search.enum";
+import { Tag } from "../generated/entity/classification/tag";
+import { APICollection } from "../generated/entity/data/apiCollection";
+import { APIEndpoint } from "../generated/entity/data/apiEndpoint";
+import { Chart } from "../generated/entity/data/chart";
+import { Container } from "../generated/entity/data/container";
+import { Dashboard } from "../generated/entity/data/dashboard";
+import { DashboardDataModel } from "../generated/entity/data/dashboardDataModel";
+import { Database } from "../generated/entity/data/database";
+import { DatabaseSchema } from "../generated/entity/data/databaseSchema";
+import { Glossary } from "../generated/entity/data/glossary";
+import { GlossaryTerm } from "../generated/entity/data/glossaryTerm";
+import { Metric } from "../generated/entity/data/metric";
+import { Mlmodel } from "../generated/entity/data/mlmodel";
+import { Pipeline } from "../generated/entity/data/pipeline";
+import { Query } from "../generated/entity/data/query";
+import { SearchIndex as SearchIndexEntity } from "../generated/entity/data/searchIndex";
+import { StoredProcedure } from "../generated/entity/data/storedProcedure";
+import { Table } from "../generated/entity/data/table";
+import { Topic } from "../generated/entity/data/topic";
+import { DataProduct } from "../generated/entity/domains/dataProduct";
+import { Domain } from "../generated/entity/domains/domain";
+import { APIService } from "../generated/entity/services/apiService";
+import { DashboardService } from "../generated/entity/services/dashboardService";
+import { DatabaseService } from "../generated/entity/services/databaseService";
+import { IngestionPipeline } from "../generated/entity/services/ingestionPipelines/ingestionPipeline";
+import { MessagingService } from "../generated/entity/services/messagingService";
+import { MlmodelService } from "../generated/entity/services/mlmodelService";
+import { PipelineService } from "../generated/entity/services/pipelineService";
+import { SearchService } from "../generated/entity/services/searchService";
+import { Team } from "../generated/entity/teams/team";
+import { User } from "../generated/entity/teams/user";
+import { TestCase } from "../generated/tests/testCase";
+import { TestCaseResolutionStatus } from "../generated/tests/testCaseResolutionStatus";
+import { TestSuite } from "../generated/tests/testSuite";
+import { TagLabel } from "../generated/type/tagLabel";
 
 /**
  * The `keyof` operator, when applied to a union type, expands to the keys are common for
@@ -81,64 +80,64 @@ interface SearchSourceBase {
   typescript does not allow this for interface extension.
   (More here: https://github.com/microsoft/TypeScript/issues/16936)
  */
-export interface TableSearchSource extends SearchSourceBase, Table { } // extends EntityInterface
+export interface TableSearchSource extends SearchSourceBase, Table {} // extends EntityInterface
 
-export interface DashboardSearchSource extends SearchSourceBase, Dashboard { } // extends EntityInterface
+export interface DashboardSearchSource extends SearchSourceBase, Dashboard {} // extends EntityInterface
 
-export interface PipelineSearchSource extends SearchSourceBase, Pipeline { } // extends EntityInterface
+export interface PipelineSearchSource extends SearchSourceBase, Pipeline {} // extends EntityInterface
 
-export interface MlmodelSearchSource extends SearchSourceBase, Mlmodel { } // extends EntityInterface
+export interface MlmodelSearchSource extends SearchSourceBase, Mlmodel {} // extends EntityInterface
 
-export interface TopicSearchSource extends SearchSourceBase, Topic { } // extends EntityInterface
+export interface TopicSearchSource extends SearchSourceBase, Topic {} // extends EntityInterface
 
-export interface UserSearchSource extends SearchSourceBase, User { } // extends EntityInterface
+export interface UserSearchSource extends SearchSourceBase, User {} // extends EntityInterface
 
-export interface TeamSearchSource extends SearchSourceBase, Team { } // extends EntityInterface
+export interface TeamSearchSource extends SearchSourceBase, Team {} // extends EntityInterface
 
-export interface ContainerSearchSource extends SearchSourceBase, Container { } // extends EntityInterface
+export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
 
-export interface ChartSearchSource extends SearchSourceBase, Chart { } // extends EntityInterface
+export interface ChartSearchSource extends SearchSourceBase, Chart {} // extends EntityInterface
 export interface DataBaseSchemaSearchSource
   extends SearchSourceBase,
-  DatabaseSchema { } // extends EntityInterface
-export interface DatabaseSearchSource extends SearchSourceBase, Database { } // extends EntityInterface
+    DatabaseSchema {} // extends EntityInterface
+export interface DatabaseSearchSource extends SearchSourceBase, Database {} // extends EntityInterface
 
-export interface DomainSearchSource extends SearchSourceBase, Domain { } // extends EntityInterface
+export interface DomainSearchSource extends SearchSourceBase, Domain {} // extends EntityInterface
 export interface StoredProcedureSearchSource
   extends SearchSourceBase,
-  StoredProcedure { } // extends EntityInterface
+    StoredProcedure {} // extends EntityInterface
 
 export interface SearchIndexSearchSource
   extends SearchSourceBase,
-  SearchIndexEntity { } // extends EntityInterface
+    SearchIndexEntity {} // extends EntityInterface
 export interface DataProductSearchSource
   extends SearchSourceBase,
-  DataProduct { } // extends EntityInterface
+    DataProduct {} // extends EntityInterface
 
 export interface DashboardDataModelSearchSource
   extends SearchSourceBase,
-  DashboardDataModel { } // extends EntityInterface
+    DashboardDataModel {} // extends EntityInterface
 
 export interface TagClassSearchSource extends SearchSourceBase, Tag {
   id: string; // Tag is generated with the `id` field as optional, which is should not
 } // extends EntityInterface
 
-export interface GlossarySearchSource extends SearchSourceBase, Glossary { } // extends EntityInterface
+export interface GlossarySearchSource extends SearchSourceBase, Glossary {} // extends EntityInterface
 export interface GlossaryTermSearchSource
   extends SearchSourceBase,
-  GlossaryTerm { } // extends EntityInterface
+    GlossaryTerm {} // extends EntityInterface
 
-export interface QuerySearchSource extends SearchSourceBase, Query { } // extends EntityInterface
+export interface QuerySearchSource extends SearchSourceBase, Query {} // extends EntityInterface
 export interface TestCaseSearchSource
   extends SearchSourceBase,
-  Exclude<TestCase, 'testSuite'> {
+    Exclude<TestCase, "testSuite"> {
   testSuites: TestSuite[];
 } // extends EntityInterface
-export interface TestSuiteSearchSource extends SearchSourceBase, TestSuite { }
+export interface TestSuiteSearchSource extends SearchSourceBase, TestSuite {}
 
 export interface TestCaseResolutionStatusSearchSource
   extends SearchSourceBase,
-  TestCaseResolutionStatus {
+    TestCaseResolutionStatus {
   name: string;
   displayName: string;
   fullyQualifiedName: string;
@@ -148,43 +147,43 @@ export interface TestCaseResolutionStatusSearchSource
 
 export interface IngestionPipelineSearchSource
   extends SearchSourceBase,
-  IngestionPipeline { }
+    IngestionPipeline {}
 
 export interface DatabaseServiceSearchSource
   extends SearchSourceBase,
-  DatabaseService { }
+    DatabaseService {}
 export interface MessagingServiceSearchSource
   extends SearchSourceBase,
-  MessagingService { }
+    MessagingService {}
 export interface DashboardServiceSearchSource
   extends SearchSourceBase,
-  DashboardService { }
+    DashboardService {}
 export interface PipelineServiceSearchSource
   extends SearchSourceBase,
-  PipelineService { }
+    PipelineService {}
 export interface MlModelServiceSearchSource
   extends SearchSourceBase,
-  MlmodelService { }
+    MlmodelService {}
 
 export interface SearchServiceSearchSource
   extends SearchSourceBase,
-  SearchService { }
+    SearchService {}
 
 export interface StorageServiceSearchSource
   extends SearchSourceBase,
-  SearchService { }
+    SearchService {}
 
-export interface APIServiceSearchSource extends SearchSourceBase, APIService { }
+export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
 
 export interface APICollectionSearchSource
   extends SearchSourceBase,
-  APICollection { }
+    APICollection {}
 
 export interface APIEndpointSearchSource
   extends SearchSourceBase,
-  APIEndpoint { }
+    APIEndpoint {}
 
-export interface MetricSearchSource extends SearchSourceBase, Metric { }
+export interface MetricSearchSource extends SearchSourceBase, Metric {}
 
 export type ExploreSearchSource =
   | TableSearchSource
@@ -260,12 +259,12 @@ export type SearchRequest<
   SI extends SearchIndex | SearchIndex[],
   TIncludeFields extends KeysOfUnion<
     SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-    ? SI[number]
-    : SI]
+      ? SI[number]
+      : SI]
   > = KeysOfUnion<
     SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-    ? SI[number]
-    : SI]
+      ? SI[number]
+      : SI]
   >
 > = {
   pageNumber?: number;
@@ -280,35 +279,35 @@ export type SearchRequest<
   trackTotalHits?: boolean;
   filters?: string;
 } & (
-    | {
+  | {
       fetchSource: true;
       includeFields?: TIncludeFields[];
     }
-    | {
+  | {
       fetchSource?: false;
     }
-  );
+);
 
 export type SuggestRequest<
   SI extends SearchIndex | SearchIndex[],
   TIncludeFields extends KeysOfUnion<
     SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-    ? SI[number]
-    : SI]
+      ? SI[number]
+      : SI]
   >
 > = {
   query?: string;
   searchIndex?: SI;
   field?: string;
 } & (
-    | {
+  | {
       fetchSource: true;
       includeFields?: TIncludeFields[];
     }
-    | {
+  | {
       fetchSource: false;
     }
-  );
+);
 
 export interface SearchHitBody<SI extends SearchIndex | DataInsightIndex, T> {
   _index: SI;
@@ -325,14 +324,14 @@ type SearchIndexSearchHitBodyMapping<
     SearchIndexSearchSourceMapping[SearchIndex]
   >
 > = {
-    [SI in SearchIndex]: SearchHitBody<
-      SI,
-      Pick<
-        SearchIndexSearchSourceMapping[SI],
-        TIncludeFields & keyof SearchIndexSearchSourceMapping[SI]
-      >
-    >;
-  };
+  [SI in SearchIndex]: SearchHitBody<
+    SI,
+    Pick<
+      SearchIndexSearchSourceMapping[SI],
+      TIncludeFields & keyof SearchIndexSearchSourceMapping[SI]
+    >
+  >;
+};
 
 export interface SearchResponse<
   SI extends SearchIndex,
@@ -353,22 +352,6 @@ export interface SearchResponse<
 }
 
 export type Aggregations = Record<string, { buckets: Bucket[] }>;
-
-export type DataInsightSearchResponse = {
-  took?: number;
-  timed_out?: boolean;
-  hits: {
-    total: {
-      value: number;
-      relation?: string;
-    };
-    hits: SearchHitBody<
-      DataInsightIndex,
-      AggregatedCostAnalysisReportDataSearchSource
-    >[];
-  };
-  aggregations: Aggregations;
-};
 
 /**
  * Because we are using an older version of typescript-eslint, defining
@@ -407,14 +390,14 @@ type SearchIndexSuggestHitBodyMapping<
     SearchIndexSearchSourceMapping[SearchIndex]
   >
 > = {
-    [SI in SearchIndex]: SuggestOption<
-      SI,
-      Pick<
-        SearchIndexSearchSourceMapping[SI],
-        TIncludeFields & keyof SearchIndexSearchSourceMapping[SI]
-      >
-    >;
-  };
+  [SI in SearchIndex]: SuggestOption<
+    SI,
+    Pick<
+      SearchIndexSearchSourceMapping[SI],
+      TIncludeFields & keyof SearchIndexSearchSourceMapping[SI]
+    >
+  >;
+};
 
 export type SuggestResponse<
   SI extends SearchIndex,
@@ -430,10 +413,10 @@ export type RawSuggestResponse<
   > = KeysOfUnion<SearchIndexSearchSourceMapping[SI]>
 > = {
   suggest: {
-    'metadata-suggest': Array<{
+    "metadata-suggest": Array<{
       options: SuggestResponse<SI, TIncludeFields>;
     }>;
   };
 };
 
-export type SearchSourceAlias = SearchedDataProps['data'][number]['_source'];
+export type SearchSourceAlias = SearchedDataProps["data"][number]["_source"];

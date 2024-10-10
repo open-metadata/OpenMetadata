@@ -11,31 +11,29 @@
  *  limitations under the License.
  */
 
-const path = require('path');
-const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const process = require('process');
+const path = require("path");
+const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 
-const outputPath = path.join(__dirname, 'build');
-const subPath = process.env.APP_SUB_PATH ?? '';
+const outputPath = path.join(__dirname, "build");
 
 module.exports = {
   // Development mode
-  mode: 'development',
+  mode: "development",
 
   // Input configuration
-  entry: [path.join(__dirname, 'src/index.tsx')],
+  entry: [path.join(__dirname, "src/index.tsx")],
 
   // Output configuration
   output: {
     path: outputPath,
-    filename: '[name].js',
-    chunkFilename: '[name].js',
+    filename: "[name].js",
+    chunkFilename: "[name].js",
     // Clean the output directory before emit.
     clean: true,
     // Ensures bundle is served from absolute path as opposed to relative
-    publicPath: '/',
+    publicPath: "/",
   },
 
   // Loaders
@@ -44,7 +42,7 @@ module.exports = {
       // .mjs files to be handled
       {
         test: /\.m?js/,
-        include: path.resolve(__dirname, 'node_modules/kleur'),
+        include: path.resolve(__dirname, "node_modules/kleur"),
         resolve: {
           fullySpecified: false,
         },
@@ -53,27 +51,27 @@ module.exports = {
       // .ts and .tsx files to be handled by ts-loader
       {
         test: /\.(ts|tsx)$/,
-        loader: 'ts-loader',
+        loader: "ts-loader",
         options: {
-          configFile: 'tsconfig.json',
+          configFile: "tsconfig.json",
           transpileOnly: true, // Speed up compilation in development mode
         },
-        include: path.resolve(__dirname, 'src'), // Just the source code
+        include: path.resolve(__dirname, "src"), // Just the source code
       },
       // .css files to be handled by style-loader & css-loader
       {
         test: /\.(css)$/,
-        use: ['style-loader', 'css-loader'],
+        use: ["style-loader", "css-loader"],
       },
       // .less files to be handled by less-loader
       {
         test: /\.less$/,
         use: [
-          'style-loader',
-          'css-loader',
-          'postcss-loader',
+          "style-loader",
+          "css-loader",
+          "postcss-loader",
           {
-            loader: 'less-loader',
+            loader: "less-loader",
             options: {
               lessOptions: {
                 javascriptEnabled: true,
@@ -85,18 +83,18 @@ module.exports = {
       // .svg files to be handled by @svgr/webpack
       {
         test: /\.svg$/,
-        use: ['@svgr/webpack', 'url-loader'],
-        include: path.resolve(__dirname, 'src'), // Just the source code
+        use: ["@svgr/webpack", "url-loader"],
+        include: path.resolve(__dirname, "src"), // Just the source code
       },
       // images files to be handled by file-loader
       {
         test: /\.png$/,
         use: [
           {
-            loader: 'file-loader',
+            loader: "file-loader",
             options: {
-              name: '[name].[ext]',
-              outputPath: 'images/',
+              name: "[name].[ext]",
+              outputPath: "images/",
             },
           },
         ],
@@ -107,14 +105,14 @@ module.exports = {
   // Module resolution
   resolve: {
     // File types to be handled
-    extensions: ['.ts', '.tsx', '.js', '.css', '.less', '.svg'],
+    extensions: [".ts", ".tsx", ".js", ".css", ".less", ".svg"],
     fallback: {
-      https: require.resolve('https-browserify'),
+      https: require.resolve("https-browserify"),
       fs: false,
-      'process/browser': require.resolve('process/browser'),
+      "process/browser": require.resolve("process/browser"),
     },
     alias: {
-      process: 'process/browser',
+      process: "process/browser",
     },
   },
 
@@ -123,45 +121,45 @@ module.exports = {
     // transpilation
     new ForkTsCheckerWebpackPlugin({
       typescript: {
-        configFile: 'tsconfig.json',
+        configFile: "tsconfig.json",
       },
     }),
     // Generate index.html from template
     new HtmlWebpackPlugin({
-      favicon: path.join(__dirname, 'public/favicon.png'),
-      template: path.join(__dirname, 'public/index.html'),
-      scriptLoading: 'defer',
+      favicon: path.join(__dirname, "public/favicon.png"),
+      template: path.join(__dirname, "public/index.html"),
+      scriptLoading: "defer",
       hash: true,
     }),
     // Copy favicon, logo and manifest for index.html
     new CopyWebpackPlugin({
       patterns: [
         {
-          from: path.join(__dirname, 'public/favicon.png'),
+          from: path.join(__dirname, "public/favicon.png"),
           to: outputPath,
         },
         {
-          from: path.join(__dirname, 'public/favicons/favicon-16x16.png'),
+          from: path.join(__dirname, "public/favicons/favicon-16x16.png"),
           to: outputPath,
         },
         {
-          from: path.join(__dirname, 'public/favicons/favicon-32x32.png'),
+          from: path.join(__dirname, "public/favicons/favicon-32x32.png"),
           to: outputPath,
         },
         {
-          from: path.join(__dirname, 'public/logo192.png'),
+          from: path.join(__dirname, "public/logo192.png"),
           to: outputPath,
         },
         {
-          from: path.join(__dirname, 'public/manifest.json'),
+          from: path.join(__dirname, "public/manifest.json"),
           to: outputPath,
         },
         {
-          from: path.join(__dirname, 'public/swagger.html'),
+          from: path.join(__dirname, "public/swagger.html"),
           to: outputPath,
         },
         {
-          from: path.join(__dirname, 'public/locales'),
+          from: path.join(__dirname, "public/locales"),
           to: outputPath,
         },
       ],
@@ -191,14 +189,14 @@ module.exports = {
     // Proxy configuration
     proxy: [
       {
-        context: '/api/',
-        target: 'http://localhost:8585/',
+        context: "/api/",
+        target: "http://localhost:8585/",
         changeOrigin: true,
       },
     ],
   },
 
   // Source map
-  devtool: 'eval-cheap-module-source-map',
+  devtool: "eval-cheap-module-source-map",
   // target: 'node'
 };

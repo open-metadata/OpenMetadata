@@ -11,23 +11,23 @@
  *  limitations under the License.
  */
 
-// import antlr4 from 'antlr4';
-// import { ParseTreeWalker } from 'antlr4/src/antlr4/tree';
-import i18next from 'i18next';
-import SplitListener from '../antlr/SplitListener';
-// import FqnLexer from '../generated/antlr/FqnLexer';
-// import FqnParser from '../generated/antlr/FqnParser';
+import antlr4 from "antlr4";
+import { ParseTreeWalker } from "antlr4/src/antlr4/tree";
+import i18next from "i18next";
+import SplitListener from "../antlr/SplitListener";
+import FqnLexer from "../generated/antlr/FqnLexer";
+import FqnParser from "../generated/antlr/FqnParser";
 
 export default class Fqn {
   // Equivalent of Java's FullyQualifiedName#split
   static split(fqn: string) {
-    // const chars = new antlr4.InputStream(fqn);
-    // const lexer = new FqnLexer(chars);
-    // const tokens = new antlr4.CommonTokenStream(lexer);
-    // const parser = new FqnParser(tokens);
-    // const tree = parser.fqn();
+    const chars = new antlr4.InputStream(fqn);
+    const lexer = new FqnLexer(chars);
+    const tokens = new antlr4.CommonTokenStream(lexer);
+    const parser = new FqnParser(tokens);
+    const tree = parser.fqn();
     const splitter = new SplitListener();
-    // ParseTreeWalker.DEFAULT.walk(splitter, tree);
+    ParseTreeWalker.DEFAULT.walk(splitter, tree);
 
     return splitter.split();
   }
@@ -39,14 +39,14 @@ export default class Fqn {
       result.push(this.quoteName(x));
     }
 
-    return result.join('.');
+    return result.join(".");
   }
 
   // Equivalent of Java's FullyQualifiedName#quoteName
   static quoteName(name: string) {
     const matcher = /^(")([^"]+)(")$|^(.*)$/.exec(name);
     if (!matcher || matcher[0].length !== name.length) {
-      throw new Error(`${i18next.t('label.invalid-name')} ${name}`);
+      throw new Error(`${i18next.t("label.invalid-name")} ${name}`);
     }
 
     // Name matches quoted string "sss".
@@ -54,16 +54,16 @@ export default class Fqn {
     if (matcher[1] != null) {
       const unquotedName = matcher[2];
 
-      return unquotedName.includes('.') ? name : unquotedName;
+      return unquotedName.includes(".") ? name : unquotedName;
     }
 
     // Name matches unquoted string sss
     // If unquoted string contains ".", return quoted "sss", else unquoted sss
     const unquotedName = matcher[4];
     if (!unquotedName.includes('"')) {
-      return unquotedName.includes('.') ? '"' + name + '"' : unquotedName;
+      return unquotedName.includes(".") ? '"' + name + '"' : unquotedName;
     }
 
-    throw new Error(`${i18next.t('label.invalid-name')} ${name}`);
+    throw new Error(`${i18next.t("label.invalid-name")} ${name}`);
   }
 }

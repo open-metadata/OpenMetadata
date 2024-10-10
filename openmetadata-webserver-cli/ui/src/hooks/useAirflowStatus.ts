@@ -11,28 +11,27 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
-import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
+import { AxiosError } from "axios";
+import { useEffect, useState } from "react";
+import { PipelineServiceClientResponse } from "../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse";
 // import { getAirflowStatus } from '../rest/ingestionPipelineAPI';
 
 export interface UseAirflowStatusProps {
   isFetchingStatus: boolean;
   isAirflowAvailable: boolean;
   error: AxiosError | undefined;
-  reason: PipelineServiceClientResponse['reason'];
-  platform: PipelineServiceClientResponse['platform'];
+  reason: PipelineServiceClientResponse["reason"];
+  platform: PipelineServiceClientResponse["platform"];
   fetchAirflowStatus: () => Promise<void>;
 }
 
 export const useAirflowStatus = (): UseAirflowStatusProps => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isAirflowAvailable, setIsAirflowAvailable] = useState<boolean>(false);
-  const [error, setError] = useState<AxiosError>();
-  const [reason, setReason] =
-    useState<PipelineServiceClientResponse['reason']>();
-  const [platform, setPlatform] =
-    useState<PipelineServiceClientResponse['platform']>('unknown');
+  const [isAirflowAvailable] = useState<boolean>(false);
+  const [error] = useState<AxiosError>();
+  const [reason] = useState<PipelineServiceClientResponse["reason"]>();
+  const [platform] =
+    useState<PipelineServiceClientResponse["platform"]>("unknown");
 
   const fetchAirflowStatus = async () => {
     // setIsLoading(true);

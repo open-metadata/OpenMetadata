@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Badge, Tooltip } from 'antd';
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { GRAYED_OUT_COLOR } from '../../../constants/constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { HelperTextType } from '../../../interface/FormUtils.interface';
-import { FormItemLabelProps } from './Form.interface';
+import { InfoCircleOutlined } from "@ant-design/icons";
+import { Badge, Tooltip } from "antd";
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { GRAYED_OUT_COLOR } from "../../../constants/constants";
+import { HelperTextType } from "../../../interface/FormUtils.interface";
+import { FormItemLabelProps } from "./Form.interface";
 
 const FormItemLabel = ({
   label,
@@ -28,11 +27,10 @@ const FormItemLabel = ({
   align,
   overlayInnerStyle,
   overlayClassName,
-  placement = 'top',
+  placement = "top",
   isBeta = false,
 }: FormItemLabelProps) => {
   const { t } = useTranslation();
-  const { theme } = useApplicationStore();
 
   return (
     <>
@@ -46,7 +44,8 @@ const FormItemLabel = ({
             overlayClassName={overlayClassName}
             overlayInnerStyle={overlayInnerStyle}
             placement={placement}
-            title={helperText}>
+            title={helperText}
+          >
             <InfoCircleOutlined
               className="m-l-xs"
               data-testid="helper-icon"
@@ -55,12 +54,7 @@ const FormItemLabel = ({
           </Tooltip>
         )}
       {isBeta && (
-        <Badge
-          className="m-l-xs"
-          color={theme.primaryColor}
-          count={t('label.beta')}
-          size="small"
-        />
+        <Badge className="m-l-xs" count={t("label.beta")} size="small" />
       )}
     </>
   );

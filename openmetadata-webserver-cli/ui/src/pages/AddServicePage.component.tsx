@@ -11,31 +11,31 @@
  *  limitations under the License.
  */
 
-import { startCase } from 'lodash';
-import { ServiceTypes } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
-import { TitleBreadcrumbProps } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import AddService from '../components/Settings/Services/AddService/AddService.component';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
-import { ServiceCategory } from '../enums/service.enum';
-import { DataObj } from '../interface/service.interface';
-import { getSettingPath } from '../utils/RouterUtils';
-import { getServiceRouteFromServiceType } from '../utils/ServiceUtils';
+import { startCase } from "lodash";
+import { ServiceTypes } from "Models";
+import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useParams } from "react-router-dom";
+import { TitleBreadcrumbProps } from "../components/common/TitleBreadcrumb/TitleBreadcrumb.interface";
+import AddService from "../components/Settings/Services/AddService/AddService.component";
+import { GlobalSettingsMenuCategory } from "../constants/GlobalSettings.constants";
+import { ServiceCategory } from "../enums/service.enum";
+import { DataObj } from "../interface/service.interface";
+import { getSettingPath } from "../utils/RouterUtils";
+import { getServiceRouteFromServiceType } from "../utils/ServiceUtils";
 
 const AddServicePage = () => {
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{ serviceCategory: string }>();
+
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
-    TitleBreadcrumbProps['titleLinks']
+    TitleBreadcrumbProps["titleLinks"]
   >([]);
   const [addIngestion, setAddIngestion] = useState(false);
 
   const handleAddIngestion = (value: boolean) => {
     setAddIngestion(value);
   };
-
 
   useEffect(() => {
     setSlashedBreadcrumb([
@@ -47,16 +47,20 @@ const AddServicePage = () => {
         ),
       },
       {
-        name: t('label.add-new-entity', {
-          entity: t(addIngestion ? 'label.ingestion' : 'label.service'),
+        name: t("label.add-new-entity", {
+          entity: t(addIngestion ? "label.ingestion" : "label.service"),
         }),
-        url: '',
+        url: "",
         activeTitle: true,
       },
     ]);
-  }, [serviceCategory, addIngestion]);
+  }, [serviceCategory, addIngestion, t]);
 
-  const newServiceData: DataObj = { name: "service something", description: "yada", serviceType: "database" };
+  const newServiceData: DataObj = {
+    name: "service something",
+    description: "yada",
+    serviceType: "database",
+  };
 
   return (
     <AddService

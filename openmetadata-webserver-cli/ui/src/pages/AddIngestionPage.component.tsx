@@ -11,30 +11,29 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from '../components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from '../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TitleBreadcrumbProps } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import AddIngestion from '../components/Settings/Services/AddIngestion/AddIngestion.component';
-import {
-  getServiceDetailsPath,
-} from '../constants/constants';
-import { INGESTION_ACTION_TYPE } from '../constants/Ingestions.constant';
-import { FormSubmitType } from '../enums/form.enum';
-import { ServiceCategory } from '../enums/service.enum';
-import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useFqn } from '../hooks/useFqn';
-import { DataObj } from '../interface/service.interface';
+import { isEmpty } from "lodash";
+import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useHistory, useParams } from "react-router-dom";
+import Loader from "../components/common/Loader/Loader";
+import ResizablePanels from "../components/common/ResizablePanels/ResizablePanels";
+import ServiceDocPanel from "../components/common/ServiceDocPanel/ServiceDocPanel";
+import TitleBreadcrumb from "../components/common/TitleBreadcrumb/TitleBreadcrumb.component";
+import { TitleBreadcrumbProps } from "../components/common/TitleBreadcrumb/TitleBreadcrumb.interface";
+import AddIngestion from "../components/Settings/Services/AddIngestion/AddIngestion.component";
+import { getServiceDetailsPath } from "../constants/constants";
+import { INGESTION_ACTION_TYPE } from "../constants/Ingestions.constant";
+import { FormSubmitType } from "../enums/form.enum";
+import { ServiceCategory } from "../enums/service.enum";
+import { PipelineType } from "../generated/entity/services/ingestionPipelines/ingestionPipeline";
+import { useFqn } from "../hooks/useFqn";
+import { DataObj } from "../interface/service.interface";
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
-} from '../utils/IngestionUtils';
-import { getServiceType } from '../utils/ServiceUtils';
+} from "../utils/IngestionUtils";
+import { getServiceType } from "../utils/ServiceUtils";
 
 const AddIngestionPage = () => {
   const { ingestionType, serviceCategory } = useParams<{
@@ -46,12 +45,14 @@ const AddIngestionPage = () => {
   const history = useHistory();
   const [serviceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
+  const [isLoading] = useState(true);
+
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
 
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
-    TitleBreadcrumbProps['titleLinks']
+    TitleBreadcrumbProps["titleLinks"]
   >([]);
-  const [activeField, setActiveField] = useState<string>('');
+  const [activeField, setActiveField] = useState<string>("");
 
   const isSettingsPipeline = useMemo(
     () =>
@@ -60,9 +61,11 @@ const AddIngestionPage = () => {
     [ingestionType]
   );
 
+  // const fetchServiceDetails = () => {
+  //   setIsloading(false);
+  // };
 
-
-  const onIngestionDeploy = (id?: string) => {
+  const onIngestionDeploy = (_id?: string) => {
     return new Promise<void>((resolve) => {
       setIsIngestionCreated(true);
       resolve();
@@ -75,7 +78,7 @@ const AddIngestionPage = () => {
 
   const goToService = () => {
     history.push(
-      getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
+      getServiceDetailsPath(serviceFQN, serviceCategory, "ingestions")
     );
   };
 
@@ -100,7 +103,13 @@ const AddIngestionPage = () => {
       serviceData
     );
     setSlashedBreadcrumb(breadCrumbsArray);
-  }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
+  }, [
+    serviceCategory,
+    ingestionType,
+    serviceData,
+    isSettingsPipeline,
+    serviceFQN,
+  ]);
 
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
@@ -136,12 +145,15 @@ const AddIngestionPage = () => {
     <ServiceDocPanel
       isWorkflow
       activeField={activeField}
-      serviceName={serviceData?.serviceType ?? ''}
+      serviceName={serviceData?.serviceType ?? ""}
       serviceType={getServiceType(serviceCategory as ServiceCategory)}
       workflowType={ingestionType as PipelineType}
     />
   );
 
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <ResizablePanels
@@ -150,12 +162,12 @@ const AddIngestionPage = () => {
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
-        className: 'content-resizable-panel-container',
+        className: "content-resizable-panel-container",
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.ingestion') })}
+      pageTitle={t("label.add-entity", { entity: t("label.ingestion") })}
       secondPanel={{
         children: secondPanelChildren,
-        className: 'service-doc-panel content-resizable-panel-container',
+        className: "service-doc-panel content-resizable-panel-container",
         minWidth: 400,
         flex: 0.3,
       }}

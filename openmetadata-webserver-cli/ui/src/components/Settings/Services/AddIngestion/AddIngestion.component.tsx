@@ -11,39 +11,38 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Typography } from 'antd';
-import { isEmpty, isUndefined, omit, trim } from 'lodash';
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
-import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
-import { LOADING_STATE } from '../../../../enums/common.enum';
-import { FormSubmitType } from '../../../../enums/form.enum';
+import { Form, Input, Typography } from "antd";
+import { isEmpty, isUndefined, omit, trim } from "lodash";
+import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { STEPS_FOR_ADD_INGESTION } from "../../../../constants/Ingestions.constant";
+import { useLimitStore } from "../../../../context/LimitsProvider/useLimitsStore";
+import { LOADING_STATE } from "../../../../enums/common.enum";
+import { FormSubmitType } from "../../../../enums/form.enum";
 import {
   CreateIngestionPipeline,
   LogLevels,
   PipelineType,
-} from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { IngestionWorkflowData } from '../../../../interface/service.interface';
-import { getSuccessMessage } from '../../../../utils/IngestionUtils';
-import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
-import { getIngestionName } from '../../../../utils/ServiceUtils';
-import { generateUUID } from '../../../../utils/StringsUtils';
+} from "../../../../generated/api/services/ingestionPipelines/createIngestionPipeline";
+import { IngestionPipeline } from "../../../../generated/entity/services/ingestionPipelines/ingestionPipeline";
+import { IngestionWorkflowData } from "../../../../interface/service.interface";
+import { getSuccessMessage } from "../../../../utils/IngestionUtils";
+import { cleanWorkFlowData } from "../../../../utils/IngestionWorkflowUtils";
+import { getScheduleOptionsFromSchedules } from "../../../../utils/ScheduleUtils";
+import { getIngestionName } from "../../../../utils/ServiceUtils";
+import { generateUUID } from "../../../../utils/StringsUtils";
 import {
   getDayCron,
   getWeekCron,
-} from '../../../common/CronEditor/CronEditor.constant';
-import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
-import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
-import IngestionWorkflowForm from '../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm';
+} from "../../../common/CronEditor/CronEditor.constant";
+import SuccessScreen from "../../../common/SuccessScreen/SuccessScreen";
+import IngestionStepper from "../Ingestion/IngestionStepper/IngestionStepper.component";
+import IngestionWorkflowForm from "../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm";
 import {
   AddIngestionProps,
   WorkflowExtraConfig,
-} from './IngestionWorkflow.interface';
-import ScheduleInterval from './Steps/ScheduleInterval';
+} from "./IngestionWorkflow.interface";
+import ScheduleInterval from "./Steps/ScheduleInterval";
 
 const AddIngestion = ({
   activeIngestionStep,
@@ -51,10 +50,6 @@ const AddIngestion = ({
   handleCancelClick,
   handleViewServiceClick,
   heading,
-  ingestionAction = '',
-  ingestionProgress = 0,
-  isIngestionCreated = false,
-  isIngestionDeployed = false,
   onAddIngestionSave,
   onIngestionDeploy,
   onSuccessSave,
@@ -69,12 +64,11 @@ const AddIngestion = ({
   onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   const { config: limitConfig } = useLimitStore();
 
   const { pipelineSchedules } =
     limitConfig?.limits?.config.featureLimits.find(
-      (limit) => limit.name === 'ingestionPipeline'
+      (limit) => limit.name === "ingestionPipeline"
     ) ?? {};
 
   const periodOptions = pipelineSchedules
@@ -96,9 +90,9 @@ const AddIngestion = ({
     data?.airflowConfig.scheduleInterval ?? limitConfig?.enable
       ? getWeekCron({ hour: 0, min: 0, dow: 1 })
       : getDayCron({
-        min: 0,
-        hour: 0,
-      })
+          min: 0,
+          hour: 0,
+        })
   );
 
   const { ingestionName, retries } = useMemo(
@@ -121,12 +115,12 @@ const AddIngestion = ({
   const viewServiceText = useMemo(
     () =>
       isSettingsPipeline
-        ? t('label.view-entity', {
-          entity: t('label.pipeline-detail-plural'),
-        })
+        ? t("label.view-entity", {
+            entity: t("label.pipeline-detail-plural"),
+          })
         : undefined,
 
-    [isSettingsPipeline]
+    [isSettingsPipeline, t]
   );
 
   const [saveState, setSaveState] = useState<LOADING_STATE>(
@@ -152,7 +146,7 @@ const AddIngestion = ({
 
   const createNewIngestion = (extraData: WorkflowExtraConfig) => {
     const {
-      name = '',
+      name = "",
       enableDebugLog,
       displayName,
       ...rest
@@ -176,12 +170,12 @@ const AddIngestion = ({
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
       displayName: displayName,
-      owners: [
-        {
-          id: currentUser?.id ?? '',
-          type: 'user',
-        },
-      ],
+      // owners: [
+      //   {
+      //     id: currentUser?.id ?? '',
+      //     type: 'user',
+      //   },
+      // ],
       pipelineType: pipelineType,
       service: {
         id: serviceData.id as string,
@@ -232,8 +226,8 @@ const AddIngestion = ({
           config: {
             // clean the data to remove empty fields
             ...cleanWorkFlowData(
-              omit(workflowData, ['name', 'enableDebugLog', 'displayName']) ??
-              {}
+              omit(workflowData, ["name", "enableDebugLog", "displayName"]) ??
+                {}
             ),
           },
         },
@@ -291,7 +285,7 @@ const AddIngestion = ({
       <div className="p-t-lg">
         {activeIngestionStep === 1 && (
           <IngestionWorkflowForm
-            okText={t('label.next')}
+            okText={t("label.next")}
             operationType={status}
             pipeLineType={pipelineType}
             serviceCategory={serviceCategory}
@@ -308,27 +302,29 @@ const AddIngestion = ({
             disabledCronChange={pipelineType === PipelineType.DataInsight}
             includePeriodOptions={
               pipelineType === PipelineType.DataInsight
-                ? ['day']
+                ? ["day"]
                 : periodOptions
             }
             scheduleInterval={scheduleInterval}
             status={saveState}
             submitButtonLabel={
-              isUndefined(data) ? t('label.add-deploy') : t('label.submit')
+              isUndefined(data) ? t("label.add-deploy") : t("label.submit")
             }
             onBack={() => handlePrev(1)}
             onChange={(data) => setScheduleInterval(data)}
-            onDeploy={handleScheduleIntervalDeployClick}>
+            onDeploy={handleScheduleIntervalDeployClick}
+          >
             <Form.Item
               className="m-t-xs"
               colon={false}
               initialValue={retries}
-              label={t('label.number-of-retries')}
-              name="retries">
+              label={t("label.number-of-retries")}
+              name="retries"
+            >
               <Input
                 min={0}
                 type="number"
-                onFocus={() => onFocus('root/retries')}
+                onFocus={() => onFocus("root/retries")}
               />
             </Form.Item>
           </ScheduleInterval>

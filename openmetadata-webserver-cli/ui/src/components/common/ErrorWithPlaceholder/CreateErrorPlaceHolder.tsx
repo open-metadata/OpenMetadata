@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Space, Tooltip, Typography } from 'antd';
-import classNames from 'classnames';
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { Transi18next } from '../../../utils/CommonUtils';
-import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
-import { CreatePlaceholderProps } from './placeholder.interface';
+import { PlusOutlined } from "@ant-design/icons";
+import { Button, Space, Tooltip, Typography } from "antd";
+import classNames from "classnames";
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { ReactComponent as AddPlaceHolderIcon } from "../../../assets/svg/add-placeholder.svg";
+import { Transi18next } from "../../../utils/CommonUtils";
+import PermissionErrorPlaceholder from "./PermissionErrorPlaceholder";
+import { CreatePlaceholderProps } from "./placeholder.interface";
 
 const CreateErrorPlaceHolder = ({
   size,
@@ -33,7 +32,6 @@ const CreateErrorPlaceHolder = ({
   placeholderText,
 }: CreatePlaceholderProps) => {
   const { t } = useTranslation();
-  const { theme } = useApplicationStore();
 
   if (!permission) {
     return <PermissionErrorPlaceholder className={className} size={size} />;
@@ -41,8 +39,9 @@ const CreateErrorPlaceHolder = ({
 
   return (
     <div
-      className={classNames(className, 'bg-white h-full flex-center')}
-      data-testid={`create-error-placeholder-${heading}`}>
+      className={classNames(className, "bg-white h-full flex-center")}
+      data-testid={`create-error-placeholder-${heading}`}
+    >
       <Space align="center" className="w-full" direction="vertical" size={10}>
         <AddPlaceHolderIcon
           data-testid="no-data-image"
@@ -52,7 +51,7 @@ const CreateErrorPlaceHolder = ({
         <div className="text-center text-sm font-normal">
           <Typography.Paragraph>
             {placeholderText ??
-              t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+              t("message.adding-new-entity-is-easy-just-give-it-a-spin", {
                 entity: heading,
               })}
           </Typography.Paragraph>
@@ -61,15 +60,10 @@ const CreateErrorPlaceHolder = ({
               <Transi18next
                 i18nKey="message.refer-to-our-doc"
                 renderElement={
-                  <a
-                    href={doc}
-                    rel="noreferrer"
-                    style={{ color: theme.primaryColor }}
-                    target="_blank"
-                  />
+                  <a href={doc} rel="noreferrer" target="_blank" />
                 }
                 values={{
-                  doc: t('label.doc-plural-lowercase'),
+                  doc: t("label.doc-plural-lowercase"),
                 }}
               />
             </Typography.Paragraph>
@@ -78,15 +72,17 @@ const CreateErrorPlaceHolder = ({
           {onClick && (
             <Tooltip
               placement="top"
-              title={!permission && t('message.admin-only-action')}>
+              title={!permission && t("message.admin-only-action")}
+            >
               <Button
                 ghost
                 className="p-x-lg"
-                data-testid={buttonId ?? 'add-placeholder-button'}
+                data-testid={buttonId ?? "add-placeholder-button"}
                 icon={<PlusOutlined />}
                 type="primary"
-                onClick={onClick}>
-                {t('label.add')}
+                onClick={onClick}
+              >
+                {t("label.add")}
               </Button>
             </Tooltip>
           )}

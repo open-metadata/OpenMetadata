@@ -10,56 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space } from 'antd';
-import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
-import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
-import { ReactComponent as SuccessIcon } from '../../../assets/svg/success-badge.svg';
-import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
+import { Button, Space } from "antd";
+import classNames from "classnames";
+import { isEmpty } from "lodash";
+import React, { FC, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { ReactComponent as FailIcon } from "../../../assets/svg/fail-badge.svg";
+import { ReactComponent as WarningIcon } from "../../../assets/svg/ic-warning.svg";
+import { ReactComponent as SuccessIcon } from "../../../assets/svg/success-badge.svg";
+import { AIRFLOW_DOCS } from "../../../constants/docs.constants";
 import {
-  FETCHING_EXPIRY_TIME,
-  TEST_CONNECTION_FAILURE_MESSAGE,
-  TEST_CONNECTION_INFO_MESSAGE,
   TEST_CONNECTION_INITIAL_MESSAGE,
   TEST_CONNECTION_PROGRESS_PERCENTAGE,
-  TEST_CONNECTION_TESTING_MESSAGE,
-  WORKFLOW_COMPLETE_STATUS,
-} from '../../../constants/Services.constant';
+} from "../../../constants/Services.constant";
 import {
   StatusType,
   TestConnectionStepResult,
   Workflow,
-  WorkflowStatus,
-} from '../../../generated/entity/automations/workflow';
-import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
-// import {
-//   addWorkflow,
-//   deleteWorkflowById,
-//   getTestConnectionDefinitionByName,
-//   getWorkflowById,
-//   triggerWorkflowById,
-// } from '../../../rest/workflowAPI';
-import { Transi18next } from '../../../utils/CommonUtils';
-import {
-  getServiceType,
-  shouldTestConnection,
-} from '../../../utils/ServiceUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../Loader/Loader';
-import './test-connection.style.less';
-import { TestConnectionProps, TestStatus } from './TestConnection.interface';
-import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
+} from "../../../generated/entity/automations/workflow";
+import { TestConnectionStep } from "../../../generated/entity/services/connections/testConnectionDefinition";
+import { useAirflowStatus } from "../../../hooks/useAirflowStatus";
+
+import { Transi18next } from "../../../utils/CommonUtils";
+import { shouldTestConnection } from "../../../utils/ServiceUtils";
+import Loader from "../Loader/Loader";
+import "./test-connection.style.less";
+import { TestConnectionProps, TestStatus } from "./TestConnection.interface";
+import TestConnectionModal from "./TestConnectionModal/TestConnectionModal";
 
 const TestConnection: FC<TestConnectionProps> = ({
   isTestingDisabled,
-  getData,
-  serviceCategory,
   connectionType,
-  serviceName,
+
   onValidateFormRequiredFields,
   shouldValidateForm = true,
   showDetails = true,
@@ -68,40 +50,26 @@ const TestConnection: FC<TestConnectionProps> = ({
   const { isAirflowAvailable } = useAirflowStatus();
 
   // local state
-  const [isTestingConnection, setIsTestingConnection] =
-    useState<boolean>(false);
+  const [isTestingConnection] = useState<boolean>(false);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  const [message, setMessage] = useState<string>(
-    TEST_CONNECTION_INITIAL_MESSAGE
-  );
+  const [message] = useState<string>(TEST_CONNECTION_INITIAL_MESSAGE);
 
-  const [testConnectionStep, setTestConnectionStep] = useState<
-    TestConnectionStep[]
-  >([]);
+  const [testConnectionStep] = useState<TestConnectionStep[]>([]);
 
-  const [testConnectionStepResult, setTestConnectionStepResult] = useState<
-    TestConnectionStepResult[]
-  >([]);
+  const [testConnectionStepResult] = useState<TestConnectionStepResult[]>([]);
 
-  const [currentWorkflow, setCurrentWorkflow] = useState<Workflow>();
-  const [testStatus, setTestStatus] = useState<TestStatus>();
+  const [currentWorkflow] = useState<Workflow>();
+  const [testStatus] = useState<TestStatus>();
 
-  const [progress, setProgress] = useState<number>(
-    TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO
-  );
+  const [progress] = useState<number>(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
 
-  const [isConnectionTimeout, setIsConnectionTimeout] =
-    useState<boolean>(false);
+  const [isConnectionTimeout] = useState<boolean>(false);
 
   /**
    * Current workflow reference
    */
   const currentWorkflowRef = useRef(currentWorkflow);
-
-  // const serviceType = useMemo(() => {
-  //   return getServiceType(serviceCategory);
-  // }, [serviceCategory]);
 
   const allowTestConn = useMemo(() => {
     return shouldTestConnection(connectionType);
@@ -115,141 +83,128 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   // data fetch handlers
 
-  const handleResetState = () => {
-    // reset states for workflow ans steps result
-    setCurrentWorkflow(undefined);
-    setTestConnectionStepResult([]);
-    setTestStatus(undefined);
-    setIsConnectionTimeout(false);
-    setProgress(0);
+  const handleDeleteWorkflow = async (workflowId: string) => {
+    if (isEmpty(workflowId)) {
+      return;
+    }
+
+    try {
+      // await deleteWorkflowById(workflowId, true);
+    } catch (error) {
+      // do not throw error for this API
+    }
   };
 
   // handlers
   const testConnection = async () => {
-    setIsTestingConnection(true);
-    setMessage(TEST_CONNECTION_TESTING_MESSAGE);
-    handleResetState();
-
+    // setIsTestingConnection(true);
+    // setMessage(TEST_CONNECTION_TESTING_MESSAGE);
+    // handleResetState();
     // const updatedFormData = formatFormDataForSubmit(getData());
-
-    // current interval id
-    let intervalId: number | undefined;
-
-    try {
-      // const createWorkflowData: CreateWorkflow = {
-      //   name: getTestConnectionName(connectionType),
-      //   workflowType: WorkflowType.TestConnection,
-      //   request: {
-      //     connection: { config: updatedFormData as ConfigClass },
-      //     serviceType,
-      //     connectionType,
-      //     serviceName,
-      //   },
-      // };
-
-      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TEN);
-
-      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TWENTY);
-
-      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.FORTY);
-
-      const status = 200;
-
-      if (status !== 200) {
-        setTestStatus(StatusType.Failed);
-        setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
-        setIsTestingConnection(false);
-
-        return;
-      }
-
-      /**
-       * fetch workflow repeatedly with 2s interval
-       * until status is either Failed or Successful
-       */
-      // intervalId = toNumber(
-      //   setInterval(async () => {
-      //     setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
-      //     const workflowResponse = await getWorkflowData(response.id);
-      //     const { response: testConnectionResponse } = workflowResponse;
-      //     const { status: testConnectionStatus, steps = [] } =
-      //       testConnectionResponse || {};
-
-      //     const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
-      //       workflowResponse.status as WorkflowStatus
-      //     );
-
-      //     const isTestConnectionSuccess =
-      //       testConnectionStatus === StatusType.Successful;
-
-      //     if (!isWorkflowCompleted) {
-      //       return;
-      //     }
-
-      //     setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-      //     if (isTestConnectionSuccess) {
-      //       setTestStatus(StatusType.Successful);
-      //       setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
-      //     } else {
-      //       const isMandatoryStepsFailing = steps.some(
-      //         (step) => step.mandatory && !step.passed
-      //       );
-      //       setTestStatus(
-      //         isMandatoryStepsFailing ? StatusType.Failed : 'Warning'
-      //       );
-      //       setMessage(
-      //         isMandatoryStepsFailing
-      //           ? TEST_CONNECTION_FAILURE_MESSAGE
-      //           : TEST_CONNECTION_WARNING_MESSAGE
-      //       );
-      //     }
-
-      //     // clear the current interval
-      //     clearInterval(intervalId);
-
-      //     // set testing connection to false
-      //     setIsTestingConnection(false);
-
-      //     // delete the workflow once it's finished
-      //     await handleDeleteWorkflow(workflowResponse.id);
-      //   }, FETCH_INTERVAL)
-      // );
-
-      // stop fetching the workflow after 2 minutes
-      setTimeout(() => {
-        // clear the current interval
-        clearInterval(intervalId);
-
-        // using reference to ensure call back should have latest value
-        const currentWorkflowStatus = currentWorkflowRef.current
-          ?.status as WorkflowStatus;
-
-        const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
-          currentWorkflowStatus
-        );
-
-        if (!isWorkflowCompleted) {
-          setMessage(TEST_CONNECTION_INFO_MESSAGE);
-          setIsConnectionTimeout(true);
-        }
-
-        setIsTestingConnection(false);
-        setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-      }, FETCHING_EXPIRY_TIME);
-    } catch (error) {
-      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-      clearInterval(intervalId);
-      setIsTestingConnection(false);
-      setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
-      setTestStatus(StatusType.Failed);
-      showErrorToast(error as AxiosError);
-
-      // delete the workflow if there is an exception
-      const workflowId = currentWorkflowRef.current?.id;
-      if (workflowId) {
-        // await handleDeleteWorkflow(workflowId);
-      }
-    }
+    // // current interval id
+    // let intervalId: number | undefined;
+    // try {
+    //   const createWorkflowData: CreateWorkflow = {
+    //     name: getTestConnectionName(connectionType),
+    //     workflowType: WorkflowType.TestConnection,
+    //     request: {
+    //       connection: { config: updatedFormData as ConfigClass },
+    //       serviceType,
+    //       connectionType,
+    //       serviceName,
+    //     },
+    //   };
+    //   // fetch the connection steps for current connectionType
+    //   await fetchConnectionDefinition();
+    //   setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TEN);
+    //   // create the workflow
+    //   const response = await addWorkflow(createWorkflowData);
+    //   setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TWENTY);
+    //   // trigger the workflow
+    //   const status = await triggerWorkflowById(response.id);
+    //   setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.FORTY);
+    //   if (status !== 200) {
+    //     setTestStatus(StatusType.Failed);
+    //     setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
+    //     setIsTestingConnection(false);
+    //     // delete the workflow if workflow is not triggered successfully
+    //     await handleDeleteWorkflow(response.id);
+    //     return;
+    //   }
+    //   /**
+    //    * fetch workflow repeatedly with 2s interval
+    //    * until status is either Failed or Successful
+    //    */
+    //   intervalId = toNumber(
+    //     setInterval(async () => {
+    //       setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
+    //       const workflowResponse = await getWorkflowData(response.id);
+    //       const { response: testConnectionResponse } = workflowResponse;
+    //       const { status: testConnectionStatus, steps = [] } =
+    //         testConnectionResponse || {};
+    //       const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
+    //         workflowResponse.status as WorkflowStatus
+    //       );
+    //       const isTestConnectionSuccess =
+    //         testConnectionStatus === StatusType.Successful;
+    //       if (!isWorkflowCompleted) {
+    //         return;
+    //       }
+    //       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+    //       if (isTestConnectionSuccess) {
+    //         setTestStatus(StatusType.Successful);
+    //         setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
+    //       } else {
+    //         const isMandatoryStepsFailing = steps.some(
+    //           (step) => step.mandatory && !step.passed
+    //         );
+    //         setTestStatus(
+    //           isMandatoryStepsFailing ? StatusType.Failed : "Warning"
+    //         );
+    //         setMessage(
+    //           isMandatoryStepsFailing
+    //             ? TEST_CONNECTION_FAILURE_MESSAGE
+    //             : TEST_CONNECTION_WARNING_MESSAGE
+    //         );
+    //       }
+    //       // clear the current interval
+    //       clearInterval(intervalId);
+    //       // set testing connection to false
+    //       setIsTestingConnection(false);
+    //       // delete the workflow once it's finished
+    //       await handleDeleteWorkflow(workflowResponse.id);
+    //     }, FETCH_INTERVAL)
+    //   );
+    //   // stop fetching the workflow after 2 minutes
+    //   setTimeout(() => {
+    //     // clear the current interval
+    //     clearInterval(intervalId);
+    //     // using reference to ensure call back should have latest value
+    //     const currentWorkflowStatus = currentWorkflowRef.current
+    //       ?.status as WorkflowStatus;
+    //     const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
+    //       currentWorkflowStatus
+    //     );
+    //     if (!isWorkflowCompleted) {
+    //       setMessage(TEST_CONNECTION_INFO_MESSAGE);
+    //       setIsConnectionTimeout(true);
+    //     }
+    //     setIsTestingConnection(false);
+    //     setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+    //   }, FETCHING_EXPIRY_TIME);
+    // } catch (error) {
+    //   setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+    //   clearInterval(intervalId);
+    //   setIsTestingConnection(false);
+    //   setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
+    //   setTestStatus(StatusType.Failed);
+    //   showErrorToast(error as AxiosError);
+    //   // delete the workflow if there is an exception
+    //   const workflowId = currentWorkflowRef.current?.id;
+    //   if (workflowId) {
+    //     await handleDeleteWorkflow(workflowId);
+    //   }
+    // }
   };
 
   const handleTestConnection = () => {
@@ -287,9 +242,10 @@ const TestConnection: FC<TestConnectionProps> = ({
       {showDetails ? (
         <Space className="w-full justify-between bg-white border border-main rounded-4 p-sm mt-4">
           <Space
-            align={testStatus ? 'start' : 'center'}
+            align={testStatus ? "start" : "center"}
             data-testid="message-container"
-            size={8}>
+            size={8}
+          >
             {isTestingConnection && <Loader size="small" />}
             {testStatus === StatusType.Successful && (
               <SuccessIcon
@@ -300,7 +256,7 @@ const TestConnection: FC<TestConnectionProps> = ({
             {testStatus === StatusType.Failed && (
               <FailIcon className="status-icon" data-testid="fail-badge" />
             )}
-            {testStatus === 'Warning' && (
+            {testStatus === "Warning" && (
               <WarningIcon
                 className="status-icon"
                 data-testid="warning-badge"
@@ -321,10 +277,10 @@ const TestConnection: FC<TestConnectionProps> = ({
                     />
                   }
                   values={{
-                    text: t('label.documentation-lowercase'),
+                    text: t("label.documentation-lowercase"),
                   }}
                 />
-              )}{' '}
+              )}{" "}
               {(testStatus || isTestingConnection) && (
                 <Transi18next
                   i18nKey="message.click-text-to-view-details"
@@ -337,7 +293,7 @@ const TestConnection: FC<TestConnectionProps> = ({
                     />
                   }
                   values={{
-                    text: t('label.here-lowercase'),
+                    text: t("label.here-lowercase"),
                   }}
                 />
               )}
@@ -345,15 +301,16 @@ const TestConnection: FC<TestConnectionProps> = ({
           </Space>
           <Button
             className={classNames({
-              'text-primary': !isTestConnectionDisabled,
+              "text-primary": !isTestConnectionDisabled,
             })}
             data-testid="test-connection-btn"
             disabled={isTestConnectionDisabled}
             loading={isTestingConnection}
             size="middle"
             type="default"
-            onClick={handleTestConnection}>
-            {t('label.test-entity', { entity: t('label.connection') })}
+            onClick={handleTestConnection}
+          >
+            {t("label.test-entity", { entity: t("label.connection") })}
           </Button>
         </Space>
       ) : (
@@ -362,9 +319,10 @@ const TestConnection: FC<TestConnectionProps> = ({
           disabled={isTestConnectionDisabled}
           loading={isTestingConnection}
           type="primary"
-          onClick={handleTestConnection}>
-          {t('label.test-entity', {
-            entity: t('label.connection'),
+          onClick={handleTestConnection}
+        >
+          {t("label.test-entity", {
+            entity: t("label.connection"),
           })}
         </Button>
       )}

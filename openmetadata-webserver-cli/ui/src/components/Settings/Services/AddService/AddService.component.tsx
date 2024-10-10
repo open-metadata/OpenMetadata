@@ -11,45 +11,43 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { t } from 'i18next';
-import { capitalize, isEmpty, isUndefined } from 'lodash';
-import { LoadingState } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
-import { getServiceDetailsPath } from '../../../../constants/constants';
-import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
+import { Space, Typography } from "antd";
+import { t } from "i18next";
+import { capitalize, isEmpty, isUndefined } from "lodash";
+import { LoadingState } from "Models";
+import React, { useEffect, useState } from "react";
+import { useHistory } from "react-router-dom";
+import { getServiceDetailsPath } from "../../../../constants/constants";
+import { GlobalSettingsMenuCategory } from "../../../../constants/GlobalSettings.constants";
 import {
   SERVICE_DEFAULT_ERROR_MAP,
   STEPS_FOR_ADD_SERVICE,
-} from '../../../../constants/Services.constant';
-import { FormSubmitType } from '../../../../enums/form.enum';
-import { ServiceCategory } from '../../../../enums/service.enum';
-import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
-import { ConfigData } from '../../../../interface/service.interface';
-import { getServiceLogo } from '../../../../utils/CommonUtils';
-import { handleEntityCreationError } from '../../../../utils/formUtils';
+} from "../../../../constants/Services.constant";
+import { FormSubmitType } from "../../../../enums/form.enum";
+import { ServiceCategory } from "../../../../enums/service.enum";
+import { PipelineType } from "../../../../generated/entity/services/ingestionPipelines/ingestionPipeline";
+import { useAirflowStatus } from "../../../../hooks/useAirflowStatus";
+import { ConfigData } from "../../../../interface/service.interface";
+import { getServiceLogo } from "../../../../utils/CommonUtils";
 import {
   getAddServicePath,
   getSettingPath,
-} from '../../../../utils/RouterUtils';
+} from "../../../../utils/RouterUtils";
 import {
   getServiceCreatedLabel,
   getServiceRouteFromServiceType,
   getServiceType,
-} from '../../../../utils/ServiceUtils';
-import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
-import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
-import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import AddIngestion from '../AddIngestion/AddIngestion.component';
-import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
-import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
-import { AddServiceProps, ServiceConfig } from './AddService.interface';
-import ConfigureService from './Steps/ConfigureService';
-import SelectServiceType from './Steps/SelectServiceType';
+} from "../../../../utils/ServiceUtils";
+import ResizablePanels from "../../../common/ResizablePanels/ResizablePanels";
+import ServiceDocPanel from "../../../common/ServiceDocPanel/ServiceDocPanel";
+import SuccessScreen from "../../../common/SuccessScreen/SuccessScreen";
+import TitleBreadcrumb from "../../../common/TitleBreadcrumb/TitleBreadcrumb.component";
+import AddIngestion from "../AddIngestion/AddIngestion.component";
+import IngestionStepper from "../Ingestion/IngestionStepper/IngestionStepper.component";
+import ConnectionConfigForm from "../ServiceConfig/ConnectionConfigForm";
+import { AddServiceProps, ServiceConfig } from "./AddService.interface";
+import ConfigureService from "./Steps/ConfigureService";
+import SelectServiceType from "./Steps/SelectServiceType";
 
 const AddService = ({
   serviceCategory,
@@ -74,28 +72,28 @@ const AddService = ({
   );
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
-  const [selectServiceType, setSelectServiceType] = useState('');
+  const [selectServiceType, setSelectServiceType] = useState("");
   const [serviceConfig, setServiceConfig] = useState<ServiceConfig>({
-    serviceName: '',
-    description: '',
+    serviceName: "",
+    description: "",
   });
 
   const [saveServiceState, setSaveServiceState] =
-    useState<LoadingState>('initial');
-  const [activeField, setActiveField] = useState<string>('');
+    useState<LoadingState>("initial");
+  const [activeField, setActiveField] = useState<string>("");
 
   const handleServiceTypeClick = (type: string) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
     setServiceConfig({
-      serviceName: '',
-      description: '',
+      serviceName: "",
+      description: "",
     });
     setSelectServiceType(type);
   };
 
   const handleServiceCategoryChange = (category: ServiceCategory) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
-    setSelectServiceType('');
+    setSelectServiceType("");
     history.push(getAddServicePath(category));
   };
 
@@ -131,12 +129,12 @@ const AddService = ({
       name: serviceConfig.serviceName,
       serviceType: selectServiceType,
       description: serviceConfig.description,
-      owners: [
-        {
-          id: '',
-          type: 'user',
-        },
-      ],
+      // owners: [
+      //   {
+      //     id: currentUser?.id ?? "",
+      //     type: "user",
+      //   },
+      // ],
     };
     const configData = {
       ...data,
@@ -144,7 +142,7 @@ const AddService = ({
         config: newConfigData,
       },
     };
-    setSaveServiceState('waiting');
+    setSaveServiceState("waiting");
     try {
       await onAddServiceSave(configData);
 
@@ -152,18 +150,9 @@ const AddService = ({
 
       await fetchAirflowStatus();
     } catch (error) {
-
-      handleEntityCreationError({
-        error: error as AxiosError,
-        entity: t('label.service'),
-        entityLowercase: t('label.service-lowercase'),
-        entityLowercasePlural: t('label.service-lowercase-plural'),
-        setInlineAlertDetails: () => void,
-        name: serviceConfig.serviceName,
-        defaultErrorType: 'create',
-      });
+      // error handling
     } finally {
-      setSaveServiceState('initial');
+      setSaveServiceState("initial");
     }
   };
 
@@ -190,14 +179,14 @@ const AddService = ({
     <div data-testid="add-new-service-container">
       {selectServiceType ? (
         <Space className="p-b-xs">
-          {getServiceLogo(selectServiceType || '', 'h-6')}{' '}
+          {getServiceLogo(selectServiceType || "", "h-6")}{" "}
           <Typography className="text-base" data-testid="header">
-            {`${selectServiceType} ${t('label.service')}`}
+            {`${selectServiceType} ${t("label.service")}`}
           </Typography>
         </Space>
       ) : (
         <Typography className="text-base p-b-xs" data-testid="header">
-          {t('label.add-new-entity', { entity: t('label.service') })}
+          {t("label.add-new-entity", { entity: t("label.service") })}
         </Typography>
       )}
 
@@ -228,7 +217,7 @@ const AddService = ({
 
         {activeServiceStep === 3 && (
           <ConnectionConfigForm
-            cancelText={t('label.back')}
+            cancelText={t("label.back")}
             serviceCategory={serviceCategory}
             serviceType={selectServiceType}
             status={saveServiceState}
@@ -258,7 +247,7 @@ const AddService = ({
   );
 
   useEffect(() => {
-    setActiveField('');
+    setActiveField("");
   }, [activeIngestionStep, activeServiceStep]);
 
   const firstPanelChildren = (
@@ -270,7 +259,7 @@ const AddService = ({
             activeIngestionStep={activeIngestionStep}
             handleCancelClick={() => handleAddIngestion(false)}
             handleViewServiceClick={handleViewServiceClick}
-            heading={`${t('label.add-workflow-ingestion', {
+            heading={`${t("label.add-workflow-ingestion", {
               workflow: capitalize(PipelineType.Metadata),
             })}`}
             ingestionAction={ingestionAction}
@@ -301,12 +290,12 @@ const AddService = ({
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
-        className: 'content-resizable-panel-container',
+        className: "content-resizable-panel-container",
       }}
       hideSecondPanel={
         !(selectServiceType && activeServiceStep === 3) && !addIngestion
       }
-      pageTitle={t('label.add-entity', { entity: t('label.service') })}
+      pageTitle={t("label.add-entity", { entity: t("label.service") })}
       secondPanel={{
         children: (
           <ServiceDocPanel
@@ -317,7 +306,7 @@ const AddService = ({
             workflowType={PipelineType.Metadata}
           />
         ),
-        className: 'service-doc-panel content-resizable-panel-container',
+        className: "service-doc-panel content-resizable-panel-container",
         minWidth: 400,
         flex: 0.3,
       }}

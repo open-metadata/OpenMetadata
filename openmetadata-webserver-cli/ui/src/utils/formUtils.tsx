@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ErrorTransformer } from '@rjsf/utils';
+import { ErrorTransformer } from "@rjsf/utils";
 import {
   Alert,
   Divider,
@@ -21,27 +21,24 @@ import {
   Select,
   Switch,
   TooltipProps,
-} from 'antd';
-import { RuleObject } from 'antd/lib/form';
-import { TooltipPlacement } from 'antd/lib/tooltip';
-import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { t } from 'i18next';
-import { compact, startCase, toString } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+} from "antd";
+import { RuleObject } from "antd/lib/form";
+import { TooltipPlacement } from "antd/lib/tooltip";
+import classNames from "classnames";
+import { compact, startCase, toString } from "lodash";
+import React, { Fragment, ReactNode } from "react";
 // import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 // import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 // import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
-import CronEditor from '../components/common/CronEditor/CronEditor';
-import { CronEditorProp } from '../components/common/CronEditor/CronEditor.interface';
+import CronEditor from "../components/common/CronEditor/CronEditor";
+import { CronEditorProp } from "../components/common/CronEditor/CronEditor.interface";
 // import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 // import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 // import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 // import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
-import FormItemLabel from '../components/common/Form/FormItemLabel';
-import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
-import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
+import FormItemLabel from "../components/common/Form/FormItemLabel";
+import RichTextEditor from "../components/common/RichTextEditor/RichTextEditor";
+import { RichTextEditorProp } from "../components/common/RichTextEditor/RichTextEditor.interface";
 // import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 // import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
 // import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
@@ -54,12 +51,11 @@ import {
   FieldTypes,
   FormItemLayout,
   HelperTextType,
-} from '../interface/FormUtils.interface';
+} from "../interface/FormUtils.interface";
 // import TagSuggestion, {
 //   TagSuggestionProps,
 // } from '../pages/TasksPage/shared/TagSuggestion';
-import i18n from './i18next/LocalUtil';
-import { getErrorText } from './StringsUtils';
+import i18n from "./i18next/LocalUtil";
 
 export const getField = (field: FieldProp) => {
   const {
@@ -93,7 +89,7 @@ export const getField = (field: FieldProp) => {
       ...fieldRules,
       {
         required,
-        message: i18n.t('label.field-required', {
+        message: i18n.t("label.field-required", {
           field: startCase(toString(name)),
         }),
       },
@@ -139,7 +135,7 @@ export const getField = (field: FieldProp) => {
       fieldElement = <Switch {...props} id={id} />;
       internalFormItemProps = {
         ...internalFormItemProps,
-        valuePropName: 'checked',
+        valuePropName: "checked",
       };
 
       break;
@@ -159,8 +155,8 @@ export const getField = (field: FieldProp) => {
       );
       internalFormItemProps = {
         ...internalFormItemProps,
-        trigger: 'onTextChange',
-        valuePropName: 'initialValue',
+        trigger: "onTextChange",
+        valuePropName: "initialValue",
       };
 
       break;
@@ -232,15 +228,15 @@ export const getField = (field: FieldProp) => {
     <Fragment key={id}>
       <Form.Item
         className={classNames({
-          'form-item-horizontal': formItemLayout === FormItemLayout.HORIZONTAL,
-          'form-item-vertical': formItemLayout === FormItemLayout.VERTICAL,
-          'm-b-xss': helperTextType === HelperTextType.ALERT,
+          "form-item-horizontal": formItemLayout === FormItemLayout.HORIZONTAL,
+          "form-item-vertical": formItemLayout === FormItemLayout.VERTICAL,
+          "m-b-xss": helperTextType === HelperTextType.ALERT,
         })}
         id={id}
         key={id}
         label={
           <FormItemLabel
-            align={props.tooltipAlign as TooltipProps['align']}
+            align={props.tooltipAlign as TooltipProps["align"]}
             helperText={helperText}
             helperTextType={helperTextType}
             isBeta={isBeta}
@@ -254,7 +250,8 @@ export const getField = (field: FieldProp) => {
         name={name}
         rules={fieldRules}
         {...internalFormItemProps}
-        {...formItemProps}>
+        {...formItemProps}
+      >
         {fieldElement}
       </Form.Item>
 
@@ -287,15 +284,15 @@ export const transformErrors: ErrorTransformer = (errors) => {
      * For nested fields we have to check if it's property start with "."
      * else we will just prepend the root to property
      */
-    const id = property?.startsWith('.')
-      ? 'root' + property?.replaceAll('.', '/')
+    const id = property?.startsWith(".")
+      ? "root" + property?.replaceAll(".", "/")
       : `root/${property}`;
 
     // If element is not present in DOM, ignore error
     if (document.getElementById(id)) {
       const fieldName = error.params?.missingProperty;
       if (fieldName) {
-        const customMessage = i18n.t('message.field-text-is-required', {
+        const customMessage = i18n.t("message.field-text-is-required", {
           fieldText: startCase(fieldName),
         });
         error.message = customMessage;
@@ -308,67 +305,4 @@ export const transformErrors: ErrorTransformer = (errors) => {
   });
 
   return compact(errorRet);
-};
-
-export const setInlineErrorValue = (
-  description: string,
-  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void
-) => {
-  setInlineAlertDetails({
-    type: 'error',
-    heading: t('label.error'),
-    description,
-    onClose: () => setInlineAlertDetails(undefined),
-  });
-};
-
-export const handleEntityCreationError = ({
-  error,
-  setInlineAlertDetails,
-  entity,
-  entityLowercase,
-  entityLowercasePlural,
-  name,
-  defaultErrorType,
-}: {
-  error: AxiosError;
-  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
-  entity: string;
-  entityLowercase?: string;
-  entityLowercasePlural?: string;
-  name: string;
-  defaultErrorType?: 'create';
-}) => {
-  if (error.response?.status  /* === HTTP_STATUS_CODE.CONFLICT*/) {
-    setInlineErrorValue(
-      t('server.entity-already-exist', {
-        entity,
-        entityPlural: entityLowercasePlural ?? entity,
-        name: name,
-      }),
-      setInlineAlertDetails
-    );
-
-    return;
-  }
-
-  if (error.response?.status /* === HTTP_STATUS_CODE.LIMIT_REACHED */) {
-    setInlineErrorValue(
-      t('server.entity-limit-reached', {
-        entity,
-      }),
-      setInlineAlertDetails
-    );
-
-    return;
-  }
-
-  setInlineErrorValue(
-    defaultErrorType === 'create'
-      ? t(`server.entity-creation-error`, {
-        entity: entityLowercase ?? entity,
-      })
-      : getErrorText(error, t('server.unexpected-error')),
-    setInlineAlertDetails
-  );
 };

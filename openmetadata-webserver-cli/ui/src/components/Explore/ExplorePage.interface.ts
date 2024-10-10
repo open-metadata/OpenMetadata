@@ -11,39 +11,34 @@
  *  limitations under the License.
  */
 
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { DefaultOptionType } from 'antd/lib/select';
-import { SORT_ORDER } from '../../enums/common.enum';
-import { SearchIndex } from '../../enums/search.enum';
-import { Tag } from '../../generated/entity/classification/tag';
-import { APICollection } from '../../generated/entity/data/apiCollection';
-import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
-import { Container } from '../../generated/entity/data/container';
-import { Dashboard } from '../../generated/entity/data/dashboard';
-import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
-import { Database } from '../../generated/entity/data/database';
-import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
-import { Glossary } from '../../generated/entity/data/glossary';
-import { Metric } from '../../generated/entity/data/metric';
-import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../generated/entity/data/pipeline';
-import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
-import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
-import { Table } from '../../generated/entity/data/table';
-import { Topic } from '../../generated/entity/data/topic';
-import { APIService } from '../../generated/entity/services/apiService';
-import { DashboardService } from '../../generated/entity/services/dashboardService';
-import { DatabaseService } from '../../generated/entity/services/databaseService';
-import { MessagingService } from '../../generated/entity/services/messagingService';
-import { MlmodelService } from '../../generated/entity/services/mlmodelService';
-import { PipelineService } from '../../generated/entity/services/pipelineService';
-import { SearchService } from '../../generated/entity/services/searchService';
-import { StorageService } from '../../generated/entity/services/storageService';
-import { TestCase } from '../../generated/tests/testCase';
-import { Aggregations, SearchResponse } from '../../interface/search.interface';
-import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
-import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
+import { DefaultOptionType } from "antd/lib/select";
+import { SearchIndex } from "../../enums/search.enum";
+import { Tag } from "../../generated/entity/classification/tag";
+import { APICollection } from "../../generated/entity/data/apiCollection";
+import { APIEndpoint } from "../../generated/entity/data/apiEndpoint";
+import { Container } from "../../generated/entity/data/container";
+import { Dashboard } from "../../generated/entity/data/dashboard";
+import { DashboardDataModel } from "../../generated/entity/data/dashboardDataModel";
+import { Database } from "../../generated/entity/data/database";
+import { DatabaseSchema } from "../../generated/entity/data/databaseSchema";
+import { Glossary } from "../../generated/entity/data/glossary";
+import { Metric } from "../../generated/entity/data/metric";
+import { Mlmodel } from "../../generated/entity/data/mlmodel";
+import { Pipeline } from "../../generated/entity/data/pipeline";
+import { SearchIndex as SearchIndexEntity } from "../../generated/entity/data/searchIndex";
+import { StoredProcedure } from "../../generated/entity/data/storedProcedure";
+import { Table } from "../../generated/entity/data/table";
+import { Topic } from "../../generated/entity/data/topic";
+import { APIService } from "../../generated/entity/services/apiService";
+import { DashboardService } from "../../generated/entity/services/dashboardService";
+import { DatabaseService } from "../../generated/entity/services/databaseService";
+import { MessagingService } from "../../generated/entity/services/messagingService";
+import { MlmodelService } from "../../generated/entity/services/mlmodelService";
+import { PipelineService } from "../../generated/entity/services/pipelineService";
+import { SearchService } from "../../generated/entity/services/searchService";
+import { StorageService } from "../../generated/entity/services/storageService";
+import { TestCase } from "../../generated/tests/testCase";
+import { SearchedDataProps } from "../SearchedData/SearchedData.interface";
 
 export type UrlParams = {
   searchQuery: string;
@@ -70,50 +65,6 @@ export type ExploreSearchIndex =
   | SearchIndex.METRIC_SEARCH_INDEX;
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
-
-export interface ExploreProps {
-  aggregations?: Aggregations;
-  activeTabKey: SearchIndex;
-  tabItems: ItemType[];
-
-  searchResults?: SearchResponse<ExploreSearchIndex>;
-
-  onChangeAdvancedSearchQuickFilters: (
-    queryFilter: QueryFilterInterface | undefined
-  ) => void;
-
-  searchIndex: SearchIndex.DATA_ASSET | ExploreSearchIndex;
-  onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
-
-  sortValue: string;
-  onChangeSortValue: (sortValue: string) => void;
-
-  sortOrder: string;
-  onChangeSortOder: (sortOder: SORT_ORDER) => void;
-
-  showDeleted: boolean;
-  onChangeShowDeleted: (showDeleted: boolean) => void;
-
-  onChangePage?: (page: number, size?: number) => void;
-
-  loading?: boolean;
-
-  quickFilters?: QueryFilterInterface;
-  isElasticSearchIssue?: boolean;
-}
-
-export interface ExploreQuickFilterField {
-  key: string;
-  label: string;
-  value: SearchDropdownOption[] | undefined;
-}
-
-export interface ExploreQuickFilterProps {
-  index: SearchIndex;
-  field: ExploreQuickFilterField;
-  onFieldRemove: (value: string) => void;
-  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
-}
 
 export interface SearchInputProps {
   options: DefaultOptionType[];
@@ -176,5 +127,5 @@ export type EntityServiceUnion =
   | APIService;
 
 export interface EntityDetailsObjectInterface {
-  details: SearchedDataProps['data'][number]['_source'];
+  details: SearchedDataProps["data"][number]["_source"];
 }

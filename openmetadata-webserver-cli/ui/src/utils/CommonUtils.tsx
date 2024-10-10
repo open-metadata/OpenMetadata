@@ -11,55 +11,49 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/ban-types */
-
-import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { t } from 'i18next';
+import classNames from "classnames";
+import { t } from "i18next";
 import {
   capitalize,
-  get,
   isEmpty,
   isNil,
   isNull,
-  isString,
   isUndefined,
   toLower,
   toNumber,
-} from 'lodash';
-// import { Duration } from 'luxon';
-import {
-  CurrentState,
-  ExtraInfo,
-} from 'Models';
-import React, { ReactNode } from 'react';
-import { Trans } from 'react-i18next';
+} from "lodash";
+import { CurrentState, ExtraInfo } from "Models";
+import React, { ReactNode } from "react";
+import { Trans } from "react-i18next";
 import {
   getDayCron,
   getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../components/common/Loader/Loader';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+} from "../components/common/CronEditor/CronEditor.constant";
+import ErrorPlaceHolder from "../components/common/ErrorWithPlaceholder/ErrorPlaceHolder";
+import Loader from "../components/common/Loader/Loader";
+import { FQN_SEPARATOR_CHAR } from "../constants/char.constants";
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
   imageTypes,
-} from '../constants/constants';
-
+} from "../constants/constants";
+// import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
 import {
   UrlEntityCharRegEx,
   VALIDATE_ESCAPE_START_END_REGEX,
-} from '../constants/regex.constants';
-import { SIZE } from '../enums/common.enum';
-import { EntityType, FqnPart } from '../enums/entity.enum';
-import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { EntityReference, User } from '../generated/entity/teams/user';
-import { TagLabel } from '../generated/type/tagLabel';
-import { SearchSourceAlias } from '../interface/search.interface';
-import Fqn from './Fqn';
-import { history } from './HistoryUtils';
-import serviceUtilClassBase from './ServiceUtilClassBase';
+} from "../constants/regex.constants";
+import { SIZE } from "../enums/common.enum";
+import { EntityType, FqnPart } from "../enums/entity.enum";
+import { PipelineType } from "../generated/entity/services/ingestionPipelines/ingestionPipeline";
+import { EntityReference, User } from "../generated/entity/teams/user";
+import { SearchSourceAlias } from "../interface/search.interface";
+// import { getFeedCount } from '../rest/feedsAPI';
+// import { getEntityFeedLink } from './EntityUtils';
+import Fqn from "./Fqn";
+import { history } from "./HistoryUtils";
+import serviceUtilClassBase from "./ServiceUtilClassBase";
+// import { TASK_ENTITIES } from './TasksUtils';
+// import { showErrorToast } from './ToastUtils';
 
 export const arraySorterByKey = <T extends object>(
   key: keyof T,
@@ -72,28 +66,28 @@ export const arraySorterByKey = <T extends object>(
       (elementOne[key] < elementTwo[key]
         ? -1
         : elementOne[key] > elementTwo[key]
-          ? 1
-          : 0) * sortOrder
+        ? 1
+        : 0) * sortOrder
     );
   };
 };
 
 export const getPartialNameFromFQN = (
   fqn: string,
-  arrTypes: Array<'service' | 'database' | 'table' | 'column'> = [],
-  joinSeparator = '/'
+  arrTypes: Array<"service" | "database" | "table" | "column"> = [],
+  joinSeparator = "/"
 ): string => {
   const arrFqn = Fqn.split(fqn);
 
   const arrPartialName = [];
   for (const type of arrTypes) {
-    if (type === 'service' && arrFqn.length > 0) {
+    if (type === "service" && arrFqn.length > 0) {
       arrPartialName.push(arrFqn[0]);
-    } else if (type === 'database' && arrFqn.length > 1) {
+    } else if (type === "database" && arrFqn.length > 1) {
       arrPartialName.push(arrFqn[1]);
-    } else if (type === 'table' && arrFqn.length > 2) {
+    } else if (type === "table" && arrFqn.length > 2) {
       arrPartialName.push(arrFqn[2]);
-    } else if (type === 'column' && arrFqn.length > 3) {
+    } else if (type === "column" && arrFqn.length > 3) {
       arrPartialName.push(arrFqn[3]);
     }
   }
@@ -113,10 +107,10 @@ export const getPartialNameFromFQN = (
 export const getPartialNameFromTableFQN = (
   fqn: string,
   fqnParts: Array<FqnPart> = [],
-  joinSeparator = '/'
+  joinSeparator = "/"
 ): string => {
   if (!fqn) {
-    return '';
+    return "";
   }
   const splitFqn = Fqn.split(fqn);
   // if nested column is requested, then ignore all the other
@@ -173,32 +167,33 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
   return getPartialNameFromTableFQN(
     columnFQN,
     [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-    '.'
+    "."
   );
 };
 
-export const pluralize = (count: number, noun: string, suffix = 's') => {
+export const pluralize = (count: number, noun: string, suffix = "s") => {
   const countString = count.toLocaleString();
   if (count !== 1 && count !== 0 && !noun.endsWith(suffix)) {
     return `${countString} ${noun}${suffix}`;
   } else {
     if (noun.endsWith(suffix)) {
-      return `${countString} ${count > 1 ? noun : noun.slice(0, noun.length - 1)
-        }`;
+      return `${countString} ${
+        count > 1 ? noun : noun.slice(0, noun.length - 1)
+      }`;
     } else {
-      return `${countString} ${noun}${count > 1 ? suffix : ''}`;
+      return `${countString} ${noun}${count > 1 ? suffix : ""}`;
     }
   }
 };
 
 export const hasEditAccess = (owners: EntityReference[], currentUser: User) => {
   return owners.some((owner) => {
-    if (owner.type === 'user') {
+    if (owner.type === "user") {
       return owner.id === currentUser.id;
     } else {
       return Boolean(
         currentUser.teams?.length &&
-        currentUser.teams.some((team) => team.id === owner.id)
+          currentUser.teams.some((team) => team.id === owner.id)
       );
     }
   });
@@ -206,26 +201,28 @@ export const hasEditAccess = (owners: EntityReference[], currentUser: User) => {
 
 export const getCountBadge = (
   count = 0,
-  className = '',
+  className = "",
   isActive?: boolean
 ) => {
   const clsBG = isUndefined(isActive)
-    ? ''
+    ? ""
     : isActive
-      ? 'bg-primary text-white no-border'
-      : 'ant-tag';
+    ? "bg-primary text-white no-border"
+    : "ant-tag";
 
   return (
     <span
       className={classNames(
-        'p-x-xss m-x-xss global-border rounded-4 text-center',
+        "p-x-xss m-x-xss global-border rounded-4 text-center",
         clsBG,
         className
-      )}>
+      )}
+    >
       <span
         className="text-xs"
         data-testid="filter-count"
-        title={count.toString()}>
+        title={count.toString()}
+      >
         {count}
       </span>
     </span>
@@ -237,7 +234,8 @@ export const errorMsg = (value: string) => {
     <div>
       <strong
         className="text-xs font-italic text-failure"
-        data-testid="error-message">
+        data-testid="error-message"
+      >
         {value}
       </strong>
     </div>
@@ -246,7 +244,7 @@ export const errorMsg = (value: string) => {
 
 export const requiredField = (label: string, excludeSpace = false) => (
   <>
-    {label}{' '}
+    {label}{" "}
     <span className="text-failure">{!excludeSpace && <>&nbsp;</>}*</span>
   </>
 );
@@ -255,7 +253,7 @@ export const getImages = (imageUri: string) => {
   const imagesObj: typeof imageTypes = imageTypes;
   for (const type in imageTypes) {
     imagesObj[type as keyof typeof imageTypes] = imageUri.replace(
-      's96-c',
+      "s96-c",
       imageTypes[type as keyof typeof imageTypes]
     );
   }
@@ -265,7 +263,7 @@ export const getImages = (imageUri: string) => {
 
 export const getServiceLogo = (
   serviceType: string,
-  className = ''
+  className = ""
 ): JSX.Element | null => {
   const logo = serviceUtilClassBase.getServiceTypeLogo({
     serviceType,
@@ -294,9 +292,9 @@ export const isValidUrl = (href?: string) => {
 export const getEntityMissingError = (entityType: string, fqn: string) => {
   return (
     <p>
-      {capitalize(entityType)} {t('label.instance-lowercase')}{' '}
-      {t('label.for-lowercase')} <strong>{fqn}</strong>{' '}
-      {t('label.not-found-lowercase')}
+      {capitalize(entityType)} {t("label.instance-lowercase")}{" "}
+      {t("label.for-lowercase")} <strong>{fqn}</strong>{" "}
+      {t("label.not-found-lowercase")}
     </p>
   );
 };
@@ -362,17 +360,17 @@ export const getNonDeletedTeams = (teams: EntityReference[]) => {
  * @returns - label for entity
  */
 export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
-  let label = '';
+  let label = "";
   if (type === EntityType.TABLE) {
     label = getPartialNameFromTableFQN(fqn, [FqnPart.Table]);
   } else {
-    label = getPartialNameFromFQN(fqn, ['database']);
+    label = getPartialNameFromFQN(fqn, ["database"]);
   }
 
   if (withQuotes) {
     return label;
   } else {
-    return label.replace(/(^"|"$)/g, '');
+    return label.replace(/(^"|"$)/g, "");
   }
 };
 
@@ -384,24 +382,22 @@ export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
  */
 export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
   if (isDeleted) {
-    return `${value} (${t('label.deactivated')})`;
+    return `${value} (${t("label.deactivated")})`;
   } else {
     return value;
   }
 };
 
 export const replaceSpaceWith_ = (text: string) => {
-  return text.replace(/\s/g, '_');
+  return text.replace(/\s/g, "_");
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
-  return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
+  return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, "_");
 };
 
-
-
 export const formatNumberWithComma = (number: number) => {
-  return new Intl.NumberFormat('en-US').format(number);
+  return new Intl.NumberFormat("en-US").format(number);
 };
 
 /**
@@ -423,50 +419,10 @@ export const getStatisticsDisplayValue = (
 
 export const digitFormatter = (value: number) => {
   // convert 1000 to 1k
-  return Intl.NumberFormat('en', {
-    notation: 'compact',
+  return Intl.NumberFormat("en", {
+    notation: "compact",
     maximumFractionDigits: 2,
   }).format(value);
-};
-
-/**
- * Converts a duration in seconds to a human-readable format.
- * The function returns the largest time unit (years, months, days, hours, minutes, or seconds)
- * that is greater than or equal to one, rounded to the nearest whole number.
- *
- * @param {number} seconds - The duration in seconds to be converted.
- * @returns {string} A string representing the duration in a human-readable format,
- *                  e.g., "1 hour", "2 days", "3 months", etc.
- *
- * @example
- * formatTimeFromSeconds(1); // returns "1 second"
- * formatTimeFromSeconds(60); // returns "1 minute"
- * formatTimeFromSeconds(3600); // returns "1 hour"
- * formatTimeFromSeconds(86400); // returns "1 day"
- */
-export const formatTimeFromSeconds = (seconds: number): string => {
-  // const duration = Duration.fromObject({ seconds });
-  // let unit: keyof Duration;
-
-  // if (duration.as('years') >= 1) {
-  //   unit = 'years';
-  // } else if (duration.as('months') >= 1) {
-  //   unit = 'months';
-  // } else if (duration.as('days') >= 1) {
-  //   unit = 'days';
-  // } else if (duration.as('hours') >= 1) {
-  //   unit = 'hours';
-  // } else if (duration.as('minutes') >= 1) {
-  //   unit = 'minutes';
-  // } else {
-  //   unit = 'seconds';
-  // }
-
-  // const value = Math.round(duration.as(unit));
-  // const unitSingular = unit.slice(0, -1);
-
-  // return `${value} ${value === 1 ? unitSingular : unit}`;
-  return `${seconds}` || `0`;
 };
 
 export const getTeamsUser = (
@@ -497,18 +453,18 @@ export const getHostNameFromURL = (url: string) => {
 
     return domain.hostname;
   } else {
-    return '';
+    return "";
   }
 };
 
 export const getOwnerValue = (owner?: EntityReference) => {
   switch (owner?.type) {
-    case 'team':
-      return getTeamAndUserDetailsPath(owner?.name || '');
-    case 'user':
-      return getUserPath(owner?.fullyQualifiedName ?? '');
+    case "team":
+      return getTeamAndUserDetailsPath(owner?.name || "");
+    case "user":
+      return getUserPath(owner?.fullyQualifiedName ?? "");
     default:
-      return '';
+      return "";
   }
 };
 
@@ -558,47 +514,28 @@ export const refreshPage = () => {
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
 
-export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
-  if (isString(tag)) {
-    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-      ? tag.split(FQN_SEPARATOR_CHAR)[1]
-      : tag;
-  } else {
-    return {
-      ...tag,
-      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-        : tag.tagFQN,
-    };
-  }
-};
-
 export const getTrimmedContent = (content: string, limit: number) => {
-  const lines = content.split('\n');
+  const lines = content.split("\n");
   // Selecting the content in three lines
-  const contentInThreeLines = lines.slice(0, 3).join('\n');
+  const contentInThreeLines = lines.slice(0, 3).join("\n");
 
   const slicedContent = contentInThreeLines.slice(0, limit);
 
   // Logic for eliminating any broken words at the end
   // To avoid any URL being cut
-  const words = slicedContent.split(' ');
+  const words = slicedContent.split(" ");
   const wordsCount = words.length;
 
   if (wordsCount === 1) {
     // In case of only one word (possibly too long URL)
     // return the whole word instead of trimming
-    return content.split(' ')[0];
+    return content.split(" ")[0];
   }
 
   // Eliminate word at the end to avoid using broken words
   const refinedContent = words.slice(0, wordsCount - 1);
 
-  return refinedContent.join(' ');
-};
-
-export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
-  return tags;
+  return refinedContent.join(" ");
 };
 
 export const Transi18next = ({
@@ -618,7 +555,7 @@ export const Transi18next = ({
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
-    return t('message.permanently-delete-metadata-and-dependents', {
+    return t("message.permanently-delete-metadata-and-dependents", {
       entityName: entity,
       dependents,
     });
@@ -636,18 +573,6 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
     );
   }
 };
-/**
- * It takes a state and an action, and returns a new state with the action merged into it
- * @param {S} state - S - The current state of the reducer.
- * @param {A} action - A - The action that was dispatched.
- * @returns An object with the state and action properties.
- */
-export const reducerWithoutAction = <S, A>(state: S, action: A) => {
-  return {
-    ...state,
-    ...action,
-  };
-};
 
 /**
  * @param text plain text
@@ -655,32 +580,14 @@ export const reducerWithoutAction = <S, A>(state: S, action: A) => {
  */
 export const getBase64EncodedString = (text: string): string => btoa(text);
 
-export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
-  let errorMessage = '';
-
-  if (error) {
-    errorMessage = get(error, 'response.data.message', '');
-    if (!errorMessage) {
-      // if error text is undefined or null or empty, try responseMessage in data
-      errorMessage = get(error, 'response.data.responseMessage', '');
-    }
-    if (!errorMessage) {
-      errorMessage = 'error';
-      errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
-    }
-  }
-
-  return errorMessage.includes(key);
-};
-
 /**
  * @param color hex have color code
  * @param opacity take opacity how much to reduce it
  * @returns hex color string
  */
 export const reduceColorOpacity = (hex: string, opacity: number): string => {
-  hex = hex.replace(/^#/, ''); // Remove the "#" if it's there
-  hex = hex.length === 3 ? hex.replace(/./g, '$&$&') : hex; // Expand short hex to full hex format
+  hex = hex.replace(/^#/, ""); // Remove the "#" if it's there
+  hex = hex.length === 3 ? hex.replace(/./g, "$&$&") : hex; // Expand short hex to full hex format
   const [red, green, blue] = [0, 2, 4].map((i) =>
     parseInt(hex.slice(i, i + 2), 16)
   ); // Parse hex values
@@ -752,7 +659,7 @@ export const filterSelectOptions = (
  * @returns
  */
 export const isDeleted = (deleted: unknown): boolean => {
-  return (deleted as string) === 'false' || deleted === false || isNil(deleted)
+  return (deleted as string) === "false" || deleted === false || isNil(deleted)
     ? false
     : true;
 };
