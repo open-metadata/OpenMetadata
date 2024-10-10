@@ -254,7 +254,7 @@ public final class CatalogExceptionMessage {
   }
 
   public static String customPropertyConfigError(String fieldName, String validationMessages) {
-    return String.format("Custom Property %s has invalid JSON %s", fieldName, validationMessages);
+    return String.format("Custom Property %s has invalid value %s", fieldName, validationMessages);
   }
 
   public static String invalidParent(Team parent, String child, TeamType childType) {

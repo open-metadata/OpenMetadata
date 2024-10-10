@@ -35,9 +35,6 @@
               "$ref": "#/definitions/entityTypes"
             },
             {
-              "$ref": "../type/customProperties/enumWithDescriptionsConfig.json"
-            },
-            {
               "$ref": "customProperties/tableConfig.json"
             }
           ]

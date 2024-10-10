@@ -20,7 +20,29 @@
     "rowCount": {
       "type": "integer",
       "default": 10,
-      "description": "Number of rows. Defaults to maxRows if not explicitly set."
+      "description": "Number of rows. Defaults to maxRows if not explicitly set.",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "minColumns": {
+      "type": "integer",
+      "default": 1,
+      "$comment": "For internal use only: Minimum number of columns."
+    },
+    "maxColumns": {
+      "type": "integer",
+      "default": 3,
+      "$comment": "For internal use only: Maximum number of columns."
+    },
+    "minRows": {
+      "type": "integer",
+      "default": 1,
+      "$comment": "For internal use only: Minimum number of rows."
+    },
+    "maxRows": {
+      "type": "integer",
+      "default": 10,
+      "$comment": "For internal use only: Maximum number of rows."
     }
   },
   "required": ["columns"],

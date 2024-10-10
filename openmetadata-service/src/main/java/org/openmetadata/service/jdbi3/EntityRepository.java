@@ -67,7 +67,6 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
@@ -101,7 +100,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import javax.json.JsonPatch;
 import javax.validation.ConstraintViolationException;
 import javax.validation.constraints.NotNull;
@@ -146,7 +144,6 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
 import org.openmetadata.schema.type.customproperties.TableConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -1457,8 +1454,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
         jsonNode.put(fieldName, formattedValue);
       }
-      case "enumWithDescriptions" -> handleEnumWithDescriptions(
-          fieldName, fieldValue, propertyConfig, jsonNode, entity);
       case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
       default -> {}
     }
@@ -1494,40 +1489,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } catch (DateTimeParseException e) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.dateTimeValidationError(fieldName, propertyConfig));
-    }
-  }
-
-  private void handleEnumWithDescriptions(
-      String fieldName, JsonNode fieldValue, String propertyConfig, ObjectNode jsonNode, T entity) {
-    JsonNode propertyConfigNode = JsonUtils.readTree(propertyConfig);
-    EnumWithDescriptionsConfig config =
-        JsonUtils.treeToValue(propertyConfigNode, EnumWithDescriptionsConfig.class);
-
-    if (!config.getMultiSelect() && fieldValue.size() > 1) {
-      throw new IllegalArgumentException(
-          "Only one key is allowed for non-multiSelect enumWithDescriptions");
-    }
-    // Replace each enumWithDescriptions key in the fieldValue with the corresponding object from
-    // the propertyConfig
-    Map<String, JsonNode> keyToObjectMap =
-        StreamSupport.stream(propertyConfigNode.get("values").spliterator(), false)
-            .collect(Collectors.toMap(node -> node.get("key").asText(), node -> node));
-
-    if (fieldValue.isArray()) {
-      ArrayNode newArray = JsonUtils.getObjectNode().arrayNode();
-      fieldValue.forEach(
-          valueNode -> {
-            String key = valueNode.isTextual() ? valueNode.asText() : valueNode.get("key").asText();
-            JsonNode valueObject = keyToObjectMap.get(key);
-
-            if (valueObject == null) {
-              throw new IllegalArgumentException("Key not found in propertyConfig: " + key);
-            }
-            newArray.add(valueNode.isTextual() ? valueObject : valueNode);
-          });
-
-      jsonNode.replace(fieldName, newArray);
-      entity.setExtension(JsonUtils.treeToValue(jsonNode, Object.class));
     }
   }
 
