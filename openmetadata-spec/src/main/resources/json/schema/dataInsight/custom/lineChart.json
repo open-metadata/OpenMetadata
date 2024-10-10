@@ -61,6 +61,11 @@
         },
         "kpiDetails": {
             "$ref": "dataInsightCustomChart.json#/definitions/kpiDetails"
+        },
+        "xAxisField":{
+            "description": "X-axis field for the data insight chart.",
+            "type": "string",
+            "default": "@timestamp"
         }
     },
     "additionalProperties": false

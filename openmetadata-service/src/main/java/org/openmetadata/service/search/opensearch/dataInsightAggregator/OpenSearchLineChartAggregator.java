@@ -17,10 +17,10 @@ import os.org.opensearch.action.search.SearchRequest;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
+import os.org.opensearch.search.aggregations.AbstractAggregationBuilder;
 import os.org.opensearch.search.aggregations.Aggregation;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.Aggregations;
-import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import os.org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
 import os.org.opensearch.search.aggregations.bucket.terms.ParsedTerms;
@@ -33,21 +33,35 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       @NotNull DataInsightCustomChart diChart, long start, long end, List<FormulaHolder> formulas)
       throws IOException {
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
-    DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
-        AggregationBuilders.dateHistogram("1")
-            .field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
-            .calendarInterval(DateHistogramInterval.DAY);
+    AbstractAggregationBuilder aggregationBuilder;
+
+    if (lineChart.getxAxisField() != null
+        && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD)) {
+      aggregationBuilder =
+          AggregationBuilders.terms("1").field(lineChart.getxAxisField()).size(1000);
+
+      // in case of horizontal axis only process data of 24 hr prior to end time
+      start = end - MILLISECONDS_IN_DAY;
+
+    } else {
+      aggregationBuilder =
+          AggregationBuilders.dateHistogram("1")
+              .field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
+              .calendarInterval(DateHistogramInterval.DAY);
+    }
+
     populateDateHistogram(
         lineChart.getFunction(),
         lineChart.getFormula(),
         lineChart.getField(),
         lineChart.getFilter(),
-        dateHistogramAggregationBuilder,
+        aggregationBuilder,
         formulas);
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-    QueryBuilder queryFilter = new RangeQueryBuilder("@timestamp").gte(start).lte(end);
+    QueryBuilder queryFilter =
+        new RangeQueryBuilder(DataInsightSystemChartRepository.TIMESTAMP_FIELD).gte(start).lte(end);
 
     if (lineChart.getGroupBy() != null) {
       String[] includeArr = null;
@@ -60,7 +74,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       }
       TermsAggregationBuilder termsAggregationBuilder =
           AggregationBuilders.terms("0").field(lineChart.getGroupBy()).size(1000);
-      termsAggregationBuilder.subAggregation(dateHistogramAggregationBuilder);
+      termsAggregationBuilder.subAggregation(aggregationBuilder);
       if (includeArr != null || excludeArr != null) {
         IncludeExclude includeExclude = new IncludeExclude(includeArr, excludeArr);
         termsAggregationBuilder.includeExclude(includeExclude);
@@ -68,7 +82,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       searchSourceBuilder.size(0);
       searchSourceBuilder.aggregation(termsAggregationBuilder);
     } else {
-      searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
+      searchSourceBuilder.aggregation(aggregationBuilder);
     }
     searchSourceBuilder.query(queryFilter);
     os.org.opensearch.action.search.SearchRequest searchRequest =
