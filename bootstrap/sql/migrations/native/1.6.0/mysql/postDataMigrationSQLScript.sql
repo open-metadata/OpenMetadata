@@ -46,5 +46,5 @@ ALTER TABLE apps_extension_time_series ADD COLUMN appName VARCHAR(256) GENERATED
 
 -- Add supportsDataDiff for Athena, BigQuery, Mssql, Mysql, Oracle, Postgres, Redshift, SapHana, Snowflake, Trino
 UPDATE dbservice_entity
-SET json = jsonb_set(json::jsonb, '{connection,config,supportsDataDiff}', 'true'::jsonb)
+SET json = JSON_SET(json, '$.connection.config.supportsDataDiff', 'true')
 WHERE serviceType IN ('Athena','BigQuery','Mssql','Mysql','Oracle','Postgres','Redshift','SapHana','Snowflake','Trino');
