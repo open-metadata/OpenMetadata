@@ -130,12 +130,12 @@ public class FullyQualifiedName {
     }
 
     @Override
-    public void enterQuotedName(QuotedNameContext ctx) {
+    public void enter_quoted_name(QuotedNameContext ctx) {
       list.add(ctx.getText());
     }
 
     @Override
-    public void enterUnquotedName(UnquotedNameContext ctx) {
+    public void enter_unquoted_name(UnquotedNameContext ctx) {
       list.add(ctx.getText());
     }
   }

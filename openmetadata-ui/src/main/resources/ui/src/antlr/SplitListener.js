@@ -19,12 +19,12 @@ export default class SplitListener extends FqnListener {
   }
 
   // Enter a parse tree produced by FqnParser#unquotedName.
-  enterUnquotedName(ctx) {
+  enter_unquoted_name(ctx) {
     this.xs.push(ctx.getText());
   }
 
   // Enter a parse tree produced by FqnParser#quotedName.
-  enterQuotedName(ctx) {
+  enter_quoted_name(ctx) {
     this.xs.push(ctx.getText());
   }
 
