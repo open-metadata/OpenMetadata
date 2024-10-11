@@ -187,7 +187,6 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to remove the non required keys from run results file
         """
-
         for run_result in run_results:
             for result in run_result.get("results"):
                 keys_to_delete = [
@@ -206,9 +205,10 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         self.remove_manifest_non_required_keys(
             manifest_dict=self.context.get().dbt_file.dbt_manifest
         )
-        self.remove_run_result_non_required_keys(
-            run_results=self.context.get().dbt_file.dbt_run_results
-        )
+        if self.context.get().dbt_file.dbt_run_results:
+            self.remove_run_result_non_required_keys(
+                run_results=self.context.get().dbt_file.dbt_run_results
+            )
         dbt_objects = DbtObjects(
             dbt_catalog=parse_catalog(self.context.get().dbt_file.dbt_catalog)
             if self.context.get().dbt_file.dbt_catalog
