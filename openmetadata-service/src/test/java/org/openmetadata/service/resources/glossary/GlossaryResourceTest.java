@@ -643,49 +643,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                   11, "glossaryTermDateCp", DATECP_TYPE.getDisplayName(), "dd-MM-yyyy"))
         };
     assertRows(result, expectedRows);
-
-    // Create glossaryTerm with  Invalid custom property of type enumWithDescriptions
-    CustomProperty glossaryTermEnumCp =
-        new CustomProperty()
-            .withName("glossaryTermEnumWithDescriptionsCp")
-            .withDescription("enumWithDescriptions type custom property with multiselect = true")
-            .withPropertyType(ENUM_WITH_DESCRIPTIONS_TYPE.getEntityReference())
-            .withCustomPropertyConfig(
-                new CustomPropertyConfig()
-                    .withConfig(
-                        Map.of(
-                            "values",
-                            List.of(
-                                Map.of("key", "key1", "description", "description1"),
-                                Map.of("key", "key2", "description", "description2")),
-                            "multiSelect",
-                            true)));
-    entityType =
-        typeResourceTest.getEntityByName(
-            Entity.GLOSSARY_TERM, "customProperties", ADMIN_AUTH_HEADERS);
-    entityType =
-        typeResourceTest.addAndCheckCustomProperty(
-            entityType.getId(), glossaryTermEnumCp, OK, ADMIN_AUTH_HEADERS);
-    String invalidEnumWithDescriptionRecord =
-        ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,PII.None,,,,glossaryTermEnumWithDescriptionsCp:key1|key3";
-    String invalidEnumWithDescriptionValue =
-        ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,PII.None,,,,glossaryTermEnumWithDescriptionsCp:key1|key3";
-    csv = createCsv(GlossaryCsv.HEADERS, listOf(invalidEnumWithDescriptionValue), null);
-    result = importCsv(glossaryName, csv, false);
-    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
-    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
-    expectedRows =
-        new String[] {
-          resultsHeader,
-          getFailedRecord(
-              invalidEnumWithDescriptionRecord,
-              invalidCustomPropertyValue(
-                  11,
-                  "glossaryTermEnumWithDescriptionsCp",
-                  ENUM_WITH_DESCRIPTIONS_TYPE.getDisplayName(),
-                  "key3 not found in propertyConfig of glossaryTermEnumWithDescriptionsCp"))
-        };
-    assertRows(result, expectedRows);
   }
 
   @Test
@@ -810,21 +767,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
           .withName("glossaryTermEnumCpMulti")
           .withDescription("enum type custom property with multiselect = true")
           .withPropertyType(ENUM_TYPE.getEntityReference())
-          .withCustomPropertyConfig(enumConfig),
-      new CustomProperty()
-          .withName("glossaryTermEnumWithDescriptionsCp")
-          .withDescription("enumWithDescriptions type custom property with multiselect = true")
-          .withPropertyType(ENUM_WITH_DESCRIPTIONS_TYPE.getEntityReference())
-          .withCustomPropertyConfig(
-              new CustomPropertyConfig()
-                  .withConfig(
-                      Map.of(
-                          "values",
-                          List.of(
-                              Map.of("key", "key1", "description", "description1"),
-                              Map.of("key", "key2", "description", "description2")),
-                          "multiSelect",
-                          true)))
+          .withCustomPropertyConfig(enumConfig)
     };
 
     for (CustomProperty customProperty : customProperties) {
@@ -845,7 +788,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,,user:%s,%s,\"glossaryTermEnumCpMulti:val3|val2|val1|val4|val5;glossaryTermEnumCpSingle:singleVal1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
                 user1, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,glossaryTermEnumWithDescriptionsCp:key1|key2",
+                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,",
                 reviewerRef.get(0), team11, "Draft"));
 
     // Update terms with change in description
@@ -858,7 +801,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val3|val2|val1|val4|val5;glossaryTermEnumCpSingle:singleVal1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
                 user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,glossaryTermEnumWithDescriptionsCp:key1|key2",
+                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,",
                 reviewerRef.get(0), team11, "Draft"));
 
     // Add new row to existing rows

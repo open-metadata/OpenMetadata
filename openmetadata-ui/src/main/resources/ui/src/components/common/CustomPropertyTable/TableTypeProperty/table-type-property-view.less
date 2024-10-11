@@ -1,0 +1,26 @@
+@border-right-color: #0000000f;
+
+.table-type-custom-property.ant-table-wrapper {
+  .ant-table-bordered {
+    .ant-table-container {
+      .ant-table-content > table {
+        tbody > tr {
+          td {
+            border-right: 1px solid @border-right-color;
+            &:last-child {
+              border-right: none;
+            }
+          }
+        }
+        thead > tr {
+          th {
+            border-right: 1px solid @border-right-color;
+            &:last-child {
+              border-right: none;
+            }
+          }
+        }
+      }
+    }
+  }
+}
