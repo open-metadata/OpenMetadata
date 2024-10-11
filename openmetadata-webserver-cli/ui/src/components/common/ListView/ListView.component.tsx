@@ -30,7 +30,7 @@ export const ListView = <T extends object = any>({
   deleted = false,
 }: ListViewProps<T>) => {
   const [currentView, setCurrentView] = useState<ListViewOptions>(
-    ListViewOptions.TABLE
+    ListViewOptions.CARD
   );
   const { t } = useTranslation();
 

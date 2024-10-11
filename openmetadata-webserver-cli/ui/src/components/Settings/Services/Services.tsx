@@ -33,6 +33,9 @@ import { getThemeConfig } from '../../../utils/ThemeUtils';
 import { ServiceType } from '../../../generated/entity/services/serviceType';
 import { DatabaseService, DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
+import SettingItemCard from '../SettingItemCard/SettingItemCard.component';
+import globalSettingsClassBase from '../../../utils/GlobalSettingsClassBase';
+import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
 
 interface ServicesProps {
   serviceName: ServiceCategory;
@@ -213,6 +216,23 @@ const Services = ({ serviceName }: ServicesProps) => {
     );
   }, []);
 
+
+
+  // const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
+  //   let categoryItem = globalSettingsClassBase
+  //     .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
+  //     .find((item) => item.key === settingCategory);
+
+  //   if (categoryItem) {
+  //     categoryItem = {
+  //       ...categoryItem,
+  //       items: categoryItem?.items?.filter((item) => item.isProtected),
+  //     };
+  //   }
+
+  //   return categoryItem;
+  // }, [settingCategory, permissions, isAdminUser]);
+
   const serviceDetails: Array<DomainSupportedServiceTypes> = [
     {
       id: "id",
@@ -243,29 +263,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         </Space>
       </Col>
       <Col span={24}>
-        <ListView<DomainSupportedServiceTypes>
-          cardRenderer={serviceCardRenderer}
-          deleted={false}
-          handleDeletedSwitchChange={() => null}
-
-          searchProps={{
-            onSearch: () => null,
-            search: "",
-          }}
-          tableProps={{
-            bordered: true,
-            columns,
-            dataSource: serviceDetails,
-            rowKey: 'fullyQualifiedName',
-            loading: false,
-            locale: {
-              emptyText: noDataPlaceholder,
-            },
-            pagination: false,
-            size: 'small',
-            onChange: () => null,
-          }}
-        />
+        {serviceDetails.map(serviceCardRenderer)}
+        <SettingItemCard data={[]} onClick={() => null} />
       </Col>
     </Row>
   );

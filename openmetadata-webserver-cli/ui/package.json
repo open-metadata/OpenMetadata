@@ -69,7 +69,7 @@
   "scripts": {
     "dev": "webpack serve --config ./webpack.config.js --env development",
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "webpack --config ./webpack.config.js --env production",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

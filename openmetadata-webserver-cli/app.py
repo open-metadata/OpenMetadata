@@ -1,9 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import sqlite3
 import json
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=os.path.join('ui', 'build'), static_url_path='')
 
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, 
      supports_credentials=True, 
@@ -46,6 +47,19 @@ def save_config():
     conn.commit()
 
     return jsonify({"message": "Configuration saved successfully!"}), 201
+
+# Route to serve the React app
+@app.route('/')
+def serve_react_app():
+    return send_from_directory(app.static_folder, 'index.html')
+
+# Serve other static assets like JS, CSS, etc.
+@app.route('/<path:path>')
+def serve_static_files(path):
+    if os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 # Start the Flask server
