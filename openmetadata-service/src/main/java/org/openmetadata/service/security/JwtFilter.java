@@ -228,7 +228,8 @@ public class JwtFilter implements ContainerRequestFilter {
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
-      throw AuthenticationException.getInvalidTokenException("Token verification failed. Public key mismatch.", runtimeException);
+      throw AuthenticationException.getInvalidTokenException(
+          "Token verification failed. Public key mismatch.", runtimeException);
     }
 
     Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -266,7 +267,8 @@ public class JwtFilter implements ContainerRequestFilter {
     if (tokenFromHeader.equals(BotTokenCache.getToken(userName))) {
       return;
     }
-    throw AuthenticationException.getInvalidTokenException("The given token does not match the current bot's token!");
+    throw AuthenticationException.getInvalidTokenException(
+        "The given token does not match the current bot's token!");
   }
 
   private void validatePersonalAccessToken(
