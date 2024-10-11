@@ -119,7 +119,7 @@ export const OwnerLabel = ({
               const inheritedIcon = owner?.inherited ? (
                 <Tooltip
                   title={t('label.inherited-entity', {
-                    entity: t('label.owner'),
+                    entity: t('label.owner-plural'),
                   })}>
                   <InheritIcon
                     className="inherit-icon cursor-pointer"
@@ -165,7 +165,7 @@ export const OwnerLabel = ({
               className={classNames('no-owner font-medium text-xs', className)}
               data-testid="owner-link">
               {placeHolder ??
-                t('label.no-entity', { entity: t('label.owner') })}
+                t('label.no-entity', { entity: t('label.owner-plural') })}
             </Typography.Text>
           </div>
         )}

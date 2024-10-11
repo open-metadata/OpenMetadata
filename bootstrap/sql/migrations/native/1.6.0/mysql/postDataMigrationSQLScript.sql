@@ -42,9 +42,11 @@ SET json = JSON_REMOVE(json, '$.testCaseResult');
 UPDATE installed_apps SET json = JSON_SET(json, '$.supportsInterrupt', true) where name = 'SearchIndexingApplication'; 
 UPDATE apps_marketplace  SET json = JSON_SET(json, '$.supportsInterrupt', true) where name = 'SearchIndexingApplication';
 
-ALTER TABLE apps_extension_time_series ADD COLUMN appName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.appName') STORED NOT NULL;
-
 -- Add supportsDataDiff for Athena, BigQuery, Mssql, Mysql, Oracle, Postgres, Redshift, SapHana, Snowflake, Trino
 UPDATE dbservice_entity
 SET json = JSON_SET(json, '$.connection.config.supportsDataDiff', 'true')
 WHERE serviceType IN ('Athena','BigQuery','Mssql','Mysql','Oracle','Postgres','Redshift','SapHana','Snowflake','Trino');
+
+
+ALTER TABLE apps_extension_time_series ADD COLUMN appName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.appName') STORED NOT NULL;
+
