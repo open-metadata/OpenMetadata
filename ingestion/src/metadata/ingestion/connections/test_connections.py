@@ -194,27 +194,33 @@ def _test_connection_steps_during_ingestion(
     steps: List[TestConnectionStep],
 ) -> TestConnectionResult:
     """Run the test connection steps during ingestion"""
-    test_connection_result = TestConnectionIngestionResult()
+    test_connection_result = TestConnectionResult(
+        status=StatusType.Running,
+        steps=[],
+    )
     for step in steps:
         try:
+            logger.info(f"Running {step.name}...")
             step.function()
-            test_connection_result.success.append(f"'{step.name}': Pass")
-
-        except Exception as exc:
+            test_connection_result.steps.append(
+                TestConnectionStepResult(
+                    name=step.name,
+                    mandatory=step.mandatory,
+                    passed=True,
+                )
+            )
+        except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"{step.name}-{exc}")
-            if step.mandatory:
-                test_connection_result.failed.append(
-                    f"'{step.name}': This is a mandatory step and we won't be able to extract"
-                    f" necessary metadata. Failed due to: {exc}"
+            logger.warning(f"{step.name}-{err}")
+            test_connection_result.steps.append(
+                TestConnectionStepResult(
+                    name=step.name,
+                    mandatory=step.mandatory,
+                    passed=False,
+                    message=step.error_message,
+                    errorLog=str(err),
                 )
-
-            else:
-                test_connection_result.warning.append(
-                    f"'{step.name}': This is a optional and the ingestion will continue to work as expected."
-                    f"Failed due to: {exc}"
-                )
-
+            )
             if step.short_circuit:
                 # break the workflow if the step is a short circuit step
                 break
@@ -234,11 +240,15 @@ def _test_connection_steps_and_raise(
     """
     test_connection_result = _test_connection_steps_during_ingestion(steps)
 
-    # TODO: ITERATE OVER THE STEPS AND RAISE A FAILURE?
-    if test_connection_result.failed:
-        raise SourceConnectionException(
-            f"Some steps failed when testing the connection: [{test_connection_result}]"
-        )
+    for step in test_connection_result.steps:
+        if not step.passed and step.mandatory:
+            raise SourceConnectionException(
+                f"Failed to run the test connection step: {step.name}"
+            )
+        if not step.passed:
+            logger.warn(
+                f"You might be missing metadata in: {step.name} due to {step.message}"
+            )
 
     return test_connection_result
 
