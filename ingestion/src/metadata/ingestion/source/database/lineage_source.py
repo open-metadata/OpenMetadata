@@ -50,7 +50,7 @@ class LineageSource(QueryParserSource, ABC):
         Method to handle the usage from query logs
         """
         try:
-            query_log_path = self.config.sourceConfig.config.queryLogFilePath
+            query_log_path = self.source_config.queryLogFilePath
             if os.path.isfile(query_log_path):
                 file_paths = [query_log_path]
             elif os.path.isdir(query_log_path):

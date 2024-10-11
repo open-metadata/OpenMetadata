@@ -404,6 +404,7 @@ class ESMixin(Generic[T]):
                     "must": [
                         {"term": {"service.name.keyword": service_name}},
                         {"term": {"tableType": TableType.View.value}},
+                        {"term": {"deleted": False}},
                         {"exists": {"field": "schemaDefinition"}},
                     ]
                 }
