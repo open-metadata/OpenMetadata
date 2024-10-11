@@ -120,7 +120,6 @@ public interface SearchClient {
           "columnNames",
           "totalVotes",
           "usageSummary",
-          "entityType",
           "dataProducts",
           "tags",
           "followers",

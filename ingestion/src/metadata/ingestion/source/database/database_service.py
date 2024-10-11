@@ -350,7 +350,7 @@ class DatabaseServiceSource(
         """
 
     def update_table_constraints(
-        self, table_constraints: List[TableConstraint], foreign_columns: []
+        self, table_constraints: List[TableConstraint], foreign_columns: [], columns
     ) -> List[TableConstraint]:
         """
         process the table constraints of all tables

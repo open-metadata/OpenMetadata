@@ -945,6 +945,23 @@ public class OpenSearchClient implements SearchClient {
           ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY,
           deleted);
     }
+    // Add the remaining tables from the list into the nodes
+    // These will the one's that do not have any entity relationship
+    for (Table table : tables) {
+      boolean tablePresent = false;
+      for (Map<String, Object> node : nodes) {
+        if (table.getId().toString().equals(node.get("id"))) {
+          tablePresent = true;
+          break;
+        }
+      }
+      if (!tablePresent) {
+        HashMap<String, Object> tableMap = new HashMap<>(JsonUtils.getMap(table));
+        tableMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
+        tableMap.put("entityType", "table");
+        nodes.add(tableMap);
+      }
+    }
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return responseMap;

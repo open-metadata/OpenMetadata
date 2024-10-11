@@ -954,6 +954,7 @@ public class ElasticSearchClient implements SearchClient {
       if (!tablePresent) {
         HashMap<String, Object> tableMap = new HashMap<>(JsonUtils.getMap(table));
         tableMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
+        tableMap.put("entityType", "table");
         nodes.add(tableMap);
       }
     }

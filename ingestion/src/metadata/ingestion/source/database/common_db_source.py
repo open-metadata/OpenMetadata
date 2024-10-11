@@ -17,7 +17,7 @@ import traceback
 from abc import ABC
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import Any, Iterable, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
@@ -38,7 +38,9 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
+    Column,
     ConstraintType,
+    RelationshipType,
     Table,
     TableConstraint,
     TablePartition,
@@ -65,6 +67,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     get_connection,
     kill_active_connections,
@@ -512,7 +515,7 @@ class CommonDbSourceService(
             )
 
             table_constraints = self.update_table_constraints(
-                table_constraints, foreign_columns
+                table_constraints, foreign_columns, columns
             )
 
             description = (
@@ -688,7 +691,49 @@ class CommonDbSourceService(
         else:
             yield from self._process_view_def_serial()
 
-    def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
+    def _is_column_unique(self, column: Dict, columns: List[Column]) -> bool:
+        """
+        Method to check if the column in unique in the table
+        """
+        if column and len(column) > 0:
+            constrained_column = column[0]
+            for col in columns or []:
+                if model_str(col.name) == constrained_column:
+                    if col.constraint and col.constraint.value in {
+                        ConstraintType.UNIQUE.value,
+                        ConstraintType.PRIMARY_KEY.value,
+                    }:
+                        return True
+                    break
+        return False
+
+    def _get_relationship_type(
+        self, column: Dict, referred_table_columns: List[Column], columns: List[Column]
+    ) -> str:
+        """
+        Determine the type of relationship (one-to-one, one-to-many, etc.)
+        """
+        # Check if the column is unique in the current table
+        is_unique_in_current_table = self._is_column_unique(
+            column.get("constrained_columns"), columns
+        )
+
+        # Check if the referred column is unique in the referred table
+        is_unique_in_referred_table = self._is_column_unique(
+            column.get("referred_columns"), referred_table_columns
+        )
+
+        if is_unique_in_current_table and is_unique_in_referred_table:
+            return RelationshipType.ONE_TO_ONE
+        if is_unique_in_current_table:
+            return RelationshipType.ONE_TO_MANY
+        if is_unique_in_referred_table:
+            return RelationshipType.MANY_TO_ONE
+        return RelationshipType.MANY_TO_MANY
+
+    def _get_foreign_constraints(
+        self, foreign_columns: List[Dict], columns: List[Column]
+    ) -> List[TableConstraint]:
         """
         Search the referred table for foreign constraints
         and get referred column fqn
@@ -710,9 +755,12 @@ class CommonDbSourceService(
                 database_name=database_name,
                 service_name=self.context.get().database_service,
             )
+            referred_table = self.metadata.get_by_name(
+                entity=Table, fqn=referred_table_fqn
+            )
             if referred_table_fqn:
                 for referred_column in column.get("referred_columns"):
-                    col_fqn = fqn._build(
+                    col_fqn = fqn._build(  # pylint: disable=protected-access
                         referred_table_fqn, referred_column, quote=False
                     )
                     if col_fqn:
@@ -720,11 +768,19 @@ class CommonDbSourceService(
             else:
                 # do not build partial foreign constraint. It will updated in next run.
                 continue
+            relationship_type = None
+            if referred_table:
+                relationship_type = self._get_relationship_type(
+                    column,  # sqlalchemy foreign column
+                    referred_table.columns,  # referred table columns
+                    columns,  # current table om columns
+                )
             foreign_constraints.append(
                 TableConstraint(
                     constraintType=ConstraintType.FOREIGN_KEY,
                     columns=column.get("constrained_columns"),
                     referredColumns=referred_column_fqns,
+                    relationshipType=relationship_type,
                 )
             )
 
@@ -732,13 +788,15 @@ class CommonDbSourceService(
 
     @calculate_execution_time()
     def update_table_constraints(
-        self, table_constraints, foreign_columns
+        self, table_constraints, foreign_columns, columns
     ) -> List[TableConstraint]:
         """
         From topology.
         process the table constraints of all tables
         """
-        foreign_table_constraints = self._get_foreign_constraints(foreign_columns)
+        foreign_table_constraints = self._get_foreign_constraints(
+            foreign_columns, columns
+        )
         if foreign_table_constraints:
             if table_constraints:
                 table_constraints.extend(foreign_table_constraints)
