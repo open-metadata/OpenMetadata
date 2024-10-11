@@ -65,7 +65,7 @@ def test_connection(
     service_connection: MysqlConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = 3 * 60,
-) -> TestConnectionResult:
+) -> None:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow

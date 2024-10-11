@@ -37,6 +37,7 @@ def test_connection(
     client: SASClient,
     service_connection: SASConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = 3 * 60,
 ) -> None:
     test_fn = {"CheckAccess": client.check_connection}
     test_connection_steps(
@@ -44,4 +45,5 @@ def test_connection(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

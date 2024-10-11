@@ -105,6 +105,7 @@ def test_connection(
     engine: Engine,
     service_connection: AzureSQLConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = 3 * 60,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -115,4 +116,5 @@ def test_connection(
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

@@ -103,7 +103,7 @@ def _test_connection_steps(
         )
 
     else:
-        return _test_connection_steps_during_ingestion(steps=steps)
+        return _test_connection_steps_and_raise(steps=steps)
 
 
 def _test_connection_steps_automation_workflow(
@@ -189,12 +189,13 @@ def _test_connection_steps_automation_workflow(
             )
         )
 
+    return test_connection_result
 
-def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> TestConnectionResult:
-    """
-    Run the test connection as part of the ingestion workflow
-    Raise an exception if something fails
-    """
+
+def _test_connection_steps_during_ingestion(
+    steps: List[TestConnectionStep],
+) -> TestConnectionResult:
+    """Run the test connection steps during ingestion"""
     test_connection_result = TestConnectionIngestionResult()
     for step in steps:
         try:
@@ -223,12 +224,24 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
     logger.info("Test connection results:")
     logger.info(test_connection_result)
 
+    return test_connection_result
+
+
+def _test_connection_steps_and_raise(
+    steps: List[TestConnectionStep],
+) -> TestConnectionResult:
+    """
+    Run the test connection as part of the ingestion workflow
+    Raise an exception if something fails
+    """
+    test_connection_result = _test_connection_steps_during_ingestion(steps)
+
+    # TODO: ITERATE OVER THE STEPS AND RAISE A FAILURE?
     if test_connection_result.failed:
         raise SourceConnectionException(
             f"Some steps failed when testing the connection: [{test_connection_result}]"
         )
 
-    # TODO check type?
     return test_connection_result
 
 
@@ -297,7 +310,7 @@ def test_connection_db_common(
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
-    timeout_seconds: int = 3 * 60,
+    timeout_seconds: Optional[int] = 3 * 60,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -348,7 +361,7 @@ def test_connection_db_schema_sources(
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
     timeout_seconds: Optional[int] = 3 * 60,
-) -> TestConnectionResult:
+) -> None:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -402,7 +415,7 @@ def test_connection_db_schema_sources(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds
+        timeout_seconds=timeout_seconds,
     )
 
     kill_active_connections(engine)
