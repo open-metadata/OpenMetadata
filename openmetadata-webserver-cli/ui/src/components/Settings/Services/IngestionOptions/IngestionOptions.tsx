@@ -1,13 +1,14 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Row, Col, Space, PageHeader, Button, Card, Typography } from 'antd';
-import { DomainSupportedServiceTypes } from '../../../../interface/service.interface';
-import { ListView } from '../../../common/ListView/ListView.component';
-import { Link } from 'react-router-dom';
-import { getServiceLogo } from '../../../../utils/CommonUtils';
-import { getOptionalFields } from '../../../../utils/ServiceUtils';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import { Row, Col, Space, Button, Card, Typography } from 'antd';
+import { Link, useHistory } from 'react-router-dom';
+import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
+import { ReactComponent as IngestionIcon } from '../../../../assets/svg/ingestion.svg';
+import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
+import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
+import PageHeader from '../../../PageHeader/PageHeader.component';
+import { ServiceCategory } from '../../../../enums/service.enum';
 
 export type PipelineOptions =
     | PipelineType.Metadata
@@ -24,53 +25,56 @@ export interface PipelineOption {
 
 const IngestionOptions = () => {
     const { t } = useTranslation();
-    const handleClick = (name: string) => {
-        alert(`You clicked on ${name}`);
-    };
+    const history = useHistory();
 
-    const pipelineOptionCardRenderer = (pipeline: PipelineOption) => {
-        return (
-            <Col key={pipeline} lg={8} xl={6}>
-                <Card className="w-full" size="small">
-                    <div
-                        className="d-flex justify-between text-grey-muted"
-                        data-testid="service-card">
-                        <Row gutter={[0, 6]}>
-                            <Col span={24}>
-                                <Link
-                                    className="no-underline"
-                                    to="#">
-                                    <Typography.Text
-                                        className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
-                                        title={pipeline.name}>
-                                        {pipeline.name}
-                                    </Typography.Text>
-                                </Link>
-                            </Col>
-                            <Col span={24}>
-                                <div className="m-b-xss" data-testid="service-type">
-                                    <label className="m-b-0">{`${t('label.type')}:`}</label>
-                                    <span className="font-normal m-l-xss text-grey-body">
-                                        {pipeline.name}]
-                                    </span>
-                                </div>
-                            </Col>
-                        </Row>
-                    </div>
-                </Card>
-            </Col>
-        );
-    };
+    const handlePipelineOptionClick = (key: string) => {
+        const [category, option] = key.split('.');
+        history.push(`ingestion/${category}/${option}`)
+    }
 
-    const serviceDetails: Array<PipelineOption> = [
+    const ingestionOptionItems = [
         {
-            name: PipelineType.Metadata,
-            pipelineType: PipelineType.Metadata
-        } as PipelineOption,
+            label: 'Metadata',
+            description: t('label.metadata-ingestion'),
+            isProtected: false,
+            key: `${ServiceCategory.DATABASE_SERVICES}.metadata`,
+            icon: IngestionIcon,
+        },
         {
-            name: PipelineType.Dbt,
-            pipelineType: PipelineType.Dbt
-        } as PipelineOption,
+            label: 'Profiler',
+            description: t('label.profiler-ingestion'),
+            isProtected: false,
+            key: `${ServiceCategory.DATABASE_SERVICES}.profiler`,
+            icon: IngestionIcon,
+        },
+        {
+            label: 'Lineage',
+            description: t('label.lineage-ingestion'),
+            isProtected: false,
+            key: `${ServiceCategory.DATABASE_SERVICES}.lineage`,
+            icon: IngestionIcon,
+        },
+        {
+            label: 'Usage',
+            description: t('label.usage-ingestion'),
+            isProtected: false,
+            key: `${ServiceCategory.DATABASE_SERVICES}.usage`,
+            icon: IngestionIcon,
+        },
+        {
+            label: 'Dbt',
+            description: t('label.dbt-ingestion'),
+            isProtected: false,
+            key: `${ServiceCategory.DATABASE_SERVICES}.dbt`,
+            icon: IngestionIcon,
+        },
+        {
+            label: 'Data Quality',
+            description: t('label.data-quailty-ingestion', "Data quality ingestion"),
+            isProtected: false,
+            key: `${ServiceCategory.DATABASE_SERVICES}.dbt`,
+            icon: IngestionIcon,
+        },
     ];
 
     return (
@@ -80,107 +84,26 @@ const IngestionOptions = () => {
             gutter={[16, 16]}>
             <Col span={24}>
                 <Space className="w-full justify-between m-b-lg" data-testid="header">
-                    {/* <PageHeader data="Choose the Ingestion" /> */}
+                    <PageHeader data={PAGE_HEADERS.INGESTION_OPTIONS} />
 
-                    <Button
-                        className="m-b-xs"
-                        data-testid="add-service-button"
-                        size="middle"
-                        type="primary"
-                        onClick={() => null}>
-                        {t('label.add-new-entity', {
-                            entity: t('label.service'),
-                        })}
-                    </Button>
                 </Space>
             </Col>
             <Col span={24}>
-                {serviceDetails.map(pipelineOptionCardRenderer)}
-                {/* <ListView<PipelineOption>
-                    cardRenderer={pipelineOptionCardRenderer}
-                    deleted={false}
-                    handleDeletedSwitchChange={() => null}
-
-                    searchProps={{
-                        onSearch: () => null,
-                        search: "",
-                    }}
-                    tableProps={{
-                        dataSource: serviceDetails,
-                    }}
-                /> */}
+                <Row gutter={[20, 20]}>
+                    {ingestionOptionItems.map((option) => (
+                        <Col key={option?.key} span={6}>
+                            <SettingItemCard
+                                data={option}
+                                onClick={handlePipelineOptionClick}
+                            />
+                        </Col>
+                    ))}
+                </Row>
             </Col>
         </Row>
     );
 
-    // return (
-    //     <div style={styles.container}>
-    //         <div style={styles.header}>
-    //             <div style={styles.logo}>Logo</div>
-    //             <div style={styles.title}>Choose the ingestion</div>
-    //         </div>
-
-    //         <div style={styles.grid}>
-    //             {Object.values(PipelineType).map((pipelineType) => (
-    //                 <div
-    //                     key={pipelineType}
-    //                     style={styles.square}
-    //                     onClick={() => handleClick(pipelineType)}
-    //                 >
-    //                     {pipelineType}
-    //                 </div>
-    //             ))}
-    //         </div>
-    //     </div>
-    // );
 };
 
-// const styles = {
-//     container: {
-//         display: 'flex',
-//         flexDirection: 'column' as const,
-//         alignItems: 'center',
-//         padding: '20px',
-//         fontFamily: 'Arial, sans-serif',
-//     },
-//     header: {
-//         display: 'flex',
-//         flexDirection: 'column' as const,
-//         alignItems: 'center',
-//         marginBottom: '20px',
-//     },
-//     logo: {
-//         borderRadius: '50%',
-//         width: '50px',
-//         height: '50px',
-//         display: 'flex',
-//         justifyContent: 'center',
-//         alignItems: 'center',
-//         border: '2px solid black',
-//         marginBottom: '10px',
-//     },
-//     title: {
-//         fontSize: '20px',
-//         marginBottom: '20px',
-//     },
-//     grid: {
-//         display: 'grid',
-//         gridTemplateColumns: 'repeat(2, 1fr)',
-//         gap: '20px',
-//         width: '400px',
-//     },
-//     square: {
-//         display: 'flex',
-//         flexDirection: 'column' as const,
-//         justifyContent: 'center',
-//         alignItems: 'center',
-//         width: '150px',
-//         height: '100px',
-//         border: '2px solid black',
-//         cursor: 'pointer',
-//         textAlign: 'center' as const,
-//         padding: '10px',
-//     },
-// };
 
 export default IngestionOptions;

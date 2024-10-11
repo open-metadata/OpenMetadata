@@ -4,9 +4,10 @@ import axios from 'axios';
 import LandingPage from './pages/LandingPage.component';
 import ServicesPage from './pages/ServicesPage';
 import AddServicePage from './pages/AddServicePage.component';
-import AddIngestionPage from './pages/AddIngestionPage.component';
-import IngestionOptions from './components/Settings/Services/IngestionOptions/IngestionOptions';
 import IngestionWorkflowForm from './components/Settings/Services/Ingestion/IngestionWorkflowForm/IngestionWorkflowForm';
+import IngestionOptionsPage from './pages/IngestionOptionsPage';
+import AddIngestionPage from './pages/AddIngestionPage.component';
+import DownloadYAML from './pages/DownloadPage';
 
 axios.defaults.baseURL = 'http://localhost:8001/';
 
@@ -16,12 +17,10 @@ function App() {
       <Switch>
         <Route path="/" component={LandingPage} exact />
         <Route path="/service" component={ServicesPage} />
-        <Route path="/databaseServices/add-service" component={AddServicePage} />
-        <Route path="/addIngestion" component={IngestionOptions} />
-        <Route path="/ingestion" component={IngestionWorkflowForm} />
-        {/* <Route path="/services" element={<Services />} />
-        <Route path="/add-service" element={<AddService />} />
-        <Route path="/config-service" element={<ConfigureService />} /> */}
+        <Route path="/settings/services/databases" component={AddServicePage} />
+        <Route path="/ingestion/:serviceCategory/:ingestionType" component={AddIngestionPage} />
+        <Route path="/ingestion" component={IngestionOptionsPage} exact />
+        <Route path="/download" component={DownloadYAML} exact />
       </Switch>
     </Router>
   );

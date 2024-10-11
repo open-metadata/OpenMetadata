@@ -11,31 +11,36 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, theme, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { getAddServicePath, getSettingCategoryPath } from '../../../utils/RouterUtils';
+import { getAddServicePath, getSettingPath } from '../../../utils/RouterUtils';
 import PageHeader from '../../PageHeader/PageHeader.component';
-import { getServiceDetailsPath, ROUTES } from '../../../constants/constants';
+import { getServiceDetailsPath } from '../../../constants/constants';
 import { DomainSupportedServiceTypes, ServicesType } from '../../../interface/service.interface';
 import { getServiceLogo } from '../../../utils/CommonUtils';
 import { getOptionalFields } from '../../../utils/ServiceUtils';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
-import { ListView } from '../../common/ListView/ListView.component';
 import { FilterOutlined } from '@ant-design/icons';
 import { ColumnsType } from 'antd/lib/table';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { getThemeConfig } from '../../../utils/ThemeUtils';
-import { ServiceType } from '../../../generated/entity/services/serviceType';
-import { DatabaseService, DatabaseServiceType } from '../../../generated/entity/services/databaseService';
-import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
+import { GlobalSettingOptions, GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import SettingItemCard from '../SettingItemCard/SettingItemCard.component';
-import globalSettingsClassBase from '../../../utils/GlobalSettingsClassBase';
-import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
+import { ReactComponent as DashboardIcon } from '../../../assets/svg/dashboard-colored.svg';
+import { ReactComponent as DatabaseIcon } from '../../../assets/svg/database-colored.svg';
+import { ReactComponent as IconAPI } from '../../../assets/svg/ic-api-service.svg';
+import { ReactComponent as OpenMetadataIcon } from '../../../assets/svg/logo-monogram.svg';
+import { ReactComponent as MessagingIcon } from '../../../assets/svg/messaging-colored.svg';
+import { ReactComponent as MlModelIcon } from '../../../assets/svg/ml-model-colored.svg';
+import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-colored.svg';
+import { ReactComponent as SearchIcon } from '../../../assets/svg/search-colored.svg';
+import { ReactComponent as DataObservability } from '../../../assets/svg/setting-data-observability.svg';
+import { ReactComponent as StorageIcon } from '../../../assets/svg/storage-colored.svg';
 
 interface ServicesProps {
   serviceName: ServiceCategory;
@@ -217,29 +222,85 @@ const Services = ({ serviceName }: ServicesProps) => {
   }, []);
 
 
-
-  // const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
-  //   let categoryItem = globalSettingsClassBase
-  //     .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
-  //     .find((item) => item.key === settingCategory);
-
-  //   if (categoryItem) {
-  //     categoryItem = {
-  //       ...categoryItem,
-  //       items: categoryItem?.items?.filter((item) => item.isProtected),
-  //     };
-  //   }
-
-  //   return categoryItem;
-  // }, [settingCategory, permissions, isAdminUser]);
-
-  const serviceDetails: Array<DomainSupportedServiceTypes> = [
+  const serviceCategories = [
     {
-      id: "id",
-      name: "database",
-    } as DatabaseService,
+      label: t('label.database-plural'),
+      description: t('message.page-sub-header-for-databases'),
+      isProtected: false,
+      key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATABASES}`,
+      icon: DatabaseIcon,
+    },
+    {
+      label: t('label.messaging'),
+      description: t('message.page-sub-header-for-messagings'),
+      isProtected: false,
+      key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.MESSAGING}`,
+      icon: MessagingIcon,
+    },
+    {
+      label: t('label.dashboard-plural'),
+      description: t('message.page-sub-header-for-dashboards'),
+      isProtected: false,
+      key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DASHBOARDS}`,
+      icon: DashboardIcon,
+    },
+    {
+      label: t('label.pipeline-plural'),
+      description: t('message.page-sub-header-for-pipelines'),
+      isProtected: false,
+      key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.PIPELINES}`,
+      icon: PipelineIcon,
+    },
+    {
+      label: t('label.ml-model-plural'),
+      description: t('message.page-sub-header-for-ml-models'),
+      isProtected: false,
+      key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.MLMODELS}`,
+      icon: MlModelIcon,
+    },
+    {
+      label: t('label.storage-plural'),
+      description: t('message.page-sub-header-for-storages'),
+      isProtected: false,
+      key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.STORAGES}`,
+      icon: StorageIcon,
+    },
+    {
+      label: t('label.search'),
+      description: t('message.page-sub-header-for-search'),
+      isProtected: false,
+      key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.SEARCH}`,
+      icon: SearchIcon,
+    },
+    {
+      label: t('label.metadata'),
+      description: t('message.page-sub-header-for-metadata'),
+      isProtected: false,
+      key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
+      icon: OpenMetadataIcon,
+    },
+    {
+      label: t('label.api-uppercase-plural'),
+      description: t('message.page-sub-header-for-apis'),
+      isProtected: false,
+      key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
+      icon: IconAPI,
+      isBeta: true,
+    },
+    {
+      label: t('label.data-observability'),
+      description: t('message.page-sub-header-for-data-observability'),
+      isProtected: false,
+      key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATA_OBSERVABILITY}`,
+      icon: DataObservability,
+    },
   ];
 
+  const handleSettingItemClick = (key: string) => {
+    const [category, option] = key.split('.');
+
+    history.push(getSettingPath(category, option));
+  };
 
   return (
     <Row
@@ -250,20 +311,19 @@ const Services = ({ serviceName }: ServicesProps) => {
         <Space className="w-full justify-between m-b-lg" data-testid="header">
           <PageHeader data={getServicePageHeader()} />
 
-          <Button
-            className="m-b-xs"
-            data-testid="add-service-button"
-            size="middle"
-            type="primary"
-            onClick={handleAddServiceClick}>
-            {t('label.add-new-entity', {
-              entity: t('label.service'),
-            })}
-          </Button>
         </Space>
       </Col>
       <Col span={24}>
-        {serviceDetails.map(serviceCardRenderer)}
+        <Row gutter={[20, 20]}>
+          {serviceCategories.map((category) => (
+            <Col key={category?.key} span={6}>
+              <SettingItemCard
+                data={category}
+                onClick={handleSettingItemClick}
+              />
+            </Col>
+          ))}
+        </Row>
       </Col>
     </Row>
   );

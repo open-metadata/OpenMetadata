@@ -120,90 +120,63 @@ class GlobalSettingsClassBase {
           {
             label: t('label.database-plural'),
             description: t('message.page-sub-header-for-databases'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.DATABASE_SERVICE,
-              permissions
-            ),
+            isProtected: false,
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATABASES}`,
             icon: DatabaseIcon,
           },
           {
             label: t('label.messaging'),
             description: t('message.page-sub-header-for-messagings'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.MESSAGING_SERVICE,
-              permissions
-            ),
+            isProtected: false,
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.MESSAGING}`,
             icon: MessagingIcon,
           },
           {
             label: t('label.dashboard-plural'),
             description: t('message.page-sub-header-for-dashboards'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.DASHBOARD_SERVICE,
-              permissions
-            ),
+            isProtected: false,
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DASHBOARDS}`,
             icon: DashboardIcon,
           },
           {
             label: t('label.pipeline-plural'),
             description: t('message.page-sub-header-for-pipelines'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.PIPELINE_SERVICE,
-              permissions
-            ),
+            isProtected: false,
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.PIPELINES}`,
             icon: PipelineIcon,
           },
           {
             label: t('label.ml-model-plural'),
             description: t('message.page-sub-header-for-ml-models'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.ML_MODEL_SERVICE,
-              permissions
-            ),
+            isProtected: false,
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.MLMODELS}`,
             icon: MlModelIcon,
           },
           {
             label: t('label.storage-plural'),
             description: t('message.page-sub-header-for-storages'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.STORAGE_SERVICE,
-              permissions
-            ),
+            isProtected: false,
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.STORAGES}`,
             icon: StorageIcon,
           },
           {
             label: t('label.search'),
             description: t('message.page-sub-header-for-search'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.SEARCH_SERVICE,
-              permissions
-            ),
+            isProtected: false,
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.SEARCH}`,
             icon: SearchIcon,
           },
           {
             label: t('label.metadata'),
             description: t('message.page-sub-header-for-metadata'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.METADATA_SERVICE,
-              permissions
-            ),
+            isProtected: false,
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
             icon: OpenMetadataIcon,
           },
           {
             label: t('label.api-uppercase-plural'),
             description: t('message.page-sub-header-for-apis'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.API_SERVICE,
-              permissions
-            ),
+            isProtected: false,
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
             icon: IconAPI,
             isBeta: true,
@@ -211,7 +184,7 @@ class GlobalSettingsClassBase {
           {
             label: t('label.data-observability'),
             description: t('message.page-sub-header-for-data-observability'),
-            isProtected: true,
+            isProtected: false,
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATA_OBSERVABILITY}`,
             icon: DataObservability,
           },

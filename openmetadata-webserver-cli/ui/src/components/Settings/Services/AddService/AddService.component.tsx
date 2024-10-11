@@ -149,7 +149,7 @@ const AddService = ({
     axios.post('/save-config', configData, { withCredentials: true })
       .then(response => {
         console.log('Configuration saved:', response.data);
-        history.push("/addIngestion");
+        history.push("/ingestion");
       })
       .catch(error => {
         console.error('Error saving configuration:', error);

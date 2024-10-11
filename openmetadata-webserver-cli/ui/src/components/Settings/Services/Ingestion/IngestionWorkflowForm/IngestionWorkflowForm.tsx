@@ -37,6 +37,8 @@ import DescriptionFieldTemplate from "../../../../Form/JSONSchema/JSONSchemaTemp
 import { FieldErrorTemplate } from "../../../../Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate";
 import { ObjectFieldTemplate } from "../../../../Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate";
 import WorkflowArrayFieldTemplate from "../../../../Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate";
+import { ServiceCategory } from "../../../../../enums/service.enum";
+import { useHistory } from "react-router-dom";
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,
@@ -51,12 +53,13 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   onSubmit,
   onChange,
 }) => {
+  const history = useHistory();
   const [internalData, setInternalData] =
     useState<IngestionWorkflowData>(workflowData);
   const { t } = useTranslation();
 
   const schema = useMemo(
-    () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
+    () => getSchemaByWorkflowType(pipeLineType, ServiceCategory.DATABASE_SERVICES),
 
     [pipeLineType, serviceCategory]
   );
@@ -146,8 +149,11 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       }
 
       onSubmit(formData);
+
     }
   };
+
+  console.log("Workflow schema", schema);
 
   return (
     <Form

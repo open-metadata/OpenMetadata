@@ -229,4 +229,8 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.metric-plural'),
     }),
   },
+  INGESTION_OPTIONS: {
+    header: 'Ingestion options',
+    subHeader: 'Choose the ingestion',
+  },
 };

@@ -28,8 +28,6 @@ const ServicesPage = () => {
     [tab]
   );
 
-  console.log("Service name", serviceName);
-
   return (
     <PageLayoutV1 pageTitle={serviceName}>
       <Row className="page-container" gutter={[0, 16]}>

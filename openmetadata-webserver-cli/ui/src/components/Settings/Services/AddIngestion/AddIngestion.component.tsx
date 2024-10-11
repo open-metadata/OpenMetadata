@@ -43,6 +43,7 @@ import {
   WorkflowExtraConfig,
 } from "./IngestionWorkflow.interface";
 import ScheduleInterval from "./Steps/ScheduleInterval";
+import DownloadYAML from "../../../../pages/DownloadPage";
 
 const AddIngestion = ({
   activeIngestionStep,
@@ -74,6 +75,8 @@ const AddIngestion = ({
   const periodOptions = pipelineSchedules
     ? getScheduleOptionsFromSchedules(pipelineSchedules)
     : undefined;
+
+  console.log(getIngestionName(serviceData.name, pipelineType));
 
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
@@ -331,20 +334,7 @@ const AddIngestion = ({
         )}
 
         {activeIngestionStep > 2 && handleViewServiceClick && (
-          <SuccessScreen
-            handleDeployClick={handleDeployClick}
-            handleViewServiceClick={handleViewServiceClick}
-            name={ingestionName}
-            showDeployButton={showDeployButton}
-            showIngestionButton={false}
-            state={status}
-            successMessage={getSuccessMessage(
-              ingestionName,
-              status,
-              showDeployButton
-            )}
-            viewServiceText={viewServiceText}
-          />
+          <DownloadYAML />
         )}
       </div>
     </div>

@@ -34,6 +34,7 @@ import {
   getSettingsPathFromPipelineType,
 } from "../utils/IngestionUtils";
 import { getServiceType } from "../utils/ServiceUtils";
+import { ServiceType } from "../generated/entity/automations/workflow";
 
 const AddIngestionPage = () => {
   const { ingestionType, serviceCategory } = useParams<{
@@ -43,7 +44,7 @@ const AddIngestionPage = () => {
   const { fqn: serviceFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
-  const [serviceData] = useState<DataObj>();
+  const [serviceData] = useState<DataObj>({ name: ingestionType, description: "Something", serviceType: ServiceType.Pipeline });
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [isLoading] = useState(false);
 
