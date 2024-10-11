@@ -60,18 +60,3 @@ SET json = jsonb_set(
 where name = 'SearchIndexingApplication';
 
 ALTER TABLE apps_extension_time_series ADD COLUMN appName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'appName') STORED NOT NULL;
-
--- Update serviceType in api_endpoint_entity table
-UPDATE api_endpoint_entity
-SET json = jsonb_set(json, '{serviceType}', '"Rest"')
-WHERE jsonb_extract_path_text(json, 'serviceType') = 'REST';
-
--- Update serviceType in api_service_entity table
-UPDATE api_service_entity
-SET json = jsonb_set(json, '{serviceType}', '"Rest"')
-WHERE jsonb_extract_path_text(json, 'serviceType') = 'REST';
-
--- Update serviceType in api_collection_entity table
-UPDATE api_collection_entity
-SET json = jsonb_set(json, '{serviceType}', '"Rest"')
-WHERE jsonb_extract_path_text(json, 'serviceType') = 'REST';
