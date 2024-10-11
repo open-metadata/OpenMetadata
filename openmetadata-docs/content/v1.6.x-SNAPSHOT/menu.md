@@ -5,8 +5,6 @@ site_menu:
 
   - category: Quickstart
     url: /quick-start
-    color: violet-70
-    icon: quickstart
   - category: Quickstart / Try OpenMetadata in Docker
     url: /quick-start/local-docker-deployment
   - category: Quickstart / Try OpenMetadata in Kubernetes
@@ -22,8 +20,6 @@ site_menu:
 
   - category: Deployment
     url: /deployment
-    color: violet-70
-    icon: deployment
   - category: Deployment / Bare Metal Deployment
     url: /deployment/bare-metal
   - category: Deployment / Bare Metal Deployment / Enable Security
@@ -221,8 +217,6 @@ site_menu:
 
   - category: Connectors
     url: /connectors
-    color: violet-70
-    icon: openmetadata
 
   - category: Connectors / API
     url: /connectors/api
@@ -392,12 +386,6 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
-  - category: Connectors / Database / Synapse
-    url: /connectors/database/synapse
-  - category: Connectors / Database / Synapse / Run Externally
-    url: /connectors/database/synapse/yaml
-  - category: Connectors / Database / Synapse / Troubleshooting
-    url: /connectors/database/synapse/troubleshooting
   - category: Connectors / Database / S3 Datalake
     url: /connectors/database/s3-datalake
   - category: Connectors / Database / S3 Datalake / Run Externally
@@ -533,11 +521,6 @@ site_menu:
     url: /connectors/pipeline/kafkaconnect
   - category: Connectors / Pipeline / KafkaConnect / Run Externally
     url: /connectors/pipeline/kafkaconnect/yaml
-  - category: Connectors / Pipeline / Matillion
-    url: /connectors/pipeline/matillion
-    isCollateOnly: true
-  - category: Connectors / Pipeline / Matillion / Run Externally
-    url: /connectors/pipeline/matillion/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -581,10 +564,6 @@ site_menu:
     url: /connectors/ml-model/sagemaker
   - category: Connectors / ML Model / Sagemaker / Run Externally
     url: /connectors/ml-model/sagemaker/yaml
-  - category: Connectors / ML Model / VertexAI
-    url: /connectors/ml-model/vertexai
-  - category: Connectors / ML Model / VertexAI / Run Externally
-    url: /connectors/ml-model/vertexai/yaml
 
   - category: Connectors / Storage
     url: /connectors/storage
@@ -705,8 +684,6 @@ site_menu:
 
   - category: How-to Guides
     url: /how-to-guides
-    color: violet-70
-    icon: openmetadata
 
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
@@ -893,12 +870,6 @@ site_menu:
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
-  - category: How-to Guides / Data Governance / Automation
-    url: /how-to-guides/data-governance/automation
-    isCollateOnly: true
-  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate 
-    url: /how-to-guides/data-governance/automation/set-up-automation
-    isCollateOnly: true
   - category: How-to Guides / Data Governance / Glossary
     url: /how-to-guides/data-governance/glossary
   - category: How-to Guides / Data Governance / Glossary / What is a Glossary Term
@@ -942,8 +913,6 @@ site_menu:
 
   - category: Releases
     url: /releases
-    color: violet-70
-    icon: overview
   - category: Releases / Latest Release
     url: /releases/latest-release
   - category: Releases / Supported Releases
@@ -1040,8 +1009,6 @@ site_menu:
 
   - category: Main Concepts
     url: /main-concepts
-    color: violet-70
-    icon: main-concepts
   - category: Main Concepts / High Level Design
     url: /main-concepts/high-level-design
   - category: Main Concepts / Backend DB
@@ -1977,8 +1944,6 @@ site_menu:
 
   - category: Developers
     url: /developers
-    color: violet-70
-    icon: developers
   - category: Developers / Architecture
     url: /developers/architecture
   - category: Developers / Architecture / Understand Code Layout
@@ -2026,8 +1991,6 @@ site_menu:
 
   - category: SDK
     url: /sdk
-    color: violet-70
-    icon: sdk
   - category: SDK / Python SDK
     url: /sdk/python
   - category: SDK / Python SDK / Entities
