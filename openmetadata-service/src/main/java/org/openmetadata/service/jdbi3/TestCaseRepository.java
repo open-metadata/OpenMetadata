@@ -221,7 +221,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .map(
             testSuiteId ->
                 Entity.<TestSuite>getEntity(
-                    TEST_SUITE, testSuiteId.getId(), "", Include.ALL, false))
+                    TEST_SUITE, testSuiteId.getId(), "owners,domain", Include.ALL, false))
         .toList();
   }
 
