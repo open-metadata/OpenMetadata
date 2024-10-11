@@ -18,13 +18,16 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
@@ -290,6 +293,37 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         }
       }
     }
+  }
+
+  @Test
+  void test_tagInheritsRolesFromClassification(TestInfo test) throws IOException {
+    // Create a classification with roles
+    String classificationName = "Classification_" + test.getDisplayName();
+    CreateClassification createClassificationRequest =
+        new CreateClassification()
+            .withName(classificationName)
+            .withDescription("Test classification")
+            .withRoles(listOf(DATA_STEWARD_ROLE_REF, DATA_CONSUMER_ROLE_REF));
+
+    ClassificationResourceTest classificationTest = new ClassificationResourceTest();
+    Classification classification =
+        classificationTest.createEntity(createClassificationRequest, ADMIN_AUTH_HEADERS);
+
+    String tagName = "Tag_" + test.getDisplayName();
+    CreateTag createTagRequest =
+        createRequest(tagName).withClassification(classification.getFullyQualifiedName());
+
+    Tag tag = createEntity(createTagRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(tag.getInheritedRoles());
+    assertEquals(2, tag.getInheritedRoles().size());
+    assertTrue(
+        tag.getInheritedRoles().stream()
+            .anyMatch(r -> r.getId().equals(DATA_STEWARD_ROLE_REF.getId()) && r.getType().equals(Entity.ROLE)));
+    assertTrue(
+        tag.getInheritedRoles().stream()
+            .anyMatch(r -> r.getId().equals(DATA_CONSUMER_ROLE_REF.getId()) && r.getType().equals(Entity.ROLE)));
+
   }
 
   private Tag createOrUpdate(String classificationName, Tag parent, String name, Status status)

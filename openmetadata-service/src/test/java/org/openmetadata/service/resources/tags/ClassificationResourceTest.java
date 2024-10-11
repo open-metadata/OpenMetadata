@@ -16,9 +16,13 @@ package org.openmetadata.service.resources.tags;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -29,6 +33,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -37,14 +42,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResource.ClassificationList;
+import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
@@ -91,6 +101,84 @@ public class ClassificationResourceTest
             classification.getName(), Entity.CLASSIFICATION));
   }
 
+  @Test
+  void test_addUpdateRemoveRolesInClassification(TestInfo test) throws IOException {
+
+    // Create a classification with roles
+    String classificationName = getEntityName(test);
+    CreateClassification createRequest =
+        createRequest(classificationName)
+            .withDescription("Test classification with roles")
+            .withRoles(
+                listOf(
+                    DATA_CONSUMER_ROLE.getEntityReference(),
+                    DATA_STEWARD_ROLE.getEntityReference()));
+
+    Classification classification = createAndCheckEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    // Validate that roles are assigned
+    assertEquals(2, classification.getRoles().size());
+    assertTrue(
+        classification.getRoles().stream()
+            .anyMatch(
+                r ->
+                    r.getId().equals(DATA_CONSUMER_ROLE.getId())
+                        && r.getType().equals(Entity.ROLE)));
+    assertTrue(
+        classification.getRoles().stream()
+            .anyMatch(
+                r ->
+                    r.getId().equals(DATA_STEWARD_ROLE.getId())
+                        && r.getType().equals(Entity.ROLE)));
+    String origJson = JsonUtils.pojoToJson(classification);
+    // Update the classification by removing one role and adding another
+    Role role3 = createRole("Role3");
+    classification.setRoles(
+        listOf(DATA_CONSUMER_ROLE.getEntityReference(), role3.getEntityReference()));
+
+    ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
+    fieldAdded(change, "roles", listOf(role3.getEntityReference()));
+    fieldDeleted(change, "roles", listOf(DATA_STEWARD_ROLE.getEntityReference()));
+    Classification updatedClassification =
+        patchEntityAndCheck(classification, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Validate that roles are updated
+    assertEquals(2, updatedClassification.getRoles().size());
+    assertTrue(
+        updatedClassification.getRoles().stream()
+            .anyMatch(
+                r ->
+                    r.getId().equals(DATA_CONSUMER_ROLE.getId())
+                        && r.getType().equals(Entity.ROLE)));
+    assertTrue(
+        updatedClassification.getRoles().stream()
+            .anyMatch(r -> r.getId().equals(role3.getId()) && r.getType().equals(Entity.ROLE)));
+
+    origJson = JsonUtils.pojoToJson(updatedClassification);
+    change = getChangeDescription(updatedClassification, CHANGE_CONSOLIDATED);
+    updatedClassification.setRoles(null);
+    fieldDeleted(
+        change,
+        "roles",
+        listOf(DATA_CONSUMER_ROLE.getEntityReference(), DATA_STEWARD_ROLE.getEntityReference()));
+    Classification classificationWithoutRoles =
+        patchEntityAndCheck(
+            updatedClassification, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+
+    assertTrue(
+        classificationWithoutRoles.getRoles() == null
+            || classificationWithoutRoles.getRoles().isEmpty());
+  }
+
+  private Role createRole(String roleName) throws IOException {
+    CreateRole createRole =
+        new CreateRole()
+            .withName(roleName)
+            .withDescription("Test role")
+            .withPolicies(listOf(POLICY1.getFullyQualifiedName()));
+    return TestUtils.post(getResource("roles"), createRole, Role.class, 201, ADMIN_AUTH_HEADERS);
+  }
+
   @Override
   public CreateClassification createRequest(String name) {
     return new CreateClassification()
@@ -111,10 +199,17 @@ public class ClassificationResourceTest
   @Override
   public void compareEntities(
       Classification expected, Classification updated, Map<String, String> authHeaders) {
+    assertEquals(expected.getName(), updated.getName());
+    assertEquals(expected.getDescription(), updated.getDescription());
+    assertEquals(expected.getFullyQualifiedName(), updated.getFullyQualifiedName());
+    assertEquals(expected.getTags(), updated.getTags());
+    if (expected.getRoles() != null) {
+      assertEntityReferences(expected.getRoles(), updated.getRoles());
+    }
+    assertEquals(expected.getMutuallyExclusive(), updated.getMutuallyExclusive());
     assertEquals(
         expected.getProvider() == null ? ProviderType.USER : expected.getProvider(),
         updated.getProvider());
-    assertEquals(expected.getMutuallyExclusive(), updated.getMutuallyExclusive());
   }
 
   @Override
@@ -133,11 +228,6 @@ public class ClassificationResourceTest
             : getEntity(classification.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(classification.getUsageCount());
     return classification;
-  }
-
-  @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    assertCommonFieldChange(fieldName, expected, actual);
   }
 
   public void renameClassificationAndCheck(Classification classification, String newName)
@@ -159,6 +249,22 @@ public class ClassificationResourceTest
         new TagResourceTest().listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
     for (Tag child : listOrEmpty(children)) {
       assertTrue(child.getFullyQualifiedName().startsWith(ret.getFullyQualifiedName()));
+    }
+  }
+
+  public Classification updateEntity(Classification classification, String json, Map<String, String> authHeaders, TestUtils.UpdateType updateType, ChangeDescription change)
+      throws IOException {
+    return patchEntityAndCheck(classification, json, authHeaders, updateType, change);
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    } else if (fieldName.equals("roles")) {
+      assertEntityReferencesFieldChange(expected, actual);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 }

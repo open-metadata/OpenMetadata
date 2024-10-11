@@ -89,7 +89,7 @@ import org.openmetadata.service.util.ResultList;
     order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
 public class TagResource extends EntityResource<Tag, TagRepository> {
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
-  static final String FIELDS = "children,usageCount";
+  static final String FIELDS = "children,usageCount,roles";
 
   static class TagList extends ResultList<Tag> {
     /* Required for serde */

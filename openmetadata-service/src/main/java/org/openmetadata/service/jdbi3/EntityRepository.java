@@ -1602,7 +1602,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void applyTags(T entity) {
     if (supportsTags) {
       // Add entity level tags by adding tag to the entity relationship
-      applyTags(entity.getTags(), entity.getFullyQualifiedName());
+      applyTags(entity.getTags(), entity.getFullyQualifiedName(), entity.getUpdatedBy());
     }
   }
 
