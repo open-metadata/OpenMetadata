@@ -82,15 +82,15 @@ public class MigrationUtil {
   }
 
   public static void migrateServiceTypesAndConnections(Handle handle, boolean postgresql) {
-    LOG.info("Starting all service type and connection type migrations v4");
+    LOG.info("Starting service type and connection type migrations");
     try {
       migrateServiceTypeInApiEndPointServiceType(handle, postgresql);
       migrateServiceTypeInApiServiceEntity(handle, postgresql);
       migrateConnectionTypeInApiServiceEntity(handle, postgresql);
       migrateServiceTypeInApiCollectionEntity(handle, postgresql);
-      LOG.info("Successfully completed all service type and connection type migrations");
+      LOG.info("Successfully completed service type and connection type migrations");
     } catch (Exception e) {
-      LOG.error("Error occurred during migration.", e);
+      LOG.error("Error occurred during migration", e);
     }
   }
 
