@@ -1877,6 +1877,6 @@ site_menu:
   - category: Metapilot
     url: /metapilot
   
-   category: Metapilot / How to Use MetaPilot
+  - category: Metapilot / How to Use MetaPilot
     url: /metapilot/how-to-use-metapilot
 ---
