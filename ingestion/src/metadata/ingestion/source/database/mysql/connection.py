@@ -14,6 +14,7 @@ Source connection handler
 """
 from typing import Optional
 
+from metadata.generated.schema.entity.services.connections.testConnectionResult import TestConnectionResult
 from sqlalchemy.engine import Engine
 
 from metadata.clients.azure_client import AzureClient
@@ -63,14 +64,16 @@ def test_connection(
     engine: Engine,
     service_connection: MysqlConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = 3 * 60,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    test_connection_db_schema_sources(
+    return test_connection_db_schema_sources(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

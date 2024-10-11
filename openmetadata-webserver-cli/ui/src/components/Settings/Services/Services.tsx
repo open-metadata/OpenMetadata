@@ -264,7 +264,6 @@ const Services = ({ serviceName }: ServicesProps) => {
       </Col>
       <Col span={24}>
         {serviceDetails.map(serviceCardRenderer)}
-        <SettingItemCard data={[]} onClick={() => null} />
       </Col>
     </Row>
   );
