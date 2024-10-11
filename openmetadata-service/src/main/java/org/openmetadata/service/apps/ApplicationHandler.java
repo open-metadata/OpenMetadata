@@ -130,7 +130,6 @@ public class ApplicationHandler {
   public void runMethodFromApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String methodName) {
     // Native Application
-    LOG.info("setting application runtime properties");
     setAppRuntimeProperties(app);
     try {
       Object resource = runAppInit(app, daoCollection, searchRepository);
