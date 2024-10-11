@@ -80,4 +80,94 @@ public class MigrationUtil {
     }
     update.bind("appId", app.getId().toString()).bind("appName", app.getName()).execute();
   }
+
+  public static void migrateServiceTypesAndConnections(Handle handle, boolean postgresql) {
+    LOG.info("Starting service type and connection type migrations");
+    try {
+      migrateServiceTypeInApiEndPointServiceType(handle, postgresql);
+      migrateServiceTypeInApiServiceEntity(handle, postgresql);
+      migrateConnectionTypeInApiServiceEntity(handle, postgresql);
+      migrateServiceTypeInApiCollectionEntity(handle, postgresql);
+      LOG.info("Successfully completed service type and connection type migrations");
+    } catch (Exception e) {
+      LOG.error("Error occurred during migration", e);
+    }
+  }
+
+  private static void migrateServiceTypeInApiEndPointServiceType(
+      Handle handle, boolean postgresql) {
+    LOG.info("Starting migrateServiceTypeInApiEndPointServiceType");
+    String query;
+
+    if (postgresql) {
+      query =
+          "UPDATE api_endpoint_entity SET json = jsonb_set(json, '{serviceType}', '\"Rest\"', false) WHERE jsonb_extract_path_text(json, 'serviceType') = 'REST'";
+    } else {
+      query =
+          "UPDATE api_endpoint_entity SET json = JSON_SET(json, '$.serviceType', 'Rest') WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.serviceType')) = 'REST'";
+    }
+
+    try {
+      handle.execute(query);
+    } catch (Exception e) {
+      LOG.error("Error updating", e);
+    }
+  }
+
+  private static void migrateServiceTypeInApiServiceEntity(Handle handle, boolean postgresql) {
+    LOG.info("Starting migrateServiceTypeInApiServiceEntity");
+
+    String query;
+    if (postgresql) {
+      query =
+          "UPDATE api_service_entity SET json = jsonb_set(json, '{serviceType}', '\"Rest\"', false) WHERE jsonb_extract_path_text(json, 'serviceType') = 'REST'";
+    } else {
+      query =
+          "UPDATE api_service_entity SET json = JSON_SET(json, '$.serviceType', 'Rest') WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.serviceType')) = 'REST'";
+    }
+
+    try {
+      handle.execute(query);
+    } catch (Exception e) {
+      LOG.error("Error updating", e);
+    }
+  }
+
+  private static void migrateServiceTypeInApiCollectionEntity(Handle handle, boolean postgresql) {
+    LOG.info("Starting runApiCollectionEntityServiceTypeDataMigrations");
+
+    String query;
+    if (postgresql) {
+      query =
+          "UPDATE api_collection_entity SET json = jsonb_set(json, '{serviceType}', '\"Rest\"', false) WHERE jsonb_extract_path_text(json, 'serviceType') = 'REST'";
+    } else {
+      query =
+          "UPDATE api_collection_entity SET json = JSON_SET(json, '$.serviceType', 'Rest') WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.serviceType')) = 'REST'";
+    }
+
+    try {
+      handle.execute(query);
+    } catch (Exception e) {
+      LOG.error("Error updating", e);
+    }
+  }
+
+  private static void migrateConnectionTypeInApiServiceEntity(Handle handle, boolean postgresql) {
+    LOG.info("Starting runApiServiceEntityConnectionTypeMigrate");
+
+    String query;
+    if (postgresql) {
+      query =
+          "UPDATE api_service_entity SET json = jsonb_set(json, '{connection,config,type}', '\"Rest\"', false) WHERE jsonb_extract_path_text(json, 'connection', 'config', 'type') = 'REST'";
+    } else {
+      query =
+          "UPDATE api_service_entity SET json = JSON_SET(json, '$.connection.config.type', 'Rest') WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.type')) = 'REST'";
+    }
+
+    try {
+      handle.execute(query);
+    } catch (Exception e) {
+      LOG.error("Error updating", e);
+    }
+  }
 }
