@@ -46,7 +46,7 @@
     {
       "name": "caseSensitiveColumns",
       "displayName": "Case sensitive columns",
-      "description": "Use case sensitivity when comparing the columns. (default: true)",
+      "description": "Use case sensitivity when comparing the columns.",
       "dataType": "BOOLEAN",
       "required": false
     }
