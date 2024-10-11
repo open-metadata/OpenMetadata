@@ -92,25 +92,25 @@ def _test_connection_steps(
     metadata: OpenMetadata,
     steps: List[TestConnectionStep],
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+) -> TestConnectionResult:
     """
     Run all the function steps and raise any errors
     """
 
     if automation_workflow:
-        _test_connection_steps_automation_workflow(
+        return _test_connection_steps_automation_workflow(
             metadata=metadata, steps=steps, automation_workflow=automation_workflow
         )
 
     else:
-        _test_connection_steps_during_ingestion(steps=steps)
+        return _test_connection_steps_and_raise(steps=steps)
 
 
 def _test_connection_steps_automation_workflow(
     metadata: OpenMetadata,
     steps: List[TestConnectionStep],
     automation_workflow: AutomationWorkflow,
-) -> None:
+) -> TestConnectionResult:
     """
     Run the test connection as part of the automation workflow
     We need to update the automation workflow in each step
@@ -187,12 +187,13 @@ def _test_connection_steps_automation_workflow(
             )
         )
 
+    return test_connection_result
 
-def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> None:
-    """
-    Run the test connection as part of the ingestion workflow
-    Raise an exception if something fails
-    """
+
+def _test_connection_steps_during_ingestion(
+    steps: List[TestConnectionStep],
+) -> TestConnectionResult:
+    """Run the test connection steps during ingestion"""
     test_connection_result = TestConnectionIngestionResult()
     for step in steps:
         try:
@@ -221,10 +222,25 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
     logger.info("Test connection results:")
     logger.info(test_connection_result)
 
+    return test_connection_result
+
+
+def _test_connection_steps_and_raise(
+    steps: List[TestConnectionStep],
+) -> TestConnectionResult:
+    """
+    Run the test connection as part of the ingestion workflow
+    Raise an exception if something fails
+    """
+    test_connection_result = _test_connection_steps_during_ingestion(steps)
+
+    # TODO: ITERATE OVER THE STEPS AND RAISE A FAILURE?
     if test_connection_result.failed:
         raise SourceConnectionException(
             f"Some steps failed when testing the connection: [{test_connection_result}]"
         )
+
+    return test_connection_result
 
 
 def test_connection_steps(
@@ -232,8 +248,8 @@ def test_connection_steps(
     service_type: str,
     test_fn: dict,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: int = 3 * 60,
-) -> None:
+    timeout_seconds: Optional[int] = 3 * 60,
+) -> TestConnectionResult:
     """
     Test the connection steps with a given timeout
 
@@ -268,9 +284,12 @@ def test_connection_steps(
         for step in test_connection_definition.steps
     ]
 
-    return timeout(timeout_seconds)(_test_connection_steps)(
-        metadata, steps, automation_workflow
-    )
+    if timeout_seconds:
+        return timeout(timeout_seconds)(_test_connection_steps)(
+            metadata, steps, automation_workflow
+        )
+
+    return _test_connection_steps(metadata, steps, automation_workflow)
 
 
 def test_connection_engine_step(connection: Engine) -> None:
@@ -289,7 +308,7 @@ def test_connection_db_common(
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
-    timeout_seconds: int = 3 * 60,
+    timeout_seconds: Optional[int] = 3 * 60,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -339,6 +358,7 @@ def test_connection_db_schema_sources(
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
+    timeout_seconds: Optional[int] = 3 * 60,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -393,6 +413,7 @@ def test_connection_db_schema_sources(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )
 
     kill_active_connections(engine)

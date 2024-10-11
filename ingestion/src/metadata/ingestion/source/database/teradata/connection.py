@@ -82,6 +82,7 @@ def test_connection(
     engine: Engine,
     service_connection: TeradataConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = 3 * 60,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -95,4 +96,5 @@ def test_connection(
         service_connection=service_connection,
         automation_workflow=automation_workflow,
         queries=queries,
+        timeout_seconds=timeout_seconds,
     )

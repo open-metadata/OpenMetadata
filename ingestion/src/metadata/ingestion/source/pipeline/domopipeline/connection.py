@@ -47,6 +47,7 @@ def test_connection(
     connection: Domo,
     service_connection: DomoPipelineConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = 3 * 60,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -64,4 +65,5 @@ def test_connection(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )
