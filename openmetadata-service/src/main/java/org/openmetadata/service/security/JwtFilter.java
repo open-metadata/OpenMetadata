@@ -212,14 +212,14 @@ public class JwtFilter implements ContainerRequestFilter {
     try {
       jwt = JWT.decode(token);
     } catch (JWTDecodeException e) {
-      throw new AuthenticationException("Invalid token", e);
+      throw AuthenticationException.getInvalidTokenException("Unable to decode the token.");
     }
 
     // Check if expired
     // If expiresAt is set to null, treat it as never expiring token
     if (jwt.getExpiresAt() != null
         && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
-      throw new AuthenticationException("Expired token!");
+      throw AuthenticationException.getExpiredTokenException();
     }
 
     // Validate JWT with public key
@@ -228,7 +228,7 @@ public class JwtFilter implements ContainerRequestFilter {
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
-      throw new AuthenticationException("Invalid token", runtimeException);
+      throw AuthenticationException.getInvalidTokenException("Token verification failed. Public key mismatch.", runtimeException);
     }
 
     Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -266,7 +266,7 @@ public class JwtFilter implements ContainerRequestFilter {
     if (tokenFromHeader.equals(BotTokenCache.getToken(userName))) {
       return;
     }
-    throw AuthenticationException.getInvalidTokenException();
+    throw AuthenticationException.getInvalidTokenException("The given token does not match the current bot's token!");
   }
 
   private void validatePersonalAccessToken(
@@ -282,7 +282,7 @@ public class JwtFilter implements ContainerRequestFilter {
       if (userTokens != null && userTokens.contains(tokenFromHeader)) {
         return;
       }
-      throw AuthenticationException.getInvalidTokenException();
+      throw AuthenticationException.getInvalidTokenException("Invalid personal access token!");
     }
   }
 
@@ -292,7 +292,7 @@ public class JwtFilter implements ContainerRequestFilter {
       LogoutRequest previouslyLoggedOutEvent =
           JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
       if (previouslyLoggedOutEvent != null) {
-        throw new AuthenticationException("Expired token!");
+        throw AuthenticationException.getExpiredTokenException();
       }
     }
   }
