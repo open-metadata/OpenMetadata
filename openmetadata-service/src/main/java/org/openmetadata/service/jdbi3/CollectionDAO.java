@@ -98,7 +98,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
-import org.openmetadata.schema.entity.services.APIService;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -160,6 +160,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   AppExtensionTimeSeries appExtensionTimeSeriesDao();
+
+  @CreateSqlObject
+  AppsDataStore appStoreDAO();
 
   @CreateSqlObject
   EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDao();
@@ -288,7 +291,7 @@ public interface CollectionDAO {
   SearchServiceDAO searchServiceDAO();
 
   @CreateSqlObject
-  APIServiceDAO apiServiceDAO();
+  ApiServiceDAO apiServiceDAO();
 
   @CreateSqlObject
   ContainerDAO containerDAO();
@@ -636,15 +639,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface APIServiceDAO extends EntityDAO<APIService> {
+  interface ApiServiceDAO extends EntityDAO<ApiService> {
     @Override
     default String getTableName() {
       return "api_service_entity";
     }
 
     @Override
-    default Class<APIService> getEntityClass() {
-      return APIService.class;
+    default Class<ApiService> getEntityClass() {
+      return ApiService.class;
     }
 
     @Override
@@ -4241,6 +4244,52 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "entity_extension_time_series";
     }
+  }
+
+  interface AppsDataStore {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json :: jsonb)",
+        connectionType = POSTGRES)
+    void insert(
+        @Bind("identifier") String identifier,
+        @Bind("type") String type,
+        @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_data_store set json = :json where identifier = :identifier AND type=:type",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_data_store set json = (:json :: jsonb) where identifier = :identifier AND type=:type",
+        connectionType = POSTGRES)
+    void update(
+        @Bind("identifier") String identifier,
+        @Bind("type") String type,
+        @Bind("json") String json);
+
+    @SqlUpdate("DELETE FROM apps_data_store WHERE identifier = :identifier AND type = :type")
+    void delete(@Bind("identifier") String identifier, @Bind("type") String type);
+
+    @SqlQuery(
+        "SELECT count(*) FROM apps_data_store where identifier = :identifier AND type = :type")
+    int listAppDataCount(@Bind("identifier") String identifier, @Bind("type") String type);
+
+    @SqlQuery(
+        "SELECT json FROM apps_data_store where identifier in (<identifier>) AND type = :type")
+    List<String> listAppsDataWithIds(
+        @BindList("identifier") List<String> identifier, @Bind("type") String type);
+
+    @SqlQuery("SELECT json FROM apps_data_store where type = :type")
+    List<String> listAppsDataWithType(@Bind("type") String type);
+
+    @SqlQuery("SELECT json FROM apps_data_store where identifier = :identifier AND type = :type")
+    String findAppData(@Bind("identifier") String identifier, @Bind("type") String type);
   }
 
   interface AppExtensionTimeSeries {

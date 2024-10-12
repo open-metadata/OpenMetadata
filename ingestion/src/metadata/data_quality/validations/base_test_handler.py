@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import reprlib
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import TYPE_CHECKING, Callable, List, Optional, Type, TypeVar, Union
 
 from metadata.data_quality.validations import utils
@@ -30,6 +29,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.processor.runner import QueryRunner
 
 if TYPE_CHECKING:
@@ -51,7 +51,7 @@ class BaseTestValidator(ABC):
         self,
         runner: Union[QueryRunner, List["DataFrame"]],
         test_case: TestCase,
-        execution_date: Union[datetime, float],
+        execution_date: Timestamp,
     ) -> None:
         self.runner = runner
         self.test_case = test_case
@@ -80,7 +80,7 @@ class BaseTestValidator(ABC):
 
     def get_test_case_result_object(  # pylint: disable=too-many-arguments
         self,
-        execution_date: Union[datetime, float],
+        execution_date: Timestamp,
         status: TestCaseStatus,
         result: str,
         test_result_value: List[TestResultValue],
