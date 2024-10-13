@@ -572,6 +572,25 @@ public class SearchRepository {
     }
   }
 
+  public void deleteEntityByFQNPrefix(EntityInterface entity) {
+    if (entity != null) {
+      String entityType = entity.getEntityReference().getType();
+      String fqn = entity.getFullyQualifiedName();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      try {
+        searchClient.deleteEntityByFQNPrefix(indexMapping.getIndexName(clusterAlias), fqn);
+      } catch (Exception ie) {
+        LOG.error(
+            "Issue in Deleting the search document for entityFQN [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            fqn,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
+      }
+    }
+  }
+
   public void deleteTimeSeriesEntityById(EntityTimeSeriesInterface entity) {
     if (entity != null) {
       String entityId = entity.getId().toString();
