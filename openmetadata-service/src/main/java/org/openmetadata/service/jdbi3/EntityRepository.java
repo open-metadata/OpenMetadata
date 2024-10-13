@@ -51,6 +51,7 @@ import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -1610,10 +1611,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      // Apply tagLabel to targetFQN that identifies an entity or field
-      boolean isTagDerived = tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED);
-      // Derived Tags should not create Relationships, and needs to be built on the during Read
-      if (!isTagDerived) {
+      if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
         daoCollection
             .tagUsageDAO()
             .applyTag(
@@ -2325,6 +2323,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     validateTags(entity.getTags());
     entity.setTags(addDerivedTags(entity.getTags()));
     checkMutuallyExclusive(entity.getTags());
+    checkDisabledTags(entity.getTags());
   }
 
   protected void validateTags(List<TagLabel> labels) {

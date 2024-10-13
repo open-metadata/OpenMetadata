@@ -2894,7 +2894,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   /**
    * Helper function to generate JSON PATCH, submit PATCH API request and validate response.
    */
-  protected final T patchEntityAndCheck(
+  public final T patchEntityAndCheck(
       T updated,
       String originalJson,
       Map<String, String> authHeaders,
