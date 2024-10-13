@@ -200,7 +200,7 @@ const DocumentationTab = ({
             <Col data-testid="domain-owner-name" span="24">
               <div className="d-flex items-center m-b-xss">
                 <Typography.Text className="right-panel-label">
-                  {t('label.owner')}
+                  {t('label.owner-plural')}
                 </Typography.Text>
                 {editOwnerPermission && domain.owners && (
                   <UserTeamSelectableList
@@ -210,7 +210,7 @@ const DocumentationTab = ({
                     onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
                     <Tooltip
                       title={t('label.edit-entity', {
-                        entity: t('label.owner'),
+                        entity: t('label.owner-plural'),
                       })}>
                       <Button
                         className="cursor-pointer flex-center m-l-xss"

@@ -1,6 +1,7 @@
 package org.openmetadata.service.migration.mysql.v160;
 
 import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addAppExtensionName;
+import static org.openmetadata.service.migration.utils.v160.MigrationUtil.migrateServiceTypesAndConnections;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -16,5 +17,6 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     addAppExtensionName(handle, collectionDAO, authenticationConfiguration, false);
+    migrateServiceTypesAndConnections(handle, false);
   }
 }
