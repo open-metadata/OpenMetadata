@@ -74,8 +74,14 @@
       "default": true
     },
     "processQueryLineage": {
-      "title": "Process Query Log Lineage",
-      "description": "Set the 'Process Query Log Lineage' toggle to control whether to process lineage via query logs.",
+      "title": "Process Query Lineage",
+      "description": "Set the 'Process Query Lineage' toggle to control whether to process query lineage.",
+      "type": "boolean",
+      "default": true
+    },
+    "processStoredProcedureLineage": {
+      "title": "Process Stored Procedure Lineage",
+      "description": "Set the 'Process Stored ProcedureLog Lineage' toggle to control whether to process stored procedure lineage.",
       "type": "boolean",
       "default": true
     }

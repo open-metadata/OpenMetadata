@@ -129,7 +129,7 @@ class LineageSource(QueryParserSource, ABC):
         )
         return fqn.get_query_checksum(table_query.query) in checksums or {}
 
-    def process_query_lineage(
+    def yield_query_lineage(
         self,
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         logger.info("Processing Query Lineage")
@@ -164,7 +164,7 @@ class LineageSource(QueryParserSource, ABC):
                             )
                         )
 
-    def process_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing View Lineage")
         for view in self.metadata.yield_es_view_def(self.config.serviceName):
             try:
@@ -188,6 +188,16 @@ class LineageSource(QueryParserSource, ABC):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error processing view {view}: {exc}")
 
+    def yield_procedure_lineage(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """
+        By default stored procedure lineage is not supported.
+        """
+        logger.info(
+            f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}"
+        )
+
     def _iter(
         self, *_, **__
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
@@ -196,11 +206,13 @@ class LineageSource(QueryParserSource, ABC):
         and send it to the sink
         """
         if self.source_config.processViewLineage:
-            yield from self.process_view_lineage()
+            yield from self.yield_view_lineage() or []
+        if self.source_config.processStoredProcedureLineage:
+            yield from self.yield_procedure_lineage() or []
         if self.source_config.processQueryLineage:
             if hasattr(self.service_connection, "supportsLineageExtraction"):
-                yield from self.process_query_lineage()
+                yield from self.yield_query_lineage() or []
             else:
                 logger.warning(
-                    f"Lineage extraction is not supported for {self.service_connection.type.value} connection"
+                    f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"
                 )

@@ -77,7 +77,6 @@ from metadata.ingestion.source.database.bigquery.models import (
     BigQueryStoredProcedure,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
     BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_SCHEMA_DESCRIPTION,
@@ -95,14 +94,9 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database, filter_by_schema
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
@@ -223,9 +217,7 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class BigquerySource(
-    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
-):
+class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
@@ -849,22 +841,6 @@ class BigquerySource(
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Pick the stored procedure name from the context
-        and return the list of associated queries
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-            region=self.service_connection.usageLocation,
-        )
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict
 
     def mark_tables_as_deleted(self):
         """
