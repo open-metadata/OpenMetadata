@@ -42,7 +42,7 @@ const TableTypePropertyView: FC<TableTypePropertyViewProps> = ({
     title: column,
     dataIndex: column,
     key: column,
-    render: (text: string) => text ?? NO_DATA_PLACEHOLDER,
+    render: (text: string) => text || NO_DATA_PLACEHOLDER,
   }));
 
   return (
