@@ -169,9 +169,7 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
             ).all()
             for row in results:
                 try:
-                    stored_procedure = MssqlStoredProcedure.model_validate(
-                        model_dump(row)
-                    )
+                    stored_procedure = MssqlStoredProcedure.model_validate(dict(row))
                     yield stored_procedure
                 except Exception as exc:
                     logger.error()
