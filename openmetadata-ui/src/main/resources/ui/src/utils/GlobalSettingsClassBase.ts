@@ -111,8 +111,7 @@ class GlobalSettingsClassBase {
    */
   public getGlobalSettingsMenuWithPermission(
     permissions: UIPermission,
-    isAdminUser?: boolean,
-    isMetaPilotInstalled?: boolean
+    isAdminUser?: boolean
   ): Array<SettingMenuItem> {
     return [
       {

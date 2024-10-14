@@ -23,6 +23,7 @@ import {
   ApplicationStore,
   HelperFunctions,
 } from '../interface/store.interface';
+import { getApplicationList } from '../rest/applicationAPI';
 import { getOidcToken } from '../utils/LocalStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
 
@@ -51,6 +52,7 @@ export const useApplicationStore = create<ApplicationStore>()(
       refreshTokenKey: '',
       searchCriteria: '',
       inlineAlertDetails: undefined,
+      applications: [],
 
       setInlineAlertDetails: (inlineAlertDetails) => {
         set({ inlineAlertDetails });
@@ -163,6 +165,15 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
       updateSearchCriteria: (criteria) => {
         set({ searchCriteria: criteria });
+      },
+      setApplications: async () => {
+        const { applications } = get();
+        if (!applications?.length) {
+          const { data } = await getApplicationList({
+            limit: 100,
+          });
+          set({ applications: data });
+        }
       },
     }),
     {

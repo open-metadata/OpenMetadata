@@ -18,9 +18,7 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { useApplicationsProvider } from '../../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import SettingItemCard from '../../../components/Settings/SettingItemCard/SettingItemCard.component';
-import { METAPILOT_APP_NAME } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -47,11 +45,6 @@ const GlobalSettingCategoryPage = () => {
     useParams<{ settingCategory: GlobalSettingsMenuCategory }>();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
-  const { applications } = useApplicationsProvider();
-
-  const isMetaPilotInstalled = useMemo(() => {
-    return applications.some((app) => app.name === METAPILOT_APP_NAME);
-  }, [applications]);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => getSettingPageEntityBreadCrumb(settingCategory),
@@ -60,11 +53,7 @@ const GlobalSettingCategoryPage = () => {
 
   const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
     let categoryItem = globalSettingsClassBase
-      .getGlobalSettingsMenuWithPermission(
-        permissions,
-        isAdminUser,
-        isMetaPilotInstalled
-      )
+      .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
       .find((item) => item.key === settingCategory);
 
     if (categoryItem) {

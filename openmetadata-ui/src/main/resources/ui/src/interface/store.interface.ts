@@ -26,6 +26,7 @@ import { AuthorizerConfiguration } from '../generated/configuration/authorizerCo
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
+import { App } from '../generated/entity/applications/app';
 import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
@@ -55,6 +56,7 @@ export interface ApplicationStore
   searchCriteria: ExploreSearchIndex | '';
   theme: UIThemePreference['customTheme'];
   inlineAlertDetails?: InlineAlertProps;
+  applications: App[];
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
@@ -82,6 +84,7 @@ export interface ApplicationStore
   removeRefreshToken: () => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
   trySilentSignIn: (forceLogout?: boolean) => void;
+  setApplications: () => void;
 }
 
 export interface DomainStore {

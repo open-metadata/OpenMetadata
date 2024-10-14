@@ -609,5 +609,3 @@ export const STATUS_LABEL = {
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
 };
-
-export const METAPILOT_APP_NAME = 'MetaPilotApplication';
