@@ -101,6 +101,94 @@ test('Classification Page', async ({ page }) => {
     expect(headers).toEqual(['Tag', 'Display Name', 'Description', 'Actions']);
   });
 
+  await test.step('Disabled system tags should not render', async () => {
+    const classificationResponse = page.waitForResponse(
+      `/api/v1/tags?*parent=PII*`
+    );
+    await page
+      .locator(`[data-testid="side-panel-classification"]`)
+      .filter({ hasText: 'PII' })
+      .click();
+    await classificationResponse;
+
+    await page.click('[data-testid="manage-button"]');
+
+    const fetchTags = page.waitForResponse(
+      '/api/v1/tags?fields=usageCount&parent=PII*'
+    );
+    const disabledTag = page.waitForResponse('/api/v1/classifications/*');
+    await page.click('[data-testid="enable-disable-title"]');
+    await disabledTag;
+    await fetchTags;
+
+    await expect(
+      page.locator(
+        '[data-testid="classification-PII"] [data-testid="disabled"]'
+      )
+    ).toBeVisible();
+
+    await expect(
+      page.locator('[data-testid="add-new-tag-button"]')
+    ).toBeDisabled();
+
+    await expect(
+      page.locator('[data-testid="no-data-placeholder"]')
+    ).toBeVisible();
+
+    // Check if the disabled Classification tag is not visible in the table
+    await table.visitEntityPage(page);
+
+    await page.click(
+      '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
+    );
+
+    const tagResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*NonSensitive***'
+    );
+    await page.fill('[data-testid="tag-selector"] input', 'NonSensitive');
+    await tagResponse;
+
+    await expect(
+      page.locator('[data-testid="tag-selector"] > .ant-select-selector')
+    ).toContainText('NonSensitive');
+
+    await expect(
+      page.getByTestId(`[data-testid="tag-PII.NonSensitive"]`)
+    ).not.toBeVisible();
+
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
+    // Re-enable the disabled Classification
+    const getTags = page.waitForResponse('/api/v1/tags*');
+    await sidebarClick(page, SidebarItem.TAGS);
+    await getTags;
+
+    const classificationResponse2 = page.waitForResponse(
+      `/api/v1/tags?*parent=PII*`
+    );
+    await page
+      .locator(`[data-testid="side-panel-classification"]`)
+      .filter({ hasText: 'PII' })
+      .click();
+    await classificationResponse2;
+
+    await page.click('[data-testid="manage-button"]');
+
+    const enableTagResponse = page.waitForResponse('/api/v1/classifications/*');
+    await page.click('[data-testid="enable-disable-title"]');
+    await enableTagResponse;
+
+    await expect(
+      page.locator('[data-testid="add-new-tag-button"]')
+    ).not.toBeDisabled();
+
+    await expect(
+      page.locator(
+        '[data-testid="classification-PII"] [data-testid="disabled"]'
+      )
+    ).not.toBeVisible();
+  });
+
   await test.step('Create classification with validation checks', async () => {
     await page.click('[data-testid="add-classification"]');
     await page.waitForSelector('.ant-modal-content', {
