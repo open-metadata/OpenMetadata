@@ -573,7 +573,7 @@ def copy_table_between_postgres(
     dest_table = SQATable(table_name, dest_metadata)
 
     for column in source_table.columns:
-        dest_table.append_column(column.model_copy())
+        dest_table.append_column(column.copy())
 
     dest_metadata.create_all(dest_conn)
 

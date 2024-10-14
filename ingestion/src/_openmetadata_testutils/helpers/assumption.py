@@ -15,7 +15,7 @@ class Assumption:
             self.assume_positive(df)
 
     def __invert__(self):
-        return self.model_copy(not_=not self.not_)
+        return self.copy(not_=not self.not_)
 
     def assume_positive(self, df: DataFrame):
         raise NotImplementedError
