@@ -175,6 +175,8 @@ public interface SearchClient {
 
   void deleteEntityByFields(List<String> indexName, List<Pair<String, String>> fieldAndValue);
 
+  void deleteEntityByFQNPrefix(String indexName, String fqnPrefix);
+
   void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
 
   void softDeleteOrRestoreChildren(
