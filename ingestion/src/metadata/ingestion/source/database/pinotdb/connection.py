@@ -45,8 +45,9 @@ def get_connection(connection: PinotDBConnection) -> Engine:
     """
     # TODO: Rename database field to DatabaseSchema
     # Pinot does not support multi database concept
-    if connection.database is not None and not connection.connectionArguments:
-        connection.connectionArguments = init_empty_connection_arguments()
+    if connection.database is not None:
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.root["database"] = connection.database
     connection_copy = deepcopy(connection)
     connection_copy.database = None
