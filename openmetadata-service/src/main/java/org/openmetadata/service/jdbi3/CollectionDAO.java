@@ -3859,8 +3859,12 @@ public interface CollectionDAO {
     @Override
     public FailedEventResponse map(ResultSet rs, StatementContext ctx) throws SQLException {
       FailedEventResponse response = new FailedEventResponse();
-      response.setJson(JsonUtils.readValue(rs.getString("json"), FailedEvent.class));
+      FailedEvent failedEvent = JsonUtils.readValue(rs.getString("json"), FailedEvent.class);
+      response.setFailingSubscriptionId(failedEvent.getFailingSubscriptionId());
+      response.setChangeEvent(failedEvent.getChangeEvent());
+      response.setReason(failedEvent.getReason());
       response.setSource(rs.getString("source"));
+      response.setTimestamp(failedEvent.getTimestamp());
       return response;
     }
   }

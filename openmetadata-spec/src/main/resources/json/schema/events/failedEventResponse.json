@@ -6,13 +6,25 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.events.FailedEventResponse",
   "properties": {
-    "json": {
+    "failingSubscriptionId": {
+      "description": "Unique identifier that identifies this Event Subscription.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "changeEvent": {
       "description": "Change Event that failed",
-      "$ref": "./failedEvent.json"
+      "$ref": "../type/changeEvent.json"
+    },
+    "reason": {
+      "description": "Reason for failure",
+      "type": "string"
     },
     "source": {
       "description": "Source of the failed event",
       "type": "string"
+    },
+    "timestamp": {
+      "description": "Time of Failure",
+      "$ref": "../type/basic.json#/definitions/timestamp"
     }
   },
   "additionalProperties": false

@@ -103,6 +103,7 @@ public abstract class AbstractEventConsumer
                     .withFailingSubscriptionId(failingSubscriptionId)
                     .withChangeEvent(changeEvent)
                     .withRetriesLeft(eventSubscription.getRetries())
+                    .withReason(ex.getMessage())
                     .withTimestamp(System.currentTimeMillis())),
             source);
   }

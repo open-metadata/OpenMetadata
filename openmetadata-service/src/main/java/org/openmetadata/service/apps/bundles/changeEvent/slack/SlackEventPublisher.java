@@ -97,7 +97,9 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, event, e.getMessage());
       LOG.error(message);
-      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, e.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
     }
   }
 

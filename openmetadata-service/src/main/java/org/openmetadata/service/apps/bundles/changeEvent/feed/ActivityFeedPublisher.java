@@ -73,7 +73,8 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
               ACTIVITY_FEED, changeEvent, ex.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
-          message, Pair.of(subscriptionDestination.getId(), changeEvent));
+          CatalogExceptionMessage.eventPublisherFailedToPublish(ACTIVITY_FEED, ex.getMessage()),
+          Pair.of(subscriptionDestination.getId(), changeEvent));
     }
   }
 
