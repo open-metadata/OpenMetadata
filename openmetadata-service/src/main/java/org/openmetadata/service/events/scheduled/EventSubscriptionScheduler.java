@@ -288,6 +288,14 @@ public class EventSubscriptionScheduler {
     }
   }
 
+  public List<FailedEventResponse> getAllFailedEvents(String source, int limit) {
+    if (CommonUtil.nullOrEmpty(source)) {
+      return Entity.getCollectionDAO().changeEventDAO().listAllFailedEvents(limit);
+    } else {
+      return Entity.getCollectionDAO().changeEventDAO().listAllFailedEventsBySource(source, limit);
+    }
+  }
+
   public Optional<EventSubscription> getEventSubscriptionFromScheduledJob(UUID id) {
     try {
       JobDetail jobDetail =

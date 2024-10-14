@@ -855,6 +855,50 @@ public class EventSubscriptionResource
   }
 
   @GET
+  @Path("/listAllFailedEvents")
+  @Operation(
+      operationId = "getAllFailedEvents",
+      summary = "Get all failed events",
+      description = "Retrieve all failed events, optionally filtered by source, and apply a limit.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Failed events retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getAllFailedEvents(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Maximum number of failed events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("10")
+          @Min(0)
+          int limit,
+      @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
+          @QueryParam("source")
+          String source) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      List<FailedEventResponse> failedEvents =
+          EventSubscriptionScheduler.getInstance().getAllFailedEvents(source, limit);
+
+      return Response.ok().entity(failedEvents).build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving all failed events", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity("An error occurred while retrieving all failed events." + e.getMessage())
+          .build();
+    }
+  }
+
+  @GET
   @Path("/id/{eventSubscriptionId}/destinations")
   @Valid
   @Operation(

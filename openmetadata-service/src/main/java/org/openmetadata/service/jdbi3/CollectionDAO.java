@@ -3794,6 +3794,15 @@ public interface CollectionDAO {
     List<FailedEventResponse> listFailedEventsByIdAndSource(
         @Bind("id") String id, @Bind("source") String source, @Bind("limit") long limit);
 
+    @SqlQuery("SELECT json, source FROM consumers_dlq LIMIT :limit")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listAllFailedEvents(@Bind("limit") long limit);
+
+    @SqlQuery("SELECT json, source FROM consumers_dlq WHERE source = :source LIMIT :limit")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listAllFailedEventsBySource(
+        @Bind("source") String source, @Bind("limit") long limit);
+
     @SqlQuery(
         "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
     int recordExists(@Bind("id") String id);
