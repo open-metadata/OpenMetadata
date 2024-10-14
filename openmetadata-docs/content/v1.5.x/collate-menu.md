@@ -1860,4 +1860,8 @@ site_menu:
     url: /sdk/java
   - category: SDK / Go
     url: /sdk/go
+  - category: Metapilot
+    url: /metapilot
+  - category: Metapilot / How to Use MetaPilot
+    url: /metapilot/how-to-use-metapilot
 ---
