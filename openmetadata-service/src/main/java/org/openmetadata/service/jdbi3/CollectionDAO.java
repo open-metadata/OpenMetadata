@@ -97,6 +97,8 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.FailedEvent;
+import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -1998,18 +2000,22 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO consumers_dlq(id, extension, json) "
-                + "VALUES (:id, :extension, :json)"
-                + "ON DUPLICATE KEY UPDATE json = :json",
+            "INSERT INTO consumers_dlq(id, extension, json, source) "
+                + "VALUES (:id, :extension, :json, :source) "
+                + "ON DUPLICATE KEY UPDATE json = :json, source = :source",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO consumers_dlq(id, extension, json) "
-                + "VALUES (:id, :extension, (:json :: jsonb)) ON CONFLICT (id, extension) "
-                + "DO UPDATE SET json = EXCLUDED.json",
+            "INSERT INTO consumers_dlq(id, extension, json, source) "
+                + "VALUES (:id, :extension, (:json :: jsonb), :source) "
+                + "ON CONFLICT (id, extension) "
+                + "DO UPDATE SET json = EXCLUDED.json, source = EXCLUDED.source",
         connectionType = POSTGRES)
     void upsertFailedEvent(
-        @Bind("id") String id, @Bind("extension") String extension, @Bind("json") String json);
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("json") String json,
+        @Bind("source") String source);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -3773,8 +3779,28 @@ public interface CollectionDAO {
 
   interface ChangeEventDAO {
     @SqlQuery(
-        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC")
-    List<String> listUnprocessedEvents(@Bind("offset") long offset);
+        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit")
+    List<String> listUnprocessedEvents(@Bind("offset") long offset, @Bind("limit") long limit);
+
+    @SqlQuery(
+        "SELECT json, source FROM consumers_dlq WHERE id = :id ORDER BY timestamp ASC LIMIT :limit")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listFailedEventsById(
+        @Bind("id") String id, @Bind("limit") long limit);
+
+    @SqlQuery(
+        "SELECT json, source FROM consumers_dlq WHERE id = :id AND source = :source ORDER BY timestamp ASC LIMIT :limit")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listFailedEventsByIdAndSource(
+        @Bind("id") String id, @Bind("source") String source, @Bind("limit") long limit);
+
+    @SqlQuery(
+        "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
+    int recordExists(@Bind("id") String id);
+
+    @SqlQuery(
+        "SELECT CASE WHEN EXISTS (SELECT 1 FROM consumers_dlq WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
+    int failedRecordExists(@Bind("id") String id);
 
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json)",
@@ -3822,6 +3848,16 @@ public interface CollectionDAO {
         value = "SELECT MAX(\"offset\") FROM change_event",
         connectionType = POSTGRES)
     long getLatestOffset();
+  }
+
+  class FailedEventResponseMapper implements RowMapper<FailedEventResponse> {
+    @Override
+    public FailedEventResponse map(ResultSet rs, StatementContext ctx) throws SQLException {
+      FailedEventResponse response = new FailedEventResponse();
+      response.setJson(JsonUtils.readValue(rs.getString("json"), FailedEvent.class));
+      response.setSource(rs.getString("source"));
+      return response;
+    }
   }
 
   interface TypeEntityDAO extends EntityDAO<Type> {

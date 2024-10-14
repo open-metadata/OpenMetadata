@@ -63,6 +63,7 @@ import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestReques
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -78,6 +79,7 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -648,14 +650,25 @@ public class EventSubscriptionResource
   public Response getEventSubscriptionDiagnosticInfoById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "UUID of the Event Subscription", schema = @Schema(type = "string"))
+      @Parameter(description = "Maximum number of unprocessed events returned")
+          @DefaultValue("10")
+          @Min(0)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "UUID of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("subscriptionId")
           UUID subscriptionId) {
     authorizer.authorizeAdmin(securityContext);
     try {
+      if (!EventSubscriptionScheduler.getInstance().doesRecordExist(subscriptionId)) {
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity("Event subscription not found for ID: " + subscriptionId)
+            .build();
+      }
+
       EventSubscriptionDiagnosticInfo diagnosticInfo =
           EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(subscriptionId);
+              .getEventSubscriptionDiagnosticInfo(subscriptionId, limit);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {
@@ -689,6 +702,11 @@ public class EventSubscriptionResource
   public Response getEventSubscriptionDiagnosticInfoByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Maximum number of unprocessed events returned")
+          @DefaultValue("10")
+          @Min(0)
+          @QueryParam("limit")
+          int limit,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
           @PathParam("subscriptionName")
           String subscriptionName) {
@@ -705,7 +723,7 @@ public class EventSubscriptionResource
 
       EventSubscriptionDiagnosticInfo diagnosticInfo =
           EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(subscription.getId());
+              .getEventSubscriptionDiagnosticInfo(subscription.getId(), limit);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {
@@ -714,6 +732,124 @@ public class EventSubscriptionResource
           .entity(
               "An error occurred while retrieving diagnostic info for subscription name: "
                   + subscriptionName)
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/id/{id}/failedEvents")
+  @Operation(
+      operationId = "getFailedEventsBySubscriptionId",
+      summary = "Get failed events for a subscription by id",
+      description = "Retrieve failed events for a given subscription id.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Failed events retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getFailedEvents(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Maximum number of failed events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("10")
+          @Min(0)
+          int limit,
+      @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
+          @QueryParam("source")
+          String source) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      if (!EventSubscriptionScheduler.getInstance().doesFailedRecordExistBySubscriptionId(id)) {
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity("No failed events were found for ID: " + id)
+            .build();
+      }
+
+      List<FailedEventResponse> failedEvents =
+          EventSubscriptionScheduler.getInstance().getFailedEventsByIdAndSource(id, source, limit);
+
+      return Response.ok().entity(failedEvents).build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving failed events for subscription ID: {}", id, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity("An error occurred while retrieving failed events for subscription ID: " + id)
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/name/{eventSubscriptionName}/failedEvents")
+  @Operation(
+      operationId = "getFailedEventsBySubscriptionName",
+      summary = "Get failed events for a subscription by name",
+      description = "Retrieve failed events for a given subscription name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Failed events retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getFailedEventsByEventSubscriptionName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("eventSubscriptionName")
+          String name,
+      @Parameter(
+              description = "Maximum number of failed events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("10")
+          @Min(0)
+          int limit,
+      @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
+          @QueryParam("source")
+          String source) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      EventSubscription subscription = repository.getByName(null, name, repository.getFields("id"));
+      if (!EventSubscriptionScheduler.getInstance()
+          .doesFailedRecordExistBySubscriptionId(subscription.getId())) {
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity(
+                "No failed events were found for event subscription ID: " + subscription.getId())
+            .build();
+      }
+
+      List<FailedEventResponse> failedEvents =
+          EventSubscriptionScheduler.getInstance()
+              .getFailedEventsByIdAndSource(subscription.getId(), source, limit);
+
+      return Response.ok().entity(failedEvents).build();
+
+    } catch (EntityNotFoundException ex) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity("Event subscription not found for name: " + name)
+          .build();
+
+    } catch (Exception e) {
+      LOG.error("Error retrieving failed events for subscription Name: {}", name, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity("An error occurred while retrieving failed events for subscription name: " + name)
           .build();
     }
   }

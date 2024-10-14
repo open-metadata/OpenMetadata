@@ -52,10 +52,10 @@ public abstract class AbstractEventConsumer
   public static final String ALERT_INFO_KEY = "alertInfoKey";
   public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
   public static final String METRICS_EXTENSION = "eventSubscription.metrics";
-  public static final String FAILED_EVENT_EXTENSION_PUBLISHER =
-      "eventSubscription.failedEvent.publisher";
-  public static final String FAILED_EVENT_EXTENSION_SUBSCRIBER =
-      "eventSubscription.failedEvent.subscriber";
+  public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
+
+  public static final String SUBSCRIBER = "subscriber";
+  public static final String PUBLISHER = "publisher";
 
   private long offset = -1;
   private AlertMetrics alertMetrics;
@@ -91,20 +91,20 @@ public abstract class AbstractEventConsumer
         failingSubscriptionId,
         changeEvent);
 
-    String extension =
-        errorOnSub ? FAILED_EVENT_EXTENSION_SUBSCRIBER : FAILED_EVENT_EXTENSION_PUBLISHER;
+    String source = errorOnSub ? SUBSCRIBER : PUBLISHER;
 
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .upsertFailedEvent(
             eventSubscription.getId().toString(),
-            String.format("%s-%s", extension, changeEvent.getId()),
+            String.format("%s-%s", FAILED_EVENT_EXTENSION, changeEvent.getId()),
             JsonUtils.pojoToJson(
                 new FailedEvent()
                     .withFailingSubscriptionId(failingSubscriptionId)
                     .withChangeEvent(changeEvent)
                     .withRetriesLeft(eventSubscription.getRetries())
-                    .withTimestamp(System.currentTimeMillis())));
+                    .withTimestamp(System.currentTimeMillis())),
+            source);
   }
 
   private long loadInitialOffset(JobExecutionContext context) {

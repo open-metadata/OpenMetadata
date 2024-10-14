@@ -25,10 +25,12 @@ import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
+import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -215,21 +217,24 @@ public class EventSubscriptionScheduler {
     return eventSubscription.getDestinations();
   }
 
-  public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(UUID subscriptionId) {
+  public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(
+      UUID subscriptionId, int limit) {
     boolean isAllEventsPublished = checkIfPublisherPublishedAllEvents(subscriptionId);
     EventSubscriptionOffset latestOffset = getLatestOffset();
+
     long currentOffset =
         getEventSubscriptionOffset(subscriptionId)
             .map(EventSubscriptionOffset::getOffset)
-            .orElse(
-                latestOffset.getOffset()); // Fallback to latest offset if current offset not found
+            .orElse(0L);
+
     long unpublishedEventCount = getUnpublishedEventCount(subscriptionId);
     List<ChangeEvent> unprocessedEvents =
-        Optional.ofNullable(getUnpublishedEvents(subscriptionId)).orElse(Collections.emptyList());
+        Optional.ofNullable(getUnpublishedEvents(subscriptionId, limit))
+            .orElse(Collections.emptyList());
 
     return new EventSubscriptionDiagnosticInfo()
-        .withCurrentOffset(currentOffset)
         .withLatestOffset(latestOffset.getOffset())
+        .withCurrentOffset(currentOffset)
         .withHasProcessedAllEvents(isAllEventsPublished)
         .withUnprocessedEventsCount(unpublishedEventCount)
         .withUnprocessedEventsList(unprocessedEvents);
@@ -256,18 +261,31 @@ public class EventSubscriptionScheduler {
         .orElse(countOfEvents);
   }
 
-  public List<ChangeEvent> getUnpublishedEvents(UUID subscriptionId) {
+  public List<ChangeEvent> getUnpublishedEvents(UUID subscriptionId, int limit) {
     long offset =
         getEventSubscriptionOffset(subscriptionId)
             .map(EventSubscriptionOffset::getOffset)
             .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
 
     List<String> unprocessedEventJsonList =
-        Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset);
+        Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset, limit);
 
     return unprocessedEventJsonList.stream()
         .map(eventJson -> JsonUtils.readValue(eventJson, ChangeEvent.class))
         .collect(Collectors.toList());
+  }
+
+  public List<FailedEventResponse> getFailedEventsByIdAndSource(
+      UUID subscriptionId, String source, int limit) {
+    if (CommonUtil.nullOrEmpty(source)) {
+      return Entity.getCollectionDAO()
+          .changeEventDAO()
+          .listFailedEventsById(subscriptionId.toString(), limit);
+    } else {
+      return Entity.getCollectionDAO()
+          .changeEventDAO()
+          .listFailedEventsByIdAndSource(subscriptionId.toString(), source, limit);
+    }
   }
 
   public Optional<EventSubscription> getEventSubscriptionFromScheduledJob(UUID id) {
@@ -300,6 +318,14 @@ public class EventSubscriptionScheduler {
           ex);
     }
     return Optional.empty();
+  }
+
+  public boolean doesRecordExist(UUID id) {
+    return Entity.getCollectionDAO().changeEventDAO().recordExists(id.toString()) > 0;
+  }
+
+  public boolean doesFailedRecordExistBySubscriptionId(UUID id) {
+    return Entity.getCollectionDAO().changeEventDAO().failedRecordExists(id.toString()) > 0;
   }
 
   public static void shutDown() throws SchedulerException {
