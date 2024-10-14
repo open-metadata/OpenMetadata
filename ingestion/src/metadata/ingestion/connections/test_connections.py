@@ -102,8 +102,7 @@ def _test_connection_steps(
             metadata=metadata, steps=steps, automation_workflow=automation_workflow
         )
 
-    else:
-        return _test_connection_steps_and_raise(steps=steps)
+    return _test_connection_steps_and_raise(steps=steps)
 
 
 def _test_connection_steps_automation_workflow(
@@ -246,7 +245,7 @@ def _test_connection_steps_and_raise(
                 f"Failed to run the test connection step: {step.name}"
             )
         if not step.passed:
-            logger.warn(
+            logger.warning(
                 f"You might be missing metadata in: {step.name} due to {step.message}"
             )
 
