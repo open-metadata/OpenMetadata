@@ -9,15 +9,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
-import org.everit.json.schema.ArraySchema;
-import org.everit.json.schema.BooleanSchema;
-import org.everit.json.schema.NullSchema;
-import org.everit.json.schema.NumberSchema;
-import org.everit.json.schema.ObjectSchema;
-import org.everit.json.schema.ReferenceSchema;
-import org.everit.json.schema.Schema;
-import org.everit.json.schema.StringSchema;
+import org.everit.json.schema.*;
 import org.everit.json.schema.loader.SchemaClient;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
@@ -25,12 +20,9 @@ import org.json.JSONTokener;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.sdk.exception.SchemaProcessingException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class SchemaFieldExtractor {
-  private static final Logger LOG = LoggerFactory.getLogger(SchemaFieldExtractor.class);
-
   private final Type typeEntity;
   private final String entityType;
   private final String schemaPath;
@@ -49,7 +41,13 @@ public class SchemaFieldExtractor {
     Map<String, String> fieldTypesMap = new LinkedHashMap<>();
     Deque<Schema> processingStack = new ArrayDeque<>();
     Set<String> processedFields = new HashSet<>();
+    Schema mainSchema = loadMainSchema();
+    extractFieldsFromSchema(mainSchema, "", fieldTypesMap, processingStack, processedFields);
+    addCustomProperties(fieldTypesMap, processingStack, processedFields);
+    return convertMapToFieldList(fieldTypesMap);
+  }
 
+  private Schema loadMainSchema() throws SchemaProcessingException {
     InputStream schemaInputStream = getClass().getClassLoader().getResourceAsStream(schemaPath);
     if (schemaInputStream == null) {
       LOG.error("Schema file not found at path: {}", schemaPath);
@@ -62,40 +60,20 @@ public class SchemaFieldExtractor {
     SchemaLoader schemaLoader =
         SchemaLoader.builder()
             .schemaJson(rawSchema)
-            .resolutionScope(schemaUri) // Base URI for resolving $ref
+            .resolutionScope(schemaUri)
             .schemaClient(schemaClient)
             .build();
 
     try {
       Schema schema = schemaLoader.load().build();
-      extractFieldsFromSchema(schema, "", fieldTypesMap, processingStack, processedFields);
-    } catch (RuntimeException e) {
-      Throwable cause = e.getCause();
-      if (cause instanceof SchemaProcessingException schemaException) {
-        LOG.error("Schema processing error: {}", schemaException.getMessage());
-        throw schemaException;
-      } else {
-        LOG.error("Unexpected error during schema processing: {}", e.getMessage());
-        throw new SchemaProcessingException(
-            "Unexpected error during schema processing: " + e.getMessage(),
-            SchemaProcessingException.ErrorType.OTHER);
-      }
+      LOG.debug("Schema '{}' loaded successfully.", schemaPath);
+      return schema;
+    } catch (Exception e) {
+      LOG.error("Error loading schema '{}': {}", schemaPath, e.getMessage());
+      throw new SchemaProcessingException(
+          "Error loading schema '" + schemaPath + "': " + e.getMessage(),
+          SchemaProcessingException.ErrorType.OTHER);
     }
-
-    List<FieldDefinition> fieldsList = new ArrayList<>();
-    for (Map.Entry<String, String> entry : fieldTypesMap.entrySet()) {
-      fieldsList.add(new FieldDefinition(entry.getKey(), entry.getValue()));
-    }
-
-    if (typeEntity != null && typeEntity.getCustomProperties() != null) {
-      for (CustomProperty customProperty : typeEntity.getCustomProperties()) {
-        String propertyName = customProperty.getName();
-        String propertyType = customProperty.getPropertyType().getName();
-        fieldsList.add(new FieldDefinition(propertyName, propertyType));
-      }
-    }
-
-    return fieldsList;
   }
 
   private void extractFieldsFromSchema(
@@ -112,130 +90,292 @@ public class SchemaFieldExtractor {
     }
 
     processingStack.push(schema);
-    if (schema instanceof ObjectSchema objectSchema) {
-      for (Map.Entry<String, Schema> propertyEntry : objectSchema.getPropertySchemas().entrySet()) {
-        String fieldName = propertyEntry.getKey();
-        Schema fieldSchema = propertyEntry.getValue();
-        String fullFieldName = parentPath.isEmpty() ? fieldName : parentPath + "." + fieldName;
+    try {
+      if (schema instanceof ObjectSchema objectSchema) {
+        for (Map.Entry<String, Schema> propertyEntry :
+            objectSchema.getPropertySchemas().entrySet()) {
+          String fieldName = propertyEntry.getKey();
+          Schema fieldSchema = propertyEntry.getValue();
+          String fullFieldName = parentPath.isEmpty() ? fieldName : parentPath + "." + fieldName;
 
-        if (processedFields.contains(fullFieldName)) {
-          LOG.debug(
-              "Field '{}' has already been processed. Skipping to prevent duplication.",
-              fullFieldName);
-          continue;
-        }
+          if (processedFields.contains(fullFieldName)) {
+            LOG.debug(
+                "Field '{}' has already been processed. Skipping to prevent duplication.",
+                fullFieldName);
+            continue;
+          }
 
-        LOG.debug("Processing field '{}'", fullFieldName);
-        if (fieldSchema instanceof ReferenceSchema referenceSchema) {
-          String refUri = referenceSchema.getReferenceValue();
-          String referenceType = determineReferenceType(refUri);
+          LOG.debug("Processing field '{}'", fullFieldName);
 
-          if (referenceType != null) {
-            Schema referredSchema = referenceSchema.getReferredSchema();
-            String fieldType = referenceType;
+          if (fieldSchema instanceof ReferenceSchema referenceSchema) {
+            handleReferenceSchema(
+                referenceSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
+          } else if (fieldSchema instanceof ArraySchema arraySchema) {
+            handleArraySchema(
+                arraySchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
+          } else {
+            String fieldType = mapSchemaTypeToSimpleType(fieldSchema);
             fieldTypesMap.putIfAbsent(fullFieldName, fieldType);
             processedFields.add(fullFieldName);
             LOG.debug("Added field '{}', Type: '{}'", fullFieldName, fieldType);
 
-            if (referenceType.startsWith("array<") && referenceType.endsWith(">")) {
-              String itemType =
-                  referenceType.substring("array<".length(), referenceType.length() - 1);
-              Schema itemSchema =
-                  referredSchema instanceof ArraySchema
-                      ? ((ArraySchema) referredSchema).getAllItemSchema()
-                      : referredSchema;
+            // Recursively process nested objects or arrays
+            if (fieldSchema instanceof ObjectSchema || fieldSchema instanceof ArraySchema) {
               extractFieldsFromSchema(
-                  itemSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
-            } else {
-              extractFieldsFromSchema(
-                  referredSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
-            }
-
-            continue;
-          }
-        }
-
-        if (fieldSchema instanceof ArraySchema arraySchema) {
-          Schema itemsSchema = arraySchema.getAllItemSchema();
-
-          if (itemsSchema instanceof ReferenceSchema itemsReferenceSchema) {
-            String itemsRefUri = itemsReferenceSchema.getReferenceValue();
-            String itemsReferenceType = determineReferenceType(itemsRefUri);
-
-            if (itemsReferenceType != null) {
-              String arrayFieldType = "array<" + itemsReferenceType + ">";
-              fieldTypesMap.putIfAbsent(fullFieldName, arrayFieldType);
-              processedFields.add(fullFieldName);
-              LOG.debug("Added field '{}', Type: '{}'", fullFieldName, arrayFieldType);
-              Schema referredItemsSchema = itemsReferenceSchema.getReferredSchema();
-              extractFieldsFromSchema(
-                  referredItemsSchema,
-                  fullFieldName,
-                  fieldTypesMap,
-                  processingStack,
-                  processedFields);
-              continue;
+                  fieldSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
             }
           }
-          String arrayType = mapSchemaTypeToSimpleType(itemsSchema);
-          fieldTypesMap.putIfAbsent(fullFieldName, "array<" + arrayType + ">");
-          processedFields.add(fullFieldName);
-          LOG.debug("Added field '{}', Type: '{}'", fullFieldName, "array<" + arrayType + ">");
-
-          extractFieldsFromSchema(
-              itemsSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
-          continue; // Skip further processing for this field
         }
-
-        String fieldType = mapSchemaTypeToSimpleType(fieldSchema);
-        fieldTypesMap.putIfAbsent(fullFieldName, fieldType);
-        processedFields.add(fullFieldName);
-        LOG.debug("Added field '{}', Type: '{}'", fullFieldName, fieldType);
-
-        if (fieldSchema instanceof ObjectSchema || fieldSchema instanceof ArraySchema) {
-          extractFieldsFromSchema(
-              fieldSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
-        }
+      } else if (schema instanceof ArraySchema arraySchema) {
+        handleArraySchema(arraySchema, parentPath, fieldTypesMap, processingStack, processedFields);
+      } else {
+        String fieldType = mapSchemaTypeToSimpleType(schema);
+        fieldTypesMap.putIfAbsent(parentPath, fieldType);
+        LOG.debug("Added field '{}', Type: '{}'", parentPath, fieldType);
       }
-    } else if (schema instanceof ArraySchema arraySchema) {
-      Schema itemsSchema = arraySchema.getAllItemSchema();
-      if (itemsSchema instanceof ReferenceSchema itemsReferenceSchema) {
-        String itemsRefUri = itemsReferenceSchema.getReferenceValue();
-        String itemsReferenceType = determineReferenceType(itemsRefUri);
-
-        if (itemsReferenceType != null) {
-          String arrayFieldType = "array<" + itemsReferenceType + ">";
-          fieldTypesMap.putIfAbsent(parentPath, arrayFieldType);
-          processedFields.add(parentPath);
-          LOG.debug("Added field '{}', Type: '{}'", parentPath, arrayFieldType);
-
-          Schema referredItemsSchema = itemsReferenceSchema.getReferredSchema();
-          extractFieldsFromSchema(
-              referredItemsSchema, parentPath, fieldTypesMap, processingStack, processedFields);
-          return;
-        }
-      }
-
-      String arrayType = mapSchemaTypeToSimpleType(itemsSchema);
-      fieldTypesMap.putIfAbsent(parentPath, "array<" + arrayType + ">");
-      processedFields.add(parentPath);
-      LOG.debug("Added field '{}', Type: '{}'", parentPath, "array<" + arrayType + ">");
-      extractFieldsFromSchema(
-          itemsSchema, parentPath, fieldTypesMap, processingStack, processedFields);
-    } else {
-      String fieldType = mapSchemaTypeToSimpleType(schema);
-      fieldTypesMap.putIfAbsent(parentPath, fieldType);
-      LOG.debug("Added field '{}', Type: '{}'", parentPath, fieldType);
+    } finally {
+      processingStack.pop();
     }
-    processingStack.pop();
+  }
+
+  private void handleReferenceSchema(
+      ReferenceSchema referenceSchema,
+      String fullFieldName,
+      Map<String, String> fieldTypesMap,
+      Deque<Schema> processingStack,
+      Set<String> processedFields) {
+
+    String refUri = referenceSchema.getReferenceValue();
+    String referenceType = determineReferenceType(refUri);
+
+    if (referenceType != null) {
+      fieldTypesMap.putIfAbsent(fullFieldName, referenceType);
+      processedFields.add(fullFieldName);
+      LOG.debug("Added field '{}', Type: '{}'", fullFieldName, referenceType);
+      if (referenceType.startsWith("array<") && referenceType.endsWith(">")) {
+        Schema itemSchema =
+            referenceSchema.getReferredSchema() instanceof ArraySchema
+                ? ((ArraySchema) referenceSchema.getReferredSchema()).getAllItemSchema()
+                : referenceSchema.getReferredSchema();
+        extractFieldsFromSchema(
+            itemSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
+      } else if (!isPrimitiveType(referenceType)) {
+        Schema referredSchema = referenceSchema.getReferredSchema();
+        extractFieldsFromSchema(
+            referredSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
+      }
+    } else {
+      fieldTypesMap.putIfAbsent(fullFieldName, "object");
+      processedFields.add(fullFieldName);
+      LOG.debug("Added field '{}', Type: 'object'", fullFieldName);
+      extractFieldsFromSchema(
+          referenceSchema.getReferredSchema(),
+          fullFieldName,
+          fieldTypesMap,
+          processingStack,
+          processedFields);
+    }
+  }
+
+  private void handleArraySchema(
+      ArraySchema arraySchema,
+      String fullFieldName,
+      Map<String, String> fieldTypesMap,
+      Deque<Schema> processingStack,
+      Set<String> processedFields) {
+
+    Schema itemsSchema = arraySchema.getAllItemSchema();
+
+    if (itemsSchema instanceof ReferenceSchema itemsReferenceSchema) {
+      String itemsRefUri = itemsReferenceSchema.getReferenceValue();
+      String itemsReferenceType = determineReferenceType(itemsRefUri);
+
+      if (itemsReferenceType != null) {
+        String arrayFieldType = "array<" + itemsReferenceType + ">";
+        fieldTypesMap.putIfAbsent(fullFieldName, arrayFieldType);
+        processedFields.add(fullFieldName);
+        LOG.debug("Added field '{}', Type: '{}'", fullFieldName, arrayFieldType);
+        Schema referredItemsSchema = itemsReferenceSchema.getReferredSchema();
+        extractFieldsFromSchema(
+            referredItemsSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
+        return;
+      }
+    }
+    String arrayType = mapSchemaTypeToSimpleType(itemsSchema);
+    fieldTypesMap.putIfAbsent(fullFieldName, "array<" + arrayType + ">");
+    processedFields.add(fullFieldName);
+    LOG.debug("Added field '{}', Type: 'array<{}>'", fullFieldName, arrayType);
+
+    if (itemsSchema instanceof ObjectSchema || itemsSchema instanceof ArraySchema) {
+      extractFieldsFromSchema(
+          itemsSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
+    }
+  }
+
+  private void addCustomProperties(
+      Map<String, String> fieldTypesMap,
+      Deque<Schema> processingStack,
+      Set<String> processedFields) {
+    if (typeEntity == null || typeEntity.getCustomProperties() == null) {
+      return;
+    }
+
+    for (CustomProperty customProperty : typeEntity.getCustomProperties()) {
+      String propertyName = customProperty.getName();
+      String propertyType = customProperty.getPropertyType().getName();
+      String fullFieldName = propertyName; // No parent path for custom properties
+
+      LOG.debug("Processing custom property '{}'", fullFieldName);
+
+      if (isEntityReferenceList(propertyType)) {
+        String referenceType = "array<entityReference>";
+        fieldTypesMap.putIfAbsent(fullFieldName, referenceType);
+        processedFields.add(fullFieldName);
+        LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
+
+        Schema itemSchema = resolveSchemaByType("entityReference");
+        if (itemSchema != null) {
+          extractFieldsFromSchema(
+              itemSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
+        } else {
+          LOG.warn(
+              "Schema for type 'entityReference' not found. Skipping nested field extraction for '{}'.",
+              fullFieldName);
+        }
+      } else if (isEntityReference(propertyType)) {
+        String referenceType = "entityReference";
+        fieldTypesMap.putIfAbsent(fullFieldName, referenceType);
+        processedFields.add(fullFieldName);
+        LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
+
+        Schema referredSchema = resolveSchemaByType("entityReference");
+        if (referredSchema != null) {
+          extractFieldsFromSchema(
+              referredSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
+        } else {
+          LOG.warn(
+              "Schema for type 'entityReference' not found. Skipping nested field extraction for '{}'.",
+              fullFieldName);
+        }
+      } else {
+        fieldTypesMap.putIfAbsent(fullFieldName, propertyType);
+        processedFields.add(fullFieldName);
+        LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, propertyType);
+      }
+    }
+  }
+
+  private List<FieldDefinition> convertMapToFieldList(Map<String, String> fieldTypesMap) {
+    List<FieldDefinition> fieldsList = new ArrayList<>();
+    for (Map.Entry<String, String> entry : fieldTypesMap.entrySet()) {
+      fieldsList.add(new FieldDefinition(entry.getKey(), entry.getValue()));
+    }
+    return fieldsList;
+  }
+
+  private boolean isEntityReferenceList(String propertyType) {
+    return "entityReferenceList".equalsIgnoreCase(propertyType);
+  }
+
+  private boolean isEntityReference(String propertyType) {
+    return "entityReference".equalsIgnoreCase(propertyType);
+  }
+
+  private Schema resolveSchemaByType(String typeName) {
+    String referencePath = determineReferencePath(typeName);
+    try {
+      return loadSchema(referencePath);
+    } catch (SchemaProcessingException e) {
+      LOG.error("Failed to load schema for type '{}': {}", typeName, e.getMessage());
+      return null;
+    }
+  }
+
+  private Schema loadSchema(String schemaPath) throws SchemaProcessingException {
+    InputStream schemaInputStream = getClass().getClassLoader().getResourceAsStream(schemaPath);
+    if (schemaInputStream == null) {
+      LOG.error("Schema file not found at path: {}", schemaPath);
+      throw new SchemaProcessingException(
+          "Schema file not found for path: " + schemaPath,
+          SchemaProcessingException.ErrorType.RESOURCE_NOT_FOUND);
+    }
+
+    JSONObject rawSchema = new JSONObject(new JSONTokener(schemaInputStream));
+    SchemaLoader schemaLoader =
+        SchemaLoader.builder()
+            .schemaJson(rawSchema)
+            .resolutionScope(schemaUri) // Base URI for resolving $ref
+            .schemaClient(schemaClient)
+            .build();
+
+    try {
+      Schema schema = schemaLoader.load().build();
+      LOG.debug("Schema '{}' loaded successfully.", schemaPath);
+      return schema;
+    } catch (Exception e) {
+      LOG.error("Error loading schema '{}': {}", schemaPath, e.getMessage());
+      throw new SchemaProcessingException(
+          "Error loading schema '" + schemaPath + "': " + e.getMessage(),
+          SchemaProcessingException.ErrorType.OTHER);
+    }
   }
 
   private String determineReferenceType(String refUri) {
+    // Pattern to extract the definition name if present
+    Pattern definitionPattern = Pattern.compile("^(?:.*/)?basic\\.json#/definitions/([\\w-]+)$");
+    Matcher matcher = definitionPattern.matcher(refUri);
+    if (matcher.find()) {
+      String definition = matcher.group(1);
+      return switch (definition) {
+        case "duration" -> "duration";
+        case "markdown" -> "markdown";
+        case "timestamp" -> "timestamp";
+        case "integer" -> "integer";
+        case "number" -> "number";
+        case "string" -> "string";
+        case "uuid" -> "uuid";
+        case "email" -> "email";
+        case "href" -> "href";
+        case "timeInterval" -> "timeInterval";
+        case "date" -> "date";
+        case "dateTime" -> "dateTime";
+        case "time" -> "time";
+        case "date-cp" -> "date-cp";
+        case "dateTime-cp" -> "dateTime-cp";
+        case "time-cp" -> "time-cp";
+        case "enum" -> "enum";
+        case "enumWithDescriptions" -> "enumWithDescriptions";
+        case "timezone" -> "timezone";
+        case "entityLink" -> "entityLink";
+        case "entityName" -> "entityName";
+        case "testCaseEntityName" -> "testCaseEntityName";
+        case "fullyQualifiedEntityName" -> "fullyQualifiedEntityName";
+        case "sqlQuery" -> "sqlQuery";
+        case "sqlFunction" -> "sqlFunction";
+        case "expression" -> "expression";
+        case "jsonSchema" -> "jsonSchema";
+        case "entityExtension" -> "entityExtension";
+        case "providerType" -> "providerType";
+        case "componentConfig" -> "componentConfig";
+        case "status" -> "status";
+        case "sourceUrl" -> "sourceUrl";
+        case "style" -> "style";
+        default -> {
+          LOG.warn("Unrecognized definition '{}' in refUri '{}'", definition, refUri);
+          yield "object";
+        }
+      };
+    }
+
+    // Existing file-based mappings
+    if (refUri.matches(".*basic\\.json$")) {
+      return "uuid";
+    }
     if (refUri.matches(".*entityReference\\.json(?:#.*)?$")) {
       return "entityReference";
     }
     if (refUri.matches(".*entityReferenceList\\.json(?:#.*)?$")) {
-      return "entityReference";
+      return "array<entityReference>";
     }
     if (refUri.matches(".*tagLabel\\.json(?:#.*)?$")) {
       return "tagLabel";
@@ -255,33 +395,86 @@ public class SchemaFieldExtractor {
     if (refUri.matches(".*href\\.json(?:#.*)?$")) {
       return "href";
     }
+    if (refUri.matches(".*duration\\.json(?:#.*)?$")) {
+      return "duration";
+    }
     return null;
   }
 
   private String mapSchemaTypeToSimpleType(Schema schema) {
     if (schema == null) {
+      LOG.debug("Mapping type: null -> 'object'");
       return "object";
     }
     if (schema instanceof StringSchema) {
+      LOG.debug("Mapping schema instance '{}' to 'string'", schema.getClass().getSimpleName());
       return "string";
     } else if (schema instanceof NumberSchema numberSchema) {
       if (numberSchema.requiresInteger()) {
+        LOG.debug("Mapping schema instance '{}' to 'integer'", schema.getClass().getSimpleName());
         return "integer";
       } else {
+        LOG.debug("Mapping schema instance '{}' to 'number'", schema.getClass().getSimpleName());
         return "number";
       }
     } else if (schema instanceof BooleanSchema) {
+      LOG.debug("Mapping schema instance '{}' to 'boolean'", schema.getClass().getSimpleName());
       return "boolean";
     } else if (schema instanceof ObjectSchema) {
+      LOG.debug("Mapping schema instance '{}' to 'object'", schema.getClass().getSimpleName());
       return "object";
     } else if (schema instanceof ArraySchema) {
+      LOG.debug("Mapping schema instance '{}' to 'array'", schema.getClass().getSimpleName());
       return "array";
     } else if (schema instanceof NullSchema) {
+      LOG.debug("Mapping schema instance '{}' to 'null'", schema.getClass().getSimpleName());
       return "null";
     } else {
-      // Default case for other schema types
+      LOG.debug(
+          "Mapping unknown schema instance '{}' to 'string'", schema.getClass().getSimpleName());
       return "string";
     }
+  }
+
+  private boolean isPrimitiveType(String type) {
+    return type.equals("string")
+        || type.equals("integer")
+        || type.equals("number")
+        || type.equals("boolean")
+        || type.equals("uuid")
+        || // Treat 'uuid' as a primitive type
+        type.equals("timestamp")
+        || type.equals("href")
+        || type.equals("duration")
+        || type.equals("date")
+        || type.equals("dateTime")
+        || type.equals("time")
+        || type.equals("date-cp")
+        || type.equals("dateTime-cp")
+        || type.equals("time-cp")
+        || type.equals("enum")
+        || type.equals("enumWithDescriptions")
+        || type.equals("timezone")
+        || type.equals("entityLink")
+        || type.equals("entityName")
+        || type.equals("testCaseEntityName")
+        || type.equals("fullyQualifiedEntityName")
+        || type.equals("sqlQuery")
+        || type.equals("sqlFunction")
+        || type.equals("expression")
+        || type.equals("jsonSchema")
+        || type.equals("entityExtension")
+        || type.equals("providerType")
+        || type.equals("componentConfig")
+        || type.equals("status")
+        || type.equals("sourceUrl")
+        || type.equals("style");
+  }
+
+  private String determineReferencePath(String typeName) {
+    String baseSchemaDirectory = "json/schema/entity/";
+    String schemaFileName = typeName + ".json";
+    return baseSchemaDirectory + schemaFileName;
   }
 
   private String determineSchemaPath(String entityType) {
@@ -294,7 +487,8 @@ public class SchemaFieldExtractor {
         Map.of(
             "dashboard", "data",
             "table", "data",
-            "pipeline", "services");
+            "pipeline", "services",
+            "votes", "data");
     return entityTypeToSubdirectory.getOrDefault(entityType, "data");
   }
 
