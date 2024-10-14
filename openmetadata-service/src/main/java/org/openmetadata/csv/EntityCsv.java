@@ -529,14 +529,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   private Object parseTableType(String fieldValue, String propertyConfig) throws IOException {
-    LOG.info("fieldValue: {}", fieldValue);
     List<String> tableValues = listOrEmpty(fieldToInternalArray(fieldValue));
     List<Map<String, String>> rows = new ArrayList<>();
     TableConfig tableConfig =
         JsonUtils.treeToValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
 
     for (String row : tableValues) {
-      LOG.info("row: {}", row);
       List<String> columns = listOrEmpty(fieldToColumns(row));
       Map<String, String> rowMap = new LinkedHashMap<>();
       Iterator<String> columnIterator = tableConfig.getColumns().iterator();
@@ -552,7 +550,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     Map<String, Object> tableJson = new LinkedHashMap<>();
     tableJson.put("rows", rows);
     tableJson.put("columns", tableConfig.getColumns());
-    LOG.info("tableJson: {}", tableJson);
     return tableJson;
   }
 
