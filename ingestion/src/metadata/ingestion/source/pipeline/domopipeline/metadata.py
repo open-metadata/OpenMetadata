@@ -48,7 +48,7 @@ from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceS
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.time_utils import datetime_to_timestamp
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -145,12 +145,12 @@ class DomopipelineSource(PipelineServiceSource):
         try:
             for run in runs or []:
                 start_time = (
-                    Timestamp(datetime_to_timestamp(run["beginTime"]))
+                    Timestamp(convert_timestamp_to_milliseconds(run["beginTime"]))
                     if run.get("beginTime")
                     else None
                 )
                 end_time = (
-                    Timestamp(datetime_to_timestamp(run["endTime"]))
+                    Timestamp(convert_timestamp_to_milliseconds(run["endTime"]))
                     if run.get("endTime")
                     else None
                 )

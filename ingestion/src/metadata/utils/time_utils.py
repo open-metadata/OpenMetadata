@@ -143,7 +143,7 @@ def convert_timestamp(timestamp: str) -> Union[int, float]:
 
 
 @deprecated("Use `datetime_to_timestamp` instead", "1.7.0")
-def datetime_to_timestamp(timestamp: Union[int, float]) -> int:
+def convert_timestamp_to_milliseconds(timestamp: Union[int, float]) -> int:
     """convert timestamp to milliseconds
     Args:
         timestamp (int):

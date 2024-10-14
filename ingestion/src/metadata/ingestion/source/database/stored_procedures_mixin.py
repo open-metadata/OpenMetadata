@@ -41,7 +41,7 @@ from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.stored_procedures import get_procedure_name_from_call
-from metadata.utils.time_utils import datetime_to_timestamp
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -184,7 +184,7 @@ class StoredProcedureMixin(ABC):
                 query_type=query_by_procedure.query_type,
                 duration=query_by_procedure.query_duration,
                 queryDate=Timestamp(
-                    root=datetime_to_timestamp(
+                    root=convert_timestamp_to_milliseconds(
                         int(query_by_procedure.query_start_time.timestamp())
                     )
                 ),
