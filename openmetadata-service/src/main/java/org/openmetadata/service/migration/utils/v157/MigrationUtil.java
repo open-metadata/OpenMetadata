@@ -36,7 +36,7 @@ public class MigrationUtil {
         TestCase testCase = JsonUtils.readValue(json, TestCase.class);
         TestDefinition td = getTestDefinition(daoCollection, testCase);
         if (Objects.nonNull(td) && Objects.equals(td.getName(), TABLE_DIFF)) {
-          LOG.debug("Migrating table diff test case: {}", testCase.getId());
+          LOG.debug("Adding caseSensitiveColumns=true table diff test case: {}", testCase.getId());
           testCase
               .getParameterValues()
               .add(new TestCaseParameterValue().withName("caseSensitiveColumns").withValue("true"));
