@@ -166,15 +166,23 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
       data-testid="edit-table-type-property-modal"
       footer={
         <div className="d-flex justify-between">
-          <Button disabled={isUpdating} type="primary" onClick={handleAddRow}>
+          <Button
+            data-testid="add-new-row"
+            disabled={isUpdating}
+            type="primary"
+            onClick={handleAddRow}>
             {t('label.add-entity', { entity: t('label.row') })}
           </Button>
 
           <div className="d-flex gap-2">
-            <Button disabled={isUpdating} onClick={onCancel}>
+            <Button
+              data-testid="cancel-update-table-type-property"
+              disabled={isUpdating}
+              onClick={onCancel}>
               {t('label.cancel')}
             </Button>
             <Button
+              data-testid="update-table-type-property"
               disabled={isUpdating}
               loading={isUpdating}
               type="primary"

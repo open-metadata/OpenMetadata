@@ -17,8 +17,8 @@ import {
   ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
 import {
-  EntityTypeEndpoint,
   ENTITY_PATH,
+  EntityTypeEndpoint,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { clickOutside, descriptionBox, uuid } from './common';
@@ -29,6 +29,7 @@ export enum CustomPropertyType {
   MARKDOWN = 'Markdown',
 }
 export enum CustomPropertyTypeByName {
+  TABLE_CP = 'table-cp',
   STRING = 'string',
   INTEGER = 'integer',
   MARKDOWN = 'markdown',
@@ -55,6 +56,27 @@ export interface CustomProperty {
     type: string;
   };
 }
+
+export const fillTextInputDetails = async (
+  page: Page,
+  text: string,
+  columnName: string
+) => {
+  await page
+    .locator(`div[data-state-props-id="${columnName}"]`)
+    .last()
+    .dblclick();
+
+  await page
+    .getByTestId('edit-table-type-property-modal')
+    .getByRole('textbox')
+    .fill(text);
+
+  await page
+    .locator(`div[data-state-props-id="${columnName}"]`)
+    .last()
+    .press('Enter', { delay: 100 });
+};
 
 export const setValueForProperty = async (data: {
   page: Page;
@@ -203,6 +225,19 @@ export const setValueForProperty = async (data: {
 
       break;
     }
+
+    case 'table-cp': {
+      const values = value.split(',');
+      await page.locator('[data-testid="add-new-row"]').click();
+
+      await fillTextInputDetails(page, values[0], 'pw-column1');
+
+      await fillTextInputDetails(page, values[1], 'pw-column2');
+
+      await page.locator('[data-testid="update-table-type-property"]').click();
+
+      break;
+    }
   }
   await patchRequest;
 };
@@ -224,7 +259,7 @@ export const validateValueForProperty = async (data: {
     .locator(`[data-testid="toggle-${propertyName}"]`)
     .isVisible();
 
-  if (toggleBtnVisibility) {
+  if (toggleBtnVisibility && propertyType !== 'table-cp') {
     await container.locator(`[data-testid="toggle-${propertyName}"]`).click();
   }
 
@@ -241,6 +276,12 @@ export const validateValueForProperty = async (data: {
     );
   } else if (propertyType === 'sqlQuery') {
     await expect(container.locator('.CodeMirror-scroll')).toContainText(value);
+  } else if (propertyType === 'table-cp') {
+    const values = value.split(',');
+
+    await expect(
+      page.getByRole('row', { name: `${values[0]} ${values[1]}` })
+    ).toBeVisible();
   } else if (
     ![
       'entityReference',
@@ -339,6 +380,12 @@ export const getPropertyValues = (
       return {
         value: '2024-07-09 15:07:59',
         newValue: '2025-07-09 15:07:59',
+      };
+
+    case 'table-cp':
+      return {
+        value: 'column1,column2',
+        newValue: 'column3,column4',
       };
 
     default:
@@ -448,6 +495,15 @@ export const createCustomPropertyForEntity = async (
             ? {
                 customPropertyConfig: {
                   config: 'yyyy-MM-dd HH:mm:ss',
+                },
+              }
+            : {}),
+          ...(item.name === 'table-cp'
+            ? {
+                customPropertyConfig: {
+                  config: {
+                    columns: ['pw-column1', 'pw-column2'],
+                  },
                 },
               }
             : {}),
