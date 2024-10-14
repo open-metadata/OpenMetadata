@@ -471,7 +471,7 @@ class AdvancedSearchClassBase {
       },
 
       [EntityFields.OWNERS]: {
-        label: t('label.owner'),
+        label: t('label.owner-plural'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
 
