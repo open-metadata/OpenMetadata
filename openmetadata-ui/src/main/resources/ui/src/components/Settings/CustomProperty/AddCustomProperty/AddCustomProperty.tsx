@@ -103,6 +103,7 @@ const AddCustomProperty = () => {
           type.name as keyof typeof CUSTOM_PROPERTIES_ICON_MAP
         ];
 
+      // Remove -cp from the name and convert to start case
       const title = startCase(getEntityName(type).replace(/-cp/g, ''));
 
       return {
@@ -110,7 +111,6 @@ const AddCustomProperty = () => {
         label: (
           <div className="d-flex gap-2 items-center" title={title}>
             {Icon && <Icon width={20} />}
-            {/* Remove -cp from the name and convert to start case */}
             <span>{title}</span>
           </div>
         ),
