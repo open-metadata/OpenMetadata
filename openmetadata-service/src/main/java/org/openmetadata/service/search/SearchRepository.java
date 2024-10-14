@@ -572,6 +572,25 @@ public class SearchRepository {
     }
   }
 
+  public void deleteEntityByFQNPrefix(EntityInterface entity) {
+    if (entity != null) {
+      String entityType = entity.getEntityReference().getType();
+      String fqn = entity.getFullyQualifiedName();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      try {
+        searchClient.deleteEntityByFQNPrefix(indexMapping.getIndexName(clusterAlias), fqn);
+      } catch (Exception ie) {
+        LOG.error(
+            "Issue in Deleting the search document for entityFQN [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            fqn,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
+      }
+    }
+  }
+
   public void deleteTimeSeriesEntityById(EntityTimeSeriesInterface entity) {
     if (entity != null) {
       String entityId = entity.getId().toString();
@@ -826,14 +845,14 @@ public class SearchRepository {
   }
 
   public JsonObject aggregate(
-      String query, String entityType, JsonObject aggregationJson, SearchListFilter filter)
+      String query, String entityType, SearchAggregation searchAggregation, SearchListFilter filter)
       throws IOException {
     return searchClient.aggregate(
-        query, entityType, aggregationJson, filter.getCondition(entityType));
+        query, entityType, searchAggregation, filter.getCondition(entityType));
   }
 
   public DataQualityReport genericAggregation(
-      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
   }
 

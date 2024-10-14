@@ -47,6 +47,10 @@
   },
   "mappings": {
     "properties": {
+      "originEntityFQN": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "id": {
         "type": "text"
       },

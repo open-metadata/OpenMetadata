@@ -67,7 +67,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
-import org.openmetadata.schema.services.connections.api.RESTConnection;
+import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
@@ -83,7 +83,7 @@ import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnect
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
-import org.openmetadata.schema.type.APIServiceConnection;
+import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
@@ -183,10 +183,10 @@ public final class TestUtils {
       new SearchConnection()
           .withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
 
-  public static final APIServiceConnection API_SERVICE_CONNECTION =
-      new APIServiceConnection()
+  public static final ApiConnection API_SERVICE_CONNECTION =
+      new ApiConnection()
           .withConfig(
-              new RESTConnection()
+              new RestConnection()
                   .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json")));
 
   public static final MetadataConnection AMUNDSEN_CONNECTION =
