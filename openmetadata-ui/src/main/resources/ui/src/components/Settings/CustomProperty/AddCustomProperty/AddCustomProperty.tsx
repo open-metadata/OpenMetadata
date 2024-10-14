@@ -24,6 +24,7 @@ import React, {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  CUSTOM_PROPERTIES_ICON_MAP,
   ENTITY_REFERENCE_OPTIONS,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
@@ -50,6 +51,7 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../../rest/metadataTypeAPI';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
@@ -95,12 +97,26 @@ const AddCustomProperty = () => {
   );
 
   const propertyTypeOptions = useMemo(() => {
-    return map(propertyTypes, (type) => ({
-      key: type.name,
-      // Remove -cp from the name and convert to start case
-      label: startCase((type.displayName ?? type.name).replace(/-cp/g, '')),
-      value: type.id,
-    }));
+    return map(propertyTypes, (type) => {
+      const Icon =
+        CUSTOM_PROPERTIES_ICON_MAP[
+          type.name as keyof typeof CUSTOM_PROPERTIES_ICON_MAP
+        ];
+
+      const title = startCase(getEntityName(type).replace(/-cp/g, ''));
+
+      return {
+        key: type.name,
+        label: (
+          <div className="d-flex gap-2" title={title}>
+            {Icon && <Icon width={20} />}
+            {/* Remove -cp from the name and convert to start case */}
+            <span>{title}</span>
+          </div>
+        ),
+        value: type.id,
+      };
+    });
   }, [propertyTypes]);
 
   const {
