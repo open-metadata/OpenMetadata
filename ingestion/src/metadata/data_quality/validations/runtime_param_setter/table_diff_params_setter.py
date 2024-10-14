@@ -61,7 +61,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         )
         table2_fqn = self.get_parameter(test_case, "table2")
         case_sensitive_columns: bool = utils.get_bool_test_case_param(
-            test_case.parameterValues, "caseSensitiveColumns", default=True
+            test_case.parameterValues, "caseSensitiveColumns"
         )
         if table2_fqn is None:
             raise ValueError("table2 not set")

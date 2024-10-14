@@ -43,16 +43,14 @@ def get_test_case_param_value(
 def get_bool_test_case_param(
     test_case_param_vals: List[TestCaseParameterValue],
     name: str,
-    default: Optional[R] = None,
 ) -> Optional[Union[R, T]]:
-    """Return a test case parameter value as a boolean.
+    """Return a test case parameter value as a boolean. Boolean values are always False by default.
 
     Args:
         test_case_param_vals: list of test case parameter values
         name (str): column name
-        default (_type_, optional): Default value to return if column is not found
     """
     str_val: str = get_test_case_param_value(test_case_param_vals, name, str, None)
     if str_val is None:
-        return default
+        return False
     return str_val.lower() == "true"

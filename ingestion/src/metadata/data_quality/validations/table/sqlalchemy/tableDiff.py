@@ -468,5 +468,5 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def get_case_sensitive(self):
         return utils.get_bool_test_case_param(
-            self.test_case.parameterValues, "caseSensitiveColumns", True
+            self.test_case.parameterValues, "caseSensitiveColumns"
         )
