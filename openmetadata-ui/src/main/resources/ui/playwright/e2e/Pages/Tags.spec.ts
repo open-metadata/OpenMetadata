@@ -23,7 +23,7 @@ import {
   uuid,
 } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
-import { submitForm, validateForm } from '../../utils/tag';
+import { addTagToTableColumn, submitForm, validateForm } from '../../utils/tag';
 
 const NEW_CLASSIFICATION = {
   name: `PlaywrightClassification-${uuid()}`,
@@ -190,9 +190,19 @@ test('Classification Page', async ({ page }) => {
 
     await expect(
       page.locator(
-        '[data-testid="classification-PII"] [data-testid="disabled"]'
+        `[data-testid="classification-${classification.responseData.name}"] [data-testid="disabled"]`
       )
     ).not.toBeVisible();
+
+    await table.visitEntityPage(page);
+
+    await addTagToTableColumn(page, {
+      tagName: tag.responseData.name,
+      tagFqn: tag.responseData.fullyQualifiedName,
+      tagDisplayName: tag.responseData.displayName,
+      tableId: table.entityResponseData?.['id'],
+      columnNumber: 1,
+    });
   });
 
   await test.step('Create classification with validation checks', async () => {
@@ -263,41 +273,13 @@ test('Classification Page', async ({ page }) => {
     await table.visitEntityPage(page);
     const { name, displayName } = NEW_TAG;
 
-    await page.click(
-      '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
-    );
-    await page.fill('[data-testid="tag-selector"] input', name);
-    await page.click(`[data-testid="tag-${tagFqn}"]`);
-
-    await expect(
-      page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-    ).toContainText(displayName);
-
-    const saveAssociatedTag = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'PATCH' &&
-        response
-          .url()
-          .includes(`/api/v1/tables/${table.entityResponseData?.['id']}`)
-    );
-    await page.click('[data-testid="saveAssociatedTag"]');
-    await saveAssociatedTag;
-
-    await page.waitForSelector('.ant-select-dropdown', {
-      state: 'detached',
+    await addTagToTableColumn(page, {
+      tagName: name,
+      tagFqn,
+      tagDisplayName: displayName,
+      tableId: table.entityResponseData?.['id'],
+      columnNumber: 0,
     });
-
-    await expect(
-      page
-        .getByRole('row', { name: 'user_id numeric Unique' })
-        .getByTestId('tags-container')
-    ).toContainText(displayName);
-
-    await expect(
-      page.locator(
-        '[data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="icon"]'
-      )
-    ).toBeVisible();
   });
 
   await test.step(
