@@ -16,3 +16,6 @@ CREATE TABLE IF NOT EXISTS apps_data_store (
 
 -- Add the source column to the consumers_dlq table
 ALTER TABLE consumers_dlq ADD COLUMN source VARCHAR(255) NOT NULL;
+
+-- Create an index on the source column in the consumers_dlq table
+CREATE INDEX idx_consumers_dlq_source ON consumers_dlq (source);
