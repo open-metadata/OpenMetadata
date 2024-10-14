@@ -1,75 +1,134 @@
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-// import axios from 'axios';
+import axios from 'axios';
+import { getAxiosErrorMessage } from '../utils/AxiosUtils';
+import { Button, Col, Form, Input, Row, Typography } from 'antd';
+import classNames from 'classnames';
+import BrandImage from '../components/common/BrandImage/BrandImage';
 
 const LandingPage = () => {
   const [serverUrl, setServerUrl] = useState('');
   const [ingestionToken, setIngestionToken] = useState('');
   const history = useHistory();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (values: any) => {
     try {
-      // const response = await axios.post('/create-ingestion', {
-      //   server_url: serverUrl,
-      //   ingestion_token: ingestionToken,
-      // });
-      // console.log(response.data);
+      const response = await axios.post('/init', {
+        server_url: values.serverUrl,
+        token: values.ingestionToken,
+      });
+
       history.push('/service'); // Redirect to Services page
     } catch (error) {
-      console.error('Error creating ingestion:', error);
+      alert(getAxiosErrorMessage(error));
     }
   };
 
+
   return (
-    <div style={styles.container}>
-      {/* Logo Placeholder */}
-      <div style={styles.logoContainer}>
-        <div style={styles.logo}>logo</div>
-      </div>
-
-      {/* Title */}
-      <h1 style={styles.title}>OpenMetadata Ingestion Server</h1>
-
-      {/* Info Box */}
-      <div style={styles.infoBox}>
-        <p>Welcome to the Ingestion Server!<br />
-          Here you can easily prepare the configurations to start ingesting metadata externally!
-        </p>
-        <p>In order to move on, please provide the following information:</p>
-      </div>
-
-      {/* Form */}
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Server URL</label>
-          <input
-            type="text"
-            value={serverUrl}
-            onChange={(e) => setServerUrl(e.target.value)}
-            style={styles.input}
-            required
-          />
+    <Row className="h-full">
+      <Col className="bg-white" span={24}>
+        <div
+          className={classNames('mt-24 text-center flex-center flex-col', {
+            'sso-container': false,
+          })}>
+          <BrandImage height="auto" width={200} />
+          <Typography.Text className="mt-8 w-180 text-xl font-medium text-grey-muted">
+            Welcome to the Ingestion Server!{' '}
+          </Typography.Text>
+          <Typography.Text className="mt-4 w-480 text-xl font-medium text-grey-muted">
+            Here you can easily prepare the configurations to start ingesting metadata externally!{' '}
+          </Typography.Text>
+          <Typography.Text className="mt-4 mb-4 w-480 text-xl font-medium text-grey-muted">
+            In order to move on, please provide the following information:{' '}
+          </Typography.Text>
         </div>
+      </Col>
+      <Col span={20}>
+        <Form
+          className="mt-8"
+          name="basic"
+          labelCol={{ span: 8 }}
+          wrapperCol={{ span: 16 }}
+          onFinish={handleSubmit}
+          autoComplete="off"
+        >
+          <Form.Item
+            label="Server URL"
+            name="serverUrl"
+            rules={[{ required: true, message: 'Please input the server URL' }]}
+          >
+            <Input />
+          </Form.Item>
 
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Ingestion Bot Token</label>
-          <input
-            type="text"
-            value={ingestionToken}
-            onChange={(e) => setIngestionToken(e.target.value)}
-            style={styles.input}
-            required
-          />
-        </div>
+          <Form.Item
+            label="Ingestion Bot Token"
+            name="ingestionToken"
+            rules={[{ required: true, message: 'Please input the ingestion token' }]}
+          >
+            <Input />
+          </Form.Item>
 
-        {/* CTA Button */}
-        <button type="submit" style={styles.ctaButton}>
-          Create an Ingestion
-        </button>
-      </form>
-    </div>
+          <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
+            <Button type="primary" htmlType="submit">
+              Create ingestion
+            </Button>
+          </Form.Item>
+        </Form >
+      </Col>
+    </Row>
+
   );
+
+  // return (
+  //   <div style={styles.container}>
+  //     {/* Logo Placeholder */}
+  //     <div style={styles.logoContainer}>
+  //       <div style={styles.logo}>logo</div>
+  //     </div>
+
+  //     {/* Title */}
+  //     <h1 style={styles.title}>OpenMetadata Ingestion Server</h1>
+
+  //     {/* Info Box */}
+  //     <div style={styles.infoBox}>
+  //       <p>Welcome to the Ingestion Server!<br />
+  //         Here you can easily prepare the configurations to start ingesting metadata externally!
+  //       </p>
+  //       <p>In order to move on, please provide the following information:</p>
+  //     </div>
+
+  //     {/* Form */}
+  //     <form onSubmit={handleSubmit} style={styles.form}>
+  //       <div style={styles.inputGroup}>
+  //         <label style={styles.label}>Server URL</label>
+  //         <input
+  //           type="text"
+  //           value={serverUrl}
+  //           onChange={(e) => setServerUrl(e.target.value)}
+  //           style={styles.input}
+  //           required
+  //         />
+  //       </div>
+
+  //       <div style={styles.inputGroup}>
+  //         <label style={styles.label}>Ingestion Bot Token</label>
+  //         <input
+  //           type="text"
+  //           value={ingestionToken}
+  //           onChange={(e) => setIngestionToken(e.target.value)}
+  //           style={styles.input}
+  //           required
+  //         />
+  //       </div>
+
+  //       {/* CTA Button */}
+  //       <button type="submit" style={styles.ctaButton}>
+  //         Create an Ingestion
+  //       </button>
+  //     </form>
+  //   </div>
+  // );
 };
 
 // Inline CSS styles for the component

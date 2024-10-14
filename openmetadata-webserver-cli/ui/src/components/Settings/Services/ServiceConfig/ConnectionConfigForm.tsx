@@ -128,7 +128,6 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         connSch = serviceUtilClassBase.getDatabaseServiceConfig(
           serviceType as DatabaseServiceType
         );
-
         break;
       }
       case ServiceCategory.MESSAGING_SERVICES: {
@@ -190,6 +189,8 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       }
     }
 
+    console.log("Form ref", formRef.current?.state?.formData);
+
     return (
       <FormBuilder
         cancelText={cancelText}
@@ -229,7 +230,6 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           />
         )}
         {!isEmpty(connSch.schema) &&
-          isAirflowAvailable &&
           formRef.current?.state?.formData && (
             <TestConnection
               connectionType={serviceType}

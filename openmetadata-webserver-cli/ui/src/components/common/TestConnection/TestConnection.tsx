@@ -37,6 +37,8 @@ import Loader from "../Loader/Loader";
 import "./test-connection.style.less";
 import { TestConnectionProps, TestStatus } from "./TestConnection.interface";
 import TestConnectionModal from "./TestConnectionModal/TestConnectionModal";
+import axios from "axios";
+import { getAxiosErrorMessage } from "../../../utils/AxiosUtils";
 
 const TestConnection: FC<TestConnectionProps> = ({
   isTestingDisabled,
@@ -78,133 +80,31 @@ const TestConnection: FC<TestConnectionProps> = ({
   const isTestConnectionDisabled =
     isTestingConnection ||
     isTestingDisabled ||
-    !allowTestConn ||
-    !isAirflowAvailable;
-
-  // data fetch handlers
-
-  const handleDeleteWorkflow = async (workflowId: string) => {
-    if (isEmpty(workflowId)) {
-      return;
-    }
-
-    try {
-      // await deleteWorkflowById(workflowId, true);
-    } catch (error) {
-      // do not throw error for this API
-    }
-  };
+    !allowTestConn;
 
   // handlers
   const testConnection = async () => {
-    // setIsTestingConnection(true);
-    // setMessage(TEST_CONNECTION_TESTING_MESSAGE);
-    // handleResetState();
-    // const updatedFormData = formatFormDataForSubmit(getData());
-    // // current interval id
-    // let intervalId: number | undefined;
-    // try {
-    //   const createWorkflowData: CreateWorkflow = {
-    //     name: getTestConnectionName(connectionType),
-    //     workflowType: WorkflowType.TestConnection,
-    //     request: {
-    //       connection: { config: updatedFormData as ConfigClass },
-    //       serviceType,
-    //       connectionType,
-    //       serviceName,
-    //     },
-    //   };
-    //   // fetch the connection steps for current connectionType
-    //   await fetchConnectionDefinition();
-    //   setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TEN);
-    //   // create the workflow
-    //   const response = await addWorkflow(createWorkflowData);
-    //   setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TWENTY);
-    //   // trigger the workflow
-    //   const status = await triggerWorkflowById(response.id);
-    //   setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.FORTY);
-    //   if (status !== 200) {
-    //     setTestStatus(StatusType.Failed);
-    //     setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
-    //     setIsTestingConnection(false);
-    //     // delete the workflow if workflow is not triggered successfully
-    //     await handleDeleteWorkflow(response.id);
-    //     return;
-    //   }
-    //   /**
-    //    * fetch workflow repeatedly with 2s interval
-    //    * until status is either Failed or Successful
-    //    */
-    //   intervalId = toNumber(
-    //     setInterval(async () => {
-    //       setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
-    //       const workflowResponse = await getWorkflowData(response.id);
-    //       const { response: testConnectionResponse } = workflowResponse;
-    //       const { status: testConnectionStatus, steps = [] } =
-    //         testConnectionResponse || {};
-    //       const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
-    //         workflowResponse.status as WorkflowStatus
-    //       );
-    //       const isTestConnectionSuccess =
-    //         testConnectionStatus === StatusType.Successful;
-    //       if (!isWorkflowCompleted) {
-    //         return;
-    //       }
-    //       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-    //       if (isTestConnectionSuccess) {
-    //         setTestStatus(StatusType.Successful);
-    //         setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
-    //       } else {
-    //         const isMandatoryStepsFailing = steps.some(
-    //           (step) => step.mandatory && !step.passed
-    //         );
-    //         setTestStatus(
-    //           isMandatoryStepsFailing ? StatusType.Failed : "Warning"
-    //         );
-    //         setMessage(
-    //           isMandatoryStepsFailing
-    //             ? TEST_CONNECTION_FAILURE_MESSAGE
-    //             : TEST_CONNECTION_WARNING_MESSAGE
-    //         );
-    //       }
-    //       // clear the current interval
-    //       clearInterval(intervalId);
-    //       // set testing connection to false
-    //       setIsTestingConnection(false);
-    //       // delete the workflow once it's finished
-    //       await handleDeleteWorkflow(workflowResponse.id);
-    //     }, FETCH_INTERVAL)
-    //   );
-    //   // stop fetching the workflow after 2 minutes
-    //   setTimeout(() => {
-    //     // clear the current interval
-    //     clearInterval(intervalId);
-    //     // using reference to ensure call back should have latest value
-    //     const currentWorkflowStatus = currentWorkflowRef.current
-    //       ?.status as WorkflowStatus;
-    //     const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
-    //       currentWorkflowStatus
-    //     );
-    //     if (!isWorkflowCompleted) {
-    //       setMessage(TEST_CONNECTION_INFO_MESSAGE);
-    //       setIsConnectionTimeout(true);
-    //     }
-    //     setIsTestingConnection(false);
-    //     setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-    //   }, FETCHING_EXPIRY_TIME);
-    // } catch (error) {
-    //   setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-    //   clearInterval(intervalId);
-    //   setIsTestingConnection(false);
-    //   setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
-    //   setTestStatus(StatusType.Failed);
-    //   showErrorToast(error as AxiosError);
-    //   // delete the workflow if there is an exception
-    //   const workflowId = currentWorkflowRef.current?.id;
-    //   if (workflowId) {
-    //     await handleDeleteWorkflow(workflowId);
-    //   }
-    // }
+    try {
+      const response = await axios.post('/api/test', {
+        "config": {
+          "type": "Mysql",
+          "scheme": "mysql+pymysql",
+          "username": "openmetadata_user",
+          "authType": {
+            "password": "openmetadata_password"
+          },
+          "hostPort": "localhost:3306",
+          "databaseName": "openmetadata",
+          "supportsMetadataExtraction": true,
+          "supportsDBTExtraction": true,
+          "supportsProfiler": true,
+          "supportsQueryComment": true
+        }
+      });
+
+    } catch (error) {
+      alert(getAxiosErrorMessage(error));
+    }
   };
 
   const handleTestConnection = () => {
@@ -263,24 +163,6 @@ const TestConnection: FC<TestConnectionProps> = ({
               />
             )}
             <div data-testid="messag-text">
-              {isAirflowAvailable ? (
-                message
-              ) : (
-                <Transi18next
-                  i18nKey="message.configure-airflow"
-                  renderElement={
-                    <a
-                      data-testid="airflow-doc-link"
-                      href={AIRFLOW_DOCS}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    />
-                  }
-                  values={{
-                    text: t("label.documentation-lowercase"),
-                  }}
-                />
-              )}{" "}
               {(testStatus || isTestingConnection) && (
                 <Transi18next
                   i18nKey="message.click-text-to-view-details"
