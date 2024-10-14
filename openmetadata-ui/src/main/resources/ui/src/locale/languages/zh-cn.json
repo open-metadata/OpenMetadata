@@ -928,6 +928,7 @@
     "regenerate-registration-token": "重新产生注册令牌",
     "region-name": "区域名称",
     "registry": "仓库",
+    "regular-expression": "Regular Expression",
     "reject": "拒绝",
     "reject-all": "拒绝全部",
     "rejected": "已拒绝",

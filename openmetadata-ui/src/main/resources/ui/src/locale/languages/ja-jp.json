@@ -928,6 +928,7 @@
     "regenerate-registration-token": "登録するトークンを作り直す",
     "region-name": "リージョン名",
     "registry": "レジストリ",
+    "regular-expression": "Regular Expression",
     "reject": "Reject",
     "reject-all": "Reject All",
     "rejected": "Rejected",

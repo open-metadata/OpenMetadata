@@ -99,6 +99,10 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       'database.displayName': [table1.database.name, table2.database.name],
       'databaseSchema.displayName': [table1.schema.name, table2.schema.name],
       'columns.name.keyword': ['email', 'shop_id'],
+      'displayName.keyword': [
+        table1.entity.displayName,
+        table2.entity.displayName,
+      ],
     };
 
     await afterAction();

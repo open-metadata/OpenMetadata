@@ -928,6 +928,7 @@
     "regenerate-registration-token": "Neuen Registrierungstoken generieren",
     "region-name": "Region Name",
     "registry": "Register",
+    "regular-expression": "Regular Expression",
     "reject": "Ablehnen",
     "reject-all": "Reject All",
     "rejected": "Rejected",
