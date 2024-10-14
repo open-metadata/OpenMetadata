@@ -107,7 +107,8 @@ const AddCustomProperty = () => {
       const title = startCase(getEntityName(type).replace(/-cp/g, ''));
 
       return {
-        key: title,
+        searchField: title,
+        key: type.name,
         label: (
           <div className="d-flex gap-2 items-center" title={title}>
             {Icon && <Icon width={20} />}
@@ -294,8 +295,8 @@ const AddCustomProperty = () => {
           field: t('label.type'),
         })}`,
         showSearch: true,
-        filterOption: (input: string, option: { key: string }) => {
-          return (option?.key ?? '')
+        filterOption: (input: string, option: { searchField: string }) => {
+          return (option?.searchField ?? '')
             .toLowerCase()
             .includes(input.toLowerCase());
         },
