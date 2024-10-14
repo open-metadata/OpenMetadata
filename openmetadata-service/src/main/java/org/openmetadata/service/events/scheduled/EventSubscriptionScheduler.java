@@ -332,10 +332,6 @@ public class EventSubscriptionScheduler {
     return Entity.getCollectionDAO().changeEventDAO().recordExists(id.toString()) > 0;
   }
 
-  public boolean doesFailedRecordExistBySubscriptionId(UUID id) {
-    return Entity.getCollectionDAO().changeEventDAO().failedRecordExists(id.toString()) > 0;
-  }
-
   public static void shutDown() throws SchedulerException {
     LOG.info("Shutting Down Event Subscription Scheduler");
     if (instance != null) {

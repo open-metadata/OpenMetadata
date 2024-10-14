@@ -772,12 +772,6 @@ public class EventSubscriptionResource
     authorizer.authorizeAdmin(securityContext);
 
     try {
-      if (!EventSubscriptionScheduler.getInstance().doesFailedRecordExistBySubscriptionId(id)) {
-        return Response.status(Response.Status.NOT_FOUND)
-            .entity("No failed events were found for ID: " + id)
-            .build();
-      }
-
       List<FailedEventResponse> failedEvents =
           EventSubscriptionScheduler.getInstance().getFailedEventsByIdAndSource(id, source, limit);
 
@@ -827,13 +821,6 @@ public class EventSubscriptionResource
 
     try {
       EventSubscription subscription = repository.getByName(null, name, repository.getFields("id"));
-      if (!EventSubscriptionScheduler.getInstance()
-          .doesFailedRecordExistBySubscriptionId(subscription.getId())) {
-        return Response.status(Response.Status.NOT_FOUND)
-            .entity(
-                "No failed events were found for event subscription ID: " + subscription.getId())
-            .build();
-      }
 
       List<FailedEventResponse> failedEvents =
           EventSubscriptionScheduler.getInstance()

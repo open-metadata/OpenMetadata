@@ -3807,10 +3807,6 @@ public interface CollectionDAO {
         "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
     int recordExists(@Bind("id") String id);
 
-    @SqlQuery(
-        "SELECT CASE WHEN EXISTS (SELECT 1 FROM consumers_dlq WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
-    int failedRecordExists(@Bind("id") String id);
-
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json)",
         connectionType = MYSQL)
