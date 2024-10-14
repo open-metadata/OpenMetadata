@@ -202,6 +202,7 @@ test('Classification Page', async ({ page }) => {
       tagDisplayName: tag.responseData.displayName,
       tableId: table.entityResponseData?.['id'],
       columnNumber: 1,
+      rowName: 'shop_id numeric',
     });
   });
 
@@ -279,6 +280,7 @@ test('Classification Page', async ({ page }) => {
       tagDisplayName: displayName,
       tableId: table.entityResponseData?.['id'],
       columnNumber: 0,
+      rowName: 'user_id numeric',
     });
   });
 

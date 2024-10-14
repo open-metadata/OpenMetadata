@@ -98,12 +98,14 @@ export const addTagToTableColumn = async (
     tagDisplayName,
     tableId,
     columnNumber,
+    rowName,
   }: {
     tagName: string;
     tagFqn: string;
     tagDisplayName: string;
     tableId: string;
     columnNumber: number;
+    rowName: string;
   }
 ) => {
   await page.click(
@@ -129,9 +131,7 @@ export const addTagToTableColumn = async (
   });
 
   await expect(
-    page
-      .getByRole('row', { name: 'user_id numeric Unique' })
-      .getByTestId('tags-container')
+    page.getByRole('row', { name: rowName }).getByTestId('tags-container')
   ).toContainText(tagDisplayName);
 
   await expect(
