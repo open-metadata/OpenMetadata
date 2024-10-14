@@ -19,7 +19,9 @@ import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
+import { METAPILOT_APP_NAME } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -38,13 +40,22 @@ const GlobalSettingPage = () => {
 
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
+  const { applications } = useApplicationsProvider();
+
+  const isMetaPilotInstalled = useMemo(() => {
+    return applications.some((app) => app.name === METAPILOT_APP_NAME);
+  }, [applications]);
 
   const [settings, setSettings] = useState<SettingMenuItem[]>([]);
 
   const settingItems = useMemo(
     () =>
       globalSettingsClassBase
-        .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
+        .getGlobalSettingsMenuWithPermission(
+          permissions,
+          isAdminUser,
+          isMetaPilotInstalled
+        )
         .filter((curr: SettingMenuItem) => {
           const menuItem = getGlobalSettingMenuItem(curr);
 
