@@ -52,9 +52,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         )
 
         match_enum = utils.get_bool_test_case_param(
-            self.test_case.parameterValues,
-            "matchEnum",
-            default=False,
+            self.test_case.parameterValues, "matchEnum"
         )
 
         try:
