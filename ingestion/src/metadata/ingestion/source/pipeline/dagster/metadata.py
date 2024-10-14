@@ -186,7 +186,9 @@ class DagsterSource(PipelineServiceSource):
                     else None
                 ),
                 endTime=(
-                    round(convert_timestamp_to_milliseconds(run.endTime)) if run.endTime else None
+                    round(convert_timestamp_to_milliseconds(run.endTime))
+                    if run.endTime
+                    else None
                 ),
             )
             pipeline_status = PipelineStatus(
