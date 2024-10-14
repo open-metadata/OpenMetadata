@@ -412,7 +412,7 @@ describe('SettingsRouter', () => {
 
   it('should render PersonaPage component for persona list route', async () => {
     render(
-      <MemoryRouter initialEntries={[`/settings/members/persona`]}>
+      <MemoryRouter initialEntries={[`/settings/persona`]}>
         <SettingsRouter />
       </MemoryRouter>
     );
@@ -422,7 +422,7 @@ describe('SettingsRouter', () => {
 
   it('should render PersonaDetailsPage component for persona details route', async () => {
     render(
-      <MemoryRouter initialEntries={[`/settings/members/persona/testPersona`]}>
+      <MemoryRouter initialEntries={[`/settings/persona/testPersona`]}>
         <SettingsRouter />
       </MemoryRouter>
     );

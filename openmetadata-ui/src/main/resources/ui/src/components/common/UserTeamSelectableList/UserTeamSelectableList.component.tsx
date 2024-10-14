@@ -267,7 +267,7 @@ export const UserTeamSelectableList = ({
               size={8}>
               <Typography.Text className="text-grey-muted">
                 {t('label.selected-entity', {
-                  entity: label ?? t('label.owner'),
+                  entity: label ?? t('label.owner-plural'),
                 })}
               </Typography.Text>
               <div className="user-team-popover-header-content">
@@ -369,7 +369,7 @@ export const UserTeamSelectableList = ({
               !popupVisible &&
               (tooltipText ??
                 t('label.edit-entity', {
-                  entity: t('label.owner'),
+                  entity: t('label.owner-plural'),
                 }))
             }>
             <Button
