@@ -81,7 +81,11 @@ const TestCaseStatusPieChartWidget = () => {
             {t('label.test-case-result')}
           </Typography.Text>
         </div>
-        <CustomPieChart data={data} label={chartLabel} name="pie-chart-1" />
+        <CustomPieChart
+          data={data}
+          label={chartLabel}
+          name="test-case-result"
+        />
       </div>
     </Card>
   );

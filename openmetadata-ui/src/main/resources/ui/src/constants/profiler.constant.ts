@@ -303,6 +303,12 @@ export const INITIAL_TEST_RESULT_SUMMARY = {
   failed: 0,
 };
 
+export const INITIAL__ENTITY_HEALTH_MATRIX = {
+  healthy: 0,
+  unhealthy: 0,
+  total: 0,
+};
+
 export const DEFAULT_TEST_VALUE = [
   {
     value: 0,

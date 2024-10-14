@@ -13,40 +13,35 @@
 import { Card, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TestCaseIcon } from '../../../../assets/svg/all-activity-v2.svg';
-import {
-  GREEN_3,
-  PRIMARY_COLOR,
-  RED_3,
-  YELLOW_2,
-} from '../../../../constants/Color.constants';
+import { ReactComponent as HealthCheckIcon } from '../../../../assets/svg/ic-green-heart-border.svg';
+import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
 import { TEXT_GREY_MUTED } from '../../../../constants/constants';
-import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
+import { INITIAL__ENTITY_HEALTH_MATRIX } from '../../../../constants/profiler.constant';
 import { getDataQualityReport } from '../../../../rest/testAPI';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 
 const EntityHealthStatusPieChartWidget = () => {
   const { t } = useTranslation();
-  const { testCaseSummary } = useDataQualityProvider();
+
   const [isLoading, setIsLoading] = useState(true);
+  const [entityHealthStates, setEntityHealthStates] = useState<{
+    healthy: number;
+    unhealthy: number;
+    total: number;
+  }>(INITIAL__ENTITY_HEALTH_MATRIX);
 
   const { data, chartLabel } = useMemo(
     () => ({
       data: [
         {
-          name: t('label.success'),
-          value: testCaseSummary.success ?? 0,
+          name: t('label.healthy'),
+          value: entityHealthStates.healthy,
           color: GREEN_3,
         },
         {
-          name: t('label.failed'),
-          value: testCaseSummary.failed ?? 0,
+          name: t('label.unhealthy'),
+          value: entityHealthStates.unhealthy,
           color: RED_3,
-        },
-        {
-          name: t('label.aborted'),
-          value: testCaseSummary.aborted ?? 0,
-          color: YELLOW_2,
         },
       ],
       chartLabel: (
@@ -57,7 +52,7 @@ const EntityHealthStatusPieChartWidget = () => {
             textAnchor="middle"
             x="50%"
             y="46%">
-            {testCaseSummary.success ?? 0}/{testCaseSummary.total ?? 0}
+            {entityHealthStates.healthy}/{entityHealthStates.total}
           </text>
           <text
             dy={8}
@@ -65,33 +60,52 @@ const EntityHealthStatusPieChartWidget = () => {
             textAnchor="middle"
             x="50%"
             y="54%">
-            {t('label.test-plural')}
+            {t('label.entity-plural')}
           </text>
         </>
       ),
     }),
-    [testCaseSummary]
+    [entityHealthStates]
   );
 
-  const fetchEntityHealthDetails = (healthy = true) => {
+  const fetchEntityHealthDetails = (unhealthy = false) => {
     return getDataQualityReport({
+      ...(unhealthy
+        ? {
+            q: JSON.stringify({
+              query: {
+                bool: {
+                  must: [
+                    {
+                      terms: {
+                        'testCaseStatus.keyword': ['Failed', 'Aborted'],
+                      },
+                    },
+                  ],
+                },
+              },
+            }),
+          }
+        : {}),
       index: 'testCase',
-      // eslint-disable-next-line max-len
-      aggregationQuery: `bucketName=countStatus:aggType=terms:field=testCaseStatus.keyword,bucketName=status:aggType=terms:field=testCaseStatus.keyword&include="Failed,Aborted"::bucketName=statusFilter:aggType=bucket_selector:pathValues="status._bucket_count"&pathKeys="status"&script="params.status${
-        healthy ? '==' : '!='
-      }0"`,
+      aggregationQuery: `bucketName=entityWithTests:aggType=cardinality:field=originEntityFQN`,
     });
   };
 
   const fetchEntityHealthSummary = async () => {
     setIsLoading(true);
     try {
-      const { data: _unhealthy } = await fetchEntityHealthDetails(false);
-      const { data: _healthy } = await fetchEntityHealthDetails();
-      // console.log({ unhealthy, healthy });
-      // setTestCaseSummary(updatedData);
+      const { data: unhealthyData } = await fetchEntityHealthDetails(true);
+      const { data: totalData } = await fetchEntityHealthDetails();
+      if (unhealthyData.length === 0 || totalData.length === 0) {
+        setEntityHealthStates(INITIAL__ENTITY_HEALTH_MATRIX);
+      }
+      const unhealthy = parseInt(unhealthyData[0].originEntityFQN);
+      const total = parseInt(totalData[0].originEntityFQN);
+
+      setEntityHealthStates({ unhealthy, healthy: total - unhealthy, total });
     } catch (error) {
-      //
+      setEntityHealthStates(INITIAL__ENTITY_HEALTH_MATRIX);
     } finally {
       setIsLoading(false);
     }
@@ -105,12 +119,16 @@ const EntityHealthStatusPieChartWidget = () => {
     <Card loading={isLoading}>
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
-          <TestCaseIcon color={PRIMARY_COLOR} height={20} width={20} />
+          <HealthCheckIcon height={20} width={20} />
           <Typography.Text className="font-medium text-md text-grey-muted">
-            {t('label.test-case-result')}
+            {t('label.healthy-data-asset-plural')}
           </Typography.Text>
         </div>
-        <CustomPieChart data={data} label={chartLabel} name="pie-chart-1" />
+        <CustomPieChart
+          data={data}
+          label={chartLabel}
+          name="healthy-data-assets"
+        />
       </div>
     </Card>
   );
