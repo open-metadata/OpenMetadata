@@ -99,8 +99,23 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     TestCaseEntityName,
 )
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagFQN,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.ometa.ometa_api import C, T
 from metadata.utils.dispatch import class_register
+
+TIER1_TAG: TagLabel = TagLabel(
+    tagFQN=TagFQN(f"Tier.Tier1"),
+    name="Tier1",
+    source=TagSource.Classification,
+    labelType=LabelType.Automated,
+    state=State.Suggested,
+)
 
 COLUMNS = [
     Column(name="id", dataType=DataType.BIGINT),
