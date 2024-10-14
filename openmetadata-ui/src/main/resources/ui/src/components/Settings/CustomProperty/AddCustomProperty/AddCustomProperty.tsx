@@ -107,7 +107,7 @@ const AddCustomProperty = () => {
       const title = startCase(getEntityName(type).replace(/-cp/g, ''));
 
       return {
-        key: type.name,
+        key: title,
         label: (
           <div className="d-flex gap-2 items-center" title={title}>
             {Icon && <Icon width={20} />}
