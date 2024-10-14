@@ -49,6 +49,11 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         }
 
     def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
+        service1_url = (
+            str(get_connection(self.service_connection_config).url)
+            if self.service_connection_config
+            else None
+        )
         service1: DatabaseService = self.ometa_client.get_by_id(
             DatabaseService, self.table_entity.service.id, nullable=False
         )
@@ -57,6 +62,9 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             raise ValueError("table2 not set")
         table2: Table = self.ometa_client.get_by_name(
             Table, fqn=table2_fqn, nullable=False
+        )
+        service2_url = (
+            service1_url if table2.service == self.table_entity.service else None
         )
         service2: DatabaseService = self.ometa_client.get_by_id(
             DatabaseService, table2.service.id, nullable=False
@@ -69,7 +77,9 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
                     self.table_entity.fullyQualifiedName.root
                 ),
                 serviceUrl=self.get_data_diff_url(
-                    service1, self.table_entity.fullyQualifiedName.root
+                    service1,
+                    self.table_entity.fullyQualifiedName.root,
+                    override_url=service1_url,
                 ),
                 columns=self.filter_relevant_columns(
                     self.table_entity.columns, key_columns, extra_columns
@@ -80,7 +90,8 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
                 serviceUrl=self.get_data_diff_url(
                     service2,
                     table2_fqn,
-                    override_url=self.get_parameter(test_case, "service2Url"),
+                    override_url=self.get_parameter(test_case, "service2Url")
+                    or service2_url,
                 ),
                 columns=self.filter_relevant_columns(
                     table2.columns, key_columns, extra_columns
