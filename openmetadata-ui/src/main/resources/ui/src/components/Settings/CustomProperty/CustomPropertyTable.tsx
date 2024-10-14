@@ -153,12 +153,6 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                       ))}
                     </ul>
                   </Typography.Text>
-                  <Typography.Text>
-                    <span className="font-medium">{`${t(
-                      'label.row-count'
-                    )}: `}</span>
-                    {config?.rowCount ?? 10}
-                  </Typography.Text>
                 </div>
               );
             }

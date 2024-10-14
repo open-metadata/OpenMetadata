@@ -171,7 +171,6 @@ const AddCustomProperty = () => {
       formatConfig: string;
       entityReferenceConfig: string[];
       multiSelect?: boolean;
-      rowCount: number;
       columns: string[];
     }
   ) => {
@@ -208,7 +207,6 @@ const AddCustomProperty = () => {
         customPropertyConfig = {
           config: {
             columns: data.columns,
-            rowCount: data.rowCount ?? 10,
           },
         };
       }
@@ -220,7 +218,6 @@ const AddCustomProperty = () => {
             'formatConfig',
             'entityReferenceConfig',
             'enumConfig',
-            'rowCount',
             'columns',
           ]),
           propertyType: {
@@ -423,31 +420,6 @@ const AddCustomProperty = () => {
         },
       ],
     },
-    {
-      name: 'rowCount',
-      label: t('label.row-count'),
-      type: FieldTypes.NUMBER,
-      required: false,
-      id: 'root/rowCount',
-      props: {
-        'data-testid': 'rowCount',
-        size: 'default',
-        style: { width: '100%' },
-        placeholder: t('label.row-count'),
-      },
-      rules: [
-        {
-          min: 1,
-          type: 'number',
-          max: 10,
-          message: t('message.entity-size-in-between', {
-            entity: t('label.row-count'),
-            min: 1,
-            max: 10,
-          }),
-        },
-      ],
-    },
   ];
 
   const firstPanelChildren = (
@@ -457,9 +429,6 @@ const AddCustomProperty = () => {
         className="m-t-md"
         data-testid="custom-property-form"
         form={form}
-        initialValues={{
-          rowCount: 10,
-        }}
         layout="vertical"
         onFinish={handleSubmit}
         onFocus={handleFieldFocus}>
