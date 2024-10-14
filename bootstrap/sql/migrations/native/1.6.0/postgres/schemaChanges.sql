@@ -13,3 +13,6 @@ CREATE TABLE IF NOT EXISTS apps_data_store (
     type VARCHAR(256) NOT NULL,   
     json JSON NOT NULL
 );
+
+-- Add the source column to the consumers_dlq table
+ALTER TABLE consumers_dlq ADD COLUMN source VARCHAR(255) NOT NULL;
