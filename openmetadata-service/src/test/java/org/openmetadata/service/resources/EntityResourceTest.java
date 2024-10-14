@@ -389,10 +389,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Type INT_TYPE;
   public static Type STRING_TYPE;
+  public static Type EMAIL_TYPE;
+  public static Type DATECP_TYPE;
+  public static Type DATETIMECP_TYPE;
+  public static Type TIMECP_TYPE;
+  public static Type DURATION_TYPE;
+  public static Type MARKDOWN_TYPE;
+  public static Type ENTITY_REFERENCE_TYPE;
+  public static Type ENTITY_REFERENCE_LIST_TYPE;
+  public static Type TIME_INTERVAL_TYPE;
+  public static Type NUMBER_TYPE;
+  public static Type SQLQUERY_TYPE;
+  public static Type TIMESTAMP_TYPE;
 
   public static Type ENUM_TYPE;
-
-  public static Type ENUM_WITH_DESCRIPTIONS_TYPE;
+  public static Type TABLE_TYPE;
 
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
   // evey time junit tests are run to save time. But over the course of development of a release,

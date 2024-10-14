@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Input, Row } from 'antd';
+import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isUndefined, map, omit, omitBy, startCase } from 'lodash';
+import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import React, {
   FocusEvent,
   useCallback,
@@ -24,13 +23,12 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import {
   ENTITY_REFERENCE_OPTIONS,
-  ENUM_WITH_DESCRIPTION,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
   SUPPORTED_FORMAT_MAP,
+  TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../../../../constants/CustomProperty.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../../constants/regex.constants';
@@ -41,7 +39,6 @@ import {
 import { EntityType } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { Category, Type } from '../../../../generated/entity/type';
-import { EnumWithDescriptionsConfig } from '../../../../generated/type/customProperties/enumWithDescriptionsConfig';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import {
   FieldProp,
@@ -58,7 +55,6 @@ import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUt
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 
@@ -112,7 +108,7 @@ const AddCustomProperty = () => {
     hasFormatConfig,
     hasEntityReferenceConfig,
     watchedOption,
-    hasEnumWithDescriptionConfig,
+    hasTableTypeConfig,
   } = useMemo(() => {
     const watchedOption = propertyTypeOptions.find(
       (option) => option.value === watchedPropertyType
@@ -121,8 +117,7 @@ const AddCustomProperty = () => {
 
     const hasEnumConfig = watchedOptionKey === 'enum';
 
-    const hasEnumWithDescriptionConfig =
-      watchedOptionKey === ENUM_WITH_DESCRIPTION;
+    const hasTableTypeConfig = watchedOptionKey === TABLE_TYPE_CUSTOM_PROPERTY;
 
     const hasFormatConfig =
       PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
@@ -135,7 +130,7 @@ const AddCustomProperty = () => {
       hasFormatConfig,
       hasEntityReferenceConfig,
       watchedOption,
-      hasEnumWithDescriptionConfig,
+      hasTableTypeConfig,
     };
   }, [watchedPropertyType, propertyTypeOptions]);
 
@@ -176,7 +171,8 @@ const AddCustomProperty = () => {
       formatConfig: string;
       entityReferenceConfig: string[];
       multiSelect?: boolean;
-      enumWithDescriptionsConfig?: EnumWithDescriptionsConfig['values'];
+      rowCount: number;
+      columns: string[];
     }
   ) => {
     if (isUndefined(typeDetail)) {
@@ -208,11 +204,11 @@ const AddCustomProperty = () => {
         };
       }
 
-      if (hasEnumWithDescriptionConfig) {
+      if (hasTableTypeConfig) {
         customPropertyConfig = {
           config: {
-            multiSelect: Boolean(data?.multiSelect),
-            values: data.enumWithDescriptionsConfig,
+            columns: data.columns,
+            rowCount: data.rowCount ?? 10,
           },
         };
       }
@@ -224,7 +220,8 @@ const AddCustomProperty = () => {
             'formatConfig',
             'entityReferenceConfig',
             'enumConfig',
-            'enumWithDescriptionsConfig',
+            'rowCount',
+            'columns',
           ]),
           propertyType: {
             id: data.propertyType,
@@ -388,6 +385,71 @@ const AddCustomProperty = () => {
     },
   };
 
+  const tableTypePropertyConfig: FieldProp[] = [
+    {
+      name: 'columns',
+      required: true,
+      label: t('label.column-plural'),
+      id: 'root/columns',
+      type: FieldTypes.SELECT,
+      props: {
+        'data-testid': 'columns',
+        mode: 'tags',
+        placeholder: t('label.column-plural'),
+      },
+      rules: [
+        {
+          required: true,
+          validator: async (_, value) => {
+            if (isArray(value)) {
+              if (value.length > 3) {
+                return Promise.reject(
+                  t('message.maximum-count-allowed', {
+                    count: 3,
+                    label: t('label.column-plural'),
+                  })
+                );
+              }
+
+              return Promise.resolve();
+            } else {
+              return Promise.reject(
+                t('label.field-required', {
+                  field: t('label.column-plural'),
+                })
+              );
+            }
+          },
+        },
+      ],
+    },
+    {
+      name: 'rowCount',
+      label: t('label.row-count'),
+      type: FieldTypes.NUMBER,
+      required: false,
+      id: 'root/rowCount',
+      props: {
+        'data-testid': 'rowCount',
+        size: 'default',
+        style: { width: '100%' },
+        placeholder: t('label.row-count'),
+      },
+      rules: [
+        {
+          min: 1,
+          type: 'number',
+          max: 10,
+          message: t('message.entity-size-in-between', {
+            entity: t('label.row-count'),
+            min: 1,
+            max: 10,
+          }),
+        },
+      ],
+    },
+  ];
+
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
@@ -395,6 +457,9 @@ const AddCustomProperty = () => {
         className="m-t-md"
         data-testid="custom-property-form"
         form={form}
+        initialValues={{
+          rowCount: 10,
+        }}
         layout="vertical"
         onFinish={handleSubmit}
         onFocus={handleFieldFocus}>
@@ -415,94 +480,8 @@ const AddCustomProperty = () => {
             generateFormFields([entityReferenceConfigField])
         }
 
-        {hasEnumWithDescriptionConfig && (
-          <>
-            <Form.List name="enumWithDescriptionsConfig">
-              {(fields, { add, remove }) => (
-                <>
-                  <Form.Item
-                    className="form-item-horizontal"
-                    colon={false}
-                    label={t('label.property')}>
-                    <Button
-                      data-testid="add-enum-description-config"
-                      icon={
-                        <PlusOutlined
-                          style={{ color: 'white', fontSize: '12px' }}
-                        />
-                      }
-                      size="small"
-                      type="primary"
-                      onClick={() => {
-                        add();
-                      }}
-                    />
-                  </Form.Item>
+        {hasTableTypeConfig && generateFormFields(tableTypePropertyConfig)}
 
-                  {fields.map((field, index) => (
-                    <Row gutter={[8, 0]} key={field.key}>
-                      <Col span={23}>
-                        <Row gutter={[8, 0]}>
-                          <Col span={24}>
-                            <Form.Item
-                              name={[field.name, 'key']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: `${t(
-                                    'message.field-text-is-required',
-                                    {
-                                      fieldText: t('label.key'),
-                                    }
-                                  )}`,
-                                },
-                              ]}>
-                              <Input
-                                id={`key-${index}`}
-                                placeholder={t('label.key')}
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col span={24}>
-                            <Form.Item
-                              name={[field.name, 'description']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: `${t(
-                                    'message.field-text-is-required',
-                                    {
-                                      fieldText: t('label.description'),
-                                    }
-                                  )}`,
-                                },
-                              ]}
-                              trigger="onTextChange"
-                              valuePropName="initialValue">
-                              <RichTextEditor height="200px" />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-                      </Col>
-                      <Col span={1}>
-                        <Button
-                          data-testid={`remove-enum-description-config-${index}`}
-                          icon={<DeleteIcon width={16} />}
-                          size="small"
-                          type="text"
-                          onClick={() => {
-                            remove(field.name);
-                          }}
-                        />
-                      </Col>
-                    </Row>
-                  ))}
-                </>
-              )}
-            </Form.List>
-            {generateFormFields([multiSelectField])}
-          </>
-        )}
         {generateFormFields([descriptionField])}
         <Row justify="end">
           <Col>

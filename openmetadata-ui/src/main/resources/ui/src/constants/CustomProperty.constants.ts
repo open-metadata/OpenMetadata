@@ -127,17 +127,4 @@ export const SUPPORTED_FORMAT_MAP = {
   'time-cp': SUPPORTED_TIME_FORMATS,
 };
 
-export const ENUM_WITH_DESCRIPTION = 'enumWithDescriptions';
-
-export const INLINE_PROPERTY_TYPES = [
-  'date-cp',
-  'dateTime-cp',
-  'duration',
-  'email',
-  'entityReference',
-  'integer',
-  'number',
-  'string',
-  'time-cp',
-  'timestamp',
-];
+export const TABLE_TYPE_CUSTOM_PROPERTY = 'table-cp';

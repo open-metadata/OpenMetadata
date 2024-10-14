@@ -59,16 +59,21 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.NotificationResourceDescriptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
+import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
@@ -619,6 +624,42 @@ public class EventSubscriptionResource
           String expression) {
     authorizer.authorizeAdmin(securityContext);
     AlertUtil.validateExpression(expression, Boolean.class);
+  }
+
+  @POST
+  @Path("/testDestination")
+  @Operation(
+      operationId = "testDestination",
+      summary = "Send a test message alert to external destinations.",
+      description = "Send a test message alert to external destinations of the alert.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test message sent successfully",
+            content = @Content(schema = @Schema(implementation = Response.class)))
+      })
+  public Response sendTestMessageAlert(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      EventSubscriptionDestinationTestRequest request) {
+    EventSubscription eventSubscription =
+        new EventSubscription().withFullyQualifiedName(request.getAlertName());
+
+    // by-pass AbstractEventConsumer - covers external destinations as of now
+    request
+        .getDestinations()
+        .forEach(
+            (destination) -> {
+              Destination<ChangeEvent> alert =
+                  AlertFactory.getAlert(eventSubscription, destination);
+              try {
+                alert.sendTestMessage();
+              } catch (EventPublisherException e) {
+                LOG.error(e.getMessage());
+              }
+            });
+
+    return Response.ok().build();
   }
 
   private EventSubscription getEventSubscription(CreateEventSubscription create, String user) {

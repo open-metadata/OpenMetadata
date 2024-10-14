@@ -20,6 +20,9 @@ import {
 } from '../constant/alert.interface';
 import { DELETE_TERM } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
+import { Domain } from '../support/domain/Domain';
+import { DashboardClass } from '../support/entity/DashboardClass';
+import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
   descriptionBox,
@@ -643,10 +646,10 @@ export const addMultipleFilters = async ({
   dashboard,
 }: {
   page: Page;
-  user1;
-  user2;
-  domain;
-  dashboard;
+  user1: UserClass;
+  user2: UserClass;
+  domain: Domain;
+  dashboard: DashboardClass;
 }) => {
   // Add owner filter
   await page.click('[data-testid="add-filters"]');
