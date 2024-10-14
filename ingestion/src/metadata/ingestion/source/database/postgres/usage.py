@@ -47,7 +47,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                 rows = conn.execute(query)
                 queries = []
                 for row in rows:
-                    row = model_dump(row)
+                    row = dict(row)
                     try:
                         queries.append(
                             TableQuery(

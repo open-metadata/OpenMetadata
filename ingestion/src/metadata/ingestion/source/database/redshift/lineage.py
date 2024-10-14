@@ -70,7 +70,7 @@ class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
                     )
                 )
                 for row in rows:
-                    query_dict = model_dump(row)
+                    query_dict = dict(row)
                     try:
                         yield TableQuery(
                             query=query_dict["query_text"]

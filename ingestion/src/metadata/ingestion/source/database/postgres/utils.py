@@ -91,7 +91,7 @@ def get_foreign_keys(
     t = sql.text(POSTGRES_FETCH_FK).columns(
         conname=sqltypes.Unicode, condef=sqltypes.Unicode, con_db_name=sqltypes.Unicode
     )
-    c = connection.execute(t, model_dump(table=table_oid))
+    c = connection.execute(t, dict(table=table_oid))
     fkeys = []
     for conname, condef, conschema, con_db_name in c.fetchall():
         m = re.search(FK_REGEX, condef).groups()
@@ -254,7 +254,7 @@ def get_columns(  # pylint: disable=too-many-locals
 
     # dictionary with (name, ) if default search path or (schema, name)
     # as keys
-    enums = model_dump(
+    enums = dict(
         ((rec["name"],), rec) if rec["visible"] else ((rec["schema"], rec["name"]), rec)
         for rec in self._load_enums(connection, schema="*")
     )

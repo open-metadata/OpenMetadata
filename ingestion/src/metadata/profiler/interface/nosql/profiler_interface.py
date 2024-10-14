@@ -85,7 +85,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
             if not filtered:
                 return {}
             row = runner.get_aggregates(self.table, column, filtered)
-            return model_dump(row)
+            return dict(row)
         except Exception as exc:
             logger.debug(
                 f"{traceback.format_exc()}\n"

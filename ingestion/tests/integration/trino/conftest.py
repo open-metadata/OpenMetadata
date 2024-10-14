@@ -216,7 +216,7 @@ def custom_insert(self, conn, keys: list[str], data_iter):
     rowcount = 0
     max_tries = 10
     try_num = 0
-    data = [model_dump(zip(keys, row)) for row in data_iter]
+    data = [dict(zip(keys, row)) for row in data_iter]
     while rowcount != len(data):
         if try_num >= max_tries:
             raise RuntimeError(f"Failed to insert data after {max_tries} tries")

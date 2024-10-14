@@ -166,7 +166,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         if col_type in {"array", "struct", "map"}:
             col_name = f"`{col_name}`" if "." in col_name else col_name
             try:
-                rows = model_dump(
+                rows = dict(
                     connection.execute(
                         f"DESCRIBE TABLE {kw.get('db_name')}.{schema}.{table_name} {col_name}"
                     ).fetchall()
@@ -322,7 +322,7 @@ def get_table_type(connection, database, schema, table):
             query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
         rows = connection.execute(query)
         for row in rows:
-            row_dict = model_dump(row)
+            row_dict = dict(row)
             if row_dict.get("col_name") == "Type":
                 # get type of table
                 return row_dict.get("data_type")
@@ -724,7 +724,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             result = self.connection.engine.execute(query)
             owner = None
             for row in result:
-                row_dict = model_dump(row)
+                row_dict = dict(row)
                 if row_dict.get("col_name") == "Owner":
                     owner = row_dict.get("data_type")
                     break

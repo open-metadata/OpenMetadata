@@ -45,7 +45,7 @@ class TestParameters(BaseModel):
         if args:
             # Map positional arguments to fields
             field_names = list(self.__annotations__.keys())
-            kwargs.update(model_dump(zip(field_names, args)))
+            kwargs.update(dict(zip(field_names, args)))
 
         super().__init__(**kwargs)
 
@@ -528,7 +528,7 @@ def copy_table(source_engine, destination_engine, table_name):
         for i in range(0, len(data), batch_size):
             batch = data[i : i + batch_size]
             destination_connection.execute(
-                source_table.insert(), [model_dump(row) for row in batch]
+                source_table.insert(), [dict(row) for row in batch]
             )
 
 

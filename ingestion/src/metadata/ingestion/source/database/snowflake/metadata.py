@@ -671,7 +671,7 @@ class SnowflakeSource(
                 procedure_signature=stored_procedure.unquote_signature(),
             )
         )
-        return model_dump(res.all()).get("body", "")
+        return dict(res.all()).get("body", "")
 
     def yield_stored_procedure(
         self, stored_procedure: SnowflakeStoredProcedure

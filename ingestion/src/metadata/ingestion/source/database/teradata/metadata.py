@@ -94,7 +94,7 @@ class TeradataSource(CommonDbSourceService):
                     logger.error()
                     self.status.failed(
                         error=StackTraceError(
-                            name=model_dump(row).get("name", "UNKNOWN"),
+                            name=dict(row).get("name", "UNKNOWN"),
                             error=f"Error parsing Stored Procedure payload: {exc}",
                             stackTrace=traceback.format_exc(),
                         )

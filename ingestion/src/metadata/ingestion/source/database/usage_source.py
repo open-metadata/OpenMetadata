@@ -54,7 +54,7 @@ class UsageSource(QueryParserSource, ABC):
                 query_list = []
                 with open(file_path, "r", encoding="utf-8") as fin:
                     for record in csv.DictReader(fin):
-                        query_dict = dictdump(record)
+                        query_dict = dict(record)
 
                         analysis_date = (
                             datetime.now(timezone.utc)
@@ -117,7 +117,7 @@ class UsageSource(QueryParserSource, ABC):
                         rows = conn.execute(query)
                         queries = []
                         for row in rows:
-                            row = dictdump(row)
+                            row = dict(row)
                             try:
                                 query_type = row.get("query_type")
                                 query = self.format_query(row["query_text"])
