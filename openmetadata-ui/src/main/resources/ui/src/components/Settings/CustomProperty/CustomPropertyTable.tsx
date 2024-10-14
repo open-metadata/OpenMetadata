@@ -125,7 +125,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
             ];
 
           return (
-            <div className="d-flex gap-2 custom-property-type-chip">
+            <div className="d-flex gap-2 custom-property-type-chip items-center">
               {Icon && <Icon width={20} />}
               <span>
                 {startCase(getEntityName(propertyType).replace(/-cp/g, ''))}
