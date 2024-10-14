@@ -13,6 +13,8 @@
 import { expect, Page, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
 import {
   clickOutside,
   createNewPage,
@@ -57,16 +59,26 @@ const permanentDeleteModal = async (page: Page, entity: string) => {
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const table = new TableClass();
+const classification = new ClassificationClass({
+  provider: 'system',
+});
+const tag = new TagClass({
+  classification: classification.data.name,
+});
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
+  await classification.create(apiContext);
+  await tag.create(apiContext);
   await afterAction();
 });
 
 test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.delete(apiContext);
+  await classification.delete(apiContext);
+  await tag.delete(apiContext);
   await afterAction();
 });
 
@@ -103,18 +115,18 @@ test('Classification Page', async ({ page }) => {
 
   await test.step('Disabled system tags should not render', async () => {
     const classificationResponse = page.waitForResponse(
-      `/api/v1/tags?*parent=PII*`
+      `/api/v1/tags?*parent=${classification.responseData.name}*`
     );
     await page
       .locator(`[data-testid="side-panel-classification"]`)
-      .filter({ hasText: 'PII' })
+      .filter({ hasText: classification.responseData.displayName })
       .click();
     await classificationResponse;
 
     await page.click('[data-testid="manage-button"]');
 
     const fetchTags = page.waitForResponse(
-      '/api/v1/tags?fields=usageCount&parent=PII*'
+      `/api/v1/tags?fields=usageCount&parent=${classification.responseData.name}*`
     );
     const disabledTag = page.waitForResponse('/api/v1/classifications/*');
     await page.click('[data-testid="enable-disable-title"]');
@@ -123,7 +135,7 @@ test('Classification Page', async ({ page }) => {
 
     await expect(
       page.locator(
-        '[data-testid="classification-PII"] [data-testid="disabled"]'
+        `[data-testid="classification-${classification.responseData.name}"] [data-testid="disabled"]`
       )
     ).toBeVisible();
 
@@ -143,34 +155,28 @@ test('Classification Page', async ({ page }) => {
     );
 
     const tagResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*NonSensitive***'
+      `/api/v1/search/query?q=*${tag.responseData.displayName}***`
     );
-    await page.fill('[data-testid="tag-selector"] input', 'NonSensitive');
+    await page.fill(
+      '[data-testid="tag-selector"] input',
+      tag.responseData.displayName
+    );
     await tagResponse;
 
     await expect(
       page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-    ).toContainText('NonSensitive');
+    ).toContainText(tag.responseData.displayName);
 
     await expect(
-      page.getByTestId(`[data-testid="tag-PII.NonSensitive"]`)
+      page.getByTestId(
+        `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
+      )
     ).not.toBeVisible();
 
     await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
     // Re-enable the disabled Classification
-    const getTags = page.waitForResponse('/api/v1/tags*');
-    await sidebarClick(page, SidebarItem.TAGS);
-    await getTags;
-
-    const classificationResponse2 = page.waitForResponse(
-      `/api/v1/tags?*parent=PII*`
-    );
-    await page
-      .locator(`[data-testid="side-panel-classification"]`)
-      .filter({ hasText: 'PII' })
-      .click();
-    await classificationResponse2;
+    await classification.visitPage(page);
 
     await page.click('[data-testid="manage-button"]');
 
