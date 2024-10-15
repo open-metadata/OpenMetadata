@@ -66,6 +66,17 @@ class QueryByProcedure(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class ProcedureAndQuery(BaseModel):
+    """
+    Model to hold the procedure and its queries
+    """
+
+    procedure: StoredProcedure
+    query_by_procedure: QueryByProcedure
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class StoredProcedureLineageMixin(ABC):
     """
     The full flow is:
@@ -204,10 +215,20 @@ class StoredProcedureLineageMixin(ABC):
             )
         )
 
-    def yield_procedure_lineage(
-        self,
+    def procedure_lineage_processor(
+        self, procedure_and_query: ProcedureAndQuery
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Get all the queries and procedures list and yield them"""
+
+        yield from self._yield_procedure_lineage(
+            query_by_procedure=procedure_and_query.query_by_procedure,
+            procedure=procedure_and_query.procedure,
+        )
+        yield from self.yield_procedure_query(
+            query_by_procedure=procedure_and_query.query_by_procedure,
+            procedure=procedure_and_query.procedure,
+        )
+
+    def procedure_lineage_generator(self) -> Iterable[ProcedureAndQuery]:
         query = {
             "query": {
                 "bool": {
@@ -233,9 +254,15 @@ class StoredProcedureLineageMixin(ABC):
                 for query_by_procedure in (
                     queries_dict.get(procedure.name.root.lower()) or []
                 ):
-                    yield from self._yield_procedure_lineage(
-                        query_by_procedure=query_by_procedure, procedure=procedure
+                    yield ProcedureAndQuery(
+                        procedure=procedure, query_by_procedure=query_by_procedure
                     )
-                    yield from self.yield_procedure_query(
-                        query_by_procedure=query_by_procedure, procedure=procedure
-                    )
+
+    def yield_procedure_lineage(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """Get all the queries and procedures list and yield them"""
+        logger.info("Processing Lineage for Stored Procedures")
+        producer_fn = self.procedure_lineage_generator
+        processor_fn = self.procedure_lineage_processor
+        yield from self.generate_lineage_in_thread(producer_fn, processor_fn)

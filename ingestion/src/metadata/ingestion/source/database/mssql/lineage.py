@@ -18,7 +18,6 @@ from typing import Dict, List
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.type.tableQuery import QueryByProcedure
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.mssql.constants import (
     DEFAULT_DATETIME_FORMAT,

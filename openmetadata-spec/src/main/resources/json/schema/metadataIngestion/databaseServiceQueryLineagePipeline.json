@@ -84,6 +84,13 @@
       "description": "Set the 'Process Stored ProcedureLog Lineage' toggle to control whether to process stored procedure lineage.",
       "type": "boolean",
       "default": true
+    },
+    "threads": {
+      "description": "Number of Threads to use in order to parallelize lineage ingestion.",
+      "type": "integer",
+      "default": 1,
+      "title": "Number of Threads",
+      "minimum": 1
     }
   },
   "additionalProperties": false
