@@ -12,53 +12,40 @@
  */
 
 import { Button, Col, Modal, Space, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
-import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../../../constants/GlobalSettings.constants';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
-import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../../pages/MyDataPage/my-data.less';
-import { searchQuery } from '../../../../rest/searchAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
+import customizeDetailPageClassBase from '../../../../utils/CustomiseDetailPage/CustomiseDetailPageClassBase';
 import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
   getLayoutWithEmptyWidgetPlaceholder,
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
-  getWidgetFromKey,
 } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import {
-  getPersonaDetailsPath,
-  getSettingPath,
-} from '../../../../utils/RouterUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
+import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
 import ActivityFeedProvider from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
-import './customize-my-data.less';
-import { CustomizeMyDataProps } from './CustomizeMyData.interface';
+import { CustomizeMyDataProps } from '../CustomizeMyData/CustomizeMyData.interface';
 
 const ReactGridLayout = WidthProvider(RGL);
 
-function CustomizeMyData({
+function CustomizeGlossaryTermDetailPage({
   personaDetails,
   initialPageData,
   onSaveLayout,
@@ -66,7 +53,7 @@ function CustomizeMyData({
   handleSaveCurrentPageLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
-  const { currentUser, theme } = useApplicationStore();
+  const { theme } = useApplicationStore();
   const history = useHistory();
   const { fqn: decodedPersonaFQN } = useFqn();
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
@@ -83,9 +70,6 @@ function CustomizeMyData({
   );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
-  const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
-  const [followedDataCount, setFollowedDataCount] = useState(0);
-  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
@@ -140,28 +124,6 @@ function CustomizeMyData({
     setIsWidgetModalOpen(false);
   }, []);
 
-  const fetchUserFollowedData = async () => {
-    if (!currentUser?.id) {
-      return;
-    }
-    setIsLoadingOwnedData(true);
-    try {
-      const res = await searchQuery({
-        pageSize: KNOWLEDGE_LIST_LENGTH,
-        searchIndex: SearchIndex.ALL,
-        query: '*',
-        filters: `followers:${currentUser.id}`,
-      });
-
-      setFollowedDataCount(res?.hits?.total.value ?? 0);
-      setFollowedData(res.hits.hits.map((hit) => hit._source));
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoadingOwnedData(false);
-    }
-  };
-
   const addedWidgetsList = useMemo(
     () =>
       layout
@@ -175,9 +137,6 @@ function CustomizeMyData({
       layout.map((widget) => (
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
-            followedData,
-            followedDataCount,
-            isLoadingOwnedData: isLoadingOwnedData,
             widgetConfig: widget,
             handleOpenAddWidgetModal: handleOpenAddWidgetModal,
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
@@ -188,9 +147,6 @@ function CustomizeMyData({
       )),
     [
       layout,
-      followedData,
-      followedDataCount,
-      isLoadingOwnedData,
       handleOpenAddWidgetModal,
       handlePlaceholderWidgetKey,
       handleRemoveWidget,
@@ -210,10 +166,7 @@ function CustomizeMyData({
 
   const handleCancel = useCallback(() => {
     history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.PREFERENCES,
-        GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
-      )
+      getPersonaDetailsPath(personaDetails?.fullyQualifiedName as string)
     );
   }, []);
 
@@ -235,10 +188,6 @@ function CustomizeMyData({
     });
     handleSaveCurrentPageLayout(true);
     setIsResetModalOpen(false);
-  }, []);
-
-  useEffect(() => {
-    fetchUserFollowedData();
   }, []);
 
   const handleSave = async () => {
@@ -315,15 +264,16 @@ function CustomizeMyData({
           entity: t('label.landing-page'),
         })}>
         <ReactGridLayout
+          verticalCompact
           className="grid-container"
           cols={4}
           draggableHandle=".drag-widget-icon"
           isResizable={false}
           margin={[
-            customizeMyDataPageClassBase.landingPageWidgetMargin,
-            customizeMyDataPageClassBase.landingPageWidgetMargin,
+            customizeDetailPageClassBase.detailPageWidgetMargin,
+            customizeDetailPageClassBase.detailPageWidgetMargin,
           ]}
-          rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
+          rowHeight={customizeDetailPageClassBase.detailPageRowHeight}
           onLayoutChange={handleLayoutUpdate}>
           {widgets}
         </ReactGridLayout>
@@ -358,4 +308,4 @@ function CustomizeMyData({
   );
 }
 
-export default CustomizeMyData;
+export default CustomizeGlossaryTermDetailPage;

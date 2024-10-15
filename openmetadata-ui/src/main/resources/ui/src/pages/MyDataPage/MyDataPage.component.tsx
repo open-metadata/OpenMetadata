@@ -42,7 +42,7 @@ import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
-import customizePageClassBase from '../../utils/CustomizePageClassBase';
+import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';

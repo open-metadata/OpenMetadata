@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import CustomizeGlossaryTermDetailPage from '../../components/MyData/CustomizableComponents/CustomiseGlossaryTermDetailPage/CustomiseGlossaryTermDetailPage';
 import CustomizeMyData from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import {
   GlobalSettingOptions,
@@ -39,7 +40,7 @@ import {
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/CommonUtils';
-import customizePageClassBase from '../../utils/CustomizePageClassBase';
+import { getDefaultLayout } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -93,7 +94,7 @@ export const CustomizablePage = () => {
             fullyQualifiedName: pageLayoutFQN,
             entityType: EntityType.PAGE,
             data: {
-              page: { layout: customizePageClassBase.defaultLayout },
+              page: { layout: getDefaultLayout(pageFqn) },
             },
           });
         } else {
@@ -189,17 +190,29 @@ export const CustomizablePage = () => {
     );
   }
 
-  if (pageFqn === PageType.LandingPage) {
-    return (
-      <CustomizeMyData
-        handlePageDataChange={handlePageDataChange}
-        handleSaveCurrentPageLayout={handleSaveCurrentPageLayout}
-        initialPageData={page}
-        personaDetails={personaDetails}
-        onSaveLayout={handleSave}
-      />
-    );
-  }
+  switch (pageFqn) {
+    case PageType.LandingPage:
+      return (
+        <CustomizeMyData
+          handlePageDataChange={handlePageDataChange}
+          handleSaveCurrentPageLayout={handleSaveCurrentPageLayout}
+          initialPageData={page}
+          personaDetails={personaDetails}
+          onSaveLayout={handleSave}
+        />
+      );
 
-  return null;
+    case PageType.GlossaryTermLandingPage:
+      return (
+        <CustomizeGlossaryTermDetailPage
+          handlePageDataChange={handlePageDataChange}
+          handleSaveCurrentPageLayout={handleSaveCurrentPageLayout}
+          initialPageData={page}
+          personaDetails={personaDetails}
+          onSaveLayout={handleSave}
+        />
+      );
+    default:
+      return <ErrorPlaceHolder />;
+  }
 };

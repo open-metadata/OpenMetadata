@@ -14,11 +14,10 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { capitalize, isUndefined, map } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as CustomDashboardLogoIcon } from '../../../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -259,21 +258,24 @@ export const PersonaDetailsPage = () => {
                 key: 'customize-ui',
                 children: (
                   <Row gutter={[16, 16]}>
-                    <Col span={8}>
-                      <SettingItemCard
-                        data={{
-                          label: t('label.customize-entity', {
-                            entity: t('label.landing-page'),
-                          }),
-                          description: t(
-                            'message.page-sub-header-for-customize-landing-page'
-                          ),
-                          key: PageType.LandingPage,
-                          icon: CustomDashboardLogoIcon,
-                        }}
-                        onClick={handleCustomizeItemClick}
-                      />
-                    </Col>
+                    {map(PageType, (value) => (
+                      <Col key={value} span={8}>
+                        <SettingItemCard
+                          data={{
+                            label: capitalize(value.replace('LandingPage', '')),
+                            key: value,
+                            description: value,
+                            category: value,
+                            icon: IconPersona,
+                            isBeta: false,
+                            isProtected: false,
+                            items: [],
+                          }}
+                          key={value}
+                          onClick={handleCustomizeItemClick}
+                        />
+                      </Col>
+                    ))}
                   </Row>
                 ),
               },
