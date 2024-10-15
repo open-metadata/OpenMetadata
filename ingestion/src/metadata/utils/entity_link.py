@@ -58,18 +58,18 @@ def get_decoded_column(entity_link: str) -> str:
     """From an URL encoded entity link get the decoded column name
 
     Examples:
-        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::first_name>")
+        >>> get_decoded_column("<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.column_w_space:open-metadata:columns:open-metadata:first_name>")
         'first name'
-        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::随机的>")
+        >>> get_decoded_column("<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.column_w_space:open-metadata:columns:open-metadata:随机的>")
         '随机的'
-        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.table_w_space>")
+        >>> get_decoded_column("<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.table_w_space>")
         ''
 
     Args:
         entity_link: entity link
     """
 
-    return unquote_plus(entity_link.split("::")[-1].replace(">", ""))
+    return unquote_plus(entity_link.split(":open-metadata:")[-1].replace(">", ""))
 
 
 def get_table_fqn(entity_link: str) -> str:
@@ -113,7 +113,7 @@ def get_entity_link(entity_type: Any, fqn: str, **kwargs) -> str:
 
     func = get_entity_link_registry.registry.get(entity_type.__name__)
     if not func:
-        return f"<#E::{ENTITY_REFERENCE_TYPE_MAP[entity_type.__name__]}::{fqn}>"
+        return f"<#E:open-metadata:{ENTITY_REFERENCE_TYPE_MAP[entity_type.__name__]}:open-metadata:{fqn}>"
 
     return func(fqn, **kwargs)
 
@@ -123,7 +123,7 @@ def _(fqn: str, column_name: Optional[str] = None) -> str:
     """From table fqn and column name get the entity_link"""
 
     if column_name:
-        entity_link = f"<#E::{ENTITY_REFERENCE_TYPE_MAP[Table.__name__]}::{fqn}::columns::{column_name}>"
+        entity_link = f"<#E:open-metadata:{ENTITY_REFERENCE_TYPE_MAP[Table.__name__]}:open-metadata:{fqn}:open-metadata:columns:open-metadata:{column_name}>"
     else:
-        entity_link = f"<#E::{ENTITY_REFERENCE_TYPE_MAP[Table.__name__]}::{fqn}>"
+        entity_link = f"<#E:open-metadata:{ENTITY_REFERENCE_TYPE_MAP[Table.__name__]}:open-metadata:{fqn}>"
     return entity_link

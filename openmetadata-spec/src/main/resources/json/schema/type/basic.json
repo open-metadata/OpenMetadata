@@ -111,22 +111,22 @@
       "format": "timezone"
     },
     "entityLink": {
-      "description": "Link to an entity or field within an entity using this format `<#E::{entities}::{entityType}::{field}::{arrayFieldName}::{arrayFieldValue}`.",
+      "description": "Link to an entity or field within an entity using this format `<#E:open-metadata:{entities}:open-metadata:{entityType}:open-metadata:{field}:open-metadata:{arrayFieldName}:open-metadata:{arrayFieldValue}`.",
       "type": "string",
-      "pattern": "(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$"
+      "pattern": "(?U)^<#E:open-metadata:\\w+:open-metadata:[\\w'\\- .&/:+\"\\\\()$#%]+>$"
     },
     "entityName": {
       "description": "Name that identifies an entity.",
       "type": "string",
       "minLength": 1,
       "maxLength": 256,
-      "pattern": "^((?!::).)*$"
+      "pattern": "^((?!:open-metadata:).)*$"
     },
     "testCaseEntityName": {
       "description": "Name that identifies a test definition and test case.",
       "type": "string",
       "minLength": 1,
-      "pattern": "^((?!::).)*$"
+      "pattern": "^((?!:open-metadata:).)*$"
     },
     "fullyQualifiedEntityName": {
       "description": "A unique name that identifies an entity. Example for table 'DatabaseService.Database.Schema.Table'.",

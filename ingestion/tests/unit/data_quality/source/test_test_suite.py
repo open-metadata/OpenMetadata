@@ -87,14 +87,14 @@ def test_source_config(parameters, expected, monkeypatch):
             id=UUID(int=0),
             testDefinition=MOCK_ENTITY_REFERENCE,
             testSuite=MOCK_ENTITY_REFERENCE,
-            entityLink="<#E::some::link>",
+            entityLink="<#E:open-metadata:some:open-metadata:link>",
         ),
         TestCase(
             name="test_case2",
             id=UUID(int=0),
             testDefinition=MOCK_ENTITY_REFERENCE,
             testSuite=MOCK_ENTITY_REFERENCE,
-            entityLink="<#E::some::link>",
+            entityLink="<#E:open-metadata:some:open-metadata:link>",
         ),
     ]
     mock_metadata.get_by_id.return_value = TestSuite(

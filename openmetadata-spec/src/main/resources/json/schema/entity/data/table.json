@@ -219,7 +219,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 256,
-      "pattern": "^((?!::).)*$"
+      "pattern": "^((?!:open-metadata:).)*$"
     },
     "partitionIntervalTypes": {
       "javaType": "org.openmetadata.schema.type.PartitionIntervalTypes",
