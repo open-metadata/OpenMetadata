@@ -31,11 +31,28 @@ CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}},
      allow_headers="*", 
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
-# Route to save connection configuration
-@app.route('/save-config', methods=['POST'])
-def save_config():
-    data = request.json
-    ...
+@app.route('/serviceConnection', methods=['POST'])
+def save_service_conn():
+    """Route to save the service connection configuration"""
+    # TODO: Convert to ServiceConnection object (or some more appropriate)
+    CACHE["serviceConnection"] = request.json
+
+    print(CACHE["serviceConnection"])
+    return jsonify({"message": "Service connection saved successfully!"}), 201
+
+@app.route('/sourceConfig', methods=['POST'])
+def save_source_config():
+    """Route to save the service connection configuration"""
+    # TODO: Convert to ServiceConnection object (or some more appropriate)
+    CACHE["sourceConfig"] = request.json
+
+    print(CACHE["sourceConfig"])
+    return jsonify({"message": "Source configuration saved successfully!"}), 201
+
+@app.route('/serviceConnection', methods=['POST'])
+def save_service_connection():
+    payload = request.json
+
     return jsonify({"message": "Configuration saved successfully!"}), 201
 
 @app.route('/')

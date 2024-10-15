@@ -141,7 +141,7 @@ const AddService = ({
     };
     setSaveServiceState("waiting");
 
-    axios.post('/save-config', configData, { withCredentials: true })
+    axios.post('/serviceConnection', configData, { withCredentials: true })
       .then(response => {
         console.log('Configuration saved:', response.data);
         history.push("/ingestion");

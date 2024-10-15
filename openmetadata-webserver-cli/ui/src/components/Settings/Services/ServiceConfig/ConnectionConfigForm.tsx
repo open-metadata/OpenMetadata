@@ -60,7 +60,7 @@ interface Props {
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
-  okText = "Save",
+  okText = "Add Ingestion",
   cancelText = "Cancel",
   serviceType,
   serviceCategory,

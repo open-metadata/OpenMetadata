@@ -45,6 +45,7 @@ import {
 import ScheduleInterval from "./Steps/ScheduleInterval";
 import DownloadYAML from "../../../../pages/DownloadPage";
 import { useHistory } from "react-router-dom";
+import axios from "axios";
 
 const AddIngestion = ({
   activeIngestionStep,
@@ -137,8 +138,16 @@ const AddIngestion = ({
     setWorkflowData(data);
 
   const handleNext = (step: number) => {
-    if (step > 2) {
-      history.push("/download");
+    if (step > 1) {
+
+      axios.post('/serviceConnection', workflowData)
+        .then(response => {
+          console.log('Source configuraiton saved:', response.data);
+          history.push("/download");
+        })
+        .catch(error => {
+          console.error('Error saving configuration:', error);
+        });
     } else {
       setActiveIngestionStep(step);
     }
@@ -287,8 +296,9 @@ const AddIngestion = ({
 
       <div className="p-t-lg">
         {activeIngestionStep === 1 && (
+          // TODO: Translation
           <IngestionWorkflowForm
-            okText={t("label.next")}
+            okText="Get yaml"
             operationType={status}
             pipeLineType={pipelineType}
             serviceCategory={serviceCategory}

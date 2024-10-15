@@ -111,7 +111,8 @@ function AddIngestionButton({
           data-testid="add-new-ingestion-button"
           type="primary"
           onClick={handleAddIngestionButtonClick}>
-          {getIngestionButtonText(hasMetadata, pipelineType)}
+          {/* {getIngestionButtonText(hasMetadata, pipelineType)} */}
+          Get yaml
           {hasMetadata && <DropdownIcon height={14} width={14} />}
         </Button>
       </Dropdown>
