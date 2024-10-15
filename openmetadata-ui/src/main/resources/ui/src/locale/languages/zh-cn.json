@@ -1418,6 +1418,7 @@
     "create-new-glossary-guide": "术语库是用于定义组织中的概念和术语的受控词汇集合。术语库可以特定于某个域(例如, 业务术语库, 技术术语库)。在术语库中, 可以定义标准术语、概念及其同义词和相关术语。还可以控制向术语库中添加术语的人员和方式。",
     "create-or-update-email-account-for-bot": "更改帐号电子邮箱将更新或创建一个新的机器人用户",
     "created-this-task-lowercase": "创建了此任务",
+    "cron-less-than-hour-message": "Cron schedule too frequent. Please choose at least 1-hour intervals.",
     "custom-classification-name-dbt-tags": "dbt 标签的自定义 OpenMetadata 分类名称",
     "custom-favicon-url-path-message": "网站 Favicon 指向的 URL 地址",
     "custom-logo-configuration-message": "配置系统的 Logo",

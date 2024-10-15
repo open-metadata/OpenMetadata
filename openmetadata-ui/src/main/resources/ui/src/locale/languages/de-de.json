@@ -1418,6 +1418,7 @@
     "create-new-glossary-guide": "Ein Glossar ist ein kontrolliertes Vokabular, das verwendet wird, um die Konzepte und Terminologie in einer Organisation zu definieren. Glossare können spezifisch für einen bestimmten Bereich sein (z. B. Business Glossar, Technisches Glossar). Im Glossar können die Standardbegriffe und Konzepte definiert werden, zusammen mit Synonymen und verwandten Begriffen. Es kann festgelegt werden, wie und von wem Begriffe im Glossar hinzugefügt werden können.",
     "create-or-update-email-account-for-bot": "Die Änderung der Kontaktemail aktualisiert oder erstellt einen neuen Bot-Benutzer.",
     "created-this-task-lowercase": "hat diese Aufgabe erstellt",
+    "cron-less-than-hour-message": "Cron schedule too frequent. Please choose at least 1-hour intervals.",
     "custom-classification-name-dbt-tags": "Benutzerdefinierter OpenMetadata-Klassifikationsname für dbt-Tags ",
     "custom-favicon-url-path-message": "URL path for the favicon icon.",
     "custom-logo-configuration-message": "Konfigurieren Sie das Anwendungslogo und das Monogramm.",

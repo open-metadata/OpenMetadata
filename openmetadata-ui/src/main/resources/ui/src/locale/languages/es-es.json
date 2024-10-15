@@ -1418,6 +1418,7 @@
     "create-new-glossary-guide": "Un glosario es un vocabulario controlado utilizado para definir los conceptos y terminología en una organización. Los glosarios pueden ser específicos para un determinado dominio (por ejemplo, glosario de negocios o técnico). En el glosario, se pueden definir los términos y conceptos estándar junto con los sinónimos y términos relacionados. Se puede establecer control sobre cómo y quién puede agregar los términos en el glosario.",
     "create-or-update-email-account-for-bot": "Cambiar el correo electrónico de la cuenta actualizará o creará un nuevo bot.",
     "created-this-task-lowercase": "creó esta tarea",
+    "cron-less-than-hour-message": "Cron schedule too frequent. Please choose at least 1-hour intervals.",
     "custom-classification-name-dbt-tags": "Nombre personalizado de clasificación de OpenMetadata para tags de dbt",
     "custom-favicon-url-path-message": "Ruta URL para el ícono de favicon.",
     "custom-logo-configuration-message": "Configure el logotipo de la aplicación y el monograma.",

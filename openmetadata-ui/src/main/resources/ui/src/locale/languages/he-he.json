@@ -1418,6 +1418,7 @@
     "create-new-glossary-guide": "מדוע לא ניתן לתת למשתמש האחרון את השאלה שלו?",
     "create-or-update-email-account-for-bot": "שינוי כתובת האימייל של החשבון יעדכן או ייצור משתמש בוט חדש.",
     "created-this-task-lowercase": "יצר משימה זו",
+    "cron-less-than-hour-message": "Cron schedule too frequent. Please choose at least 1-hour intervals.",
     "custom-classification-name-dbt-tags": "שם קטגוריה מותאמת אישית של OpenMetadata עבור תגי dbt ",
     "custom-favicon-url-path-message": "נתיב URL עבור סמל האתר.",
     "custom-logo-configuration-message": "הגדר את לוגו היישום, המונוגרם וסמל האתר.",

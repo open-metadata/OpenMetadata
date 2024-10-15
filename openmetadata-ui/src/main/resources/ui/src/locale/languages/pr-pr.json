@@ -1418,6 +1418,7 @@
     "create-new-glossary-guide": "یک فرهنگ لغت واژگان کنترل‌شده‌ای است که برای تعریف مفاهیم و اصطلاحات در یک سازمان استفاده می‌شود. فرهنگ لغت‌ها می‌توانند خاص یک دامنه خاص باشند (به عنوان مثال، فرهنگ لغت تجاری، فرهنگ لغت فنی). در فرهنگ لغت، اصطلاحات و مفاهیم استاندارد می‌توانند همراه با مترادف‌ها و اصطلاحات مرتبط تعریف شوند. کنترل می‌تواند بر نحوه و افرادی که می‌توانند اصطلاحات را به فرهنگ لغت اضافه کنند، برقرار شود.",
     "create-or-update-email-account-for-bot": "تغییر ایمیل حساب باعث به‌روزرسانی یا ایجاد یک کاربر ربات جدید خواهد شد.",
     "created-this-task-lowercase": "این وظیفه را ایجاد کرد",
+    "cron-less-than-hour-message": "Cron schedule too frequent. Please choose at least 1-hour intervals.",
     "custom-classification-name-dbt-tags": "نام دسته‌بندی سفارشی OpenMetadata برای برچسب‌های dbt",
     "custom-favicon-url-path-message": "مسیر URL برای آیکون favicon.",
     "custom-logo-configuration-message": "OpenMetadata را با لوگو، مونگرام و favicon شرکت خود سفارشی کنید.",

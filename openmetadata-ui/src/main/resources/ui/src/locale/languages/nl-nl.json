@@ -1418,6 +1418,7 @@
     "create-new-glossary-guide": "Een woordenboek is een gecontroleerde woordenlijst die wordt gebruikt om concepten en terminologie van een organisatie te definiëren. Woordenboeken kunnen domeinspecifiek zijn (bijv. Bedrijfswoordenboek, Technisch woordenboek). In het woordenboek kunnen standaardtermen en concepten worden gedefinieerd, samen met synoniemen en gerelateerde termen. Hoe en wie de termen in het woordenboek kan toevoegen, kan worden beheerd.",
     "create-or-update-email-account-for-bot": "Het wijzigen van het account-e-mailadres zal een nieuwe botgebruiker updaten of maken.",
     "created-this-task-lowercase": "heeft deze taak aangemaakt",
+    "cron-less-than-hour-message": "Cron schedule too frequent. Please choose at least 1-hour intervals.",
     "custom-classification-name-dbt-tags": "Aangepaste OpenMetadata-classificatienaam voor dbt-tags",
     "custom-favicon-url-path-message": "URL-pad voor het favicon-pictogram.",
     "custom-logo-configuration-message": "Configureer het toepassingslogo, monogram en favicon-pictogram.",

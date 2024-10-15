@@ -1418,6 +1418,7 @@
     "create-new-glossary-guide": "Глоссарий — это контролируемый словарь, используемый для определения понятий и терминологии в организации. Глоссарии могут относиться к определенному домену (например, деловой глоссарий, технический глоссарий). В глоссарии стандартные термины и понятия могут быть определены вместе с синонимами и родственными терминами. Можно установить контроль над тем, как и кто может добавлять термины в глоссарий.",
     "create-or-update-email-account-for-bot": "Изменение адреса электронной почты учетной записи приведет к обновлению или созданию нового пользователя-бота.",
     "created-this-task-lowercase": "Задача создана",
+    "cron-less-than-hour-message": "Cron schedule too frequent. Please choose at least 1-hour intervals.",
     "custom-classification-name-dbt-tags": "Пользовательское имя классификации OpenMetadata для тегов dbt",
     "custom-favicon-url-path-message": "URL path for the favicon icon.",
     "custom-logo-configuration-message": "Настройте логотип приложения и монограмму.",
