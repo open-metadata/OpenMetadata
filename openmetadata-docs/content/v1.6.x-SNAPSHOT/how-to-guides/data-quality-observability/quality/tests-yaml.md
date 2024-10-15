@@ -485,6 +485,7 @@ Consistency
 * `table2`: The table against which the comparison will be done. Must be the fully qualified name as defined in OpenMetadata
 * `threshold`: The threshold of different rows above which the test should fail -- default to 0
 * `where`: Any `where` clause to pass 
+* `caseSensitiveColumns`: Whether the column comparison should be case sensitive or not. Default to `false`.
 
 **Behavior**
 
@@ -511,6 +512,8 @@ parameterValues:
     value: 10
   - name: where
     value: id != 999
+  - name: caseSensitiveColumns
+    value: false
 ```
 
 **JSON Config**
@@ -541,6 +544,10 @@ parameterValues:
     {
       "name": "where",
       "value": "id != 999"
+    },
+    {
+      "name": "caseSensitiveColumns",
+      "value": false
     }
   ]
 }
