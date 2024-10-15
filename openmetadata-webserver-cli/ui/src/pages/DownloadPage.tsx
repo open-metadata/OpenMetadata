@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Col, Progress, Row, Space, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import BrandImage from '../components/common/BrandImage/BrandImage';
 import PageLayoutV1 from '../components/PageLayoutV1/PageLayoutV1';
-
-const { Text, Paragraph, Link } = Typography;
+import progress from 'antd/lib/progress';
+import { t } from 'i18next';
+import { LazyLog } from 'react-lazylog';
+import CopyToClipboardButton from '../components/common/CopyToClipboardButton';
+import Paragraph from 'antd/lib/skeleton/Paragraph';
 
 const DownloadYAML = () => {
     const [yaml, setYaml] = useState<string>('');
@@ -53,52 +55,84 @@ const DownloadYAML = () => {
     }, []);
 
     return (
-        <PageLayoutV1 pageTitle="download">
-            <div style={styles.container}>
-                <Row className="h-full">
+        <PageLayoutV1 pageTitle={t('label.log-viewer')}>
+            <Space align="start" className="w-full m-md m-t-xs" direction="vertical">
+                <Space>
+                    <Typography.Title level={5}>
+                        View or Download Yaml
+                    </Typography.Title>
+                </Space>
+            </Space>
 
-                    <Col className="bg-white" span={24}>
-                        <div
-                            className="mt-10 text-left flex flex-col items-start">
-                            <BrandImage height="auto" width={200} />
-                            <Button
-                                icon={<DownloadOutlined />}
-                                type="primary"
-                                onClick={handleDownload}
-                                className="mt-4 mb-4"
-                            >
-                                Download YAML
-                            </Button>
+            <Row className="border-top">
+                <Col className="p-md border-right" span={16}>
+                    <Row className="relative" gutter={[16, 16]}>
+                        <Col span={24}>
+                            <Row justify="end">
+                                <Col>
+                                    <CopyToClipboardButton copyText={yaml} />
+                                </Col>
+                                <Col>
+
+                                    <Button
+                                        className="h-8 m-l-md relative flex-center"
+                                        data-testid="download"
+                                        icon={
+                                            <DownloadOutlined
+                                                data-testid="download-icon"
+                                                width="16"
+                                            />
+                                        }
+                                        type="text"
+                                        onClick={handleDownload}
+                                    />
+                                </Col>
+                            </Row>
+                        </Col>
+                        <Col
+                            className="h-min-80 lazy-log-container"
+                            data-testid="lazy-log"
+                            span={24}>
+                            <LazyLog
+                                caseInsensitive
+                                enableSearch
+                                selectableLines
+                                extraLines={1}
+                                text={yaml || 'No content to display'}
+                            />
+                        </Col>
+                    </Row>
+                </Col>
+                <Col span={8}>
+                    <Space
+                        className="p-md w-full"
+                        data-testid="summary-card"
+                        direction="vertical">
+                        <Typography.Title level={5}>
+                            Next steps
+                        </Typography.Title>
+
+                        <div>
+                            <Typography.Text type="secondary">
+                                You can now run the ingestion via:
+                            </Typography.Text>
+                            <Space direction="vertical" className="mt-4">
+                                <Typography.Text keyboard>
+                                    metadata ingest/profile/test/usage -c file.yaml
+                                </Typography.Text>
+                            </Space>
+                            <Space direction="vertical" className="mt-4">
+                                <Typography.Text type="secondary">
+                                    If you want to schedule the ingestion, check some examples in the
+                                    docs <a href="https://docs.open-metadata.org/latest/deployment/ingestion">here</a>
+                                </Typography.Text>
+                            </Space>
                         </div>
-                    </Col>
-                    <Col span={24}>
-                        <div style={styles.yamlBox} className="mx-10">
-                            <Paragraph code style={styles.yamlText}>
-                                {yaml}
-                            </Paragraph>
-                        </div>
-                    </Col>
-                    <Col span={24}>
-                        <div style={styles.commandBox} className="mx-10">
-                            <Paragraph>
-                                <Text>You can now run the ingestion via:</Text>
-                            </Paragraph>
-                            <Paragraph code>metadata ingest/profile/test/usage -c file.yaml</Paragraph>
-                        </div>
-                    </Col>
-                    <Col span={24}>
-                        <div style={styles.footer} className="mx-10 text-center">
-                            <Paragraph>
-                                If you want to schedule the ingestion, check some examples in the
-                                docs <a href="https://docs.open-metadata.org/latest/deployment/ingestion">here</a>
-                            </Paragraph>
-                        </div>
-                    </Col>
-                </Row>
-            </div>
-        </PageLayoutV1 >
+                    </Space>
+                </Col>
+            </Row>
+        </PageLayoutV1>
     );
-
 };
 
 const styles = {
