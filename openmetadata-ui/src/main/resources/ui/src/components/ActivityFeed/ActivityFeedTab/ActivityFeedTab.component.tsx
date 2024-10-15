@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { noop } from 'lodash';
 import {
   default as React,
+  ReactNode,
   RefObject,
   useCallback,
   useEffect,
@@ -145,20 +146,13 @@ export const ActivityFeedTab = ({
     [activeTab]
   );
 
-  const getCountWithLoader = useCallback(
-    (count: number) => {
+  const getElementWithCountLoader = useCallback(
+    (element: ReactNode) => {
       if (countData.loading) {
-        return (
-          <Skeleton.Button
-            active
-            data-testid="count-loader"
-            shape="circle"
-            size="small"
-          />
-        );
+        return <Skeleton.Button active className="count-loader" size="small" />;
       }
 
-      return count;
+      return element;
     },
     [countData.loading]
   );
@@ -436,35 +430,37 @@ export const ActivityFeedTab = ({
       <div className="center-container" id="center-container">
         {isTaskActiveTab && (
           <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
-            <Typography.Text
-              className={classNames(
-                'cursor-pointer p-l-xss d-flex items-center',
-                {
-                  'font-medium': taskFilter === ThreadTaskStatus.Open,
-                }
-              )}
-              data-testid="open-task"
-              onClick={() => {
-                handleUpdateTaskFilter(ThreadTaskStatus.Open);
-                setActiveThread();
-              }}>
-              <TaskIcon className="m-r-xss" width={14} />{' '}
-              {getCountWithLoader(countData.data.openTaskCount)}{' '}
-              {t('label.open')}
-            </Typography.Text>
-            <Typography.Text
-              className={classNames('cursor-pointer d-flex items-center', {
-                'font-medium': taskFilter === ThreadTaskStatus.Closed,
-              })}
-              data-testid="closed-task"
-              onClick={() => {
-                handleUpdateTaskFilter(ThreadTaskStatus.Closed);
-                setActiveThread();
-              }}>
-              <CheckIcon className="m-r-xss" width={14} />{' '}
-              {getCountWithLoader(countData.data.closedTaskCount)}{' '}
-              {t('label.closed')}
-            </Typography.Text>
+            {getElementWithCountLoader(
+              <Typography.Text
+                className={classNames(
+                  'cursor-pointer p-l-xss d-flex items-center',
+                  {
+                    'font-medium': taskFilter === ThreadTaskStatus.Open,
+                  }
+                )}
+                data-testid="open-task"
+                onClick={() => {
+                  handleUpdateTaskFilter(ThreadTaskStatus.Open);
+                  setActiveThread();
+                }}>
+                <TaskIcon className="m-r-xss" width={14} />{' '}
+                {countData.data.openTaskCount} {t('label.open')}
+              </Typography.Text>
+            )}
+            {getElementWithCountLoader(
+              <Typography.Text
+                className={classNames('cursor-pointer d-flex items-center', {
+                  'font-medium': taskFilter === ThreadTaskStatus.Closed,
+                })}
+                data-testid="closed-task"
+                onClick={() => {
+                  handleUpdateTaskFilter(ThreadTaskStatus.Closed);
+                  setActiveThread();
+                }}>
+                <CheckIcon className="m-r-xss" width={14} />{' '}
+                {countData.data.closedTaskCount} {t('label.closed')}
+              </Typography.Text>
+            )}
           </div>
         )}
         <ActivityFeedListV1
