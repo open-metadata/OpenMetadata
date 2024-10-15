@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Menu, Space, Typography } from 'antd';
+import { Menu, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { noop } from 'lodash';
@@ -108,7 +108,13 @@ export const ActivityFeedTab = ({
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );
-  const [count, setCount] = useState<FeedCounts>(FEED_COUNT_INITIAL_DATA);
+  const [countData, setCountData] = useState<{
+    loading: boolean;
+    data: FeedCounts;
+  }>({
+    loading: false,
+    data: FEED_COUNT_INITIAL_DATA,
+  });
 
   const {
     postFeed,
@@ -137,6 +143,24 @@ export const ActivityFeedTab = ({
   const isTaskActiveTab = useMemo(
     () => activeTab === ActivityFeedTabs.TASKS,
     [activeTab]
+  );
+
+  const getCountWithLoader = useCallback(
+    (count: number) => {
+      if (countData.loading) {
+        return (
+          <Skeleton.Button
+            active
+            data-testid="count-loader"
+            shape="circle"
+            size="small"
+          />
+        );
+      }
+
+      return count;
+    },
+    [countData.loading]
   );
 
   const handleTabChange = (subTab: string) => {
@@ -170,28 +194,33 @@ export const ActivityFeedTab = ({
   }, [activeTab]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
-    setCount(data);
+    setCountData((prev) => ({ ...prev, data }));
     onUpdateFeedCount?.(data);
   }, []);
 
   const fetchFeedsCount = async () => {
+    setCountData((prev) => ({ ...prev, loading: true }));
     if (isUserEntity) {
       try {
         const res = await getFeedCount(getEntityUserLink(fqn));
-        setCount({
-          conversationCount: res[0].conversationCount ?? 0,
-          totalTasksCount: res[0].totalTaskCount,
-          openTaskCount: res[0].openTaskCount ?? 0,
-          closedTaskCount: res[0].closedTaskCount ?? 0,
-          totalCount: res[0].conversationCount ?? 0 + res[0].totalTaskCount,
-          mentionCount: res[0].mentionCount ?? 0,
-        });
+        setCountData((prev) => ({
+          ...prev,
+          data: {
+            conversationCount: res[0].conversationCount ?? 0,
+            totalTasksCount: res[0].totalTaskCount,
+            openTaskCount: res[0].openTaskCount ?? 0,
+            closedTaskCount: res[0].closedTaskCount ?? 0,
+            totalCount: res[0].conversationCount ?? 0 + res[0].totalTaskCount,
+            mentionCount: res[0].mentionCount ?? 0,
+          },
+        }));
       } catch (err) {
         showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
       }
     } else {
-      getFeedCounts(entityType, fqn, handleFeedCount);
+      await getFeedCounts(entityType, fqn, handleFeedCount);
     }
+    setCountData((prev) => ({ ...prev, loading: false }));
   };
 
   const getThreadType = useCallback((activeTab) => {
@@ -239,7 +268,7 @@ export const ActivityFeedTab = ({
 
   const refetchFeedData = useCallback(() => {
     if (
-      entityFeedTotalCount !== count.totalCount &&
+      entityFeedTotalCount !== countData.data.totalCount &&
       isActivityFeedTab &&
       refetchFeed
     ) {
@@ -259,7 +288,7 @@ export const ActivityFeedTab = ({
     threadType,
     entityType,
     refetchFeed,
-    count.totalCount,
+    countData.data.totalCount,
     entityFeedTotalCount,
     isActivityFeedTab,
   ]);
@@ -338,7 +367,7 @@ export const ActivityFeedTab = ({
                 <span>
                   {!isUserEntity &&
                     getCountBadge(
-                      count.conversationCount,
+                      countData.data.conversationCount,
                       '',
                       activeTab === ActivityFeedTabs.ALL
                     )}
@@ -362,7 +391,7 @@ export const ActivityFeedTab = ({
 
                       <span>
                         {getCountBadge(
-                          count.mentionCount,
+                          countData.data.mentionCount,
                           '',
                           activeTab === ActivityFeedTabs.MENTIONS
                         )}
@@ -384,7 +413,11 @@ export const ActivityFeedTab = ({
                   <span>{t('label.task-plural')}</span>
                 </Space>
                 <span>
-                  {getCountBadge(count.openTaskCount, '', isTaskActiveTab)}
+                  {getCountBadge(
+                    countData.data.openTaskCount,
+                    '',
+                    isTaskActiveTab
+                  )}
                 </span>
               </div>
             ),
@@ -412,7 +445,8 @@ export const ActivityFeedTab = ({
                 handleUpdateTaskFilter(ThreadTaskStatus.Open);
                 setActiveThread();
               }}>
-              <TaskIcon className="m-r-xss" width={14} /> {count.openTaskCount}{' '}
+              <TaskIcon className="m-r-xss" width={14} />{' '}
+              {getCountWithLoader(countData.data.openTaskCount)}{' '}
               {t('label.open')}
             </Typography.Text>
             <Typography.Text
@@ -425,7 +459,8 @@ export const ActivityFeedTab = ({
                 setActiveThread();
               }}>
               <CheckIcon className="m-r-xss" width={14} />{' '}
-              {count.closedTaskCount} {t('label.closed')}
+              {getCountWithLoader(countData.data.closedTaskCount)}{' '}
+              {t('label.closed')}
             </Typography.Text>
           </div>
         )}
