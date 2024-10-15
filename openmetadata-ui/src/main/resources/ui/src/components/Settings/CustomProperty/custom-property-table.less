@@ -10,25 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../../../enums/entity.enum';
-import { EntityReference } from '../../../generated/entity/type';
+@import (reference) url('../../../styles/variables.less');
 
-export type ExtensionDataTypes =
-  | string
-  | string[]
-  | EntityReference
-  | EntityReference[]
-  | { start: string; end: string };
-
-export interface ExtensionDataProps {
-  [key: string]: ExtensionDataTypes;
+.custom-property-type-chip {
+  background: @grey-1;
+  border: 1px solid @text-color;
+  padding: 4px 8px;
+  border-radius: 15px;
+  width: fit-content;
 }
-
-export type ModalWithCustomPropertyEditorProps = {
-  entityType: EntityType;
-  header: string;
-  value?: string;
-  onSave: (extension?: string) => Promise<void>;
-  onCancel?: () => void;
-  visible: boolean;
-};
