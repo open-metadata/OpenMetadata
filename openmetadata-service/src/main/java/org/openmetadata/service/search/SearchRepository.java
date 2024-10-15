@@ -544,7 +544,7 @@ public class SearchRepository {
       searchClient.deleteByScript(indexMapping.getIndexName(clusterAlias), scriptTxt, params);
     } catch (Exception ie) {
       LOG.error(
-          "Issue in Creating new search document for entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          "Issue in deleting  search document for entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
           entityType,
           ie.getMessage(),
           ie.getCause(),
@@ -653,6 +653,16 @@ public class SearchRepository {
           new ImmutablePair<>(
               REMOVE_TAGS_CHILDREN_SCRIPT,
               Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+      case Entity.DASHBOARD -> {
+        String scriptTxt =
+            String.format(
+                "if (ctx._source.dashboards.size() == 1) { ctx._source.put('deleted', '%s') }",
+                true);
+        searchClient.softDeleteOrRestoreChildren(
+            indexMapping.getChildAliases(clusterAlias),
+            scriptTxt,
+            List.of(new ImmutablePair<>("dashboards.id", docId)));
+      }
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
@@ -701,6 +711,16 @@ public class SearchRepository {
           indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
           List.of(new ImmutablePair<>("service.id", docId)));
+      case Entity.DASHBOARD -> {
+        scriptTxt =
+            String.format(
+                "if (ctx._source.dashboards.size() == 1) { ctx._source.put('deleted', '%s') }",
+                delete);
+        searchClient.softDeleteOrRestoreChildren(
+            indexMapping.getChildAliases(clusterAlias),
+            scriptTxt,
+            List.of(new ImmutablePair<>("dashboards.id", docId)));
+      }
       default -> searchClient.softDeleteOrRestoreChildren(
           indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
