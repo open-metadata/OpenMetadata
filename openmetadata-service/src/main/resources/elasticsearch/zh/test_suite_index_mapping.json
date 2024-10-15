@@ -337,7 +337,7 @@
             }
           },
           "displayName": {
-            "type": "keyword",
+            "type": "text",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -407,10 +407,6 @@
             "type": "text"
           }
         }
-      },
-      "serviceType": {
-        "type": "keyword",
-        "normalizer": "lowercase_normalizer"
       },
       "totalVotes": {
         "type": "long",

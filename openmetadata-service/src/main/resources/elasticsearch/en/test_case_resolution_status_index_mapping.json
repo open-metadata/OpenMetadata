@@ -458,7 +458,7 @@
             }
           },
           "displayName": {
-            "type": "keyword",
+            "type": "text",
             "fields": {
               "keyword": {
                 "type": "keyword",
