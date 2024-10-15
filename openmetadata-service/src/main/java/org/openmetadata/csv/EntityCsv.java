@@ -400,7 +400,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
         case "number", "integer", "timestamp" -> fieldValue =
             parseLongField(
                 printer, csvRecord, fieldNumber, fieldName, customPropertyType, fieldValue);
-        case "table-cp" -> fieldValue = parseTableType(fieldValue.toString(), propertyConfig);
+        case "table-cp" -> fieldValue =
+            parseTableType(printer, csvRecord, fieldNumber, fieldName, fieldValue, propertyConfig);
 
         default -> {}
       }
@@ -528,8 +529,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
   }
 
-  private Object parseTableType(String fieldValue, String propertyConfig) throws IOException {
-    List<String> tableValues = listOrEmpty(fieldToInternalArray(fieldValue));
+  private Object parseTableType(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      Object fieldValue,
+      String propertyConfig)
+      throws IOException {
+    List<String> tableValues = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
     List<Map<String, String>> rows = new ArrayList<>();
     TableConfig tableConfig =
         JsonUtils.treeToValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
@@ -539,6 +547,18 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Map<String, String> rowMap = new LinkedHashMap<>();
       Iterator<String> columnIterator = tableConfig.getColumns().iterator();
       Iterator<String> valueIterator = columns.iterator();
+
+      if (columns.size() > tableConfig.getColumns().size()) {
+        importFailure(
+            printer,
+            invalidCustomPropertyValue(
+                fieldNumber,
+                fieldName,
+                "table",
+                "Column count should be less than or equal to " + tableConfig.getColumns().size()),
+            csvRecord);
+        return null;
+      }
 
       while (columnIterator.hasNext() && valueIterator.hasNext()) {
         rowMap.put(columnIterator.next(), valueIterator.next());
