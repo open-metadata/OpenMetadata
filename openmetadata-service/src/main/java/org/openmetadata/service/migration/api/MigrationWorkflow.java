@@ -159,14 +159,17 @@ public class MigrationWorkflow {
     try {
       for (MigrationFile file : applyMigrations) {
         file.parseSQLFiles();
-        String clazzName = file.getMigrationProcessClassName();
-        String extClazzName = file.getMigrationProcessExtClassName();
+        String extClazzName = null;
+        if (file.version.contains("collate")) {
+          extClazzName = file.getMigrationProcessExtClassName();
+        }
         if (extClazzName != null) {
           MigrationProcess collateProcess =
               (MigrationProcess)
                   Class.forName(extClazzName).getConstructor(MigrationFile.class).newInstance(file);
           processes.add(collateProcess);
         } else {
+          String clazzName = file.getMigrationProcessClassName();
           MigrationProcess openMetadataProcess =
               (MigrationProcess)
                   Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
@@ -262,7 +265,7 @@ public class MigrationWorkflow {
           row.add(process.getVersion());
           try {
             // Initialize
-            runStepAndAddStatus(row, () -> process.initialize(transactionHandler));
+            runStepAndAddStatus(row, () -> process.initialize(transactionHandler, jdbi));
 
             // Schema Changes
             runSchemaChanges(row, process);
