@@ -154,7 +154,9 @@ export const checkTaskCount = async (
   openTask = 0,
   closedTask = 0
 ) => {
-  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('.ant-skeleton-element ', {
+    state: 'detached',
+  });
 
   const openTaskElement = await page.getByTestId('open-task').textContent();
 

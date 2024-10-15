@@ -516,52 +516,51 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
  * @param onDataFetched - callback function which return FeedCounts object
  */
 
-export const getFeedCounts = (
+export const getFeedCounts = async (
   entityType: string,
   entityFQN: string,
   feedCountCallback: (countValue: FeedCounts) => void
 ) => {
-  getFeedCount(getEntityFeedLink(entityType, entityFQN))
-    .then((res) => {
-      if (res) {
-        const {
-          conversationCount,
-          openTaskCount,
-          closedTaskCount,
-          totalTasksCount,
-          totalCount,
-          mentionCount,
-        } = res.reduce((acc, item) => {
-          const conversationCount =
-            acc.conversationCount + (item.conversationCount || 0);
-          const totalTasksCount =
-            acc.totalTasksCount + (item.totalTaskCount || 0);
+  try {
+    const res = await getFeedCount(getEntityFeedLink(entityType, entityFQN));
+    if (res) {
+      const {
+        conversationCount,
+        openTaskCount,
+        closedTaskCount,
+        totalTasksCount,
+        totalCount,
+        mentionCount,
+      } = res.reduce((acc, item) => {
+        const conversationCount =
+          acc.conversationCount + (item.conversationCount || 0);
+        const totalTasksCount =
+          acc.totalTasksCount + (item.totalTaskCount || 0);
 
-          return {
-            conversationCount,
-            totalTasksCount,
-            openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
-            closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
-            totalCount: conversationCount + totalTasksCount,
-            mentionCount: acc.mentionCount + (item.mentionCount || 0),
-          };
-        }, FEED_COUNT_INITIAL_DATA);
-
-        feedCountCallback({
+        return {
           conversationCount,
           totalTasksCount,
-          openTaskCount,
-          closedTaskCount,
-          totalCount,
-          mentionCount,
-        });
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
+          openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
+          closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
+          totalCount: conversationCount + totalTasksCount,
+          mentionCount: acc.mentionCount + (item.mentionCount || 0),
+        };
+      }, FEED_COUNT_INITIAL_DATA);
+
+      feedCountCallback({
+        conversationCount,
+        totalTasksCount,
+        openTaskCount,
+        closedTaskCount,
+        totalCount,
+        mentionCount,
+      });
+    } else {
+      throw t('server.entity-feed-fetch-error');
+    }
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
 };
 
 /**
