@@ -51,38 +51,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
 
-  private static final String EXECUTION_SUMMARY_AGGS =
-      """
-        {
-          "aggregations": {
-              "status_counts": {
-                "terms": {
-                  "field": "testCaseResult.testCaseStatus"
-                }
-              }
-            }
-        }
-        """;
-
-  private static final String ENTITY_EXECUTION_SUMMARY_AGGS =
-      """
-  {
-    "aggregations": {
-      "entityLinks": {
-        "terms": {
-          "field": "entityLink.nonNormalized"
-        },
-        "aggs": {
-          "status_counts": {
-            "terms": {
-              "field": "testCaseResult.testCaseStatus"
-            }
-          }
-        }
-      }
-    }
-  }""";
-
   private static final String ENTITY_EXECUTION_SUMMARY_FILTER =
       """
   {
@@ -274,14 +242,25 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @SneakyThrows
   private List<ResultSummary> getResultSummary(UUID testSuiteId) {
     List<ResultSummary> resultSummaries = new ArrayList<>();
+    ResultList<TestCaseResult> latestTestCaseResultResults;
     String groupBy = "testCaseFQN.keyword";
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("testSuiteId", testSuiteId.toString());
-    EntityTimeSeriesRepository<TestCaseResult> entityTimeSeriesRepository =
+    TestCaseResultRepository entityTimeSeriesRepository =
         (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    ResultList<TestCaseResult> latestTestCaseResultResults =
-        entityTimeSeriesRepository.listLatestFromSearch(
-            EntityUtil.Fields.EMPTY_FIELDS, searchListFilter, groupBy, null);
+    try {
+      latestTestCaseResultResults =
+          entityTimeSeriesRepository.listLatestFromSearch(
+              EntityUtil.Fields.EMPTY_FIELDS, searchListFilter, groupBy, null);
+    } catch (Exception e) {
+      // Index may not exist in the search index (e.g. reindexing with recreate index on). Fall back
+      // to database
+      LOG.debug(
+          "Error fetching test case result from search. Fetching from test case results from database",
+          e);
+      latestTestCaseResultResults =
+          entityTimeSeriesRepository.listLastTestCaseResultsForTestSuite(testSuiteId);
+    }
 
     latestTestCaseResultResults
         .getData()
