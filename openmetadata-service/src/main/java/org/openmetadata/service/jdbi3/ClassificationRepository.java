@@ -13,18 +13,17 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.search.SearchClient.TAG_SEARCH_INDEX;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -32,25 +31,27 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.ClassificationResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
+  static final String ROLES_FIELD = "roles";
+
   public ClassificationRepository() {
     super(
         ClassificationResource.TAG_COLLECTION_PATH,
         Entity.CLASSIFICATION,
         Classification.class,
         Entity.getCollectionDAO().classificationDAO(),
-        "",
-        "");
+        ROLES_FIELD,
+        ROLES_FIELD);
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
@@ -68,6 +69,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         fields.contains("termCount") ? getTermCount(classification) : null);
     classification.withUsageCount(
         fields.contains("usageCount") ? getUsageCount(classification) : null);
+    classification.setRoles(
+        fields.contains(ROLES_FIELD) ? getRoles(classification) : classification.getRoles());
   }
 
   @Override
@@ -80,17 +83,20 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
   @Override
   public void prepare(Classification entity, boolean update) {
-    /* Nothing to do */
+    validateRoles(entity.getRoles());
   }
 
   @Override
   public void storeEntity(Classification classification, boolean update) {
+    List<EntityReference> roles = classification.getRoles();
+    classification.withRoles(null);
     store(classification, update);
+    classification.withRoles(roles);
   }
 
   @Override
   public void storeRelationships(Classification entity) {
-    // No relationships to store beyond what is stored in the super class
+    assignRoles(entity, entity.getRoles());
   }
 
   private int getTermCount(Classification classification) {
@@ -106,15 +112,16 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         .getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getFullyQualifiedName());
   }
 
-  public static class TagLabelMapper implements RowMapper<TagLabel> {
-    @Override
-    public TagLabel map(ResultSet r, org.jdbi.v3.core.statement.StatementContext ctx)
-        throws SQLException {
-      return new TagLabel()
-          .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
-          .withState(TagLabel.State.values()[r.getInt("state")])
-          .withTagFQN(r.getString("tagFQN"));
+  private void assignRoles(Classification classification, List<EntityReference> roles) {
+    roles = listOrEmpty(roles);
+    for (EntityReference role : roles) {
+      addRelationship(
+          classification.getId(), role.getId(), CLASSIFICATION, Entity.ROLE, Relationship.HAS);
     }
+  }
+
+  private List<EntityReference> getRoles(Classification classification) {
+    return findTo(classification.getId(), CLASSIFICATION, Relationship.HAS, Entity.ROLE);
   }
 
   @Override
@@ -160,6 +167,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     public void entitySpecificUpdate() {
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
+      updateRoles(original, updated);
       recordChange("disabled", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
     }
@@ -204,6 +212,22 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
       }
+    }
+
+    private void updateRoles(Classification original, Classification updated) {
+      deleteFrom(original.getId(), CLASSIFICATION, Relationship.HAS, Entity.ROLE);
+      assignRoles(updated, updated.getRoles());
+
+      List<EntityReference> origRoles = listOrEmpty(original.getRoles());
+      List<EntityReference> updatedRoles = listOrEmpty(updated.getRoles());
+
+      origRoles.sort(EntityUtil.compareEntityReference);
+      updatedRoles.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      recordListChange(
+          ROLES_FIELD, origRoles, updatedRoles, added, deleted, EntityUtil.entityReferenceMatch);
     }
   }
 }

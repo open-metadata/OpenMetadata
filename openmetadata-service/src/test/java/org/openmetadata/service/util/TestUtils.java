@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.assertj.core.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -721,6 +722,25 @@ public final class TestUtils {
     } catch (PathNotFoundException e) {
       // If the path doesn't exist, this is expected behavior, so the test should pass.
       assertTrue(true, "The path does not exist as expected: " + jsonPath);
+    }
+  }
+
+  public static void assertResponseStatus(Executable action, Status expectedStatus) {
+    try {
+      action.execute();
+      fail("Expected HttpResponseException with status " + expectedStatus.getStatusCode());
+    } catch (HttpResponseException e) {
+      assertEquals(
+          expectedStatus.getStatusCode(),
+          e.getStatusCode(),
+          "Expected status code "
+              + expectedStatus.getStatusCode()
+              + " but got "
+              + e.getStatusCode());
+    } catch (Exception e) {
+      fail("Expected HttpResponseException but got " + e.getClass().getName());
+    } catch (Throwable e) {
+      throw new RuntimeException(e);
     }
   }
 }

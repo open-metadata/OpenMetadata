@@ -78,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
 public class ClassificationResource
     extends EntityResource<Classification, ClassificationRepository> {
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
-  static final String FIELDS = "usageCount,termCount";
+  static final String FIELDS = "usageCount,termCount,roles";
 
   static class ClassificationList extends ResultList<Classification> {
     /* Required for serde */
@@ -458,6 +458,7 @@ public class ClassificationResource
     return repository
         .copy(new Classification(), create, updatedBy)
         .withFullyQualifiedName(create.getName())
+        .withRoles(create.getRoles())
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }

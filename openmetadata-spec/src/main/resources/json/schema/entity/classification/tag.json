@@ -45,6 +45,10 @@
       "description": "Children tags under this tag.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "inheritedRoles": {
+      "description": "Roles that a tag is inheriting through classification.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
