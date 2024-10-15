@@ -230,6 +230,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @QueryParam("includeEmptyTestSuites")
           @DefaultValue("true")
           Boolean includeEmptyTestSuites,
+      @Parameter(description = "Filter a test suite by domain.", schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
       @Parameter(
               description = "Filter a test suite by fully qualified name.",
               schema = @Schema(type = "string"))
@@ -283,6 +286,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     searchListFilter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
     searchListFilter.addQueryParam("fullyQualifiedName", fullyQualifiedName);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
+    searchListFilter.addQueryParam("domain", domain);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
       try {

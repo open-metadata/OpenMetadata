@@ -5,6 +5,7 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -272,6 +273,38 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
     assertOwners(table.getOwners(), testSuite.getOwners());
+  }
+
+  @Test
+  void test_inheritDomainFromTable(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)))
+            .withDomain(DOMAIN1.getFullyQualifiedName());
+    Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
+    table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
+    CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
+    TestSuite executableTestSuite =
+        createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+    TestSuite testSuite = getEntity(executableTestSuite.getId(), "domain", ADMIN_AUTH_HEADERS);
+    assertEquals(DOMAIN1.getId(), testSuite.getDomain().getId());
+    ResultList<TestSuite> testSuites =
+        listEntitiesFromSearch(
+            Map.of("domain", DOMAIN1.getFullyQualifiedName(), "fields", "domain"),
+            100,
+            0,
+            ADMIN_AUTH_HEADERS);
+    assertTrue(
+        testSuites.getData().stream()
+            .allMatch(ts -> ts.getDomain().getId().equals(DOMAIN1.getId())));
   }
 
   @Test
