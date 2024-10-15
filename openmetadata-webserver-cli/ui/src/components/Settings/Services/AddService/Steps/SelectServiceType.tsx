@@ -94,19 +94,6 @@ const SelectServiceType = ({
 
   return (
     <Row>
-      {/* <Col span={24}>
-        <Select
-          className="w-full"
-          data-testid="service-category"
-          id="serviceCategory"
-          options={SERVICE_CATEGORY_OPTIONS}
-          value={category}
-          onChange={(value) => {
-            setConnectorSearchTerm('');
-            serviceCategoryHandler(value as ServiceCategory);
-          }}
-        />
-      </Col> */}
       <Col className="m-t-lg" span={24}>
         <Searchbar
           removeMargin

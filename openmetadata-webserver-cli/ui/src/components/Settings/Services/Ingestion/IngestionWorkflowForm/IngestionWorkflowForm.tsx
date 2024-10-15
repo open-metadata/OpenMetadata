@@ -153,8 +153,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     }
   };
 
-  console.log("Workflow schema", schema);
-
   return (
     <Form
       focusOnFirstError

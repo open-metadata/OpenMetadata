@@ -45,8 +45,6 @@ import ConfigureService from "./Steps/ConfigureService";
 import SelectServiceType from "./Steps/SelectServiceType";
 import { ServiceType } from '../../../../generated/entity/services/serviceType';
 import axios from "axios";
-import BrandImage from "../../../common/BrandImage/BrandImage";
-import classNames from "classnames";
 
 const AddService = ({
   serviceCategory,
@@ -234,12 +232,6 @@ const AddService = ({
 
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
-      <div
-        className={classNames('mt-8 text-left flex flex-col items-start px-2', {
-          'sso-container': false,
-        })}>
-        <BrandImage height="auto" width={200} className="mb-4" />
-      </div>
       <div className="m-t-md">
         {addIngestion ? (
           <AddIngestion

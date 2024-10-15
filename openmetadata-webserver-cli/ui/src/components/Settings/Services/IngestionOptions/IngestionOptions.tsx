@@ -82,12 +82,7 @@ const IngestionOptions = () => {
             className="justify-center m-b-md"
             data-testid="services-container"
             gutter={[16, 16]}>
-            <Col span={24}>
-                <Space className="w-full justify-between m-b-lg" data-testid="header">
-                    <PageHeader data={PAGE_HEADERS.INGESTION_OPTIONS} />
 
-                </Space>
-            </Col>
             <Col span={24}>
                 <Row gutter={[20, 20]}>
                     {ingestionOptionItems.map((option) => (

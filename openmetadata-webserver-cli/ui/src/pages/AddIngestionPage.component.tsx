@@ -18,7 +18,6 @@ import { useHistory, useParams } from "react-router-dom";
 import Loader from "../components/common/Loader/Loader";
 import ResizablePanels from "../components/common/ResizablePanels/ResizablePanels";
 import ServiceDocPanel from "../components/common/ServiceDocPanel/ServiceDocPanel";
-import TitleBreadcrumb from "../components/common/TitleBreadcrumb/TitleBreadcrumb.component";
 import { TitleBreadcrumbProps } from "../components/common/TitleBreadcrumb/TitleBreadcrumb.interface";
 import AddIngestion from "../components/Settings/Services/AddIngestion/AddIngestion.component";
 import { getServiceDetailsPath } from "../constants/constants";
@@ -35,8 +34,6 @@ import {
 } from "../utils/IngestionUtils";
 import { getServiceType } from "../utils/ServiceUtils";
 import { ServiceType } from "../generated/entity/automations/workflow";
-import BrandImage from "../components/common/BrandImage/BrandImage";
-import classNames from "classnames";
 
 const AddIngestionPage = () => {
   const { ingestionType, serviceCategory } = useParams<{
@@ -116,12 +113,6 @@ const AddIngestionPage = () => {
 
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
-      <div
-        className={classNames('mt-8 text-left flex flex-col items-start px-2', {
-          'sso-container': false,
-        })}>
-        <BrandImage height="auto" width={200} />
-      </div>
       <div className="m-t-md">
         <AddIngestion
           activeIngestionStep={activeIngestionStep}

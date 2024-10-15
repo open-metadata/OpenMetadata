@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Card, Col, Row, Space, Typography } from 'antd';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { getAddServicePath, getSettingPath } from '../../../utils/RouterUtils';
-import PageHeader from '../../PageHeader/PageHeader.component';
 import { getServiceDetailsPath } from '../../../constants/constants';
 import { DomainSupportedServiceTypes, ServicesType } from '../../../interface/service.interface';
 import { getServiceLogo } from '../../../utils/CommonUtils';
@@ -41,8 +40,6 @@ import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-col
 import { ReactComponent as SearchIcon } from '../../../assets/svg/search-colored.svg';
 import { ReactComponent as DataObservability } from '../../../assets/svg/setting-data-observability.svg';
 import { ReactComponent as StorageIcon } from '../../../assets/svg/storage-colored.svg';
-import BrandImage from '../../common/BrandImage/BrandImage';
-import classNames from 'classnames';
 
 interface ServicesProps {
   serviceName: ServiceCategory;

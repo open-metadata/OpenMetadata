@@ -3,7 +3,6 @@ import { useHistory } from 'react-router-dom';
 import axios from 'axios';
 import { getAxiosErrorMessage } from '../utils/AxiosUtils';
 import { Button, Col, Form, Input, Row, Typography } from 'antd';
-import classNames from 'classnames';
 import BrandImage from '../components/common/BrandImage/BrandImage';
 
 const LandingPage = () => {
@@ -18,7 +17,7 @@ const LandingPage = () => {
         token: values.ingestionToken,
       });
 
-      history.push('/service'); // Redirect to Services page
+      history.push('/service');
     } catch (error) {
       alert(getAxiosErrorMessage(error));
     }
@@ -29,9 +28,7 @@ const LandingPage = () => {
     <Row className="h-full">
       <Col className="bg-white" span={24}>
         <div
-          className={classNames('mt-24 text-left flex flex-col items-start px-10', {
-            'sso-container': false,
-          })}>
+          className='mt-24 text-left flex flex-col items-start px-10'>
           <BrandImage height="auto" width={200} />
           <Typography.Text className="mt-8 w-180 text-xl font-medium text-grey-muted">
             Welcome to the Ingestion Server!{' '}
