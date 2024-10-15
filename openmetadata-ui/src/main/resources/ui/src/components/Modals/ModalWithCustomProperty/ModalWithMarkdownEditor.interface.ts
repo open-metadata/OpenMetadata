@@ -20,7 +20,7 @@ export type ExtensionDataTypes =
   | EntityReference
   | EntityReference[]
   | { start: string; end: string }
-  | TableTypePropertyValueType;
+  | Partial<TableTypePropertyValueType>;
 
 export interface ExtensionDataProps {
   [key: string]: ExtensionDataTypes;

@@ -219,8 +219,8 @@ const convertCustomPropertyStringToValueExtensionBasedOnType = (
 
       // step 3: convert the rowStringList into objects with column names as keys
       const rows = rowStringList.map((row) => {
-        // split the row by column
-        const rowValues = row.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+        // split the row by column, semicolon, or colon, ignoring these inside double quotes
+        const rowValues = row.split(/[,;:]\s*(?=(?:[^"]*"[^"]*")*[^"]*$)/);
 
         // create an object with column names as keys
         return columns.reduce((acc: Record<string, string>, column, index) => {
@@ -294,13 +294,18 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
           .map((column) => {
             const value = row[column] ?? '';
 
-            // if value contains comma then quote the value
-            return value.includes(',') ? `"${value}"` : value;
+            // if value contains comma or semicolon, wrap it in quotes
+            return value.includes(',') ||
+              value.includes(';') ||
+              value.includes(':')
+              ? `"${value}"`
+              : value;
           })
           .join(',');
       });
 
-      return rowStringList.join('|');
+      // return the row as a string wrapped in quotes
+      return `"${rowStringList.join('|')}"`;
     }
 
     default:
@@ -403,5 +408,6 @@ export const convertEntityExtensionToCustomPropertyString = (
     }
   });
 
-  return convertedString;
+  // wrap the converted string in quotes
+  return `"${convertedString}"`;
 };
