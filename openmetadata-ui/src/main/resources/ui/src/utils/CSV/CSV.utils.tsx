@@ -219,12 +219,18 @@ const convertCustomPropertyStringToValueExtensionBasedOnType = (
 
       // step 3: convert the rowStringList into objects with column names as keys
       const rows = rowStringList.map((row) => {
-        // split the row by column ignoring these inside double quotes
-        const rowValues = row.split(/[,]\s*(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+        // Step 1: Replace commas inside double quotes with a placeholder
+        const preprocessedInput = row.replace(/"([^"]*)"/g, (_, p1) => {
+          return `${p1.replace(/,/g, '__COMMA__')}`;
+        });
+
+        // Step 2: Split the row by comma
+        const rowValues = preprocessedInput.split(',');
 
         // create an object with column names as keys
         return columns.reduce((acc: Record<string, string>, column, index) => {
-          acc[column] = rowValues[index];
+          // replace the placeholder with comma
+          acc[column] = rowValues[index].replaceAll('__COMMA__', ',');
 
           return acc;
         }, {} as Record<string, string>);
