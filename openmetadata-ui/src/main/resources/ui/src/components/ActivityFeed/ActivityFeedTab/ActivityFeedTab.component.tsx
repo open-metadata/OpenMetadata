@@ -193,10 +193,13 @@ export const ActivityFeedTab = ({
     }
   }, [activeTab]);
 
-  const handleFeedCount = useCallback((data: FeedCounts) => {
-    setCountData((prev) => ({ ...prev, data }));
-    onUpdateFeedCount?.(data);
-  }, []);
+  const handleFeedCount = useCallback(
+    (data: FeedCounts) => {
+      setCountData((prev) => ({ ...prev, data }));
+      onUpdateFeedCount?.(data);
+    },
+    [setCountData]
+  );
 
   const fetchFeedsCount = async () => {
     setCountData((prev) => ({ ...prev, loading: true }));
