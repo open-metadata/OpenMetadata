@@ -403,9 +403,15 @@ export const convertEntityExtensionToCustomPropertyString = (
       // Check if the property type is markdown or sqlQuery or string and add quotes around the value
       if (
         ['markdown', 'sqlQuery', 'string'].includes(
-          customPropertiesMapByName[key].propertyType.name ?? ''
+          customPropertiesMapByName[key]?.propertyType?.name ?? ''
         ) &&
         hasSeparator
+      ) {
+        convertedString += `"${`${key}:${stringValue}`}"${endValue}`;
+      } else if (
+        // Check if the property type is table and add quotes around the value
+        customPropertiesMapByName[key]?.propertyType?.name ===
+        TABLE_TYPE_CUSTOM_PROPERTY
       ) {
         convertedString += `"${`${key}:${stringValue}`}"${endValue}`;
       } else {
@@ -415,5 +421,5 @@ export const convertEntityExtensionToCustomPropertyString = (
   });
 
   // wrap the converted string in quotes
-  return `"${convertedString}"`;
+  return `${convertedString}`;
 };
