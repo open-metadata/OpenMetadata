@@ -293,7 +293,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
               </div>
             </>
           ) : (
-            <Row data-testid="custom-properties-card" gutter={[16, 16]}>
+            <Row
+              className="custom-properties-card"
+              data-testid="custom-properties-card"
+              gutter={[16, 16]}>
               {dataSourceColumns.map((columns, colIndex) => (
                 <Col key={colIndex} span={8}>
                   {columns.map((record) => (
