@@ -17,6 +17,7 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { getApplicationList } from '../../rest/applicationAPI';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
@@ -29,7 +30,7 @@ import './app-container.less';
 const AppContainer = () => {
   const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
-  const { currentUser } = useApplicationStore();
+  const { currentUser, setApplications } = useApplicationStore();
   const { applications } = useApplicationsProvider();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
@@ -46,6 +47,17 @@ const AppContainer = () => {
     }
   }, []);
 
+  const fetchApplicationList = useCallback(async () => {
+    try {
+      const { data } = await getApplicationList({
+        limit: 100,
+      });
+      setApplications(data);
+    } catch (error) {
+      // silent fail
+    }
+  }, []);
+
   const appendReserveRightSidebarClass = useCallback(() => {
     const element = document.getElementsByTagName('body');
     element[0].classList.add('reserve-right-sidebar');
@@ -55,6 +67,7 @@ const AppContainer = () => {
     if (currentUser?.id) {
       fetchLimitConfig();
     }
+    fetchApplicationList();
   }, [currentUser?.id]);
 
   useEffect(() => {

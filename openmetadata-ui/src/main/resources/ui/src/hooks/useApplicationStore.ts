@@ -17,13 +17,13 @@ import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
+import { App } from '../generated/entity/applications/app';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import {
   ApplicationStore,
   HelperFunctions,
 } from '../interface/store.interface';
-import { getApplicationList } from '../rest/applicationAPI';
 import { getOidcToken } from '../utils/LocalStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
 
@@ -166,14 +166,8 @@ export const useApplicationStore = create<ApplicationStore>()(
       updateSearchCriteria: (criteria) => {
         set({ searchCriteria: criteria });
       },
-      setApplications: async () => {
-        const { applications } = get();
-        if (!applications?.length) {
-          const { data } = await getApplicationList({
-            limit: 100,
-          });
-          set({ applications: data });
-        }
+      setApplications: (applications: App[]) => {
+        set({ applications: applications });
       },
     }),
     {

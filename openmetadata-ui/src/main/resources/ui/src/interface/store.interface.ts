@@ -84,7 +84,7 @@ export interface ApplicationStore
   removeRefreshToken: () => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
   trySilentSignIn: (forceLogout?: boolean) => void;
-  setApplications: () => void;
+  setApplications: (applications: App[]) => void;
 }
 
 export interface DomainStore {
