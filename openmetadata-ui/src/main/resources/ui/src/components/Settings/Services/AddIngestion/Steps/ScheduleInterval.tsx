@@ -25,8 +25,9 @@ import {
 } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_SCHEDULE_CRON } from '../../../../../constants/Ingestions.constant';
 import { SCHEDULAR_OPTIONS } from '../../../../../constants/Schedular.constants';
 import { LOADING_STATE } from '../../../../../enums/common.enum';
 import { SchedularOptions } from '../../../../../enums/Schedular.enum';
@@ -35,9 +36,11 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../../interface/FormUtils.interface';
+import { getCron, getStateValue } from '../../../../../utils/CronUtils';
 import { generateFormFields } from '../../../../../utils/formUtils';
 import { getDefaultIngestionSchedule } from '../../../../../utils/IngestionUtils';
 import CronEditor from '../../../../common/CronEditor/CronEditor';
+import { StateValue } from '../../../../common/CronEditor/CronEditor.interface';
 import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 import './schedule-interval.less';
 
@@ -57,12 +60,18 @@ const ScheduleInterval = ({
   isEditMode = false,
 }: ScheduleIntervalProps) => {
   const { t } = useTranslation();
+  const initialValues = getStateValue(
+    scheduleInterval || DEFAULT_SCHEDULE_CRON
+  );
+  const [state, setState] = useState<StateValue>(initialValues);
   const [selectedSchedular, setSelectedSchedular] =
     React.useState<SchedularOptions>(
       isEmpty(scheduleInterval)
         ? SchedularOptions.ON_DEMAND
         : SchedularOptions.SCHEDULE
     );
+  const [form] = Form.useForm<StateValue>();
+  const { scheduleInterval: scheduleIntervalFormValue } = state;
 
   const handleSelectedSchedular = useCallback(
     (value: SchedularOptions) => {
@@ -71,16 +80,20 @@ const ScheduleInterval = ({
         onChange('');
       } else {
         onChange(
-          isEditMode && !isEmpty(savedScheduleInterval)
-            ? savedScheduleInterval
-            : getDefaultIngestionSchedule({
-                scheduleInterval,
-                isEditMode,
-              })
+          getDefaultIngestionSchedule({
+            scheduleInterval:
+              scheduleIntervalFormValue ?? savedScheduleInterval,
+            isEditMode,
+          })
         );
       }
     },
-    [isEditMode, selectedSchedular, scheduleInterval]
+    [
+      isEditMode,
+      selectedSchedular,
+      savedScheduleInterval,
+      scheduleIntervalFormValue,
+    ]
   );
 
   const formFields: FieldProp[] = useMemo(
@@ -112,11 +125,23 @@ const ScheduleInterval = ({
     [onDeploy]
   );
 
+  const handleValuesChange = (values: StateValue) => {
+    const newState = { ...state, ...values };
+    const cronExp = getCron(newState);
+    const updatedState = { ...newState, scheduleInterval: cronExp };
+    form.setFieldsValue(updatedState);
+    setState(updatedState);
+    onChange(cronExp ?? DEFAULT_SCHEDULE_CRON);
+  };
+
   return (
     <Form
       data-testid="schedule-intervel-container"
+      form={form}
+      initialValues={initialValues}
       layout="vertical"
-      onFinish={handleFormSubmit}>
+      onFinish={handleFormSubmit}
+      onValuesChange={handleValuesChange}>
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Radio.Group

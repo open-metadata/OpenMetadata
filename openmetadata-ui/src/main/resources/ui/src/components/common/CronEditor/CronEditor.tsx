@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Input, Row, Select } from 'antd';
+import { Col, Form, Input, Radio, Row, Select } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
-import React, { ChangeEvent, useCallback, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SCHEDULE_CRON } from '../../../constants/Ingestions.constant';
 import { CronTypes } from '../../../enums/Cron.enum';
@@ -23,25 +23,48 @@ import {
   getCron,
   getCronOptions,
   getHourMinuteSelect,
-  getQuartzCronExpression,
-  getStateValue,
 } from '../../../utils/CronUtils';
 import { getCurrentLocaleForConstrue } from '../../../utils/i18next/i18nextUtil';
 import './cron-editor.less';
 import { CronEditorProp, StateValue } from './CronEditor.interface';
 
 const CronEditor = ({
-  value,
   includePeriodOptions,
   className,
   disabled = false,
   disabledCronChange,
   onChange,
-  isQuartzCron,
 }: CronEditorProp) => {
   const { t } = useTranslation();
+  const form = Form.useFormInstance<StateValue>();
+  const selectedPeriod = Form.useWatch('selectedPeriod', form);
+  const scheduleInterval = Form.useWatch('scheduleInterval', form);
+  const dow = Form.useWatch('dow', form);
+  const {
+    showMinuteSelect,
+    showHourSelect,
+    showWeekSelect,
+    minuteCol,
+    hourCol,
+    weekCol,
+  } = useMemo(() => {
+    const isHourSelected = selectedPeriod === 'hour';
+    const isDaySelected = selectedPeriod === 'day';
+    const isWeekSelected = selectedPeriod === 'week';
+    const showMinuteSelect = isHourSelected || isDaySelected || isWeekSelected;
+    const showHourSelect = isDaySelected || isWeekSelected;
+    const showWeekSelect = isWeekSelected;
+    const minuteCol = isHourSelected ? 12 : 6;
 
-  const [state, setState] = useState<StateValue>(getStateValue(value ?? ''));
+    return {
+      showMinuteSelect,
+      showHourSelect,
+      showWeekSelect,
+      minuteCol: showMinuteSelect ? minuteCol : 0,
+      hourCol: showHourSelect ? 6 : 0,
+      weekCol: showWeekSelect ? 24 : 0,
+    };
+  }, [selectedPeriod]);
 
   const { periodOptions, dayOptions } = useMemo(() => getCronOptions(), []);
 
@@ -55,63 +78,21 @@ const CronEditor = ({
     }
   }, [includePeriodOptions, periodOptions]);
 
-  const { selectedPeriod } = state;
-
-  const handleCronValueChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      onChange(e.target.value);
-    },
-    [onChange]
-  );
-
   const changeValue = (state: StateValue) => {
-    const cronExp = isQuartzCron
-      ? getQuartzCronExpression(state)
-      : getCron(state);
+    const cronExp = getCron(state);
     onChange(cronExp ?? DEFAULT_SCHEDULE_CRON);
-  };
-
-  const onPeriodSelect = (value: string) => {
-    changeValue({ ...state, selectedPeriod: value });
-    if (value === 'custom') {
-      onChange(DEFAULT_SCHEDULE_CRON);
-    } else if (value === '') {
-      onChange('');
-    }
-    setState((prev) => ({ ...prev, selectedPeriod: value }));
-  };
-
-  const onHourOptionSelect = (value: number, key: string) => {
-    const { selectedHourOption } = state;
-    const hourOption = { ...selectedHourOption, [key]: value };
-    changeValue({ ...state, selectedHourOption: hourOption });
-    setState((prev) => ({ ...prev, selectedHourOption: hourOption }));
-  };
-
-  const onDayOptionSelect = (value: number, key: string) => {
-    const { selectedDayOption } = state;
-    const dayOption = { ...selectedDayOption, [key]: value };
-    changeValue({ ...state, selectedDayOption: dayOption });
-    setState((prev) => ({ ...prev, selectedDayOption: dayOption }));
-  };
-
-  const onWeekOptionSelect = (value: number, key: string) => {
-    const { selectedWeekOption } = state;
-    const weekOption = { ...selectedWeekOption, [key]: value };
-    changeValue({ ...state, selectedWeekOption: weekOption });
-    setState((prev) => ({ ...prev, selectedWeekOption: weekOption }));
   };
 
   return (
     <Row
-      className={classNames(className, 'cron-row')}
+      className={classNames('cron-row', className)}
       data-testid="cron-container"
       gutter={[16, 16]}>
       <Col data-testid="time-dropdown-container" span={12}>
         <Form.Item
-          initialValue={selectedPeriod}
           label={t('label.every')}
-          labelCol={{ span: 24 }}>
+          labelCol={{ span: 24 }}
+          name="selectedPeriod">
           <Select
             className="w-full"
             data-testid="cron-type"
@@ -122,131 +103,102 @@ const CronEditor = ({
               label,
               value,
             }))}
-            value={selectedPeriod}
-            onChange={onPeriodSelect}
+            onChange={(value) => {
+              changeValue({
+                ...form.getFieldsValue(),
+                selectedPeriod: value,
+              });
+            }}
           />
         </Form.Item>
       </Col>
 
-      {state.selectedPeriod === 'custom' && (
-        <Col span={12}>
-          <Form.Item
-            className="m-b-0"
-            initialValue={value}
-            label={t('label.cron')}
-            labelCol={{ span: 24 }}
-            rules={[
-              {
-                required: true,
-                message: t('label.field-required', {
-                  field: t('label.cron'),
-                }),
-              },
-              {
-                validator: async (_, value) => {
-                  return cronstrue.toString(value);
-                },
-              },
-            ]}>
-            <Input type="text" value={value} onChange={handleCronValueChange} />
-          </Form.Item>
-        </Col>
-      )}
-
-      {state.selectedPeriod === 'week' && (
-        <>
-          <Col span={12}>
-            <Form.Item
-              data-testid="week-segment-time-container"
-              label={t('label.time')}
-              labelCol={{ span: 24 }}>
-              <div
-                className="d-flex"
-                data-testid="week-segment-time-options-container">
-                {getHourMinuteSelect({
-                  cronType: CronTypes.HOUR,
-                  selectedDayOption: state.selectedWeekOption,
-                  onChange: (value: number) =>
-                    onWeekOptionSelect(value, 'hour'),
-                  disabled,
-                })}
-                <span className="m-x-sm self-center">:</span>
-                {getHourMinuteSelect({
-                  cronType: CronTypes.MINUTE,
-                  selectedHourOption: state.selectedWeekOption,
-                  onChange: (value: number) => onWeekOptionSelect(value, 'min'),
-                  disabled,
-                })}
-              </div>
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              data-testid="week-segment-day-option-container"
-              label={t('label.day')}
-              labelCol={{ span: 24 }}>
-              <div className="cron-badge-option-container week-opt-container">
-                {dayOptions.map(({ label, value: optionValue }) => (
-                  <Button
-                    className={classNames('cron-badge-option', {
-                      active: optionValue === state.selectedWeekOption.dow,
-                      disabled,
-                    })}
-                    data-value={optionValue}
-                    disabled={disabled}
-                    key={`${label}-${optionValue}`}
-                    onClick={() =>
-                      onWeekOptionSelect(Number(optionValue), 'dow')
-                    }>
-                    {label[0]}
-                  </Button>
-                ))}
-              </div>
-            </Form.Item>
-          </Col>
-        </>
-      )}
-      <Col span={12}>
-        {state.selectedPeriod === 'hour' && (
-          <Form.Item
-            data-testid="hour-segment-container"
-            label={t('label.minute')}
-            labelCol={{ span: 24 }}>
-            {getHourMinuteSelect({
-              cronType: CronTypes.MINUTE,
-              selectedHourOption: state.selectedHourOption,
-              onChange: (value: number) => onHourOptionSelect(value, 'min'),
-              disabled,
-            })}
-          </Form.Item>
-        )}
-        {state.selectedPeriod === 'day' && (
-          <Form.Item
-            data-testid="day-segment-container"
-            label={t('label.time')}
-            labelCol={{ span: 24 }}>
-            <div className="d-flex" data-testid="time-option-container">
-              {getHourMinuteSelect({
-                cronType: CronTypes.HOUR,
-                selectedDayOption: state.selectedDayOption,
-                onChange: (value: number) => onDayOptionSelect(value, 'hour'),
-                disabled,
-              })}
-              <span className="m-x-sm self-center">:</span>
-              {getHourMinuteSelect({
-                cronType: CronTypes.MINUTE,
-                selectedHourOption: state.selectedDayOption,
-                onChange: (value: number) => onDayOptionSelect(value, 'min'),
-                disabled,
-              })}
-            </div>
-          </Form.Item>
-        )}
+      <Col span={hourCol}>
+        <Form.Item
+          data-testid="hour-option"
+          hidden={!showHourSelect}
+          label={t('label.hour')}
+          labelCol={{ span: 24 }}
+          name="hour">
+          {getHourMinuteSelect({
+            cronType: CronTypes.HOUR,
+            disabled,
+          })}
+        </Form.Item>
+      </Col>
+      <Col span={minuteCol}>
+        <Form.Item
+          data-testid="minute-option"
+          hidden={!showMinuteSelect}
+          label={t('label.minute')}
+          labelCol={{ span: 24 }}
+          name="min">
+          {getHourMinuteSelect({
+            cronType: CronTypes.MINUTE,
+            disabled,
+          })}
+        </Form.Item>
+      </Col>
+      <Col span={weekCol}>
+        <Form.Item
+          data-testid="week-segment-day-option-container"
+          hidden={!showWeekSelect}
+          label={t('label.day')}
+          labelCol={{ span: 24 }}
+          name="dow">
+          <Radio.Group buttonStyle="solid" className="d-flex gap-2" value={dow}>
+            {dayOptions.map(({ label, value: optionValue }) => (
+              <Radio.Button
+                className="week-selector-buttons"
+                data-value={optionValue}
+                disabled={disabled}
+                key={`${label}-${optionValue}`}
+                value={optionValue}>
+                {label[0]}
+              </Radio.Button>
+            ))}
+          </Radio.Group>
+        </Form.Item>
       </Col>
 
-      {value && (
+      <Col span={selectedPeriod === 'custom' ? 12 : 0}>
+        <Form.Item
+          hidden={selectedPeriod !== 'custom'}
+          label={t('label.cron')}
+          labelCol={{ span: 24 }}
+          name="scheduleInterval"
+          rules={[
+            {
+              required: true,
+              message: t('label.field-required', {
+                field: t('label.cron'),
+              }),
+            },
+            {
+              validator: async (_, value) => {
+                // Check if cron is valid and get the description
+                const description = cronstrue.toString(value);
+
+                // Check if cron has a frequency of less than an hour
+                const isFrequencyInMinutes = /Every \d* *minute/.test(
+                  description
+                );
+                if (isFrequencyInMinutes) {
+                  return Promise.reject(
+                    t('message.cron-less-than-hour-message')
+                  );
+                }
+                Promise.resolve();
+              },
+            },
+          ]}>
+          <Input />
+        </Form.Item>
+      </Col>
+
+      {scheduleInterval && (
         <Col span={24}>
-          {cronstrue.toString(value, {
+          {cronstrue.toString(scheduleInterval, {
             use24HourTimeFormat: false,
             verbose: true,
             locale: getCurrentLocaleForConstrue(), // To get localized string
@@ -255,7 +207,7 @@ const CronEditor = ({
         </Col>
       )}
 
-      {isEmpty(value) && (
+      {isEmpty(scheduleInterval) && (
         <Col span={24}>
           <p data-testid="manual-segment-container">
             {t('message.pipeline-will-trigger-manually')}

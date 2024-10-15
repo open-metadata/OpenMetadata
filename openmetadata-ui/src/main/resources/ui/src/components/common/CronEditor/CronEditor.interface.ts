@@ -58,9 +58,10 @@ export interface Combination {
 }
 export interface StateValue {
   selectedPeriod: string;
-  selectedHourOption: SelectedHourOption;
-  selectedDayOption: SelectedDayOption;
-  selectedWeekOption: SelectedWeekOption;
+  hour: number;
+  min: number;
+  dow: number;
+  scheduleInterval: string;
 }
 
 export interface ToDisplay {
@@ -81,7 +82,6 @@ export interface CronEditorProp {
   disabled?: boolean;
   disabledCronChange?: boolean;
   includePeriodOptions?: string[];
-  isQuartzCron?: boolean;
 }
 
 export type CronType = 'minute' | 'hour' | 'day' | 'week';
