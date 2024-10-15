@@ -44,7 +44,7 @@ def get_type_custom(data_type, field_size):
         "map": types.BLOB,
         "array": types.ARRAY,
     }
-    return type_map[data_type.lower()]
+    return type_map.get(data_type.lower())
 
 
 pinot_sqlalchemy.get_type = get_type_custom
