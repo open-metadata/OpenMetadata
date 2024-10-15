@@ -171,13 +171,13 @@ class TestHelpers(TestCase):
             Suggestion(
                 id=uuid.uuid4(),
                 type=SuggestionType.SuggestDescription,
-                entityLink=EntityLink("<#E::table::tableFQN>"),
+                entityLink=EntityLink("<#E:open-metadata:table:open-metadata:tableFQN>"),
                 description="something",
             ),
             Suggestion(
                 id=uuid.uuid4(),
                 type=SuggestionType.SuggestDescription,
-                entityLink=EntityLink("<#E::table::tableFQN::columns::col>"),
+                entityLink=EntityLink("<#E:open-metadata:table:open-metadata:tableFQN:open-metadata:columns:open-metadata:col>"),
                 description="something",
             ),
         ]
@@ -201,14 +201,14 @@ class TestHelpers(TestCase):
         suggestion_table = find_suggestion(
             suggestions=suggestions,
             suggestion_type=SuggestionType.SuggestDescription,
-            entity_link=EntityLink("<#E::table::tableFQN>"),
+            entity_link=EntityLink("<#E:open-metadata:table:open-metadata:tableFQN>"),
         )
         self.assertEqual(suggestion_table, suggestions[0])
 
         suggestion_col = find_suggestion(
             suggestions=suggestions,
             suggestion_type=SuggestionType.SuggestDescription,
-            entity_link=EntityLink("<#E::table::tableFQN::columns::col>"),
+            entity_link=EntityLink("<#E:open-metadata:table:open-metadata:tableFQN:open-metadata:columns:open-metadata:col>"),
         )
         self.assertEqual(suggestion_col, suggestions[1])
 

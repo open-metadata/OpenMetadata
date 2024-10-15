@@ -204,7 +204,7 @@
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "about": {
-      "description": "Data asset about which this thread is created for with format <#E::{entities}::{entityName}::{field}::{fieldValue}.",
+      "description": "Data asset about which this thread is created for with format <#E:open-metadata:{entities}:open-metadata:{entityName}:open-metadata:{field}:open-metadata:{fieldValue}.",
       "$ref": "../../type/basic.json#/definitions/entityLink"
     },
     "entityRef": {
@@ -291,7 +291,7 @@
       "additionalProperties": false
     },
     "addressedTo": {
-      "description": "User or team this thread is addressed to in format <#E::{entities}::{entityName}::{field}::{fieldValue}.",
+      "description": "User or team this thread is addressed to in format <#E:open-metadata:{entities}:open-metadata:{entityName}:open-metadata:{field}:open-metadata:{fieldValue}.",
       "$ref": "../../type/basic.json#/definitions/entityLink"
     },
     "createdBy": {
