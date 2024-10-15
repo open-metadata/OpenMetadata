@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """PinotDb source module"""
-from typing import Optional
+from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
@@ -39,3 +39,15 @@ class PinotdbSource(CommonDbSourceService):
                 f"Expected PinotdbConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def get_database_names(self) -> Iterable[str]:
+        """
+        Default case with a single database.
+
+        It might come informed - or not - from the source.
+
+        Sources with multiple databases should overwrite this and
+        apply the necessary filters.
+        """
+        # TODO: Add databaseDisplayName field in PinotDBConnection
+        yield "default"
