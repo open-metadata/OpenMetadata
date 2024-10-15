@@ -160,10 +160,18 @@ public class MigrationWorkflow {
       for (MigrationFile file : applyMigrations) {
         file.parseSQLFiles();
         String clazzName = file.getMigrationProcessClassName();
-        MigrationProcess process =
-            (MigrationProcess)
-                Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
-        processes.add(process);
+        String extClazzName = file.getMigrationProcessExtClassName();
+        if (extClazzName != null) {
+          MigrationProcess collateProcess =
+              (MigrationProcess)
+                  Class.forName(extClazzName).getConstructor(MigrationFile.class).newInstance(file);
+          processes.add(collateProcess);
+        } else {
+          MigrationProcess openMetadataProcess =
+              (MigrationProcess)
+                  Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
+          processes.add(openMetadataProcess);
+        }
       }
     } catch (Exception e) {
       LOG.error("Failed to list and add migrations to run due to ", e);
