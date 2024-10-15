@@ -402,12 +402,16 @@ public final class CsvUtil {
   }
 
   private static String formatTableRows(Map<String, Object> valueMap) {
+    List<String> columns = (List<String>) valueMap.get("columns");
     List<Map<String, Object>> rows = (List<Map<String, Object>>) valueMap.get("rows");
+
     return rows.stream()
         .map(
             row ->
-                row.values().stream()
-                    .map(value -> quoteCsvFieldForSeparator(value.toString()))
+                columns.stream()
+                    .map(
+                        column ->
+                            quoteCsvFieldForSeparator(row.getOrDefault(column, "").toString()))
                     .collect(Collectors.joining(SEPARATOR)))
         .collect(Collectors.joining(INTERNAL_ARRAY_SEPARATOR));
   }
