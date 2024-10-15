@@ -1,69 +1,104 @@
-import React from 'react';
-import { Button, Card, Typography } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Button, Col, Row, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
+import BrandImage from '../components/common/BrandImage/BrandImage';
+import PageLayoutV1 from '../components/PageLayoutV1/PageLayoutV1';
 
 const { Text, Paragraph, Link } = Typography;
 
 const DownloadYAML = () => {
-    const handleDownload = () => {
-        // Function to handle YAML download
-        alert('Downloading YAML...');
+    const [yaml, setYaml] = useState<string>('');
+
+    const handleDownload = async () => {
+        try {
+            const response = await fetch('http://localhost:8001/api/yaml/download');
+
+            if (!response.ok) {
+                throw new Error('Failed to download file');
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'config.yaml';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error downloading file:', error);
+        }
     };
 
-    const dummyYAML = `
-    version: 1.0
-    service:
-      name: sample_service
-      description: "This is a dummy YAML for example purposes."
-      config:
-        host: localhost
-        port: 5432
-        username: admin
-        password: secret
-    metadata:
-      ingest: true
-      profile: true
-  `;
+    const fetchFileContent = async () => {
+        try {
+            const response = await fetch('http://localhost:8001/api/yaml');
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch file content');
+            }
+
+            const content = await response.text();
+            setYaml(content);
+        } catch (err) {
+            setYaml('Failed to load yaml');
+        }
+    };
+
+    useEffect(() => {
+        fetchFileContent();
+    }, []);
 
     return (
-        <div style={styles.container}>
-            <Card style={styles.card} bordered={false}>
-                <div style={styles.header}>
-                    <Text strong>Download</Text>
-                    <Button
-                        icon={<DownloadOutlined />}
-                        type="primary"
-                        onClick={handleDownload}
-                    >
-                        Download YAML
-                    </Button>
-                </div>
+        <PageLayoutV1 pageTitle="download">
+            <div style={styles.container}>
+                <Row className="h-full">
 
-                <div style={styles.yamlBox}>
-                    <Paragraph code style={styles.yamlText}>
-                        {dummyYAML}
-                    </Paragraph>
-                </div>
-
-                <Card bordered={false} style={styles.commandBox}>
-                    <Paragraph>
-                        <Text>You can now run the ingestion via:</Text>
-                    </Paragraph>
-                    <Paragraph code>metadata ingest/profile/test/usage -c file.yaml</Paragraph>
-                </Card>
-
-                <div style={styles.footer}>
-                    <Text>
-                        If you want to schedule the ingestion, check some examples in the
-                        docs&nbsp;
-                        <Link href="#" target="_blank">
-                            here
-                        </Link>
-                    </Text>
-                </div>
-            </Card>
-        </div>
+                    <Col className="bg-white" span={24}>
+                        <div
+                            className="mt-10 text-left flex flex-col items-start">
+                            <BrandImage height="auto" width={200} />
+                            <Button
+                                icon={<DownloadOutlined />}
+                                type="primary"
+                                onClick={handleDownload}
+                                className="mt-4 mb-4"
+                            >
+                                Download YAML
+                            </Button>
+                        </div>
+                    </Col>
+                    <Col span={24}>
+                        <div style={styles.yamlBox} className="mx-10">
+                            <Paragraph code style={styles.yamlText}>
+                                {yaml}
+                            </Paragraph>
+                        </div>
+                    </Col>
+                    <Col span={24}>
+                        <div style={styles.commandBox} className="mx-10">
+                            <Paragraph>
+                                <Text>You can now run the ingestion via:</Text>
+                            </Paragraph>
+                            <Paragraph code>metadata ingest/profile/test/usage -c file.yaml</Paragraph>
+                        </div>
+                    </Col>
+                    <Col span={24}>
+                        <div style={styles.footer} className="mx-10 text-center">
+                            <Paragraph>
+                                If you want to schedule the ingestion, check some examples in the
+                                docs <a href="https://docs.open-metadata.org/latest/deployment/ingestion">here</a>
+                            </Paragraph>
+                        </div>
+                    </Col>
+                </Row>
+            </div>
+        </PageLayoutV1 >
     );
+
 };
 
 const styles = {
@@ -71,17 +106,6 @@ const styles = {
         padding: '20px',
         display: 'flex',
         justifyContent: 'center',
-    },
-    card: {
-        maxWidth: '800px',
-        width: '100%',
-        padding: '20px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-    },
-    header: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        marginBottom: '20px',
     },
     yamlBox: {
         border: '1px solid #d9d9d9',
@@ -91,6 +115,9 @@ const styles = {
         backgroundColor: '#fafafa',
         textAlign: 'left' as const, // Align text to the left
         fontFamily: 'monospace',
+        maxHeight: '400px', // Set max height to make it scrollable
+        overflow: 'auto', // Enable scrolling when content overflows
+        whiteSpace: 'pre-wrap', // Preserve white spaces and wrap lines if necessary
     },
     yamlText: {
         whiteSpace: 'pre-wrap', // Maintain the format of YAML (preformatted text)

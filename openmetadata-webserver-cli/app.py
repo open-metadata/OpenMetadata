@@ -11,9 +11,10 @@
 """
 Local webserver for generating hybrid yamls
 """
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import os
+from fastapi.encoders import jsonable_encoder
 
 from metadata.generated.schema.entity.automations.testServiceConnection import TestServiceConnectionRequest
 
@@ -66,9 +67,33 @@ def init_local_server():
 @app.route('/api/test', methods=['POST'])
 def _test_connection():
     payload = request.json
+
     test_conn_req = TestServiceConnectionRequest.model_validate(payload)
     res = CACHE["server"]._test_connection(test_conn_req)
-    return jsonify(res.model_dump())
+    json_compatible_data = jsonable_encoder(res)
+    # return jsonify(res.model_dump())
+    return jsonify(json_compatible_data)
+
+@app.route('/api/yaml/download', methods=['GET'])
+def download_yaml():
+    try:
+        # Send the file as an attachment
+        return send_file('dummy.yaml', as_attachment=True)
+    except Exception as e:
+        return f"Error loading text file: {e}"
+
+@app.route('/api/yaml', methods=['GET'])
+def yaml():
+    try:
+        # Open the text file and read its contents
+        with open('dummy.yaml', 'r') as file:
+            content = file.read()
+
+        # Return the text file content
+        return content
+
+    except Exception as e:
+        return f"Error loading text file: {e}"
 
 
 # Start the Flask server

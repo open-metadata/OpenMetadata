@@ -41,6 +41,8 @@ import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-col
 import { ReactComponent as SearchIcon } from '../../../assets/svg/search-colored.svg';
 import { ReactComponent as DataObservability } from '../../../assets/svg/setting-data-observability.svg';
 import { ReactComponent as StorageIcon } from '../../../assets/svg/storage-colored.svg';
+import BrandImage from '../../common/BrandImage/BrandImage';
+import classNames from 'classnames';
 
 interface ServicesProps {
   serviceName: ServiceCategory;
@@ -309,7 +311,6 @@ const Services = ({ serviceName }: ServicesProps) => {
       gutter={[16, 16]}>
       <Col span={24}>
         <Space className="w-full justify-between m-b-lg" data-testid="header">
-          <PageHeader data={getServicePageHeader()} />
 
         </Space>
       </Col>

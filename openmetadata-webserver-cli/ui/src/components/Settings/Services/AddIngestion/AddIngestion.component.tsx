@@ -44,6 +44,7 @@ import {
 } from "./IngestionWorkflow.interface";
 import ScheduleInterval from "./Steps/ScheduleInterval";
 import DownloadYAML from "../../../../pages/DownloadPage";
+import { useHistory } from "react-router-dom";
 
 const AddIngestion = ({
   activeIngestionStep,
@@ -66,6 +67,7 @@ const AddIngestion = ({
 }: AddIngestionProps) => {
   const { t } = useTranslation();
   const { config: limitConfig } = useLimitStore();
+  const history = useHistory();
 
   const { pipelineSchedules } =
     limitConfig?.limits?.config.featureLimits.find(
@@ -135,7 +137,11 @@ const AddIngestion = ({
     setWorkflowData(data);
 
   const handleNext = (step: number) => {
-    setActiveIngestionStep(step);
+    if (step > 2) {
+      history.push("/download");
+    } else {
+      setActiveIngestionStep(step);
+    }
   };
 
   const handlePrev = (step: number) => {
@@ -333,9 +339,9 @@ const AddIngestion = ({
           </ScheduleInterval>
         )}
 
-        {activeIngestionStep > 2 && handleViewServiceClick && (
+        {/* {activeIngestionStep > 2 && handleViewServiceClick && (
           <DownloadYAML />
-        )}
+        )} */}
       </div>
     </div>
   );

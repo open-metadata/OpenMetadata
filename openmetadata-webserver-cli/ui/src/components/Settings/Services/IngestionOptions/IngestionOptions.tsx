@@ -91,7 +91,7 @@ const IngestionOptions = () => {
             <Col span={24}>
                 <Row gutter={[20, 20]}>
                     {ingestionOptionItems.map((option) => (
-                        <Col key={option?.key} span={6}>
+                        <Col key={option?.key} span={4}>
                             <SettingItemCard
                                 data={option}
                                 onClick={handlePipelineOptionClick}

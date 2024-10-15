@@ -17,7 +17,6 @@ import { capitalize, isEmpty, isUndefined } from "lodash";
 import { LoadingState } from "Models";
 import React, { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
-import { getServiceDetailsPath } from "../../../../constants/constants";
 import { GlobalSettingsMenuCategory } from "../../../../constants/GlobalSettings.constants";
 import {
   SERVICE_DEFAULT_ERROR_MAP,
@@ -34,14 +33,10 @@ import {
   getSettingPath,
 } from "../../../../utils/RouterUtils";
 import {
-  getServiceCreatedLabel,
   getServiceRouteFromServiceType,
-  getServiceType,
 } from "../../../../utils/ServiceUtils";
 import ResizablePanels from "../../../common/ResizablePanels/ResizablePanels";
 import ServiceDocPanel from "../../../common/ServiceDocPanel/ServiceDocPanel";
-import SuccessScreen from "../../../common/SuccessScreen/SuccessScreen";
-import TitleBreadcrumb from "../../../common/TitleBreadcrumb/TitleBreadcrumb.component";
 import AddIngestion from "../AddIngestion/AddIngestion.component";
 import IngestionStepper from "../Ingestion/IngestionStepper/IngestionStepper.component";
 import ConnectionConfigForm from "../ServiceConfig/ConnectionConfigForm";
@@ -50,6 +45,8 @@ import ConfigureService from "./Steps/ConfigureService";
 import SelectServiceType from "./Steps/SelectServiceType";
 import { ServiceType } from '../../../../generated/entity/services/serviceType';
 import axios from "axios";
+import BrandImage from "../../../common/BrandImage/BrandImage";
+import classNames from "classnames";
 
 const AddService = ({
   serviceCategory,
@@ -180,17 +177,13 @@ const AddService = ({
 
   const addNewServiceElement = (
     <div data-testid="add-new-service-container">
-      {selectServiceType ? (
+      {selectServiceType && (
         <Space className="p-b-xs">
           {getServiceLogo(selectServiceType || "", "h-6")}{" "}
           <Typography className="text-base" data-testid="header">
             {`${selectServiceType} ${t("label.service")}`}
           </Typography>
         </Space>
-      ) : (
-        <Typography className="text-base p-b-xs" data-testid="header">
-          {t("label.add-new-entity", { entity: t("label.service") })}
-        </Typography>
       )}
 
       <IngestionStepper
@@ -241,7 +234,12 @@ const AddService = ({
 
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
-      <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+      <div
+        className={classNames('mt-8 text-left flex flex-col items-start px-2', {
+          'sso-container': false,
+        })}>
+        <BrandImage height="auto" width={200} className="mb-4" />
+      </div>
       <div className="m-t-md">
         {addIngestion ? (
           <AddIngestion

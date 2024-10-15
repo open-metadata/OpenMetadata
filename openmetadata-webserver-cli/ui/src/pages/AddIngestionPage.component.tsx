@@ -35,6 +35,8 @@ import {
 } from "../utils/IngestionUtils";
 import { getServiceType } from "../utils/ServiceUtils";
 import { ServiceType } from "../generated/entity/automations/workflow";
+import BrandImage from "../components/common/BrandImage/BrandImage";
+import classNames from "classnames";
 
 const AddIngestionPage = () => {
   const { ingestionType, serviceCategory } = useParams<{
@@ -114,7 +116,12 @@ const AddIngestionPage = () => {
 
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
-      <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+      <div
+        className={classNames('mt-8 text-left flex flex-col items-start px-2', {
+          'sso-container': false,
+        })}>
+        <BrandImage height="auto" width={200} />
+      </div>
       <div className="m-t-md">
         <AddIngestion
           activeIngestionStep={activeIngestionStep}

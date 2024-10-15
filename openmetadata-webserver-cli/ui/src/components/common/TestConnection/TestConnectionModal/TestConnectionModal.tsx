@@ -33,6 +33,7 @@ interface TestConnectionModalProps {
   testConnectionStepResult: TestConnectionStepResult[];
   progress: number;
   isConnectionTimeout: boolean;
+  message: string;
   onCancel: () => void;
   onConfirm: () => void;
   onTestConnection: () => void;
@@ -48,6 +49,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   onConfirm,
   isConnectionTimeout,
   onTestConnection,
+  message,
 }) => {
   const { t } = useTranslation();
 
@@ -83,46 +85,11 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
           percent={progress}
           strokeColor="#B3D4F4"
         />
-        {isConnectionTimeout ? (
-          <Space
-            align="center"
-            className="timeout-widget justify-center w-full"
-            data-testid="test-connection-timeout-widget"
-            direction="vertical"
-            size={20}>
-            <IconTimeOut height={100} width={100} />
-            <Typography.Title level={5}>
-              {t('label.connection-timeout')}
-            </Typography.Title>
-            <Typography.Text className="text-grey-muted">
-              {t('message.test-connection-taking-too-long')}
-            </Typography.Text>
-            <Button
-              ghost
-              className="try-again-button"
-              data-testid="try-again-button"
-              icon={<IconTimeOutButton height={14} width={14} />}
-              type="primary"
-              onClick={onTestConnection}>
-              {t('label.try-again')}
-            </Button>
-          </Space>
-        ) : (
-          <>
-            {testConnectionStep.map((step) => {
-              const currentStepResult = getConnectionStepResult(step);
 
-              return (
-                <ConnectionStepCard
-                  isTestingConnection={isTestingConnection}
-                  key={step.name}
-                  testConnectionStep={step}
-                  testConnectionStepResult={currentStepResult}
-                />
-              );
-            })}
-          </>
-        )}
+        <Typography.Text className="mt-4 mb-4 w-480 text-xl font-medium text-grey-muted">
+          {message}{' '}
+        </Typography.Text>
+
       </Space>
     </Modal>
   );

@@ -12,24 +12,24 @@
  */
 import { Button, Space } from "antd";
 import classNames from "classnames";
-import { isEmpty } from "lodash";
-import React, { FC, useEffect, useMemo, useRef, useState } from "react";
+import React, { FC, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ReactComponent as FailIcon } from "../../../assets/svg/fail-badge.svg";
 import { ReactComponent as WarningIcon } from "../../../assets/svg/ic-warning.svg";
 import { ReactComponent as SuccessIcon } from "../../../assets/svg/success-badge.svg";
-import { AIRFLOW_DOCS } from "../../../constants/docs.constants";
 import {
-  TEST_CONNECTION_INITIAL_MESSAGE,
+  TEST_CONNECTION_FAILURE_MESSAGE,
   TEST_CONNECTION_PROGRESS_PERCENTAGE,
+  TEST_CONNECTION_SUCCESS_MESSAGE,
+  TEST_CONNECTION_TESTING_MESSAGE,
 } from "../../../constants/Services.constant";
 import {
+  ConfigClass,
   StatusType,
   TestConnectionStepResult,
   Workflow,
 } from "../../../generated/entity/automations/workflow";
 import { TestConnectionStep } from "../../../generated/entity/services/connections/testConnectionDefinition";
-import { useAirflowStatus } from "../../../hooks/useAirflowStatus";
 
 import { Transi18next } from "../../../utils/CommonUtils";
 import { shouldTestConnection } from "../../../utils/ServiceUtils";
@@ -38,24 +38,24 @@ import "./test-connection.style.less";
 import { TestConnectionProps, TestStatus } from "./TestConnection.interface";
 import TestConnectionModal from "./TestConnectionModal/TestConnectionModal";
 import axios from "axios";
-import { getAxiosErrorMessage } from "../../../utils/AxiosUtils";
+import { ServiceType } from "../../../generated/entity/services/serviceType";
 
 const TestConnection: FC<TestConnectionProps> = ({
   isTestingDisabled,
   connectionType,
-
+  getData,
   onValidateFormRequiredFields,
   shouldValidateForm = true,
   showDetails = true,
+  serviceName,
 }) => {
   const { t } = useTranslation();
-  const { isAirflowAvailable } = useAirflowStatus();
 
   // local state
   const [isTestingConnection] = useState<boolean>(false);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  const [message] = useState<string>(TEST_CONNECTION_INITIAL_MESSAGE);
+  const [message, setMessage] = useState<string>(TEST_CONNECTION_TESTING_MESSAGE);
 
   const [testConnectionStep] = useState<TestConnectionStep[]>([]);
 
@@ -64,7 +64,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   const [currentWorkflow] = useState<Workflow>();
   const [testStatus] = useState<TestStatus>();
 
-  const [progress] = useState<number>(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
+  const [progress, setProgress] = useState<number>(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
 
   const [isConnectionTimeout] = useState<boolean>(false);
 
@@ -84,26 +84,21 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   // handlers
   const testConnection = async () => {
+    setProgress(0);
+    setDialogOpen(true);
     try {
-      const response = await axios.post('/api/test', {
-        "config": {
-          "type": "Mysql",
-          "scheme": "mysql+pymysql",
-          "username": "openmetadata_user",
-          "authType": {
-            "password": "openmetadata_password"
-          },
-          "hostPort": "localhost:3306",
-          "databaseName": "openmetadata",
-          "supportsMetadataExtraction": true,
-          "supportsDBTExtraction": true,
-          "supportsProfiler": true,
-          "supportsQueryComment": true
-        }
-      });
-
+      const payload = {
+        connection: { config: getData() as ConfigClass },
+        serviceType: ServiceType.Database,
+        connectionType,
+        serviceName,
+      };
+      const response = await axios.post('/api/test', payload);
+      setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
+      console.log(response);
+      setProgress(100);
     } catch (error) {
-      alert(getAxiosErrorMessage(error));
+      setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
     }
   };
 
@@ -119,21 +114,6 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
   };
 
-  useEffect(() => {
-    currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
-  }, [currentWorkflow]);
-
-  useEffect(() => {
-    return () => {
-      /**
-       * if workflow is present then delete the workflow when component unmount
-       */
-      const workflowId = currentWorkflowRef.current?.id;
-      if (workflowId) {
-        // handleDeleteWorkflow(workflowId);
-      }
-    };
-  }, []);
 
   // rendering
 
@@ -215,6 +195,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         progress={progress}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
+        message={message}
         onCancel={() => setDialogOpen(false)}
         onConfirm={() => setDialogOpen(false)}
         onTestConnection={handleTestConnection}
