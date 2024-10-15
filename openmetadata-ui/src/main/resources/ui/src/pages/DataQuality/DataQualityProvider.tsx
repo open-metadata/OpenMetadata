@@ -22,7 +22,7 @@ import { useParams } from 'react-router-dom';
 import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TestSummary } from '../../generated/tests/testCase';
-import { getDataQualityReport } from '../../rest/testAPI';
+import { fetchTestCaseSummary } from '../../rest/dataQualityDashboardAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DataQualityContextInterface,
@@ -54,11 +54,7 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchTestSummary = async () => {
     setIsTestCaseSummaryLoading(true);
     try {
-      const { data } = await getDataQualityReport({
-        index: 'testCase',
-        aggregationQuery:
-          'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
-      });
+      const { data } = await fetchTestCaseSummary();
       // Initialize output data with zeros
       const outputData = {
         success: 0,

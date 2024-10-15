@@ -18,6 +18,7 @@ import {
   GREEN_3,
   PRIMARY_COLOR,
   RED_3,
+  TEXT_COLOR,
   YELLOW_2,
 } from '../../../../constants/Color.constants';
 import { TEXT_GREY_MUTED } from '../../../../constants/constants';
@@ -53,10 +54,12 @@ const TestCaseStatusPieChartWidget = () => {
           <text
             dy={8}
             fill={TEXT_GREY_MUTED}
+            fontSize={16}
             textAnchor="middle"
             x="50%"
             y="46%">
-            {testCaseSummary.success ?? 0}/{testCaseSummary.total ?? 0}
+            <tspan fill={TEXT_COLOR}>{testCaseSummary.success ?? 0}</tspan>
+            {`/${testCaseSummary.total ?? 0}`}
           </text>
           <text
             dy={8}

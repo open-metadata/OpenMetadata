@@ -13,38 +13,41 @@
 import { Card, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as HealthCheckIcon } from '../../../../assets/svg/ic-green-heart-border.svg';
+import { ReactComponent as DataAssetsCoverageIcon } from '../../../../assets/svg/ic-data-assets-coverage.svg';
 import {
   GREEN_3,
   RED_3,
   TEXT_COLOR,
 } from '../../../../constants/Color.constants';
 import { TEXT_GREY_MUTED } from '../../../../constants/constants';
-import { INITIAL_ENTITY_HEALTH_MATRIX } from '../../../../constants/profiler.constant';
-import { fetchEntityCoveredWithDQ } from '../../../../rest/dataQualityDashboardAPI';
+import { INITIAL_DATA_ASSETS_COVERAGE_STATES } from '../../../../constants/profiler.constant';
+import {
+  fetchEntityCoveredWithDQ,
+  fetchTotalEntityCount,
+} from '../../../../rest/dataQualityDashboardAPI';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 
-const EntityHealthStatusPieChartWidget = () => {
+const DataAssetsCoveragePieChartWidget = () => {
   const { t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [entityHealthStates, setEntityHealthStates] = useState<{
-    healthy: number;
-    unhealthy: number;
+  const [dataAssetsCoverageStates, setDataAssetsCoverageStates] = useState<{
+    covered: number;
+    notCovered: number;
     total: number;
-  }>(INITIAL_ENTITY_HEALTH_MATRIX);
+  }>(INITIAL_DATA_ASSETS_COVERAGE_STATES);
 
   const { data, chartLabel } = useMemo(
     () => ({
       data: [
         {
-          name: t('label.healthy'),
-          value: entityHealthStates.healthy,
+          name: t('label.covered'),
+          value: dataAssetsCoverageStates.covered,
           color: GREEN_3,
         },
         {
-          name: t('label.unhealthy'),
-          value: entityHealthStates.unhealthy,
+          name: t('label.not-covered'),
+          value: dataAssetsCoverageStates.notCovered,
           color: RED_3,
         },
       ],
@@ -57,8 +60,8 @@ const EntityHealthStatusPieChartWidget = () => {
             textAnchor="middle"
             x="50%"
             y="46%">
-            <tspan fill={TEXT_COLOR}>{entityHealthStates.healthy}</tspan>
-            {`/${entityHealthStates.total}`}
+            <tspan fill={TEXT_COLOR}>{dataAssetsCoverageStates.covered}</tspan>
+            {`/${dataAssetsCoverageStates.total}`}
           </text>
           <text
             dy={8}
@@ -66,54 +69,59 @@ const EntityHealthStatusPieChartWidget = () => {
             textAnchor="middle"
             x="50%"
             y="54%">
-            {t('label.entity-plural')}
+            {t('label.table-plural')}
           </text>
         </>
       ),
     }),
-    [entityHealthStates]
+    [dataAssetsCoverageStates]
   );
 
-  const fetchEntityHealthSummary = async () => {
+  const fetchDataAssetsCoverage = async () => {
     setIsLoading(true);
     try {
-      const { data: unhealthyData } = await fetchEntityCoveredWithDQ(true);
-      const { data: totalData } = await fetchEntityCoveredWithDQ();
-      if (unhealthyData.length === 0 || totalData.length === 0) {
-        setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
+      const { data: coverageData } = await fetchEntityCoveredWithDQ();
+      const { data: totalData } = await fetchTotalEntityCount();
+      if (coverageData.length === 0 || totalData.length === 0) {
+        setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
       }
-      const unhealthy = parseInt(unhealthyData[0].originEntityFQN);
-      const total = parseInt(totalData[0].originEntityFQN);
 
-      setEntityHealthStates({ unhealthy, healthy: total - unhealthy, total });
+      const covered = parseInt(coverageData[0].originEntityFQN);
+      const total = parseInt(totalData[0].fullyQualifiedName);
+
+      setDataAssetsCoverageStates({
+        covered,
+        notCovered: total - covered,
+        total: total,
+      });
     } catch (error) {
-      setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
+      setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchEntityHealthSummary();
+    fetchDataAssetsCoverage();
   }, []);
 
   return (
     <Card loading={isLoading}>
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
-          <HealthCheckIcon height={20} width={20} />
+          <DataAssetsCoverageIcon height={20} width={20} />
           <Typography.Text className="font-medium text-md text-grey-muted">
-            {t('label.healthy-data-asset-plural')}
+            {t('label.data-asset-plural-coverage')}
           </Typography.Text>
         </div>
         <CustomPieChart
           data={data}
           label={chartLabel}
-          name="healthy-data-assets"
+          name="data-assets-coverage"
         />
       </div>
     </Card>
   );
 };
 
-export default EntityHealthStatusPieChartWidget;
+export default DataAssetsCoveragePieChartWidget;
