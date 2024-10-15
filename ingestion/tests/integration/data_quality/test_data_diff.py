@@ -302,7 +302,7 @@ def test_happy_paths(
         },
         "processor": {
             "type": "orm-test-runner",
-            "config": {"testCases": [parameters.test_case_defintion.dict()]},
+            "config": {"testCases": [parameters.test_case_defintion.model_dump()]},
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
@@ -425,7 +425,7 @@ def test_error_paths(
         },
         "processor": {
             "type": "orm-test-runner",
-            "config": {"testCases": [parameters.dict()]},
+            "config": {"testCases": [parameters.model_dump()]},
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
