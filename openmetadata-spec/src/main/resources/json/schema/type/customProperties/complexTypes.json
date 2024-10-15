@@ -127,9 +127,7 @@
               "type": "string",
               "description": "The cell value of each column in the row."
             }
-          },
-          "minItems": 1,
-          "maxItems": 10
+          }
         }
       },
       "required": ["columns"],

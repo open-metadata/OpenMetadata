@@ -710,7 +710,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               columns={columns}
               isUpdating={isLoading}
               isVisible={showInput}
-              maxRowCount={config?.rowCount ?? 10}
               property={property}
               rows={value?.rows ?? []}
               onCancel={onHideInput}

@@ -12,11 +12,12 @@
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isArray, isEmpty, isString, isUndefined } from 'lodash';
+import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { CUSTOM_PROPERTIES_ICON_MAP } from '../../../constants/CustomProperty.constants';
 import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -27,6 +28,7 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../common/Table/Table';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
+import './custom-property-table.less';
 import { CustomPropertyTableProp } from './CustomPropertyTable.interface';
 import EditCustomPropertyModal, {
   FormData,
@@ -116,7 +118,21 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         title: t('label.type'),
         dataIndex: 'propertyType',
         key: 'propertyType',
-        render: (propertyType) => getEntityName(propertyType),
+        render: (propertyType: CustomProperty['propertyType']) => {
+          const Icon =
+            CUSTOM_PROPERTIES_ICON_MAP[
+              propertyType.name as keyof typeof CUSTOM_PROPERTIES_ICON_MAP
+            ];
+
+          return (
+            <div className="d-flex gap-2 custom-property-type-chip items-center">
+              {Icon && <Icon width={20} />}
+              <span>
+                {startCase(getEntityName(propertyType).replace(/-cp/g, ''))}
+              </span>
+            </div>
+          );
+        },
       },
       {
         title: t('label.config'),
@@ -152,12 +168,6 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                         <li key={column}>{column}</li>
                       ))}
                     </ul>
-                  </Typography.Text>
-                  <Typography.Text>
-                    <span className="font-medium">{`${t(
-                      'label.row-count'
-                    )}: `}</span>
-                    {config?.rowCount ?? 10}
                   </Typography.Text>
                 </div>
               );
