@@ -40,11 +40,11 @@
       "type": "string"
     },
     "addressedTo": {
-      "description": "User or team this thread is addressed to in format <#E::{entities}::{entityName}::{field}::{fieldValue}.",
+      "description": "User or team this thread is addressed to in format <#E:open-metadata:{entities}:open-metadata:{entityName}:open-metadata:{field}:open-metadata:{fieldValue}.",
       "$ref": "../../type/basic.json#/definitions/entityLink"
     },
     "about": {
-      "description": "Data asset about which this thread is created for with format <#E::{entities}::{entityType}::{field}::{fieldValue}",
+      "description": "Data asset about which this thread is created for with format <#E:open-metadata:{entities}:open-metadata:{entityType}:open-metadata:{field}:open-metadata:{fieldValue}",
       "$ref": "../../type/basic.json#/definitions/entityLink"
     },
     "type": {

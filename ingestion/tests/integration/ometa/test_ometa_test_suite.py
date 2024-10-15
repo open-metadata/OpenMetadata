@@ -110,7 +110,7 @@ class OMetaTestSuiteTest(TestCase):
             CreateTestCaseRequest(
                 name=TestCaseEntityName("testCaseForIntegration"),
                 entityLink=EntityLink(
-                    "<#E::table::sample_data.ecommerce_db.shopify.dim_address>"
+                    "<#E:open-metadata:table:open-metadata:sample_data.ecommerce_db.shopify.dim_address>"
                 ),
                 testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition=cls.test_definition.fullyQualifiedName,
@@ -171,7 +171,7 @@ class OMetaTestSuiteTest(TestCase):
             test_case_fqn,
             test_suite_fqn=self.test_suite.fullyQualifiedName.root,
             test_definition_fqn="columnValuesToMatchRegex",
-            entity_link="<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
+            entity_link="<#E:open-metadata:table:open-metadata:sample_data.ecommerce_db.shopify.dim_address:open-metadata:columns:open-metadata:last_name>",
             test_case_parameter_values=[
                 TestCaseParameterValue(name="regex", value=".*")
             ],
