@@ -14,6 +14,7 @@ Module handles the output messages from different workflows
 """
 
 import time
+from statistics import mean
 from typing import Any, Dict, List, Optional, Type, Union
 
 from pydantic import BaseModel
@@ -116,14 +117,10 @@ class WorkflowOutputHandler:
 
     def _print_summary(self, steps: List[Step]):
         failures: List[Failure] = []
-        total_records: int = 0
-        total_errors: int = 0
 
         for step in steps:
             step_summary = Summary.from_step(step)
 
-            total_records += step_summary.records or 0
-            total_errors += step_summary.errors or 0
             failures.append(
                 Failure(name=step.name, failures=step.get_status().failures)
             )
@@ -141,15 +138,18 @@ class WorkflowOutputHandler:
                 log_ansi_encoded_string(message=f"Filtered: {step_summary.filtered}")
 
             log_ansi_encoded_string(message=f"Errors: {step_summary.errors}")
+            log_ansi_encoded_string(
+                message=f"Success %: {step.get_status().calculate_success()}"
+            )
 
         self._print_failures_if_apply(failures)
 
-        total_success = max(total_records, 1)
+        # If nothing is processed, we'll have a success of 100%
+        success_pct = mean([step.get_status().calculate_success() for step in steps])
         log_ansi_encoded_string(
             color=ANSI.BRIGHT_CYAN,
             bold=True,
-            message="Success %: "
-            + f"{round(total_success * 100 / (total_success + total_errors), 2)}",
+            message="Workflow Success %: " + f"{round(success_pct, 2)}",
         )
 
     def _print_debug_summary(self, steps: List[Step]):
