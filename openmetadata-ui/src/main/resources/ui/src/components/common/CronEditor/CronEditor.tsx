@@ -188,7 +188,8 @@ const CronEditor = ({
                     t('message.cron-less-than-hour-message')
                   );
                 }
-                Promise.resolve();
+
+                return Promise.resolve();
               },
             },
           ]}>
