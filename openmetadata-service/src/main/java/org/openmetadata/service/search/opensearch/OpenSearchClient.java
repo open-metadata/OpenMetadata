@@ -164,6 +164,7 @@ import os.org.opensearch.index.query.BoolQueryBuilder;
 import os.org.opensearch.index.query.MatchQueryBuilder;
 import os.org.opensearch.index.query.MultiMatchQueryBuilder;
 import os.org.opensearch.index.query.Operator;
+import os.org.opensearch.index.query.PrefixQueryBuilder;
 import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
 import os.org.opensearch.index.query.QueryStringQueryBuilder;
@@ -1660,6 +1661,16 @@ public class OpenSearchClient implements SearchClient {
     if (isClientAvailable) {
       DeleteRequest deleteRequest = new DeleteRequest(indexName, docId);
       deleteEntityFromOpenSearch(deleteRequest);
+    }
+  }
+
+  @Override
+  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) {
+    if (isClientAvailable) {
+      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
+      deleteByQueryRequest.setQuery(
+          new PrefixQueryBuilder("fullyQualifiedName.keyword", fqnPrefix.toLowerCase()));
+      deleteEntityFromOpenSearchByQuery(deleteByQueryRequest);
     }
   }
 
