@@ -130,6 +130,7 @@ public class ApplicationHandler {
   public void runMethodFromApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String methodName) {
     // Native Application
+    setAppRuntimeProperties(app);
     try {
       Object resource = runAppInit(app, daoCollection, searchRepository);
       // Call method on demand

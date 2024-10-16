@@ -54,7 +54,10 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
-import { UrlEntityCharRegEx } from '../constants/regex.constants';
+import {
+  UrlEntityCharRegEx,
+  VALIDATE_ESCAPE_START_END_REGEX,
+} from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -514,52 +517,51 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
  * @param onDataFetched - callback function which return FeedCounts object
  */
 
-export const getFeedCounts = (
+export const getFeedCounts = async (
   entityType: string,
   entityFQN: string,
   feedCountCallback: (countValue: FeedCounts) => void
 ) => {
-  getFeedCount(getEntityFeedLink(entityType, entityFQN))
-    .then((res) => {
-      if (res) {
-        const {
-          conversationCount,
-          openTaskCount,
-          closedTaskCount,
-          totalTasksCount,
-          totalCount,
-          mentionCount,
-        } = res.reduce((acc, item) => {
-          const conversationCount =
-            acc.conversationCount + (item.conversationCount || 0);
-          const totalTasksCount =
-            acc.totalTasksCount + (item.totalTaskCount || 0);
+  try {
+    const res = await getFeedCount(getEntityFeedLink(entityType, entityFQN));
+    if (res) {
+      const {
+        conversationCount,
+        openTaskCount,
+        closedTaskCount,
+        totalTasksCount,
+        totalCount,
+        mentionCount,
+      } = res.reduce((acc, item) => {
+        const conversationCount =
+          acc.conversationCount + (item.conversationCount || 0);
+        const totalTasksCount =
+          acc.totalTasksCount + (item.totalTaskCount || 0);
 
-          return {
-            conversationCount,
-            totalTasksCount,
-            openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
-            closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
-            totalCount: conversationCount + totalTasksCount,
-            mentionCount: acc.mentionCount + (item.mentionCount || 0),
-          };
-        }, FEED_COUNT_INITIAL_DATA);
-
-        feedCountCallback({
+        return {
           conversationCount,
           totalTasksCount,
-          openTaskCount,
-          closedTaskCount,
-          totalCount,
-          mentionCount,
-        });
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
+          openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
+          closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
+          totalCount: conversationCount + totalTasksCount,
+          mentionCount: acc.mentionCount + (item.mentionCount || 0),
+        };
+      }, FEED_COUNT_INITIAL_DATA);
+
+      feedCountCallback({
+        conversationCount,
+        totalTasksCount,
+        openTaskCount,
+        closedTaskCount,
+        totalCount,
+        mentionCount,
+      });
+    } else {
+      throw t('server.entity-feed-fetch-error');
+    }
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
 };
 
 /**
@@ -924,4 +926,12 @@ export const isDeleted = (deleted: unknown): boolean => {
   return (deleted as string) === 'false' || deleted === false || isNil(deleted)
     ? false
     : true;
+};
+
+export const removeOuterEscapes = (input: string) => {
+  // Use regex to check if the string starts and ends with escape characters
+  const match = input.match(VALIDATE_ESCAPE_START_END_REGEX);
+
+  // Return the middle part without the outer escape characters or the original input if no match
+  return match && match.length > 3 ? match[2] : input;
 };

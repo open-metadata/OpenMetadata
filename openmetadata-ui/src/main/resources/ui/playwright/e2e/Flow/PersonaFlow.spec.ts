@@ -74,9 +74,13 @@ test.describe.serial('Persona operations', () => {
 
     await page.locator(descriptionBox).fill(PERSONA_DETAILS.description);
 
-    const userResponse = page.waitForResponse('/api/v1/users?*');
+    const userListResponse = page.waitForResponse(
+      '/api/v1/users?limit=*&isBot=false*'
+    );
     await page.getByTestId('add-users').click();
-    await userResponse;
+    await userListResponse;
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await page.waitForSelector('[data-testid="selectable-list"]');
 
@@ -98,15 +102,7 @@ test.describe.serial('Persona operations', () => {
     // Verify created persona details
 
     await expect(
-      page
-        .getByTestId('persona-details-card')
-        .getByText(PERSONA_DETAILS.displayName)
-    ).toBeVisible();
-
-    await expect(
-      page
-        .getByTestId('persona-details-card')
-        .getByText(PERSONA_DETAILS.description)
+      page.getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
     ).toBeVisible();
 
     const personaResponse = page.waitForResponse(
@@ -116,8 +112,7 @@ test.describe.serial('Persona operations', () => {
     );
 
     await page
-      .locator('[data-testid="persona-details-card"]')
-      .getByText(PERSONA_DETAILS.displayName)
+      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
       .click();
 
     await personaResponse;
@@ -149,8 +144,7 @@ test.describe.serial('Persona operations', () => {
     page,
   }) => {
     await page
-      .locator('[data-testid="persona-details-card"]')
-      .getByText(PERSONA_DETAILS.displayName)
+      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
       .click();
 
     await page.getByTestId('edit-description').click();
@@ -176,9 +170,7 @@ test.describe.serial('Persona operations', () => {
 
   test('Persona rename flow should work properly', async ({ page }) => {
     await page
-      .locator('[data-testid="persona-details-card"]')
-      .getByText(PERSONA_DETAILS.displayName)
-
+      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
       .click();
 
     await updatePersonaDisplayName({ page, displayName: 'Test Persona' });
@@ -199,8 +191,7 @@ test.describe.serial('Persona operations', () => {
 
   test('Remove users in persona should work properly', async ({ page }) => {
     await page
-      .locator('[data-testid="persona-details-card"]')
-      .getByText(PERSONA_DETAILS.displayName)
+      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
       .click();
 
     await page
@@ -227,8 +218,7 @@ test.describe.serial('Persona operations', () => {
 
   test('Delete persona should work properly', async ({ page }) => {
     await page
-      .locator('[data-testid="persona-details-card"]')
-      .getByText(PERSONA_DETAILS.displayName)
+      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
       .click();
 
     await page.click('[data-testid="manage-button"]');

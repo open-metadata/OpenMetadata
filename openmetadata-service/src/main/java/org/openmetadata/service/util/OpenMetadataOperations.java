@@ -270,8 +270,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           int batchSize,
       @Option(
               names = {"-p", "--payload-size"},
-              defaultValue = "10485760")
-          int payloadSize,
+              defaultValue = "104857600")
+          long payloadSize,
       @Option(
               names = {"--recreate-indexes"},
               defaultValue = "true")
@@ -295,7 +295,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private int executeSearchReindexApp(
-      String appName, int batchSize, int payloadSize, boolean recreateIndexes) {
+      String appName, int batchSize, long payloadSize, boolean recreateIndexes) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App originalSearchIndexApp =
         appRepository.getByName(null, appName, appRepository.getFields("id"));
@@ -338,8 +338,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       try {
         AppRepository appRepository =
             (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-        appRunRecord =
-            appRepository.getLatestAppRunsAfterStartTime(searchIndexApp.getId(), startTime);
+        appRunRecord = appRepository.getLatestAppRunsAfterStartTime(searchIndexApp, startTime);
         if (isRunCompleted(appRunRecord)) {
           List<String> columns =
               new ArrayList<>(

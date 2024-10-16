@@ -44,6 +44,12 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "timestamp": {
+        "type": "date"
+      },
+      "@timestamp": {
+          "type": "date"
+      },
       "testResultValue": {
         "properties": {
           "name": {
@@ -117,6 +123,15 @@
         "entityFQN": {
           "type": "keyword",
           "normalizer": "lowercase_normalizer"
+        },
+        "entityLink": {
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer",
+          "fields": {
+            "nonNormalized": {
+              "type": "keyword"
+            }
+          }
         },
         "parameterValues": {
           "properties": {

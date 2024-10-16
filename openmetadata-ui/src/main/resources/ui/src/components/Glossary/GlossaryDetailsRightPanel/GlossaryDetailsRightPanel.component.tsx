@@ -158,7 +158,7 @@ const GlossaryDetailsRightPanel = ({
       <Col data-testid="glossary-right-panel-owner-link" span="24">
         <div className="d-flex items-center m-b-xs">
           <Typography.Text className="right-panel-label">
-            {t('label.owner')}
+            {t('label.owner-plural')}
           </Typography.Text>
           {(permissions.EditOwners || permissions.EditAll) &&
             selectedData.owners &&
@@ -171,7 +171,7 @@ const GlossaryDetailsRightPanel = ({
                 onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
                 <Tooltip
                   title={t('label.edit-entity', {
-                    entity: t('label.owner'),
+                    entity: t('label.owner-plural'),
                   })}>
                   <Button
                     className="cursor-pointer flex-center m-l-xss"
@@ -288,7 +288,7 @@ const GlossaryDetailsRightPanel = ({
           </div>
         </Col>
       )}
-      <Col span="22">
+      <Col span="24">
         {!isGlossary && selectedData && (
           <CustomPropertyTable
             isRenderedInRightPanel

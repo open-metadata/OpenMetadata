@@ -64,7 +64,7 @@ import org.openmetadata.service.util.ResultList;
     description = "Apps marketplace holds to application available for Open-metadata")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "apps/marketplace", order = 8)
+@Collection(name = "apps/marketplace", order = 7)
 @Slf4j
 public class AppMarketPlaceResource
     extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
@@ -480,7 +480,8 @@ public class AppMarketPlaceResource
             .withFeatures(create.getFeatures())
             .withSourcePythonClass(create.getSourcePythonClass())
             .withAllowConfiguration(create.getAllowConfiguration())
-            .withSystem(create.getSystem());
+            .withSystem(create.getSystem())
+            .withSupportsInterrupt(create.getSupportsInterrupt());
 
     // Validate App
     validateApplication(app);

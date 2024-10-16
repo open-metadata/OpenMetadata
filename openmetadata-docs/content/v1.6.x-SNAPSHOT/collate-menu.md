@@ -5,8 +5,6 @@ site_menu:
 
   - category: Enable Security
     url: /deployment
-    color: violet-70
-    icon: deployment
   - category: Enable Security / Basic Authentication
     url: /deployment/security/basic-auth
   - category: Enable Security / Ldap Authentication
@@ -38,8 +36,6 @@ site_menu:
 
   - category: Connectors
     url: /connectors
-    color: violet-70
-    icon: openmetadata
 
   - category: Connectors / Database
     url: /connectors/database
@@ -384,6 +380,10 @@ site_menu:
     url: /connectors/ml-model/sagemaker
   - category: Connectors / ML Model / Sagemaker / Run Externally
     url: /connectors/ml-model/sagemaker/yaml
+  - category: Connectors / ML Model / VertexAI
+    url: /connectors/ml-model/vertexai
+  - category: Connectors / ML Model / VertexAI / Run Externally
+    url: /connectors/ml-model/vertexai/yaml
 
   - category: Connectors / Storage
     url: /connectors/storage
@@ -514,8 +514,6 @@ site_menu:
 
   - category: How-to Guides
     url: /how-to-guides
-    color: violet-70
-    icon: openmetadata
 
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
@@ -595,6 +593,12 @@ site_menu:
     url: /how-to-guides/data-discovery/details
   - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
     url: /how-to-guides/data-discovery/advanced
+  - category: How-to Guides / Data Discovery / Bulk Upload Data Assets
+    url: /how-to-guides/data-discovery/bulk-upload
+  - category: How-to Guides / Data Discovery / How to Bulk Import Data Asset
+    url: /how-to-guides/data-discovery/import
+  - category: How-to Guides / Data Discovery / How to Export Data Asset
+    url: /how-to-guides/data-discovery/export
 
   - category: How-to Guides / Data Collaboration
     url: /how-to-guides/data-collaboration
@@ -692,6 +696,10 @@ site_menu:
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
+  - category: How-to Guides / Data Governance / Automation
+    url: /how-to-guides/data-governance/automation
+  - category: How-to Guides / Data Governance / Automation / How to Set Up Automations in Collate 
+    url: /how-to-guides/data-governance/automation/set-up-automation
   - category: How-to Guides / Data Governance / Glossary
     url: /how-to-guides/data-governance/glossary
   - category: How-to Guides / Data Governance / Glossary / What is a Glossary Term
@@ -735,8 +743,6 @@ site_menu:
 
   - category: Getting Started
     url: /getting-started
-    color: violet-70
-    icon: openmetadata
 
   - category: Getting Started / Day 1
     url: /getting-started/day-1
@@ -755,14 +761,14 @@ site_menu:
 
   - category: Releases
     url: /releases
-    color: violet-70
-    icon: overview
   - category: Releases / Latest Release
     url: /releases/latest-release
   - category: Releases / Supported Releases
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.5 Release
+    url: /releases/all-releases/#1.5.5-release
   - category: Releases / All Releases / 1.5.4 Release
     url: /releases/all-releases/#1.5.4-release
   - category: Releases / All Releases / 1.5.3 Release
@@ -849,8 +855,6 @@ site_menu:
 
   - category: Main Concepts
     url: /main-concepts
-    color: violet-70
-    icon: main-concepts
   - category: Main Concepts / High Level Design
     url: /main-concepts/high-level-design
   - category: Main Concepts / Backend DB
@@ -1784,8 +1788,6 @@ site_menu:
 
   - category: SDK
     url: /sdk
-    color: violet-70
-    icon: sdk
   - category: SDK / Python SDK
     url: /sdk/python
   - category: SDK / Python SDK / Entities
@@ -1864,4 +1866,10 @@ site_menu:
     url: /sdk/java
   - category: SDK / Go
     url: /sdk/go
+
+  - category: Metapilot
+    url: /metapilot
+  
+   category: Metapilot / How to Use MetaPilot
+    url: /metapilot/how-to-use-metapilot
 ---

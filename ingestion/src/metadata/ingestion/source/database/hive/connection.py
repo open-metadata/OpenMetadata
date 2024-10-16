@@ -18,7 +18,7 @@ from functools import singledispatch
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -187,7 +187,22 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    if service_connection.metastoreConnection:
+    if service_connection.metastoreConnection and isinstance(
+        service_connection.metastoreConnection, dict
+    ):
+        try:
+            service_connection.metastoreConnection = MysqlConnection.model_validate(
+                service_connection.metastoreConnection
+            )
+        except ValidationError:
+            try:
+                service_connection.metastoreConnection = (
+                    PostgresConnection.model_validate(
+                        service_connection.metastoreConnection
+                    )
+                )
+            except ValidationError:
+                raise ValueError("Invalid metastore connection")
         engine = get_metastore_connection(service_connection.metastoreConnection)
 
     test_connection_db_schema_sources(

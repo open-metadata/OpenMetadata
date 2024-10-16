@@ -69,6 +69,11 @@
       "description": "Supports DBT Extraction.",
       "type": "boolean",
       "default": true
+    }, 
+    "supportsDataDiff": {
+      "description": "Supports the data diff data qualty specification.",
+      "type": "boolean",
+      "default": true
     },
     "dataStorageConfig": {
       "description": "Storage config to store sample data",

@@ -25,10 +25,14 @@ import static org.openmetadata.service.util.TestUtils.assertCustomProperties;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
@@ -45,6 +49,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.customproperties.EnumConfig;
+import org.openmetadata.schema.type.customproperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.types.TypeResource;
@@ -69,7 +74,20 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   public void setupTypes() throws HttpResponseException {
     INT_TYPE = getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
     STRING_TYPE = getEntityByName("string", "", ADMIN_AUTH_HEADERS);
+    EMAIL_TYPE = getEntityByName("email", "", ADMIN_AUTH_HEADERS);
     ENUM_TYPE = getEntityByName("enum", "", ADMIN_AUTH_HEADERS);
+    DATECP_TYPE = getEntityByName("date-cp", "", ADMIN_AUTH_HEADERS);
+    DATETIMECP_TYPE = getEntityByName("dateTime-cp", "", ADMIN_AUTH_HEADERS);
+    TIMECP_TYPE = getEntityByName("time-cp", "", ADMIN_AUTH_HEADERS);
+    DURATION_TYPE = getEntityByName("duration", "", ADMIN_AUTH_HEADERS);
+    MARKDOWN_TYPE = getEntityByName("markdown", "", ADMIN_AUTH_HEADERS);
+    ENTITY_REFERENCE_TYPE = getEntityByName("entityReference", "", ADMIN_AUTH_HEADERS);
+    ENTITY_REFERENCE_LIST_TYPE = getEntityByName("entityReferenceList", "", ADMIN_AUTH_HEADERS);
+    TIME_INTERVAL_TYPE = getEntityByName("timeInterval", "", ADMIN_AUTH_HEADERS);
+    NUMBER_TYPE = getEntityByName("number", "", ADMIN_AUTH_HEADERS);
+    SQLQUERY_TYPE = getEntityByName("sqlQuery", "", ADMIN_AUTH_HEADERS);
+    TIMESTAMP_TYPE = getEntityByName("timestamp", "", ADMIN_AUTH_HEADERS);
+    TABLE_TYPE = getEntityByName("table-cp", "", ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -278,6 +296,129 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     assertEquals(2, tableEntity.getCustomProperties().size());
     assertCustomProperties(
         new ArrayList<>(List.of(fieldA, fieldB)), tableEntity.getCustomProperties());*/
+  }
+
+  @Test
+  void put_patch_customProperty_table_200() throws IOException {
+    Type databaseEntity = getEntityByName("database", "customProperties", ADMIN_AUTH_HEADERS);
+    TableConfig tableConfig = new TableConfig();
+
+    // Add a custom property of type table with PUT
+    CustomProperty tableTypeFieldA =
+        new CustomProperty()
+            .withName("tableCustomPropertyTest")
+            .withDescription("tableCustomPropertyTest description")
+            .withPropertyType(TABLE_TYPE.getEntityReference());
+    ChangeDescription change = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(tableTypeFieldA)));
+    Type finalDatabaseEntity = databaseEntity;
+    ChangeDescription finalChange = change;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                finalDatabaseEntity.getId(),
+                tableTypeFieldA,
+                ADMIN_AUTH_HEADERS,
+                MINOR_UPDATE,
+                finalChange),
+        Status.BAD_REQUEST,
+        "Table Custom Property Type must have config populated.");
+
+    tableTypeFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig().withConfig(new TableConfig()));
+    ChangeDescription change1 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    Type databaseEntity1 = databaseEntity;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                databaseEntity1.getId(),
+                tableTypeFieldA,
+                ADMIN_AUTH_HEADERS,
+                MINOR_UPDATE,
+                change1),
+        Status.BAD_REQUEST,
+        "Custom Property table has invalid value columns size must be between "
+            + tableConfig.getMinColumns()
+            + " and "
+            + tableConfig.getMaxColumns());
+
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode tableConfigJson = mapper.createObjectNode();
+    ArrayNode columnsArray = tableConfigJson.putArray("columns");
+    columnsArray.add("col 1");
+    columnsArray.add("col 2");
+    columnsArray.add("col");
+    columnsArray.add("col");
+
+    tableTypeFieldA.setCustomPropertyConfig(new CustomPropertyConfig().withConfig(tableConfigJson));
+    ChangeDescription change3 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    Type databaseEntity3 = databaseEntity;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                databaseEntity3.getId(),
+                tableTypeFieldA,
+                ADMIN_AUTH_HEADERS,
+                MINOR_UPDATE,
+                change3),
+        Status.BAD_REQUEST,
+        "Column names must be unique.");
+
+    tableTypeFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new TableConfig().withColumns(Set.of("column1", "column2", "column3"))));
+    databaseEntity =
+        addCustomPropertyAndCheck(
+            databaseEntity.getId(), tableTypeFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(
+        new ArrayList<>(List.of(tableTypeFieldA)), databaseEntity.getCustomProperties());
+
+    CustomPropertyConfig prevConfig = tableTypeFieldA.getCustomPropertyConfig();
+
+    // Changing custom property description with PUT
+    tableTypeFieldA.withDescription("updated tableCustomPropertyTest description");
+    ChangeDescription change5 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    fieldUpdated(
+        change5,
+        EntityUtil.getCustomField(tableTypeFieldA, "description"),
+        "tableCustomPropertyTest description",
+        "updated tableCustomPropertyTest description");
+    databaseEntity =
+        addCustomPropertyAndCheck(
+            databaseEntity.getId(), tableTypeFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change5);
+    assertCustomProperties(
+        new ArrayList<>(List.of(tableTypeFieldA)), databaseEntity.getCustomProperties());
+
+    ChangeDescription change6 = getChangeDescription(databaseEntity, MINOR_UPDATE);
+    tableTypeFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new TableConfig().withColumns(Set.of("column-1", "column-2", "column-3"))));
+    fieldUpdated(
+        change6,
+        EntityUtil.getCustomField(tableTypeFieldA, "customPropertyConfig"),
+        prevConfig,
+        tableTypeFieldA.getCustomPropertyConfig());
+    databaseEntity =
+        addCustomPropertyAndCheck(
+            databaseEntity.getId(), tableTypeFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change6);
+    assertCustomProperties(
+        new ArrayList<>(List.of(tableTypeFieldA)), databaseEntity.getCustomProperties());
+
+    // Changing custom property description with PATCH
+    // Changes from this PATCH is consolidated with the previous changes
+    tableTypeFieldA.withDescription("updated tableCustomPropertyTest description 2");
+    String json = JsonUtils.pojoToJson(databaseEntity);
+    databaseEntity.setCustomProperties(List.of(tableTypeFieldA));
+    change = getChangeDescription(databaseEntity, CHANGE_CONSOLIDATED);
+
+    fieldUpdated(
+        change6,
+        EntityUtil.getCustomField(tableTypeFieldA, "description"),
+        "updated tableCustomPropertyTest description",
+        "updated tableCustomPropertyTest description 2");
+
+    databaseEntity =
+        patchEntityAndCheck(databaseEntity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change6);
   }
 
   @Test

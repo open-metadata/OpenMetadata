@@ -26,14 +26,14 @@ If you are using an environment variable from an external file in our setup, and
 SAML_IDP_ENTITY_ID=https://mocksaml.com/api/saml/sso
 SAML_IDP_SSO_LOGIN_URL=https://saml.example.com/entityid
 SAML_IDP_CERTIFICATE=/path/to/the/certificate
-SAML_AUTHORITY_URL=http://localhost:8585/api/v1/saml/login
+SAML_AUTHORITY_URL=https://{your domain}/api/v1/saml/login
 SAML_IDP_NAME_ID=urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
 
 # OpenMetadata Server SP Configuration
-SAML_SP_ENTITY_ID=http://localhost:8585/api/v1/saml/acs
-SAML_SP_ACS=http://localhost:8585/api/v1/saml/acs
+SAML_SP_ENTITY_ID=https://{your domain}/api/v1/saml/acs
+SAML_SP_ACS=https://{your domain}/api/v1/saml/acs
 SAML_SP_CERTIFICATE=/path/to/the/certificate
-SAML_SP_CALLBACK=http://localhost:8585/saml/callback
+SAML_SP_CALLBACK=https://{your domain}/saml/callback
 
 # OpenMetadata Server Security Configuration
 SAML_STRICT_MODE=false
