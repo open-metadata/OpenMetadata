@@ -300,13 +300,12 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
           .map((column) => {
             const value = row[column] ?? '';
 
-            // if value contains comma or semicolon, wrap it in quotes
+            // if value contains comma, wrap it in quotes
             return value.includes(',') ? `"${value}"` : value;
           })
           .join(',');
       });
 
-      // return the row as a string wrapped in quotes
       return `${rowStringList.join('|')}`;
     }
 
@@ -420,6 +419,5 @@ export const convertEntityExtensionToCustomPropertyString = (
     }
   });
 
-  // wrap the converted string in quotes
   return `${convertedString}`;
 };
