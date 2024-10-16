@@ -42,15 +42,15 @@ class TestEntityLink(TestCase):
 
         xs = [
             EntityLinkTest(
-                "<#E:open-metadata:table:open-metadata:bigquery_gcp.shopify.raw_product_catalog1>",
+                "<#E::om::table::om::bigquery_gcp.shopify.raw_product_catalog1>",
                 ["table", "bigquery_gcp.shopify.raw_product_catalog1"],
             ),
             EntityLinkTest(
-                "<#E:open-metadata:table:open-metadata:bigquery_gcp.shopify.raw_product_catalog2:open-metadata:description>",
+                "<#E::om::table::om::bigquery_gcp.shopify.raw_product_catalog2::om::description>",
                 ["table", "bigquery_gcp.shopify.raw_product_catalog2", "description"],
             ),
             EntityLinkTest(
-                "<#E:open-metadata:table:open-metadata:bigquery_gcp.shopify.raw_product_catalog3:open-metadata:columns:open-metadata:comment>",
+                "<#E::om::table::om::bigquery_gcp.shopify.raw_product_catalog3::om::columns::om::comment>",
                 [
                     "table",
                     "bigquery_gcp.shopify.raw_product_catalog3",
@@ -59,14 +59,14 @@ class TestEntityLink(TestCase):
                 ],
             ),
             EntityLinkTest(
-                "<#E:open-metadata:ingestionPipeline:open-metadata:fivetran_gcp.shopify.raw_product_catalog3>",
+                "<#E::om::ingestionPipeline::om::fivetran_gcp.shopify.raw_product_catalog3>",
                 [
                     "ingestionPipeline",
                     "fivetran_gcp.shopify.raw_product_catalog3",
                 ],
             ),
             EntityLinkTest(
-                "<#E:open-metadata:table:open-metadata:bigquery_gcp.shopify.raw_product_catalog4:open-metadata:columns:open-metadata:comment:open-metadata:description>",
+                "<#E::om::table::om::bigquery_gcp.shopify.raw_product_catalog4::om::columns::om::comment::om::description>",
                 [
                     "table",
                     "bigquery_gcp.shopify.raw_product_catalog4",
@@ -76,19 +76,19 @@ class TestEntityLink(TestCase):
                 ],
             ),
             EntityLinkTest(
-                "<#E:open-metadata:database:open-metadata:bigquery_gcp.shopify>",
+                "<#E::om::database::om::bigquery_gcp.shopify>",
                 ["database", "bigquery_gcp.shopify"],
             ),
             EntityLinkTest(
-                "<#E:open-metadata:database:open-metadata:bigquery_gcp.shopify:open-metadata:tags>",
+                "<#E::om::database::om::bigquery_gcp.shopify::om::tags>",
                 ["database", "bigquery_gcp.shopify", "tags"],
             ),
             EntityLinkTest(
-                "<#E:open-metadata:table:open-metadata:bigquery_gcp.shopify.raw-product-catalog5>",
+                "<#E::om::table::om::bigquery_gcp.shopify.raw-product-catalog5>",
                 ["table", "bigquery_gcp.shopify.raw-product-catalog5"],
             ),
             EntityLinkTest(
-                '<#E:open-metadata:table:open-metadata:bigquery_gcp.shopify."raw-product-catalog6":open-metadata:description>',
+                '<#E::om::table::om::bigquery_gcp.shopify."raw-product-catalog6"::om::description>',
                 [
                     "table",
                     'bigquery_gcp.shopify."raw-product-catalog6"',
@@ -96,19 +96,19 @@ class TestEntityLink(TestCase):
                 ],
             ),
             EntityLinkTest(
-                "<#E:open-metadata:table:open-metadata:bigquery_gcp.shopify.raw-product-catalog5:open-metadata:description>",
+                "<#E::om::table::om::bigquery_gcp.shopify.raw-product-catalog5::om::description>",
                 ["table", "bigquery_gcp.shopify.raw-product-catalog5", "description"],
             ),
             EntityLinkTest(
-                '<#E:open-metadata:table:open-metadata:bigquery_gcp."shop-ify"."raw-product-catalog6">',
+                '<#E::om::table::om::bigquery_gcp."shop-ify"."raw-product-catalog6">',
                 ["table", 'bigquery_gcp."shop-ify"."raw-product-catalog6"'],
             ),
             EntityLinkTest(
-                "<#E:open-metadata:table:open-metadata:随机的>",
+                "<#E::om::table::om::随机的>",
                 ["table", "随机的"],
             ),
             EntityLinkTest(
-                '<#E:open-metadata:table:open-metadata:ExampleWithFolder.withfolder.examplewithfolder."folderpath/username.csv">',
+                '<#E::om::table::om::ExampleWithFolder.withfolder.examplewithfolder."folderpath/username.csv">',
                 [
                     "table",
                     'ExampleWithFolder.withfolder.examplewithfolder."folderpath/username.csv"',
@@ -122,14 +122,14 @@ class TestEntityLink(TestCase):
         """We can get entity link for different entities"""
 
         table_link = get_entity_link(Table, fqn="service.db.schema.table")
-        self.assertEqual(table_link, "<#E:open-metadata:table:open-metadata:service.db.schema.table>")
+        self.assertEqual(table_link, "<#E::om::table::om::service.db.schema.table>")
 
         dashboard_link = get_entity_link(Dashboard, fqn="service.dashboard")
-        self.assertEqual(dashboard_link, "<#E:open-metadata:dashboard:open-metadata:service.dashboard>")
+        self.assertEqual(dashboard_link, "<#E::om::dashboard::om::service.dashboard>")
 
         column_link = get_entity_link(
             Table, fqn="service.db.schema.table", column_name="col"
         )
         self.assertEqual(
-            column_link, "<#E:open-metadata:table:open-metadata:service.db.schema.table:open-metadata:columns:open-metadata:col>"
+            column_link, "<#E::om::table::om::service.db.schema.table::om::columns::om::col>"
         )

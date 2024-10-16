@@ -23,15 +23,15 @@ from metadata.utils.entity_link import get_decoded_column, get_table_or_column_f
     "entity_link,expected",
     [
         (
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.column_w_space:open-metadata:columns:open-metadata:first+name>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.column_w_space::om::columns::om::first+name>",
             "first name",
         ),
         (
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.column_w_space:open-metadata:columns:open-metadata:last_name>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.column_w_space::om::columns::om::last_name>",
             "last_name",
         ),
         (
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.column_w_space:open-metadata:columns:open-metadata:随机的>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.column_w_space::om::columns::om::随机的>",
             "随机的",
         ),
     ],
@@ -45,52 +45,52 @@ def test_get_decoded_column(entity_link, expected):
     "entity_link,fqn",
     [
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:columns:open-metadata:number_of_orders>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::columns::om::number_of_orders>",
             "rds.dev.dbt_jaffle.customers.number_of_orders",
             id="valid_entity_link1",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:columns:open-metadata:a>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::columns::om::a>",
             "rds.dev.dbt_jaffle.customers.a",
             id="valid_entity_link2",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:columns:open-metadata:阿比西]/>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::columns::om::阿比西]/>",
             "rds.dev.dbt_jaffle.customers.阿比西]/",
             id="valid_entity_link3",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:columns:open-metadata:阿>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::columns::om::阿>",
             "rds.dev.dbt_jaffle.customers.阿",
             id="valid_entity_link4",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:columns:open-metadata:14532>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::columns::om::14532>",
             "rds.dev.dbt_jaffle.customers.14532",
             id="valid_entity_link5",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:columns:open-metadata:1>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::columns::om::1>",
             "rds.dev.dbt_jaffle.customers.1",
             id="valid_entity_link6",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:columns:open-metadata:абц%>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::columns::om::абц%>",
             "rds.dev.dbt_jaffle.customers.абц%",
             id="valid_entity_link7",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:columns:open-metadata:б>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::columns::om::б>",
             "rds.dev.dbt_jaffle.customers.б",
             id="valid_entity_link8",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers>",
             "rds.dev.dbt_jaffle.customers",
             id="valid_entity_link9",
         ),
         pytest.param(
-            "<#E:open-metadata:dashboard:open-metadata:rds.dev.dbt_jaffle>.customers>",
+            "<#E::om::dashboard::om::rds.dev.dbt_jaffle>.customers>",
             "rds.dev.dbt_jaffle>.customers",
             id="valid_entity_link10",
         ),
@@ -110,27 +110,27 @@ def test_valid_get_table_or_column_fqn(entity_link, fqn):
     "entity_link,error",
     [
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:foo:open-metadata:number_of_orders>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::foo::om::number_of_orders>",
             ParseCancellationException,
             id="invalid_entity_link1",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:columns:open-metadata:grea:>hdfwsd>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::columns::om::grea:>hdfwsd>",
             ParseCancellationException,
             id="invalid_entity_link2",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.:dbt_jaffle.customers:open-metadata:columns:open-metadata:阿>",
+            "<#E::om::table::om::rds.dev.:dbt_jaffle.customers::om::columns::om::阿>",
             ParseCancellationException,
             id="invalid_entity_link3",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:columns>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::columns>",
             ValueError,
             id="invalid_entity_link4",
         ),
         pytest.param(
-            "<#E:open-metadata:table:open-metadata:rds.dev.dbt_jaffle.customers:open-metadata:columns:open-metadata:>",
+            "<#E::om::table::om::rds.dev.dbt_jaffle.customers::om::columns::om::>",
             ParseCancellationException,
             id="invalid_entity_link5",
         ),

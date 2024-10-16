@@ -549,7 +549,7 @@ class DbtUnitTest(TestCase):
         result = generate_entity_link(dbt_test=dbt_test)
         self.assertListEqual(
             [
-                "<#E:open-metadata:table:open-metadata:local_redshift_dbt2.dev.dbt_jaffle.stg_customers:open-metadata:columns:open-metadata:order_id>"
+                "<#E::om::table::om::local_redshift_dbt2.dev.dbt_jaffle.stg_customers::om::columns::om::order_id>"
             ],
             result,
         )

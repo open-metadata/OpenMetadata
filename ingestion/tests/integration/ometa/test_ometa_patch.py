@@ -167,7 +167,7 @@ class OMetaTableTest(TestCase):
 
         cls.test_case = cls.metadata.create_or_update(
             get_create_test_case(
-                entity_link=f"<#E:open-metadata:table:open-metadata:{cls.table.fullyQualifiedName.root}>",
+                entity_link=f"<#E::om::table::om::{cls.table.fullyQualifiedName.root}>",
                 test_suite=cls.test_suite.fullyQualifiedName,
                 test_definition=cls.test_definition.fullyQualifiedName,
                 parameter_values=[TestCaseParameterValue(name="foo", value="10")],
