@@ -41,6 +41,7 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.trino.queries import TRINO_GET_DATABASE
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection_url(connection: TrinoConnection) -> str:
@@ -124,6 +125,7 @@ def test_connection(
     engine: Engine,
     service_connection: TrinoConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -139,4 +141,5 @@ def test_connection(
         service_connection=service_connection,
         automation_workflow=automation_workflow,
         queries=queries,
+        timeout_seconds=timeout_seconds,
     )

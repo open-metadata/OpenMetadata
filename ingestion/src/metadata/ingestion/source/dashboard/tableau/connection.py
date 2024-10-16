@@ -38,6 +38,7 @@ from metadata.ingestion.source.dashboard.tableau import (
     TABLEAU_GET_WORKBOOKS_PARAM_DICT,
 )
 from metadata.ingestion.source.dashboard.tableau.client import TableauClient
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
@@ -70,6 +71,7 @@ def test_connection(
     client: TableauClient,
     service_connection: TableauConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -106,6 +108,7 @@ def test_connection(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )
 
 

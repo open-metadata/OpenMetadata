@@ -30,6 +30,7 @@ from metadata.ingestion.source.metadata.amundsen.client import Neo4JConfig, Neo4
 from metadata.ingestion.source.metadata.amundsen.queries import (
     NEO4J_AMUNDSEN_USER_QUERY,
 )
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: AmundsenConnection) -> Neo4jHelper:
@@ -56,6 +57,7 @@ def test_connection(
     client: Neo4jHelper,
     service_connection: AmundsenConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -71,4 +73,5 @@ def test_connection(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

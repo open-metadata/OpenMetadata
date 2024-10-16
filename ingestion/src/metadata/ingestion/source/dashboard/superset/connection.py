@@ -49,6 +49,7 @@ from metadata.ingestion.source.database.mysql.connection import (
 from metadata.ingestion.source.database.postgres.connection import (
     get_connection as pg_get_connection,
 )
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: SupersetConnection) -> SupersetAPIClient:
@@ -69,6 +70,7 @@ def test_connection(
     client: Union[SupersetAPIClient, Engine],
     service_connection: SupersetConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -96,4 +98,5 @@ def test_connection(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

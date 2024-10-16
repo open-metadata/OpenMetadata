@@ -37,6 +37,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_steps,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection_url(connection: AthenaConnection) -> str:
@@ -94,6 +95,7 @@ def test_connection(
     engine: Engine,
     service_connection: AthenaConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -126,4 +128,5 @@ def test_connection(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

@@ -38,6 +38,7 @@ from metadata.ingestion.source.database.datalake.clients.azure_blob import (
 )
 from metadata.ingestion.source.database.datalake.clients.gcs import DatalakeGcsClient
 from metadata.ingestion.source.database.datalake.clients.s3 import DatalakeS3Client
+from metadata.utils.constants import THREE_MIN
 
 
 # Only import specific datalake dependencies if necessary
@@ -91,6 +92,7 @@ def test_connection(
     connection: DatalakeClient,
     service_connection: DatalakeConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -107,4 +109,5 @@ def test_connection(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )
