@@ -11,6 +11,9 @@
 """PinotDb source module"""
 from typing import Iterable, Optional
 
+from pinotdb import sqlalchemy as pinot_sqlalchemy
+from sqlalchemy import types
+
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
 )
@@ -20,6 +23,31 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+
+
+def get_type_custom(data_type, field_size):
+    type_map = {
+        "int": types.BigInteger,
+        "long": types.BigInteger,
+        "float": types.Float,
+        "double": types.Numeric,
+        # BOOLEAN, is added after release 0.7.1.
+        # In release 0.7.1 and older releases, BOOLEAN is equivalent to STRING.
+        "boolean": types.Boolean,
+        "timestamp": types.TIMESTAMP,
+        "string": types.String,
+        "json": types.JSON,
+        "bytes": types.LargeBinary,
+        "big_decimal": types.DECIMAL,
+        # Complex types
+        "struct": types.BLOB,
+        "map": types.BLOB,
+        "array": types.ARRAY,
+    }
+    return type_map.get(data_type.lower())
+
+
+pinot_sqlalchemy.get_type = get_type_custom
 
 
 class PinotdbSource(CommonDbSourceService):
