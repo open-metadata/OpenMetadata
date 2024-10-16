@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 import { TypeColumn } from '@inovua/reactdatagrid-community/types';
-import { compact, get, isEmpty, isUndefined, startCase } from 'lodash';
+import {
+  compact,
+  get,
+  isEmpty,
+  isString,
+  isUndefined,
+  startCase,
+} from 'lodash';
 import React from 'react';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
@@ -392,12 +399,13 @@ export const convertEntityExtensionToCustomPropertyString = (
         convertCustomPropertyValueExtensionToStringBasedOnType(
           value,
           customPropertiesMapByName[key]
-        ) as string;
+        );
 
       const endValue = isLastElement ? '' : ';';
 
       const hasSeparator =
-        stringValue.includes(',') || stringValue.includes(';');
+        isString(stringValue) &&
+        (stringValue.includes(',') || stringValue.includes(';'));
 
       // Check if the property type is markdown or sqlQuery or string and add quotes around the value
       if (
