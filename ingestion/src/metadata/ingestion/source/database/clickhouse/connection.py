@@ -35,6 +35,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_SQL_STATEMENT_TEST,
 )
+from metadata.utils.constants import THREE_MIN
 
 HTTPS_PROTOCOL = "https"
 
@@ -67,6 +68,7 @@ def test_connection(
     engine: Engine,
     service_connection: ClickhouseConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -81,4 +83,5 @@ def test_connection(
         service_connection=service_connection,
         automation_workflow=automation_workflow,
         queries=queries,
+        timeout_seconds=timeout_seconds,
     )
