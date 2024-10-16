@@ -77,7 +77,7 @@ UNSUPPORTED_REGEX_PATTERN_FILE_PATHS = [
 for file_path in UNSUPPORTED_REGEX_PATTERN_FILE_PATHS:
     with open(file_path, "r", encoding=UTF_8) as file_:
         content = file_.read()
-        content = content.replace("pattern='^((?!:open-metadata:).)*$',", "")
+        content = content.replace("pattern='^((?!::om::).)*$',", "")
     with open(file_path, "w", encoding=UTF_8) as file_:
         file_.write(content)
 
