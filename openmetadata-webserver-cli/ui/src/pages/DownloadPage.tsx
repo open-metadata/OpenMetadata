@@ -55,7 +55,7 @@ const DownloadYAML = () => {
     }, []);
 
     return (
-        <PageLayoutV1 pageTitle={t('label.log-viewer')}>
+        <PageLayoutV1 pageTitle="View or Download Yaml">
             <Space align="start" className="w-full m-md m-t-xs" direction="vertical">
                 <Space>
                     <Typography.Title level={5}>
@@ -131,7 +131,7 @@ const DownloadYAML = () => {
                     </Space>
                 </Col>
             </Row>
-        </PageLayoutV1>
+        </PageLayoutV1 >
     );
 };
 

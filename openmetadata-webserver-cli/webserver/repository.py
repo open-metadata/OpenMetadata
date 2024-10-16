@@ -56,6 +56,7 @@ class LocalIngestionServer(metaclass=Singleton):
         self._service_name: Optional[str] = None
         self._service_type: Optional[str] = None
         self._logger_level: LogLevels = LogLevels.INFO
+        self._pipeline_type: Optional[str] = None
 
     @property
     def metadata(self) -> OpenMetadata:
@@ -76,13 +77,11 @@ class LocalIngestionServer(metaclass=Singleton):
         return self._source_config
 
     def set_source_config(self, raw_source_config: dict):
-        raw_source_config.pop("name")
-        raw_source_config.pop("displayName")
-
-        if raw_source_config.pop("enableDebugLog"):
+        self._pipeline_type = raw_source_config.get("pipelineType")
+        if raw_source_config.get("loggerLevel"):
             self._logger_level = LogLevels.DEBUG
 
-        source_config = {"config": raw_source_config}
+        source_config = {"config": raw_source_config.get("sourceConfig").get("config")}
         self._source_config = SourceConfig.model_validate(source_config)
 
     def set_service_connection(self, raw_service_connection: dict):

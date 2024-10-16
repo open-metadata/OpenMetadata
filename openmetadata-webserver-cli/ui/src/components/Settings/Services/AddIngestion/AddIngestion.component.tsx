@@ -186,7 +186,7 @@ const AddIngestion = ({
         startDate: date,
         retries: extraData.retries,
       },
-      loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
+      loggerLevel: workflowData.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
       displayName: displayName,
       pipelineType: pipelineType,
