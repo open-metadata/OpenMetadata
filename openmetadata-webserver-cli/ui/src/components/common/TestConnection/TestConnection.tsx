@@ -12,7 +12,7 @@
  */
 import { Button, Space } from "antd";
 import classNames from "classnames";
-import React, { FC, useMemo, useRef, useState } from "react";
+import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ReactComponent as FailIcon } from "../../../assets/svg/fail-badge.svg";
 import { ReactComponent as WarningIcon } from "../../../assets/svg/ic-warning.svg";
@@ -125,15 +125,18 @@ const TestConnection: FC<TestConnectionProps> = ({
         serviceName,
       };
       const response = await axios.post('/api/test', payload);
-      const { data: { status, steps } } = response.data;
+      const { data } = response;
+      setTestConnectionStepResult(data.steps);
       setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
-      setTestConnectionStepResult(steps);
       // TODO: The backend is currently returning status = running.
       // Since it's a sync call it should return success or failure.
       setTestStatus(StatusType.Successful);
     } catch (error) {
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
+    } finally {
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+      setIsTestingConnection(false);
     }
     setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
     setIsTestingConnection(false)
@@ -150,7 +153,6 @@ const TestConnection: FC<TestConnectionProps> = ({
       testConnection();
     }
   };
-
 
   // rendering
 

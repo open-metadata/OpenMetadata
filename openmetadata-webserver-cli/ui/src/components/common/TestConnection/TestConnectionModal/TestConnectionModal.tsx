@@ -85,10 +85,9 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
           percent={progress}
           strokeColor="#B3D4F4"
         />
-
-        {/* <Typography.Text className="mt-4 mb-4 w-480 text-xl font-medium text-grey-muted">
+        <Typography.Text className="mt-4 mb-4 w-480 text-xl font-medium text-grey-muted">
           {message}{' '}
-        </Typography.Text> */}
+        </Typography.Text>
         {testConnectionStep.map((step) => {
           const currentStepResult = getConnectionStepResult(step);
 
