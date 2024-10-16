@@ -108,7 +108,7 @@ WITH SP_HISTORY AS (
     AND job_type = "QUERY"
     AND state = "DONE"
     AND error_result is NULL
-    AND query LIKE 'CALL%%'
+    AND UPPER(query) LIKE 'CALL%%'
 ),
 Q_HISTORY AS (
   SELECT

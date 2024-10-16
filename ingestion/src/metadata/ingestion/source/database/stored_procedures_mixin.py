@@ -11,6 +11,7 @@
 """
 Mixin class with common Stored Procedures logic aimed at lineage.
 """
+import json
 import re
 import traceback
 from abc import ABC, abstractmethod
@@ -27,8 +28,8 @@ from metadata.generated.schema.entity.data.storedProcedure import StoredProcedur
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
 )
 from metadata.generated.schema.type.basic import SqlQuery, Timestamp
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
@@ -37,7 +38,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
-from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.stored_procedures import get_procedure_name_from_call
@@ -66,7 +66,7 @@ class QueryByProcedure(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class StoredProcedureMixin(ABC):
+class StoredProcedureLineageMixin(ABC):
     """
     The full flow is:
     1. List Stored Procedures
@@ -80,10 +80,10 @@ class StoredProcedureMixin(ABC):
     It should be inherited in those Sources that implement Stored Procedure ingestion.
     """
 
-    context: TopologyContextManager
     status: Status
-    source_config: DatabaseServiceMetadataPipeline
+    source_config: DatabaseServiceQueryLineagePipeline
     engine: Engine
+    stored_procedure_query_lineage: bool
     metadata: OpenMetadata
 
     @abstractmethod
@@ -106,6 +106,8 @@ class StoredProcedureMixin(ABC):
 
         for row in results:
             try:
+                print("*** " * 100)
+                print(dict(row))
                 query_by_procedure = QueryByProcedure.model_validate(dict(row))
                 procedure_name = (
                     query_by_procedure.procedure_name
@@ -143,29 +145,34 @@ class StoredProcedureMixin(ABC):
 
         return False
 
-    def yield_procedure_lineage(
+    def _yield_procedure_lineage(
         self, query_by_procedure: QueryByProcedure, procedure: StoredProcedure
     ) -> Iterable[Either[AddLineageRequest]]:
         """Add procedure lineage from its query"""
-        self.context.get().stored_procedure_query_lineage = False
+        self.stored_procedure_query_lineage = False
         if self.is_lineage_query(
             query_type=query_by_procedure.query_type,
             query_text=query_by_procedure.query_text,
         ):
-            self.context.get().stored_procedure_query_lineage = True
+            self.stored_procedure_query_lineage = True
             for either_lineage in get_lineage_by_query(
                 self.metadata,
                 query=query_by_procedure.query_text,
-                service_name=self.context.get().database_service,
+                service_name=self.service_name,
                 database_name=query_by_procedure.query_database_name,
                 schema_name=query_by_procedure.query_schema_name,
                 dialect=ConnectionTypeDialectMapper.dialect_of(
                     self.service_connection.type.value
                 ),
-                timeout_seconds=self.source_config.queryParsingTimeoutLimit,
+                timeout_seconds=self.source_config.parsingTimeoutLimit,
                 lineage_source=LineageSource.QueryLineage,
             ):
-                if either_lineage.right.edge.lineageDetails:
+                print("&& " * 100)
+                print(either_lineage)
+                if (
+                    either_lineage.left is None
+                    and either_lineage.right.edge.lineageDetails
+                ):
                     either_lineage.right.edge.lineageDetails.pipeline = EntityReference(
                         id=procedure.id,
                         type="storedProcedure",
@@ -192,34 +199,43 @@ class StoredProcedureMixin(ABC):
                     id=procedure.id,
                     type="storedProcedure",
                 ),
-                processedLineage=bool(
-                    self.context.get().stored_procedure_query_lineage
-                ),
-                service=self.context.get().database_service,
+                processedLineage=bool(self.stored_procedure_query_lineage),
+                service=self.service_name,
             )
         )
 
-    def yield_procedure_lineage_and_queries(
+    def yield_procedure_lineage(
         self,
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         """Get all the queries and procedures list and yield them"""
-        if self.context.get().stored_procedures:
-            logger.info("Processing Lineage for Stored Procedures")
-            # First, get all the query history
-            queries_dict = self.get_stored_procedure_queries_dict()
-            # Then for each procedure, iterate over all its queries
-            for procedure_fqn in self.context.get().stored_procedures:
-                procedure: StoredProcedure = self.metadata.get_by_name(
-                    entity=StoredProcedure, fqn=procedure_fqn
-                )
-                if procedure:
-                    logger.debug(f"Processing Lineage for [{procedure.name}]")
-                    for query_by_procedure in (
-                        queries_dict.get(procedure.name.root.lower()) or []
-                    ):
-                        yield from self.yield_procedure_lineage(
-                            query_by_procedure=query_by_procedure, procedure=procedure
-                        )
-                        yield from self.yield_procedure_query(
-                            query_by_procedure=query_by_procedure, procedure=procedure
-                        )
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"term": {"service.name.keyword": self.service_name}},
+                        {"term": {"deleted": False}},
+                    ]
+                }
+            }
+        }
+        query_filter = json.dumps(query)
+
+        logger.info("Processing Lineage for Stored Procedures")
+        # First, get all the query history
+        queries_dict = self.get_stored_procedure_queries_dict()
+        # Then for each procedure, iterate over all its queries
+        for procedure in (
+            self.metadata.paginate_es(entity=StoredProcedure, query_filter=query_filter)
+            or []
+        ):
+            if procedure:
+                logger.debug(f"Processing Lineage for [{procedure.name}]")
+                for query_by_procedure in (
+                    queries_dict.get(procedure.name.root.lower()) or []
+                ):
+                    yield from self._yield_procedure_lineage(
+                        query_by_procedure=query_by_procedure, procedure=procedure
+                    )
+                    yield from self.yield_procedure_query(
+                        query_by_procedure=query_by_procedure, procedure=procedure
+                    )

@@ -101,6 +101,9 @@
       "href": {
         "type": "text"
       },
+      "schemaDefinition": {
+        "type": "text"
+      },
       "sourceUrl": {
         "type": "keyword"
       },

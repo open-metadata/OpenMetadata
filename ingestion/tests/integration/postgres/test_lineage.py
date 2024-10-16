@@ -19,7 +19,7 @@ def native_lineage_config(db_service, workflow_config, sink_config):
         "source": {
             "type": "postgres-lineage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {"config": {}},
+            "sourceConfig": {"config": {"type": "DatabaseLineage"}},
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,

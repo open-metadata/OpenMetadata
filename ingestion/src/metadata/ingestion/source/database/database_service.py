@@ -114,7 +114,6 @@ class DatabaseServiceTopology(ServiceTopology):
         # until we have finished ingesting all the metadata from the source.
         post_process=[
             "yield_view_lineage",
-            "yield_procedure_lineage_and_queries",
             "yield_external_table_lineage",
         ],
     )

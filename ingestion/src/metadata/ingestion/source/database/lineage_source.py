@@ -24,8 +24,10 @@ from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils import fqn
+from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -48,7 +50,7 @@ class LineageSource(QueryParserSource, ABC):
         Method to handle the usage from query logs
         """
         try:
-            query_log_path = self.config.sourceConfig.config.queryLogFilePath
+            query_log_path = self.source_config.queryLogFilePath
             if os.path.isfile(query_log_path):
                 file_paths = [query_log_path]
             elif os.path.isdir(query_log_path):
@@ -127,13 +129,10 @@ class LineageSource(QueryParserSource, ABC):
         )
         return fqn.get_query_checksum(table_query.query) in checksums or {}
 
-    def _iter(
-        self, *_, **__
+    def yield_query_lineage(
+        self,
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """
-        Based on the query logs, prepare the lineage
-        and send it to the sink
-        """
+        logger.info("Processing Query Lineage")
         connection_type = str(self.service_connection.type.value)
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         for table_query in self.get_table_query():
@@ -164,3 +163,56 @@ class LineageSource(QueryParserSource, ABC):
                                 ),
                             )
                         )
+
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        logger.info("Processing View Lineage")
+        for view in self.metadata.yield_es_view_def(self.config.serviceName):
+            try:
+                for lineage in get_view_lineage(
+                    view=view,
+                    metadata=self.metadata,
+                    service_name=self.config.serviceName,
+                    connection_type=self.service_connection.type.value,
+                    timeout_seconds=self.source_config.parsingTimeoutLimit,
+                ):
+                    if lineage.right is not None:
+                        yield Either(
+                            right=OMetaLineageRequest(
+                                lineage_request=lineage.right,
+                                override_lineage=self.source_config.overrideViewLineage,
+                            )
+                        )
+                    else:
+                        yield lineage
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error processing view {view}: {exc}")
+
+    def yield_procedure_lineage(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """
+        By default stored procedure lineage is not supported.
+        """
+        logger.info(
+            f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}"
+        )
+
+    def _iter(
+        self, *_, **__
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """
+        Based on the query logs, prepare the lineage
+        and send it to the sink
+        """
+        if self.source_config.processViewLineage:
+            yield from self.yield_view_lineage() or []
+        if self.source_config.processStoredProcedureLineage:
+            yield from self.yield_procedure_lineage() or []
+        if self.source_config.processQueryLineage:
+            if hasattr(self.service_connection, "supportsLineageExtraction"):
+                yield from self.yield_query_lineage() or []
+            else:
+                logger.warning(
+                    f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"
+                )
