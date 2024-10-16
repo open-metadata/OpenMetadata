@@ -974,6 +974,7 @@
     "resolve": "Resolver",
     "resolved": "Resuleto",
     "resolved-by": "Resuleto por",
+    "resolved-incident-plural": "Resolved Incidents",
     "resource-permission-lowercase": "permiso de recurso",
     "resource-plural": "Recursos",
     "response": "Response",

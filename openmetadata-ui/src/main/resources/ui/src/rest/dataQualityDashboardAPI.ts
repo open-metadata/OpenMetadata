@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { getDataQualityReport } from './testAPI';
 
 export const fetchEntityCoveredWithDQ = (unhealthy = false) => {
@@ -59,17 +60,20 @@ export const fetchTestCaseSummaryByDimension = () => {
   });
 };
 
-export const fetchCountOfNewIncidentsByDays = () => {
+export const fetchCountOfIncidentStatusTypeByDays = (
+  status: TestCaseResolutionStatusTypes
+) => {
   return getDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
           must: [
-            { term: { testCaseResolutionStatusType: 'New' } },
+            { term: { testCaseResolutionStatusType: status } },
             {
               range: {
+                // Todo: Update the timestamp range
                 timestamp: {
-                  lte: 1728994134000,
+                  lte: 1729089975000,
                   gte: 1727784000000,
                 },
               },

@@ -1,5 +1,6 @@
 import { DateRangeObject } from 'Models';
 import { TestCaseStatus } from '../../generated/tests/testCase';
+import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { TestPlatform } from '../../generated/tests/testDefinition';
 import { TestCaseType } from '../../rest/testAPI';
 
@@ -33,3 +34,9 @@ export type TestCaseSearchParams = {
   tags?: string;
   serviceName?: string;
 };
+
+export interface IncidentTypeAreaChartWidgetProps {
+  title: string;
+  incidentStatusType: TestCaseResolutionStatusTypes;
+  name: string;
+}

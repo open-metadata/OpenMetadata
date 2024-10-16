@@ -12,31 +12,38 @@
  */
 import { Card, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { DataQualityReport } from '../../../../generated/tests/dataQualityReport';
-import { fetchCountOfNewIncidentsByDays } from '../../../../rest/dataQualityDashboardAPI';
+import { fetchCountOfIncidentStatusTypeByDays } from '../../../../rest/dataQualityDashboardAPI';
+import { CustomAreaChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomAreaChart from '../../../Visualisations/Chart/CustomAreaChart.component';
+import { IncidentTypeAreaChartWidgetProps } from '../../DataQuality.interface';
 
-const OpenIncidentAreaChartWidget = () => {
-  const { t } = useTranslation();
-
+const IncidentTypeAreaChartWidget = ({
+  incidentStatusType,
+  title,
+  name,
+}: IncidentTypeAreaChartWidgetProps) => {
   const [isChartLoading, setIsChartLoading] = useState(true);
-  const [chartData, setChartData] = useState<DataQualityReport['data']>([]);
+  const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
 
   const totalValue = useMemo(
     () =>
       chartData.reduce((acc, curr) => {
-        return acc + +curr.stateId;
+        return acc + curr.count;
       }, 0),
     [chartData]
   );
 
-  const getCountOfNewIncidents = async () => {
+  const getCountOfIncidentStatus = async () => {
     setIsChartLoading(true);
     try {
-      const { data } = await fetchCountOfNewIncidentsByDays();
-
-      setChartData(data);
+      const { data } = await fetchCountOfIncidentStatusTypeByDays(
+        incidentStatusType
+      );
+      const updatedData = data.map((item) => ({
+        timestamp: +item.timestamp,
+        count: +item.stateId,
+      }));
+      setChartData(updatedData);
     } catch (error) {
       setChartData([]);
     } finally {
@@ -45,26 +52,21 @@ const OpenIncidentAreaChartWidget = () => {
   };
 
   useEffect(() => {
-    getCountOfNewIncidents();
+    getCountOfIncidentStatus();
   }, []);
 
   return (
     <Card loading={isChartLoading}>
       <Typography.Paragraph className="text-xs text-grey-muted">
-        {t('label.open-incident-plural')}
+        {title}
       </Typography.Paragraph>
       <Typography.Paragraph className="font-medium text-xl m-b-0">
         {totalValue}
       </Typography.Paragraph>
 
-      <CustomAreaChart
-        data={chartData}
-        dataKey="stateId"
-        height={150}
-        name="open-incident"
-      />
+      <CustomAreaChart data={chartData} name={name} />
     </Card>
   );
 };
 
-export default OpenIncidentAreaChartWidget;
+export default IncidentTypeAreaChartWidget;

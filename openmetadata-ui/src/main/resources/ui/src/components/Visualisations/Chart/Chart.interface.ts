@@ -12,7 +12,6 @@
  */
 
 import { ColumnProfile } from '../../../generated/entity/data/table';
-import { DataQualityReport } from '../../../generated/tests/dataQualityReport';
 import { MetricChartType } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 
 export interface CustomBarChartProps {
@@ -38,11 +37,13 @@ export interface CustomPieChartProps {
   data: CustomPieChartData[];
   label?: React.ReactNode;
 }
-
+export type CustomAreaChartData = {
+  timestamp: number;
+  count: number;
+};
 export interface CustomAreaChartProps {
-  data: DataQualityReport['data'];
+  data: CustomAreaChartData[];
   name: string;
-  dataKey?: string;
   height?: number;
   colorScheme?: {
     gradientStartColor?: string;

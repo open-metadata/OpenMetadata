@@ -974,6 +974,7 @@
     "resolve": "حل کنید",
     "resolved": "حل شد",
     "resolved-by": "حل شده توسط",
+    "resolved-incident-plural": "Resolved Incidents",
     "resource-permission-lowercase": "مجوز منبع",
     "resource-plural": "منابع",
     "response": "پاسخ",

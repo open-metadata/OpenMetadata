@@ -30,7 +30,6 @@ const CustomAreaChart = ({
   name,
   height,
   colorScheme,
-  dataKey,
 }: CustomAreaChartProps) => {
   const CustomTooltip = (props: TooltipProps<string, number | string>) => {
     const { active, payload = [] } = props;
@@ -42,11 +41,11 @@ const CustomAreaChart = ({
         <Card className="custom-tooltip-area-chart">
           <div className="flex-center gap-2">
             <Typography.Text className="font-medium text-md">
-              {payloadData[dataKey ?? 'count']}
+              {payloadData['count']}
             </Typography.Text>
             <Divider type="vertical" />
             <Typography.Text className="text-xs">
-              {formatDate(+payloadData.timestamp)}
+              {formatDate(payloadData.timestamp)}
             </Typography.Text>
           </div>
         </Card>
@@ -87,7 +86,7 @@ const CustomAreaChart = ({
         </defs>
         <Area
           connectNulls
-          dataKey={dataKey ?? 'count'}
+          dataKey="count"
           dot={false}
           fill="url(#splitColor)"
           isAnimationActive={false}
