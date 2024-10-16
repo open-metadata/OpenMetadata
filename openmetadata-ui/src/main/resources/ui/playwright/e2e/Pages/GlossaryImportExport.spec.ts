@@ -12,7 +12,10 @@
  */
 import { expect, test } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
-import { CUSTOM_PROPERTIES_TYPES } from '../../constant/glossaryImportExport';
+import {
+  CUSTOM_PROPERTIES_TYPES,
+  FIELD_VALUES_CUSTOM_PROPERTIES,
+} from '../../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -96,7 +99,9 @@ test.describe('Glossary Bulk Import Export', () => {
           propertyName,
           customPropertyData: entity,
           customType: property,
-          enumWithDescriptionConfig: entity.enumWithDescriptionConfig,
+          tableConfig: {
+            columns: FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns,
+          },
         });
       }
     });

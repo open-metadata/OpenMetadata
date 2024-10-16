@@ -123,8 +123,8 @@ export const MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_EXTENSION_OBJECT: ExtensionDat
     stringCp: 'select * from table where id="23";;',
     timeCp: '03:04:06',
     timerIntervalCp: {
-      end: '1727532820197',
-      start: '1727532807278',
+      end: 1727532820197,
+      start: 1727532807278,
     },
     timeStampCp: '1727532807278',
   };
