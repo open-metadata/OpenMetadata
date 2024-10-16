@@ -53,6 +53,10 @@ public abstract class AbstractEventConsumer
   public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
   public static final String METRICS_EXTENSION = "eventSubscription.metrics";
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
+
+  public static final String SUBSCRIBER = "subscriber";
+  public static final String PUBLISHER = "publisher";
+
   private long offset = -1;
   private AlertMetrics alertMetrics;
 
@@ -78,7 +82,7 @@ public abstract class AbstractEventConsumer
   }
 
   @Override
-  public void handleFailedEvent(EventPublisherException ex) {
+  public void handleFailedEvent(EventPublisherException ex, boolean errorOnSub) {
     UUID failingSubscriptionId = ex.getChangeEventWithSubscription().getLeft();
     ChangeEvent changeEvent = ex.getChangeEventWithSubscription().getRight();
     LOG.debug(
@@ -86,6 +90,8 @@ public abstract class AbstractEventConsumer
         eventSubscription.getName(),
         failingSubscriptionId,
         changeEvent);
+
+    String source = errorOnSub ? SUBSCRIBER : PUBLISHER;
 
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
@@ -97,7 +103,9 @@ public abstract class AbstractEventConsumer
                     .withFailingSubscriptionId(failingSubscriptionId)
                     .withChangeEvent(changeEvent)
                     .withRetriesLeft(eventSubscription.getRetries())
-                    .withTimestamp(System.currentTimeMillis())));
+                    .withReason(ex.getMessage())
+                    .withTimestamp(System.currentTimeMillis())),
+            source);
   }
 
   private long loadInitialOffset(JobExecutionContext context) {
@@ -164,7 +172,7 @@ public abstract class AbstractEventConsumer
           alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
         } catch (EventPublisherException e) {
           alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
-          handleFailedEvent(e);
+          handleFailedEvent(e, false);
         }
       }
     }
@@ -176,6 +184,7 @@ public abstract class AbstractEventConsumer
     // Upsert Offset
     EventSubscriptionOffset eventSubscriptionOffset =
         new EventSubscriptionOffset().withOffset(offset).withTimestamp(currentTime);
+
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .upsertSubscriberExtension(
@@ -183,6 +192,7 @@ public abstract class AbstractEventConsumer
             OFFSET_EXTENSION,
             "eventSubscriptionOffset",
             JsonUtils.pojoToJson(eventSubscriptionOffset));
+
     jobExecutionContext
         .getJobDetail()
         .getJobDataMap()
@@ -195,6 +205,7 @@ public abstract class AbstractEventConsumer
             .withFailedEvents(alertMetrics.getFailedEvents())
             .withSuccessEvents(alertMetrics.getSuccessEvents())
             .withTimestamp(currentTime);
+
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .upsertSubscriberExtension(
@@ -202,6 +213,7 @@ public abstract class AbstractEventConsumer
             METRICS_EXTENSION,
             "alertMetrics",
             JsonUtils.pojoToJson(metrics));
+
     jobExecutionContext.getJobDetail().getJobDataMap().put(METRICS_EXTENSION, alertMetrics);
 
     // Populate the Destination map

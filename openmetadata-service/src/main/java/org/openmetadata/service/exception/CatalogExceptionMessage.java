@@ -341,7 +341,8 @@ public final class CatalogExceptionMessage {
 
   public static String eventPublisherFailedToPublish(
       SubscriptionDestination.SubscriptionType type, String message) {
-    return String.format("Failed to publish event %s due to %s ", type.value(), message);
+    return String.format(
+        "Failed to publish event of destination type %s due to %s ", type.value(), message);
   }
 
   public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {

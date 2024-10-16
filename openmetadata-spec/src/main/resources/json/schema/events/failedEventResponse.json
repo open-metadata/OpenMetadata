@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/events/failedEventResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FailedEvents",
+  "description": "Failed Events Schema",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.FailedEventResponse",
+  "properties": {
+    "failingSubscriptionId": {
+      "description": "Unique identifier that identifies this Event Subscription.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "changeEvent": {
+      "description": "Change Event that failed",
+      "$ref": "../type/changeEvent.json"
+    },
+    "reason": {
+      "description": "Reason for failure",
+      "type": "string"
+    },
+    "source": {
+      "description": "Source of the failed event",
+      "type": "string"
+    },
+    "timestamp": {
+      "description": "Time of Failure",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "additionalProperties": false
+}

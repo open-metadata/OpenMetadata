@@ -43,3 +43,6 @@ UPDATE installed_apps SET json = JSON_SET(json, '$.supportsInterrupt', true) whe
 UPDATE apps_marketplace  SET json = JSON_SET(json, '$.supportsInterrupt', true) where name = 'SearchIndexingApplication';
 
 ALTER TABLE apps_extension_time_series ADD COLUMN appName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.appName') STORED NOT NULL;
+
+-- Update all rows in the consumers_dlq table to set the source column to 'publisher'
+UPDATE consumers_dlq SET source = 'publisher';
