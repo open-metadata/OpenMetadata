@@ -113,11 +113,17 @@ def ingest_postgres_metadata(
             "serviceConnection": postgres_service.connection.model_copy(
                 update={
                     "config": postgres_service.connection.config.model_copy(
-                        update={"ingestAllDatabases": True}
+                        update={
+                            "ingestAllDatabases": True,
+                        }
                     )
                 }
             ),
-            "sourceConfig": {"config": {}},
+            "sourceConfig": {
+                "config": {
+                    "schemaFilterPattern": {"excludes": ["information_schema"]},
+                }
+            },
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
