@@ -148,16 +148,18 @@ public class SystemResource {
                     schema = @Schema(implementation = Settings.class)))
       })
   public Settings getProfilerConfigurationSetting(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext,
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Entity type for which to get the global profiler configuration",
               schema = @Schema(type = "string"))
-      @QueryParam("entityType")
-      @DefaultValue("table")
-      String entityType) {
-     ResourceContext resourceContext = new ResourceContext(entityType);
-     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
-     authorizer.authorize(securityContext, operationContext, resourceContext);
+          @QueryParam("entityType")
+          @DefaultValue("table")
+          String entityType) {
+    ResourceContext resourceContext = new ResourceContext(entityType);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
 
