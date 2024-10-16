@@ -293,28 +293,27 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
               </div>
             </>
           ) : (
-            <Row
-              className="custom-properties-card"
-              data-testid="custom-properties-card"
-              gutter={[16, 16]}>
-              {dataSourceColumns.map((columns, colIndex) => (
-                <Col key={colIndex} span={8}>
-                  {columns.map((record) => (
-                    <div key={record.name} style={{ marginBottom: '16px' }}>
-                      <PropertyValue
-                        extension={extensionObject.extensionObject}
-                        hasEditPermissions={hasEditAccess}
-                        isRenderedInRightPanel={isRenderedInRightPanel}
-                        isVersionView={isVersionView}
-                        property={record}
-                        versionDataKeys={extensionObject.addedKeysList}
-                        onExtensionUpdate={onExtensionUpdate}
-                      />
-                    </div>
-                  ))}
-                </Col>
-              ))}
-            </Row>
+            <div className="custom-properties-card">
+              <Row data-testid="custom-properties-card" gutter={[16, 16]}>
+                {dataSourceColumns.map((columns, colIndex) => (
+                  <Col key={colIndex} span={8}>
+                    {columns.map((record) => (
+                      <div key={record.name} style={{ marginBottom: '16px' }}>
+                        <PropertyValue
+                          extension={extensionObject.extensionObject}
+                          hasEditPermissions={hasEditAccess}
+                          isRenderedInRightPanel={isRenderedInRightPanel}
+                          isVersionView={isVersionView}
+                          property={record}
+                          versionDataKeys={extensionObject.addedKeysList}
+                          onExtensionUpdate={onExtensionUpdate}
+                        />
+                      </div>
+                    ))}
+                  </Col>
+                ))}
+              </Row>
+            </div>
           )}
         </>
       )}
