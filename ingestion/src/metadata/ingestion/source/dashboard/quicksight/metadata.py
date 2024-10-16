@@ -247,6 +247,7 @@ class QuicksightSource(DashboardServiceSource):
                             **data_source["RelationalTable"]
                         )
                     except (KeyError, ValidationError) as err:
+                        data_source_resp = None
                         yield Either(
                             left=StackTraceError(
                                 name="Lineage",
@@ -257,62 +258,70 @@ class QuicksightSource(DashboardServiceSource):
                                 stackTrace=traceback.format_exc(),
                             )
                         )
+                    if data_source_resp:
+                        schema_name = data_source_resp.schema_name
+                        table_name = data_source_resp.table_name
 
-                    schema_name = data_source_resp.schema_name
-                    table_name = data_source_resp.table_name
+                        list_data_source_func = lambda kwargs: self.client.list_data_sources(  # pylint: disable=unnecessary-lambda-assignment
+                            **kwargs
+                        )
 
-                    list_data_source_func = lambda kwargs: self.client.list_data_sources(  # pylint: disable=unnecessary-lambda-assignment
-                        **kwargs
-                    )
+                        data_source_summary_list = self._check_pagination(
+                            listing_method=list_data_source_func,
+                            entity_key="DataSources",
+                        )
 
-                    data_source_summary_list = self._check_pagination(
-                        listing_method=list_data_source_func,
-                        entity_key="DataSources",
-                    )
+                        data_source_ids = [
+                            data_source_arn["DataSourceId"]
+                            for data_source_arn in data_source_summary_list or []
+                            if data_source_arn["Arn"] in data_source_resp.datasource_arn
+                        ]
 
-                    data_source_ids = [
-                        data_source_arn["DataSourceId"]
-                        for data_source_arn in data_source_summary_list or []
-                        if data_source_arn["Arn"] in data_source_resp.datasource_arn
-                    ]
-
-                    for data_source_id in data_source_ids or []:
-                        data_source_resp = DescribeDataSourceResponse(
-                            **self.client.describe_data_source(
-                                AwsAccountId=self.aws_account_id,
-                                DataSourceId=data_source_id,
-                            )
-                        ).DataSource
-                        if data_source_resp and data_source_resp.DataSourceParameters:
-                            data_source_dict = data_source_resp.DataSourceParameters
-                            for db in data_source_dict.keys() or []:
-                                from_fqn = fqn.build(
-                                    self.metadata,
-                                    entity_type=Table,
-                                    service_name=db_service_name,
-                                    database_name=data_source_dict[db].get("Database"),
-                                    schema_name=schema_name,
-                                    table_name=table_name,
-                                    skip_es_search=True,
+                        for data_source_id in data_source_ids or []:
+                            data_source_resp = DescribeDataSourceResponse(
+                                **self.client.describe_data_source(
+                                    AwsAccountId=self.aws_account_id,
+                                    DataSourceId=data_source_id,
                                 )
-                                from_entity = self.metadata.get_by_name(
-                                    entity=Table,
-                                    fqn=from_fqn,
-                                )
-                                to_fqn = fqn.build(
-                                    self.metadata,
-                                    entity_type=Dashboard,
-                                    service_name=self.config.serviceName,
-                                    dashboard_name=dashboard_details.DashboardId,
-                                )
-                                to_entity = self.metadata.get_by_name(
-                                    entity=Dashboard,
-                                    fqn=to_fqn,
-                                )
-                                if from_entity is not None and to_entity is not None:
-                                    yield self._get_add_lineage_request(
-                                        to_entity=to_entity, from_entity=from_entity
+                            ).DataSource
+                            if (
+                                data_source_resp
+                                and data_source_resp.DataSourceParameters
+                            ):
+                                data_source_dict = data_source_resp.DataSourceParameters
+                                for db in data_source_dict.keys() or []:
+                                    from_fqn = fqn.build(
+                                        self.metadata,
+                                        entity_type=Table,
+                                        service_name=db_service_name,
+                                        database_name=data_source_dict[db].get(
+                                            "Database"
+                                        ),
+                                        schema_name=schema_name,
+                                        table_name=table_name,
+                                        skip_es_search=True,
                                     )
+                                    from_entity = self.metadata.get_by_name(
+                                        entity=Table,
+                                        fqn=from_fqn,
+                                    )
+                                    to_fqn = fqn.build(
+                                        self.metadata,
+                                        entity_type=Dashboard,
+                                        service_name=self.config.serviceName,
+                                        dashboard_name=dashboard_details.DashboardId,
+                                    )
+                                    to_entity = self.metadata.get_by_name(
+                                        entity=Dashboard,
+                                        fqn=to_fqn,
+                                    )
+                                    if (
+                                        from_entity is not None
+                                        and to_entity is not None
+                                    ):
+                                        yield self._get_add_lineage_request(
+                                            to_entity=to_entity, from_entity=from_entity
+                                        )
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
