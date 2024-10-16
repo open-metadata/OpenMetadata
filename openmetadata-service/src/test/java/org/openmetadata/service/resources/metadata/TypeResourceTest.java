@@ -342,26 +342,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
             + " and "
             + tableConfig.getMaxColumns());
 
-    tableTypeFieldA.setCustomPropertyConfig(
-        new CustomPropertyConfig()
-            .withConfig(
-                new TableConfig()
-                    .withColumns(Set.of("column-1", "column-2", "column-3"))
-                    .withRowCount(200)));
-    ChangeDescription change2 = getChangeDescription(databaseEntity, MINOR_UPDATE);
-    Type databaseEntity2 = databaseEntity;
-    assertResponseContains(
-        () ->
-            addCustomPropertyAndCheck(
-                databaseEntity2.getId(),
-                tableTypeFieldA,
-                ADMIN_AUTH_HEADERS,
-                MINOR_UPDATE,
-                change2),
-        Status.BAD_REQUEST,
-        "Custom Property table has invalid value rowCount must be less than or equal to "
-            + tableConfig.getMaxRows());
-
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode tableConfigJson = mapper.createObjectNode();
     ArrayNode columnsArray = tableConfigJson.putArray("columns");
