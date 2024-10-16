@@ -21,7 +21,7 @@ const mockAnnouncementData = [
     type: ThreadType.Announcement,
     href: 'http://localhost:8585/api/v1/feed/f0761441-478e-4373-919e-70b8f587c43f',
     threadTs: 1707475672423,
-    about: '<#E::tableu>',
+    about: '<#E::om::tableu>',
     entityId: '07f9dc02-9cbd-447c-9fc9-988c419a45e0',
     updatedAt: 1707475792808,
     resolved: true,

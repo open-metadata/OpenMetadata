@@ -28,7 +28,7 @@ const mockProps = {
     href: 'http://localhost:8585/api/v1/feed/29569f98-f76e-4e98-8822-7ad8c460d4a2',
     threadTs: 1703830298229,
     about:
-      '<#E::testCase::sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals>',
+      '<#E::om::testCase::om::sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals>',
     entityId: '1b748634-d24b-4879-9791-289f2f90fc3c',
     createdBy: 'admin',
     updatedAt: 1703830298304,

@@ -153,7 +153,7 @@ describe('UpdateDescriptionPage', () => {
 
     expect(mockPostThread).toHaveBeenCalledWith({
       about:
-        '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::shop_id::description>',
+        '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_location::om::columns::om::shop_id::om::description>',
       from: undefined,
       message: 'Task message',
       taskDetails: {

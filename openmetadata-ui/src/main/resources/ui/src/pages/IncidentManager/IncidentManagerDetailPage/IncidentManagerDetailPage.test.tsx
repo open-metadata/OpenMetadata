@@ -37,7 +37,8 @@ const mockTestCaseData = {
     deleted: false,
     href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/48063740-ac35-4854-9ab3-b1b542c820fe',
   },
-  entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+  entityLink:
+    '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>',
   entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
   testSuite: {
     id: 'fe44ef1a-1b83-4872-bef6-fbd1885986b8',

@@ -31,7 +31,8 @@ jest.mock('../SuggestionsProvider/SuggestionsProvider', () => ({
         id: '1',
         description: 'Test suggestion',
         createdBy: { id: '1', name: 'Test User', type: 'user' },
-        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+        entityLink:
+          '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>',
       },
     ],
     acceptRejectSuggestion: jest.fn(),
@@ -45,7 +46,8 @@ describe('SuggestionsAlert', () => {
     id: '1',
     description: 'Test suggestion',
     createdBy: { id: '1', name: 'Test User', type: 'user' },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    entityLink:
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>',
   };
 
   it('renders alert without access', () => {

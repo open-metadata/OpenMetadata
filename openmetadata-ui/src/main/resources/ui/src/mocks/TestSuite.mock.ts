@@ -259,7 +259,7 @@ export const MOCK_TEST_CASE = [
       href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/2e5decd0-1a7e-45a3-bee6-aa9252d5d4f4',
     },
     entityLink:
-      '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>',
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address::om::columns::om::last_name>',
     entityFQN: 'sample_data.ecommerce_db.shopify.dim_address.last_name',
     testSuite: {
       id: '9842a678-5d48-4942-b25a-c07511fcedbb',
@@ -313,7 +313,7 @@ export const MOCK_TEST_CASE = [
       href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/01fec9a7-55a2-476f-8957-b3bda6a02aaf',
     },
     entityLink:
-      '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>',
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address::om::columns::om::shop_id>',
     entityFQN: 'sample_data.ecommerce_db.shopify.dim_address.shop_id',
     testSuite: {
       id: '9842a678-5d48-4942-b25a-c07511fcedbb',
@@ -369,7 +369,8 @@ export const MOCK_TEST_CASE = [
       deleted: false,
       href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/95c5d470-2f5f-4c6b-89cb-4f52a77be26e',
     },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    entityLink:
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>',
     entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
     testSuite: {
       id: '9842a678-5d48-4942-b25a-c07511fcedbb',
@@ -425,7 +426,8 @@ export const MOCK_TEST_CASE = [
       deleted: false,
       href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/6d96ba53-e630-4cde-85e7-effca05d859e',
     },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    entityLink:
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>',
     entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
     testSuite: {
       id: '9842a678-5d48-4942-b25a-c07511fcedbb',
@@ -478,7 +480,7 @@ export const MOCK_TEST_CASE = [
       href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/a4a51fd7-7482-4479-877d-387c6371d1dd',
     },
     entityLink:
-      '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>',
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address::om::columns::om::zip>',
     entityFQN: 'sample_data.ecommerce_db.shopify.dim_address.zip',
     testSuite: {
       id: '9842a678-5d48-4942-b25a-c07511fcedbb',
@@ -540,7 +542,8 @@ export const MOCK_SQL_TEST_CASE = {
     deleted: false,
     href: '',
   },
-  entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+  entityLink:
+    '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>',
   entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
   testSuite: {
     id: 'e858fe50-364b-46ea-bc26-86852c30ce10',

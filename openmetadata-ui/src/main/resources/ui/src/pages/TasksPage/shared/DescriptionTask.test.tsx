@@ -27,7 +27,7 @@ const mockProps = {
     href: 'http://localhost:8585/api/v1/feed/9542599e-f2f9-46d1-9fc0-d03620351a0d',
     threadTs: 1658319946364,
     about:
-      '<#E::table::sample_data.ecommerce_db.shopify.raw_order::description>',
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.raw_order::om::description>',
     entityId: '45d6725f-fb62-492d-b7fb-3a37976d0252',
     createdBy: 'alex_pollard9',
     updatedAt: 1658319946365,

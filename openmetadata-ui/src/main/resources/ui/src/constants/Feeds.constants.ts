@@ -13,7 +13,8 @@
 
 import { CardStyle } from '../generated/entity/feed/thread';
 
-export const EntityRegExPattern = /<#E::([^<>]+?)::([^<>]+?)(?:::([^<>]+?))?>/;
+export const EntityRegExPattern =
+  /<#E::om::([^<>]+?)::om::([^<>]+?)(?::om:::([^<>]+?))?>/;
 
 export const EntityRegEx = new RegExp(EntityRegExPattern);
 
@@ -21,8 +22,9 @@ export const mentionRegEx = /\[@(.+?)?\]\((.+?)?\)/g;
 export const hashtagRegEx = /\[#(.+?)?\]\((.+?)?\)/g;
 export const linkRegEx = /\((.+?\/\/.+?)\/(.+?)\/(.+?)\)/;
 export const teamsLinkRegEx = /\((.+?\/\/.+?)\/(.+?\/.+?\/.+?)\/(.+?)\)/;
-export const entityLinkRegEx = /<#E::([^<>]+?)::([^<>]+?)>/g;
-export const entityRegex = /<#E::([^<>]+?)::([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
+export const entityLinkRegEx = /<#E::om::([^<>]+?)::om::([^<>]+?)>/g;
+export const entityRegex =
+  /<#E::om::([^<>]+?)::om::([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
 
 export const ENTITY_URL_MAP = {
   team: 'settings/members/teams',

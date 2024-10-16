@@ -45,7 +45,8 @@ export const mockPostThreadData = {
   type: 'Conversation',
   href: 'http://localhost:8585/api/v1/feed/f5d62891-3381-4adc-91dc-0a886b9cd751',
   threadTs: 1670412439695,
-  about: '<#E::databaseSchema::sample_data.ecommerce_db.shopify::description>',
+  about:
+    '<#E::om::databaseSchema::om::sample_data.ecommerce_db.shopify::om::description>',
   entityId: '06f0c9ef-708a-47e1-a36e-0a2b864c9e5d',
   createdBy: 'admin',
   updatedAt: 1670412439696,

@@ -13,11 +13,11 @@
 import EntityLink from './EntityLink';
 
 const entityLink =
-  '<#E::table::sample_data.ecommerce_db.shopify.dim_address::description>';
+  '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address::om::description>';
 const entityLinkWithColumn =
-  '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::address_id::tags>';
+  '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address::om::columns::om::address_id::om::tags>';
 const entityLinkWithNestedColumn =
-  '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::"address_id.city"::tags>';
+  '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address::om::columns::om::"address_id.city"::om::tags>';
 const tableFqn = 'sample_data.ecommerce_db.shopify.dim_address';
 
 describe('Test EntityLink', () => {
@@ -81,7 +81,7 @@ describe('Test EntityLink', () => {
         'sample_data.ecommerce_db.shopify.dim_address'
       )
     ).toStrictEqual(
-      '<#E::table::sample_data.ecommerce_db.shopify.dim_address>'
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>'
     );
   });
 
@@ -109,7 +109,7 @@ describe('Test EntityLink', () => {
     const entityLink = EntityLink.getTableEntityLink(tableFqn);
 
     expect(entityLink).toStrictEqual(
-      '<#E::table::sample_data.ecommerce_db.shopify.dim_address>'
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>'
     );
   });
 
@@ -118,7 +118,7 @@ describe('Test EntityLink', () => {
     const entityLink = EntityLink.getTableEntityLink(tableFqn, columnName);
 
     expect(entityLink).toStrictEqual(
-      '<#E::table::sample_data.ecommerce_db.shopify.dim_address>'
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>'
     );
   });
 
@@ -127,13 +127,13 @@ describe('Test EntityLink', () => {
     const entityLink = EntityLink.getTableEntityLink(tableFqn, columnName);
 
     expect(entityLink).toStrictEqual(
-      '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::address_id>'
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address::om::columns::om::address_id>'
     );
   });
 
   it('should return column name if column name is "type"', () => {
     const entityLink =
-      '<#E::table::pw-database-service-69e197ad.pw-database-76212f52.pw-database-schema-473d89b5.pw-table-c0cfe45a::columns::type>';
+      '<#E::om::table::om::pw-database-service-69e197ad.pw-database-76212f52.pw-database-schema-473d89b5.pw-table-c0cfe45a::om::columns::om::type>';
     const columnName = EntityLink.getTableColumnName(entityLink);
 
     expect(columnName).toStrictEqual('type');

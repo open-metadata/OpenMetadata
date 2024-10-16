@@ -1235,7 +1235,7 @@ export const isLeafNode = (
   }
 };
 
-export const ENTITY_LINK_SEPARATOR = '::';
+export const ENTITY_LINK_SEPARATOR = '::om::';
 
 export const getEntityFeedLink = (
   type?: string,
@@ -1253,7 +1253,7 @@ export const getEntityFeedLink = (
 
 /*
   params: userName - fullyQualifiedName
-  return : <#E::user::userName>
+  return : <#E::om::user::om::userName>
 */
 export const getEntityUserLink = (userName: string): string => {
   return `<#E${ENTITY_LINK_SEPARATOR}user${ENTITY_LINK_SEPARATOR}${userName}>`;
