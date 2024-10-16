@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.ENTITY_TYPE_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
+import static org.openmetadata.csv.CsvUtil.fieldToColumns;
 import static org.openmetadata.csv.CsvUtil.fieldToEntities;
 import static org.openmetadata.csv.CsvUtil.fieldToExtensionStrings;
 import static org.openmetadata.csv.CsvUtil.fieldToInternalArray;
@@ -40,6 +41,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -66,6 +69,7 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.customproperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -379,7 +383,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
               parseEntityReferences(printer, csvRecord, fieldNumber, fieldValue.toString(), isList);
         }
         case "date-cp", "dateTime-cp", "time-cp" -> fieldValue =
-            getFormattedDateTimeField(
+            parseFormattedDateTimeField(
                 printer,
                 csvRecord,
                 fieldNumber,
@@ -392,19 +396,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
           fieldValue = enumKeys.isEmpty() ? null : enumKeys;
         }
         case "timeInterval" -> fieldValue =
-            handleTimeInterval(printer, csvRecord, fieldNumber, fieldName, fieldValue);
-        case "number", "integer", "timestamp" -> {
-          try {
-            fieldValue = Long.parseLong(fieldValue.toString());
-          } catch (NumberFormatException e) {
-            importFailure(
-                printer,
-                invalidCustomPropertyValue(
-                    fieldNumber, fieldName, customPropertyType, fieldValue.toString()),
-                csvRecord);
-            fieldValue = null;
-          }
-        }
+            parseTimeInterval(printer, csvRecord, fieldNumber, fieldName, fieldValue);
+        case "number", "integer", "timestamp" -> fieldValue =
+            parseLongField(
+                printer, csvRecord, fieldNumber, fieldName, customPropertyType, fieldValue);
+        case "table-cp" -> fieldValue =
+            parseTableType(printer, csvRecord, fieldNumber, fieldName, fieldValue, propertyConfig);
+
         default -> {}
       }
       // Validate the field against the JSON schema
@@ -448,7 +446,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return isList ? entityReferences : entityReferences.isEmpty() ? null : entityReferences.get(0);
   }
 
-  protected String getFormattedDateTimeField(
+  protected String parseFormattedDateTimeField(
       CSVPrinter printer,
       CSVRecord csvRecord,
       int fieldNumber,
@@ -484,7 +482,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
   }
 
-  private Map<String, Long> handleTimeInterval(
+  private Map<String, Long> parseTimeInterval(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String fieldName, Object fieldValue)
       throws IOException {
     List<String> timestampValues = fieldToEntities(fieldValue.toString());
@@ -509,6 +507,70 @@ public abstract class EntityCsv<T extends EntityInterface> {
       return null;
     }
     return timestampMap;
+  }
+
+  private Object parseLongField(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      String customPropertyType,
+      Object fieldValue)
+      throws IOException {
+    try {
+      return Long.parseLong(fieldValue.toString());
+    } catch (NumberFormatException e) {
+      importFailure(
+          printer,
+          invalidCustomPropertyValue(
+              fieldNumber, fieldName, customPropertyType, fieldValue.toString()),
+          csvRecord);
+      return null;
+    }
+  }
+
+  private Object parseTableType(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      Object fieldValue,
+      String propertyConfig)
+      throws IOException {
+    List<String> tableValues = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
+    List<Map<String, String>> rows = new ArrayList<>();
+    TableConfig tableConfig =
+        JsonUtils.treeToValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
+
+    for (String row : tableValues) {
+      List<String> columns = listOrEmpty(fieldToColumns(row));
+      Map<String, String> rowMap = new LinkedHashMap<>();
+      Iterator<String> columnIterator = tableConfig.getColumns().iterator();
+      Iterator<String> valueIterator = columns.iterator();
+
+      if (columns.size() > tableConfig.getColumns().size()) {
+        importFailure(
+            printer,
+            invalidCustomPropertyValue(
+                fieldNumber,
+                fieldName,
+                "table",
+                "Column count should be less than or equal to " + tableConfig.getColumns().size()),
+            csvRecord);
+        return null;
+      }
+
+      while (columnIterator.hasNext() && valueIterator.hasNext()) {
+        rowMap.put(columnIterator.next(), valueIterator.next());
+      }
+
+      rows.add(rowMap);
+    }
+
+    Map<String, Object> tableJson = new LinkedHashMap<>();
+    tableJson.put("rows", rows);
+    tableJson.put("columns", tableConfig.getColumns());
+    return tableJson;
   }
 
   private void validateAndUpdateExtension(
