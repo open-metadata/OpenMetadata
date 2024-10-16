@@ -36,14 +36,14 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  '../../components/DataQuality/AddDataQualityTest/components/TestSuiteScheduler',
+  '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval',
   () =>
-    jest.fn().mockImplementation(({ onSubmit, onCancel }) => (
-      <>
-        TestSuiteScheduler
-        <button onClick={onSubmit}>Submit TestSuiteScheduler</button>
-        <button onClick={onCancel}>Cancel TestSuiteScheduler</button>
-      </>
+    jest.fn().mockImplementation(({ onDeploy, onBack }) => (
+      <div>
+        ScheduleInterval
+        <button onClick={onDeploy}>Submit ScheduleInterval</button>
+        <button onClick={onBack}>Cancel ScheduleInterval</button>
+      </div>
     ))
 );
 
@@ -159,13 +159,13 @@ describe('AppInstall component', () => {
       );
     });
 
-    expect(screen.getByText('TestSuiteScheduler')).toBeInTheDocument();
+    expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
     expect(screen.queryByText('AppInstallVerifyCard')).not.toBeInTheDocument();
 
-    // TestSuiteScheduler
+    // ScheduleInterval
     await act(async () => {
       userEvent.click(
-        screen.getByRole('button', { name: 'Submit TestSuiteScheduler' })
+        screen.getByRole('button', { name: 'Submit ScheduleInterval' })
       );
     });
 
@@ -177,7 +177,7 @@ describe('AppInstall component', () => {
     // change ActiveServiceStep to 1
     act(() => {
       userEvent.click(
-        screen.getByRole('button', { name: 'Cancel TestSuiteScheduler' })
+        screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
       );
     });
 
@@ -187,7 +187,7 @@ describe('AppInstall component', () => {
       screen.getByRole('button', { name: 'Cancel AppInstallVerifyCard' })
     );
 
-    // will call for Submit TestSuiteScheduler and Cancel AppInstallVerifyCard
+    // will call for Submit ScheduleInterval and Cancel AppInstallVerifyCard
     expect(mockPush).toHaveBeenCalledTimes(1);
   });
 
@@ -215,12 +215,12 @@ describe('AppInstall component', () => {
       );
     });
 
-    expect(screen.getByText('TestSuiteScheduler')).toBeInTheDocument();
+    expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
 
     // change ActiveServiceStep to 2
     act(() => {
       userEvent.click(
-        screen.getByRole('button', { name: 'Cancel TestSuiteScheduler' })
+        screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
       );
     });
 
@@ -259,11 +259,11 @@ describe('AppInstall component', () => {
       );
     });
 
-    expect(screen.getByText('TestSuiteScheduler')).toBeInTheDocument();
+    expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
 
     await act(async () => {
       userEvent.click(
-        screen.getByRole('button', { name: 'Submit TestSuiteScheduler' })
+        screen.getByRole('button', { name: 'Submit ScheduleInterval' })
       );
     });
 

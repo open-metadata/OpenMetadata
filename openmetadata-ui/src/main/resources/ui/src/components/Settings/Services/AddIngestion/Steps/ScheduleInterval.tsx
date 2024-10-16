@@ -195,6 +195,7 @@ const ScheduleInterval = <T,>({
         <Col span={24}>
           <Radio.Group
             className="schedular-card-container"
+            data-testid="schedular-card-container"
             value={selectedSchedular}>
             {SCHEDULAR_OPTIONS.map(({ description, title, value }) => (
               <Card
