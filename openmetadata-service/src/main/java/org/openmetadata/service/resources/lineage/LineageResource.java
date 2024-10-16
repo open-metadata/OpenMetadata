@@ -519,6 +519,7 @@ public class LineageResource {
   static class LineageResourceContext implements ResourceContextInterface {
 
     EntityReference destinationLineageEntityRef;
+
     @Override
     public String getResource() {
       return LINEAGE_FIELD;
@@ -526,10 +527,11 @@ public class LineageResource {
 
     @Override
     public List<EntityReference> getOwners() {
-        if (this.destinationLineageEntityRef != null) {
-            EntityInterface dstEntity = Entity.getEntity(destinationLineageEntityRef, "owners", Include.NON_DELETED);
-            return dstEntity.getOwners();
-        }
+      if (this.destinationLineageEntityRef != null) {
+        EntityInterface dstEntity =
+            Entity.getEntity(destinationLineageEntityRef, "owners", Include.NON_DELETED);
+        return dstEntity.getOwners();
+      }
       return null;
     }
 
@@ -548,16 +550,18 @@ public class LineageResource {
       return null;
     }
 
-      public LineageResourceContext(AddLineage addLineage) {
-          this.destinationLineageEntityRef = addLineage.getEdge().getToEntity();
-      }
+    public LineageResourceContext(AddLineage addLineage) {
+      this.destinationLineageEntityRef = addLineage.getEdge().getToEntity();
+    }
 
-      public LineageResourceContext(String toEntity, String toFqn) {
-          this.destinationLineageEntityRef = Entity.getEntityReferenceByName(toEntity, toFqn, Include.NON_DELETED);
-      }
+    public LineageResourceContext(String toEntity, String toFqn) {
+      this.destinationLineageEntityRef =
+          Entity.getEntityReferenceByName(toEntity, toFqn, Include.NON_DELETED);
+    }
 
-      public LineageResourceContext(String toEntity, UUID toUuid) {
-          this.destinationLineageEntityRef = Entity.getEntityReferenceById(toEntity, toUuid, Include.NON_DELETED);
-      }
+    public LineageResourceContext(String toEntity, UUID toUuid) {
+      this.destinationLineageEntityRef =
+          Entity.getEntityReferenceById(toEntity, toUuid, Include.NON_DELETED);
+    }
   }
 }
