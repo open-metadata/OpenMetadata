@@ -34,6 +34,7 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -46,6 +47,8 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.email.EmailUtil;
 
@@ -145,8 +148,16 @@ public class SystemResource {
                     schema = @Schema(implementation = Settings.class)))
       })
   public Settings getProfilerConfigurationSetting(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type for which to get the global profiler configuration",
+              schema = @Schema(type = "string"))
+      @QueryParam("entityType")
+      @DefaultValue("table")
+      String entityType) {
+     ResourceContext resourceContext = new ResourceContext(entityType);
+     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
+     authorizer.authorize(securityContext, operationContext, resourceContext);
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
 
