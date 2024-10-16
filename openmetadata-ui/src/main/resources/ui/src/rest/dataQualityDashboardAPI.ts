@@ -58,3 +58,28 @@ export const fetchTestCaseSummaryByDimension = () => {
       'bucketName=dimension:aggType=terms:field=dataQualityDimension,bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
   });
 };
+
+export const fetchCountOfNewIncidentsByDays = () => {
+  return getDataQualityReport({
+    q: JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            { term: { testCaseResolutionStatusType: 'New' } },
+            {
+              range: {
+                timestamp: {
+                  lte: 1728994134000,
+                  gte: 1727784000000,
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+    index: 'testCaseResolutionStatus',
+    aggregationQuery:
+      'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=stateId',
+  });
+};
