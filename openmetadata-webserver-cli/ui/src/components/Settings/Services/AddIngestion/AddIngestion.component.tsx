@@ -87,7 +87,7 @@ const AddIngestion = ({
       displayName:
         getIngestionName(serviceData.name, pipelineType),
       enableDebugLog: true,
-      pipelineType,
+      // pipelineType,
     })
   );
 
@@ -138,8 +138,9 @@ const AddIngestion = ({
 
   const handleNext = (step: number) => {
     if (step > 1) {
-      console.log("Saving data", workflowData);
-      axios.post('/sourceConfig', workflowData)
+      const createIngestionPipelinePayload = createNewIngestion({})
+      console.log("Saving data", createIngestionPipelinePayload);
+      axios.post('/sourceConfig', createIngestionPipelinePayload)
         .then(response => {
           console.log('Source configuraiton saved:', response.data);
           history.push("/download");
@@ -158,6 +159,7 @@ const AddIngestion = ({
 
   const handleSubmit = (data: IngestionWorkflowData) => {
     setWorkflowData(data);
+    handleScheduleIntervalDeployClick({});
     handleNext(2);
   };
 
@@ -198,24 +200,7 @@ const AddIngestion = ({
       },
     };
 
-    if (onAddIngestionSave) {
-      setShowDeployModal(true);
-      onAddIngestionSave(ingestionDetails)
-        .then(() => {
-          if (showSuccessScreen) {
-            handleNext(3);
-          } else {
-            onSuccessSave?.();
-          }
-        })
-        .catch(() => {
-          // ignore since error is displayed in toast in the parent promise
-        })
-        .finally(() => {
-          setTimeout(() => setSaveState(LOADING_STATE.INITIAL), 500);
-          setShowDeployModal(false);
-        });
-    }
+    return ingestionDetails;
   };
 
   const updateIngestion = (extraData: WorkflowExtraConfig) => {
