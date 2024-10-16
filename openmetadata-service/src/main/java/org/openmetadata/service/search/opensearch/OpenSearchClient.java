@@ -1234,7 +1234,6 @@ public class OpenSearchClient implements SearchClient {
   @SneakyThrows
   public void updateSearch(UpdateRequest updateRequest) {
     if (updateRequest != null) {
-      updateRequest.docAsUpsert(true);
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
@@ -1650,6 +1649,7 @@ public class OpenSearchClient implements SearchClient {
     if (isClientAvailable) {
       UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
       updateRequest.doc(doc, XContentType.JSON);
+      updateRequest.docAsUpsert(true);
       updateSearch(updateRequest);
     }
   }
@@ -1659,6 +1659,7 @@ public class OpenSearchClient implements SearchClient {
     if (isClientAvailable) {
       UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
       updateRequest.doc(doc, XContentType.JSON);
+      updateRequest.docAsUpsert(true);
       updateSearch(updateRequest);
     }
   }
