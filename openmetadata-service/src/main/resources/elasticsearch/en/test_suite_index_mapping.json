@@ -439,6 +439,10 @@
             "type": "text"
           }
         }
+      },
+      "serviceType": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       }
     }
   }
