@@ -203,15 +203,18 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_table_description(self, table_name: str) -> Optional[str]:
+    def get_table_description(
+        self, table_name: str, object_label: Optional[str]
+    ) -> Optional[str]:
         """
         Method to get the table description for salesforce with Tooling API
         """
+        table_description = None
         try:
             result = self.client.toolingexecute(
                 f"query/?q=SELECT+Description+FROM+EntityDefinition+WHERE+QualifiedApiName='{table_name}'"
             )
-            return result["records"][0]["Description"]
+            table_description = result["records"][0]["Description"]
         except KeyError as err:
             logger.warning(
                 f"Unable to get required key from Tooling API response for table [{table_name}]: {err}"
@@ -225,7 +228,7 @@ class SalesforceSource(DatabaseServiceSource):
             logger.warning(
                 f"Unable to get description with Tooling API for table [{table_name}]: {exc}"
             )
-        return None
+        return table_description if table_description else object_label
 
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
@@ -241,11 +244,13 @@ class SalesforceSource(DatabaseServiceSource):
                 f"sobjects/{table_name}/describe/",
                 params=None,
             )
-            columns = self.get_columns(salesforce_objects["fields"])
+            columns = self.get_columns(salesforce_objects.get("fields", []))
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
-                description=self.get_table_description(table_name),
+                description=self.get_table_description(
+                    table_name, salesforce_objects.get("label")
+                ),
                 columns=columns,
                 tableConstraints=table_constraints,
                 databaseSchema=FullyQualifiedEntityName(
