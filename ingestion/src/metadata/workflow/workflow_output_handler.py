@@ -115,8 +115,11 @@ class WorkflowOutputHandler:
 
         self._print_summary(steps)
 
-    def _print_summary(self, steps: List[Step]):
+    def _print_summary(self, steps: List[Step]) -> None:
         failures: List[Failure] = []
+        if not steps:
+            log_ansi_encoded_string(message="No steps to process.")
+            return
 
         for step in steps:
             step_summary = Summary.from_step(step)

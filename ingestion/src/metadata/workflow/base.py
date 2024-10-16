@@ -161,7 +161,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     def execute_internal(self) -> None:
         """Workflow-specific logic to execute safely"""
 
-    def calculate_success(self) -> float:
+    def calculate_success(self) -> Optional[float]:
         """
         Get the success % of the internal execution.
         Since we'll use this to get a single success % from multiple steps, we'll take
@@ -170,6 +170,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         E.g., if we have no errors on the source but a bunch of them on the sink,
         we still want the flow to be marked as a failure or partial success.
         """
+        if not self.workflow_steps():
+            logger.warning("No steps to calculate success")
+            return None
+
         return mean(
             [step.get_status().calculate_success() for step in self.workflow_steps()]
         )
