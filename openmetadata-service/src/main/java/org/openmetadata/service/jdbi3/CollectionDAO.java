@@ -3804,6 +3804,11 @@ public interface CollectionDAO {
         @Bind("source") String source, @Bind("limit") long limit);
 
     @SqlQuery(
+        "SELECT json FROM change_event ce where ce.offset < :offset ORDER BY ce.eventTime ASC LIMIT :limit")
+    List<String> listChangeEventsBeforeOffset(
+        @Bind("limit") long limit, @Bind("offset") long offset);
+
+    @SqlQuery(
         "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
     int recordExists(@Bind("id") String id);
 

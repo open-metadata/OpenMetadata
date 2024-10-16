@@ -886,6 +886,124 @@ public class EventSubscriptionResource
   }
 
   @GET
+  @Path("id/{id}/listSuccessfullySentChangeEvents")
+  @Operation(
+      operationId = "getSuccessfullySentChangeEventsForAlert",
+      summary = "Get successfully sent change events for an alert",
+      description =
+          "Retrieve successfully sent change events for a specific alert, identified by its ID, with an optional limit.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully sent change events retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "Alert not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getSuccessfullySentChangeEventsForAlert(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "ID of the alert to retrieve change events for",
+              schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Maximum number of change events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("100")
+          @Min(0)
+          int limit) {
+
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      List<ChangeEvent> changeEvents =
+          EventSubscriptionScheduler.getInstance()
+              .getSuccessfullySentChangeEventsForAlert(id, limit);
+
+      return Response.ok().entity(changeEvents).build();
+    } catch (EntityNotFoundException e) {
+      LOG.error("Alert not found: {}", id, e);
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(String.format("Alert with ID %s not found.", id))
+          .build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving successfully sent change events for alert: {}", id, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              String.format(
+                  "An error occurred while retrieving successfully sent change events for alert: %s. [%s]",
+                  id, e.getMessage()))
+          .build();
+    }
+  }
+
+  @GET
+  @Path("name/{eventSubscriptionName}/listSuccessfullySentChangeEvents")
+  @Operation(
+      operationId = "getSuccessfullySentChangeEventsForAlertByName",
+      summary = "Get successfully sent change events for an alert by name",
+      description =
+          "Retrieve successfully sent change events for a specific alert, identified by its name, with an optional limit.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully sent change events retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "Alert not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getSuccessfullySentChangeEventsForAlertByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the alert to retrieve change events for",
+              schema = @Schema(type = "string"))
+          @PathParam("eventSubscriptionName")
+          String name,
+      @Parameter(
+              description = "Maximum number of change events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("100")
+          @Min(0)
+          int limit) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      EventSubscription subscription = repository.getByName(null, name, repository.getFields("id"));
+
+      List<ChangeEvent> changeEvents =
+          EventSubscriptionScheduler.getInstance()
+              .getSuccessfullySentChangeEventsForAlert(subscription.getId(), limit);
+
+      return Response.ok().entity(changeEvents).build();
+    } catch (EntityNotFoundException e) {
+      LOG.error("Alert not found with name: {}", name, e);
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(String.format("Alert with name '%s' not found.", name))
+          .build();
+    } catch (Exception e) {
+      LOG.error(
+          "Error retrieving successfully sent change events for alert with name: {}", name, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              String.format(
+                  "An error occurred while retrieving successfully sent change events for alert with name: %s. [%s]",
+                  name, e.getMessage()))
+          .build();
+    }
+  }
+
+  @GET
   @Path("/id/{eventSubscriptionId}/destinations")
   @Valid
   @Operation(

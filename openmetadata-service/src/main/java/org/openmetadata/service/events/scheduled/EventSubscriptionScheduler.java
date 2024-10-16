@@ -296,6 +296,24 @@ public class EventSubscriptionScheduler {
     }
   }
 
+  public List<ChangeEvent> getSuccessfullySentChangeEventsForAlert(UUID id, int limit) {
+    Optional<EventSubscriptionOffset> eventSubscriptionOffset = getEventSubscriptionOffset(id);
+
+    return eventSubscriptionOffset
+        .map(
+            offset -> {
+              List<String> jsonEvents =
+                  Entity.getCollectionDAO()
+                      .changeEventDAO()
+                      .listChangeEventsBeforeOffset(limit, offset.getOffset());
+
+              return jsonEvents.stream()
+                  .map(json -> JsonUtils.readValue(json, ChangeEvent.class))
+                  .collect(Collectors.toList());
+            })
+        .orElse(Collections.emptyList());
+  }
+
   public Optional<EventSubscription> getEventSubscriptionFromScheduledJob(UUID id) {
     try {
       JobDetail jobDetail =
