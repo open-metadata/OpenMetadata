@@ -16,9 +16,13 @@ from pydantic_core import Url
 from typing_extensions import Annotated
 
 
-class InitServerModel(BaseModel):
+class OMetaServerModel(BaseModel):
     """Init request to start the local server instance"""
-    server_url: Annotated[Url, Field(
-        description="OpenMetadata or Collate server instance URL. E.g., http://localhost:8585/api")
+
+    server_url: Annotated[
+        Url,
+        Field(
+            description="OpenMetadata or Collate server instance URL. E.g., http://localhost:8585/api"
+        ),
     ]
     token: Annotated[str, Field(description="Token to authenticate the server")]
