@@ -12,7 +12,7 @@
  */
 import { Button, Space } from "antd";
 import classNames from "classnames";
-import React, { FC, useEffect, useMemo, useRef, useState } from "react";
+import React, { FC, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ReactComponent as FailIcon } from "../../../assets/svg/fail-badge.svg";
 import { ReactComponent as WarningIcon } from "../../../assets/svg/ic-warning.svg";
@@ -37,9 +37,9 @@ import Loader from "../Loader/Loader";
 import "./test-connection.style.less";
 import { TestConnectionProps, TestStatus } from "./TestConnection.interface";
 import TestConnectionModal from "./TestConnectionModal/TestConnectionModal";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { ServiceType } from "../../../generated/entity/services/serviceType";
-import { SettledStatus } from "../../../enums/Axios.enum";
+import { showErrorToast } from "../../../utils/ToastUtils";
 
 const TestConnection: FC<TestConnectionProps> = ({
   isTestingDisabled,
@@ -124,7 +124,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         connectionType,
         serviceName,
       };
-      const response = await axios.post('/api/test', payload);
+      const response = await axios.post('/api/test', payload, { timeout: 2000 });
       const { data } = response;
       setTestConnectionStepResult(data.steps);
       setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
@@ -134,6 +134,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     } catch (error) {
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
+      showErrorToast(error as AxiosError);
     } finally {
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       setIsTestingConnection(false);
@@ -182,6 +183,7 @@ const TestConnection: FC<TestConnectionProps> = ({
               />
             )}
             <div data-testid="messag-text">
+              {message}{' '}
               {(testStatus || isTestingConnection) && (
                 <Transi18next
                   i18nKey="message.click-text-to-view-details"
@@ -234,7 +236,6 @@ const TestConnection: FC<TestConnectionProps> = ({
         progress={progress}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
-        message={message}
         onCancel={() => setDialogOpen(false)}
         onConfirm={() => setDialogOpen(false)}
         onTestConnection={handleTestConnection}

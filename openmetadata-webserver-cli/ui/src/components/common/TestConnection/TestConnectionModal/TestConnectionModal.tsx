@@ -11,17 +11,13 @@
  *  limitations under the License.
  */
 import {
-  Button,
   Modal,
   Progress,
   ProgressProps,
   Space,
-  Typography,
 } from 'antd';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
-import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import ConnectionStepCard from '../ConnectionStepCard/ConnectionStepCard';
@@ -33,7 +29,6 @@ interface TestConnectionModalProps {
   testConnectionStepResult: TestConnectionStepResult[];
   progress: number;
   isConnectionTimeout: boolean;
-  message: string;
   onCancel: () => void;
   onConfirm: () => void;
   onTestConnection: () => void;
@@ -47,9 +42,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   testConnectionStepResult,
   onCancel,
   onConfirm,
-  isConnectionTimeout,
   onTestConnection,
-  message,
 }) => {
   const { t } = useTranslation();
 
@@ -85,9 +78,6 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
           percent={progress}
           strokeColor="#B3D4F4"
         />
-        <Typography.Text className="mt-4 mb-4 w-480 text-xl font-medium text-grey-muted">
-          {message}{' '}
-        </Typography.Text>
         {testConnectionStep.map((step) => {
           const currentStepResult = getConnectionStepResult(step);
 

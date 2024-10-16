@@ -14,7 +14,6 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Collapse, Divider, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
