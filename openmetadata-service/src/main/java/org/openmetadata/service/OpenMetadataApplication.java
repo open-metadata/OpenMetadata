@@ -116,6 +116,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
+import org.openmetadata.service.security.saml.SamlLogoutServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
@@ -165,7 +166,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
 
-    installSearchRepository(catalogConfig.getElasticSearchConfiguration());
+    initializeSearchRepository(catalogConfig.getElasticSearchConfiguration());
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
@@ -301,7 +302,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  protected void installSearchRepository(ElasticSearchConfiguration esConfig) {
+  protected void initializeSearchRepository(ElasticSearchConfiguration esConfig) {
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
     SearchRepository searchRepository = new SearchRepository(esConfig);
@@ -350,6 +351,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
     if (catalogConfig.getAuthenticationConfiguration() != null
         && catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)) {
+
+      // Set up a Session Manager
+      MutableServletContextHandler contextHandler = environment.getApplicationContext();
+      if (contextHandler.getSessionHandler() == null) {
+        contextHandler.setSessionHandler(new SessionHandler());
+      }
+
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
       ServletRegistration.Dynamic samlRedirectServlet =
           environment.servlets().addServlet("saml_login", new SamlLoginServlet());
@@ -368,6 +376,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ServletRegistration.Dynamic samlRefreshServlet =
           environment.servlets().addServlet("saml_refresh_token", new SamlTokenRefreshServlet());
       samlRefreshServlet.addMapping("/api/v1/saml/refresh");
+
+      ServletRegistration.Dynamic samlLogoutServlet =
+          environment
+              .servlets()
+              .addServlet(
+                  "saml_logout_token",
+                  new SamlLogoutServlet(
+                      catalogConfig.getAuthenticationConfiguration(),
+                      catalogConfig.getAuthorizerConfiguration()));
+      samlLogoutServlet.addMapping("/api/v1/saml/logout");
     }
   }
 
@@ -454,6 +472,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
             conf.getPipelineServiceClientConfiguration(),
+            conf.getAuthenticationConfiguration(),
             false);
     migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();

@@ -34,7 +34,7 @@ import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
@@ -55,7 +55,6 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityAction, EntityType } from '../../../../enums/entity.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { OwnerType } from '../../../../enums/user.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
@@ -66,9 +65,10 @@ import {
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
-import { getSuggestions } from '../../../../rest/miscAPI';
+import { getSearchedTeams } from '../../../../rest/miscAPI';
 import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -136,7 +136,7 @@ const TeamDetailsV1 = ({
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { isAdminUser } = useAuth();
   const { currentUser } = useApplicationStore();
 
@@ -267,13 +267,8 @@ const TeamDetailsV1 = ({
 
   const searchTeams = async (text: string) => {
     try {
-      const res = await getSuggestions<SearchIndex.TEAM>(
-        text,
-        SearchIndex.TEAM
-      );
-      const data = res.data.suggest['metadata-suggest'][0].options.map(
-        (value) => value._source as Team
-      );
+      const res = await getSearchedTeams(text, 1, '');
+      const data = res.data.hits.hits.map((value) => value._source as Team);
 
       setChildTeamList(data);
     } catch (error) {

@@ -13,14 +13,19 @@ Postgres source module
 """
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine import Inspector
 
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     PartitionColumnDetails,
     PartitionIntervalTypes,
@@ -36,7 +41,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -46,10 +51,13 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.mssql.models import STORED_PROC_LANGUAGE_MAP
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.postgres.models import PostgresStoredProcedure
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_DB_NAMES,
+    POSTGRES_GET_STORED_PROCEDURES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
     POSTGRES_SCHEMA_COMMENTS,
@@ -59,9 +67,14 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_columns,
     get_etable_owner,
     get_foreign_keys,
+    get_json_fields_and_type,
     get_table_comment,
     get_table_owner,
     get_view_definition,
+)
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureMixin,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
@@ -138,11 +151,12 @@ PGDialect.ischema_names = ischema_names
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
+Inspector.get_json_fields_and_type = get_json_fields_and_type
 
 PGDialect.get_foreign_keys = get_foreign_keys
 
 
-class PostgresSource(CommonDbSourceService, MultiDBSource):
+class PostgresSource(CommonDbSourceService, MultiDBSource, StoredProcedureMixin):
     """
     Implements the necessary methods to extract
     Database metadata from Postgres Source
@@ -298,3 +312,62 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def get_stored_procedures(self) -> Iterable[PostgresStoredProcedure]:
+        """List stored procedures"""
+        if self.source_config.includeStoredProcedures:
+            results = self.engine.execute(POSTGRES_GET_STORED_PROCEDURES).all()
+            for row in results:
+                try:
+                    stored_procedure = PostgresStoredProcedure.model_validate(
+                        dict(row._mapping)
+                    )
+                    yield stored_procedure
+                except Exception as exc:
+                    logger.error()
+                    self.status.failed(
+                        error=StackTraceError(
+                            name=dict(row).get("name", "UNKNOWN"),
+                            error=f"Error parsing Stored Procedure payload: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+
+    def yield_stored_procedure(
+        self, stored_procedure
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Prepare the stored procedure payload"""
+        try:
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(stored_procedure.name),
+                description=None,
+                storedProcedureCode=StoredProcedureCode(
+                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
+                    code=stored_procedure.definition,
+                ),
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                ),
+            )
+            yield Either(right=stored_procedure_request)
+            self.register_record_stored_proc_request(stored_procedure_request)
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=stored_procedure.name,
+                    error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+        """
+        Return the dictionary associating stored procedures to the
+        queries they triggered
+        """
+        return {}

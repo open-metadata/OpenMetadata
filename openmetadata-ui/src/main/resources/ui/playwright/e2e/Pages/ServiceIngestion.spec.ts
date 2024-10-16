@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import test from '@playwright/test';
+import test, { expect } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
+import { MYSQL, POSTGRES, REDSHIFT } from '../../constant/service';
+import { GlobalSettingOptions } from '../../constant/settings';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
+import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
 import BigQueryIngestionClass from '../../support/entity/ingestion/BigQueryIngestionClass';
 import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionClass';
 import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
@@ -23,10 +27,11 @@ import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/Redshi
 import S3IngestionClass from '../../support/entity/ingestion/S3IngestionClass';
 import SnowflakeIngestionClass from '../../support/entity/ingestion/SnowflakeIngestionClass';
 import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
-import { redirectToHomePage } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
+import { INVALID_NAMES, redirectToHomePage } from '../../utils/common';
+import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const services = [
+  ApiIngestionClass,
   S3IngestionClass,
   MetabaseIngestionClass,
   MysqlIngestionClass,
@@ -44,41 +49,93 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
 }
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json', trace: 'off' });
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
+  video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
+});
 
 services.forEach((ServiceClass) => {
   const service = new ServiceClass();
 
   test.describe.configure({
-    timeout: 300000,
+    // 11 minutes max for ingestion tests
+    timeout: 11 * 60 * 1000,
   });
 
-  test.describe.serial(service.serviceType, { tag: '@ingestion' }, async () => {
-    test.beforeEach('Visit entity details page', async ({ page }) => {
-      await redirectToHomePage(page);
-      await settingClick(page, service.category);
-    });
+  test.describe.serial(
+    service.serviceType,
+    PLAYWRIGHT_INGESTION_TAG_OBJ,
+    async () => {
+      test.beforeEach('Visit entity details page', async ({ page }) => {
+        await redirectToHomePage(page);
+        await settingClick(
+          page,
+          service.category as unknown as SettingOptionsType
+        );
+      });
 
-    test(`Create & Ingest ${service.serviceType} service`, async ({ page }) => {
-      await service.createService(page);
-    });
+      test(`Create & Ingest ${service.serviceType} service`, async ({
+        page,
+      }) => {
+        await service.createService(page);
+      });
 
-    test(`Update description and verify description after re-run`, async ({
-      page,
-    }) => {
-      await service.updateService(page);
-    });
+      test(`Update description and verify description after re-run`, async ({
+        page,
+      }) => {
+        await service.updateService(page);
+      });
 
-    test(`Update schedule options and verify`, async ({ page }) => {
-      await service.updateScheduleOptions(page);
-    });
+      test(`Update schedule options and verify`, async ({ page }) => {
+        await service.updateScheduleOptions(page);
+      });
 
-    test.fixme(`Service specific tests`, async () => {
-      await service.runAdditionalTests(test);
-    });
+      if (
+        [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
+          service.serviceType
+        )
+      ) {
+        test(`Service specific tests`, async ({ page }) => {
+          await service.runAdditionalTests(page, test);
+        });
+      }
 
-    test(`Delete ${service.serviceType} service`, async ({ page }) => {
-      await service.deleteService(page);
-    });
+      test(`Delete ${service.serviceType} service`, async ({ page }) => {
+        await service.deleteService(page);
+      });
+    }
+  );
+});
+
+test.describe('Service form', () => {
+  test('name field should throw error for invalid name', async ({ page }) => {
+    await redirectToHomePage(page);
+    await settingClick(page, GlobalSettingOptions.DATABASES);
+    await page.click('[data-testid="add-service-button"]');
+    await page.click('[data-testid="Mysql"]');
+    await page.click('[data-testid="next-button"]');
+
+    await page.waitForSelector('[data-testid="service-name"]');
+    await page.click('[data-testid="next-button"]');
+
+    await expect(page.locator('#name_help')).toBeVisible();
+    await expect(page.locator('#name_help')).toHaveText('Name is required');
+
+    await page.fill(
+      '[data-testid="service-name"]',
+      INVALID_NAMES.WITH_SPECIAL_CHARS
+    );
+
+    await expect(page.locator('#name_help')).toBeVisible();
+    await expect(page.locator('#name_help')).toHaveText(
+      'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.'
+    );
+
+    await page.fill('[data-testid="service-name"]', 'test-service');
+
+    await page.click('[data-testid="next-button"]');
+
+    await expect(page.getByTestId('step-icon-3')).toHaveClass(/active/);
   });
 });

@@ -15,18 +15,11 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
-type ResponseDataType = {
-  name: string;
-  displayName: string;
-  description: string;
-  id: string;
-  fullyQualifiedName: string;
-};
-
 export class MlModelClass extends EntityClass {
+  private mlModelName = `pw-mlmodel-${uuid()}`;
   service = {
     name: `pw-ml-model-service-${uuid()}`,
     serviceType: 'Mlflow',
@@ -49,8 +42,8 @@ export class MlModelClass extends EntityClass {
   ];
 
   entity = {
-    name: `pw-mlmodel-${uuid()}`,
-    displayName: `pw-mlmodel-${uuid()}`,
+    name: this.mlModelName,
+    displayName: this.mlModelName,
     service: this.service.name,
     algorithm: 'Time Series',
     mlFeatures: this.children,

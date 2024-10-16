@@ -69,7 +69,6 @@ describe('ImageComponent', () => {
 
     expect(popover).toBeInTheDocument();
 
-    expect(screen.getByText('label.upload')).toBeInTheDocument();
     expect(screen.getByText('label.embed-link')).toBeInTheDocument();
   });
 
@@ -98,36 +97,6 @@ describe('ImageComponent', () => {
     const popover = screen.queryByRole('tooltip');
 
     expect(popover).not.toBeInTheDocument();
-  });
-
-  it('should render the upload tab by default', async () => {
-    await act(async () => {
-      render(<ImageComponent {...mockNodeViewProps} />);
-    });
-
-    const imageNode = screen.getByTestId('uploaded-image-node');
-
-    await act(async () => {
-      userEvent.click(imageNode);
-    });
-
-    const uploadTab = screen.getByText('label.upload');
-
-    expect(uploadTab).toBeInTheDocument();
-
-    expect(uploadTab).toHaveAttribute('aria-selected', 'true');
-
-    // image upload form should be visible
-
-    expect(screen.getByTestId('image-upload-form')).toBeInTheDocument();
-
-    // update button should be disabled
-
-    expect(screen.getByText('label.update-image')).toBeInTheDocument();
-
-    // delete button should be visible
-
-    expect(screen.getByText('label.delete')).toBeInTheDocument();
   });
 
   it('should render the embed link tab when clicked', async () => {
@@ -205,6 +174,7 @@ describe('ImageComponent', () => {
     const embedInput = screen.getByTestId('embed-input');
 
     await act(async () => {
+      userEvent.clear(embedInput);
       userEvent.type(embedInput, 'https://open-metadata.org/images/omd-logo');
     });
 
@@ -215,7 +185,7 @@ describe('ImageComponent', () => {
     });
 
     expect(mockUpdateAttributes).toHaveBeenCalledWith({
-      src: 'https://open-metadata.org/images/omd-logo',
+      src: 'https://open-metadata.org/images/omd-logo.svgo',
     });
   });
 

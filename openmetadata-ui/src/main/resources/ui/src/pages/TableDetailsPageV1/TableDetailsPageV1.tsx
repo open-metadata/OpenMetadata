@@ -40,6 +40,7 @@ import SchemaTab from '../../components/Database/SchemaTab/SchemaTab.component';
 import TableQueries from '../../components/Database/TableQueries/TableQueries';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
+import IncidentManager from '../../components/IncidentManager/IncidentManager.component';
 import Lineage from '../../components/Lineage/Lineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -52,6 +53,7 @@ import {
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -584,8 +586,7 @@ const TableDetailsPageV1: React.FC = () => {
                   />
                 </div>
               ),
-              minWidth: 800,
-              flex: 0.87,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
             }}
             secondPanel={{
               children: (
@@ -625,8 +626,7 @@ const TableDetailsPageV1: React.FC = () => {
                   />
                 </div>
               ),
-              minWidth: 320,
-              flex: 0.13,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
               className:
                 'entity-resizable-panel-container entity-resizable-right-panel-container ',
             }}
@@ -742,6 +742,26 @@ const TableDetailsPageV1: React.FC = () => {
               table={tableDetails}
               testCaseSummary={testCaseSummary}
             />
+          ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.INCIDENTS}
+            name={t('label.incident-plural')}
+          />
+        ),
+        key: EntityTabs.INCIDENTS,
+        children:
+          tablePermissions.ViewAll || tablePermissions.ViewTests ? (
+            <div className="p-x-lg p-b-lg p-t-md">
+              <IncidentManager
+                isIncidentPage={false}
+                tableDetails={tableDetails}
+              />
+            </div>
+          ) : (
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           ),
       },
       {

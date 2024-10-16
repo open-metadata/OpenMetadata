@@ -5,6 +5,9 @@ import pytest
 
 from metadata.data_quality.source.test_suite import TestSuiteSource
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -76,6 +79,7 @@ def test_source_config(parameters, expected, monkeypatch):
         name="test_table",
         columns=[],
         testSuite=MOCK_ENTITY_REFERENCE,
+        serviceType=DatabaseServiceType.Postgres,
     )
     mock_metadata.list_all_entities.return_value = [
         TestCase(
@@ -98,7 +102,7 @@ def test_source_config(parameters, expected, monkeypatch):
     )
 
     source = TestSuiteSource(
-        OpenMetadataWorkflowConfig.parse_obj(workflow_config), mock_metadata
+        OpenMetadataWorkflowConfig.model_validate(workflow_config), mock_metadata
     )
     test_cases = list(source._iter())[0].right.test_cases
     assert [t.name.root for t in test_cases] == expected

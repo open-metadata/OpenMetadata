@@ -27,12 +27,14 @@ import {
 } from '../generated/type/tagLabel';
 import {
   digitFormatter,
+  formatTimeFromSeconds,
   getBase64EncodedString,
   getIngestionFrequency,
   getIsErrorMatch,
   getNameFromFQN,
   getServiceTypeExploreQueryFilter,
   getTagValue,
+  isDeleted,
   prepareLabel,
   reduceColorOpacity,
   sortTagsCaseInsensitive,
@@ -134,6 +136,29 @@ describe('Tests for CommonUtils', () => {
 
       values.map(({ value, result }) => {
         expect(digitFormatter(value)).toEqual(result);
+      });
+    });
+
+    // formatTimeFromSeconds test
+    it('formatTimeFromSeconds formatter should format mills to human readable value', () => {
+      const values = [
+        { input: 1, expected: '1 second' },
+        { input: 2, expected: '2 seconds' },
+        { input: 30, expected: '30 seconds' },
+        { input: 60, expected: '1 minute' },
+        { input: 120, expected: '2 minutes' },
+        { input: 3600, expected: '1 hour' },
+        { input: 7200, expected: '2 hours' },
+        { input: 86400, expected: '1 day' },
+        { input: 172800, expected: '2 days' },
+        { input: 2592000, expected: '1 month' },
+        { input: 5184000, expected: '2 months' },
+        { input: 31536000, expected: '1 year' },
+        { input: 63072000, expected: '2 years' },
+      ];
+
+      values.map(({ input, expected }) => {
+        expect(formatTimeFromSeconds(input)).toEqual(expected);
       });
     });
 
@@ -312,6 +337,14 @@ describe('Tests for CommonUtils', () => {
           '{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"serviceType":"mysql"}}]}}]}}}'
         );
       });
+    });
+
+    it('isDeleted should return proper boolean value', () => {
+      expect(isDeleted(true)).toBe(true);
+      expect(isDeleted(false)).toBe(false);
+      expect(isDeleted('false')).toBe(false);
+      expect(isDeleted(undefined)).toBe(false);
+      expect(isDeleted(null)).toBe(false);
     });
   });
 });

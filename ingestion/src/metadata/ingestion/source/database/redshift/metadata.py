@@ -83,6 +83,7 @@ from metadata.ingestion.source.database.redshift.utils import (
     _get_schema_column_info,
     get_columns,
     get_table_comment,
+    get_view_definition,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
@@ -95,6 +96,7 @@ from metadata.utils.execution_time_tracker import (
 )
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
+from metadata.utils.importer import import_side_effects
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -104,6 +106,9 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = ingestion_logger()
 
+import_side_effects(
+    "metadata.ingestion.source.database.redshift.profiler.system",
+)
 
 STANDARD_TABLE_TYPES = {
     "r": TableType.Regular,
@@ -122,6 +127,7 @@ RedshiftDialectMixin.get_columns = get_columns
 PGDialect._get_column_info = _get_pg_column_info  # pylint: disable=protected-access
 RedshiftDialect.get_all_table_comments = get_all_table_comments
 RedshiftDialect.get_table_comment = get_table_comment
+RedshiftDialect.get_view_definition = get_view_definition
 RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
     _get_all_relation_info
 )

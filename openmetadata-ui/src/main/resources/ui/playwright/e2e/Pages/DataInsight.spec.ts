@@ -170,11 +170,13 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await kpiResponse;
 
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
     expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
 
     // description and owner data to be visible
-    expect(page.getByTestId(DESCRIPTION_WITH_PERCENTAGE)).toBeVisible();
-    expect(page.getByTestId(DESCRIPTION_WITH_OWNER)).toBeVisible();
+    await expect(page.getByTestId(DESCRIPTION_WITH_PERCENTAGE)).toBeVisible();
+    await expect(page.getByTestId(DESCRIPTION_WITH_OWNER)).toBeVisible();
   });
 
   test('Delete Kpi', async ({ page }) => {
@@ -185,8 +187,13 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     for (const data of KPI_DATA) {
       await page.getByTestId(`delete-action-${data.displayName}`).click();
-      await page.getByTestId('confirmation-text-input').type('DELETE');
+      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      const deleteResponse = page.waitForResponse(
+        `/api/v1/kpi/*?hardDelete=true&recursive=false`
+      );
       await page.getByTestId('confirm-button').click();
+
+      await deleteResponse;
     }
   });
 });

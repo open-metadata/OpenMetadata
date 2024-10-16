@@ -61,12 +61,7 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { TAG_START_WITH } from '../constants/Tag.constants';
 import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
-import {
-  AssetsType,
-  EntityTabs,
-  EntityType,
-  FqnPart,
-} from '../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
@@ -82,6 +77,7 @@ import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel'
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import {
@@ -250,7 +246,10 @@ const getTableFieldsFromTableDetails = (tableDetails: Table) => {
   };
 };
 
-const getTableOverview = (tableDetails: Table) => {
+const getTableOverview = (
+  tableDetails: Table,
+  additionalInfo?: Record<string, number | string>
+) => {
   const {
     fullyQualifiedName,
     owners,
@@ -266,7 +265,7 @@ const getTableOverview = (tableDetails: Table) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -351,6 +350,20 @@ const getTableOverview = (tableDetails: Table) => {
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
+    {
+      name: i18next.t('label.incident-plural'),
+      value: additionalInfo?.incidentCount ?? 0,
+      isLink: true,
+      url: getEntityDetailsPath(
+        EntityType.TABLE,
+        fullyQualifiedName ?? '',
+        EntityTabs.INCIDENTS
+      ),
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
   ];
 
   return overview;
@@ -363,7 +376,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -411,7 +424,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -468,7 +481,7 @@ export const getSearchIndexOverview = (
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -500,7 +513,7 @@ const getMlModelOverview = (mlModelDetails: Mlmodel) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -596,7 +609,7 @@ const getChartOverview = (chartDetails: Chart) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -661,7 +674,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -735,7 +748,7 @@ const getStoredProcedureOverview = (
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -813,7 +826,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
@@ -853,7 +866,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
@@ -902,7 +915,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
@@ -1010,14 +1023,52 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
 
   return overview;
 };
+const getMetricOverview = (metric: Metric) => {
+  if (isNil(metric) || isEmpty(metric)) {
+    return [];
+  }
+
+  const overview = [
+    {
+      name: i18next.t('label.metric-type'),
+      value: metric.metricType || NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+    {
+      name: i18next.t('label.unit-of-measurement'),
+      value: metric.unitOfMeasurement || NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+    {
+      name: i18next.t('label.granularity'),
+      value: metric.granularity || NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+  ];
+
+  return overview;
+};
 
 export const getEntityOverview = (
   type: string,
-  entityDetail: EntityUnion
+  entityDetail: EntityUnion,
+  additionalInfo?: Record<string, number | string>
 ): Array<BasicEntityOverviewInfo> => {
   switch (type) {
     case ExplorePageTabs.TABLES: {
-      return getTableOverview(entityDetail as Table);
+      return getTableOverview(entityDetail as Table, additionalInfo);
     }
 
     case ExplorePageTabs.PIPELINES: {
@@ -1064,6 +1115,10 @@ export const getEntityOverview = (
 
     case ExplorePageTabs.API_ENDPOINT: {
       return getApiEndpointOverview(entityDetail as APIEndpoint);
+    }
+
+    case ExplorePageTabs.METRIC: {
+      return getMetricOverview(entityDetail as Metric);
     }
 
     case ExplorePageTabs.DATABASE_SERVICE:
@@ -1218,12 +1273,6 @@ export const isColumnTestSupported = (dataType: string) => {
 
 export const getTitleCase = (text?: string) => {
   return text ? startCase(text) : '';
-};
-
-export const filterEntityAssets = (data: EntityReference[]) => {
-  const includedEntity = Object.values(AssetsType);
-
-  return data.filter((d) => includedEntity.includes(d.type as AssetsType));
 };
 
 export const getResourceEntityFromEntityType = (entityType: string) => {
@@ -1468,6 +1517,8 @@ export const getEntityLinkFromType = (
     case EntityType.SEARCH_INDEX:
     case EntityType.API_COLLECTION:
     case EntityType.API_ENDPOINT:
+      return getEntityDetailsPath(entityType, fullyQualifiedName);
+    case EntityType.METRIC:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
@@ -2156,6 +2207,19 @@ export const getEntityBreadcrumbs = (
     case EntityType.API_ENDPOINT:
       return getBreadCrumbForAPIEndpoint(entity as APIEndpoint);
 
+    case EntityType.METRIC: {
+      return [
+        {
+          name: t('label.metric-plural'),
+          url: ROUTES.METRICS,
+        },
+        {
+          name: getEntityName(entity),
+          url: '',
+        },
+      ];
+    }
+
     case EntityType.KPI:
       return getBreadCrumbForKpi(entity as Kpi);
 
@@ -2337,6 +2401,7 @@ export const getPluralizeEntityName = (entityType?: string) => {
     [EntityType.SEARCH_INDEX]: t('label.search-index-plural'),
     [EntityType.API_COLLECTION]: t('label.api-collection-plural'),
     [EntityType.API_ENDPOINT]: t('label.api-endpoint-plural'),
+    [EntityType.METRIC]: t('label.metric-plural'),
   };
 
   return (

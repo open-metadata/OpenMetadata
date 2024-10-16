@@ -13,16 +13,16 @@
 import { Skeleton, Typography } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { searchQuery } from '../../../rest/searchAPI';
 import { createQueryFilter } from '../../../utils/Query/QueryUtils';
 
 const QueryCount = ({ tableId }: { tableId: string }) => {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const [queryCount, setQueryCount] = useState({
     isLoading: false,
     count: 0,

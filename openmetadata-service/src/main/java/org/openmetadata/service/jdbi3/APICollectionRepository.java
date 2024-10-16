@@ -18,12 +18,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.APICollection;
-import org.openmetadata.schema.entity.services.APIService;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.databases.DatabaseResource;
+import org.openmetadata.service.resources.apis.APICollectionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -32,7 +32,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
 
   public APICollectionRepository() {
     super(
-        DatabaseResource.COLLECTION_PATH,
+        APICollectionResource.COLLECTION_PATH,
         Entity.API_COLLCECTION,
         APICollection.class,
         Entity.getCollectionDAO().apiCollectionDAO(),
@@ -108,7 +108,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   private void populateService(APICollection apiCollection) {
-    APIService service = Entity.getEntity(apiCollection.getService(), "", Include.NON_DELETED);
+    ApiService service = Entity.getEntity(apiCollection.getService(), "", Include.NON_DELETED);
     apiCollection.setService(service.getEntityReference());
     apiCollection.setServiceType(service.getServiceType());
   }

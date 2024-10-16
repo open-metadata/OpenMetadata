@@ -1,6 +1,7 @@
 ---
 title: Google SSO
 slug: /deployment/security/google
+collate: false
 ---
 
 # Google SSO

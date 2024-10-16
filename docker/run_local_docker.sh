@@ -50,16 +50,16 @@ echo "Running local docker using mode [$mode] database [$database] and skipping 
 cd ../
 
 echo "Stopping any previous Local Docker Containers"
-docker compose -f docker/development/docker-compose-postgres.yml down
-docker compose -f docker/development/docker-compose.yml down
+docker compose -f docker/development/docker-compose-postgres.yml down --remove-orphans
+docker compose -f docker/development/docker-compose.yml down --remove-orphans
 
 if [[ $skipMaven == "false" ]]; then
     if [[ $mode == "no-ui" ]]; then
         echo "Maven Build - Skipping Tests and UI"
-        mvn -q -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+        mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
     else
         echo "Maven Build - Skipping Tests"
-        mvn -q -DskipTests clean package
+        mvn -DskipTests clean package
     fi
 else
     echo "Skipping Maven Build"

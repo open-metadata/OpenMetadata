@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.databaseSchema import (
 )
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
+    SystemProfile,
     Table,
     TableData,
 )
@@ -247,7 +248,7 @@ class ProfilerInterface(ABC):
             DatabaseSchemaProfilerConfig,
             DatabaseProfilerConfig,
             DatabaseAndSchemaConfig,
-        ]
+        ],
     ) -> Optional[DataStorageConfig]:
         if (
             config
@@ -328,6 +329,7 @@ class ProfilerInterface(ABC):
                     return ProfileSampleConfig(
                         profile_sample=config.profileSample,
                         profile_sample_type=config.profileSampleType,
+                        sampling_method_type=config.samplingMethodType,
                     )
             except AttributeError:
                 pass
@@ -462,7 +464,7 @@ class ProfilerInterface(ABC):
         runner,
         *args,
         **kwargs,
-    ):
+    ) -> List[SystemProfile]:
         """Get metrics"""
         raise NotImplementedError
 

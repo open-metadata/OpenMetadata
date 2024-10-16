@@ -45,12 +45,6 @@
 /src/test/unit/coverage
 "text-report.xml"
 
-# Cypress
-/cypress/downloads
-/cypress/screenshots
-/cypress/videos
-/cypress/plugins
-
 # Playwright
 /playwright/output/
 /playwright/e2e/.cache/
@@ -86,3 +80,6 @@ src/generated
 
 # Snapshots
 *.snap
+
+# env
+".env"

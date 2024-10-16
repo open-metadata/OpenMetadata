@@ -1,6 +1,7 @@
 ---
 title: Okta SSO for Kubernetes
 slug: /deployment/security/okta/kubernetes
+collate: false
 ---
 
 # Okta SSO for Kubernetes
@@ -29,7 +30,14 @@ openmetadata:
       - "{ISSUER_URL}/v1/keys"
       authority: "{ISSUER_URL}"
       clientId: "{CLIENT_ID - SPA APP}"
-      callbackUrl: "http://localhost:8585/callback"
+      callbackUrl: "https://{your domain}/callback"
 ```
+
+{% note %}
+
+`AUTHENTICATION_PUBLIC_KEYS` and `AUTHENTICATION_CALLBACK_URL` refers to https://{your domain} this is referring to your OpenMetdata installation domain name
+and please make sure to correctly put http or https depending on your installation.
+
+{% /note %}
 
 {% partial file="/v1.5/deployment/configure-ingestion.md" /%}

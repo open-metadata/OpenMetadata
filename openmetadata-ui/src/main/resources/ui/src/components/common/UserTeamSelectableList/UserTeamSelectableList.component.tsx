@@ -67,6 +67,7 @@ export const UserTeamSelectableList = ({
   const [popupVisible, setPopupVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
   const [count, setCount] = useState({ team: 0, user: 0 });
+
   const [selectedUsers, setSelectedUsers] = useState<EntityReference[]>([]);
 
   const ownerType = useMemo(() => {
@@ -88,16 +89,6 @@ export const UserTeamSelectableList = ({
         selectedUsers?.filter((item) => item.type === EntityType.TEAM) ?? [],
     };
   }, [selectedUsers]);
-
-  const reset = () => {
-    let selectedUsers: EntityReference[] = [];
-    if (isArray(owner)) {
-      selectedUsers = owner;
-    } else if (owner) {
-      selectedUsers = [owner];
-    }
-    setSelectedUsers(selectedUsers);
-  };
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -216,7 +207,6 @@ export const UserTeamSelectableList = ({
 
   const init = async () => {
     if (popupVisible || popoverProps?.open) {
-      reset();
       if (ownerType === EntityType.USER) {
         await getTeamCount();
         setActiveTab('users');
@@ -257,6 +247,11 @@ export const UserTeamSelectableList = ({
   };
 
   useEffect(() => {
+    const activeOwners = isArray(owner) ? owner : owner ? [owner] : [];
+    setSelectedUsers(activeOwners);
+  }, [owner]);
+
+  useEffect(() => {
     init();
   }, [popupVisible]);
 
@@ -272,7 +267,7 @@ export const UserTeamSelectableList = ({
               size={8}>
               <Typography.Text className="text-grey-muted">
                 {t('label.selected-entity', {
-                  entity: label ?? t('label.owner'),
+                  entity: label ?? t('label.owner-plural'),
                 })}
               </Typography.Text>
               <div className="user-team-popover-header-content">
@@ -374,7 +369,7 @@ export const UserTeamSelectableList = ({
               !popupVisible &&
               (tooltipText ??
                 t('label.edit-entity', {
-                  entity: t('label.owner'),
+                  entity: t('label.owner-plural'),
                 }))
             }>
             <Button

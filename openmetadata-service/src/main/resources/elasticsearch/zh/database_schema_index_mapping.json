@@ -129,16 +129,6 @@
         "entityType": {
           "type": "keyword"
         },
-        "suggest": {
-          "type": "completion",
-          "contexts": [
-            {
-              "name": "deleted",
-              "type": "category",
-              "path": "deleted"
-            }
-          ]
-        },
         "domain": {
           "properties": {
             "id": {
@@ -288,6 +278,16 @@
               "fields": {
                 "keyword": {
                   "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "displayName": {
+              "type": "keyword",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "normalizer": "lowercase_normalizer",
                   "ignore_above": 256
                 }
               }

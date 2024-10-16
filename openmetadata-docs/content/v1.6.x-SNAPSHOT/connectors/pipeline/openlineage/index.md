@@ -18,7 +18,7 @@ Configure and schedule OpenLineage metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/openlineage/yaml"} /%}
+{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" /%}
 
 ## Requirements
 
@@ -63,9 +63,9 @@ To Configure your Airflow instance
   file="/v1.5/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Openlineage", 
-    selectServicePath: "/images/v1.3/connectors/openlineage/select-service.webp",
-    addNewServicePath: "/images/v1.3/connectors/openlineage/add-new-service.webp",
-    serviceConnectionPath: "/images/v1.3/connectors/openlineage/service-connection.webp",
+    selectServicePath: "/images/v1.6/connectors/openlineage/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/openlineage/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/openlineage/service-connection.png",
 } 
 /%}
 

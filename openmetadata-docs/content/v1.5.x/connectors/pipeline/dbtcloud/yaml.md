@@ -1,10 +1,10 @@
 ---
-title: Run the DBTCloud Connector Externally
+title: Run the dbt Cloud Connector Externally
 slug: /connectors/pipeline/dbtcloud/yaml
 ---
 
 {% connectorDetailsHeader
-name="DBTCloud"
+name="dbt Cloud"
 stage="PROD"
 platform="Collate"
 availableFeatures=["Pipelines", "Pipeline Status", "Tags"]
@@ -12,9 +12,9 @@ unavailableFeatures=["Owners", "Lineage"]
 / %}
 
 
-In this section, we provide guides and references to use the DBTCloud connector.
+In this section, we provide guides and references to use the dbt Cloud connector.
 
-Configure and schedule DBTCloud metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule dbt Cloud metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -42,7 +42,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for DBTCloud:
+This is a sample config for dbt Cloud:
 
 {% codePreview %}
 

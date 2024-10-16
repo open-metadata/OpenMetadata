@@ -1,6 +1,7 @@
 ---
 title: Custom OIDC SSO for Docker
 slug: /deployment/security/custom-oidc/docker
+collate: false
 ---
 
 # Custom OIDC SSO for Docker

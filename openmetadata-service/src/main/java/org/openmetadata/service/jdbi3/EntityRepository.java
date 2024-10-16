@@ -101,6 +101,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
+import javax.validation.ConstraintViolationException;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
@@ -117,12 +118,10 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -145,6 +144,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.customproperties.TableConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -157,7 +157,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
@@ -445,32 +444,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final List<T> getEntitiesFromSeedData() throws IOException {
-    List<T> entitiesFromSeedData = new ArrayList<>();
-
-    if (entityType.equals(Entity.DOCUMENT)) {
-      SmtpSettings emailConfig =
-          SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
-
-      switch (emailConfig.getTemplates()) {
-        case COLLATE -> {
-          entitiesFromSeedData.addAll(
-              getEntitiesFromSeedData(
-                  String.format(".*json/data/%s/emailTemplates/collate/.*\\.json$", entityType)));
-        }
-        default -> {
-          entitiesFromSeedData.addAll(
-              getEntitiesFromSeedData(
-                  String.format(
-                      ".*json/data/%s/emailTemplates/openmetadata/.*\\.json$", entityType)));
-        }
-      }
-
-      entitiesFromSeedData.addAll(
-          getEntitiesFromSeedData(String.format(".*json/data/%s/docs/.*\\.json$", entityType)));
-      return entitiesFromSeedData;
-    }
-
+  public List<T> getEntitiesFromSeedData() throws IOException {
     return getEntitiesFromSeedData(String.format(".*json/data/%s/.*\\.json$", entityType));
   }
 
@@ -962,7 +936,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepareInternal(updated, true);
-    populateOwners(updated.getOwners());
+    // Validate and populate owners
+    List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
+    updated.setOwners(validatedOwners);
+
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -994,7 +971,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepareInternal(updated, true);
-    populateOwners(updated.getOwners());
+    // Validate and populate owners
+    List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
+    updated.setOwners(validatedOwners);
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -1150,7 +1129,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String q)
       throws IOException {
     List<T> entityList = new ArrayList<>();
-    Long total = 0L;
+    Long total;
 
     if (limit > 0) {
       SearchClient.SearchResultListMapper results =
@@ -1449,38 +1428,112 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
       String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-      DateTimeFormatter formatter = null;
-      try {
-        if ("date-cp".equals(customPropertyType)) {
-          DateTimeFormatter inputFormatter =
-              DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig), Locale.ENGLISH);
 
-          // Parse the input string into a TemporalAccessor
-          TemporalAccessor date = inputFormatter.parse(fieldValue.textValue());
-
-          // Create a formatter for the desired output format
-          DateTimeFormatter outputFormatter =
-              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
-          ((ObjectNode) jsonNode).put(fieldName, outputFormatter.format(date));
-        } else if ("dateTime-cp".equals(customPropertyType)) {
-          formatter = DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig));
-          LocalDateTime dateTime = LocalDateTime.parse(fieldValue.textValue(), formatter);
-          ((ObjectNode) jsonNode).put(fieldName, dateTime.format(formatter));
-        } else if ("time-cp".equals(customPropertyType)) {
-          formatter = DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig));
-          LocalTime time = LocalTime.parse(fieldValue.textValue(), formatter);
-          ((ObjectNode) jsonNode).put(fieldName, time.format(formatter));
-        }
-      } catch (DateTimeParseException e) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.dateTimeValidationError(
-                fieldName, TypeRegistry.getCustomPropertyConfig(entityType, fieldName)));
-      }
-      Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
+      validateAndUpdateExtensionBasedOnPropertyType(
+          entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
+      Set<ValidationMessage> validationMessages = jsonSchema.validate(entry.getValue());
       if (!validationMessages.isEmpty()) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
       }
+    }
+  }
+
+  private void validateAndUpdateExtensionBasedOnPropertyType(
+      T entity,
+      ObjectNode jsonNode,
+      String fieldName,
+      JsonNode fieldValue,
+      String customPropertyType,
+      String propertyConfig) {
+
+    switch (customPropertyType) {
+      case "date-cp", "dateTime-cp", "time-cp" -> {
+        String formattedValue =
+            getFormattedDateTimeField(
+                fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
+        jsonNode.put(fieldName, formattedValue);
+      }
+      case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
+      default -> {}
+    }
+  }
+
+  private String getFormattedDateTimeField(
+      String fieldValue, String customPropertyType, String propertyConfig, String fieldName) {
+    DateTimeFormatter formatter;
+
+    try {
+      return switch (customPropertyType) {
+        case "date-cp" -> {
+          DateTimeFormatter inputFormatter =
+              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+          TemporalAccessor date = inputFormatter.parse(fieldValue);
+          DateTimeFormatter outputFormatter =
+              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+          yield outputFormatter.format(date);
+        }
+        case "dateTime-cp" -> {
+          formatter = DateTimeFormatter.ofPattern(propertyConfig);
+          LocalDateTime dateTime = LocalDateTime.parse(fieldValue, formatter);
+          yield dateTime.format(formatter);
+        }
+        case "time-cp" -> {
+          formatter = DateTimeFormatter.ofPattern(propertyConfig);
+          LocalTime time = LocalTime.parse(fieldValue, formatter);
+          yield time.format(formatter);
+        }
+        default -> throw new IllegalArgumentException(
+            "Unsupported customPropertyType: " + customPropertyType);
+      };
+    } catch (DateTimeParseException e) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.dateTimeValidationError(fieldName, propertyConfig));
+    }
+  }
+
+  private void validateTableType(JsonNode fieldValue, String propertyConfig, String fieldName) {
+    TableConfig tableConfig =
+        JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
+    org.openmetadata.schema.type.customproperties.Table tableValue =
+        JsonUtils.convertValue(
+            JsonUtils.readTree(String.valueOf(fieldValue)),
+            org.openmetadata.schema.type.customproperties.Table.class);
+    Set<String> configColumns = tableConfig.getColumns();
+
+    try {
+      JsonUtils.validateJsonSchema(
+          tableValue, org.openmetadata.schema.type.customproperties.Table.class);
+
+      Set<String> fieldColumns = new HashSet<>();
+      fieldValue.get("columns").forEach(column -> fieldColumns.add(column.asText()));
+
+      Set<String> undefinedColumns = new HashSet<>(fieldColumns);
+      undefinedColumns.removeAll(configColumns);
+      if (!undefinedColumns.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Expected columns: "
+                + configColumns
+                + ", but found undefined columns: "
+                + undefinedColumns);
+      }
+
+      Set<String> rowFieldNames = new HashSet<>();
+      fieldValue.get("rows").forEach(row -> row.fieldNames().forEachRemaining(rowFieldNames::add));
+
+      undefinedColumns = new HashSet<>(rowFieldNames);
+      undefinedColumns.removeAll(configColumns);
+      if (!undefinedColumns.isEmpty()) {
+        throw new IllegalArgumentException("Rows contain undefined columns: " + undefinedColumns);
+      }
+    } catch (ConstraintViolationException e) {
+      String validationErrors =
+          e.getConstraintViolations().stream()
+              .map(violation -> violation.getPropertyPath() + " " + violation.getMessage())
+              .collect(Collectors.joining(", "));
+
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.jsonValidationError(fieldName, validationErrors));
     }
   }
 
@@ -2000,21 +2053,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  protected void populateOwners(List<EntityReference> owners) {
+  protected List<EntityReference> getValidatedOwners(List<EntityReference> owners) {
     if (nullOrEmpty(owners)) {
-      return;
+      return owners;
     }
     // populate owner entityRefs with all fields
     List<EntityReference> refs = validateOwners(owners);
     if (nullOrEmpty(refs)) {
-      return;
+      return owners;
     }
     refs.sort(Comparator.comparing(EntityReference::getName));
-    owners.sort(Comparator.comparing(EntityReference::getName));
-
-    for (int i = 0; i < owners.size(); i++) {
-      EntityUtil.copy(refs.get(i), owners.get(i));
-    }
+    return refs;
   }
 
   @Transaction
@@ -2969,8 +3018,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         addRelationship(
             fromId, ref.getId(), fromEntityType, toEntityType, relationshipType, bidirectional);
       }
-      updatedToRefs.sort(EntityUtil.compareEntityReference);
-      origToRefs.sort(EntityUtil.compareEntityReference);
+      if (!nullOrEmpty(updatedToRefs)) {
+        updatedToRefs.sort(EntityUtil.compareEntityReference);
+      }
+      if (!nullOrEmpty(origToRefs)) {
+        origToRefs.sort(EntityUtil.compareEntityReference);
+      }
     }
 
     public final void updateToRelationship(

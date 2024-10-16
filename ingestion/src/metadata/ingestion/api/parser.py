@@ -18,6 +18,10 @@ from pydantic import BaseModel, ValidationError
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
+from metadata.generated.schema.entity.services.apiService import (
+    ApiConnection,
+    ApiServiceType,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardServiceType,
@@ -52,6 +56,10 @@ from metadata.generated.schema.entity.services.searchService import (
 from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
     StorageServiceType,
+)
+from metadata.generated.schema.metadataIngestion.apiServiceMetadataPipeline import (
+    ApiMetadataConfigType,
+    ApiServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardMetadataConfigType,
@@ -127,6 +135,7 @@ HAS_INNER_CONNECTION = {"Airflow"}
 # Build a service type map dynamically from JSON Schema covered types
 SERVICE_TYPE_MAP = {
     "Backend": PipelineConnection,  # For Airflow backend
+    **{service: ApiConnection for service in ApiServiceType.__members__},
     **{service: DatabaseConnection for service in DatabaseServiceType.__members__},
     **{service: DashboardConnection for service in DashboardServiceType.__members__},
     **{service: MessagingConnection for service in MessagingServiceType.__members__},
@@ -138,6 +147,7 @@ SERVICE_TYPE_MAP = {
 }
 
 SOURCE_CONFIG_CLASS_MAP = {
+    ApiMetadataConfigType.ApiMetadata.value: ApiServiceMetadataPipeline,
     DashboardMetadataConfigType.DashboardMetadata.value: DashboardServiceMetadataPipeline,
     ProfilerConfigType.Profiler.value: DatabaseServiceProfilerPipeline,
     DatabaseUsageConfigType.DatabaseUsage.value: DatabaseServiceQueryUsagePipeline,
@@ -173,6 +183,7 @@ class InvalidWorkflowException(Exception):
 def get_service_type(
     source_type: str,
 ) -> Union[
+    Type[ApiConnection],
     Type[DashboardConnection],
     Type[DatabaseConnection],
     Type[MessagingConnection],
@@ -196,6 +207,7 @@ def get_service_type(
 def get_source_config_class(
     source_config_type: str,
 ) -> Union[
+    Type[ApiServiceMetadataPipeline],
     Type[DashboardServiceMetadataPipeline],
     Type[DatabaseServiceProfilerPipeline],
     Type[DatabaseServiceQueryUsagePipeline],
@@ -221,6 +233,7 @@ def get_source_config_class(
 def get_connection_class(
     source_type: str,
     service_type: Union[
+        Type[ApiConnection],
         Type[DashboardConnection],
         Type[DatabaseConnection],
         Type[MessagingConnection],
@@ -544,6 +557,7 @@ def parse_automation_workflow_gracefully(
             message="Error parsing the service connection",
         )
 
+    #
     raise ParsingConfigurationError(
         "Uncaught error when parsing the Ingestion Pipeline!"
     )

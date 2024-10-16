@@ -59,7 +59,6 @@ import {
 } from '../rest/feedsAPI';
 import { searchData } from '../rest/miscAPI';
 import {
-  formTwoDigitNumber,
   getEntityPlaceHolder,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
@@ -618,7 +617,7 @@ export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
     [EntityField.TASKS]: i18next.t('label.task-plural'),
     [EntityField.ML_FEATURES]: i18next.t('label.ml-feature-plural'),
     [EntityField.SCHEMA_TEXT]: i18next.t('label.schema-text'),
-    [EntityField.OWNER]: i18next.t('label.owner'),
+    [EntityField.OWNER]: i18next.t('label.owner-plural'),
     [EntityField.REVIEWERS]: i18next.t('label.reviewer-plural'),
     [EntityField.SYNONYMS]: i18next.t('label.synonym-plural'),
     [EntityField.RELATEDTERMS]: i18next.t('label.related-term-plural'),
@@ -685,7 +684,7 @@ export const getTestCaseResultCount = (
     <Typography.Text
       className="font-medium text-md"
       data-testid={`test-${status}-value`}>
-      {formTwoDigitNumber(count)}
+      {count}
     </Typography.Text>
   </div>
 );

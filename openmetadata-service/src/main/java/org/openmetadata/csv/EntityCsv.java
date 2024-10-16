@@ -16,20 +16,38 @@ package org.openmetadata.csv;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.ENTITY_TYPE_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
+import static org.openmetadata.csv.CsvUtil.fieldToColumns;
+import static org.openmetadata.csv.CsvUtil.fieldToEntities;
+import static org.openmetadata.csv.CsvUtil.fieldToExtensionStrings;
+import static org.openmetadata.csv.CsvUtil.fieldToInternalArray;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.ValidationMessage;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -51,7 +69,9 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.customproperties.TableConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -309,6 +329,276 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return tagLabels;
   }
 
+  public Map<String, Object> getExtension(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      throws IOException {
+    String extensionString = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(extensionString)) {
+      return null;
+    }
+
+    Map<String, Object> extensionMap = new HashMap<>();
+
+    for (String extensions : fieldToExtensionStrings(extensionString)) {
+      // Split on the first occurrence of ENTITY_TYPE_SEPARATOR to get key-value pair
+      int separatorIndex = extensions.indexOf(ENTITY_TYPE_SEPARATOR);
+
+      if (separatorIndex == -1) {
+        importFailure(printer, invalidExtension(fieldNumber, extensions, "null"), csvRecord);
+        continue;
+      }
+
+      String key = extensions.substring(0, separatorIndex);
+      String value = extensions.substring(separatorIndex + 1);
+
+      if (key.isEmpty() || value.isEmpty()) {
+        importFailure(printer, invalidExtension(fieldNumber, key, value), csvRecord);
+      } else {
+        extensionMap.put(key, value);
+      }
+    }
+
+    validateExtension(printer, fieldNumber, csvRecord, extensionMap);
+    return extensionMap;
+  }
+
+  private void validateExtension(
+      CSVPrinter printer, int fieldNumber, CSVRecord csvRecord, Map<String, Object> extensionMap)
+      throws IOException {
+    for (Map.Entry<String, Object> entry : extensionMap.entrySet()) {
+      String fieldName = entry.getKey();
+      Object fieldValue = entry.getValue();
+
+      JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
+      if (jsonSchema == null) {
+        importFailure(printer, invalidCustomPropertyKey(fieldNumber, fieldName), csvRecord);
+        return;
+      }
+      String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
+      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
+
+      switch (customPropertyType) {
+        case "entityReference", "entityReferenceList" -> {
+          boolean isList = "entityReferenceList".equals(customPropertyType);
+          fieldValue =
+              parseEntityReferences(printer, csvRecord, fieldNumber, fieldValue.toString(), isList);
+        }
+        case "date-cp", "dateTime-cp", "time-cp" -> fieldValue =
+            parseFormattedDateTimeField(
+                printer,
+                csvRecord,
+                fieldNumber,
+                fieldName,
+                fieldValue.toString(),
+                customPropertyType,
+                propertyConfig);
+        case "enum" -> {
+          List<String> enumKeys = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
+          fieldValue = enumKeys.isEmpty() ? null : enumKeys;
+        }
+        case "timeInterval" -> fieldValue =
+            parseTimeInterval(printer, csvRecord, fieldNumber, fieldName, fieldValue);
+        case "number", "integer", "timestamp" -> fieldValue =
+            parseLongField(
+                printer, csvRecord, fieldNumber, fieldName, customPropertyType, fieldValue);
+        case "table-cp" -> fieldValue =
+            parseTableType(printer, csvRecord, fieldNumber, fieldName, fieldValue, propertyConfig);
+
+        default -> {}
+      }
+      // Validate the field against the JSON schema
+      validateAndUpdateExtension(
+          printer,
+          csvRecord,
+          fieldNumber,
+          fieldName,
+          fieldValue,
+          customPropertyType,
+          extensionMap,
+          jsonSchema);
+    }
+  }
+
+  private Object parseEntityReferences(
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String fieldValue, boolean isList)
+      throws IOException {
+    List<EntityReference> entityReferences = new ArrayList<>();
+
+    List<String> entityRefStrings =
+        isList
+            ? listOrEmpty(fieldToInternalArray(fieldValue))
+            : Collections.singletonList(fieldValue);
+
+    for (String entityRefStr : entityRefStrings) {
+      List<String> entityRefTypeAndValue = listOrEmpty(fieldToEntities(entityRefStr));
+
+      if (entityRefTypeAndValue.size() == 2) {
+        EntityReference entityRef =
+            getEntityReference(
+                printer,
+                csvRecord,
+                fieldNumber,
+                entityRefTypeAndValue.get(0),
+                entityRefTypeAndValue.get(1));
+        Optional.ofNullable(entityRef).ifPresent(entityReferences::add);
+      }
+    }
+
+    return isList ? entityReferences : entityReferences.isEmpty() ? null : entityReferences.get(0);
+  }
+
+  protected String parseFormattedDateTimeField(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      String fieldValue,
+      String fieldType,
+      String propertyConfig)
+      throws IOException {
+    try {
+      DateTimeFormatter formatter = DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+
+      return switch (fieldType) {
+        case "date-cp" -> {
+          TemporalAccessor date = formatter.parse(fieldValue);
+          yield formatter.format(date);
+        }
+        case "dateTime-cp" -> {
+          LocalDateTime dateTime = LocalDateTime.parse(fieldValue, formatter);
+          yield dateTime.format(formatter);
+        }
+        case "time-cp" -> {
+          LocalTime time = LocalTime.parse(fieldValue, formatter);
+          yield time.format(formatter);
+        }
+        default -> throw new IllegalStateException("Unexpected value: " + fieldType);
+      };
+    } catch (DateTimeParseException e) {
+      importFailure(
+          printer,
+          invalidCustomPropertyFieldFormat(fieldNumber, fieldName, fieldType, propertyConfig),
+          csvRecord);
+      return null;
+    }
+  }
+
+  private Map<String, Long> parseTimeInterval(
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String fieldName, Object fieldValue)
+      throws IOException {
+    List<String> timestampValues = fieldToEntities(fieldValue.toString());
+    Map<String, Long> timestampMap = new HashMap<>();
+    if (timestampValues.size() == 2) {
+      try {
+        timestampMap.put("start", Long.parseLong(timestampValues.get(0)));
+        timestampMap.put("end", Long.parseLong(timestampValues.get(1)));
+      } catch (NumberFormatException e) {
+        importFailure(
+            printer,
+            invalidCustomPropertyValue(
+                fieldNumber, fieldName, "timeInterval", fieldValue.toString()),
+            csvRecord);
+        return null;
+      }
+    } else {
+      importFailure(
+          printer,
+          invalidCustomPropertyFieldFormat(fieldNumber, fieldName, "timeInterval", "start:end"),
+          csvRecord);
+      return null;
+    }
+    return timestampMap;
+  }
+
+  private Object parseLongField(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      String customPropertyType,
+      Object fieldValue)
+      throws IOException {
+    try {
+      return Long.parseLong(fieldValue.toString());
+    } catch (NumberFormatException e) {
+      importFailure(
+          printer,
+          invalidCustomPropertyValue(
+              fieldNumber, fieldName, customPropertyType, fieldValue.toString()),
+          csvRecord);
+      return null;
+    }
+  }
+
+  private Object parseTableType(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      Object fieldValue,
+      String propertyConfig)
+      throws IOException {
+    List<String> tableValues = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
+    List<Map<String, String>> rows = new ArrayList<>();
+    TableConfig tableConfig =
+        JsonUtils.treeToValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
+
+    for (String row : tableValues) {
+      List<String> columns = listOrEmpty(fieldToColumns(row));
+      Map<String, String> rowMap = new LinkedHashMap<>();
+      Iterator<String> columnIterator = tableConfig.getColumns().iterator();
+      Iterator<String> valueIterator = columns.iterator();
+
+      if (columns.size() > tableConfig.getColumns().size()) {
+        importFailure(
+            printer,
+            invalidCustomPropertyValue(
+                fieldNumber,
+                fieldName,
+                "table",
+                "Column count should be less than or equal to " + tableConfig.getColumns().size()),
+            csvRecord);
+        return null;
+      }
+
+      while (columnIterator.hasNext() && valueIterator.hasNext()) {
+        rowMap.put(columnIterator.next(), valueIterator.next());
+      }
+
+      rows.add(rowMap);
+    }
+
+    Map<String, Object> tableJson = new LinkedHashMap<>();
+    tableJson.put("rows", rows);
+    tableJson.put("columns", tableConfig.getColumns());
+    return tableJson;
+  }
+
+  private void validateAndUpdateExtension(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      Object fieldValue,
+      String customPropertyType,
+      Map<String, Object> extensionMap,
+      JsonSchema jsonSchema)
+      throws IOException {
+    if (fieldValue != null) {
+      JsonNode jsonNodeValue = JsonUtils.convertValue(fieldValue, JsonNode.class);
+
+      Set<ValidationMessage> validationMessages = jsonSchema.validate(jsonNodeValue);
+      if (!validationMessages.isEmpty()) {
+        importFailure(
+            printer,
+            invalidCustomPropertyValue(
+                fieldNumber, fieldName, customPropertyType, validationMessages.toString()),
+            csvRecord);
+      } else {
+        extensionMap.put(fieldName, fieldValue);
+      }
+    }
+  }
+
   public static String[] getResultHeaders(List<CsvHeader> csvHeaders) {
     List<String> importResultsCsvHeader = listOf(IMPORT_STATUS_HEADER, IMPORT_STATUS_DETAILS);
     importResultsCsvHeader.addAll(CsvUtil.getHeaders(csvHeaders));
@@ -530,6 +820,37 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 
+  public static String invalidExtension(int field, String key, String value) {
+    String error =
+        "Invalid key-value pair in extension string: Key = "
+            + key
+            + ", Value = "
+            + value
+            + " . Extensions should be of format customPropertyName:customPropertyValue";
+    return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
+  public static String invalidCustomPropertyKey(int field, String key) {
+    String error = String.format("Unknown custom field: %s", key);
+    return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
+  public static String invalidCustomPropertyValue(
+      int field, String key, String fieldType, String value) {
+    String error =
+        String.format("Invalid value of Key = %s of type %s, Value = %s", key, fieldType, value);
+    return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
+  public static String invalidCustomPropertyFieldFormat(
+      int field, String fieldName, String fieldType, String propertyConfig) {
+    String error =
+        String.format(
+            "Custom field %s value of type %s is not as per defined format %s",
+            fieldName, fieldType, propertyConfig);
+    return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
   public static String invalidBoolean(int field, String fieldValue) {
     String error = String.format("Field %s should be either 'true' of 'false'", fieldValue);
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
@@ -577,7 +898,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     ApiStatus status = ApiStatus.FAILURE;
     if (importResult.getNumberOfRowsPassed().equals(importResult.getNumberOfRowsProcessed())) {
       status = ApiStatus.SUCCESS;
-    } else if (importResult.getNumberOfRowsPassed() > 1) {
+    } else if (importResult.getNumberOfRowsPassed() >= 1) {
       status = ApiStatus.PARTIAL_SUCCESS;
     }
     importResult.setStatus(status);

@@ -2,7 +2,6 @@ package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import freemarker.template.TemplateException;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,7 +12,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -48,8 +46,8 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.email.EmailUtil;
 
 @Path("/v1/system")
 @Tag(name = "System", description = "APIs related to System configuration and settings.")
@@ -193,8 +191,7 @@ public class SystemResource {
   public Response sendTestEmail(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid EmailRequest emailRequest)
-      throws TemplateException, IOException {
+      @Valid EmailRequest emailRequest) {
     if (nullOrEmpty(emailRequest.getEmail())) {
       throw new IllegalArgumentException("Email address is required.");
     }

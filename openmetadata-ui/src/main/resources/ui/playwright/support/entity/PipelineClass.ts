@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class PipelineClass extends EntityClass {
+  private pipelineName = `pw-pipeline-${uuid()}`;
   service = {
     name: `pw-pipeline-service-${uuid()}`,
     serviceType: 'Dagster',
@@ -35,14 +37,15 @@ export class PipelineClass extends EntityClass {
   children = [{ name: 'snowflake_task' }];
 
   entity = {
-    name: `pw-pipeline-${uuid()}`,
-    displayName: `pw-pipeline-${uuid()}`,
+    name: this.pipelineName,
+    displayName: this.pipelineName,
     service: this.service.name,
     tasks: this.children,
   };
 
-  serviceResponseData: unknown;
-  entityResponseData: unknown;
+  serviceResponseData: ResponseDataType;
+  entityResponseData: ResponseDataType;
+  ingestionPipelineResponseData: ResponseDataType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Pipeline);
@@ -73,10 +76,61 @@ export class PipelineClass extends EntityClass {
     };
   }
 
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/pipelines/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.entityResponseData = await response.json();
+
+    return {
+      entity: this.entityResponseData,
+    };
+  }
+
   async get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+    };
+  }
+
+  async createIngestionPipeline(apiContext: APIRequestContext, name?: string) {
+    const ingestionPipelineResponse = await apiContext.post(
+      '/api/v1/services/ingestionPipelines',
+      {
+        data: {
+          airflowConfig: {},
+          loggerLevel: 'INFO',
+          name: name ?? `pw-ingestion-pipeline-${uuid()}`,
+          pipelineType: 'metadata',
+          service: {
+            id: this.serviceResponseData.id,
+            type: 'pipelineService',
+          },
+          sourceConfig: {
+            config: {},
+          },
+        },
+      }
+    );
+
+    this.ingestionPipelineResponseData = await ingestionPipelineResponse.json();
+
+    return {
+      ingestionPipeline: await ingestionPipelineResponse.json(),
     };
   }
 

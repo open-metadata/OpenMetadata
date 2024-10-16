@@ -1,6 +1,7 @@
 ---
 title: Secrets Manager
 slug: /deployment/secrets-manager/supported-implementations
+collate: false
 ---
 
 # Supported implementations

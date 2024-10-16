@@ -10,6 +10,12 @@
       "type": "integer",
       "default": 100
     },
+    "payLoadSize": {
+      "title": "Payload Size",
+      "description": "Maximum number of events entities in a batch (Default 100).",
+      "type": "integer",
+      "default": 104857600
+    },
     "entities": {
       "title": "Entities",
       "description": "List of entities that you need to reindex",
@@ -55,7 +61,8 @@
           "testCaseResolutionStatus",
           "apiService",
           "apiEndpoint",
-          "apiCollection"
+          "apiCollection",
+          "metric"
         ]
       },
       "default": ["all"],

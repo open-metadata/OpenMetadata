@@ -21,7 +21,6 @@ on:
       - opened
       - synchronize
       - reopened
-      - ready_for_review
     paths-ignore:
       - openmetadata-docs/**
       - .github/**
@@ -96,7 +95,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
-        run: yarn --frozen-lockfile
+        run: yarn --ignore-scripts --frozen-lockfile
       - name: Install Playwright Browsers
         run: npx playwright@1.44.1 install --with-deps
       - name: Run Playwright tests

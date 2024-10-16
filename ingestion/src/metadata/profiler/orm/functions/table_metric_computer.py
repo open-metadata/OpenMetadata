@@ -176,6 +176,8 @@ class SnowflakeTableMetricComputer(BaseTableMetricComputer):
         )
 
         rest = self._runner._session.execute(query).first()
+        if not rest:
+            return None
         if rest.rowCount is None:
             # if we don't have any row count, fallback to the base logic
             return super().compute()
@@ -410,7 +412,7 @@ class RedshiftTableMetricComputer(BaseTableMetricComputer):
         )
         res = self.runner._session.execute(query).first()
         if not res:
-            return None
+            return super().compute()
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):

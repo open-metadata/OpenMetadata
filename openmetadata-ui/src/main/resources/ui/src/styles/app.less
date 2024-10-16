@@ -154,6 +154,9 @@ a[href].link-text-grey,
 .text-underline {
   text-decoration: underline;
 }
+.text-line-through {
+  text-decoration: line-through;
+}
 
 // image property
 
@@ -256,6 +259,14 @@ a[href].link-text-grey,
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.max-one-line {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
 }
 
@@ -805,16 +816,21 @@ a[href].link-text-grey,
     // Right side padding 20 + 64 width of sidebar
     margin-right: 84px;
   }
-  .test-case-table-container {
+  .test-case-table-container,
+  .test-suite-pipeline-tab {
     margin-right: 64px;
   }
 
   .appearance-cta-buttons {
     padding-right: 64px;
   }
+  .activity-feed-editor-drawer,
   .policies-list-table,
   .roles-list-table,
-  .list-table {
+  .list-table,
+  .kpi-table,
+  .custom-properties-card,
+  .entity-custom-properties-table {
     margin-right: 64px;
   }
 }

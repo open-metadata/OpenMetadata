@@ -16,9 +16,13 @@ import { isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../../../constants/constants';
+import {
+  getEntityDetailsPath,
+  INITIAL_PAGING_VALUE,
+} from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
+  DEFAULT_SORT_ORDER,
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
 } from '../../../../../constants/profiler.constant';
@@ -29,7 +33,10 @@ import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { useFqn } from '../../../../../hooks/useFqn';
-import { TestCaseType } from '../../../../../rest/testAPI';
+import {
+  ListTestCaseParamsBySearch,
+  TestCaseType,
+} from '../../../../../rest/testAPI';
 import {
   getBreadcrumbForTable,
   getEntityName,
@@ -37,6 +44,7 @@ import {
 import { getAddDataQualityTableTestPath } from '../../../../../utils/RouterUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
+import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import { SummaryPanel } from '../../../../DataQuality/SummaryPannel/SummaryPanel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -76,22 +84,42 @@ export const QualityTab = () => {
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<TestCaseStatus>('' as TestCaseStatus);
   const [selectedTestType, setSelectedTestType] = useState(TestCaseType.all);
+  const [searchValue, setSearchValue] = useState<string>();
+  const [sortOptions, setSortOptions] =
+    useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
   const testSuite = useMemo(() => table?.testSuite, [table]);
 
   const handleTestCasePageChange: NextPreviousProps['pagingHandler'] = ({
-    cursorType,
     currentPage,
   }) => {
-    if (cursorType) {
+    if (currentPage) {
       fetchAllTests({
-        [cursorType]: paging[cursorType],
+        ...sortOptions,
         testCaseType: selectedTestType,
         testCaseStatus: isEmpty(selectedTestCaseStatus)
           ? undefined
           : selectedTestCaseStatus,
+        offset: (currentPage - 1) * pageSize,
       });
     }
     handlePageChange(currentPage);
+  };
+
+  const handleSearchTestCase = (value?: string) => {
+    setSearchValue(value);
+    fetchAllTests({
+      testCaseType: selectedTestType,
+      testCaseStatus: isEmpty(selectedTestCaseStatus)
+        ? undefined
+        : selectedTestCaseStatus,
+      q: value,
+    });
+  };
+
+  const handleSortTestCase = async (apiParams?: ListTestCaseParamsBySearch) => {
+    setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
+    await fetchAllTests({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
+    handlePageChange(INITIAL_PAGING_VALUE);
   };
 
   const tableBreadcrumb = useMemo(() => {
@@ -118,6 +146,15 @@ export const QualityTab = () => {
         key: EntityTabs.TEST_CASES,
         children: (
           <Row className="p-t-md">
+            <Col span={12}>
+              <Searchbar
+                placeholder={t('label.search-entity', {
+                  entity: t('label.test-case-lowercase'),
+                })}
+                searchValue={searchValue}
+                onSearch={handleSearchTestCase}
+              />
+            </Col>
             <Col span={24}>
               <DataQualityTab
                 afterDeleteAction={async (...params) => {
@@ -126,6 +163,7 @@ export const QualityTab = () => {
                     (await getResourceLimit('dataQuality', true, true));
                 }}
                 breadcrumbData={tableBreadcrumb}
+                fetchTestCases={handleSortTestCase}
                 isLoading={isTestsLoading}
                 showTableColumn={false}
                 testCases={allTestCases}
@@ -136,6 +174,7 @@ export const QualityTab = () => {
             <Col span={24}>
               {showPagination && (
                 <NextPrevious
+                  isNumberBased
                   currentPage={currentPage}
                   pageSize={pageSize}
                   paging={paging}

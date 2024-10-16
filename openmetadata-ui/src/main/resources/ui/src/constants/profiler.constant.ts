@@ -16,6 +16,7 @@ import { capitalize, map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { CSMode } from '../enums/codemirror.enum';
+import { SORT_ORDER } from '../enums/common.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
@@ -75,6 +76,8 @@ export const PROFILER_METRIC = [
   'histogram',
   'customMetricsProfile',
 ];
+
+export const INCIDENT = 'Incident';
 
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
@@ -463,4 +466,9 @@ export const DEFAULT_PROFILER_CONFIG_VALUE = {
       disabled: false,
     },
   ],
+};
+
+export const DEFAULT_SORT_ORDER = {
+  sortType: SORT_ORDER.DESC,
+  sortField: 'testCaseResult.timestamp',
 };

@@ -77,7 +77,7 @@ export const removeDomain = async (page: Page) => {
   await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
 };
 
-export const validateDomainForm = async (page) => {
+export const validateDomainForm = async (page: Page) => {
   // Error messages
   await expect(page.locator('#name_help')).toHaveText('Name is required');
   await expect(page.locator('#description_help')).toHaveText(
@@ -299,7 +299,10 @@ export const addAssetsToDomain = async (
     const searchRes = page.waitForResponse(
       `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
     );
-    await page.getByTestId('searchbar').fill(name);
+    await page
+      .getByTestId('asset-selection-modal')
+      .getByTestId('searchbar')
+      .fill(name);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
@@ -380,14 +383,18 @@ export const setupAssetsForDomain = async (page: Page) => {
   const table = new TableClass();
   const topic = new TopicClass();
   const dashboard = new DashboardClass();
-  await table.create(apiContext);
-  await topic.create(apiContext);
-  await dashboard.create(apiContext);
+  await Promise.all([
+    table.create(apiContext),
+    topic.create(apiContext),
+    dashboard.create(apiContext),
+  ]);
 
   const assetCleanup = async () => {
-    await table.create(apiContext);
-    await topic.create(apiContext);
-    await dashboard.create(apiContext);
+    await Promise.all([
+      table.delete(apiContext),
+      topic.delete(apiContext),
+      dashboard.delete(apiContext),
+    ]);
     await afterAction();
   };
 
@@ -401,7 +408,7 @@ export const createDataProduct = async (
   page: Page,
   dataProduct: DataProduct['data']
 ) => {
-  await page.getByTestId('domain-details-add-button').click();
+  await page.getByTestId('domain-details-add-button').click({ force: true });
   await page.getByRole('menuitem', { name: 'Data Products' }).click();
 
   await expect(page.getByText('Add Data Product')).toBeVisible();

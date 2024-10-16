@@ -11,9 +11,18 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
+import {
+  Page,
+  PlaywrightTestArgs,
+  PlaywrightWorkerArgs,
+  TestType,
+} from '@playwright/test';
 import { POSTGRES } from '../../../constant/service';
-import { redirectToHomePage } from '../../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+} from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
@@ -72,9 +81,13 @@ class PostgresIngestionClass extends ServiceBaseClass {
     await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
   }
 
-  async runAdditionalTests(test) {
+  async runAdditionalTests(
+    page: Page,
+    test: TestType<PlaywrightTestArgs, PlaywrightWorkerArgs>
+  ) {
     if (process.env.PLAYWRIGHT_IS_OSS) {
-      test('Add Usage ingestion', async ({ page }) => {
+      await test.step('Add Usage ingestion', async () => {
+        const { apiContext } = await getApiContext(page);
         await redirectToHomePage(page);
         await visitServiceDetailsPage(
           page,
@@ -95,25 +108,49 @@ class PostgresIngestionClass extends ServiceBaseClass {
         await page.click('[data-menu-id*="usage"]');
         await page.fill('#root\\/queryLogFilePath', this.queryLogFilePath);
 
-        const deployResponse = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines/deploy/*'
-        );
-
         await page.click('[data-testid="submit-btn"]');
-        await page.click('[data-testid="deploy-button"]');
-
-        await deployResponse;
+        // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
+        await this.scheduleIngestion(page);
 
         await page.click('[data-testid="view-service-button"]');
 
-        await page.waitForResponse(
-          '**/api/v1/services/ingestionPipelines/status'
+        // Header available once page loads
+        await page.waitForSelector('[data-testid="data-assets-header"]');
+        await page.getByTestId('loader').waitFor({ state: 'detached' });
+        await page.getByTestId('ingestions').click();
+        await page
+          .getByLabel('Ingestions')
+          .getByTestId('loader')
+          .waitFor({ state: 'detached' });
+
+        const response = await apiContext
+          .get(
+            `/api/v1/services/ingestionPipelines?service=${encodeURIComponent(
+              this.serviceName
+            )}&pipelineType=usage&serviceType=databaseService&limit=1`
+          )
+          .then((res) => res.json());
+
+        // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+        await page.waitForTimeout(3000);
+        await page.click(
+          `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
         );
+
+        await page.getByTestId('run-button').click();
+
+        await toastNotification(page, `Pipeline triggered successfully!`);
+
+        // need manual wait to make sure we are awaiting on latest run results
+        await page.waitForTimeout(2000);
 
         await this.handleIngestionRetry('usage', page);
       });
 
-      test('Verify if usage is ingested properly', async ({ page }) => {
+      await test.step('Verify if usage is ingested properly', async () => {
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'hidden',
+        });
         const entityResponse = page.waitForResponse(
           `/api/v1/tables/name/*.order_items?**`
         );
@@ -128,9 +165,10 @@ class PostgresIngestionClass extends ServiceBaseClass {
 
         await page.getByRole('tab', { name: 'Queries' }).click();
 
-        await page.waitForSelector(
-          '[data-testid="queries-container"] >> text=selectQuery'
-        );
+        // Need to connect to postgres db to get the query log
+        // await page.waitForSelector(
+        //   '[data-testid="queries-container"] >> text=selectQuery'
+        // );
 
         await page.click('[data-testid="schema"]');
         await page.waitForSelector('[data-testid="related-tables-data"]');

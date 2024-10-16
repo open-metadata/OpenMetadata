@@ -1,6 +1,7 @@
 ---
 title: Enable Security
 slug: /deployment/docker/security
+collate: false
 ---
 
 # Docker Security

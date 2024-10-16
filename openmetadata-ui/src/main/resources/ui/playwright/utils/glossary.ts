@@ -37,6 +37,8 @@ import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
 import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
 
+const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
+
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 
@@ -146,7 +148,7 @@ export const setupGlossaryAndTerms = async (page: Page) => {
   return { glossary, term1, term2, cleanup };
 };
 
-export const validateForm = async (page) => {
+export const validateForm = async (page: Page) => {
   // Error messages
   await expect(page.locator('#name_help')).toHaveText('Name is required');
   await expect(page.locator('#description_help')).toHaveText(
@@ -499,9 +501,7 @@ export const approveGlossaryTermTask = async (
   await taskResolve;
 
   // Display toast notification
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /Task resolved successfully/
-  );
+  await toastNotification(page, /Task resolved successfully/);
 };
 
 export const validateGlossaryTerm = async (
@@ -604,6 +604,13 @@ export const updateNameForGlossaryTerm = async (
   await page.click('[data-testid="rename-button"]');
 
   await expect(page.locator('#name')).toBeVisible();
+
+  // Max length validation
+  await page.locator('#name').fill(INVALID_NAMES.MAX_LENGTH);
+
+  await expect(page.locator('#name_help')).toHaveText(
+    GLOSSARY_NAME_VALIDATION_ERROR
+  );
 
   await page.fill('#name', name);
   const updateNameResponsePromise = page.waitForResponse(
@@ -869,7 +876,7 @@ export const createDescriptionTaskForGlossary = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -924,7 +931,7 @@ export const createTagTaskForGlossary = async (
     );
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
