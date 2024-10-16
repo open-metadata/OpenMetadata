@@ -13,12 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
 import { ERROR_MESSAGE } from '../constants/constants';
-import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   LabelType,
   State,
@@ -29,7 +24,6 @@ import {
   digitFormatter,
   formatTimeFromSeconds,
   getBase64EncodedString,
-  getIngestionFrequency,
   getIsErrorMatch,
   getNameFromFQN,
   getServiceTypeExploreQueryFilter,
@@ -261,29 +255,6 @@ describe('Tests for CommonUtils', () => {
         source: 'Classification',
         state: 'Confirmed',
         tagFQN: 'Tier1',
-      });
-    });
-
-    describe('getIngestionFrequency', () => {
-      it('should return the correct cron value for TestSuite pipeline', () => {
-        const pipelineType = PipelineType.TestSuite;
-        const result = getIngestionFrequency(pipelineType);
-
-        expect(result).toEqual(getHourCron({ min: 0, hour: 0 }));
-      });
-
-      it('should return the correct cron value for Metadata pipeline', () => {
-        const pipelineType = PipelineType.Metadata;
-        const result = getIngestionFrequency(pipelineType);
-
-        expect(result).toEqual(getHourCron({ min: 0, hour: 0 }));
-      });
-
-      it('should return the correct cron value for other pipeline types', () => {
-        const pipelineType = PipelineType.Profiler;
-        const result = getIngestionFrequency(pipelineType);
-
-        expect(result).toEqual(getDayCron({ min: 0, hour: 0 }));
       });
     });
 

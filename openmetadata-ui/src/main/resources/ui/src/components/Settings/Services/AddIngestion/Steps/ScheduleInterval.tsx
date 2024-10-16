@@ -18,82 +18,117 @@ import {
   Col,
   Form,
   FormProps,
+  Input,
   Radio,
   Row,
+  Select,
   Space,
   Typography,
 } from 'antd';
 import classNames from 'classnames';
+import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SCHEDULE_CRON } from '../../../../../constants/Ingestions.constant';
-import { SCHEDULAR_OPTIONS } from '../../../../../constants/Schedular.constants';
+import {
+  DAY_OPTIONS,
+  PERIOD_OPTIONS,
+  SCHEDULAR_OPTIONS,
+} from '../../../../../constants/Schedular.constants';
 import { LOADING_STATE } from '../../../../../enums/common.enum';
+import { CronTypes } from '../../../../../enums/Cron.enum';
 import { SchedularOptions } from '../../../../../enums/Schedular.enum';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
 } from '../../../../../interface/FormUtils.interface';
-import { getCron, getStateValue } from '../../../../../utils/CronUtils';
+import {
+  getCron,
+  getHourMinuteSelect,
+  getStateValue,
+} from '../../../../../utils/CronUtils';
 import { generateFormFields } from '../../../../../utils/formUtils';
-import { getDefaultIngestionSchedule } from '../../../../../utils/IngestionUtils';
-import CronEditor from '../../../../common/CronEditor/CronEditor';
-import { StateValue } from '../../../../common/CronEditor/CronEditor.interface';
-import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
+import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
+import {
+  ScheduleIntervalProps,
+  WorkflowExtraConfig,
+} from '../IngestionWorkflow.interface';
 import './schedule-interval.less';
+import { StateValue } from './ScheduleInterval.interface';
 
-const ScheduleInterval = ({
-  disabledCronChange,
+const ScheduleInterval = <T,>({
+  disabled,
   includePeriodOptions,
   onBack,
-  onChange,
   onDeploy,
-  savedScheduleInterval,
-  scheduleInterval,
+  initialScheduleInterval,
   status,
-  submitButtonLabel,
   children,
-  allowEnableDebugLog = false,
-  debugLogInitialValue = false,
+  debugLog = {
+    allow: false,
+    initialValue: false,
+  },
   isEditMode = false,
-}: ScheduleIntervalProps) => {
+  buttonProps,
+  defaultSchedule = DEFAULT_SCHEDULE_CRON,
+}: ScheduleIntervalProps<T>) => {
   const { t } = useTranslation();
-  const initialValues = getStateValue(
-    scheduleInterval || DEFAULT_SCHEDULE_CRON
-  );
+  const initialSchedule = isEditMode
+    ? initialScheduleInterval
+    : initialScheduleInterval || defaultSchedule;
+  const initialValues = getStateValue(initialSchedule, defaultSchedule);
   const [state, setState] = useState<StateValue>(initialValues);
   const [selectedSchedular, setSelectedSchedular] =
     React.useState<SchedularOptions>(
-      isEmpty(scheduleInterval)
+      isEmpty(initialSchedule)
         ? SchedularOptions.ON_DEMAND
         : SchedularOptions.SCHEDULE
     );
   const [form] = Form.useForm<StateValue>();
-  const { scheduleInterval: scheduleIntervalFormValue } = state;
+  const { cron: cronString, selectedPeriod, dow } = state;
+
+  const {
+    showMinuteSelect,
+    showHourSelect,
+    showWeekSelect,
+    minuteCol,
+    hourCol,
+    weekCol,
+  } = useMemo(() => {
+    const isHourSelected = selectedPeriod === 'hour';
+    const isDaySelected = selectedPeriod === 'day';
+    const isWeekSelected = selectedPeriod === 'week';
+    const showMinuteSelect = isHourSelected || isDaySelected || isWeekSelected;
+    const showHourSelect = isDaySelected || isWeekSelected;
+    const showWeekSelect = isWeekSelected;
+    const minuteCol = isHourSelected ? 12 : 6;
+
+    return {
+      showMinuteSelect,
+      showHourSelect,
+      showWeekSelect,
+      minuteCol: showMinuteSelect ? minuteCol : 0,
+      hourCol: showHourSelect ? 6 : 0,
+      weekCol: showWeekSelect ? 24 : 0,
+    };
+  }, [selectedPeriod]);
 
   const handleSelectedSchedular = useCallback(
     (value: SchedularOptions) => {
       setSelectedSchedular(value);
+      let newState = getStateValue(initialScheduleInterval ?? defaultSchedule);
       if (value === SchedularOptions.ON_DEMAND) {
-        onChange('');
-      } else {
-        onChange(
-          getDefaultIngestionSchedule({
-            scheduleInterval:
-              scheduleIntervalFormValue ?? savedScheduleInterval,
-            isEditMode,
-          })
-        );
+        newState = {
+          ...newState,
+          cron: undefined,
+        };
       }
+      setState(newState);
+      form.setFieldsValue(newState);
     },
-    [
-      isEditMode,
-      selectedSchedular,
-      savedScheduleInterval,
-      scheduleIntervalFormValue,
-    ]
+    [isEditMode, initialScheduleInterval, defaultSchedule]
   );
 
   const formFields: FieldProp[] = useMemo(
@@ -107,20 +142,18 @@ const ScheduleInterval = ({
           'data-testid': 'enable-debug-log',
         },
         formItemProps: {
-          initialValue: debugLogInitialValue,
+          initialValue: debugLog.initialValue,
         },
         id: 'root/enableDebugLog',
         formItemLayout: FormItemLayout.HORIZONTAL,
       },
     ],
-    [debugLogInitialValue]
+    [debugLog]
   );
 
   const handleFormSubmit: FormProps['onFinish'] = useCallback(
-    (data) => {
-      onDeploy({
-        enableDebugLog: data.enableDebugLog,
-      });
+    (data: WorkflowExtraConfig & T) => {
+      onDeploy(data);
     },
     [onDeploy]
   );
@@ -128,11 +161,20 @@ const ScheduleInterval = ({
   const handleValuesChange = (values: StateValue) => {
     const newState = { ...state, ...values };
     const cronExp = getCron(newState);
-    const updatedState = { ...newState, scheduleInterval: cronExp };
+    const updatedState = { ...newState, cron: cronExp };
     form.setFieldsValue(updatedState);
     setState(updatedState);
-    onChange(cronExp ?? DEFAULT_SCHEDULE_CRON);
   };
+
+  const filteredPeriodOptions = useMemo(() => {
+    if (includePeriodOptions) {
+      return PERIOD_OPTIONS.filter((option) =>
+        includePeriodOptions.includes(option.value)
+      );
+    } else {
+      return PERIOD_OPTIONS;
+    }
+  }, [includePeriodOptions]);
 
   return (
     <Form
@@ -171,16 +213,138 @@ const ScheduleInterval = ({
 
         {selectedSchedular === SchedularOptions.SCHEDULE && (
           <Col span={24}>
-            <CronEditor
-              disabledCronChange={disabledCronChange}
-              includePeriodOptions={includePeriodOptions}
-              value={scheduleInterval}
-              onChange={onChange}
-            />
+            <Row
+              className="cron-row"
+              data-testid="cron-container"
+              gutter={[16, 16]}>
+              <Col data-testid="time-dropdown-container" span={12}>
+                <Form.Item
+                  label={`${t('label.every')}:`}
+                  labelCol={{ span: 24 }}
+                  name="selectedPeriod">
+                  <Select
+                    className="w-full"
+                    data-testid="cron-type"
+                    disabled={disabled}
+                    id="cronType"
+                    options={filteredPeriodOptions.map(({ label, value }) => ({
+                      label,
+                      value,
+                    }))}
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col span={hourCol}>
+                <Form.Item
+                  data-testid="hour-option"
+                  hidden={!showHourSelect}
+                  label={`${t('label.hour')}:`}
+                  labelCol={{ span: 24 }}
+                  name="hour">
+                  {getHourMinuteSelect({
+                    cronType: CronTypes.HOUR,
+                    disabled,
+                  })}
+                </Form.Item>
+              </Col>
+              <Col span={minuteCol}>
+                <Form.Item
+                  data-testid="minute-option"
+                  hidden={!showMinuteSelect}
+                  label={`${t('label.minute')}:`}
+                  labelCol={{ span: 24 }}
+                  name="min">
+                  {getHourMinuteSelect({
+                    cronType: CronTypes.MINUTE,
+                    disabled,
+                  })}
+                </Form.Item>
+              </Col>
+              <Col span={weekCol}>
+                <Form.Item
+                  data-testid="week-segment-day-option-container"
+                  hidden={!showWeekSelect}
+                  label={`${t('label.day')}:`}
+                  labelCol={{ span: 24 }}
+                  name="dow">
+                  <Radio.Group
+                    buttonStyle="solid"
+                    className="d-flex gap-2"
+                    value={dow}>
+                    {DAY_OPTIONS.map(({ label, value: optionValue }) => (
+                      <Radio.Button
+                        className="week-selector-buttons"
+                        data-value={optionValue}
+                        disabled={disabled}
+                        key={`${label}-${optionValue}`}
+                        value={optionValue}>
+                        {label[0]}
+                      </Radio.Button>
+                    ))}
+                  </Radio.Group>
+                </Form.Item>
+              </Col>
+
+              <Col span={selectedPeriod === 'custom' ? 12 : 0}>
+                <Form.Item
+                  hidden={selectedPeriod !== 'custom'}
+                  label={`${t('label.cron')}:`}
+                  labelCol={{ span: 24 }}
+                  name="cron"
+                  rules={[
+                    {
+                      required: true,
+                      message: t('label.field-required', {
+                        field: t('label.cron'),
+                      }),
+                    },
+                    {
+                      validator: async (_, value) => {
+                        // Check if cron is valid and get the description
+                        const description = cronstrue.toString(value);
+
+                        // Check if cron has a frequency of less than an hour
+                        const isFrequencyInMinutes = /Every \d* *minute/.test(
+                          description
+                        );
+                        if (isFrequencyInMinutes) {
+                          return Promise.reject(
+                            t('message.cron-less-than-hour-message')
+                          );
+                        }
+
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}>
+                  <Input />
+                </Form.Item>
+              </Col>
+
+              {cronString && (
+                <Col span={24}>
+                  {cronstrue.toString(cronString, {
+                    use24HourTimeFormat: false,
+                    verbose: true,
+                    locale: getCurrentLocaleForConstrue(), // To get localized string
+                    throwExceptionOnParseError: false,
+                  })}
+                </Col>
+              )}
+
+              {isEmpty(cronString) && (
+                <Col span={24}>
+                  <p data-testid="manual-segment-container">
+                    {t('message.pipeline-will-trigger-manually')}
+                  </p>
+                </Col>
+              )}
+            </Row>
           </Col>
         )}
 
-        {allowEnableDebugLog && (
+        {debugLog.allow && (
           <Col span={24}>{generateFormFields(formFields)}</Col>
         )}
 
@@ -192,7 +356,7 @@ const ScheduleInterval = ({
             data-testid="back-button"
             type="link"
             onClick={onBack}>
-            <span>{t('label.back')}</span>
+            <span>{buttonProps?.cancelText ?? t('label.back')}</span>
           </Button>
 
           {status === 'success' ? (
@@ -209,7 +373,7 @@ const ScheduleInterval = ({
               htmlType="submit"
               loading={status === LOADING_STATE.WAITING}
               type="primary">
-              {submitButtonLabel}
+              {buttonProps?.okText ?? t('label.submit')}
             </Button>
           )}
         </Col>

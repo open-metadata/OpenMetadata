@@ -15,41 +15,94 @@ import { Select } from 'antd';
 import { isNaN, toNumber } from 'lodash';
 import React from 'react';
 import {
-  combinations,
-  getDayCron,
-  getDayOptions,
-  getHourCron,
-  getHourOptions,
-  getMinuteOptions,
-  getPeriodOptions,
-  getWeekCron,
-} from '../components/common/CronEditor/CronEditor.constant';
-import {
   Combination,
   CronOption,
   StateValue,
-} from '../components/common/CronEditor/CronEditor.interface';
+} from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
+import {
+  CRON_COMBINATIONS,
+  MONTHS_LIST,
+} from '../constants/Schedular.constants';
 import { CronTypes } from '../enums/Cron.enum';
-import { AppType } from '../generated/entity/applications/app';
+
+export const getRange = (n: number) => {
+  return [...Array(n).keys()];
+};
+
+export const getRangeOptions = (n: number) => {
+  return getRange(n).map((v) => {
+    return {
+      label: `0${v}`.slice(-2),
+      value: v,
+    };
+  });
+};
+
+export const getMinuteOptions = () => {
+  return getRangeOptions(60);
+};
+
+export const getHourOptions = () => {
+  return getRangeOptions(24);
+};
+
+const ordinalSuffix = (n: number) => {
+  const suffixes = ['th', 'st', 'nd', 'rd'];
+  const val = n % 100;
+
+  return `${n}${suffixes[(val - 20) % 10] || suffixes[val] || suffixes[0]}`;
+};
+
+export const getMonthDaysOptions = () =>
+  getRange(31).map((v) => {
+    return {
+      label: ordinalSuffix(v + 1),
+      value: v + 1,
+    };
+  });
+
+export const getMonthOptions = () =>
+  MONTHS_LIST.map((month, index) => {
+    return {
+      label: month,
+      value: index + 1,
+    };
+  });
+
+export const getMinuteCron = (value: Partial<StateValue>) => {
+  return `*/${value.min} * * * *`;
+};
+
+export const getHourCron = (value: Partial<StateValue>) => {
+  return `${value.min} * * * *`;
+};
+
+export const getDayCron = (value: Partial<StateValue>) => {
+  return `${value.min} ${value.hour} * * *`;
+};
+
+export const getWeekCron = (value: Partial<StateValue>) => {
+  return `${value.min} ${value.hour} * * ${value.dow}`;
+};
 
 export const getCron = (state: StateValue) => {
-  const { selectedPeriod, ...otherValues } = state;
+  const { selectedPeriod, cron } = state;
 
   switch (selectedPeriod) {
     case 'hour':
-      return getHourCron(otherValues);
+      return getHourCron(state);
     case 'day':
-      return getDayCron(otherValues);
+      return getDayCron(state);
     case 'week':
-      return getWeekCron(otherValues);
+      return getWeekCron(state);
     default:
-      return otherValues.scheduleInterval;
+      return cron;
   }
 };
 
 const getCronType = (cronStr: string) => {
-  for (const c in combinations) {
-    if (combinations[c as keyof Combination].test(cronStr)) {
+  for (const c in CRON_COMBINATIONS) {
+    if (CRON_COMBINATIONS[c as keyof Combination].test(cronStr)) {
       return c;
     }
   }
@@ -57,37 +110,37 @@ const getCronType = (cronStr: string) => {
   return 'custom';
 };
 
-export const getStateValue = (valueStr: string) => {
-  const d = valueStr ? valueStr.split(' ') : [];
+export const getStateValue = (value?: string, defaultValue?: string) => {
+  const a = value?.split(' ');
+  const d = a ?? defaultValue?.split(' ') ?? [];
+
   const min = toNumber(d[0]);
   const hour = toNumber(d[1]);
   const dow = toNumber(d[4]);
 
-  const cronType = getCronType(valueStr);
+  const cronType = getCronType(value ?? defaultValue ?? '');
 
   const stateVal: StateValue = {
     selectedPeriod: cronType,
-    scheduleInterval: valueStr,
-    min,
-    hour,
+    cron: value,
+    min: isNaN(dow) ? 0 : min,
+    hour: isNaN(dow) ? 0 : hour,
     dow: isNaN(dow) ? 1 : dow,
   };
 
   return stateVal;
 };
 
-export const getCronInitialValue = (appType: AppType, appName: string) => {
+export const getCronInitialValue = (appName: string) => {
   const value = {
     min: 0,
     hour: 0,
   };
 
-  let initialValue = getHourCron(value);
+  let initialValue = getDayCron(value);
 
   if (appName === 'DataInsightsReportApplication') {
     initialValue = getWeekCron({ ...value, dow: 0 });
-  } else if (appType === AppType.External) {
-    initialValue = getDayCron(value);
   }
 
   return initialValue;
@@ -99,16 +152,6 @@ const getOptionComponent = () => {
   };
 
   return optionRenderer;
-};
-
-export const getCronOptions = () => {
-  const periodOptions = getPeriodOptions();
-  const dayOptions = getDayOptions();
-
-  return {
-    periodOptions,
-    dayOptions,
-  };
 };
 
 export const getHourMinuteSelect = ({

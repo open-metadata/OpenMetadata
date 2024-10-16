@@ -17,7 +17,6 @@ import { t } from 'i18next';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import { getDayCron } from '../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ConnectionStepCard from '../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { getServiceDetailsPath } from '../constants/constants';
@@ -49,6 +48,7 @@ import { Connection as MetadataConnection } from '../generated/entity/services/m
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
 import { Transi18next } from './CommonUtils';
+import { getDayCron } from './CronUtils';
 import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getServiceRouteFromServiceType } from './ServiceUtils';

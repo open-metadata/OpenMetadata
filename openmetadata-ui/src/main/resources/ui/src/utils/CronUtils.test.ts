@@ -11,33 +11,23 @@
  *  limitations under the License.
  */
 
-import { AppType } from '../generated/entity/applications/app';
 import { getCronInitialValue } from './CronUtils';
 
 describe('getCronInitialValue function', () => {
-  it('should generate hour cron expression if appType is internal and appName is not DataInsightsReportApplication', () => {
-    const result = getCronInitialValue(
-      AppType.Internal,
-      'SearchIndexingApplication'
-    );
+  it('should generate day cron expression if appType is internal and appName is not DataInsightsReportApplication', () => {
+    const result = getCronInitialValue('SearchIndexingApplication');
 
-    expect(result).toEqual('0 * * * *');
+    expect(result).toEqual('0 0 * * *');
   });
 
   it('should generate week cron expression if appName is DataInsightsReportApplication', () => {
-    const result = getCronInitialValue(
-      AppType.Internal,
-      'DataInsightsReportApplication'
-    );
+    const result = getCronInitialValue('DataInsightsReportApplication');
 
     expect(result).toEqual('0 0 * * 0');
   });
 
   it('should generate day cron expression if appType is external', () => {
-    const result = getCronInitialValue(
-      AppType.External,
-      'DataInsightsApplication'
-    );
+    const result = getCronInitialValue('DataInsightsApplication');
 
     expect(result).toEqual('0 0 * * *');
   });

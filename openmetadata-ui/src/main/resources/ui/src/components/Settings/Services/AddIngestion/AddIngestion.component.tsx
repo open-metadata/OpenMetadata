@@ -13,7 +13,7 @@
 
 import { Form, Input, Typography } from 'antd';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
@@ -28,10 +28,7 @@ import { IngestionPipeline } from '../../../../generated/entity/services/ingesti
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
-import {
-  getDefaultIngestionSchedule,
-  getSuccessMessage,
-} from '../../../../utils/IngestionUtils';
+import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
@@ -42,6 +39,7 @@ import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.com
 import IngestionWorkflowForm from '../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm';
 import {
   AddIngestionProps,
+  IngestionExtraConfig,
   WorkflowExtraConfig,
 } from './IngestionWorkflow.interface';
 import ScheduleInterval from './Steps/ScheduleInterval';
@@ -96,18 +94,6 @@ const AddIngestion = ({
     })
   );
 
-  const [scheduleInterval, setScheduleInterval] = useState(() =>
-    getDefaultIngestionSchedule({
-      isEditMode,
-      scheduleInterval: data?.airflowConfig.scheduleInterval,
-    })
-  );
-
-  const handleScheduleIntervalChange = useCallback(
-    (value?: string) => setScheduleInterval(value),
-    []
-  );
-
   const { ingestionName, retries } = useMemo(
     () => ({
       ingestionName:
@@ -157,7 +143,9 @@ const AddIngestion = ({
     handleNext(2);
   };
 
-  const createNewIngestion = (extraData: WorkflowExtraConfig) => {
+  const createNewIngestion = (
+    extraData: WorkflowExtraConfig & IngestionExtraConfig
+  ) => {
     const {
       name = '',
       enableDebugLog,
@@ -174,9 +162,7 @@ const AddIngestion = ({
 
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: isEmpty(scheduleInterval)
-          ? undefined
-          : scheduleInterval,
+        scheduleInterval: isEmpty(extraData.cron) ? undefined : extraData.cron,
         startDate: date,
         retries: extraData.retries,
       },
@@ -220,15 +206,17 @@ const AddIngestion = ({
     }
   };
 
-  const updateIngestion = (extraData: WorkflowExtraConfig) => {
+  const updateIngestion = (
+    extraData: WorkflowExtraConfig & IngestionExtraConfig
+  ) => {
     if (data) {
       const updatedData: IngestionPipeline = {
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          scheduleInterval: isEmpty(scheduleInterval)
+          scheduleInterval: isEmpty(extraData.cron)
             ? undefined
-            : scheduleInterval,
+            : extraData.cron,
           retries: extraData.retries,
         },
         displayName: workflowData?.displayName,
@@ -274,7 +262,7 @@ const AddIngestion = ({
   };
 
   const handleScheduleIntervalDeployClick = (
-    extraData: WorkflowExtraConfig
+    extraData: WorkflowExtraConfig & IngestionExtraConfig
   ) => {
     if (status === FormSubmitType.ADD) {
       createNewIngestion(extraData);
@@ -311,22 +299,22 @@ const AddIngestion = ({
         )}
 
         {activeIngestionStep === 2 && (
-          <ScheduleInterval
-            disabledCronChange={pipelineType === PipelineType.DataInsight}
+          <ScheduleInterval<IngestionExtraConfig>
+            buttonProps={{
+              okText: isUndefined(data)
+                ? t('label.add-deploy')
+                : t('label.submit'),
+            }}
+            disabled={pipelineType === PipelineType.DataInsight}
             includePeriodOptions={
               pipelineType === PipelineType.DataInsight
                 ? ['day']
                 : periodOptions
             }
+            initialScheduleInterval={data?.airflowConfig.scheduleInterval}
             isEditMode={isEditMode}
-            savedScheduleInterval={data?.airflowConfig.scheduleInterval}
-            scheduleInterval={scheduleInterval}
             status={saveState}
-            submitButtonLabel={
-              isUndefined(data) ? t('label.add-deploy') : t('label.submit')
-            }
             onBack={() => handlePrev(1)}
-            onChange={handleScheduleIntervalChange}
             onDeploy={handleScheduleIntervalDeployClick}>
             <Form.Item
               colon={false}

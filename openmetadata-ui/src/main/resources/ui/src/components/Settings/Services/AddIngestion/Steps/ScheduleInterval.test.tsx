@@ -27,11 +27,12 @@ jest.mock('../../../../common/CronEditor/CronEditor', () => {
 
 const mockScheduleIntervalProps: ScheduleIntervalProps = {
   status: 'initial',
-  scheduleInterval: '',
+  initialScheduleInterval: '',
   onBack: jest.fn(),
   onDeploy: jest.fn(),
-  submitButtonLabel: 'Add',
-  onChange: jest.fn(),
+  buttonProps: {
+    okText: 'Add',
+  },
 };
 
 describe('Test ScheduleInterval component', () => {
@@ -62,7 +63,10 @@ describe('Test ScheduleInterval component', () => {
 
   it('should render enable debug log switch when allowEnableDebugLog is true', () => {
     render(
-      <ScheduleInterval {...mockScheduleIntervalProps} allowEnableDebugLog />
+      <ScheduleInterval
+        {...mockScheduleIntervalProps}
+        debugLog={{ allow: true }}
+      />
     );
 
     expect(screen.getByTestId('enable-debug-log')).toBeInTheDocument();
@@ -72,8 +76,7 @@ describe('Test ScheduleInterval component', () => {
     render(
       <ScheduleInterval
         {...mockScheduleIntervalProps}
-        allowEnableDebugLog
-        debugLogInitialValue
+        debugLog={{ allow: true, initialValue: true }}
       />
     );
 
@@ -84,7 +87,10 @@ describe('Test ScheduleInterval component', () => {
 
   it('debug log switch should not be initially checked when debugLogInitialValue is false', () => {
     render(
-      <ScheduleInterval {...mockScheduleIntervalProps} allowEnableDebugLog />
+      <ScheduleInterval
+        {...mockScheduleIntervalProps}
+        debugLog={{ allow: true }}
+      />
     );
 
     expect(screen.getByTestId('enable-debug-log')).not.toHaveClass(

@@ -22,6 +22,7 @@ import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
 } from '../../../constants/constants';
+import { DEFAULT_SCHEDULE_CRON } from '../../../constants/Ingestions.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { IngestionActionMessage } from '../../../enums/ingestion.enum';
@@ -41,7 +42,6 @@ import {
   updateIngestionPipeline,
 } from '../../../rest/ingestionPipelineAPI';
 import {
-  getIngestionFrequency,
   getNameFromFQN,
   replaceAllSpacialCharWith_,
   Transi18next,
@@ -51,7 +51,6 @@ import { getScheduleOptionsFromSchedules } from '../../../utils/ScheduleUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { getWeekCron } from '../../common/CronEditor/CronEditor.constant';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import {
@@ -123,9 +122,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     return {
       repeatFrequency:
         ingestionPipeline?.airflowConfig.scheduleInterval ??
-        (config?.enable
-          ? getWeekCron({ hour: 0, min: 0, dow: 0 })
-          : getIngestionFrequency(PipelineType.TestSuite)),
+        DEFAULT_SCHEDULE_CRON,
       enableDebugLog: ingestionPipeline?.loggerLevel === LogLevels.Debug,
       testCases,
       name: ingestionPipeline?.displayName,

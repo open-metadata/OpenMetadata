@@ -28,10 +28,10 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import { getWeekCron } from '../../../common/CronEditor/CronEditor.constant';
+import { getCronInitialValue, getWeekCron } from '../../../../utils/CronUtils';
 import Loader from '../../../common/Loader/Loader';
-import { TestSuiteIngestionDataType } from '../../../DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
-import TestSuiteScheduler from '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
+import { WorkflowExtraConfig } from '../../Services/AddIngestion/IngestionWorkflow.interface';
+import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
@@ -103,9 +103,9 @@ const AppSchedule = ({
     setShowModal(false);
   };
 
-  const onDialogSave = async (data: TestSuiteIngestionDataType) => {
+  const onDialogSave = async (data: WorkflowExtraConfig) => {
     setIsSaveLoading(true);
-    await onSave(data.repeatFrequency);
+    await onSave(data.cron ?? '');
     setIsSaveLoading(false);
     setShowModal(false);
   };
@@ -245,21 +245,26 @@ const AppSchedule = ({
         maskClosable={false}
         okText={t('label.save')}
         open={showModal}
-        title={t('label.update-entity', { entity: t('label.schedule') })}>
-        <TestSuiteScheduler
+        title={t('label.update-entity', { entity: t('label.schedule') })}
+        width={650}>
+        <ScheduleInterval
+          isEditMode
           buttonProps={{
             cancelText: t('label.cancel'),
             okText: t('label.save'),
           }}
+          defaultSchedule={
+            config?.enable
+              ? getWeekCron({ hour: 0, min: 0, dow: 0 })
+              : getCronInitialValue(appData?.name ?? '')
+          }
           includePeriodOptions={initialOptions}
-          initialData={{
-            repeatFrequency:
-              (appData.appSchedule as AppScheduleClass)?.cronExpression ??
-              getWeekCron({ hour: 0, min: 0, dow: 0 }),
-          }}
-          isLoading={isSaveLoading}
-          onCancel={onDialogCancel}
-          onSubmit={onDialogSave}
+          initialScheduleInterval={
+            (appData.appSchedule as AppScheduleClass)?.cronExpression
+          }
+          status={isSaveLoading ? 'waiting' : 'initial'}
+          onBack={onDialogCancel}
+          onDeploy={onDialogSave}
         />
       </Modal>
     </>

@@ -18,7 +18,7 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  height: 130px;
+  height: 100%;
   .schedular-card {
     border-radius: 6px;
     cursor: pointer;
@@ -35,4 +35,24 @@
   .schedular-card.active {
     border-color: @primary-color;
   }
+}
+
+.cron-row {
+  .ant-form-item {
+    margin: 0px;
+  }
+}
+.ant-radio-button-wrapper.week-selector-buttons,
+.ant-radio-button-wrapper.week-selector-buttons:first-child,
+.ant-radio-button-wrapper.week-selector-buttons:last-child {
+  height: 32px;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  border-width: 1px;
+}
+.ant-radio-button-wrapper.week-selector-buttons:not(:first-child)::before {
+  position: relative;
 }

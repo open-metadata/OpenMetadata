@@ -51,23 +51,31 @@ export interface AddIngestionProps {
   onFocus: (fieldName: string) => void;
 }
 
-export type ScheduleIntervalProps = {
-  onChange: (newScheduleInterval?: string) => void;
+export type ScheduleIntervalProps<T> = {
   status: LoadingState;
-  savedScheduleInterval?: string;
-  scheduleInterval?: string;
+  initialScheduleInterval?: string;
+  defaultSchedule?: string;
   includePeriodOptions?: string[];
-  submitButtonLabel: string;
   children?: ReactNode;
-  disabledCronChange?: boolean;
+  disabled?: boolean;
   isEditMode?: boolean;
   onBack: () => void;
-  onDeploy: (values: WorkflowExtraConfig) => void;
-  allowEnableDebugLog?: boolean;
-  debugLogInitialValue?: boolean;
+  onDeploy: (values: WorkflowExtraConfig & T) => void;
+  buttonProps?: {
+    okText?: string;
+    cancelText?: string;
+  };
+  debugLog?: {
+    allow?: boolean;
+    initialValue?: boolean;
+  };
 };
 
 export interface WorkflowExtraConfig {
-  retries?: number;
+  cron?: string;
   enableDebugLog?: boolean;
+}
+
+export interface IngestionExtraConfig {
+  retries?: number;
 }
