@@ -22,7 +22,6 @@ import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
 } from '../../../constants/constants';
-import { DEFAULT_SCHEDULE_CRON } from '../../../constants/Ingestions.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { IngestionActionMessage } from '../../../enums/ingestion.enum';
@@ -116,13 +115,11 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     );
   }, [ingestionData, showDeployButton]);
 
-  const initialFormData: TestSuiteIngestionDataType = useMemo(() => {
+  const initialFormData = useMemo(() => {
     const testCases = ingestionPipeline?.sourceConfig.config?.testCases;
 
     return {
-      repeatFrequency:
-        ingestionPipeline?.airflowConfig.scheduleInterval ??
-        DEFAULT_SCHEDULE_CRON,
+      cron: ingestionPipeline?.airflowConfig.scheduleInterval,
       enableDebugLog: ingestionPipeline?.loggerLevel === LogLevels.Debug,
       testCases,
       name: ingestionPipeline?.displayName,
@@ -168,9 +165,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
 
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: isEmpty(data.repeatFrequency)
-          ? undefined
-          : data.repeatFrequency,
+        scheduleInterval: isEmpty(data.cron) ? undefined : data.cron,
       },
       displayName: updatedName,
       name: generateUUID(),
@@ -208,9 +203,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       displayName: data.name ?? ingestionPipeline.displayName,
       airflowConfig: {
         ...ingestionPipeline?.airflowConfig,
-        scheduleInterval: isEmpty(data.repeatFrequency)
-          ? undefined
-          : data.repeatFrequency,
+        scheduleInterval: isEmpty(data.cron) ? undefined : data.cron,
       },
       loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       sourceConfig: {

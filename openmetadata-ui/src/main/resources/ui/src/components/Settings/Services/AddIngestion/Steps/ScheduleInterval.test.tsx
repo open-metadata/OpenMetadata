@@ -18,16 +18,16 @@ import {
   screen,
 } from '@testing-library/react';
 import React from 'react';
-import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 import ScheduleInterval from './ScheduleInterval';
+import { ScheduleIntervalProps } from './ScheduleInterval.interface';
 
 jest.mock('../../../../common/CronEditor/CronEditor', () => {
   return jest.fn().mockImplementation(() => <div>CronEditor.component</div>);
 });
 
-const mockScheduleIntervalProps: ScheduleIntervalProps = {
+const mockScheduleIntervalProps: ScheduleIntervalProps<{ cron: string }> = {
   status: 'initial',
-  initialScheduleInterval: '',
+  initialData: { cron: '' },
   onBack: jest.fn(),
   onDeploy: jest.fn(),
   buttonProps: {

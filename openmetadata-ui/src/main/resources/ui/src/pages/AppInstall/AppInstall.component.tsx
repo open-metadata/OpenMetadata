@@ -28,8 +28,8 @@ import {
   default as applicationsClassBase,
 } from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
-import { WorkflowExtraConfig } from '../../components/Settings/Services/AddIngestion/IngestionWorkflow.interface';
 import ScheduleInterval from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval';
+import { WorkflowExtraConfig } from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
@@ -93,9 +93,11 @@ const AppInstall = () => {
 
     return {
       initialOptions,
-      initialValue: config?.enable
-        ? getWeekCron({ hour: 0, min: 0, dow: 0 })
-        : getCronInitialValue(appData?.name ?? ''),
+      initialValue: {
+        cron: config?.enable
+          ? getWeekCron({ hour: 0, min: 0, dow: 0 })
+          : getCronInitialValue(appData?.name ?? ''),
+      },
     };
   }, [appData?.name, appData?.appType, pipelineSchedules, config?.enable]);
 
@@ -207,7 +209,7 @@ const AppInstall = () => {
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <ScheduleInterval
               includePeriodOptions={initialOptions}
-              initialScheduleInterval={initialValue}
+              initialData={initialValue}
               status={isSavingLoading ? 'waiting' : 'initial'}
               onBack={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)

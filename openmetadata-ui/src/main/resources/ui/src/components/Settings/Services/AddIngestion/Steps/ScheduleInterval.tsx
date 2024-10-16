@@ -51,19 +51,19 @@ import {
 } from '../../../../../utils/CronUtils';
 import { generateFormFields } from '../../../../../utils/formUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
+import './schedule-interval.less';
 import {
   ScheduleIntervalProps,
+  StateValue,
   WorkflowExtraConfig,
-} from '../IngestionWorkflow.interface';
-import './schedule-interval.less';
-import { StateValue } from './ScheduleInterval.interface';
+} from './ScheduleInterval.interface';
 
 const ScheduleInterval = <T,>({
   disabled,
   includePeriodOptions,
   onBack,
   onDeploy,
-  initialScheduleInterval,
+  initialData,
   status,
   children,
   debugLog = {
@@ -73,16 +73,20 @@ const ScheduleInterval = <T,>({
   isEditMode = false,
   buttonProps,
   defaultSchedule = DEFAULT_SCHEDULE_CRON,
+  topChildren,
 }: ScheduleIntervalProps<T>) => {
   const { t } = useTranslation();
-  const initialSchedule = isEditMode
-    ? initialScheduleInterval
-    : initialScheduleInterval || defaultSchedule;
-  const initialValues = getStateValue(initialSchedule, defaultSchedule);
+  const initialCron = isEditMode
+    ? initialData?.cron
+    : initialData?.cron || defaultSchedule;
+  const initialValues = {
+    ...initialData,
+    ...getStateValue(initialCron, defaultSchedule),
+  };
   const [state, setState] = useState<StateValue>(initialValues);
   const [selectedSchedular, setSelectedSchedular] =
     React.useState<SchedularOptions>(
-      isEmpty(initialSchedule)
+      isEmpty(initialCron)
         ? SchedularOptions.ON_DEMAND
         : SchedularOptions.SCHEDULE
     );
@@ -118,7 +122,7 @@ const ScheduleInterval = <T,>({
   const handleSelectedSchedular = useCallback(
     (value: SchedularOptions) => {
       setSelectedSchedular(value);
-      let newState = getStateValue(initialScheduleInterval ?? defaultSchedule);
+      let newState = getStateValue(initialData?.cron ?? defaultSchedule);
       if (value === SchedularOptions.ON_DEMAND) {
         newState = {
           ...newState,
@@ -128,7 +132,7 @@ const ScheduleInterval = <T,>({
       setState(newState);
       form.setFieldsValue(newState);
     },
-    [isEditMode, initialScheduleInterval, defaultSchedule]
+    [isEditMode, initialData?.cron, defaultSchedule]
   );
 
   const formFields: FieldProp[] = useMemo(
@@ -158,7 +162,7 @@ const ScheduleInterval = <T,>({
     [onDeploy]
   );
 
-  const handleValuesChange = (values: StateValue) => {
+  const handleValuesChange = (values: StateValue & WorkflowExtraConfig & T) => {
     const newState = { ...state, ...values };
     const cronExp = getCron(newState);
     const updatedState = { ...newState, cron: cronExp };
@@ -178,13 +182,16 @@ const ScheduleInterval = <T,>({
 
   return (
     <Form
+      className="schedule-interval"
       data-testid="schedule-intervel-container"
       form={form}
       initialValues={initialValues}
       layout="vertical"
+      name="schedular-form"
       onFinish={handleFormSubmit}
       onValuesChange={handleValuesChange}>
       <Row gutter={[16, 16]}>
+        {topChildren}
         <Col span={24}>
           <Radio.Group
             className="schedular-card-container"
@@ -213,10 +220,7 @@ const ScheduleInterval = <T,>({
 
         {selectedSchedular === SchedularOptions.SCHEDULE && (
           <Col span={24}>
-            <Row
-              className="cron-row"
-              data-testid="cron-container"
-              gutter={[16, 16]}>
+            <Row data-testid="cron-container" gutter={[16, 16]}>
               <Col data-testid="time-dropdown-container" span={12}>
                 <Form.Item
                   label={`${t('label.every')}:`}

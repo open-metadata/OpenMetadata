@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { LoadingState, ServicesUpdateRequest } from 'Models';
-import { ReactNode } from 'react';
+import { ServicesUpdateRequest } from 'Models';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -49,33 +48,4 @@ export interface AddIngestionProps {
   ingestionProgress?: number;
   handleViewServiceClick?: () => void;
   onFocus: (fieldName: string) => void;
-}
-
-export type ScheduleIntervalProps<T> = {
-  status: LoadingState;
-  initialScheduleInterval?: string;
-  defaultSchedule?: string;
-  includePeriodOptions?: string[];
-  children?: ReactNode;
-  disabled?: boolean;
-  isEditMode?: boolean;
-  onBack: () => void;
-  onDeploy: (values: WorkflowExtraConfig & T) => void;
-  buttonProps?: {
-    okText?: string;
-    cancelText?: string;
-  };
-  debugLog?: {
-    allow?: boolean;
-    initialValue?: boolean;
-  };
-};
-
-export interface WorkflowExtraConfig {
-  cron?: string;
-  enableDebugLog?: boolean;
-}
-
-export interface IngestionExtraConfig {
-  retries?: number;
 }

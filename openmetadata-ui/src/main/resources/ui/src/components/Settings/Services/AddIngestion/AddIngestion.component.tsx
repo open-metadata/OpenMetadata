@@ -37,12 +37,12 @@ import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
 import IngestionWorkflowForm from '../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm';
+import { AddIngestionProps } from './IngestionWorkflow.interface';
+import ScheduleInterval from './Steps/ScheduleInterval';
 import {
-  AddIngestionProps,
   IngestionExtraConfig,
   WorkflowExtraConfig,
-} from './IngestionWorkflow.interface';
-import ScheduleInterval from './Steps/ScheduleInterval';
+} from './Steps/ScheduleInterval.interface';
 
 const AddIngestion = ({
   activeIngestionStep,
@@ -311,7 +311,7 @@ const AddIngestion = ({
                 ? ['day']
                 : periodOptions
             }
-            initialScheduleInterval={data?.airflowConfig.scheduleInterval}
+            initialData={{ cron: data?.airflowConfig.scheduleInterval }}
             isEditMode={isEditMode}
             status={saveState}
             onBack={() => handlePrev(1)}

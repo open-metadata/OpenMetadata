@@ -43,7 +43,7 @@ export interface TestSuiteIngestionProps {
 }
 
 export type TestSuiteIngestionDataType = {
-  repeatFrequency: string;
+  cron?: string;
   enableDebugLog?: boolean;
   testCases?: string[];
   name?: string;

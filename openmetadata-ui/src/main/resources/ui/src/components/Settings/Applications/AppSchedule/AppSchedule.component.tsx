@@ -30,8 +30,8 @@ import {
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
 import { getCronInitialValue, getWeekCron } from '../../../../utils/CronUtils';
 import Loader from '../../../common/Loader/Loader';
-import { WorkflowExtraConfig } from '../../Services/AddIngestion/IngestionWorkflow.interface';
 import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
+import { WorkflowExtraConfig } from '../../Services/AddIngestion/Steps/ScheduleInterval.interface';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
@@ -259,9 +259,9 @@ const AppSchedule = ({
               : getCronInitialValue(appData?.name ?? '')
           }
           includePeriodOptions={initialOptions}
-          initialScheduleInterval={
-            (appData.appSchedule as AppScheduleClass)?.cronExpression
-          }
+          initialData={{
+            cron: (appData.appSchedule as AppScheduleClass)?.cronExpression,
+          }}
           status={isSaveLoading ? 'waiting' : 'initial'}
           onBack={onDialogCancel}
           onDeploy={onDialogSave}
