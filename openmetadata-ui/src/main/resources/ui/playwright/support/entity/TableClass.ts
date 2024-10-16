@@ -269,7 +269,7 @@ export class TableClass extends EntityClass {
       .post('/api/v1/dataQuality/testCases', {
         data: {
           name: `pw-test-case-${uuid()}`,
-          entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
+          entityLink: `<#E::om::table::om::${this.entityResponseData?.['fullyQualifiedName']}>`,
           testDefinition: 'tableRowCountToBeBetween',
           testSuite: this.testSuiteResponseData?.['fullyQualifiedName'],
           parameterValues: [

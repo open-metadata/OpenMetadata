@@ -31,7 +31,7 @@ export const MOCK_TEST_CASE_DATA = {
     href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/43eeca01-e128-4de7-9e92-8035f4823993',
   },
   entityLink:
-    '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>',
+    '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address::om::columns::om::zip>',
   entityFQN: 'sample_data.ecommerce_db.shopify.dim_address.zip',
   testSuite: {
     id: 'bce9b69f-125a-42a8-b06a-13bdbc049f8d',
@@ -83,7 +83,7 @@ export const MOCK_THREAD_DATA = [
     type: 'Task',
     threadTs: 1703570590556,
     about:
-      '<#E::testCase::sample_data.ecommerce_db.shopify.dim_address.table_column_count_between>',
+      '<#E::om::testCase::om::sample_data.ecommerce_db.shopify.dim_address.table_column_count_between>',
     entityId: '6206a003-281c-4984-9728-4e949a4e4023',
     createdBy: 'admin',
     updatedAt: 1703570590652,
@@ -125,7 +125,7 @@ export const MOCK_THREAD_DATA = [
     type: 'Task',
     threadTs: 1703570590829,
     about:
-      '<#E::testCase::sample_data.ecommerce_db.shopify.dim_address.table_column_count_between>',
+      '<#E::om::testCase::om::sample_data.ecommerce_db.shopify.dim_address.table_column_count_between>',
     entityId: '6206a003-281c-4984-9728-4e949a4e4023',
     createdBy: 'admin',
     updatedAt: 1703570590829,

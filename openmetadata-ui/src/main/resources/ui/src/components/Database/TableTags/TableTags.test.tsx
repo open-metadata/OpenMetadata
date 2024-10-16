@@ -63,7 +63,7 @@ const requestUpdateTags = {
   onUpdateTagsHandler: jest.fn(),
   onRequestTagsHandler: jest.fn(),
   getColumnName: jest.fn(),
-  getColumnFieldFQN: 'columns::product_id::tags',
+  getColumnFieldFQN: 'columns::om::product_id::om::tags',
 };
 
 const mockProp = {
@@ -89,9 +89,9 @@ const mockProp = {
   entityFieldThreads: [
     {
       entityLink:
-        '<#E::table::sample_data.ecommerce_db.shopify.raw_customer::columns::comments::tags>',
+        '<#E::om::table::om::sample_data.ecommerce_db.shopify.raw_customer::om::columns::om::comments::om::tags>',
       count: 4,
-      entityField: 'columns::comments::tags',
+      entityField: 'columns::om::comments::om::tags',
     },
   ],
   entityFqn: 'sample_data.ecommerce_db.shopify.raw_customer',

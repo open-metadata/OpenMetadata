@@ -72,7 +72,7 @@ jest.mock('../../../common/PopOverCard/UserPopOverCard', () => {
 });
 
 const mockProps = {
-  about: '<#E::table::sample_data.e_commerce_db.shopify.dim_customer>',
+  about: '<#E::om::table::om::sample_data.e_commerce_db.shopify.dim_customer>',
   createdBy: 'admin',
   isEntityFeed: false,
   isAnnouncement: false,
@@ -81,7 +81,7 @@ const mockProps = {
     type: ThreadType.Conversation,
     href: 'http://localhost:8585/api/v1/feed/44e4ed8b-cc61-47dd-a69b-b0a5c0b61e48',
     threadTs: 1721995244668,
-    about: '<#E::databaseSchema::Glue.default.information_schema>',
+    about: '<#E::om::databaseSchema::om::Glue.default.information_schema>',
     entityRef: {
       id: '4151c69c-de97-4e5a-9900-18969980f9e8',
       type: 'databaseSchema',
@@ -176,7 +176,9 @@ describe('Test FeedCardHeaderV2 Component', () => {
   });
 
   it('should render header body information with UserPopOverCard if entityType User', () => {
-    render(<FeedCardHeaderV2 {...mockProps} about="<#E::user::admin>" />);
+    render(
+      <FeedCardHeaderV2 {...mockProps} about="<#E::om::user::om::admin>" />
+    );
 
     expect(screen.getByTestId('headerText')).toBeInTheDocument();
     expect(
@@ -187,7 +189,9 @@ describe('Test FeedCardHeaderV2 Component', () => {
   });
 
   it('should render header body information with UserPopOverCard if entityType Team', () => {
-    render(<FeedCardHeaderV2 {...mockProps} about="<#E::team::accounting>" />);
+    render(
+      <FeedCardHeaderV2 {...mockProps} about="<#E::om::team::om::accounting>" />
+    );
 
     expect(screen.getByTestId('headerText')).toBeInTheDocument();
     expect(

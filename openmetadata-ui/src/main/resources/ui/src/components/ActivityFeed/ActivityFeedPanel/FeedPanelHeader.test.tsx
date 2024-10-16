@@ -22,7 +22,7 @@ const mockFeedPanelHeaderProp = {
   noun: 'Conversations',
   onShowNewConversation: jest.fn(),
   entityLink:
-    '<#E::table::sample_data.ecommerce_db.shopify.dim_address::description>',
+    '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address::om::description>',
 };
 
 describe('Test FeedPanelHeader Component', () => {
@@ -87,7 +87,7 @@ describe('Test FeedPanelHeader Component', () => {
     const { container } = render(
       <FeedPanelHeader
         {...mockFeedPanelHeaderProp}
-        entityLink="<#E::testCase::sample_data.ecommerce_db.shopify.dim_address.address_id.unique_column_test>"
+        entityLink="<#E::om::testCase::om::sample_data.ecommerce_db.shopify.dim_address.address_id.unique_column_test>"
       />,
       {
         wrapper: MemoryRouter,

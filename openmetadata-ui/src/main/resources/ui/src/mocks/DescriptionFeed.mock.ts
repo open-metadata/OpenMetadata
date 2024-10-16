@@ -23,7 +23,7 @@ export const MOCK_DESCRIPTION_FEED_1: Thread = {
   type: ThreadType.Conversation,
   href: 'http://localhost:8585/api/v1/feed/1e20be19-d44f-420d-87ee-c963f1074ac3',
   threadTs: 1722237351340,
-  about: '<#E::table::Glue.default.information_schema.sales>',
+  about: '<#E::om::table::om::Glue.default.information_schema.sales>',
   entityRef: {
     id: '88c344aa-fa64-4345-9393-c35beeaa893a',
     type: 'table',
@@ -67,7 +67,7 @@ export const MOCK_DESCRIPTION_FEED_2: Thread = {
   href: 'http://localhost:8585/api/v1/feed/fb553937-ef9c-46bb-af1f-4d336fcb05cd',
   threadTs: 1722236662421,
   about:
-    '<#E::table::sample_data.ecommerce_db.shopify.cypress_version_table-400129>',
+    '<#E::om::table::om::sample_data.ecommerce_db.shopify.cypress_version_table-400129>',
   entityRef: {
     id: 'f17db291-8bdb-4234-abee-fd7ccfd35304',
     type: 'table',
@@ -107,7 +107,7 @@ export const MOCK_DESCRIPTION_FEED_3: Thread = {
   href: 'http://localhost:8585/api/v1/feed/77501bc8-302c-4c82-a466-086337ec9ad9',
   threadTs: 1722236662421,
   about:
-    '<#E::table::sample_data.ecommerce_db.shopify.cypress_version_table-400129>',
+    '<#E::om::table::om::sample_data.ecommerce_db.shopify.cypress_version_table-400129>',
   entityRef: {
     id: 'f17db291-8bdb-4234-abee-fd7ccfd35304',
     type: 'table',
@@ -147,7 +147,7 @@ export const MOCK_DESCRIPTION_FEED_4: Thread = {
   href: 'http://localhost:8585/api/v1/feed/2387533a-d594-4d89-9df5-89eba087a331',
   threadTs: 1722236662006,
   about:
-    '<#E::table::sample_data.ecommerce_db.shopify.cypress_version_table-400129>',
+    '<#E::om::table::om::sample_data.ecommerce_db.shopify.cypress_version_table-400129>',
   entityRef: {
     id: 'f17db291-8bdb-4234-abee-fd7ccfd35304',
     type: 'table',

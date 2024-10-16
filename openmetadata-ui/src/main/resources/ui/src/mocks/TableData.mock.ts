@@ -231,7 +231,7 @@ export const TEST_CASE = {
         href: 'http://localhost:8585/api/v1/testDefinitions/16b32e12-21c5-491c-919e-88748d9d5d67',
       },
       entityLink:
-        '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>',
+        '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address::om::columns::om::shop_id>',
       entityFQN: 'sample_data.ecommerce_db.shopify.dim_address.shop_id',
       parameterValues: [
         {

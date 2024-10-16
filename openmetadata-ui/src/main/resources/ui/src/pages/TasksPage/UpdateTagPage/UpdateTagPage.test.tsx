@@ -162,7 +162,7 @@ describe('UpdateTagPage', () => {
 
     expect(mockPostThread).toHaveBeenCalledWith({
       about:
-        '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::"address.street_name"::tags>',
+        '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_location::om::columns::om::"address.street_name"::om::tags>',
       from: undefined,
       message: 'Task message',
       taskDetails: {

@@ -30,7 +30,7 @@ export const TASK_FEED: Thread = {
   href: 'http://localhost:8585/api/v1/feed/8b5076bb-8284-46b0-b00d-5e43a184ba9b',
   threadTs: 1701686127533,
   about:
-    '<#E::table::sample_data.ecommerce_db.shopify."dim.shop"::columns::shop_id::tags>',
+    '<#E::om::table::om::sample_data.ecommerce_db.shopify."dim.shop"::om::columns::om::shop_id::om::tags>',
   createdBy: 'admin',
   updatedAt: 1701686127534,
   updatedBy: 'admin',

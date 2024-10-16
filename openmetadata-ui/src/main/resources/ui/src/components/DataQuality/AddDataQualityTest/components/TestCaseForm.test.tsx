@@ -180,7 +180,8 @@ describe('TestCaseForm', () => {
       computePassedFailedRowCount: undefined,
       description: undefined,
       displayName: 'dim_address_column_value_lengths_to_be_between_4B3B',
-      entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+      entityLink:
+        '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>',
       name: 'dim_address_column_value_lengths_to_be_between_4B3B',
       parameterValues: [],
       testDefinition: 'columnValueLengthsToBeBetween',

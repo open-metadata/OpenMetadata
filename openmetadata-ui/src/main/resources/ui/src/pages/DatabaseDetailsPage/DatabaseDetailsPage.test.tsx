@@ -96,22 +96,22 @@ const mockFeedCount = {
     {
       count: 3,
       entityLink:
-        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::columns::comments::tags>',
+        '<#E::om::table::om::sample_data.ecommerce_db.shopify.raw_order::om::columns::om::comments::om::tags>',
     },
     {
       count: 1,
       entityLink:
-        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::owner>',
+        '<#E::om::table::om::sample_data.ecommerce_db.shopify.raw_order::om::owner>',
     },
     {
       count: 1,
       entityLink:
-        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::tags>',
+        '<#E::om::table::om::sample_data.ecommerce_db.shopify.raw_order::om::tags>',
     },
     {
       count: 1,
       entityLink:
-        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::description>',
+        '<#E::om::table::om::sample_data.ecommerce_db.shopify.raw_order::om::description>',
     },
   ],
 };

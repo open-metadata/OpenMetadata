@@ -36,7 +36,7 @@ export const mockFeedData = [
     href: 'http://localhost:8585/api/v1/feed/52d52eb1-b990-497f-bf80-47e52c106f85',
     threadTs: 1646631348958,
     about:
-      '<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comments::description>',
+      '<#E::om::table::om::bigquery_gcp.shopify.raw_product_catalog::om::columns::om::comments::om::description>',
     entityId: '96e80f92-b8ce-456c-8f3c-ee7855e76f43',
     createdBy: 'aaron_johnson0',
     updatedAt: 1646631348959,
@@ -52,7 +52,7 @@ export const mockFeedData = [
     href: 'http://localhost:8585/api/v1/feed/60df2514-3bea-4337-a5a2-f0fe5c65237f',
     threadTs: 1646631340215,
     about:
-      '<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comments::description>',
+      '<#E::om::table::om::bigquery_gcp.shopify.raw_product_catalog::om::columns::om::comments::om::description>',
     entityId: '96e80f92-b8ce-456c-8f3c-ee7855e76f43',
     createdBy: 'aaron_johnson0',
     updatedAt: 1646631340215,

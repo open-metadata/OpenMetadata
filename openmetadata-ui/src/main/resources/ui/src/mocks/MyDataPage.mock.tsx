@@ -143,7 +143,7 @@ export const mockAnnouncementsData: Array<Thread> = [
   {
     id: '444c10b8-e0bb-4e0b-9286-1eeaa2efbf95',
     type: ThreadType.Announcement,
-    about: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    about: '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>',
     message: 'Test Announcement',
     announcement: {
       description: '',
