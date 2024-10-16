@@ -13,7 +13,7 @@
 
 export const mockCommonEntityInfo = [
   {
-    name: 'label.owner',
+    name: 'label.owner-plural',
     value: 'No Owner',
     url: '',
     isLink: false,
