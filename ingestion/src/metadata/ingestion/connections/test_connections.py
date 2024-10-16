@@ -210,7 +210,7 @@ def _test_connection_steps_during_ingestion(
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"{step.name}-{err}")
+            logger.error(f"{step.name}-{err}")
             test_connection_result.steps.append(
                 TestConnectionStepResult(
                     name=step.name,
@@ -257,7 +257,7 @@ def test_connection_steps(
     service_type: str,
     test_fn: dict,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> TestConnectionResult:
     """
     Test the connection steps with a given timeout
@@ -317,7 +317,7 @@ def test_connection_db_common(
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -367,7 +367,7 @@ def test_connection_db_schema_sources(
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

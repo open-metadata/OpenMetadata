@@ -27,6 +27,7 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: SigmaConnection) -> SigmaApiClient:
@@ -45,7 +46,7 @@ def test_connection(
     client: SigmaApiClient,
     service_connection: SigmaConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

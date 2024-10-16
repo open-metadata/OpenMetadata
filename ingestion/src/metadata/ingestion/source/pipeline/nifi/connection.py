@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.nifiConnecti
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.nifi.client import NifiClient
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: NifiConnection) -> NifiClient:
@@ -53,7 +54,7 @@ def test_connection(
     client: NifiClient,
     service_connection: NifiConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

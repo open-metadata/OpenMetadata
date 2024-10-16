@@ -27,6 +27,7 @@ from metadata.ingestion.source.dashboard.powerbi.client import (
     PowerBiClient,
 )
 from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: PowerBIConnection) -> PowerBiApiClient:
@@ -46,7 +47,7 @@ def test_connection(
     client: PowerBiClient,
     service_connection: PowerBIConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

@@ -12,7 +12,6 @@
 """
 Source connection handler
 """
-
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -27,6 +26,7 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.lightdash.client import LightdashApiClient
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -49,7 +49,7 @@ def test_connection(
     client: LightdashApiClient,
     service_connection: LightdashConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

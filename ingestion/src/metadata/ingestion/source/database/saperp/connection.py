@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.services.connections.database.sapErpConnec
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.saperp.client import SapErpClient
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -37,7 +38,7 @@ def test_connection(
     client: SapErpClient,
     service_connection: SapErpConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     test_fn = {
         "GetTables": client.test_table_api,
