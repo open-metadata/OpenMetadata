@@ -70,9 +70,9 @@ const IngestionOptions = () => {
         },
         {
             label: 'Data Quality',
-            description: t('label.data-quailty-ingestion', "Data quality ingestion"),
+            description: t('label.data-quality-ingestion', "Data quality ingestion"),
             isProtected: false,
-            key: `${ServiceCategory.DATABASE_SERVICES}.dbt`,
+            key: `${ServiceCategory.DATABASE_SERVICES}.dataQuality`,
             icon: IngestionIcon,
         },
     ];

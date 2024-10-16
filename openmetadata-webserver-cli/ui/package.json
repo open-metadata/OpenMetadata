@@ -62,7 +62,7 @@
     "recharts": "^2.12.7",
     "showdown": "^2.1.0",
     "ts-loader": "^9.5.1",
-    "turndown": "^7.1.2",
+    "turndown": "^7.2.0",
     "url-loader": "^4.1.1",
     "web-vitals": "^4.2.3",
     "zustand": "^4.5.0"
@@ -108,6 +108,8 @@
     "@types/react-dom": "^17.0.11",
     "@types/react-lazylog": "^4.5.4",
     "@types/react-router-dom": "^5.3.3",
+    "@types/showdown": "^2.0.6",
+    "@types/turndown": "^5.0.5",
     "copy-webpack-plugin": "^12.0.2",
     "fork-ts-checker-webpack-plugin": "9.0.2",
     "less-loader": "^11.0.0",

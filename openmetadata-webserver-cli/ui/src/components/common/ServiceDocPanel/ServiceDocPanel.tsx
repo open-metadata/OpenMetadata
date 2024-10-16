@@ -93,8 +93,6 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         fallbackFilePath = `${SupportedLocales.English}/${serviceType}/workflows/${workflowType}.md`;
       }
 
-      console.log('markdown path', filePath);
-
       const [translation, fallbackTranslation] = await Promise.allSettled([
         fetchMarkdownFile(filePath),
         isEnglishLanguage
@@ -104,13 +102,12 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
 
       if (translation.status === 'fulfilled') {
         response = translation.value;
+        console.log(response);
       }
 
       if (!isEnglishLanguage && fallbackTranslation.status === 'fulfilled') {
         response = fallbackTranslation.value;
       }
-
-      console.log(response);
 
       setMarkdownContent(response);
     } catch (error) {

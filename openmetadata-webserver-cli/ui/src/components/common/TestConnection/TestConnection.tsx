@@ -39,6 +39,7 @@ import { TestConnectionProps, TestStatus } from "./TestConnection.interface";
 import TestConnectionModal from "./TestConnectionModal/TestConnectionModal";
 import axios from "axios";
 import { ServiceType } from "../../../generated/entity/services/serviceType";
+import { SettledStatus } from "../../../enums/Axios.enum";
 
 const TestConnection: FC<TestConnectionProps> = ({
   isTestingDisabled,
@@ -52,17 +53,46 @@ const TestConnection: FC<TestConnectionProps> = ({
   const { t } = useTranslation();
 
   // local state
-  const [isTestingConnection] = useState<boolean>(false);
+  const [isTestingConnection, setIsTestingConnection] = useState<boolean>(false);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
   const [message, setMessage] = useState<string>(TEST_CONNECTION_TESTING_MESSAGE);
 
-  const [testConnectionStep] = useState<TestConnectionStep[]>([]);
+  const [testConnectionStep] = useState<TestConnectionStep[]>([
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
+      "errorMessage": "Failed to connect to mysql, please validate the credentials",
+      "mandatory": true,
+      "shortCircuit": true
+    },
+    {
+      "name": "GetSchemas",
+      "description": "List all the schemas available to the user.",
+      "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",
+      "mandatory": true,
+      "shortCircuit": false
+    },
+    {
+      "name": "GetTables",
+      "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+      "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege to fetch tables.",
+      "mandatory": true,
+      "shortCircuit": false
+    },
+    {
+      "name": "GetViews",
+      "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+      "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
+      "mandatory": false,
+      "shortCircuit": false
+    }
+  ]);
 
-  const [testConnectionStepResult] = useState<TestConnectionStepResult[]>([]);
+  const [testConnectionStepResult, setTestConnectionStepResult] = useState<TestConnectionStepResult[]>([]);
 
   const [currentWorkflow] = useState<Workflow>();
-  const [testStatus] = useState<TestStatus>();
+  const [testStatus, setTestStatus] = useState<TestStatus>();
 
   const [progress, setProgress] = useState<number>(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
 
@@ -85,6 +115,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   // handlers
   const testConnection = async () => {
     setProgress(0);
+    setIsTestingConnection(true);
     setDialogOpen(true);
     try {
       const payload = {
@@ -94,12 +125,18 @@ const TestConnection: FC<TestConnectionProps> = ({
         serviceName,
       };
       const response = await axios.post('/api/test', payload);
+      const { data: { status, steps } } = response.data;
       setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
-      console.log(response);
-      setProgress(100);
+      setTestConnectionStepResult(steps);
+      // TODO: The backend is currently returning status = running.
+      // Since it's a sync call it should return success or failure.
+      setTestStatus(StatusType.Successful);
     } catch (error) {
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
+      setTestStatus(StatusType.Failed);
     }
+    setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+    setIsTestingConnection(false)
   };
 
   const handleTestConnection = () => {

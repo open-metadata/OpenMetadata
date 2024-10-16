@@ -189,8 +189,6 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       }
     }
 
-    console.log("Form ref", formRef.current?.state?.formData);
-
     return (
       <FormBuilder
         cancelText={cancelText}

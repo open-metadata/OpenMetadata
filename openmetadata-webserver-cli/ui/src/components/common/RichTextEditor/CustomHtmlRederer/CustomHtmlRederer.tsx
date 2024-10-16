@@ -32,7 +32,7 @@ import {
   markdownTextAndIdRegex,
   MARKDOWN_MATCH_ID,
 } from '../../../../constants/regex.constants';
-// import { MarkdownToHTMLConverter } from '../../../../utils/FeedUtils';
+import { MarkdownToHTMLConverter } from '../../../../utils/MarkdownHTMLUtils';
 import {
   HTMLToken,
   OpenTagToken,
@@ -43,8 +43,7 @@ const getHTMLTokens = (node: MdNode): HTMLToken[] => {
   const blockNode = node as CodeBlockMdNode;
 
   // Parse inline markdown to html string
-  // const htmlContent = MarkdownToHTMLConverter.makeHtml(blockNode.literal ?? '');
-  const htmlContent = "## Hello";
+  const htmlContent = MarkdownToHTMLConverter.makeHtml(blockNode.literal ?? '');
 
   return [
     {
@@ -229,7 +228,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
     }
 
     // Parse inline markdown to html string
-    const htmlContent = "";//MarkdownToHTMLConverter.makeHtml(literal);
+    const htmlContent = MarkdownToHTMLConverter.makeHtml(literal);
 
     return [
       {

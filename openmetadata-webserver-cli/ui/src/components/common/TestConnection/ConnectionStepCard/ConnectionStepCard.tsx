@@ -40,8 +40,8 @@ const ConnectionStepCard = ({
   isTestingConnection,
 }: ConnectionStepCardProp) => {
   const { t } = useTranslation();
-  const isSkipped =
-    isUndefined(testConnectionStepResult) && !isTestingConnection;
+  const isSkipped = false;
+  // isUndefined(testConnectionStepResult) && !isTestingConnection;
   const hasPassed = !isSkipped && testConnectionStepResult?.passed;
   const success = hasPassed && !isTestingConnection;
   const failed = !isSkipped && !isTestingConnection && !hasPassed;

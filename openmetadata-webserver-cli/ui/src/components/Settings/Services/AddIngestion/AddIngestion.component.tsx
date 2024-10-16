@@ -79,8 +79,6 @@ const AddIngestion = ({
     ? getScheduleOptionsFromSchedules(pipelineSchedules)
     : undefined;
 
-  console.log(getIngestionName(serviceData.name, pipelineType));
-
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
     () => ({
@@ -89,6 +87,7 @@ const AddIngestion = ({
       displayName:
         getIngestionName(serviceData.name, pipelineType),
       enableDebugLog: true,
+      pipelineType,
     })
   );
 
@@ -139,8 +138,8 @@ const AddIngestion = ({
 
   const handleNext = (step: number) => {
     if (step > 1) {
-
-      axios.post('/serviceConnection', workflowData)
+      console.log("Saving data", workflowData);
+      axios.post('/sourceConfig', workflowData)
         .then(response => {
           console.log('Source configuraiton saved:', response.data);
           history.push("/download");
