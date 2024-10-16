@@ -157,7 +157,7 @@ def test_partitioned_where_clause(input, expected):
         testDefinition=EntityReference(id=uuid4(), type="testDefinition"),
         testSuite=EntityReference(id=uuid4(), type="testSuite"),
         entityLink=EntityLink(
-            root="<#E:open-metadata:table:open-metadata:POSTGRES_SERVICE.dvdrental.public.customer>"
+            root="<#E::om::table::om::POSTGRES_SERVICE.dvdrental.public.customer>"
         ),
         parameterValues=[
             TestCaseParameterValue(

@@ -141,7 +141,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         cls.metadata.create_or_update(
             CreateTestCaseRequest(
                 name="testCaseForIntegration",
-                entityLink=f"<#E:open-metadata:table:open-metadata:{cls.table_with_suite.fullyQualifiedName.root}>",
+                entityLink=f"<#E::om::table::om::{cls.table_with_suite.fullyQualifiedName.root}>",
                 testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition="tableRowCountToEqual",
                 parameterValues=[TestCaseParameterValue(name="value", value="10")],
