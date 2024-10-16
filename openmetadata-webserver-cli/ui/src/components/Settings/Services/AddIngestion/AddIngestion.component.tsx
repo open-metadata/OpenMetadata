@@ -140,7 +140,7 @@ const AddIngestion = ({
   const handleNext = (step: number) => {
     if (step > 1) {
 
-      axios.post('/serviceConnection', workflowData)
+      axios.post('/sourceConfig', workflowData)
         .then(response => {
           console.log('Source configuraiton saved:', response.data);
           history.push("/download");
