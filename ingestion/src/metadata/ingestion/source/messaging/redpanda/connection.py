@@ -28,6 +28,7 @@ from metadata.ingestion.source.messaging.kafka.connection import (
 from metadata.ingestion.source.messaging.kafka.connection import (
     test_connection as test_kafka_connection,
 )
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -45,6 +46,7 @@ def test_connection(
     client: KafkaClient,
     service_connection: RedpandaConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -56,4 +58,5 @@ def test_connection(
         client=client,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

@@ -27,6 +27,7 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.redash.client import RedashApiClient
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: RedashConnection) -> RedashApiClient:
@@ -45,6 +46,7 @@ def test_connection(
     client: RedashApiClient,
     service_connection: RedashConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -58,4 +60,5 @@ def test_connection(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )
