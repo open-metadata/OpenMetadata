@@ -482,7 +482,8 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       Fields fieldsParam = new Fields(Set.of("customProperties"));
       Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
       SchemaFieldExtractor extractor = new SchemaFieldExtractor();
-      List<SchemaFieldExtractor.FieldDefinition> fieldsList = extractor.extractFields(typeEntity, entityType);
+      List<SchemaFieldExtractor.FieldDefinition> fieldsList =
+          extractor.extractFields(typeEntity, entityType);
       return Response.ok(fieldsList).type(MediaType.APPLICATION_JSON).build();
 
     } catch (Exception e) {
@@ -500,11 +501,12 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @GET
   @Path("/customProperties")
   @Produces(MediaType.APPLICATION_JSON)
-  public Response getAllCustomPropertiesByEntityType(@Context UriInfo uriInfo,
-                                                      @Context SecurityContext securityContext) {
+  public Response getAllCustomPropertiesByEntityType(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     try {
       SchemaFieldExtractor extractor = new SchemaFieldExtractor();
-      Map<String, List<SchemaFieldExtractor.FieldDefinition>> customPropertiesMap = extractor.extractAllCustomProperties(uriInfo, repository);
+      Map<String, List<SchemaFieldExtractor.FieldDefinition>> customPropertiesMap =
+          extractor.extractAllCustomProperties(uriInfo, repository);
       return Response.ok(customPropertiesMap).build();
     } catch (Exception e) {
       LOG.error("Error fetching custom properties: {}", e.getMessage(), e);
