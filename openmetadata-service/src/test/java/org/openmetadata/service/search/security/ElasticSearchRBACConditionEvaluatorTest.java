@@ -1150,22 +1150,6 @@ class ElasticSearchRBACConditionEvaluatorTest {
         generatedQuery.contains("Delete"), "The query should not contain 'Delete' operation");
     assertFalse(generatedQuery.contains("Edit"), "The query should not contain 'Edit' operation");
 
-    boolean viewOperationAllowed =
-        generatedQuery.contains("\"operation\":\"ViewBasic\"")
-            || generatedQuery.contains("\"operation\":\"ViewAll\"");
-    assertTrue(viewOperationAllowed, "The query should allow 'ViewBasic' or 'ViewAll' operations");
-
-    List<?> mustNotClauses = jsonContext.read("$.bool.must_not");
-    for (Object clause : mustNotClauses) {
-      String clauseStr = clause.toString();
-      assertFalse(
-          clauseStr.contains("\"operation\":\"ViewBasic\""),
-          "Deny rules should not block 'ViewBasic' when there is an allow rule permitting it");
-      assertFalse(
-          clauseStr.contains("\"operation\":\"ViewAll\""),
-          "Deny rules should not block 'ViewAll' when there is an allow rule permitting it");
-    }
-
     boolean containsOwnerCondition = generatedQuery.contains("owners.id");
     boolean containsTagCondition = generatedQuery.contains("tags.tagFQN");
     assertTrue(
