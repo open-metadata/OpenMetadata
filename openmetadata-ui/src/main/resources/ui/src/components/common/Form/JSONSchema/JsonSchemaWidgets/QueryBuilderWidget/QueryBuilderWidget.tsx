@@ -14,7 +14,7 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import { WidgetProps } from '@rjsf/utils';
 import { Alert, Button, Col, Typography } from 'antd';
 import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
+import { debounce, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -70,6 +70,11 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     []
   );
 
+  const debouncedFetchEntityCount = useMemo(
+    () => debounce(fetchEntityCount, 300),
+    [fetchEntityCount]
+  );
+
   const queryURL = useMemo(() => {
     const queryFilterString = !isEmpty(treeInternal)
       ? Qs.stringify({ queryFilter: JSON.stringify(treeInternal) })
@@ -87,7 +92,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         query: data,
       };
       if (data) {
-        fetchEntityCount(qFilter);
+        debouncedFetchEntityCount(qFilter);
       }
 
       onChange(JSON.stringify(qFilter));
