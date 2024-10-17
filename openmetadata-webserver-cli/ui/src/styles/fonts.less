@@ -1,0 +1,162 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('./variables.less');
+
+// font family
+pre {
+  font-family: 'Source Code Pro', sans-serif;
+}
+
+//font weight
+.font-thin {
+  font-weight: 300;
+}
+.font-normal {
+  font-weight: 400;
+}
+.font-medium {
+  font-weight: 500;
+}
+.font-semibold {
+  font-weight: 600;
+}
+.font-bold {
+  font-weight: 700;
+}
+
+// font size
+.text-xss {
+  font-size: 10px;
+}
+.text-xs {
+  font-size: 12px;
+  line-height: 1rem /* 16px */;
+}
+.text-lg {
+  font-size: 18px;
+}
+.text-sm {
+  font-size: 14px;
+  line-height: 1rem /* 16px */;
+}
+.text-md {
+  font-size: 16px;
+}
+.text-base {
+  font-size: 1rem /* 16px */;
+  line-height: 1.5rem /* 24px */;
+}
+.text-xl {
+  font-size: 1.25rem /* 20px */;
+  line-height: 1.75rem /* 28px */;
+}
+
+.text-2xl {
+  font-size: 1.5rem /* 24px */;
+  line-height: 2rem /* 32px */;
+}
+
+.text-3xl {
+  font-size: 1.875rem /* 24px */;
+  line-height: 2.5rem /* 32px */;
+}
+
+.text-5xl {
+  font-size: 3rem /* 48px */;
+  line-height: 3rem /* 48px */;
+}
+
+// font color
+.text-base-color {
+  color: @text-color;
+}
+
+.text-primary {
+  color: @primary-color !important;
+  &:hover {
+    color: @primary-color;
+  }
+}
+
+.text-danger {
+  color: @error-color;
+}
+
+.text-inherit {
+  font-size: inherit;
+}
+.text-color-inherit {
+  color: inherit;
+}
+.error-text {
+  color: @error-color;
+}
+.text-white {
+  color: @white;
+}
+.text-black {
+  color: @black;
+}
+.text-grey-muted {
+  color: @text-grey-muted;
+}
+.text-grey-3 {
+  color: @grey-3;
+}
+.text-grey-body {
+  color: @text-color;
+}
+.text-link-color {
+  color: @primary-color;
+}
+.text-gray-400 {
+  color: @grey-7;
+}
+.text-body {
+  color: @text-color;
+}
+.text-hover-body {
+  &:hover {
+    color: @text-color;
+  }
+}
+
+.text-success {
+  color: @success-color;
+}
+
+.text-failure {
+  color: @failed-color;
+}
+
+.text-warning-7 {
+  color: @yellow-7;
+}
+
+a.ant-typography,
+.ant-typography a {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 21px;
+}
+
+// font style
+.font-italic {
+  font-style: italic;
+}
+
+// line height
+.line-height-16 {
+  line-height: 16px;
+}

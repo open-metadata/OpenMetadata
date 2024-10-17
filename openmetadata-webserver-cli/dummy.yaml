@@ -1,0 +1,35 @@
+source:
+  type: mysql
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: Mysql
+      username: <username>
+      authType:
+        password: <password>
+      authType:
+        awsConfig:
+          awsAccessKeyId: access key id
+          awsSecretAccessKey: access secret key
+          awsRegion: aws region name
+      hostPort: <hostPort>
+      databaseSchema: schema
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      markDeletedTables: true
+      markDeletedStoredProcedures: true
+      includeTables: true
+      includeViews: true
+
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: INFO  # DEBUG, INFO, WARNING or ERROR
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "{bot_jwt_token}"
+    storeServiceConnection: true  # false

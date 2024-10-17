@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools~=70.3.0"]
+build-backend = "setuptools.build_meta"
+
+# We will keep handling dependencies in setup.py
+# since it helps us organize and isolate version management
+[project]
+name = "openmetadata_webserver"
+version = "1.6.0.0.dev0"
+readme = "README.md"
+authors = [
+    {name = "OpenMetadata Committers"}
+]
+license = {file = "LICENSE"}
+description = "Local webserver to test the connection and prepare YAML files for external ingestion"
+requires-python = ">=3.8"
+dependencies = [
+    "Flask==2.2.5",
+    "Flask-Cors==5.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black==22.3.0",
+    "pytest",
+    "pylint",
+    "pytest-cov",
+    "isort",
+    "pycln",
+]
+
+[project.urls]
+Homepage = "https://open-metadata.org/"
+Documentation = "https://docs.open-metadata.org/"
+Source = "https://github.com/open-metadata/OpenMetadata"
+
+
+[tool.setuptools.packages.find]
+include = ["webserver.*", "webserver"]
+
+#[tool.setuptools.package-data]
+#"openmetadata_managed_apis" = ["views/templates/rest_api/index.html", "resources/dag_runner.j2"]
+
+[project.scripts]
+local-metadata = "webserver.main:run"
