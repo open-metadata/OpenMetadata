@@ -78,23 +78,24 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
     config: OpenMetadataApplicationConfig
     runner: Optional[AppRunner]
 
-    def __init__(self, config_dict: dict):
+    def __init__(self, config: OpenMetadataApplicationConfig):
         self.runner = None  # Will be passed in post-init
-        # TODO: Create a parse_gracefully method
-        self.config = OpenMetadataApplicationConfig.model_validate(config_dict)
+        self.config = config
 
         # Applications are associated to the OpenMetadata Service
         self.service_type: ServiceType = ServiceType.Metadata
 
         super().__init__(
             config=self.config,
-            workflow_config=self.workflow_config,
+            workflow_config=config.workflowConfig,
             service_type=self.service_type,
         )
 
     @classmethod
     def create(cls, config_dict: dict):
-        return cls(config_dict)
+        # TODO: Create a parse_gracefully method
+        config = OpenMetadataApplicationConfig.model_validate(config_dict)
+        return cls(config)
 
     def post_init(self) -> None:
         """
