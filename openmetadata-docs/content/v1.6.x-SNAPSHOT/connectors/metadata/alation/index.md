@@ -122,9 +122,9 @@ Choose either postgres or mysql connection depending on the db:
 
 **ingestDatasources**: Specifies if databases, schemas and tables should be included while ingesting. By default is set to `true`.
 
-**ingestDomains**: Specifies if hidden domains and subdomains should be included while ingesting. By default is set to `true`.
+**ingestDomains**: Specifies if domains and subdomains should be included while ingesting. By default is set to `true`.
 
-**ingestDashboards**: Specifies if hidden BI sources and dashboards should be included while ingesting. By default is set to `true`.
+**ingestDashboards**: Specifies if BI sources and dashboards should be included while ingesting. By default is set to `true`.
 
 **alationTagClassificationName**: Specify the classification name under which the tags from alation will be created in OpenMetadata. By default it is set to `alationTags`.
 
