@@ -1,9 +1,15 @@
 package org.openmetadata.service.util;
 
 import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,35 +25,90 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.exception.SchemaProcessingException;
+import org.openmetadata.service.jdbi3.TypeRepository;
+
+import javax.ws.rs.core.UriInfo;
 
 @Slf4j
 public class SchemaFieldExtractor {
-  private final Type typeEntity;
-  private final String entityType;
-  private final String schemaPath;
-  private final String schemaUri;
-  private final SchemaClient schemaClient;
 
-  public SchemaFieldExtractor(Type typeEntity, String entityType) {
-    this.typeEntity = typeEntity;
-    this.entityType = entityType;
-    this.schemaPath = determineSchemaPath(entityType);
-    this.schemaUri = "classpath:///" + schemaPath;
-    this.schemaClient = new CustomSchemaClient(schemaUri);
+  public SchemaFieldExtractor() {
+
   }
 
-  public List<FieldDefinition> extractFields() throws SchemaProcessingException {
+  public List<FieldDefinition> extractFields(Type typeEntity, String entityType) throws SchemaProcessingException {
+    String schemaPath = determineSchemaPath(entityType);
+    String schemaUri = "classpath:///" + schemaPath;
+    SchemaClient schemaClient = new CustomSchemaClient(schemaUri);
     Map<String, String> fieldTypesMap = new LinkedHashMap<>();
     Deque<Schema> processingStack = new ArrayDeque<>();
     Set<String> processedFields = new HashSet<>();
-    Schema mainSchema = loadMainSchema();
+    Schema mainSchema = loadMainSchema(schemaPath, entityType, schemaUri, schemaClient);
     extractFieldsFromSchema(mainSchema, "", fieldTypesMap, processingStack, processedFields);
-    addCustomProperties(fieldTypesMap, processingStack, processedFields);
+    addCustomProperties(typeEntity, schemaUri, schemaClient, fieldTypesMap, processingStack, processedFields);
     return convertMapToFieldList(fieldTypesMap);
   }
 
-  private Schema loadMainSchema() throws SchemaProcessingException {
+  public Map<String, List<FieldDefinition>> extractAllCustomProperties(UriInfo uriInfo, TypeRepository repository) {
+    Map<String, List<FieldDefinition>> entityTypeToFields = new HashMap<>();
+    List<String> entityTypes = getAllEntityTypes();
+
+    for (String entityType : entityTypes) {
+        String schemaPath = determineSchemaPath(entityType);
+        String schemaUri = "classpath:///" + schemaPath;
+        SchemaClient schemaClient = new CustomSchemaClient(schemaUri);
+        EntityUtil.Fields fieldsParam = new EntityUtil.Fields(Set.of("customProperties"));
+        Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, Include.ALL, false);
+        Map<String, String> fieldTypesMap = new LinkedHashMap<>();
+        Set<String> processedFields = new HashSet<>();
+        Deque<Schema> processingStack = new ArrayDeque<>();
+        addCustomProperties(typeEntity, schemaUri, schemaClient, fieldTypesMap, processingStack, processedFields);
+        entityTypeToFields.put(entityType, convertMapToFieldList(fieldTypesMap));
+    }
+
+    return entityTypeToFields;
+  }
+
+  public static List<String> getAllEntityTypes() {
+    List<String> entityTypes = new ArrayList<>();
+    try {
+      String schemaDirectory = "json/schema/entity/";
+      Enumeration<URL> resources = SchemaFieldExtractor.class.getClassLoader().getResources(schemaDirectory);
+      while (resources.hasMoreElements()) {
+        URL resourceUrl = resources.nextElement();
+        Path schemaDirPath = Paths.get(resourceUrl.toURI());
+
+        Files.walk(schemaDirPath)
+            .filter(Files::isRegularFile)
+            .filter(path -> path.toString().endsWith(".json"))
+            .forEach(path -> {
+              try (InputStream is = Files.newInputStream(path)) {
+                JSONObject jsonSchema = new JSONObject(new JSONTokener(is));
+                // Check if the schema is an entity type
+                if (isEntityType(jsonSchema)) {
+                  String fileName = path.getFileName().toString();
+                  String entityType = fileName.substring(0, fileName.length() - 5); // Remove ".json"
+                  entityTypes.add(entityType);
+                  LOG.debug("Found entity type: {}", entityType);
+                }
+              } catch (Exception e) {
+                LOG.error("Error reading schema file {}: {}", path, e.getMessage());
+              }
+            });
+      }
+    } catch (Exception e) {
+      LOG.error("Error scanning schema directory: {}", e.getMessage());
+    }
+    return entityTypes;
+  }
+
+  private static boolean isEntityType(JSONObject jsonSchema) {
+    return "@om-entity-type".equals(jsonSchema.optString("$comment"));
+  }
+
+  private Schema loadMainSchema(String schemaPath, String  entityType, String schemaUri, SchemaClient schemaClient) throws SchemaProcessingException {
     InputStream schemaInputStream = getClass().getClassLoader().getResourceAsStream(schemaPath);
     if (schemaInputStream == null) {
       LOG.error("Schema file not found at path: {}", schemaPath);
@@ -118,7 +179,6 @@ public class SchemaFieldExtractor {
             fieldTypesMap.putIfAbsent(fullFieldName, fieldType);
             processedFields.add(fullFieldName);
             LOG.debug("Added field '{}', Type: '{}'", fullFieldName, fieldType);
-
             // Recursively process nested objects or arrays
             if (fieldSchema instanceof ObjectSchema || fieldSchema instanceof ArraySchema) {
               extractFieldsFromSchema(
@@ -213,6 +273,9 @@ public class SchemaFieldExtractor {
   }
 
   private void addCustomProperties(
+      Type typeEntity,
+      String schemaUri,
+      SchemaClient schemaClient,
       Map<String, String> fieldTypesMap,
       Deque<Schema> processingStack,
       Set<String> processedFields) {
@@ -233,7 +296,7 @@ public class SchemaFieldExtractor {
         processedFields.add(fullFieldName);
         LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
 
-        Schema itemSchema = resolveSchemaByType("entityReference");
+        Schema itemSchema = resolveSchemaByType("entityReference", schemaUri, schemaClient);
         if (itemSchema != null) {
           extractFieldsFromSchema(
               itemSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
@@ -248,7 +311,7 @@ public class SchemaFieldExtractor {
         processedFields.add(fullFieldName);
         LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
 
-        Schema referredSchema = resolveSchemaByType("entityReference");
+        Schema referredSchema = resolveSchemaByType("entityReference", schemaUri, schemaClient);
         if (referredSchema != null) {
           extractFieldsFromSchema(
               referredSchema, fullFieldName, fieldTypesMap, processingStack, processedFields);
@@ -281,17 +344,17 @@ public class SchemaFieldExtractor {
     return "entityReference".equalsIgnoreCase(propertyType);
   }
 
-  private Schema resolveSchemaByType(String typeName) {
+  private Schema resolveSchemaByType(String typeName, String schemaUri, SchemaClient schemaClient) {
     String referencePath = determineReferencePath(typeName);
     try {
-      return loadSchema(referencePath);
+      return loadSchema(referencePath, schemaUri, schemaClient);
     } catch (SchemaProcessingException e) {
       LOG.error("Failed to load schema for type '{}': {}", typeName, e.getMessage());
       return null;
     }
   }
 
-  private Schema loadSchema(String schemaPath) throws SchemaProcessingException {
+  private Schema loadSchema(String schemaPath, String schemaUri, SchemaClient schemaClient) throws SchemaProcessingException {
     InputStream schemaInputStream = getClass().getClassLoader().getResourceAsStream(schemaPath);
     if (schemaInputStream == null) {
       LOG.error("Schema file not found at path: {}", schemaPath);
