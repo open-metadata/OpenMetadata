@@ -27,6 +27,7 @@ import { FieldErrorTemplate } from '../Form/JSONSchema/JSONSchemaTemplate/FieldE
 import { ObjectFieldTemplate } from '../Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
 import AsyncSelectWidget from '../Form/JSONSchema/JsonSchemaWidgets/AsyncSelectWidget';
 import PasswordWidget from '../Form/JSONSchema/JsonSchemaWidgets/PasswordWidget';
+import QueryBuilderWidget from '../Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import SelectWidget from '../Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
 import Loader from '../Loader/Loader';
 
@@ -70,6 +71,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
     const widgets = {
       PasswordWidget: PasswordWidget,
       autoComplete: AsyncSelectWidget,
+      queryBuilder: QueryBuilderWidget,
       ...(useSelectWidget && { SelectWidget: SelectWidget }),
     };
 
