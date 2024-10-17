@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -10,6 +11,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.interface';
+import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { getDataQualityReport } from './testAPI';
 
@@ -73,7 +76,7 @@ export const fetchCountOfIncidentStatusTypeByDays = (
               range: {
                 // Todo: Update the timestamp range
                 timestamp: {
-                  lte: 1729089975000,
+                  lte: 1729148365000,
                   gte: 1727784000000,
                 },
               },
@@ -85,5 +88,66 @@ export const fetchCountOfIncidentStatusTypeByDays = (
     index: 'testCaseResolutionStatus',
     aggregationQuery:
       'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=stateId',
+  });
+};
+
+export const fetchIncidentTimeMetrics = (type: IncidentTimeMetricsType) => {
+  return getDataQualityReport({
+    q: JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            {
+              range: {
+                // Todo: Update the timestamp range
+                timestamp: {
+                  lte: 1729148365000,
+                  gte: 1727784000000,
+                },
+              },
+            },
+            {
+              nested: {
+                path: 'metrics',
+                query: {
+                  bool: {
+                    must: [{ match: { 'metrics.name.keyword': type } }],
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+    index: 'testCaseResolutionStatus',
+    aggregationQuery:
+      'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=metrics:aggType=nested:path=metrics,bucketName=byName:aggType=terms:field=metrics.name.keyword,bucketName=avgValue:aggType=avg:field=metrics.value',
+  });
+};
+
+export const fetchTestCaseStatusMetricsByDays = (status: TestCaseStatus) => {
+  return getDataQualityReport({
+    q: JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            { term: { testCaseStatus: status } },
+            {
+              range: {
+                // Todo: Update the timestamp range
+                timestamp: {
+                  lte: 1729148365000,
+                  gte: 1727784000000,
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+    index: 'testCaseResult',
+    aggregationQuery:
+      'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
   });
 };

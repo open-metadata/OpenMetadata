@@ -16,6 +16,12 @@ import { TestCaseType } from '../../rest/testAPI';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+export enum IncidentTimeMetricsType {
+  TIME_TO_RESPONSE = 'timeToResponse',
+  TIME_TO_RESOLUTION = 'timeToResolution',
+}
+
 export type TestSuiteSearchParams = {
   searchValue: string;
   status: string;
@@ -38,5 +44,11 @@ export type TestCaseSearchParams = {
 export interface IncidentTypeAreaChartWidgetProps {
   title: string;
   incidentStatusType: TestCaseResolutionStatusTypes;
+  name: string;
+}
+
+export interface IncidentTimeChartWidgetProps {
+  title: string;
+  incidentMetricType: IncidentTimeMetricsType;
   name: string;
 }

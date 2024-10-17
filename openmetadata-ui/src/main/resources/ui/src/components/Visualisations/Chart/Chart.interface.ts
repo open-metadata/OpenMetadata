@@ -45,6 +45,7 @@ export interface CustomAreaChartProps {
   data: CustomAreaChartData[];
   name: string;
   height?: number;
+  valueFormatter?: (value: number) => string;
   colorScheme?: {
     gradientStartColor?: string;
     gradientEndColor?: string;

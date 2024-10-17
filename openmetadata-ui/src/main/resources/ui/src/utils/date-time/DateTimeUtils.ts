@@ -212,3 +212,40 @@ export const calculateInterval = (
     return 'Invalid interval';
   }
 };
+
+const intervals: [string, number][] = [
+  ['Y', 933120000000], // 1000 * 60 * 60 * 24 * 30 * 360
+  ['M', 2592000000], // 1000 * 60 * 60 * 24 * 30
+  ['d', 86400000], // 1000 * 60 * 60 * 24
+  ['h', 3600000], // 1000 * 60 * 60
+  ['m', 60000], // 1000 * 60
+  ['s', 1000], // 1000
+];
+
+/**
+ * Converts a given time in milliseconds to a human-readable format.
+ *
+ * @param milliseconds - The time duration in milliseconds to be converted.
+ * @returns A human-readable string representation of the time duration.
+ */
+export const convertMillisecondsToHumanReadableFormat = (
+  milliseconds: number
+): string => {
+  if (milliseconds <= 0) {
+    return '0s';
+  }
+
+  const result: string[] = [];
+  let remainingMilliseconds = milliseconds;
+
+  for (const [name, count] of intervals) {
+    if (remainingMilliseconds < count) {
+      continue; // Skip smaller units
+    }
+    const value = Math.floor(remainingMilliseconds / count);
+    remainingMilliseconds %= count;
+    result.push(`${value}${name}`);
+  }
+
+  return result.join(' ');
+};
