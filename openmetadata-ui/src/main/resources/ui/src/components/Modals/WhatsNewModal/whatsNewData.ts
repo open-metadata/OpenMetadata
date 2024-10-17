@@ -1068,7 +1068,6 @@ To continue pursuing this objective, the application was completely refactored t
 -   **Fix**: On dashboard soft delete, chart should not be visible.
 -   **Fix**: Fix the automator page breaking when no source is selected.
 -   **Fix**: Salesforce table description from label if not through query.
--   **Fix**: Add new enumWithDescriptions Custom Property to allow adding Enum.
 -   **Fix**: Add Import/export support for table type custom property in glossary.
 -   **Fix**: Fix exception in search due to exception in database.displayName and databaseSchema.aggregation.
 -   **MINOR**: Knowledge Center publicationDate mismatch error ${CollateIconWithLinkMD}
