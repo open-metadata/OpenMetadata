@@ -22,7 +22,9 @@ import React, {
 } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { App } from '../../../../generated/entity/applications/app';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getApplicationList } from '../../../../rest/applicationAPI';
+import Loader from '../../../common/Loader/Loader';
 import { ApplicationsContextType } from './ApplicationsProvider.interface';
 
 export const ApplicationsContext = createContext({} as ApplicationsContextType);
@@ -31,6 +33,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const [applications, setApplications] = useState<App[]>([]);
   const [loading, setLoading] = useState(false);
   const { permissions } = usePermissionProvider();
+  const { setApplicationsName } = useApplicationStore();
 
   const fetchApplicationList = useCallback(async () => {
     try {
@@ -40,6 +43,8 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       });
 
       setApplications(data);
+      const applicationsNameList = data.map((app) => app.name);
+      setApplicationsName(applicationsNameList);
     } catch (err) {
       // do not handle error
     } finally {
@@ -56,6 +61,10 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const appContext = useMemo(() => {
     return { applications, loading };
   }, [applications, loading]);
+
+  if (loading) {
+    return <Loader fullScreen />;
+  }
 
   return (
     <ApplicationsContext.Provider value={appContext}>
