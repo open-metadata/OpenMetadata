@@ -45,7 +45,7 @@ import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
-import { TestCase } from '../generated/tests/testCase';
+import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
@@ -139,6 +139,15 @@ export interface TestSuiteSearchSource extends SearchSourceBase, TestSuite {}
 export interface TestCaseResolutionStatusSearchSource
   extends SearchSourceBase,
     TestCaseResolutionStatus {
+  name: string;
+  displayName: string;
+  fullyQualifiedName: string;
+  serviceType: string;
+  description: string;
+}
+export interface TestCaseResultSearchSource
+  extends SearchSourceBase,
+    TestCaseResult {
   name: string;
   displayName: string;
   fullyQualifiedName: string;

@@ -67,6 +67,7 @@ export enum EntityType {
   WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = 'webAnalyticEntityViewReportData',
   WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = 'webAnalyticUserActivityReportData',
   TEST_CASE_RESOLUTION_STATUS = 'test_case_resolution_status_search_index',
+  TEST_CASE_RESULT = 'test_case_result_search_index',
   EVENT_SUBSCRIPTION = 'eventsubscription',
   LINEAGE_EDGE = 'lineageEdge',
   API_SERVICE = 'apiService',

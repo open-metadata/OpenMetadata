@@ -39,6 +39,7 @@
       "storedProcedure",
       "dataProduct",
       "testCaseResolutionStatus",
+      "testCaseResult",
       "apiService",
       "apiEndpoint",
       "apiCollection"

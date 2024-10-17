@@ -96,6 +96,21 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     return Response.created(uriInfo.getRequestUri()).entity(testCaseResult).build();
   }
 
+  public ResultList<TestCaseResult> listLastTestCaseResultsForTestSuite(UUID testSuiteId) {
+    List<String> json =
+        ((CollectionDAO.TestCaseResultTimeSeriesDAO) timeSeriesDao)
+            .listLastTestCaseResultsForTestSuite(testSuiteId);
+    List<TestCaseResult> testCaseResults = JsonUtils.readObjects(json, TestCaseResult.class);
+    return new ResultList<>(testCaseResults, null, null, testCaseResults.size());
+  }
+
+  public TestCaseResult listLastTestCaseResult(String testCaseFQN) {
+    String json =
+        ((CollectionDAO.TestCaseResultTimeSeriesDAO) timeSeriesDao)
+            .listLastTestCaseResult(testCaseFQN);
+    return JsonUtils.readValue(json, TestCaseResult.class);
+  }
+
   @Override
   protected void postCreate(TestCaseResult entity) {
     super.postCreate(entity);
