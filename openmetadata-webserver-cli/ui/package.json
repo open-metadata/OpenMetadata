@@ -68,9 +68,9 @@
     "zustand": "^4.5.0"
   },
   "scripts": {
-    "dev": "webpack serve --config ./webpack.config.js --env development",
+    "dev": "webpack serve --config ./webpack.config.dev.js --env development",
     "start": "react-scripts start",
-    "build": "webpack --config ./webpack.config.js --env production",
+    "build": "webpack --config ./webpack.config.prod.js --env production",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
