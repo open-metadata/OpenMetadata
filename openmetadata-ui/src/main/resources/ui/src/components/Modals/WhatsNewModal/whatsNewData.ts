@@ -1042,6 +1042,7 @@ To continue pursuing this objective, the application was completely refactored t
 -   **Feature**: support Persian language option
 -   **Feature**: Postgres stored procedures support.
 -   **Feature**: Allow Custom Property Update in Glossary Bulk Import/export.
+-   **Improvement**: Remove table details from table level Import/Export, allowing updates only for column details.
 -   **MINOR**: looker exclude version.
 -   **MINOR**: Add deleteEntityByFQNPrefix.
 -   **MINOR**: Reduce lineage response size.
