@@ -165,7 +165,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
 
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: isEmpty(data.cron) ? undefined : data.cron,
+        scheduleInterval: data.cron,
       },
       displayName: updatedName,
       name: generateUUID(),

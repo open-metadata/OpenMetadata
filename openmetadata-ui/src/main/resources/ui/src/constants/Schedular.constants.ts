@@ -102,3 +102,5 @@ export const CRON_COMBINATIONS: Combination = {
   day: /^(\d{1,2}\s){2}(\*\s){2}\*$/, // "? ? * * *"
   week: /^(\d{1,2}\s){2}(\*\s){2}\d{1,2}$/, // "? ? * * ?"
 };
+
+export const DEFAULT_SCHEDULE_CRON = '0 0 * * *';

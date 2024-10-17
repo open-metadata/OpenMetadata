@@ -30,15 +30,17 @@ import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DEFAULT_SCHEDULE_CRON } from '../../../../../constants/Ingestions.constant';
 import {
   DAY_OPTIONS,
+  DEFAULT_SCHEDULE_CRON,
   PERIOD_OPTIONS,
   SCHEDULAR_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
 import { LOADING_STATE } from '../../../../../enums/common.enum';
-import { CronTypes } from '../../../../../enums/Cron.enum';
-import { SchedularOptions } from '../../../../../enums/Schedular.enum';
+import {
+  CronTypes,
+  SchedularOptions,
+} from '../../../../../enums/Schedular.enum';
 import {
   FieldProp,
   FieldTypes,
@@ -157,7 +159,8 @@ const ScheduleInterval = <T,>({
 
   const handleFormSubmit: FormProps['onFinish'] = useCallback(
     (data: WorkflowExtraConfig & T) => {
-      onDeploy(data);
+      // Remove cron if it is empty
+      onDeploy({ ...data, cron: isEmpty(data.cron) ? undefined : data.cron });
     },
     [onDeploy]
   );

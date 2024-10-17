@@ -53,8 +53,3 @@ export const PIPELINE_TYPE_LOCALIZATION = {
 export const DBT_CLASSIFICATION_DEFAULT_VALUE = 'dbtTags';
 
 export const DEFAULT_PARSING_TIMEOUT_LIMIT = 300;
-
-export const DEFAULT_SCHEDULE_CRON = '0 0 * * *';
-export const DEFAULT_CRON_MIN_VALUE = 0;
-export const DEFAULT_CRON_HOUR_VALUE = 0;
-export const DEFAULT_CRON_WEEK_VALUE = 1;

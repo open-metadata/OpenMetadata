@@ -23,7 +23,7 @@ import {
   CRON_COMBINATIONS,
   MONTHS_LIST,
 } from '../constants/Schedular.constants';
-import { CronTypes } from '../enums/Cron.enum';
+import { CronTypes } from '../enums/Schedular.enum';
 
 export const getRange = (n: number) => {
   return [...Array(n).keys()];

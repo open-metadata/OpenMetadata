@@ -166,7 +166,7 @@ test('Search Index Application', async ({ page }) => {
       .getByText('On Demand')
       .click();
 
-    await expect(page.locator('[data-testid="cron-type"')).not.toBeVisible();
+    await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
 
     const installApplicationResponse = page.waitForResponse('api/v1/apps');
     await page.click('[data-testid="deploy-button"]');

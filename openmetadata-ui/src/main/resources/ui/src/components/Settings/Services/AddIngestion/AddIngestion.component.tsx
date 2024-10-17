@@ -162,7 +162,7 @@ const AddIngestion = ({
 
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: isEmpty(extraData.cron) ? undefined : extraData.cron,
+        scheduleInterval: extraData.cron,
         startDate: date,
         retries: extraData.retries,
       },
@@ -214,9 +214,7 @@ const AddIngestion = ({
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          scheduleInterval: isEmpty(extraData.cron)
-            ? undefined
-            : extraData.cron,
+          scheduleInterval: extraData.cron,
           retries: extraData.retries,
         },
         displayName: workflowData?.displayName,

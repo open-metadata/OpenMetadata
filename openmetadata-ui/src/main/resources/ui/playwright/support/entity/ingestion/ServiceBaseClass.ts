@@ -210,7 +210,7 @@ class ServiceBaseClass {
       .getByText('On Demand')
       .click();
 
-    await expect(page.locator('[data-testid="cron-type"')).not.toBeVisible();
+    await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`
