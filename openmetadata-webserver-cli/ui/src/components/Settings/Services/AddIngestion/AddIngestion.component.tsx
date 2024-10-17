@@ -46,6 +46,7 @@ import ScheduleInterval from "./Steps/ScheduleInterval";
 import DownloadYAML from "../../../../pages/DownloadPage";
 import { useHistory } from "react-router-dom";
 import axios from "axios";
+import { saveIngestion } from "../../../../utils/APIUtils";
 
 const AddIngestion = ({
   activeIngestionStep,
@@ -139,14 +140,14 @@ const AddIngestion = ({
   const handleNext = (step: number) => {
     if (step > 1) {
       const createIngestionPipelinePayload = createNewIngestion({})
-      console.log("Saving data", createIngestionPipelinePayload);
-      axios.post('/sourceConfig', createIngestionPipelinePayload)
+
+      saveIngestion(createIngestionPipelinePayload)
         .then(response => {
-          console.log('Source configuraiton saved:', response.data);
           history.push("/download");
         })
         .catch(error => {
           console.error('Error saving configuration:', error);
+          alert(`Error saving ingestion ${error.message}`)
         });
     } else {
       setActiveIngestionStep(step);

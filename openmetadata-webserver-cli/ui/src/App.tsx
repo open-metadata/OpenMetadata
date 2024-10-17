@@ -10,7 +10,7 @@ import AddIngestionPage from './pages/AddIngestionPage.component';
 import DownloadYAML from './pages/DownloadPage';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 
-axios.defaults.baseURL = 'http://localhost:8001/';
+// axios.defaults.baseURL = 'http://localhost:8001/';
 
 function App() {
   return (

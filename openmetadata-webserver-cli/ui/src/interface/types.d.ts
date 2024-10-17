@@ -26,6 +26,11 @@ declare module 'Models' {
   import { SearchEntityHits } from '../utils/APIUtils';
   import { Paging } from './../generated/type/paging';
 
+  export interface SaveInitRequest {
+    server_url: string;
+    token: string;
+  }
+
   export interface RestoreRequestType {
     id: string;
   }
@@ -212,11 +217,11 @@ declare module 'Models' {
     id?: string;
     description?: string | undefined;
     ingestionSchedule?:
-      | {
-          repeatFrequency: string;
-          startDate: string;
-        }
-      | undefined;
+    | {
+      repeatFrequency: string;
+      startDate: string;
+    }
+    | undefined;
     name?: string;
     serviceType?: string;
     databaseConnection?: {

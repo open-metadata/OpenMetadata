@@ -44,7 +44,7 @@ import { AddServiceProps, ServiceConfig } from "./AddService.interface";
 import ConfigureService from "./Steps/ConfigureService";
 import SelectServiceType from "./Steps/SelectServiceType";
 import { ServiceType } from '../../../../generated/entity/services/serviceType';
-import axios from "axios";
+import { saveConnection } from "../../../../utils/APIUtils";
 
 const AddService = ({
   serviceCategory,
@@ -141,16 +141,16 @@ const AddService = ({
     };
     setSaveServiceState("waiting");
 
-    axios.post('/serviceConnection', configData, { withCredentials: true })
-      .then(response => {
-        console.log('Configuration saved:', response.data);
-        history.push("/ingestion");
-      })
-      .catch(error => {
-        console.error('Error saving configuration:', error);
-      });
+    // Saves the information in the backend
+    saveConnection(configData).then(response => {
+      history.push("/ingestion");
+    }).catch(error => {
+      console.error('Error saving configuration:', error);
+      alert(`Error saving service ${error.message}`)
+    });
 
     setSaveServiceState("initial");
+
 
   };
 

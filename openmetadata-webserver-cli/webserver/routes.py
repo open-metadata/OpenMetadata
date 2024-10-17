@@ -25,7 +25,7 @@ from webserver.models import OMetaServerModel
 from webserver.repository import LocalIngestionServer
 
 
-@app.route("/sourceConfig", methods=["POST"])
+@app.route("/ingestion", methods=["POST"])
 def save_source_config():
     """Route to save the service connection configuration"""
     # TODO: Send the full Ingestion Pipeline here
@@ -35,7 +35,7 @@ def save_source_config():
     return jsonify(success=True)
 
 
-@app.route("/serviceConnection", methods=["POST"])
+@app.route("/connection", methods=["POST"])
 def save_service_connection():
     LocalIngestionServer().set_service_connection(request.json)
 

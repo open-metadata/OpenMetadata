@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import axios from 'axios';
-import { getAxiosErrorMessage } from '../utils/AxiosUtils';
 import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import BrandImage from '../components/common/BrandImage/BrandImage';
+import { SaveInitRequest } from 'Models';
+import { saveInit } from '../utils/APIUtils';
 
 const LandingPage = () => {
   const [serverUrl, setServerUrl] = useState('');
@@ -11,18 +11,19 @@ const LandingPage = () => {
   const history = useHistory();
 
   const handleSubmit = async (values: any) => {
-    try {
-      const response = await axios.post('/init', {
-        server_url: values.serverUrl,
-        token: values.ingestionToken,
+    const { serverUrl, ingestionToken } = values;
+    const saveInitRequest: SaveInitRequest = {
+      server_url: serverUrl,
+      token: ingestionToken,
+    };
+
+    saveInit(saveInitRequest)
+      .then(response => history.push('/service'))
+      .catch(error => {
+        alert(`Error saving initial data ${error.message}`);
+        console.log('Error saving initial data', error);
       });
-
-      history.push('/service');
-    } catch (error) {
-      alert(getAxiosErrorMessage(error));
-    }
   };
-
 
   return (
     <Row className="h-full">
