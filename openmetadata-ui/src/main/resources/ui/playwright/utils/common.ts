@@ -113,15 +113,14 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
 
 export const toastNotification = async (
   page: Page,
-  message: string | RegExp
+  message: string | RegExp,
+  type: 'info' | 'success' | 'warning' | 'error'
 ) => {
-  await expect(page.getByRole('alert').first()).toHaveText(message);
+  await expect(page.locator(`.alert-container.${type}`)).toHaveText(message);
 
-  await page
-    .locator('.Toastify__toast')
-    .getByLabel('close', { exact: true })
-    .first()
-    .click();
+  await expect(page.locator('.ant-alert-icon')).toBeVisible();
+
+  await page.locator('.alert-container .ant-alert-close-icon').click();
 };
 
 export const clickOutside = async (page: Page) => {

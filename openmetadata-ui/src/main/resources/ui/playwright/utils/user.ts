@@ -138,11 +138,7 @@ export const softDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /deleted successfully!/, 'success');
 
   await deletedUserChecks(page);
 };
@@ -165,7 +161,7 @@ export const restoreUserProfilePage = async (page: Page, fqn: string) => {
 
   await restoreResponse;
 
-  await toastNotification(page, /User restored successfully/);
+  await toastNotification(page, /User restored successfully/, 'success');
 
   await nonDeletedUserChecks(page);
 };
@@ -193,7 +189,7 @@ export const hardDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/);
+  await toastNotification(page, /deleted successfully!/, 'success');
 };
 
 export const editDisplayName = async (page: Page, editedUserName: string) => {
@@ -359,7 +355,11 @@ export const softDeleteUser = async (
   await deleteResponse;
   await fetchUpdatedUsers;
 
-  await toastNotification(page, `"${displayName}" deleted successfully!`);
+  await toastNotification(
+    page,
+    `"${displayName}" deleted successfully!`,
+    'success'
+  );
 
   // Search soft deleted user in non-deleted mode
   const searchSoftDeletedUserResponse = page.waitForResponse(
@@ -403,7 +403,7 @@ export const restoreUser = async (
   await page.click('.ant-modal-footer > .ant-btn-primary');
   await restoreUserResponse;
 
-  await toastNotification(page, 'User restored successfully');
+  await toastNotification(page, 'User restored successfully', 'success');
 };
 
 export const permanentDeleteUser = async (
@@ -435,7 +435,11 @@ export const permanentDeleteUser = async (
   await page.click('[data-testid="confirm-button"]');
   await hardDeleteUserResponse;
 
-  await toastNotification(page, `"${displayName}" deleted successfully!`);
+  await toastNotification(
+    page,
+    `"${displayName}" deleted successfully!`,
+    'success'
+  );
 
   // Search the user again
   const searchUserAfterDeleteResponse = page.waitForResponse(
@@ -692,7 +696,8 @@ const resetPasswordModal = async (
     page,
     isOldPasswordCorrect
       ? 'Password updated successfully.'
-      : 'Old Password is not correct'
+      : 'Old Password is not correct',
+    isOldPasswordCorrect ? 'success' : 'error'
   );
 };
 

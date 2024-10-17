@@ -93,7 +93,7 @@ export const createBot = async (page: Page) => {
 
   await expect(page.getByTestId('token-expiry')).toBeVisible();
 
-  await toastNotification(page, 'Bot created successfully.');
+  await toastNotification(page, 'Bot created successfully.', 'success');
 };
 
 export const deleteBot = async (page: Page) => {
@@ -112,7 +112,7 @@ export const deleteBot = async (page: Page) => {
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/);
+  await toastNotification(page, /deleted successfully!/, 'success');
 
   await expect(page.getByTestId('page-layout-v1')).not.toContainText(botName);
 };

@@ -68,7 +68,11 @@ test.describe('Login configuration', () => {
     // Click the save button
     await page.click('[data-testid="save-button"]');
 
-    await toastNotification(page, 'Login Configuration updated successfully.');
+    await toastNotification(
+      page,
+      'Login Configuration updated successfully.',
+      'success'
+    );
 
     // Assert the updated values
     await expect(

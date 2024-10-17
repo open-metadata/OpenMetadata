@@ -133,7 +133,11 @@ class MysqlIngestionClass extends ServiceBaseClass {
       );
       await page.getByTestId('run-button').click();
 
-      await toastNotification(page, `Pipeline triggered successfully!`);
+      await toastNotification(
+        page,
+        `Pipeline triggered successfully!`,
+        'success'
+      );
 
       // need manual wait to make sure we are awaiting on latest run results
       await page.waitForTimeout(2000);
