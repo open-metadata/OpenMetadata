@@ -36,6 +36,7 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
     MSSQL_TEST_GET_QUERIES,
 )
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection_url(connection: MssqlConnection) -> str:
@@ -60,7 +61,7 @@ def test_connection(
     engine: Engine,
     service_connection: MssqlConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

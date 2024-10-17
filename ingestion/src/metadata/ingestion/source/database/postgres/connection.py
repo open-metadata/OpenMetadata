@@ -42,6 +42,7 @@ from metadata.ingestion.source.database.postgres.queries import (
 from metadata.ingestion.source.database.postgres.utils import (
     get_postgres_time_column_name,
 )
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: PostgresConnection) -> Engine:
@@ -71,7 +72,7 @@ def test_connection(
     engine: Engine,
     service_connection: PostgresConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

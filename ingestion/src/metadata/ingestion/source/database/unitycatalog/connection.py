@@ -27,6 +27,7 @@ from metadata.ingestion.connections.test_connections import test_connection_step
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.db_utils import get_host_from_host_port
 from metadata.utils.logger import ingestion_logger
 
@@ -54,7 +55,7 @@ def test_connection(
     connection: WorkspaceClient,
     service_connection: UnityCatalogConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

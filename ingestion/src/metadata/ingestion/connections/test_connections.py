@@ -40,6 +40,7 @@ from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import kill_active_connections
 from metadata.profiler.orm.functions.conn_test import ConnTestFn
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import cli_logger
 from metadata.utils.timeout import timeout
 
@@ -102,8 +103,7 @@ def _test_connection_steps(
             metadata=metadata, steps=steps, automation_workflow=automation_workflow
         )
 
-    else:
-        return _test_connection_steps_and_raise(steps=steps)
+    return _test_connection_steps_and_raise(steps=steps)
 
 
 def _test_connection_steps_automation_workflow(
@@ -170,8 +170,6 @@ def _test_connection_steps_automation_workflow(
             automation_workflow, test_connection_result, WorkflowStatus.Successful
         )
 
-        return test_connection_result
-
     except Exception as err:
         logger.error(
             f"Wild error happened while testing the connection in the workflow - {err}"
@@ -213,7 +211,7 @@ def _test_connection_steps_during_ingestion(
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"{step.name}-{err}")
+            logger.error(f"{step.name}-{err}")
             test_connection_result.steps.append(
                 TestConnectionStepResult(
                     name=step.name,
@@ -248,7 +246,7 @@ def _test_connection_steps_and_raise(
                 f"Failed to run the test connection step: {step.name}"
             )
         if not step.passed:
-            logger.warn(
+            logger.warning(
                 f"You might be missing metadata in: {step.name} due to {step.message}"
             )
 
@@ -260,7 +258,7 @@ def test_connection_steps(
     service_type: str,
     test_fn: dict,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> TestConnectionResult:
     """
     Test the connection steps with a given timeout
@@ -320,7 +318,7 @@ def test_connection_db_common(
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -370,7 +368,7 @@ def test_connection_db_schema_sources(
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -420,7 +418,7 @@ def test_connection_db_schema_sources(
     for key, query in queries.items():
         test_fn[key] = partial(test_query, statement=query, engine=engine)
 
-    return test_connection_steps(
+    test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,

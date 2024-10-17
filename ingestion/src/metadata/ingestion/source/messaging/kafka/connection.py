@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.messaging.redpandaCon
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -120,7 +121,7 @@ def test_connection(
     client: KafkaClient,
     service_connection: Union[KafkaConnection, RedpandaConnection],
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

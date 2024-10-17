@@ -265,7 +265,7 @@ const getTableOverview = (
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -376,7 +376,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -424,7 +424,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -481,7 +481,7 @@ export const getSearchIndexOverview = (
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -513,7 +513,7 @@ const getMlModelOverview = (mlModelDetails: Mlmodel) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -609,7 +609,7 @@ const getChartOverview = (chartDetails: Chart) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -674,7 +674,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -748,7 +748,7 @@ const getStoredProcedureOverview = (
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -826,7 +826,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
@@ -866,7 +866,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
@@ -915,7 +915,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
 
   const overview = [
     {
-      name: i18next.t('label.owner'),
+      name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },

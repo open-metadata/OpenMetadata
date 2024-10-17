@@ -33,6 +33,7 @@ from metadata.generated.schema.entity.services.connections.database.deltaLakeCon
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 
 @dataclass
@@ -83,7 +84,7 @@ def test_connection(
     connection: DeltalakeClient,
     service_connection: DeltaLakeConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

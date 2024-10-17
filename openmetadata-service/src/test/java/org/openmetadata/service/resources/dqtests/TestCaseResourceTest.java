@@ -108,6 +108,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
@@ -3082,10 +3083,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Test aggregation
     String aggregationQuery =
         "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=1d,bucketName=dimesion:aggType=terms:field=testDefinition.dataQualityDimension";
-    Map<String, Object> aggregationString =
-        SearchIndexUtils.buildAggregationString(aggregationQuery);
+    SearchAggregation aggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
     DataQualityReport dataQualityReport =
-        searchRepository.genericAggregation(null, "testCaseResult", aggregationString);
+        searchRepository.genericAggregation(null, "testCaseResult", aggregation);
     assertNotNull(dataQualityReport.getData());
   }
 

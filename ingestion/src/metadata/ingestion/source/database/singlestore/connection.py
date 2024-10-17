@@ -32,6 +32,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: SingleStoreConnection) -> Engine:
@@ -50,7 +51,7 @@ def test_connection(
     engine: Engine,
     service_connection: SingleStoreConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

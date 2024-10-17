@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.databricksPi
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: DatabricksPipelineConnection) -> DatabricksClient:
@@ -38,7 +39,7 @@ def test_connection(
     client: DatabricksClient,
     service_connection: DatabricksPipelineConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

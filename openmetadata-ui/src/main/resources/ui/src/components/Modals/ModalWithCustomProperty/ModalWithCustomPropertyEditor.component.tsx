@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 import { Button, Modal, Typography } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AxiosError } from 'axios';
-import { isObject } from 'lodash';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { EnumConfig, Type, ValueClass } from '../../../generated/entity/type';
+import { Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import {
   convertCustomPropertyStringToEntityExtension,
@@ -41,32 +40,21 @@ export const ModalWithCustomPropertyEditor = ({
   visible,
 }: ModalWithCustomPropertyEditorProps) => {
   const { t } = useTranslation();
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
-  const [customPropertyValue, setCustomPropertyValue] =
-    useState<ExtensionDataProps>();
-  const [customPropertyTypes, setCustomPropertyTypes] = useState<Type>();
 
-  const enumWithDescriptionsKeyPairValues = useMemo(() => {
-    const valuesWithEnumKey: Record<string, ValueClass[]> = {};
+  const [extensionObject, setExtensionObject] = useState<ExtensionDataProps>();
 
-    customPropertyTypes?.customProperties?.forEach((property) => {
-      if (property.propertyType.name === 'enumWithDescriptions') {
-        valuesWithEnumKey[property.name] = (
-          property.customPropertyConfig?.config as EnumConfig
-        ).values as ValueClass[];
-      }
-    });
-
-    return valuesWithEnumKey;
-  }, [customPropertyTypes]);
+  const [customPropertyEntityRecord, setCustomPropertyEntityRecord] =
+    useState<Type>();
 
   const fetchTypeDetail = async () => {
     setIsLoading(true);
     try {
       const response = await getTypeByFQN(entityType);
-      setCustomPropertyTypes(response);
-      setCustomPropertyValue(
+      setCustomPropertyEntityRecord(response);
+      setExtensionObject(
         convertCustomPropertyStringToEntityExtension(value ?? '', response)
       );
     } catch (err) {
@@ -80,49 +68,15 @@ export const ModalWithCustomPropertyEditor = ({
     setIsSaveLoading(true);
     await onSave(
       convertEntityExtensionToCustomPropertyString(
-        customPropertyValue,
-        customPropertyTypes
+        extensionObject,
+        customPropertyEntityRecord
       )
     );
     setIsSaveLoading(false);
   };
 
-  // EnumWithDescriptions values are change only contain keys,
-  // so we need to modify the extension data to include descriptions for them to display in the table
-  const modifyExtensionData = useCallback(
-    (extension: ExtensionDataProps) => {
-      const modifiedExtension = Object.entries(extension).reduce(
-        (acc, [key, value]) => {
-          if (enumWithDescriptionsKeyPairValues[key]) {
-            return {
-              ...acc,
-              [key]: (value as string[] | ValueClass[]).map((item) => {
-                if (isObject(item)) {
-                  return item;
-                }
-
-                return {
-                  key: item,
-                  description: enumWithDescriptionsKeyPairValues[key].find(
-                    (val) => val.key === item
-                  )?.description,
-                };
-              }),
-            };
-          }
-
-          return { ...acc, [key]: value };
-        },
-        {}
-      );
-
-      return modifiedExtension;
-    },
-    [enumWithDescriptionsKeyPairValues]
-  );
-
   const onExtensionUpdate = async (data: GlossaryTerm) => {
-    setCustomPropertyValue(modifyExtensionData(data.extension));
+    setExtensionObject(data.extension);
   };
 
   useEffect(() => {
@@ -166,7 +120,7 @@ export const ModalWithCustomPropertyEditor = ({
           hasEditAccess
           hasPermission
           isRenderedInRightPanel
-          entityDetails={{ extension: customPropertyValue } as GlossaryTerm}
+          entityDetails={{ extension: extensionObject } as GlossaryTerm}
           entityType={EntityType.GLOSSARY_TERM}
           handleExtensionUpdate={onExtensionUpdate}
         />

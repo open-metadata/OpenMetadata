@@ -43,7 +43,7 @@ test.describe('Entity Summary Panel', () => {
     await expect(
       page.locator('.ant-drawer-title > [data-testid="entity-link"]')
     ).toBeVisible();
-    await expect(page.getByTestId('Owner-value')).toBeVisible();
+    await expect(page.getByTestId('Owners-value')).toBeVisible();
     await expect(page.getByTestId('Tier-label')).toBeVisible();
     await expect(page.getByTestId('Service-label')).toBeVisible();
     await expect(page.getByTestId('Usage-label')).toBeVisible();
@@ -58,7 +58,7 @@ test.describe('Entity Summary Panel', () => {
     await expect(
       page.locator('.ant-drawer-title > [data-testid="entity-link"]')
     ).toBeVisible();
-    await expect(page.getByTestId('Owner-value')).toBeVisible();
+    await expect(page.getByTestId('Owners-value')).toBeVisible();
     await expect(page.getByTestId('Tier-label')).toBeVisible();
     await expect(page.getByTestId('Service-label')).toBeVisible();
     await expect(page.getByTestId('Database-label')).toBeVisible();

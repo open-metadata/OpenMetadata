@@ -44,6 +44,7 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_TEST_GET_QUERIES,
     REDSHIFT_TEST_PARTITION_DETAILS,
 )
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: RedshiftConnection) -> Engine:
@@ -62,7 +63,7 @@ def test_connection(
     engine: Engine,
     service_connection: RedshiftConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

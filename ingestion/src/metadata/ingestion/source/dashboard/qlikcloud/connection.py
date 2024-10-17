@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.qlikCloudCo
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.qlikcloud.client import QlikCloudClient
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: QlikCloudConnection) -> QlikCloudClient:
@@ -37,7 +38,7 @@ def test_connection(
     client: QlikCloudClient,
     service_connection: QlikCloudConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = 3 * 60,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part

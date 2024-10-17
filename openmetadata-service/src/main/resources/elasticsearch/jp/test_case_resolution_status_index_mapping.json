@@ -68,6 +68,9 @@
       "timestamp": {
         "type": "date"
       },
+      "@timestamp": {
+          "type": "date"
+      },
       "testCaseResolutionStatusType": {
         "type": "keyword",
         "fields": {
