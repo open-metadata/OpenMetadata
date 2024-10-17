@@ -21,10 +21,13 @@ import navbarUtilClassBase from './NavbarUtilClassBase';
 
 const getHelpDropdownLabelContentRenderer = (
   item: SupportItem,
+  updateIsTourOpen: (isOpen: boolean) => void,
   version?: string
 ) => {
   return (
-    <Row className="cursor-pointer">
+    <Row
+      className="cursor-pointer"
+      onClick={() => item.label === 'Tour' && updateIsTourOpen(true)}>
       <Col span={4}>
         <Icon
           className="align-middle"
@@ -51,7 +54,11 @@ const getHelpDropdownLabelContentRenderer = (
   );
 };
 
-const getHelpDropdownLabel = (item: SupportItem, version?: string) => {
+const getHelpDropdownLabel = (
+  item: SupportItem,
+  updateIsTourOpen: (isOpen: boolean) => void,
+  version?: string
+) => {
   if (item.isExternal) {
     return (
       <a
@@ -59,22 +66,25 @@ const getHelpDropdownLabel = (item: SupportItem, version?: string) => {
         href={item.link}
         rel="noreferrer"
         target="_blank">
-        {getHelpDropdownLabelContentRenderer(item, version)}
+        {getHelpDropdownLabelContentRenderer(item, updateIsTourOpen, version)}
       </a>
     );
   } else if (item.link) {
     return (
       <Link className="no-underline" to={item.link}>
-        {getHelpDropdownLabelContentRenderer(item)}
+        {getHelpDropdownLabelContentRenderer(item, updateIsTourOpen)}
       </Link>
     );
   } else {
-    return getHelpDropdownLabelContentRenderer(item);
+    return getHelpDropdownLabelContentRenderer(item, updateIsTourOpen);
   }
 };
 
-export const getHelpDropdownItems = (version?: string) =>
+export const getHelpDropdownItems = (
+  updateIsTourOpen: (isOpen: boolean) => void,
+  version?: string
+) =>
   navbarUtilClassBase.getHelpItems().map((item) => ({
-    label: getHelpDropdownLabel(item, version),
+    label: getHelpDropdownLabel(item, updateIsTourOpen, version),
     key: item.key,
   }));
