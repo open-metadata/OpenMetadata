@@ -89,8 +89,11 @@ test('Search Index Application', async ({ page }) => {
 
   await test.step('Edit application', async () => {
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.rc-virtual-list [title="None"]');
+    await page.waitForSelector('[data-testid="schedular-card-container"]');
+    await page
+      .getByTestId('schedular-card-container')
+      .getByText('On Demand')
+      .click();
 
     const deployResponse = page.waitForResponse('/api/v1/apps/*');
     await page.click('.ant-modal-body [data-testid="deploy-button"]');

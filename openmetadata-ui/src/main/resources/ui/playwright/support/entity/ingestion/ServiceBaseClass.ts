@@ -204,10 +204,13 @@ class ServiceBaseClass {
 
   async scheduleIngestion(page: Page) {
     // Schedule & Deploy
-    await page.waitForSelector('[data-testid="cron-type"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.waitForSelector('.ant-select-item-option-content');
-    await page.click('.ant-select-item-option-content:has-text("None")');
+    await page.waitForSelector('[data-testid="schedular-card-container"]');
+    await page
+      .getByTestId('schedular-card-container')
+      .getByText('On Demand')
+      .click();
+
+    await expect(page.locator('[data-testid="cron-type"')).not.toBeAttached();
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`
@@ -240,7 +243,7 @@ class ServiceBaseClass {
       .then((res) => res.json());
 
     const workflowData = response.data.filter(
-      (d) => d.pipelineType === ingestionType
+      (d: { pipelineType: string }) => d.pipelineType === ingestionType
     )[0];
 
     const oneHourBefore = Date.now() - 86400000;
@@ -388,7 +391,31 @@ class ServiceBaseClass {
     await page.click('[data-testid="submit-btn"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Custom")');
-    await page.fill('#cron', '* * * 2 6');
+
+    // Check validation error thrown for a cron that is too frequent
+    // i.e. having interval less than 1 hour
+    await page.locator('#schedular-form_cron').fill('* * * 2 6');
+    await page.click('[data-testid="deploy-button"]');
+
+    await expect(
+      page.getByText(
+        'Cron schedule too frequent. Please choose at least 1-hour intervals.'
+      )
+    ).toBeAttached();
+
+    // Check validation error thrown for a cron that is invalid
+    await page.locator('#schedular-form_cron').clear();
+    await page.click('[data-testid="deploy-button"]');
+    await page.locator('#schedular-form_cron').fill('* * * 2 ');
+
+    await expect(
+      page.getByText(
+        'Error: Expression has only 4 parts. At least 5 parts are required.'
+      )
+    ).toBeAttached();
+
+    await page.locator('#schedular-form_cron').clear();
+    await page.locator('#schedular-form_cron').fill('0 * * 2 6');
 
     await page.click('[data-testid="deploy-button"]');
     await page.click('[data-testid="view-service-button"]');
