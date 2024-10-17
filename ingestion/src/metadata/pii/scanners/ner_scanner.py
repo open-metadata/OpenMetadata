@@ -19,7 +19,7 @@ import traceback
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.pii.constants import PII, SPACY_EN_MODEL
@@ -46,6 +46,7 @@ class StringAnalysis(BaseModel):
 class NLPEngineModel(BaseModel):
     """Required to pass the nlp_engine as {"lang_code": "en", "model_name": "en_core_web_lg"}"""
 
+    model_config = ConfigDict(protected_namespaces=())
     lang_code: str
     model_name: str
 

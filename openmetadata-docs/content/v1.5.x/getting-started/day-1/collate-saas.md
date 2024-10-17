@@ -22,14 +22,14 @@ You can easily set up a database service for metadata extraction from Collate Sa
   alt="Selecting Database Service"
   caption="Selecting Database Service" /%}
 
-4. **Enter the Connection Details** You can view the available documentation in the side panel for guidance. Also, refer to the connector [documentation](/connectors).
+3. **Enter the Connection Details** You can view the available documentation in the side panel for guidance. Also, refer to the connector [documentation](/connectors).
 
 {% image
   src="/images/v1.5/getting-started/configure-connector.png"
   alt="Updating Connection Details"
   caption="Updating Connection Details" /%}
 
-5. **Allow the Collate SaaS IP**. In the Connection Details, you will see the IP Address unique to your cluster, You need to Allow the `IP` to Access the datasource.
+4. **Allow the Collate SaaS IP**. In the Connection Details, you will see the IP Address unique to your cluster, You need to Allow the `IP` to Access the datasource.
 
 
 {% note %}
@@ -41,7 +41,7 @@ This step is required only for Collate SaaS. If you are using Hybrid SaaS, you w
   alt="Collate SaaS IP"
   caption="Collate SaaS IP" /%}
 
-6. **Test the connection** to verify the status. The test connection will check if the Service is reachable from Collate.
+5. **Test the connection** to verify the status. The test connection will check if the Service is reachable from Collate.
 
 {% image
   src="/images/v1.5/getting-started/test-connection.png"

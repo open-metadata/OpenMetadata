@@ -27,8 +27,8 @@
     "pretty": "prettier . --config './.prettierrc.yaml' --ignore-path './.prettierignore'  --write",
     "build-check": "yarn run json2ts && yarn run js-antlr && yarn run parse-schema",
     "commit-check": "yarn run pretty && yarn run build",
-    "license-header-check": "license-check-and-add check --config-file .licenseheaderrc.json",
-    "license-header-fix": "license-check-and-add add --config-file .licenseheaderrc.json --regex-replacements $(date +%Y)",
+    "license-header-check": "license-check-and-add check -f .licenseheaderrc.json",
+    "license-header-fix": "license-check-and-add add -f .licenseheaderrc.json -r $(date +%Y)",
     "json2ts": "sh json2ts.sh",
     "parse-schema": "yarn run parse-conn-schema && yarn run parse-ingestion-schema",
     "parse-conn-schema": "node parseConnectionSchema && rm -rf connTemp",
@@ -45,8 +45,8 @@
     "@ant-design/icons": "^4.7.0",
     "@apidevtools/json-schema-ref-parser": "^9.0.9",
     "@auth0/auth0-react": "^1.9.0",
-    "@azure/msal-browser": "^3.10.0",
-    "@azure/msal-react": "^2.0.12",
+    "@azure/msal-browser": "^3.25.0",
+    "@azure/msal-react": "^2.1.1",
     "@dagrejs/dagre": "^1.1.2",
     "@deuex-solutions/react-tour": "^1.2.6",
     "@fontsource/poppins": "^5.0.0",
@@ -119,7 +119,7 @@
     "react-lazylog": "^4.5.3",
     "react-oidc": "^1.0.3",
     "react-papaparse": "^4.1.0",
-    "react-quill": "^2.0.0",
+    "react-quill-new": "^3.3.2",
     "react-reflex": "^4.0.12",
     "react-router-dom": "^5.2.0",
     "react-toastify": "^8.2.0",
@@ -246,6 +246,6 @@
     "clean-css": "4.1.11",
     "path-to-regexp": "1.9.0",
     "terser-webpack-plugin": "5.1.1",
-    "quill": "^2.0.2"
+    "cookie": "0.7.0"
   }
 }

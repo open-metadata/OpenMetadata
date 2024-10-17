@@ -156,6 +156,10 @@ export const checkTaskCount = async (
   openTask = 0,
   closedTask = 0
 ) => {
+  await page.waitForSelector('.ant-skeleton-element ', {
+    state: 'detached',
+  });
+
   const openTaskElement = await page.getByTestId('open-task').textContent();
 
   expect(openTaskElement).toContain(`${openTask} Open`);

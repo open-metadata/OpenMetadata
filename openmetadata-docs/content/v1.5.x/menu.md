@@ -5,19 +5,21 @@ site_menu:
 
   - category: Quickstart
     url: /quick-start
-    color: violet-70
-    icon: quickstart
   - category: Quickstart / Try OpenMetadata in Docker
     url: /quick-start/local-docker-deployment
   - category: Quickstart / Try OpenMetadata in Kubernetes
     url: /quick-start/local-kubernetes-deployment
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
+  - category: Quickstart / Getting Started  
+    url: /quick-start/getting-started
+  - category: Quickstart / Day 1  
+    url: /quick-start/getting-started/day-1
+  - category: Quickstart / Day 1 / Database Service Setup
+    url: /quick-start/getting-started/day-1/database-service-setup
 
   - category: Deployment
     url: /deployment
-    color: violet-70
-    icon: deployment
   - category: Deployment / Bare Metal Deployment
     url: /deployment/bare-metal
   - category: Deployment / Bare Metal Deployment / Enable Security
@@ -215,8 +217,6 @@ site_menu:
 
   - category: Connectors
     url: /connectors
-    color: violet-70
-    icon: openmetadata
 
   - category: Connectors / Database
     url: /connectors/database
@@ -386,12 +386,6 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
-  - category: Connectors / Database / Synapse
-    url: /connectors/database/synapse
-  - category: Connectors / Database / Synapse / Run Externally
-    url: /connectors/database/synapse/yaml
-  - category: Connectors / Database / Synapse / Troubleshooting
-    url: /connectors/database/synapse/troubleshooting
   - category: Connectors / Database / S3 Datalake
     url: /connectors/database/s3-datalake
   - category: Connectors / Database / S3 Datalake / Run Externally
@@ -577,10 +571,6 @@ site_menu:
     url: /connectors/storage/gcs
   - category: Connectors / Storage / GCS / Run Externally
     url: /connectors/storage/gcs/yaml
-  - category: Connectors / Storage / ADLS
-    url: /connectors/storage/adls
-  - category: Connectors / Storage / ADLS / Run Externally
-    url: /connectors/storage/adls/yaml
 
   - category: Connectors / Search
     url: /connectors/search
@@ -599,10 +589,6 @@ site_menu:
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
-  - category: Connectors / Metadata / Alation
-    url: /connectors/metadata/alation
-  - category: Connectors / Metadata / Alation / Run Externally
-    url: /connectors/metadata/alation/yaml
   - category: Connectors / Metadata / Alation Sink
     url: /connectors/metadata/alationsink
   - category: Connectors / Metadata / Alation Sink / Run Externally
@@ -694,15 +680,7 @@ site_menu:
 
   - category: How-to Guides
     url: /how-to-guides
-    color: violet-70
-    icon: openmetadata
 
-  - category: How-to Guides / Getting Started  
-    url: /how-to-guides/getting-started
-  - category: How-to Guides / Day 1  
-    url: /how-to-guides/getting-started/day-1
-  - category: How-to Guides / Day 1 / Database Service Setup
-    url: /how-to-guides/getting-started/day-1/database-service-setup
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
   - category: How-to Guides / Admin Guide / How to Ingest Metadata
@@ -814,6 +792,14 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
     url: /how-to-guides/data-quality-observability/quality/configure
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Cases  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-cases
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Suites  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-suites
+  - category: How-to Guides / Data Quality Observability / Data Quality / Test Cases From YAML Config  
+    url: /how-to-guides/data-quality-observability/quality/test-cases-from-yaml-config
+  - category: How-to Guides / Data Quality Observability / Data Quality / How to Visualize Test Results
+    url: /how-to-guides/data-quality-observability/quality/visualize
   - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
     url: /how-to-guides/data-quality-observability/quality/tests-yaml
   - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
@@ -923,14 +909,14 @@ site_menu:
 
   - category: Releases
     url: /releases
-    color: violet-70
-    icon: overview
   - category: Releases / Latest Release
     url: /releases/latest-release
   - category: Releases / Supported Releases
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.5 Release
+    url: /releases/all-releases/#1.5.5-release
   - category: Releases / All Releases / 1.5.4 Release
     url: /releases/all-releases/#1.5.4-release
   - category: Releases / All Releases / 1.5.3 Release
@@ -1017,8 +1003,6 @@ site_menu:
 
   - category: Main Concepts
     url: /main-concepts
-    color: violet-70
-    icon: main-concepts
   - category: Main Concepts / High Level Design
     url: /main-concepts/high-level-design
   - category: Main Concepts / Backend DB
@@ -1952,8 +1936,6 @@ site_menu:
 
   - category: Developers
     url: /developers
-    color: violet-70
-    icon: developers
   - category: Developers / Architecture
     url: /developers/architecture
   - category: Developers / Architecture / Understand Code Layout
@@ -2001,8 +1983,6 @@ site_menu:
 
   - category: SDK
     url: /sdk
-    color: violet-70
-    icon: sdk
   - category: SDK / Python SDK
     url: /sdk/python
   - category: SDK / Python SDK / Entities

@@ -13,14 +13,14 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { APIServiceType } from '../generated/entity/services/apiService';
-import RESTConnection from '../jsons/connectionSchemas/connections/apiService/restConnection.json';
+import restConnection from '../jsons/connectionSchemas/connections/api/restConnection.json';
 
 export const getAPIConfig = (type: APIServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
   switch (type) {
     case APIServiceType.REST:
-      schema = RESTConnection;
+      schema = restConnection;
 
       break;
 
