@@ -20,7 +20,7 @@ entity_field
 
 
 separator
-    : '::'
+    : '::om::'
     ;
 
 RESERVED_START
