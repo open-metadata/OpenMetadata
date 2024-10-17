@@ -123,8 +123,8 @@ export const getStateValue = (value?: string, defaultValue?: string) => {
   const stateVal: StateValue = {
     selectedPeriod: cronType,
     cron: value,
-    min: isNaN(dow) ? 0 : min,
-    hour: isNaN(dow) ? 0 : hour,
+    min: isNaN(min) ? 0 : min,
+    hour: isNaN(hour) ? 0 : hour,
     dow: isNaN(dow) ? 1 : dow,
   };
 
