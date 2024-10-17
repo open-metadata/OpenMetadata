@@ -160,7 +160,7 @@ const ScheduleInterval = <T,>({
   const handleFormSubmit: FormProps['onFinish'] = useCallback(
     (data: WorkflowExtraConfig & T) => {
       // Remove cron if it is empty
-      onDeploy({ ...data, cron: isEmpty(data.cron) ? undefined : data.cron });
+      onDeploy(data);
     },
     [onDeploy]
   );
