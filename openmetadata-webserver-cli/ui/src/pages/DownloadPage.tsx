@@ -1,25 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Col, Progress, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import PageLayoutV1 from '../components/PageLayoutV1/PageLayoutV1';
-import progress from 'antd/lib/progress';
-import { t } from 'i18next';
 import { LazyLog } from 'react-lazylog';
 import CopyToClipboardButton from '../components/common/CopyToClipboardButton';
-import Paragraph from 'antd/lib/skeleton/Paragraph';
+import { downloadYaml, fetchYaml } from '../utils/APIUtils';
 
 const DownloadYAML = () => {
     const [yaml, setYaml] = useState<string>('');
 
     const handleDownload = async () => {
         try {
-            const response = await fetch('http://localhost:8001/api/yaml/download');
+            const response = await downloadYaml();
 
-            if (!response.ok) {
+            if (response.status !== 200) {
                 throw new Error('Failed to download file');
             }
 
-            const blob = await response.blob();
+            const blob = response.data;
             const url = window.URL.createObjectURL(blob);
 
             const a = document.createElement('a');
@@ -32,22 +30,14 @@ const DownloadYAML = () => {
             window.URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Error downloading file:', error);
+            alert(`An error ocurred while download the file ${error}`);
         }
     };
 
     const fetchFileContent = async () => {
-        try {
-            const response = await fetch('http://localhost:8001/api/yaml');
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch file content');
-            }
-
-            const content = await response.text();
-            setYaml(content);
-        } catch (err) {
-            setYaml('Failed to load yaml');
-        }
+        fetchYaml()
+            .then(response => setYaml(response.data))
+            .catch(error => setYaml(`Failed to load yaml ${error.message}`));
     };
 
     useEffect(() => {

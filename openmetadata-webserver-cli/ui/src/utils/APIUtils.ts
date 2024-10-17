@@ -11,3 +11,7 @@ export const saveConnection = (serviceData: ServicesUpdateRequest) =>
 
 export const saveIngestion = (ingestion: CreateIngestionPipeline) =>
     APIClient.post('/ingestion', ingestion);
+
+export const fetchYaml = () => APIClient.get('/api/yaml');
+
+export const downloadYaml = () => APIClient.get('api/yaml/download', { responseType: 'blob' });
