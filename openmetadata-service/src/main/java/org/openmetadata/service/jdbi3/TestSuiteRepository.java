@@ -8,12 +8,14 @@ import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonArray;
@@ -23,6 +25,7 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.ResultSummary;
@@ -40,6 +43,8 @@ import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -238,6 +243,30 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       LOG.error("Error reading aggregation query", e);
     }
     return null;
+  }
+
+  @Override
+  protected void postCreate(TestSuite entity) {
+    super.postCreate(entity);
+    if (Boolean.TRUE.equals(entity.getExecutable())
+        && entity.getExecutableEntityReference() != null) {
+      // Update table index with test suite field
+      EntityInterface entityInterface =
+          getEntity(entity.getExecutableEntityReference(), "testSuite", ALL);
+      IndexMapping indexMapping =
+          searchRepository.getIndexMapping(entity.getExecutableEntityReference().getType());
+      SearchClient searchClient = searchRepository.getSearchClient();
+      SearchIndex index =
+          searchRepository
+              .getSearchIndexFactory()
+              .buildIndex(entity.getExecutableEntityReference().getType(), entityInterface);
+      Map<String, Object> doc = index.buildSearchIndexDoc();
+      searchClient.updateEntity(
+          indexMapping.getIndexName(searchRepository.getClusterAlias()),
+          entity.getExecutableEntityReference().getId().toString(),
+          doc,
+          "ctx._source.testSuite = params.testSuite;");
+    }
   }
 
   @SneakyThrows
