@@ -338,7 +338,9 @@ class AirflowSource(PipelineServiceSource):
                     max_active_runs=data.get("max_active_runs", None),
                     description=data.get("_description", None),
                     start_date=data.get("start_date", None),
-                    tasks=list(map(self._extract_serialized_task, data.get("tasks", []))),
+                    tasks=list(
+                        map(self._extract_serialized_task, data.get("tasks", []))
+                    ),
                     schedule_interval=get_schedule_interval(data),
                     owner=self.fetch_dag_owners(data),
                 )
