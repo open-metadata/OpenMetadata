@@ -72,7 +72,13 @@ const Table = <T extends object = any>({
   const resizingTableProps = rest.resizableColumns
     ? {
         columns: resizableColumns,
-        components,
+        components: {
+          ...rest.components,
+          header: {
+            row: rest.components?.header?.row,
+            cell: components.header.cell,
+          },
+        },
         scroll: { x: tableWidth },
       }
     : {};
