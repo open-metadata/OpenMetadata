@@ -17,7 +17,6 @@ import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
-import { App } from '../generated/entity/applications/app';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import {
@@ -166,7 +165,7 @@ export const useApplicationStore = create<ApplicationStore>()(
       updateSearchCriteria: (criteria) => {
         set({ searchCriteria: criteria });
       },
-      setApplications: (applications: App[]) => {
+      setApplications: (applications: string[]) => {
         set({ applications: applications });
       },
     }),

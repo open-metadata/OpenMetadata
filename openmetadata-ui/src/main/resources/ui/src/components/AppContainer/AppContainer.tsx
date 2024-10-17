@@ -13,15 +13,15 @@
  */
 import { Layout } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { getApplicationList } from '../../rest/applicationAPI';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
+import Loader from '../common/Loader/Loader';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
@@ -31,28 +31,18 @@ const AppContainer = () => {
   const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
   const { currentUser, setApplications } = useApplicationStore();
-  const { applications } = useApplicationsProvider();
+  const { applications, loading } = useApplicationsProvider();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
   const { setConfig, bannerDetails } = useLimitStore();
+  const [isApplicationsSet, setIsApplicationsSet] = useState(false);
 
   const fetchLimitConfig = useCallback(async () => {
     try {
       const response = await getLimitConfig();
 
       setConfig(response);
-    } catch (error) {
-      // silent fail
-    }
-  }, []);
-
-  const fetchApplicationList = useCallback(async () => {
-    try {
-      const { data } = await getApplicationList({
-        limit: 100,
-      });
-      setApplications(data);
     } catch (error) {
       // silent fail
     }
@@ -67,7 +57,6 @@ const AppContainer = () => {
     if (currentUser?.id) {
       fetchLimitConfig();
     }
-    fetchApplicationList();
   }, [currentUser?.id]);
 
   useEffect(() => {
@@ -75,6 +64,20 @@ const AppContainer = () => {
       appendReserveRightSidebarClass();
     }
   }, [applications]);
+
+  useEffect(() => {
+    // value from provider is set inside store which is used in class base,
+    // hence we need to wait for the loading to be completed
+    if (!loading && !isApplicationsSet) {
+      const applicationsNameList = applications.map((app) => app.name);
+      setApplications(applicationsNameList);
+      setIsApplicationsSet(true);
+    }
+  }, [loading, applications, setApplications, isApplicationsSet]);
+
+  if (loading || !isApplicationsSet) {
+    return <Loader />;
+  }
 
   return (
     <Layout>
