@@ -229,9 +229,7 @@ public class OpenSearchClient implements SearchClient {
           "chart_suggest",
           "field_suggest");
   private static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
-      Stream.concat(
-              FIELDS_TO_REMOVE.stream(),
-              Stream.of("schemaDefinition", "testSuite", "customMetrics"))
+      Stream.concat(FIELDS_TO_REMOVE.stream(), Stream.of("schemaDefinition", "customMetrics"))
           .toList();
 
   static {
