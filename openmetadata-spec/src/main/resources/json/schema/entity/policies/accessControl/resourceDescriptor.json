@@ -21,6 +21,7 @@
         "ViewTests",
         "ViewQueries",
         "ViewDataProfile",
+        "ViewProfilerGlobalConfiguration",
         "ViewSampleData",
         "ViewTestCaseFailedRowsSample",
         "EditAll",

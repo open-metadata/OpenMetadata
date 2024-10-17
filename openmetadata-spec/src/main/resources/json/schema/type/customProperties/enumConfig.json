@@ -3,7 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EnumConfig",
   "type": "object",
-  "javaType": "org.openmetadata.schema.type.customproperties.EnumConfig",
+  "javaType": "org.openmetadata.schema.type.customProperties.EnumConfig",
   "description": "Applies to Enum type, this config is used to define list of enum values",
   "properties": {
     "multiSelect": {

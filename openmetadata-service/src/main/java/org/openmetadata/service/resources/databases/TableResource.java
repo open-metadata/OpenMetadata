@@ -122,6 +122,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         MetadataOperation.VIEW_DATA_PROFILE,
         MetadataOperation.VIEW_SAMPLE_DATA,
         MetadataOperation.VIEW_USAGE,
+        MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION,
         MetadataOperation.EDIT_TESTS,
         MetadataOperation.EDIT_QUERIES,
         MetadataOperation.EDIT_DATA_PROFILE,
