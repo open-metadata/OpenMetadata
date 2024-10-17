@@ -13,7 +13,6 @@
 
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import process from 'process';
 import {
   getServiceDetailsPath,
   IN_PAGE_SEARCH_ROUTES,
@@ -43,6 +42,7 @@ import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { getBasePath } from './HistoryUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 
@@ -609,7 +609,6 @@ export const getNotificationAlertDetailsPath = (fqn: string) => {
 
   return path;
 };
-
 export const getPathNameFromWindowLocation = () => {
-  return window.location.pathname.replace(process.env.APP_SUB_PATH ?? '', '');
+  return window.location.pathname.replace(getBasePath() ?? '', '');
 };
