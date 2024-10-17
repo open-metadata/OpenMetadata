@@ -89,3 +89,54 @@ export async function validateForm(page: Page) {
 
   await expect(page.getByText(NAME_VALIDATION_ERROR)).toBeVisible();
 }
+
+export const addTagToTableColumn = async (
+  page: Page,
+  {
+    tagName,
+    tagFqn,
+    tagDisplayName,
+    tableId,
+    columnNumber,
+    rowName,
+  }: {
+    tagName: string;
+    tagFqn: string;
+    tagDisplayName: string;
+    tableId: string;
+    columnNumber: number;
+    rowName: string;
+  }
+) => {
+  await page.click(
+    `[data-testid="classification-tags-${columnNumber}"] [data-testid="entity-tags"] [data-testid="add-tag"]`
+  );
+  await page.fill('[data-testid="tag-selector"] input', tagName);
+  await page.click(`[data-testid="tag-${tagFqn}"]`);
+
+  await expect(
+    page.locator('[data-testid="tag-selector"] > .ant-select-selector')
+  ).toContainText(tagDisplayName);
+
+  const saveAssociatedTag = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      response.url().includes(`/api/v1/tables/${tableId}`)
+  );
+  await page.click('[data-testid="saveAssociatedTag"]');
+  await saveAssociatedTag;
+
+  await page.waitForSelector('.ant-select-dropdown', {
+    state: 'detached',
+  });
+
+  await expect(
+    page.getByRole('row', { name: rowName }).getByTestId('tags-container')
+  ).toContainText(tagDisplayName);
+
+  await expect(
+    page.locator(
+      `[data-testid="classification-tags-${columnNumber}"] [data-testid="tags-container"] [data-testid="icon"]`
+    )
+  ).toBeVisible();
+};
