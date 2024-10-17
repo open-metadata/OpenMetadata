@@ -165,7 +165,7 @@ export const useApplicationStore = create<ApplicationStore>()(
       updateSearchCriteria: (criteria) => {
         set({ searchCriteria: criteria });
       },
-      setApplications: (applications: string[]) => {
+      setApplicationsName: (applications: string[]) => {
         set({ applications: applications });
       },
     }),
