@@ -25,6 +25,7 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.ResultSummary;
@@ -250,10 +251,15 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     if (Boolean.TRUE.equals(entity.getExecutable())
         && entity.getExecutableEntityReference() != null) {
       // Update table index with test suite field
-      Table table = getEntity(entity.getExecutableEntityReference(), "testSuite", ALL);
-      IndexMapping indexMapping = searchRepository.getIndexMapping(TABLE);
+      EntityInterface entityInterface =
+          getEntity(entity.getExecutableEntityReference(), "testSuite", ALL);
+      IndexMapping indexMapping =
+          searchRepository.getIndexMapping(entity.getExecutableEntityReference().getType());
       SearchClient searchClient = searchRepository.getSearchClient();
-      SearchIndex index = searchRepository.getSearchIndexFactory().buildIndex(TABLE, table);
+      SearchIndex index =
+          searchRepository
+              .getSearchIndexFactory()
+              .buildIndex(entity.getExecutableEntityReference().getType(), entityInterface);
       Map<String, Object> doc = index.buildSearchIndexDoc();
       searchClient.updateEntity(
           indexMapping.getIndexName(searchRepository.getClusterAlias()),
