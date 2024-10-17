@@ -58,7 +58,7 @@ If you are facing an error `ERROR: could not compute MD5 hash: disabled for FIPS
 
 ## Elasticsearch (version 8.X)
 
-OpenMetadata supports ElasticSearch version up to 8.10.2. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
+OpenMetadata supports ElasticSearch version up to 8.11.4. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
 [Installing ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html).
 
 Please follow the instructions here to [install ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.13/setup.html).
@@ -174,7 +174,7 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support 
 
 - Amazon RDS (MySQL) engine version 8 or higher
-- Amazon OpenSearch (ElasticSearch) engine version up to 8.10.2 or Amazon OpenSearch engine version up to 2.7
+- Amazon OpenSearch (ElasticSearch) engine version up to 8.11.4 or Amazon OpenSearch engine version up to 2.7
 - Amazon RDS (PostgreSQL) engine version between 12 or higher
 
 For Production Systems, we recommend Amazon RDS to be in Multiple Availability Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availability Zones with minimum 3 Master Nodes.

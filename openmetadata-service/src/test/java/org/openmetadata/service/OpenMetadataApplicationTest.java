@@ -99,7 +99,7 @@ public abstract class OpenMetadataApplicationTest {
       "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
   private static final String ELASTIC_SEARCH_CONTAINER_IMAGE =
-      "docker.elastic.co/elasticsearch/elasticsearch:8.10.2";
+      "docker.elastic.co/elasticsearch/elasticsearch:8.11.4";
 
   private static String HOST;
   private static String PORT;
