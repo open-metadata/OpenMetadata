@@ -26,6 +26,11 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
   }
 
   @Override
+  public String getBoldWithSpace() {
+    return "**%s** ";
+  }
+
+  @Override
   public String getLineBreak() {
     return " <br/> ";
   }
