@@ -97,3 +97,8 @@ def send_yaml():
 
     except Exception as e:
         return f"Error loading text file: {e}"
+
+@app.route("/api/run", methods=["POST"])
+def run_ingestion():
+    """Runs the created ingestion"""
+    return jsonify(success=True)

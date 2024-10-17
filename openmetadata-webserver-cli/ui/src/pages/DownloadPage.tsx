@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import PageLayoutV1 from '../components/PageLayoutV1/PageLayoutV1';
 import { LazyLog } from 'react-lazylog';
 import CopyToClipboardButton from '../components/common/CopyToClipboardButton';
-import { downloadYaml, fetchYaml } from '../utils/APIUtils';
+import { downloadYaml, fetchYaml, runIngestion } from '../utils/APIUtils';
+import { ReactComponent as ResumeIcon } from '../assets/svg/ic-play-button.svg';
 
 const DownloadYAML = () => {
     const [yaml, setYaml] = useState<string>('');
@@ -39,6 +40,12 @@ const DownloadYAML = () => {
             .then(response => setYaml(response.data))
             .catch(error => setYaml(`Failed to load yaml ${error.message}`));
     };
+
+    const handleRunIngestion = async () => {
+        runIngestion()
+            .then(response => alert("Run ingestion successfully requested"))
+            .catch(error => alert("The request to run the ingestion failed"));
+    }
 
     useEffect(() => {
         fetchFileContent();
@@ -101,62 +108,36 @@ const DownloadYAML = () => {
                         <Typography.Title level={5}>
                             Next steps
                         </Typography.Title>
-
-                        <div>
-                            <Typography.Text type="secondary">
-                                You can now run the ingestion via:
+                        <Space direction="vertical" className="mt-2 mb-4">
+                            <Tooltip title="Run the ingestion with the yaml">
+                                <Button type="primary"
+                                    icon={<ResumeIcon height={16} width={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />}
+                                    onClick={handleRunIngestion}
+                                >
+                                    Run now
+                                </Button>
+                            </Tooltip>
+                        </Space>
+                        <Typography.Text type="secondary">
+                            You can also run the ingestion via:
+                        </Typography.Text>
+                        <Space direction="vertical" className="mt-2">
+                            <Typography.Text keyboard>
+                                metadata ingest/profile/test/usage -c file.yaml
                             </Typography.Text>
-                            <Space direction="vertical" className="mt-4">
-                                <Typography.Text keyboard>
-                                    metadata ingest/profile/test/usage -c file.yaml
-                                </Typography.Text>
-                            </Space>
-                            <Space direction="vertical" className="mt-4">
-                                <Typography.Text type="secondary">
-                                    If you want to schedule the ingestion, check some examples in the
-                                    docs <a href="https://docs.open-metadata.org/latest/deployment/ingestion">here</a>
-                                </Typography.Text>
-                            </Space>
-                        </div>
+                        </Space>
+                        <Space direction="vertical" className="mt-4">
+                            <Typography.Text type="secondary">
+                                If you want to schedule the ingestion, check some examples in the
+                                docs <a href="https://docs.open-metadata.org/latest/deployment/ingestion">here</a>
+                            </Typography.Text>
+                        </Space>
+
                     </Space>
                 </Col>
             </Row>
         </PageLayoutV1 >
     );
-};
-
-const styles = {
-    container: {
-        padding: '20px',
-        display: 'flex',
-        justifyContent: 'center',
-    },
-    yamlBox: {
-        border: '1px solid #d9d9d9',
-        borderRadius: '4px',
-        padding: '20px',
-        marginBottom: '20px',
-        backgroundColor: '#fafafa',
-        textAlign: 'left' as const, // Align text to the left
-        fontFamily: 'monospace',
-        maxHeight: '400px', // Set max height to make it scrollable
-        overflow: 'auto', // Enable scrolling when content overflows
-        whiteSpace: 'pre-wrap', // Preserve white spaces and wrap lines if necessary
-    },
-    yamlText: {
-        whiteSpace: 'pre-wrap', // Maintain the format of YAML (preformatted text)
-        fontSize: '14px',
-        lineHeight: '1.5',
-        color: '#595959',
-    },
-    commandBox: {
-        backgroundColor: '#f0f5ff',
-        padding: '15px',
-    },
-    footer: {
-        marginTop: '20px',
-        textAlign: 'center' as const,
-    },
 };
 
 export default DownloadYAML;
