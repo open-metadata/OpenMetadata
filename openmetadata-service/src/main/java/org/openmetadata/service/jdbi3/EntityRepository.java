@@ -144,7 +144,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.type.customproperties.TableConfig;
+import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -1495,15 +1495,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void validateTableType(JsonNode fieldValue, String propertyConfig, String fieldName) {
     TableConfig tableConfig =
         JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
-    org.openmetadata.schema.type.customproperties.Table tableValue =
+    org.openmetadata.schema.type.customProperties.Table tableValue =
         JsonUtils.convertValue(
             JsonUtils.readTree(String.valueOf(fieldValue)),
-            org.openmetadata.schema.type.customproperties.Table.class);
+            org.openmetadata.schema.type.customProperties.Table.class);
     Set<String> configColumns = tableConfig.getColumns();
 
     try {
       JsonUtils.validateJsonSchema(
-          tableValue, org.openmetadata.schema.type.customproperties.Table.class);
+          tableValue, org.openmetadata.schema.type.customProperties.Table.class);
 
       Set<String> fieldColumns = new HashSet<>();
       fieldValue.get("columns").forEach(column -> fieldColumns.add(column.asText()));

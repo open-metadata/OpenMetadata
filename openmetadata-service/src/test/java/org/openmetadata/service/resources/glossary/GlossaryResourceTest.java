@@ -89,7 +89,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.type.customproperties.TableConfig;
+import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
