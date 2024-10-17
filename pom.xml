@@ -156,6 +156,7 @@
     <logback-core.version>1.2.13</logback-core.version>
     <logback-classic.version>1.2.13</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
+    <everit.version>1.14.4</everit.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -517,7 +518,11 @@
         <artifactId>picocli</artifactId>
         <version>${picocli.version}</version>
       </dependency>
-
+      <dependency>
+        <groupId>com.github.erosb</groupId>
+        <artifactId>everit-json-schema</artifactId>
+        <version>${everit.version}</version>
+      </dependency>
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGECLIPSEJETTY-1090340 -->
       <dependency>
         <groupId>org.eclipse.jetty</groupId>
