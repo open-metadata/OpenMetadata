@@ -29,6 +29,12 @@
           "name": "TableauDataModel"
         },
         {
+          "name": "TableauPublishedDatasource"
+        },
+        {
+          "name": "TableauEmbeddedDatasource"
+        },
+        {
           "name": "SupersetDataModel"
         },
         {
