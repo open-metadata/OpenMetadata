@@ -48,10 +48,12 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateTagLabel;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -87,6 +89,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
@@ -644,33 +647,28 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         };
     assertRows(result, expectedRows);
 
-    // Create glossaryTerm with  Invalid custom property of type enumWithDescriptions
+    // Create glossaryTerm with  Invalid custom property of type table
+    TableConfig tableConfig =
+        new TableConfig().withColumns(Set.of("columnName1", "columnName2", "columnName3"));
     CustomProperty glossaryTermEnumCp =
         new CustomProperty()
-            .withName("glossaryTermEnumWithDescriptionsCp")
-            .withDescription("enumWithDescriptions type custom property with multiselect = true")
-            .withPropertyType(ENUM_WITH_DESCRIPTIONS_TYPE.getEntityReference())
+            .withName("glossaryTermTableCp")
+            .withDescription("table  type custom property ")
+            .withPropertyType(TABLE_TYPE.getEntityReference())
             .withCustomPropertyConfig(
                 new CustomPropertyConfig()
-                    .withConfig(
-                        Map.of(
-                            "values",
-                            List.of(
-                                Map.of("key", "key1", "description", "description1"),
-                                Map.of("key", "key2", "description", "description2")),
-                            "multiSelect",
-                            true)));
+                    .withConfig(Map.of("columns", new ArrayList<>(tableConfig.getColumns()))));
     entityType =
         typeResourceTest.getEntityByName(
             Entity.GLOSSARY_TERM, "customProperties", ADMIN_AUTH_HEADERS);
     entityType =
         typeResourceTest.addAndCheckCustomProperty(
             entityType.getId(), glossaryTermEnumCp, OK, ADMIN_AUTH_HEADERS);
-    String invalidEnumWithDescriptionRecord =
-        ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,PII.None,,,,glossaryTermEnumWithDescriptionsCp:key1|key3";
-    String invalidEnumWithDescriptionValue =
-        ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,PII.None,,,,glossaryTermEnumWithDescriptionsCp:key1|key3";
-    csv = createCsv(GlossaryCsv.HEADERS, listOf(invalidEnumWithDescriptionValue), null);
+    String invalidTableTypeRecord =
+        ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,PII.None,,,,\"glossaryTermTableCp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value,row_1_col4_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value,row_2_col4_Value\"";
+    String invalidTableTypeValue =
+        ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,PII.None,,,,\"glossaryTermTableCp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value,row_1_col4_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value,row_2_col4_Value\"";
+    csv = createCsv(GlossaryCsv.HEADERS, listOf(invalidTableTypeValue), null);
     result = importCsv(glossaryName, csv, false);
     Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -678,12 +676,12 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         new String[] {
           resultsHeader,
           getFailedRecord(
-              invalidEnumWithDescriptionRecord,
+              invalidTableTypeRecord,
               invalidCustomPropertyValue(
                   11,
-                  "glossaryTermEnumWithDescriptionsCp",
-                  ENUM_WITH_DESCRIPTIONS_TYPE.getDisplayName(),
-                  "key3 not found in propertyConfig of glossaryTermEnumWithDescriptionsCp"))
+                  "glossaryTermTableCp",
+                  "table",
+                  "Column count should be less than or equal to " + tableConfig.getMaxColumns()))
         };
     assertRows(result, expectedRows);
   }
@@ -812,19 +810,21 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
           .withPropertyType(ENUM_TYPE.getEntityReference())
           .withCustomPropertyConfig(enumConfig),
       new CustomProperty()
-          .withName("glossaryTermEnumWithDescriptionsCp")
-          .withDescription("enumWithDescriptions type custom property with multiselect = true")
-          .withPropertyType(ENUM_WITH_DESCRIPTIONS_TYPE.getEntityReference())
+          .withName("glossaryTermTableCol1Cp")
+          .withDescription("table type custom property with 1 column")
+          .withPropertyType(TABLE_TYPE.getEntityReference())
           .withCustomPropertyConfig(
               new CustomPropertyConfig()
                   .withConfig(
-                      Map.of(
-                          "values",
-                          List.of(
-                              Map.of("key", "key1", "description", "description1"),
-                              Map.of("key", "key2", "description", "description2")),
-                          "multiSelect",
-                          true)))
+                      Map.of("columns", List.of("columnName1", "columnName2", "columnName3")))),
+      new CustomProperty()
+          .withName("glossaryTermTableCol3Cp")
+          .withDescription("table type custom property with 3 columns")
+          .withPropertyType(TABLE_TYPE.getEntityReference())
+          .withCustomPropertyConfig(
+              new CustomPropertyConfig()
+                  .withConfig(
+                      Map.of("columns", List.of("columnName1", "columnName2", "columnName3")))),
     };
 
     for (CustomProperty customProperty : customProperties) {
@@ -845,7 +845,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,,user:%s,%s,\"glossaryTermEnumCpMulti:val3|val2|val1|val4|val5;glossaryTermEnumCpSingle:singleVal1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
                 user1, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,glossaryTermEnumWithDescriptionsCp:key1|key2",
+                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,",
                 reviewerRef.get(0), team11, "Draft"));
 
     // Update terms with change in description
@@ -858,12 +858,13 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val3|val2|val1|val4|val5;glossaryTermEnumCpSingle:singleVal1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
                 user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,glossaryTermEnumWithDescriptionsCp:key1|key2",
+                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"",
                 reviewerRef.get(0), team11, "Draft"));
 
     // Add new row to existing rows
     List<String> newRecords =
-        listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,PII.Sensitive,,,Approved,");
+        listOf(
+            ",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,PII.Sensitive,,,Approved,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"");
     testImportExport(
         glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
   }

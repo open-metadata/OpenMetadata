@@ -17,6 +17,7 @@
     "matillionETL": {
       "description": "Matillion ETL Auth Config",
       "type": "object",
+      "title": "Matillion ETL Auth Config",
       "properties": {
         "type": {
           "type": "string",

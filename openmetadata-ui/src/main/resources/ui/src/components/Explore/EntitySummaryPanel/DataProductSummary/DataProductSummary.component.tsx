@@ -82,7 +82,7 @@ const DataProductSummary = ({
             <Typography.Text
               className="summary-panel-section-title"
               data-testid="owner-header">
-              {t('label.owner')}
+              {t('label.owner-plural')}
             </Typography.Text>
           </Col>
           <Col span={24}>

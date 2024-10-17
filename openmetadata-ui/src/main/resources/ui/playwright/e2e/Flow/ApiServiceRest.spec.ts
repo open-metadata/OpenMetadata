@@ -40,7 +40,7 @@ test.describe('API service', () => {
     await settingClick(page, GlobalSettingOptions.APIS);
 
     await page.getByTestId('add-service-button').click();
-    await page.getByTestId('REST').click();
+    await page.getByTestId('Rest').click();
     await page.getByTestId('next-button').click();
 
     // step 1

@@ -105,7 +105,10 @@ test('Search Index Application', async ({ page }) => {
     await page.click('[data-testid="configuration"]');
     await page.fill('#root\\/batchSize', '0');
 
-    await page.getByTitle('chart').getByLabel('close').click();
+    await page.getByTestId('tree-select-widget').click();
+
+    // uncheck the entity
+    await page.getByRole('tree').getByTitle('Topic').click();
 
     await page.click(
       '[data-testid="select-widget"] > .ant-select-selector > .ant-select-selection-item'

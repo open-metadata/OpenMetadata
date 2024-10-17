@@ -20,11 +20,12 @@ from requests.models import Response
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.services.connections.apiService.restConnection import (
-    RESTConnection,
+from metadata.generated.schema.entity.services.connections.api.restConnection import (
+    RestConnection,
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 
 class SchemaURLError(Exception):
@@ -39,7 +40,7 @@ class InvalidOpenAPISchemaError(Exception):
     """
 
 
-def get_connection(connection: RESTConnection) -> Response:
+def get_connection(connection: RestConnection) -> Response:
     """
     Create connection
     """
@@ -52,8 +53,9 @@ def get_connection(connection: RESTConnection) -> Response:
 def test_connection(
     metadata: OpenMetadata,
     client: Response,
-    service_connection: RESTConnection,
+    service_connection: RestConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
@@ -84,4 +86,5 @@ def test_connection(
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

@@ -18,7 +18,7 @@ from functools import singledispatch
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -45,6 +45,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 HIVE_POSTGRES_SCHEME = "hive+postgres"
 HIVE_MYSQL_SCHEME = "hive+mysql"
@@ -181,13 +182,29 @@ def test_connection(
     engine: Engine,
     service_connection: HiveConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
+    timeout_seconds: Optional[int] = THREE_MIN,
 ) -> None:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
 
-    if service_connection.metastoreConnection:
+    if service_connection.metastoreConnection and isinstance(
+        service_connection.metastoreConnection, dict
+    ):
+        try:
+            service_connection.metastoreConnection = MysqlConnection.model_validate(
+                service_connection.metastoreConnection
+            )
+        except ValidationError:
+            try:
+                service_connection.metastoreConnection = (
+                    PostgresConnection.model_validate(
+                        service_connection.metastoreConnection
+                    )
+                )
+            except ValidationError:
+                raise ValueError("Invalid metastore connection")
         engine = get_metastore_connection(service_connection.metastoreConnection)
 
     test_connection_db_schema_sources(
@@ -195,4 +212,5 @@ def test_connection(
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

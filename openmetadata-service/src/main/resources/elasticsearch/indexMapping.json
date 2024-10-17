@@ -101,7 +101,7 @@
     "indexName": "test_case_result_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_case_result_index_mapping.json",
     "alias": "testCaseResult",
-    "parentAliases": ["testSuite", "testCase", "all"],
+    "parentAliases": ["testSuite", "testCase"],
     "childAliases": []
   },
   "testSuite": {

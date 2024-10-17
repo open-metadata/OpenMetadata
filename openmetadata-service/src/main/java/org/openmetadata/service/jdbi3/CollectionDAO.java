@@ -98,7 +98,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
-import org.openmetadata.schema.entity.services.APIService;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -160,6 +160,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   AppExtensionTimeSeries appExtensionTimeSeriesDao();
+
+  @CreateSqlObject
+  AppsDataStore appStoreDAO();
 
   @CreateSqlObject
   EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDao();
@@ -288,7 +291,7 @@ public interface CollectionDAO {
   SearchServiceDAO searchServiceDAO();
 
   @CreateSqlObject
-  APIServiceDAO apiServiceDAO();
+  ApiServiceDAO apiServiceDAO();
 
   @CreateSqlObject
   ContainerDAO containerDAO();
@@ -636,15 +639,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface APIServiceDAO extends EntityDAO<APIService> {
+  interface ApiServiceDAO extends EntityDAO<ApiService> {
     @Override
     default String getTableName() {
       return "api_service_entity";
     }
 
     @Override
-    default Class<APIService> getEntityClass() {
-      return APIService.class;
+    default Class<ApiService> getEntityClass() {
+      return ApiService.class;
     }
 
     @Override
@@ -4243,67 +4246,150 @@ public interface CollectionDAO {
     }
   }
 
-  interface AppExtensionTimeSeries {
+  interface AppsDataStore {
     @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO apps_extension_time_series(json) VALUES (:json)",
+        value =
+            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO apps_extension_time_series(json) VALUES ((:json :: jsonb))",
+        value =
+            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(
+        @Bind("identifier") String identifier,
+        @Bind("type") String type,
+        @Bind("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'stopped') where appId=:appId AND JSON_UNQUOTE(JSON_EXTRACT(json_column_name, '$.status')) = 'running'",
+            "UPDATE apps_data_store set json = :json where identifier = :identifier AND type=:type",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"stopped\"') WHERE appId = :appId AND json->>'status' = 'running'",
+            "UPDATE apps_data_store set json = (:json :: jsonb) where identifier = :identifier AND type=:type",
+        connectionType = POSTGRES)
+    void update(
+        @Bind("identifier") String identifier,
+        @Bind("type") String type,
+        @Bind("json") String json);
+
+    @SqlUpdate("DELETE FROM apps_data_store WHERE identifier = :identifier AND type = :type")
+    void delete(@Bind("identifier") String identifier, @Bind("type") String type);
+
+    @SqlQuery(
+        "SELECT count(*) FROM apps_data_store where identifier = :identifier AND type = :type")
+    int listAppDataCount(@Bind("identifier") String identifier, @Bind("type") String type);
+
+    @SqlQuery(
+        "SELECT json FROM apps_data_store where identifier in (<identifier>) AND type = :type")
+    List<String> listAppsDataWithIds(
+        @BindList("identifier") List<String> identifier, @Bind("type") String type);
+
+    @SqlQuery("SELECT json FROM apps_data_store where type = :type")
+    List<String> listAppsDataWithType(@Bind("type") String type);
+
+    @SqlQuery("SELECT json FROM apps_data_store where identifier = :identifier AND type = :type")
+    String findAppData(@Bind("identifier") String identifier, @Bind("type") String type);
+  }
+
+  interface AppExtensionTimeSeries {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO apps_extension_time_series(json, extension) VALUES (:json, :extension)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO apps_extension_time_series(json, extension) VALUES (:json :: jsonb, :extension)",
+        connectionType = POSTGRES)
+    void insert(@Bind("json") String json, @Bind("extension") String extension);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'stopped') where appId=:appId AND JSON_UNQUOTE(JSON_EXTRACT(json_column_name, '$.status')) = 'running' AND extension = 'status'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"stopped\"') WHERE appId = :appId AND json->>'status' = 'running' AND extension = 'status'",
         connectionType = POSTGRES)
     void markStaleEntriesStopped(@Bind("appId") String appId);
 
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE apps_extension_time_series set json = :json where appId=:appId and timestamp=:timestamp",
+            "UPDATE apps_extension_time_series set json = :json where appId=:appId and timestamp=:timestamp and extension=:extension",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE apps_extension_time_series set json = (:json :: jsonb) where appId=:appId and timestamp=:timestamp",
+            "UPDATE apps_extension_time_series set json = (:json :: jsonb) where appId=:appId and timestamp=:timestamp and extension=:extension",
         connectionType = POSTGRES)
     void update(
-        @Bind("appId") String appId, @Bind("json") String json, @Bind("timestamp") Long timestamp);
+        @Bind("appId") String appId,
+        @Bind("json") String json,
+        @Bind("timestamp") Long timestamp,
+        @Bind("extension") String extension);
 
-    @SqlQuery("SELECT count(*) FROM apps_extension_time_series where appId = :appId")
-    int listAppRunRecordCount(@Bind("appId") String appId);
+    @SqlUpdate(
+        "DELETE FROM apps_extension_time_series WHERE appId = :appId AND extension = :extension")
+    void delete(@Bind("appId") String appId, @Bind("extension") String extension);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
-    List<String> listAppRunRecord(
-        @Bind("appId") String appId, @Bind("limit") int limit, @Bind("offset") int offset);
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension")
+    int listAppExtensionCount(@Bind("appId") String appId, @Bind("extension") String extension);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
-    List<String> listAppRunRecordAfterTime(
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND timestamp > :startTime")
+    int listAppExtensionCountAfterTime(
+        @Bind("appId") String appId,
+        @Bind("startTime") long startTime,
+        @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppExtension(
         @Bind("appId") String appId,
         @Bind("limit") int limit,
         @Bind("offset") int offset,
-        @Bind("startTime") long startTime);
+        @Bind("extension") String extension);
 
-    default String getLatestAppRun(UUID appId) {
-      List<String> result = listAppRunRecord(appId.toString(), 1, 0);
-      if (!nullOrEmpty(result)) {
-        return result.get(0);
-      }
-      return null;
-    }
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppExtensionAfterTime(
+        @Bind("appId") String appId,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("startTime") long startTime,
+        @Bind("extension") String extension);
 
-    default String getLatestAppRun(UUID appId, long startTime) {
-      List<String> result = listAppRunRecordAfterTime(appId.toString(), 1, 0, startTime);
-      if (!nullOrEmpty(result)) {
-        return result.get(0);
-      }
-      return null;
-    }
+    // Prepare methods to get extension by name instead of ID
+    // For example, for limits we need to fetch by app name to ensure if we reinstall the app,
+    // they'll still be taken into account
+    @SqlQuery(
+        "SELECT count(*) FROM apps_extension_time_series where appName = :appName and extension = :extension")
+    int listAppExtensionCountByName(
+        @Bind("appName") String appName, @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT count(*) FROM apps_extension_time_series where appName = :appName and extension = :extension AND timestamp > :startTime")
+    int listAppExtensionCountAfterTimeByName(
+        @Bind("appName") String appName,
+        @Bind("startTime") long startTime,
+        @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appName = :appName AND extension = :extension ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppExtensionByName(
+        @Bind("appName") String appName,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appName = :appName AND extension = :extension AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppExtensionAfterTimeByName(
+        @Bind("appName") String appName,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("startTime") long startTime,
+        @Bind("extension") String extension);
   }
 
   interface ReportDataTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -4496,6 +4582,30 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("incidentStateId") String incidentStateId);
 
+    @SqlQuery(
+        """
+              SELECT dqdts1.json FROM
+              data_quality_data_time_series dqdts1
+              INNER JOIN (
+                  SELECT tc.fqnHash
+                  FROM entity_relationship er
+                  INNER JOIN test_case tc ON er.toId = tc.id
+                  where fromEntity = 'testSuite' AND toEntity = 'testCase' and fromId = :testSuiteId
+              ) ts ON dqdts1.entityFQNHash = ts.fqnHash
+              LEFT JOIN data_quality_data_time_series dqdts2 ON
+                  (dqdts1.entityFQNHash = dqdts2.entityFQNHash and dqdts1.timestamp < dqdts2.timestamp)
+              WHERE dqdts2.entityFQNHash IS NULL""")
+    List<String> listLastTestCaseResultsForTestSuite(@BindMap Map<String, String> params);
+
+    @SqlQuery(
+        """
+            SELECT dqdts1.json FROM
+            data_quality_data_time_series dqdts1
+            LEFT JOIN data_quality_data_time_series dqdts2 ON
+                (dqdts1.entityFQNHash = dqdts2.entityFQNHash and dqdts1.timestamp < dqdts2.timestamp)
+            WHERE dqdts2.entityFQNHash IS NULL AND dqdts1.entityFQNHash = :testCaseFQN""")
+    String listLastTestCaseResult(@BindFQN("testCaseFQN") String testCaseFQN);
+
     default void insert(
         String testCaseFQN,
         String extension,
@@ -4510,6 +4620,10 @@ public interface CollectionDAO {
           jsonSchema,
           json,
           incidentStateId != null ? incidentStateId.toString() : null);
+    }
+
+    default List<String> listLastTestCaseResultsForTestSuite(UUID testSuiteId) {
+      return listLastTestCaseResultsForTestSuite(Map.of("testSuiteId", testSuiteId.toString()));
     }
   }
 
