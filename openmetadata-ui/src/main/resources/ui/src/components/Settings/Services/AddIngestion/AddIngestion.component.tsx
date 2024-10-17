@@ -26,25 +26,23 @@ import {
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
 import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
-import {
-  getDayCron,
-  getWeekCron,
-} from '../../../common/CronEditor/CronEditor.constant';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
 import IngestionWorkflowForm from '../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm';
-import {
-  AddIngestionProps,
-  WorkflowExtraConfig,
-} from './IngestionWorkflow.interface';
+import { AddIngestionProps } from './IngestionWorkflow.interface';
 import ScheduleInterval from './Steps/ScheduleInterval';
+import {
+  IngestionExtraConfig,
+  WorkflowExtraConfig,
+} from './Steps/ScheduleInterval.interface';
 
 const AddIngestion = ({
   activeIngestionStep,
@@ -70,8 +68,11 @@ const AddIngestion = ({
   onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
+  const { ingestionFQN } = useFqn();
   const { currentUser } = useApplicationStore();
   const { config: limitConfig } = useLimitStore();
+
+  const isEditMode = !isEmpty(ingestionFQN);
 
   const { pipelineSchedules } =
     limitConfig?.limits?.config.featureLimits.find(
@@ -91,15 +92,6 @@ const AddIngestion = ({
         data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
     })
-  );
-
-  const [scheduleInterval, setScheduleInterval] = useState(() =>
-    data?.airflowConfig.scheduleInterval ?? limitConfig?.enable
-      ? getWeekCron({ hour: 0, min: 0, dow: 1 })
-      : getDayCron({
-          min: 0,
-          hour: 0,
-        })
   );
 
   const { ingestionName, retries } = useMemo(
@@ -151,7 +143,9 @@ const AddIngestion = ({
     handleNext(2);
   };
 
-  const createNewIngestion = (extraData: WorkflowExtraConfig) => {
+  const createNewIngestion = (
+    extraData: WorkflowExtraConfig & IngestionExtraConfig
+  ) => {
     const {
       name = '',
       enableDebugLog,
@@ -168,9 +162,7 @@ const AddIngestion = ({
 
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: isEmpty(scheduleInterval)
-          ? undefined
-          : scheduleInterval,
+        scheduleInterval: extraData.cron,
         startDate: date,
         retries: extraData.retries,
       },
@@ -214,15 +206,15 @@ const AddIngestion = ({
     }
   };
 
-  const updateIngestion = (extraData: WorkflowExtraConfig) => {
+  const updateIngestion = (
+    extraData: WorkflowExtraConfig & IngestionExtraConfig
+  ) => {
     if (data) {
       const updatedData: IngestionPipeline = {
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          scheduleInterval: isEmpty(scheduleInterval)
-            ? undefined
-            : scheduleInterval,
+          scheduleInterval: extraData.cron,
           retries: extraData.retries,
         },
         displayName: workflowData?.displayName,
@@ -268,7 +260,7 @@ const AddIngestion = ({
   };
 
   const handleScheduleIntervalDeployClick = (
-    extraData: WorkflowExtraConfig
+    extraData: WorkflowExtraConfig & IngestionExtraConfig
   ) => {
     if (status === FormSubmitType.ADD) {
       createNewIngestion(extraData);
@@ -305,23 +297,24 @@ const AddIngestion = ({
         )}
 
         {activeIngestionStep === 2 && (
-          <ScheduleInterval
-            disabledCronChange={pipelineType === PipelineType.DataInsight}
+          <ScheduleInterval<IngestionExtraConfig>
+            buttonProps={{
+              okText: isUndefined(data)
+                ? t('label.add-deploy')
+                : t('label.submit'),
+            }}
+            disabled={pipelineType === PipelineType.DataInsight}
             includePeriodOptions={
               pipelineType === PipelineType.DataInsight
                 ? ['day']
                 : periodOptions
             }
-            scheduleInterval={scheduleInterval}
+            initialData={{ cron: data?.airflowConfig.scheduleInterval }}
+            isEditMode={isEditMode}
             status={saveState}
-            submitButtonLabel={
-              isUndefined(data) ? t('label.add-deploy') : t('label.submit')
-            }
             onBack={() => handlePrev(1)}
-            onChange={(data) => setScheduleInterval(data)}
             onDeploy={handleScheduleIntervalDeployClick}>
             <Form.Item
-              className="m-t-xs"
               colon={false}
               initialValue={retries}
               label={t('label.number-of-retries')}

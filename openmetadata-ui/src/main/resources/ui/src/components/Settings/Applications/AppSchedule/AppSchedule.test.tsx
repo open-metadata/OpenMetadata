@@ -39,16 +39,14 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
     .mockImplementation((...args) => mockGetIngestionPipelineByFqn(...args)),
 }));
 
-jest.mock(
-  '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler',
-  () =>
-    jest.fn().mockImplementation(({ onSubmit, onCancel }) => (
-      <div>
-        TestSuiteScheduler
-        <button onClick={onSubmit}>Submit TestSuiteSchedular</button>
-        <button onClick={onCancel}>Cancel TestSuiteSchedular</button>
-      </div>
-    ))
+jest.mock('../../Services/AddIngestion/Steps/ScheduleInterval', () =>
+  jest.fn().mockImplementation(({ onDeploy, onBack }) => (
+    <div>
+      ScheduleInterval
+      <button onClick={onDeploy}>Submit ScheduleInterval</button>
+      <button onClick={onBack}>Cancel ScheduleInterval</button>
+    </div>
+  ))
 );
 
 jest.mock('../../../common/Loader/Loader', () => {
@@ -171,13 +169,13 @@ describe('AppSchedule component', () => {
     expect(screen.getByText('Modal is open')).toBeInTheDocument();
 
     userEvent.click(
-      screen.getByRole('button', { name: 'Submit TestSuiteSchedular' })
+      screen.getByRole('button', { name: 'Submit ScheduleInterval' })
     );
 
     expect(mockOnSave).toHaveBeenCalled();
 
     userEvent.click(
-      screen.getByRole('button', { name: 'Cancel TestSuiteSchedular' })
+      screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
     );
 
     expect(screen.getByText('Modal is close')).toBeInTheDocument();

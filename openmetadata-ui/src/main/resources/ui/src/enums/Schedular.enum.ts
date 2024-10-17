@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,24 +11,14 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../styles/variables.less');
+export enum CronTypes {
+  MINUTE = 'minute',
+  HOUR = 'hour',
+  DAY = 'day',
+  WEEK = 'week',
+}
 
-.cron-row {
-  .ant-form-item {
-    margin: 0px;
-  }
-}
-.ant-radio-button-wrapper.week-selector-buttons,
-.ant-radio-button-wrapper.week-selector-buttons:first-child,
-.ant-radio-button-wrapper.week-selector-buttons:last-child {
-  height: 32px;
-  width: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 16px;
-  border-width: 1px;
-}
-.ant-radio-button-wrapper.week-selector-buttons:not(:first-child)::before {
-  position: relative;
+export enum SchedularOptions {
+  SCHEDULE = 'schedule',
+  ON_DEMAND = 'on-demand',
 }
