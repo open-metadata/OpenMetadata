@@ -498,6 +498,8 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   @GET
+  @Path("/customProperties")
+  @Produces(MediaType.APPLICATION_JSON)
   public Response getAllCustomPropertiesByEntityType(@Context UriInfo uriInfo,
                                                       @Context SecurityContext securityContext) {
     try {
