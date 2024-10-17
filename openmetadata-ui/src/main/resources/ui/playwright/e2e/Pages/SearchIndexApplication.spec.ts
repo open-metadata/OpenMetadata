@@ -160,10 +160,13 @@ test('Search Index Application', async ({ page }) => {
     await page.click('[data-testid="install-application"]');
     await page.click('[data-testid="save-button"]');
     await page.click('[data-testid="submit-btn"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.rc-virtual-list [title="None"]');
+    await page.waitForSelector('[data-testid="schedular-card-container"]');
+    await page
+      .getByTestId('schedular-card-container')
+      .getByText('On Demand')
+      .click();
 
-    expect(await page.innerText('[data-testid="cron-type"]')).toContain('None');
+    await expect(page.locator('[data-testid="cron-type"')).not.toBeVisible();
 
     const installApplicationResponse = page.waitForResponse('api/v1/apps');
     await page.click('[data-testid="deploy-button"]');
