@@ -477,10 +477,8 @@ class CommonDbSourceService(
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         """Not Implemented"""
         yield from []
-    
-    def get_location_path(
-        self, table_name: str, schema_name: str
-    ) -> Optional[str]:
+
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
         """
         Method to fetch the location path of the table
         by default there will be no location path
