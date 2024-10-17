@@ -203,7 +203,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       displayName: data.name ?? ingestionPipeline.displayName,
       airflowConfig: {
         ...ingestionPipeline?.airflowConfig,
-        scheduleInterval: isEmpty(data.cron) ? undefined : data.cron,
+        scheduleInterval: data.cron,
       },
       loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       sourceConfig: {
