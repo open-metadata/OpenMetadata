@@ -293,6 +293,10 @@ public class FeedRepository {
   }
 
   public Thread getTask(EntityLink about, TaskType taskType) {
+    return getTask(about, taskType, null);
+  }
+
+  public Thread getTask(EntityLink about, TaskType taskType, TaskStatus taskStatus) {
     List<Triple<String, String, String>> tasks =
         dao.fieldRelationshipDAO()
             .findFrom(
@@ -304,8 +308,16 @@ public class FeedRepository {
         UUID threadId = UUID.fromString(task.getLeft());
         Thread thread =
             EntityUtil.validate(threadId, dao.feedDAO().findById(threadId), Thread.class);
-        if (thread.getTask() != null && thread.getTask().getType() == taskType) {
-          return thread;
+        if (Optional.ofNullable(taskStatus).isPresent()) {
+          if (thread.getTask() != null
+              && thread.getTask().getType() == taskType
+              && thread.getTask().getStatus() == taskStatus) {
+            return thread;
+          }
+        } else {
+          if (thread.getTask() != null && thread.getTask().getType() == taskType) {
+            return thread;
+          }
         }
       }
     }
@@ -946,8 +958,7 @@ public class FeedRepository {
       String createdByUserName = thread.getCreatedBy();
       User createdByUser =
           Entity.getEntityByName(USER, createdByUserName, TEAMS_FIELD, NON_DELETED);
-      // TODO: How to deal better with the governance-bot exception
-      if (Boolean.TRUE.equals(createdByUser.getIsBot()) && !createdByUserName.equals("governance-bot")) {
+      if (Boolean.TRUE.equals(createdByUser.getIsBot())) {
         throw new IllegalArgumentException("Task cannot be created by bot only by user or teams");
       }
 

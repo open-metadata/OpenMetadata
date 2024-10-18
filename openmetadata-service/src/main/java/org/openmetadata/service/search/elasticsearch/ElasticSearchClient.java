@@ -698,6 +698,72 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public SearchResultListMapper listWithDeepPagination(
+      String index,
+      String query,
+      String filter,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException {
+    List<Map<String, Object>> results = new ArrayList<>();
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+    if (!nullOrEmpty(query)) {
+      searchSourceBuilder = getSearchSourceBuilder(index, query, 0, size);
+    }
+    if (Optional.ofNullable(filter).isPresent()) {
+      getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(query));
+    }
+
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    searchSourceBuilder.from(0);
+    searchSourceBuilder.size(size);
+
+    if (Optional.ofNullable(searchAfter).isPresent()) {
+      searchSourceBuilder.searchAfter(searchAfter);
+    }
+
+    if (searchSortFilter.isSorted()) {
+      FieldSortBuilder fieldSortBuilder =
+          SortBuilders.fieldSort(searchSortFilter.getSortField())
+              .order(SortOrder.fromString(searchSortFilter.getSortType()));
+      if (searchSortFilter.isNested()) {
+        NestedSortBuilder nestedSortBuilder =
+            new NestedSortBuilder(searchSortFilter.getSortNestedPath());
+        fieldSortBuilder.setNestedSort(nestedSortBuilder);
+        fieldSortBuilder.sortMode(
+            SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
+    }
+    try {
+      SearchResponse response =
+          client.search(
+              new es.org.elasticsearch.action.search.SearchRequest(index)
+                  .source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
+      SearchHits searchHits = response.getHits();
+      List<SearchHit> hits = List.of(searchHits.getHits());
+      Object[] lastHitSortValues = null;
+
+      if (!hits.isEmpty()) {
+        lastHitSortValues = hits.get(hits.size() - 1).getSortValues();
+      }
+
+      hits.forEach(hit -> results.add(hit.getSourceAsMap()));
+      return new SearchResultListMapper(
+          results, searchHits.getTotalHits().value, lastHitSortValues);
+    } catch (ElasticsearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getDetailedMessage()));
+      }
+    }
+  }
+
+  @Override
   public Map<String, Object> searchLineageInternal(
       String fqn,
       int upstreamDepth,

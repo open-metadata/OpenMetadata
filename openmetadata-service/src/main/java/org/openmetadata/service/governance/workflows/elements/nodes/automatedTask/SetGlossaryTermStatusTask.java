@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask;
 
+import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
+
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.FieldExtension;
@@ -8,58 +10,59 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
-import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
-import org.openmetadata.service.governance.workflows.elements.WorkflowNodeInterface;
-import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.SetGlossaryTermStatusImpl;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
+import org.openmetadata.service.governance.workflows.elements.NodeInterface;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.SetGlossaryTermStatusImpl;
+import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.FieldExtensionBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 
-import static org.openmetadata.service.governance.workflows.Workflow.getMetadataExtension;
+public class SetGlossaryTermStatusTask implements NodeInterface {
+  private final SubProcess subProcess;
 
-public class SetGlossaryTermStatusTask implements WorkflowNodeInterface {
-    private final SubProcess subProcess;
+  public SetGlossaryTermStatusTask(SetGlossaryTermStatusTaskDefinition nodeDefinition) {
+    String subProcessId = nodeDefinition.getName();
 
-    public SetGlossaryTermStatusTask(WorkflowNodeDefinitionInterface nodeDefinition) {
-        SetGlossaryTermStatusTaskDefinition node = (SetGlossaryTermStatusTaskDefinition) nodeDefinition;
+    SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
 
-        SubProcess subProcess = new SubProcess();
-        subProcess.setId(node.getName());
-        subProcess.setName(node.getDisplayName());
-        subProcess.addExtensionElement(
-                getMetadataExtension(
-                        node.getName(), node.getDisplayName(), node.getDescription()));
+    StartEvent startEvent =
+        new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
-        // Attach Listeners
-        attachWorkflowInstanceStageUpdaterListeners(subProcess);
+    ServiceTask setGlossaryTermStatus =
+        getSetGlossaryTermStatusServiceTask(
+            subProcessId, nodeDefinition.getConfig().getGlossaryTermStatus().toString());
 
-        StartEvent startEvent = new StartEvent();
-        startEvent.setId(getFlowableElementId(node.getName(), "startEvent"));
-        startEvent.setName(getFlowableElementName(node.getNodeDisplayName(), "startEvent"));
-        subProcess.addFlowElement(startEvent);
+    EndEvent endEvent =
+        new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
 
-        ServiceTask serviceTask = new ServiceTask();
-        serviceTask.setId(getFlowableElementId(node.getName(), "setGlossaryTermStatus"));
-        serviceTask.setName(getFlowableElementName(node.getDisplayName(), "setGlossaryTermStatus"));
-        serviceTask.setImplementationType("class");
-        serviceTask.setImplementation(SetGlossaryTermStatusImpl.class.getName());
+    subProcess.addFlowElement(startEvent);
+    subProcess.addFlowElement(setGlossaryTermStatus);
+    subProcess.addFlowElement(endEvent);
 
-        FieldExtension statusExpr = new FieldExtension();
-        statusExpr.setFieldName("statusExpr");
-        statusExpr.setStringValue(node.getConfig().getGlossaryTermStatus().toString());
-        serviceTask.getFieldExtensions().add(statusExpr);
+    subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setGlossaryTermStatus.getId()));
+    subProcess.addFlowElement(new SequenceFlow(setGlossaryTermStatus.getId(), endEvent.getId()));
 
-        subProcess.addFlowElement(serviceTask);
+//    attachDefaultListeners(subProcess);
 
-        EndEvent endEvent = new EndEvent();
-        endEvent.setId(getFlowableElementId(node.getName(), "endEvent"));
-        endEvent.setName(getFlowableElementName(node.getNodeDisplayName(), "endEvent"));
-        subProcess.addFlowElement(endEvent);
+    this.subProcess = subProcess;
+  }
 
-        subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), serviceTask.getId()));
-        subProcess.addFlowElement(new SequenceFlow(serviceTask.getId(), endEvent.getId()));
+  private ServiceTask getSetGlossaryTermStatusServiceTask(String subProcessId, String status) {
+    FieldExtension statusExpr =
+        new FieldExtensionBuilder().fieldName("statusExpr").fieldValue(status).build();
 
-        this.subProcess = subProcess;
-    }
-    public void addToWorkflow(BpmnModel model, Process process) {
-        process.addFlowElement(subProcess);
-    }
+    ServiceTask serviceTask =
+        new ServiceTaskBuilder()
+            .id(getFlowableElementId(subProcessId, "setGlossaryTermStatus"))
+            .implementation(SetGlossaryTermStatusImpl.class.getName())
+            .build();
+    serviceTask.getFieldExtensions().add(statusExpr);
+    return serviceTask;
+  }
+
+  public void addToWorkflow(BpmnModel model, Process process) {
+    process.addFlowElement(subProcess);
+  }
 }

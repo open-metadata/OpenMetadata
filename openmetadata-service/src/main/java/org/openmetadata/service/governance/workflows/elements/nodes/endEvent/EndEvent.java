@@ -1,26 +1,16 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.endEvent;
 
-import static org.openmetadata.service.governance.workflows.Workflow.getMetadataExtension;
-
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.Process;
-import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
-import org.openmetadata.service.governance.workflows.elements.WorkflowNodeInterface;
+import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
+import org.openmetadata.service.governance.workflows.elements.NodeInterface;
+import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
 
-public class EndEvent implements WorkflowNodeInterface {
+public class EndEvent implements NodeInterface {
   private final org.flowable.bpmn.model.EndEvent endEvent;
 
-  public EndEvent(WorkflowNodeDefinitionInterface nodeDefinition) {
-    org.flowable.bpmn.model.EndEvent endEvent = new org.flowable.bpmn.model.EndEvent();
-    endEvent.setId(nodeDefinition.getName());
-    endEvent.setName(nodeDefinition.getDisplayName());
-    endEvent.addExtensionElement(
-        getMetadataExtension(nodeDefinition.getName(), nodeDefinition.getDisplayName(), null));
-
-    // Attach Listeners
-    attachWorkflowInstanceStageUpdaterListeners(endEvent);
-
-    this.endEvent = endEvent;
+  public EndEvent(EndEventDefinition nodeDefinition) {
+    this.endEvent = new EndEventBuilder().id(nodeDefinition.getName()).build();
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {

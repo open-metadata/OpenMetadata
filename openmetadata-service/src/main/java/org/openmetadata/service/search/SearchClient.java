@@ -125,6 +125,15 @@ public interface SearchClient {
       String q)
       throws IOException;
 
+  SearchResultListMapper listWithDeepPagination(
+      String index,
+      String query,
+      String filter,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException;
+
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
   Response searchLineage(
@@ -243,10 +252,18 @@ public interface SearchClient {
   class SearchResultListMapper {
     public List<Map<String, Object>> results;
     public long total;
+    public Object[] lastHitSortValues;
 
     public SearchResultListMapper(List<Map<String, Object>> results, long total) {
       this.results = results;
       this.total = total;
+    }
+
+    public SearchResultListMapper(
+        List<Map<String, Object>> results, long total, Object[] lastHitSortValues) {
+      this.results = results;
+      this.total = total;
+      this.lastHitSortValues = lastHitSortValues;
     }
   }
 

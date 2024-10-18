@@ -433,7 +433,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
         List<GlossaryTerm> childTerms = getAllTerms(updated);
         for (GlossaryTerm term : childTerms) {
-          if (term.getStatus().equals(Status.DRAFT)) {
+          if (term.getStatus().equals(Status.IN_REVIEW)) {
             repository.updateTaskWithNewReviewers(term);
           }
         }

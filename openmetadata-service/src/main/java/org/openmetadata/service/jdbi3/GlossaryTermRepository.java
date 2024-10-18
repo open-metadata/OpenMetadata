@@ -55,8 +55,6 @@ import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.flowable.common.engine.api.FlowableException;
-import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
@@ -538,28 +536,36 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void postCreate(GlossaryTerm entity) {
     super.postCreate(entity);
-//    if (entity.getStatus() == Status.DRAFT) {
-//      // Create an approval task for glossary term in draft mode
-//      createApprovalTask(entity, entity.getReviewers());
-//    }
   }
 
   @Override
   public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
     super.postUpdate(original, updated);
-    if (original.getStatus() == Status.DRAFT) {
+    if (original.getStatus() == Status.IN_REVIEW) {
       if (updated.getStatus() == Status.APPROVED) {
         closeApprovalTask(updated, "Approved the glossary term");
       } else if (updated.getStatus() == Status.REJECTED) {
         closeApprovalTask(updated, "Rejected the glossary term");
       }
     }
+
+    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
+    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
+    // will be a Task created.
+    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
+    // Glossary Term goes back to DRAFT.
+    if (updated.getStatus() == Status.DRAFT) {
+      try {
+        closeApprovalTask(updated, "Closed due to glossary term going back to DRAFT.");
+      } catch (EntityNotFoundException ignored) {
+      } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
   }
 
   @Override
   protected void preDelete(GlossaryTerm entity, String deletedBy) {
     // A glossary term in `Draft` state can only be deleted by the reviewers
-    if (Status.DRAFT.equals(entity.getStatus())) {
+    if (Status.IN_REVIEW.equals(entity.getStatus())) {
       checkUpdatedByReviewer(entity, deletedBy);
     }
   }
@@ -595,7 +601,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // TODO: Resolve this outside
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
-      variables.put("approved", true);
+      variables.put("approved", resolveTask.getNewValue().equalsIgnoreCase("approved"));
       variables.put("resolvedBy", user);
       WorkflowHandler.getInstance().resolveTask(taskId, variables);
       // ---
@@ -603,17 +609,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // TODO: performTask returns the updated Entity and the flow applies the new value.
       // This should be changed with the new Governance Workflows.
       GlossaryTerm glossaryTerm = (GlossaryTerm) threadContext.getAboutEntity();
-//      glossaryTerm.setStatus(Status.APPROVED);
+      //      glossaryTerm.setStatus(Status.APPROVED);
       return glossaryTerm;
-    }
-
-    @Override
-    protected void closeTask(String user, CloseTask closeTask) {
-      UUID taskId = threadContext.getThread().getId();
-      Map<String, Object> variables = new HashMap<>();
-      variables.put("approved", false);
-      variables.put("resolvedBy", user);
-      WorkflowHandler.getInstance().resolveTask(taskId, variables);
     }
   }
 
@@ -659,7 +656,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private void checkUpdatedByReviewer(GlossaryTerm term, String updatedBy) {
     // Only list of allowed reviewers can change the status from DRAFT to APPROVED
     List<EntityReference> reviewers = term.getReviewers();
-    if (!nullOrEmpty(reviewers) && !updatedBy.equals("governance-bot")) {
+    if (!nullOrEmpty(reviewers)) {
       // Updating user must be one of the reviewers
       boolean isReviewer =
           reviewers.stream()
@@ -678,7 +675,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                           || e.getFullyQualifiedName().equals(updatedBy);
                     }
                   });
-      // TODO: Think how to better handle that governance-bot is updating the Status
       if (!isReviewer) {
         throw new AuthorizationException(notReviewer(updatedBy));
       }
@@ -714,11 +710,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private void closeApprovalTask(GlossaryTerm entity, String comment) {
     EntityLink about = new EntityLink(GLOSSARY_TERM, entity.getFullyQualifiedName());
     FeedRepository feedRepository = Entity.getFeedRepository();
-    Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval);
-    if (TaskStatus.Open.equals(taskThread.getTask().getStatus())) {
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-    }
+    Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+    feedRepository.closeTask(
+        taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
   }
 
   private void updateAssetIndexes(GlossaryTerm original, GlossaryTerm updated) {
@@ -832,7 +826,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         List<GlossaryTerm> childTerms = getNestedTerms(updated);
         childTerms.add(updated);
         for (GlossaryTerm term : childTerms) {
-          if (term.getStatus().equals(Status.DRAFT)) {
+          if (term.getStatus().equals(Status.IN_REVIEW)) {
             updateTaskWithNewReviewers(term);
           }
         }
@@ -911,8 +905,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (origTerm.getStatus() == updatedTerm.getStatus()) {
         return;
       }
-      // Only reviewers can change from DRAFT status to APPROVED/REJECTED status
-      if (origTerm.getStatus() == Status.DRAFT
+      // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
+      if (origTerm.getStatus() == Status.IN_REVIEW
           && (updatedTerm.getStatus() == Status.APPROVED
               || updatedTerm.getStatus() == Status.REJECTED)) {
         checkUpdatedByReviewer(origTerm, updatedTerm.getUpdatedBy());

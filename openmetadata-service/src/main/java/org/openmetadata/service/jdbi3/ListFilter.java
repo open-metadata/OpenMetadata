@@ -57,7 +57,9 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getWorkflowDefinitionIdCondition() {
     String workflowDefinitionId = queryParams.get("workflowDefinitionId");
-    return workflowDefinitionId == null ? "" : String.format("workflowDefinitionId = '%s'", workflowDefinitionId);
+    return workflowDefinitionId == null
+        ? ""
+        : String.format("workflowDefinitionId = '%s'", workflowDefinitionId);
   }
 
   private String getEventSubscriptionAlertType() {

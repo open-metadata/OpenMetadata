@@ -782,6 +782,19 @@ public class SearchRepository {
         q);
   }
 
+  public SearchClient.SearchResultListMapper listWithDeepPagination(
+      String entityType,
+      String query,
+      String filter,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithDeepPagination(
+        index.getIndexName(clusterAlias), query, filter, searchSortFilter, size, searchAfter);
+  }
+
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
     return searchClient.searchBySourceUrl(sourceUrl);
   }

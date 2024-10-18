@@ -24,26 +24,44 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "type": {
+      "$ref": "../../governance/workflows/workflowDefinition.json#definitions/type"
+    },
+    "trigger": {
+      "oneOf": [
+        {
+          "$ref": "../../governance/workflows/elements/triggers/eventBasedEntityTrigger.json"
+        },
+        {
+          "$ref": "../../governance/workflows/elements/triggers/periodicBatchEntityTrigger.json"
+        }
+      ]
+    },
     "nodes": {
       "description": "List of processes used on the workflow.",
       "type": "array",
-      "oneOf": [
-        {
-          "$ref": "../../governance/workflows/elements/nodes/automatedTask/checkEntityHasReviewersTask.json"
-        },
-        {
-          "$ref": "../../governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask.json"
-        },
-        {
-          "$ref": "../../governance/workflows/elements/nodes/userTask/userApprovalTask.json"
-        },
-        {
-          "$ref": "../../governance/workflows/elements/nodes/trigger/entityEventTrigger.json"
-        },
-        {
-          "$ref": "../../governance/workflows/elements/nodes/endEvent/endEvent.json"
-        }
-      ]
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "../../governance/workflows/elements/nodes/automatedTask/checkEntityAttributesTask.json"
+          },
+          {
+            "$ref": "../../governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask.json"
+          },
+          {
+            "$ref": "../../governance/workflows/elements/nodes/automatedTask/setEntityCertificationTask.json"
+          },
+          {
+            "$ref": "../../governance/workflows/elements/nodes/endEvent/endEvent.json"
+          },
+          {
+            "$ref": "../../governance/workflows/elements/nodes/startEvent/startEvent.json"
+          },
+          {
+            "$ref": "../../governance/workflows/elements/nodes/userTask/userApprovalTask.json"
+          }
+        ]
+      }
     },
     "edges": {
       "description": "List of edges that connect the workflow elements and guide its flow.",

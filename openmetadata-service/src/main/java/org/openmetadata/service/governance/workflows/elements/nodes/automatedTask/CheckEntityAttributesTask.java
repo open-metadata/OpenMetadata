@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask;
 
+import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
+
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.FieldExtension;
@@ -8,61 +10,58 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
-import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
-import org.openmetadata.service.governance.workflows.elements.WorkflowNodeInterface;
+import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.CheckEntityAttributesImpl;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.FieldExtensionBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 
-import static org.openmetadata.service.governance.workflows.Workflow.getMetadataExtension;
+public class CheckEntityAttributesTask implements NodeInterface {
+  private final SubProcess subProcess;
 
-public class CheckEntityAttributesTask implements WorkflowNodeInterface {
-    private final SubProcess subProcess;
+  public CheckEntityAttributesTask(CheckEntityAttributesTaskDefinition nodeDefinition) {
+    String subProcessId = nodeDefinition.getName();
 
-    public CheckEntityAttributesTask(WorkflowNodeDefinitionInterface nodeDefinition) {
-        CheckEntityAttributesTaskDefinition checkEntityAttributesTaskDefinition = (CheckEntityAttributesTaskDefinition) nodeDefinition;
+    SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
 
-        SubProcess subProcess = new SubProcess();
-        subProcess.setId(checkEntityAttributesTaskDefinition.getName());
-        subProcess.setName(checkEntityAttributesTaskDefinition.getDisplayName());
-        subProcess.addExtensionElement(
-                getMetadataExtension(
-                        checkEntityAttributesTaskDefinition.getName(),
-                        checkEntityAttributesTaskDefinition.getDisplayName(),
-                        checkEntityAttributesTaskDefinition.getDescription()));
+    StartEvent startEvent =
+        new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
-        // Attach Listeners
-        attachWorkflowInstanceStageUpdaterListeners(subProcess);
+    ServiceTask checkEntityAttributes =
+        getCheckEntityAttributesServiceTask(subProcessId, nodeDefinition.getConfig().getRules());
 
-        StartEvent startEvent = new StartEvent();
-        startEvent.setId(getFlowableElementId(checkEntityAttributesTaskDefinition.getName(), "startEvent"));
-        startEvent.setName(getFlowableElementName(checkEntityAttributesTaskDefinition.getNodeDisplayName(), "startEvent"));
-        subProcess.addFlowElement(startEvent);
+    EndEvent endEvent =
+        new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
 
-        ServiceTask serviceTask = new ServiceTask();
-        serviceTask.setId(getFlowableElementId(checkEntityAttributesTaskDefinition.getName(), "checkEntityAttributes"));
-        serviceTask.setName(getFlowableElementName(checkEntityAttributesTaskDefinition.getDisplayName(), "checkEntityAttributes"));
-        serviceTask.setImplementationType("class");
-        serviceTask.setImplementation(CheckEntityAttributesImpl.class.getName());
+    subProcess.addFlowElement(startEvent);
+    subProcess.addFlowElement(checkEntityAttributes);
+    subProcess.addFlowElement(endEvent);
 
-        FieldExtension rulesExpr = new FieldExtension();
-        rulesExpr.setFieldName("rulesExpr");
-        rulesExpr.setStringValue(checkEntityAttributesTaskDefinition.getConfig().getRules());
-        serviceTask.getFieldExtensions().add(rulesExpr);
+    subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), checkEntityAttributes.getId()));
+    subProcess.addFlowElement(new SequenceFlow(checkEntityAttributes.getId(), endEvent.getId()));
 
-        subProcess.addFlowElement(serviceTask);
+//    attachDefaultListeners(subProcess);
 
-        EndEvent endEvent = new EndEvent();
-        endEvent.setId(getFlowableElementId(checkEntityAttributesTaskDefinition.getName(), "endEvent"));
-        endEvent.setName(getFlowableElementName(checkEntityAttributesTaskDefinition.getNodeDisplayName(), "endEvent"));
-        subProcess.addFlowElement(endEvent);
+    this.subProcess = subProcess;
+  }
 
-        subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), serviceTask.getId()));
-        subProcess.addFlowElement(new SequenceFlow(serviceTask.getId(), endEvent.getId()));
+  private ServiceTask getCheckEntityAttributesServiceTask(String subProcessId, String rules) {
+    FieldExtension rulesExpr =
+        new FieldExtensionBuilder().fieldName("rulesExpr").fieldValue(rules).build();
 
-        this.subProcess = subProcess;
-    }
-    public void addToWorkflow(BpmnModel model, Process process) {
-        process.addFlowElement(subProcess);
-    }
+    ServiceTask serviceTask =
+        new ServiceTaskBuilder()
+            .id(getFlowableElementId(subProcessId, "checkEntityAttributes"))
+            .implementation(CheckEntityAttributesImpl.class.getName())
+            .build();
+    serviceTask.getFieldExtensions().add(rulesExpr);
+    return serviceTask;
+  }
+
+  public void addToWorkflow(BpmnModel model, Process process) {
+    process.addFlowElement(subProcess);
+  }
 }

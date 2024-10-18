@@ -1,5 +1,9 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import org.flowable.engine.delegate.TaskListener;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
@@ -13,6 +17,7 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -20,78 +25,82 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
 public class CreateApprovalTaskImpl implements TaskListener {
-    @Override
-    public void notify(DelegateTask delegateTask) {
-        List<EntityReference> assignees = getAssignees(delegateTask);
-        MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse((String) delegateTask.getVariable("relatedEntity"));
-        GlossaryTerm entity = Entity.getEntity(
-                entityLink,
-                "*",
-                Include.ALL
-        );
-        Thread task = createApprovalTask(entity, assignees);
-        WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
+  @Override
+  public void notify(DelegateTask delegateTask) {
+    List<EntityReference> assignees = getAssignees(delegateTask);
+    MessageParser.EntityLink entityLink =
+        MessageParser.EntityLink.parse((String) delegateTask.getVariable("relatedEntity"));
+    GlossaryTerm entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-        UUID workflowInstanceStateId = (UUID) delegateTask.getVariable("stageInstanceStateId");
-        WorkflowInstanceStateRepository workflowInstanceStateRepository = (WorkflowInstanceStateRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
-        workflowInstanceStateRepository.updateStageWithTask(task.getId(), workflowInstanceStateId);
+    Thread task = createApprovalTask(entity, assignees);
+    WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
+
+//    UUID workflowInstanceStateId = (UUID) delegateTask.getVariable("stageInstanceStateId");
+//    WorkflowInstanceStateRepository workflowInstanceStateRepository =
+//        (WorkflowInstanceStateRepository)
+//            Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
+//    workflowInstanceStateRepository.updateStageWithTask(task.getId(), workflowInstanceStateId);
+  }
+
+  private List<EntityReference> getAssignees(DelegateTask delegateTask) {
+    List<EntityReference> assignees = new ArrayList<>();
+
+    Set<IdentityLink> candidates = delegateTask.getCandidates();
+    if (!candidates.isEmpty()) {
+      for (IdentityLink candidate : candidates) {
+        assignees.add(getEntityReferenceFromLinkString(candidate.getUserId()));
+      }
+    } else {
+      assignees.add(getEntityReferenceFromLinkString(delegateTask.getAssignee()));
     }
+    return assignees;
+  }
 
-    private List<EntityReference> getAssignees(DelegateTask delegateTask) {
-        List<EntityReference> assignees = new ArrayList<>();
-        UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+  private EntityReference getEntityReferenceFromLinkString(String entityLinkString) {
+    MessageParser.EntityLink assigneeEntityLink = MessageParser.EntityLink.parse(entityLinkString);
+    return Entity.getEntityReferenceByName(assigneeEntityLink.getEntityType(), assigneeEntityLink.getEntityFQN(), Include.NON_DELETED);
+  }
 
-        Set<IdentityLink> candidates = delegateTask.getCandidates();
-        // TODO: What if we define a team?
-        if (!candidates.isEmpty()) {
-            for (IdentityLink candidate : candidates) {
-                String userName = candidate.getUserId();
-                User user = userRepository.getByName(null, userName, new EntityUtil.Fields(Set.of()));
-                assignees.add(user.getEntityReference());
-            }
-        } else {
-            String userName = delegateTask.getAssignee();
-            User user = userRepository.getByName(null, userName, new EntityUtil.Fields(Set.of()));
-            assignees.add(user.getEntityReference());
-        }
-        return assignees;
+  private Thread createApprovalTask(GlossaryTerm entity, List<EntityReference> assignees) {
+    FeedRepository feedRepository = Entity.getFeedRepository();
+    MessageParser.EntityLink about =
+        new MessageParser.EntityLink(
+            Entity.getEntityTypeFromObject(entity), entity.getFullyQualifiedName());
+
+    Thread thread;
+
+    try {
+      thread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      // If there's a Task already opened, we resolve the Flowable task before creating a new
+      // UserTask in the new WorkflowInstance
+      WorkflowHandler.getInstance()
+          .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
+    } catch (EntityNotFoundException ex) {
+      TaskDetails taskDetails =
+          new TaskDetails()
+              .withAssignees(FeedResource.formatAssignees(assignees))
+              .withType(TaskType.RequestApproval)
+              .withStatus(TaskStatus.Open);
+
+      thread =
+          new Thread()
+              .withId(UUID.randomUUID())
+              .withThreadTs(System.currentTimeMillis())
+              .withMessage("Approval required for ")
+              .withCreatedBy(entity.getUpdatedBy())
+              .withAbout(about.getLinkString())
+              .withType(ThreadType.Task)
+              .withTask(taskDetails)
+              .withUpdatedBy(entity.getUpdatedBy())
+              .withUpdatedAt(System.currentTimeMillis());
+      feedRepository.create(thread);
+
+      // Send WebSocket Notification
+      WebsocketNotificationHandler.handleTaskNotification(thread);
     }
-
-    private Thread createApprovalTask(GlossaryTerm entity, List<EntityReference> assignees) {
-        TaskDetails taskDetails =
-                new TaskDetails()
-                        .withAssignees(FeedResource.formatAssignees(assignees))
-                        .withType(TaskType.RequestApproval)
-                        .withStatus(TaskStatus.Open);
-
-        MessageParser.EntityLink about = new MessageParser.EntityLink(Entity.getEntityTypeFromObject(entity), entity.getFullyQualifiedName());
-        Thread thread =
-                new Thread()
-                        .withId(UUID.randomUUID())
-                        .withThreadTs(System.currentTimeMillis())
-                        .withMessage("Approval required for ")
-                        .withCreatedBy(entity.getUpdatedBy())
-                        .withAbout(about.getLinkString())
-                        .withType(ThreadType.Task)
-                        .withTask(taskDetails)
-                        .withUpdatedBy(entity.getUpdatedBy())
-                        .withUpdatedAt(System.currentTimeMillis());
-        FeedRepository feedRepository = Entity.getFeedRepository();
-        feedRepository.create(thread);
-
-        // Send WebSocket Notification
-        WebsocketNotificationHandler.handleTaskNotification(thread);
-
-        return thread;
-    }
+    return thread;
+  }
 }

@@ -1,6 +1,6 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
-import static org.openmetadata.service.governance.workflows.Workflow.getMetadataExtension;
+import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
@@ -12,85 +12,97 @@ import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.flowable.bpmn.model.UserTask;
-import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
-import org.openmetadata.service.governance.workflows.elements.WorkflowNodeInterface;
+import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateApprovalTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
+import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.FieldExtensionBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.FlowableListenerBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.UserTaskBuilder;
 import org.openmetadata.service.util.JsonUtils;
 
-public class UserApprovalTask implements WorkflowNodeInterface {
+public class UserApprovalTask implements NodeInterface {
   private final SubProcess subProcess;
 
-  public UserApprovalTask(WorkflowNodeDefinitionInterface nodeDefinition) {
-    UserApprovalTaskDefinition userApprovalTaskDefinition = (UserApprovalTaskDefinition) nodeDefinition;
+  public UserApprovalTask(UserApprovalTaskDefinition nodeDefinition) {
+    String subProcessId = nodeDefinition.getName();
+    String assigneesVarName = getFlowableElementId(subProcessId, "assignees");
 
-    SubProcess subProcess = new SubProcess();
-    subProcess.setId(userApprovalTaskDefinition.getName());
-    subProcess.setName(userApprovalTaskDefinition.getDisplayName());
-    subProcess.addExtensionElement(
-        getMetadataExtension(
-                userApprovalTaskDefinition.getName(), userApprovalTaskDefinition.getDisplayName(), userApprovalTaskDefinition.getDescription()));
+    FieldExtension assigneesExpr =
+        new FieldExtensionBuilder()
+            .fieldName("assigneesExpr")
+            .fieldValue(JsonUtils.pojoToJson(nodeDefinition.getConfig().getAssignees()))
+            .build();
 
-    // Attach Listeners
-    attachWorkflowInstanceStageUpdaterListeners(subProcess);
+    FieldExtension assigneesVarNameExpr =
+        new FieldExtensionBuilder()
+            .fieldName("assigneesVarNameExpr")
+            .fieldValue(assigneesVarName)
+            .build();
 
+    SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
 
-    StartEvent startEvent = new StartEvent();
-    startEvent.setId(getFlowableElementId(userApprovalTaskDefinition.getName(), "startEvent"));
-    startEvent.setName(getFlowableElementName(userApprovalTaskDefinition.getNodeDisplayName(), "startEvent"));
+    StartEvent startEvent =
+        new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
+
+    ServiceTask setAssigneesVariable =
+        getSetAssigneesVariableServiceTask(subProcessId, assigneesExpr, assigneesVarNameExpr);
+
+    UserTask userTask = getUserTask(subProcessId, assigneesVarNameExpr);
+
+    EndEvent endEvent =
+        new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
+
     subProcess.addFlowElement(startEvent);
-
-    String assigneesVarName = getFlowableElementId(userApprovalTaskDefinition.getName(), "assignees");
-
-    ServiceTask setAssigneesVariable = new ServiceTask();
-    setAssigneesVariable.setId(getFlowableElementId(userApprovalTaskDefinition.getName(), "setAssigneesVariable"));
-    setAssigneesVariable.setName(getFlowableElementName(userApprovalTaskDefinition.getNodeDisplayName(), "setAssigneesVariable"));
-    setAssigneesVariable.setImplementationType("class");
-    setAssigneesVariable.setImplementation(SetApprovalAssigneesImpl.class.getName());
-
-    FieldExtension assigneesExpr = new FieldExtension();
-    assigneesExpr.setFieldName("assigneesExpr");
-    assigneesExpr.setStringValue(JsonUtils.pojoToJson(userApprovalTaskDefinition.getConfig().getAssignees()));
-    setAssigneesVariable.getFieldExtensions().add(assigneesExpr);
-
-    FieldExtension assigneesVarNameExpr = new FieldExtension();
-    assigneesVarNameExpr.setFieldName("assigneesVarNameExpr");
-    assigneesVarNameExpr.setStringValue(assigneesVarName);
-    setAssigneesVariable.getFieldExtensions().add(assigneesVarNameExpr);
-
     subProcess.addFlowElement(setAssigneesVariable);
-
-    UserTask approvalTask = new UserTask();
-    approvalTask.setId(getFlowableElementId(userApprovalTaskDefinition.getName(), "approvalTask"));
-    approvalTask.setName(getFlowableElementName(userApprovalTaskDefinition.getNodeDisplayName(), "approvalTask"));
-
-    FlowableListener setCandidateUsersListener = new FlowableListener();
-    setCandidateUsersListener.setEvent("create");
-    setCandidateUsersListener.setImplementationType("class");
-    setCandidateUsersListener.setImplementation(SetCandidateUsersImpl.class.getName());
-    setCandidateUsersListener.getFieldExtensions().add(assigneesVarNameExpr);
-    approvalTask.getTaskListeners().add(setCandidateUsersListener);
-
-    FlowableListener taskListener = new FlowableListener();
-    taskListener.setEvent("create");
-    taskListener.setImplementationType("class");
-    taskListener.setImplementation(CreateApprovalTaskImpl.class.getName());
-    approvalTask.getTaskListeners().add(taskListener);
-
-    subProcess.addFlowElement(approvalTask);
-
-    EndEvent endEvent = new EndEvent();
-    endEvent.setId(getFlowableElementId(userApprovalTaskDefinition.getName(), "endEvent"));
-    endEvent.setName(getFlowableElementName(userApprovalTaskDefinition.getNodeDisplayName(), "endEvent"));
+    subProcess.addFlowElement(userTask);
     subProcess.addFlowElement(endEvent);
 
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setAssigneesVariable.getId()));
-    subProcess.addFlowElement(new SequenceFlow(setAssigneesVariable.getId(), approvalTask.getId()));
-    subProcess.addFlowElement(new SequenceFlow(approvalTask.getId(), endEvent.getId()));
+    subProcess.addFlowElement(new SequenceFlow(setAssigneesVariable.getId(), userTask.getId()));
+    subProcess.addFlowElement(new SequenceFlow(userTask.getId(), endEvent.getId()));
+
+//    attachDefaultListeners(subProcess);
 
     this.subProcess = subProcess;
+  }
+
+  private ServiceTask getSetAssigneesVariableServiceTask(
+      String subProcessId, FieldExtension assigneesExpr, FieldExtension assigneesVarNameExpr) {
+    ServiceTask serviceTask =
+        new ServiceTaskBuilder()
+            .id(getFlowableElementId(subProcessId, "setAssigneesVariable"))
+            .implementation(SetApprovalAssigneesImpl.class.getName())
+            .build();
+    serviceTask.getFieldExtensions().add(assigneesExpr);
+    serviceTask.getFieldExtensions().add(assigneesVarNameExpr);
+    return serviceTask;
+  }
+
+  private UserTask getUserTask(String subProcessId, FieldExtension assigneesVarNameExpr) {
+    FlowableListener setCandidateUsersListener =
+        new FlowableListenerBuilder()
+            .event("create")
+            .implementation(SetCandidateUsersImpl.class.getName())
+            .build();
+    setCandidateUsersListener.getFieldExtensions().add(assigneesVarNameExpr);
+
+    FlowableListener createOpenMetadataTaskListener =
+        new FlowableListenerBuilder()
+            .event("create")
+            .implementation(CreateApprovalTaskImpl.class.getName())
+            .build();
+
+    UserTask userTask =
+        new UserTaskBuilder().id(getFlowableElementId(subProcessId, "approvalTask")).build();
+    userTask.getTaskListeners().add(setCandidateUsersListener);
+    userTask.getTaskListeners().add(createOpenMetadataTaskListener);
+    return userTask;
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {

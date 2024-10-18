@@ -1,12 +1,12 @@
 {
-  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/setEntityDescriptionTask.json",
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/setEntityCertificationTask.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SetEntityDescriptionTaskDefinition",
-  "description": "Sets the Entity Description to the configured value.",
+  "title": "SetEntityCertificationTaskDefinition",
+  "description": "Sets the Entity Certification to the configured value.",
   "javaInterfaces": [
     "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
   ],
-  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityDescriptionTaskDefinition",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition",
   "type": "object",
   "properties": {
     "type": {
@@ -15,7 +15,7 @@
     },
     "subType": {
       "type": "string",
-      "default": "setEntityDescriptionTask"
+      "default": "setEntityCertificationTask"
     },
     "name": {
       "description": "Name that identifies this Node.",
@@ -32,11 +32,11 @@
     "config": {
       "type": "object",
       "properties": {
-        "entityDescription": {
-          "$ref": "../../../../../type/basic.json#/definitions/markdown"
+        "certification": {
+          "type": "string"
         }
       },
-      "required": ["entityDescription"],
+      "required": ["certification"],
       "additionalProperties": false
     },
     "input": {

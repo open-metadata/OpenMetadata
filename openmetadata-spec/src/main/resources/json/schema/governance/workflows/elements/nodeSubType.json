@@ -6,13 +6,11 @@
   "description": "SubType of the Node.",
   "type": "string",
   "enum": [
-    "entityEventTrigger",
     "userApprovalTask",
-    "userRequestDescriptionTask",
     "checkEntityAttributesTask",
-    "checkEntityHasReviewersTask",
-    "setEntityDescriptionTask",
+    "setEntityCertificationTask",
     "setGlossaryTermStatusTask",
-    "endEvent"
+    "endEvent",
+    "startEvent"
   ]
 }

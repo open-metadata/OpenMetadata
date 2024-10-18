@@ -1,10 +1,10 @@
 package org.openmetadata.service.governance.workflows;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.common.engine.api.FlowableException;
@@ -15,13 +15,13 @@ import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
+import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
+import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 @Slf4j
@@ -29,12 +29,14 @@ public class WorkflowHandler {
   private final RepositoryService repositoryService;
   private final RuntimeService runtimeService;
   private final TaskService taskService;
+  private final HistoryService historyService;
   private static WorkflowHandler instance;
   private static volatile boolean initialized = false;
 
   private WorkflowHandler(OpenMetadataApplicationConfig config) {
     ProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration()
+            .setAsyncExecutorActivate(true)
             .setJdbcUrl(config.getDataSourceFactory().getUrl())
             .setJdbcUsername(config.getDataSourceFactory().getUser())
             .setJdbcPassword(config.getDataSourceFactory().getPassword())
@@ -52,6 +54,7 @@ public class WorkflowHandler {
     this.repositoryService = processEngine.getRepositoryService();
     this.runtimeService = processEngine.getRuntimeService();
     this.taskService = processEngine.getTaskService();
+    this.historyService = processEngine.getHistoryService();
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
@@ -70,16 +73,46 @@ public class WorkflowHandler {
 
   public void deploy(Workflow workflow) {
     BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
-    byte[] bpmnBytes = bpmnXMLConverter.convertToXML(workflow.getModel());
+
+    // Deploy Main Workflow
+    byte[] bpmnMainWorkflowBytes =
+        bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel());
     repositoryService
         .createDeployment()
-        .addBytes(String.format("%s-workflow.bpmn20.xml", workflow.getModelId()), bpmnBytes)
-        .name(workflow.getModelId())
+        .addBytes(
+            String.format("%s-workflow.bpmn20.xml", workflow.getMainWorkflow().getWorkflowName()),
+            bpmnMainWorkflowBytes)
+        .name(workflow.getMainWorkflow().getWorkflowName())
+        .deploy();
+
+    // Deploy Trigger Workflow
+    byte[] bpmnTriggerWorkflowBytes =
+        bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel());
+    repositoryService
+        .createDeployment()
+        .addBytes(
+            String.format(
+                "%s-workflow.bpmn20.xml", workflow.getTriggerWorkflow().getWorkflowName()),
+            bpmnTriggerWorkflowBytes)
+        .name(workflow.getTriggerWorkflow().getWorkflowName())
         .deploy();
   }
 
-  public void triggerByKey(String processKey, Map<String, Object> variables) {
-    ProcessInstance processInstance = runtimeService.startProcessInstanceByKey(processKey, variables);
+  public void deleteWorkflowDefinition(String processDefinitionKey) {
+    List<ProcessDefinition> processDefinitions =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKey(processDefinitionKey)
+            .list();
+
+    for (ProcessDefinition processDefinition : processDefinitions) {
+      String deploymentId = processDefinition.getDeploymentId();
+      repositoryService.deleteDeployment(deploymentId, true);
+    }
+  }
+
+  public ProcessInstance triggerByKey(String processDefinitionKey, Map<String, Object> variables) {
+    return runtimeService.startProcessInstanceByKey(processDefinitionKey, variables);
   }
 
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
@@ -96,13 +129,17 @@ public class WorkflowHandler {
 
   public void resolveTask(UUID customTaskId, Map<String, Object> variables) {
     try {
-      Optional<Task> oTask = Optional.ofNullable(taskService.createTaskQuery()
-              .processVariableValueEquals("customTaskId", customTaskId.toString())
-              .singleResult());
+      Optional<Task> oTask =
+          Optional.ofNullable(
+              taskService
+                  .createTaskQuery()
+                  .processVariableValueEquals("customTaskId", customTaskId.toString())
+                  .singleResult());
 
       if (oTask.isPresent()) {
         Task task = oTask.get();
-        Optional.ofNullable(variables).ifPresentOrElse(
+        Optional.ofNullable(variables)
+            .ifPresentOrElse(
                 variablesValue -> taskService.complete(task.getId(), variablesValue),
                 () -> taskService.complete(task.getId()));
       } else {
@@ -110,7 +147,34 @@ public class WorkflowHandler {
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
-    } catch (FlowableException ex) { // TODO: Remove this once we change the Task flow. Currently closeTask() is called twice.
+    } catch (
+        FlowableException
+            ex) { // TODO: Remove this once we change the Task flow. Currently closeTask() is called
+      // twice.
+      LOG.debug(String.format("Flowable Exception: %s.", ex));
+    }
+  }
+
+  public void terminateTaskProcessInstance(UUID customTaskId, String reason) {
+    try {
+      Optional<Task> oTask =
+          Optional.ofNullable(
+              taskService
+                  .createTaskQuery()
+                  .processVariableValueEquals("customTaskId", customTaskId.toString())
+                  .singleResult());
+      if (oTask.isPresent()) {
+        Task task = oTask.get();
+        runtimeService.deleteProcessInstance(task.getProcessInstanceId(), reason);
+      } else {
+        LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+      }
+    } catch (FlowableObjectNotFoundException ex) {
+      LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+    } catch (
+        FlowableException
+            ex) { // TODO: Remove this once we change the Task flow. Currently closeTask() is called
+      // twice.
       LOG.debug(String.format("Flowable Exception: %s.", ex));
     }
   }
@@ -121,5 +185,21 @@ public class WorkflowHandler {
 
   public void updateBusinessKey(String processInstanceId, UUID workflowInstanceBusinessKey) {
     runtimeService.updateBusinessKey(processInstanceId, workflowInstanceBusinessKey.toString());
+  }
+
+  public boolean hasProcessInstanceFinished(String processInstanceId) {
+    boolean hasFinished = false;
+
+    HistoricProcessInstance historicProcessInstance =
+        historyService
+            .createHistoricProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .singleResult();
+
+    if (historicProcessInstance != null && historicProcessInstance.getEndTime() != null) {
+      hasFinished = true;
+    }
+
+    return hasFinished;
   }
 }

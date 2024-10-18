@@ -6,6 +6,15 @@
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "javaType": "org.openmetadata.schema.governance.workflows.WorkflowDefinition",
   "type": "object",
+  "definitions": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "eventBasedEntityWorkflow",
+        "periodicBatchEntityWorkflow"
+      ]
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier of this workflow definition.",
@@ -56,6 +65,12 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "type": {
+      "$ref": "#/definitions/type"
+    },
+    "trigger": {
+      "description": "Workflow Trigger."
     },
     "nodes": {
       "description": "List of nodes used on the workflow."

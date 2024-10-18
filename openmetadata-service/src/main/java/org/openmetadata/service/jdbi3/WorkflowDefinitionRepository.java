@@ -1,5 +1,9 @@
 package org.openmetadata.service.jdbi3;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
@@ -8,11 +12,6 @@ import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 
 @Slf4j
 public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
@@ -26,6 +25,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         "",
         "");
   }
+
   @Override
   public List<WorkflowDefinition> getEntitiesFromSeedData() throws IOException {
     return getEntitiesFromSeedData(".*json/data/governance/workflows/.*\\.json$");
@@ -39,6 +39,11 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   @Override
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     WorkflowHandler.getInstance().deploy(new Workflow(updated));
+  }
+
+  @Override
+  protected void postDelete(WorkflowDefinition entity) {
+    WorkflowHandler.getInstance().deleteWorkflowDefinition(entity.getName());
   }
 
   @Override
@@ -59,7 +64,9 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   protected void storeRelationships(WorkflowDefinition entity) {}
 
   public UUID getIdFromName(String workflowDefinitionName) {
-    EntityReference workflowDefinitionReference = getByName(null, workflowDefinitionName, new EntityUtil.Fields(Set.of("*"))).getEntityReference();
+    EntityReference workflowDefinitionReference =
+        getByName(null, workflowDefinitionName, new EntityUtil.Fields(Set.of("*")))
+            .getEntityReference();
     return workflowDefinitionReference.getId();
   }
 }

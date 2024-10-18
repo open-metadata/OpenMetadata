@@ -6,9 +6,9 @@
   "description": "Type of the Node.",
   "type": "string",
   "enum": [
-    "trigger",
     "automatedTask",
     "userTask",
-    "endEvent"
+    "endEvent",
+    "startEvent"
   ]
 }

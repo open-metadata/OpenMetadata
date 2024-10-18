@@ -142,7 +142,8 @@ public class WorkflowInstanceStateResource
         new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listWorkflowInstanceStatesForWorkflowInstanceId(FullyQualifiedName.buildHash(workflowDefinitionName, workflowInstanceId.toString()));
+    return repository.listWorkflowInstanceStatesForWorkflowInstanceId(
+        FullyQualifiedName.buildHash(workflowDefinitionName, workflowInstanceId.toString()));
   }
 
   @GET

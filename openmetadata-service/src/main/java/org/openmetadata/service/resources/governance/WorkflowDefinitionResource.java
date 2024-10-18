@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -40,7 +39,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -73,8 +71,8 @@ public class WorkflowDefinitionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-      WorkflowHandler.initialize(config);
-      repository.initSeedDataFromResources();
+    WorkflowHandler.initialize(config);
+    repository.initSeedDataFromResources();
   }
 
   @GET
@@ -452,10 +450,12 @@ public class WorkflowDefinitionResource
   }
 
   private WorkflowDefinition getWorkflowDefinition(CreateWorkflowDefinition create, String user) {
-      // TODO: Validate the NodeType and NodeSubType.
+    // TODO: Validate the NodeType and NodeSubType.
     return repository
         .copy(new WorkflowDefinition(), create, user)
         .withFullyQualifiedName(create.getName())
+            .withType(WorkflowDefinition.Type.fromValue(create.getType().toString()))
+            .withTrigger(create.getTrigger())
         .withNodes(create.getNodes())
         .withEdges(create.getEdges());
   }
