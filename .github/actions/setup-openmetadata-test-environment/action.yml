@@ -47,13 +47,6 @@ runs:
         make install_dev generate
       shell: bash
 
-    - name: Install Python Dependencies
-      run: |
-        source env/bin/activate
-        make install_all install_test
-      shell: bash
-    # ------------------------------------------------------------------------------
-
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
     - name: Start Server and Ingest Sample Data
       uses: nick-fields/retry@v2.8.3
