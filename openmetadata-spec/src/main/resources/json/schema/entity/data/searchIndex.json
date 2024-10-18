@@ -87,7 +87,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 256,
-      "pattern": "^((?!::).)*$"
+      "pattern": "^((?!::om::).)*$"
     },
     "searchIndexField": {
       "type": "object",
