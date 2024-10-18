@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
+import es.org.elasticsearch.action.search.SearchResponse;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -642,6 +643,41 @@ public class DatabaseSchemaResource
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DatabaseSchema databaseSchema = repository.deleteDatabaseSchemaProfilerConfig(id);
     return addHref(uriInfo, databaseSchema);
+  }
+
+  @GET
+  @Path("/getEntityRelationship")
+  @Operation(
+      operationId = "searchSchemaEntityRelationship",
+      summary = "Search Schema Entity Relationship",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchSchemaEntityRelationship(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          boolean deleted)
+      throws IOException {
+
+    return Entity.getSearchRepository()
+        .searchSchemaEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) {
