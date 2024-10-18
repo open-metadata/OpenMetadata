@@ -343,6 +343,11 @@ class ServiceBaseClass {
     await page.click('[data-testid="submit-btn"]');
 
     // select schedule
+    await page.waitForSelector('[data-testid="schedular-card-container"]');
+    await page
+      .getByTestId('schedular-card-container')
+      .getByText('Schedule', { exact: true })
+      .click();
     await page.click('[data-testid="cron-type"]');
     await page
       .locator('.ant-select-item-option-content', { hasText: 'Hour' })
@@ -393,7 +398,10 @@ class ServiceBaseClass {
     await page.click('[data-testid="submit-btn"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Week")');
-    await page.click('[data-value="6"]');
+    await page
+      .locator('#schedular-form_dow .week-selector-buttons')
+      .getByText('W')
+      .click();
     await page.click('[data-testid="hour-options"]');
     await page.click('#hour-select_list + .rc-virtual-list [title="05"]');
     await page.click('[data-testid="minute-options"]');
@@ -407,7 +415,7 @@ class ServiceBaseClass {
       'At 05:05 AM'
     );
     await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
-      'Only on saturday'
+      'Only on wednesday'
     );
 
     // click and edit pipeline schedule for Custom
@@ -424,10 +432,10 @@ class ServiceBaseClass {
     await page.click('[data-testid="view-service-button"]');
 
     await expect(page.getByTestId('schedule-primary-details')).toHaveText(
-      'Every minute'
+      'Every hour'
     );
     await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
-      'Every hour, only on saturday, only in february'
+      'Only on saturday, only in february'
     );
   }
 
