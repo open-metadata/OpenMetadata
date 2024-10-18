@@ -40,6 +40,9 @@ from metadata.generated.schema.entity.services.connections.search.elasticSearch.
 from metadata.generated.schema.entity.services.connections.search.elasticSearchConnection import (
     ElasticsearchConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -186,7 +189,7 @@ def test_connection(
     service_connection: ElasticsearchConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
-) -> None:
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -200,7 +203,7 @@ def test_connection(
         "GetSearchIndexes": test_get_search_indexes,
     }
 
-    test_connection_steps(
+    return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
