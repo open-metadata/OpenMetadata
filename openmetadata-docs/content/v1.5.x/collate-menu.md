@@ -526,7 +526,13 @@ site_menu:
   - category: How-to Guides / Admin Guide / How to Add Custom Logo
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
   - category: How-to Guides / Admin Guide / Reindexing Search
-    url: /how-to-guides/admin-guide/Reindexing-Search  
+    url: /how-to-guides/admin-guide/Reindexing-Search
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
+    url: /how-to-guides/admin-guide/persona-landing-page-customization 
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
+    url: /how-to-guides/admin-guide/persona-landing-page-customization/customizable-landing-page
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Define Personas
+    url: /how-to-guides/admin-guide/persona-landing-page-customization/defining-persona
 
   - category: How-to Guides / Guide for Data Users
     url: /how-to-guides/guide-for-data-users
