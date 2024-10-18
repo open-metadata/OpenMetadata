@@ -14,18 +14,45 @@ Local webserver pydantic models
 from enum import Enum
 from typing import Optional
 
-from metadata.generated.schema.entity.services.apiService import ApiService, ApiServiceType
+from metadata.generated.schema.entity.services.apiService import (
+    ApiService,
+    ApiServiceType,
+)
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import DashboardService, DashboardServiceType
-from metadata.generated.schema.entity.services.databaseService import DatabaseService, DatabaseServiceType
-from metadata.generated.schema.entity.services.messagingService import MessagingService, MessagingServiceType
-from metadata.generated.schema.entity.services.metadataService import MetadataService, MetadataServiceType
-from metadata.generated.schema.entity.services.mlmodelService import MlModelService, MlModelServiceType
-from metadata.generated.schema.entity.services.pipelineService import PipelineService, PipelineServiceType
-from metadata.generated.schema.entity.services.searchService import SearchService, SearchServiceType
-from metadata.generated.schema.entity.services.storageService import StorageService, StorageServiceType
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardService,
+    DashboardServiceType,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
+from metadata.generated.schema.entity.services.messagingService import (
+    MessagingService,
+    MessagingServiceType,
+)
+from metadata.generated.schema.entity.services.metadataService import (
+    MetadataService,
+    MetadataServiceType,
+)
+from metadata.generated.schema.entity.services.mlmodelService import (
+    MlModelService,
+    MlModelServiceType,
+)
+from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineService,
+    PipelineServiceType,
+)
+from metadata.generated.schema.entity.services.searchService import (
+    SearchService,
+    SearchServiceType,
+)
+from metadata.generated.schema.entity.services.storageService import (
+    StorageService,
+    StorageServiceType,
+)
 from metadata.generated.schema.type import basic
 from pydantic import BaseModel, Field, ConfigDict, computed_field
 from pydantic_core import Url

@@ -13,6 +13,11 @@ Local webserver for generating hybrid yamls
 """
 import io
 import os
+import queue
+import threading
+import time
+import logging
+from logging.handlers import QueueHandler
 
 import yaml
 from fastapi.encoders import jsonable_encoder
@@ -20,10 +25,12 @@ from flask import jsonify, request, send_file, send_from_directory
 from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
+from metadata.utils.logger import METADATA_LOGGER
 
 from webserver import app
 from webserver.models import OMetaServerModel
 from webserver.repository import LocalIngestionServer
+from webserver.workflow import workflow_runner, handle_log_queue
 
 
 @app.route("/ingestion", methods=["POST"])
@@ -102,6 +109,10 @@ def send_yaml():
 
 @app.route("/api/run", methods=["POST"])
 def run_ingestion():
-    """Runs the created ingestion"""
-    LocalIngestionServer().run_workflow()
-    return jsonify(success=True)
+    """
+    1. Trigger the created ingestion workflow
+    2. Intercept the workflow logs as a generator
+    3. Stream the generator results
+    """
+    thread, que = workflow_runner()
+    return handle_log_queue(thread=thread, que=que), {"Content-Type": "text/plain"}
