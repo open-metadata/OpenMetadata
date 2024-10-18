@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
     ImpalaConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -110,12 +113,12 @@ def test_connection(
     service_connection: ImpalaConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
-) -> None:
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    test_connection_db_schema_sources(
+    return test_connection_db_schema_sources(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
