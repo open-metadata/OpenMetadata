@@ -22,6 +22,13 @@
       "operations": ["EditOwners"],
       "effect": "allow",
       "condition": "noOwner()"
+    },
+    {
+      "name": "OrganizationPolicy-ViewAll-Rule",
+      "description" : "Allow all users to discover data assets.",
+      "resources" : ["all"],
+      "operations": ["ViewAll"],
+      "effect": "allow"
     }
   ]
 }
