@@ -124,7 +124,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         connectionType,
         serviceName,
       };
-      const response = await axios.post('/api/test', payload, { timeout: 2000 });
+      const response = await axios.post('http://localhost:8001/api/test', payload, { timeout: 2 * 60 * 1000 });
       const { data } = response;
       setTestConnectionStepResult(data.steps);
       setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);

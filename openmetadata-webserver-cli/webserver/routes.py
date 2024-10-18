@@ -17,8 +17,9 @@ import os
 import yaml
 from fastapi.encoders import jsonable_encoder
 from flask import jsonify, request, send_file, send_from_directory
-from metadata.generated.schema.entity.automations.testServiceConnection import \
-    TestServiceConnectionRequest
+from metadata.generated.schema.entity.automations.testServiceConnection import (
+    TestServiceConnectionRequest,
+)
 
 from webserver import app
 from webserver.models import OMetaServerModel
@@ -28,8 +29,7 @@ from webserver.repository import LocalIngestionServer
 @app.route("/ingestion", methods=["POST"])
 def save_source_config():
     """Route to save the service connection configuration"""
-    # TODO: Send the full Ingestion Pipeline here
-    LocalIngestionServer().set_source_config(request.json)
+    LocalIngestionServer().set_ingestion_pipeline(request.json)
 
     print(request.json)
     return jsonify(success=True)
@@ -37,7 +37,8 @@ def save_source_config():
 
 @app.route("/connection", methods=["POST"])
 def save_service_connection():
-    LocalIngestionServer().set_service_connection(request.json)
+    """Prepare the service connection for each different service to test"""
+    LocalIngestionServer().set_service(request.json)
 
     print(request.json)
     return jsonify(success=True)
@@ -98,7 +99,9 @@ def send_yaml():
     except Exception as e:
         return f"Error loading text file: {e}"
 
+
 @app.route("/api/run", methods=["POST"])
 def run_ingestion():
     """Runs the created ingestion"""
+    LocalIngestionServer().run_workflow()
     return jsonify(success=True)

@@ -12,31 +12,48 @@
 Local webserver ingestion repository
 """
 import logging
+import uuid
 from typing import Optional
 
-from metadata.generated.schema.entity.automations.testServiceConnection import \
-    TestServiceConnectionRequest
+from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
+    CreateIngestionPipelineRequest,
+)
+from metadata.generated.schema.entity.automations.testServiceConnection import (
+    TestServiceConnectionRequest,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    AuthProvider, OpenMetadataConnection)
-from metadata.generated.schema.entity.services.connections.serviceConnection import \
-    ServiceConnection
-from metadata.generated.schema.entity.services.connections.testConnectionResult import \
-    TestConnectionResult
+    AuthProvider,
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
+)
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
-    LogLevels, OpenMetadataWorkflowConfig, Sink)
-from metadata.generated.schema.metadataIngestion.workflow import \
-    Source as WorkflowSource
+    LogLevels,
+    OpenMetadataWorkflowConfig,
+    Sink,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
-    SourceConfig, WorkflowConfig)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import \
-    OpenMetadataJWTClientConfig
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    SourceConfig,
+    WorkflowConfig,
+)
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import (get_connection,
-                                                   get_test_connection_fn)
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils.singleton import Singleton
+from metadata.workflow.metadata import MetadataWorkflow
 
-from webserver.models import OMetaServerModel
+from webserver.models import OMetaServerModel, ServiceModel
 
 
 class MissingStateException(Exception):
@@ -51,12 +68,9 @@ class LocalIngestionServer(metaclass=Singleton):
 
     def __init__(self):
         self._metadata: Optional[OpenMetadata] = None
-        self._service_connection: Optional[ServiceConnection] = None
-        self._source_config: Optional[SourceConfig] = None
-        self._service_name: Optional[str] = None
-        self._service_type: Optional[str] = None
-        self._logger_level: LogLevels = LogLevels.INFO
-        self._pipeline_type: Optional[str] = None
+        self._service: Optional[ServiceModel] = None
+        self._ingestion_pipeline: Optional[CreateIngestionPipelineRequest] = None
+        self._workflow_config: Optional[OpenMetadataWorkflowConfig] = None
 
     @property
     def metadata(self) -> OpenMetadata:
@@ -65,31 +79,32 @@ class LocalIngestionServer(metaclass=Singleton):
         return self._metadata
 
     @property
-    def service_connection(self) -> ServiceConnection:
-        if not self._service_connection:
-            raise MissingStateException("Service connection")
-        return self._service_connection
+    def service(self) -> ServiceModel:
+        if not self._service:
+            raise MissingStateException("Service")
+        return self._service
 
     @property
-    def source_config(self) -> SourceConfig:
-        if not self._source_config:
+    def ingestion_pipeline(self) -> CreateIngestionPipelineRequest:
+        if not self._ingestion_pipeline:
             raise MissingStateException("Source config")
-        return self._source_config
+        return self._ingestion_pipeline
 
-    def set_source_config(self, raw_source_config: dict):
-        self._pipeline_type = raw_source_config.get("pipelineType")
-        if raw_source_config.get("loggerLevel"):
-            self._logger_level = LogLevels.DEBUG
+    def set_ingestion_pipeline(self, raw_ingestion: dict):
+        # Set a random ID. We'll pick it up later from the db
+        raw_ingestion["service"]["id"] = self._service.id
+        self._ingestion_pipeline = CreateIngestionPipelineRequest.model_validate(
+            raw_ingestion
+        )
 
-        source_config = {"config": raw_source_config.get("sourceConfig").get("config")}
-        self._source_config = SourceConfig.model_validate(source_config)
-
-    def set_service_connection(self, raw_service_connection: dict):
-        self._service_name = raw_service_connection["name"]
-        self._service_type = raw_service_connection["serviceType"]
-
-        self._service_connection = ServiceConnection.model_validate(
-            raw_service_connection.get("connection")
+    def set_service(self, raw_service_connection: dict):
+        self._service = ServiceModel(
+            id=str(uuid.uuid4()),
+            name=raw_service_connection["name"],
+            serviceType=raw_service_connection["serviceType"],
+            connection=ServiceConnection.model_validate(
+                raw_service_connection["connection"]
+            ),
         )
 
     def init_ometa(self, ometa_server: OMetaServerModel):
@@ -122,20 +137,30 @@ class LocalIngestionServer(metaclass=Singleton):
     def build_workflow(self) -> OpenMetadataWorkflowConfig:
         """Build the workflow"""
         # TODO: dynamic build from pipelineType
-        return OpenMetadataWorkflowConfig(
+        self._workflow_config = OpenMetadataWorkflowConfig(
             source=WorkflowSource(
-                type=self._service_type.lower(),
-                serviceName=self._service_name,
-                serviceConnection=self.service_connection,
-                sourceConfig=self.source_config,
+                type=self._service.serviceType,
+                serviceName=self._service.name.root,
+                serviceConnection=self._service.connection,
+                sourceConfig=self.ingestion_pipeline.sourceConfig,
             ),
             sink=Sink(
                 type="metadata-rest",
                 config={},
             ),
             workflowConfig=WorkflowConfig(
-                loggerLevel=self._logger_level,
+                loggerLevel=self.ingestion_pipeline.loggerLevel,
                 openMetadataServerConfig=self.metadata.config,
             ),
             ingestionPipelineFQN=None,
         )
+
+        return self._workflow_config
+
+    def run_workflow(self) -> None:
+        """Run the workflow"""
+        # TODO DYNAMIC RUNS
+        workflow = MetadataWorkflow(self._workflow_config)
+        workflow.execute()
+        workflow.stop()
+        workflow.print_status()
