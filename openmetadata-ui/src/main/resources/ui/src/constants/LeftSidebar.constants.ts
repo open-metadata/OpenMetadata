@@ -123,6 +123,7 @@ export const SETTING_ITEM = {
   redirect_url: ROUTES.SETTINGS,
   icon: SettingsIcon,
   dataTestId: `app-bar-item-${SidebarItem.SETTINGS}`,
+  id: SidebarItem.SETTINGS,
 };
 
 export const LOGOUT_ITEM = {
