@@ -72,6 +72,7 @@ class CliDBBase(TestCase):
             result = self.run_command("profile")
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_table_with_profiler(source_status, sink_status)
+            self.system_profile_assertions()
 
         @pytest.mark.order(3)
         def test_delete_table_is_marked_as_deleted(self) -> None:
@@ -415,4 +416,7 @@ class CliDBBase(TestCase):
             pass
 
         def assert_status_for_data_quality(self, source_status, sink_status):
+            pass
+
+        def system_profile_assertions(self):
             pass
