@@ -203,7 +203,32 @@ class ServiceBaseClass {
   }
 
   async scheduleIngestion(page: Page) {
-    // Schedule & Deploy
+    await page.click('[data-testid="cron-type"]');
+    await page.click('.ant-select-item-option-content:has-text("Custom")');
+    // Check validation error thrown for a cron that is too frequent
+    // i.e. having interval less than 1 hour
+    await page.locator('#schedular-form_cron').fill('* * * 2 6');
+    await page.click('[data-testid="deploy-button"]');
+
+    await expect(
+      page.getByText(
+        'Cron schedule too frequent. Please choose at least 1-hour intervals.'
+      )
+    ).toBeAttached();
+
+    // Check validation error thrown for a cron that is invalid
+    await page.locator('#schedular-form_cron').clear();
+    await page.click('[data-testid="deploy-button"]');
+    await page.locator('#schedular-form_cron').fill('* * * 2 ');
+
+    await expect(
+      page.getByText(
+        'Error: Expression has only 4 parts. At least 5 parts are required.'
+      )
+    ).toBeAttached();
+
+    await page.locator('#schedular-form_cron').clear();
+
     await page.waitForSelector('[data-testid="schedular-card-container"]');
     await page
       .getByTestId('schedular-card-container')
@@ -392,29 +417,7 @@ class ServiceBaseClass {
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Custom")');
 
-    // Check validation error thrown for a cron that is too frequent
-    // i.e. having interval less than 1 hour
-    await page.locator('#schedular-form_cron').fill('* * * 2 6');
-    await page.click('[data-testid="deploy-button"]');
-
-    await expect(
-      page.getByText(
-        'Cron schedule too frequent. Please choose at least 1-hour intervals.'
-      )
-    ).toBeAttached();
-
-    // Check validation error thrown for a cron that is invalid
-    await page.locator('#schedular-form_cron').clear();
-    await page.click('[data-testid="deploy-button"]');
-    await page.locator('#schedular-form_cron').fill('* * * 2 ');
-
-    await expect(
-      page.getByText(
-        'Error: Expression has only 4 parts. At least 5 parts are required.'
-      )
-    ).toBeAttached();
-
-    await page.locator('#schedular-form_cron').clear();
+    // Schedule & Deploy
     await page.locator('#schedular-form_cron').fill('0 * * 2 6');
 
     await page.click('[data-testid="deploy-button"]');
