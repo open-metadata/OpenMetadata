@@ -64,10 +64,17 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     [pipeLineType, serviceCategory]
   );
 
+  // Must use this one when "noEmit: false" in the tsconfig.json file
   const validator = useMemo(
     () => customizeValidator<any>(),
     []
   );
+
+  // This one must be used when "noEmit: true"
+  // const validator = useMemo(
+  //   () => customizeValidator<IngestionWorkflowData>(),
+  //   []
+  // );
 
   const isElasticSearchPipeline =
     pipeLineType === PipelineType.ElasticSearchReindex;

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EditorState } from '@tiptap/pm/state';
+import { EditorState } from 'prosemirror-state';
 import { Editor } from '@tiptap/react';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 

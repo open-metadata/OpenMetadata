@@ -295,38 +295,6 @@ const AddIngestion = ({
           />
         )}
 
-        {activeIngestionStep === 2 && (
-          <ScheduleInterval
-            disabledCronChange={pipelineType === PipelineType.DataInsight}
-            includePeriodOptions={
-              pipelineType === PipelineType.DataInsight
-                ? ["day"]
-                : periodOptions
-            }
-            scheduleInterval={scheduleInterval}
-            status={saveState}
-            submitButtonLabel={
-              isUndefined(data) ? t("label.add-deploy") : t("label.submit")
-            }
-            onBack={() => handlePrev(1)}
-            onChange={(data) => setScheduleInterval(data)}
-            onDeploy={handleScheduleIntervalDeployClick}
-          >
-            <Form.Item
-              className="m-t-xs"
-              colon={false}
-              initialValue={retries}
-              label={t("label.number-of-retries")}
-              name="retries"
-            >
-              <Input
-                min={0}
-                type="number"
-                onFocus={() => onFocus("root/retries")}
-              />
-            </Form.Item>
-          </ScheduleInterval>
-        )}
       </div>
     </div>
   );
