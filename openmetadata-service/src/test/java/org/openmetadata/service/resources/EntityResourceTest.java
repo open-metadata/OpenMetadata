@@ -100,6 +100,7 @@ import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.text.RandomStringGenerator;
 import org.apache.commons.text.RandomStringGenerator.Builder;
 import org.apache.http.client.HttpResponseException;
@@ -3707,22 +3708,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         entityType,
         supportedNameCharacters,
         test.getDisplayName().replaceAll("\\(.*\\)", ""),
-        getNthAlphanumericString(index));
+        getNthAlphanumericString());
   }
 
   /**
    * Transforms a positive integer to base 26 using digits a...z Alphanumeric ordering of results is equivalent to
    * ordering of inputs
    */
-  private String getNthAlphanumericString(int index) {
-    final int N_LETTERS = 26;
-    if (index < 0) {
-      throw new IllegalArgumentException(format("Index must be positive, cannot be %d", index));
-    }
-    if (index < 26) {
-      return String.valueOf((char) ('a' + index));
-    }
-    return getNthAlphanumericString(index / N_LETTERS) + (char) ('a' + (index % N_LETTERS));
+  private String getNthAlphanumericString() {
+    return RandomStringUtils.random(10, true, true);
   }
 
   public static <T extends EntityInterface> EntityReference reduceEntityReference(T entity) {
