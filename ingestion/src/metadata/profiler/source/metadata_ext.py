@@ -21,7 +21,7 @@ and sample data for that identified entity.
 """
 import traceback
 from copy import deepcopy
-from typing import Iterable, cast, Type
+from typing import Iterable, Type, cast
 
 from sqlalchemy.inspection import inspect
 
@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -38,12 +39,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    SQAProfilerInterface,
-)
 from metadata.profiler.source.metadata import (
     OpenMetadataSource,
     ProfilerSourceAndEntity,
@@ -52,13 +49,12 @@ from metadata.utils import fqn
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.importer import (
-    import_source_class,
-    import_profiler_class,
     ProfilerInterface,
     import_from_module,
+    import_source_class,
 )
 from metadata.utils.logger import profiler_logger
-from metadata.utils.manifest import BaseManifest, get_class_path
+from metadata.utils.manifest import BaseManifest
 from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_logger()
@@ -154,18 +150,15 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                             )
                             continue
 
-                        class_path = BaseManifest.get_for_source(
-                            ServiceType.Database,
-                            source_type=self.config.source.type.lower(),
-                        ).profler_class
-                        if class_path is None:
-                            class_path = get_class_path(SQAProfilerInterface)
+                        profiler_source = self.import_profiler_interface()(
+                            self.config,
+                            database_entity,
+                            self.metadata,
+                            global_profiler_config,
+                        )
                         yield Either(
                             right=ProfilerSourceAndEntity(
-                                profiler_source=cast(
-                                    Type[ProfilerInterface],
-                                    import_from_module(class_path),
-                                ),
+                                profiler_source=profiler_source,
                                 entity=table_entity,
                             )
                         )
@@ -184,6 +177,14 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                 self.status.filter(table_name, "Table pattern not allowed")
                 continue
             yield table_name
+
+    def import_profiler_interface(self) -> Type[ProfilerInterface]:
+        class_path = BaseManifest.get_for_source(
+            ServiceType.Database,
+            source_type=self.config.source.type.lower(),
+        ).profler_class
+        profiler_source_class = import_from_module(class_path)
+        return profiler_source_class
 
     def get_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):

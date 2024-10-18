@@ -13,10 +13,9 @@
 LRU cache
 """
 
-from collections import OrderedDict
-from typing import TypeVar, Generic, Callable
 import threading
-
+from collections import OrderedDict
+from typing import Callable, Generic, TypeVar
 
 LRU_CACHE_SIZE = 4096
 
@@ -59,7 +58,6 @@ class LRUCache(Generic[T]):
             return len(self._cache)
 
     def wrap(self, key_func: Callable[..., str]):
-
         def wrapper(func: Callable[..., T]):
             def wrapped(*args, **kwargs) -> T:
                 key = key_func(*args, **kwargs)

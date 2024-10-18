@@ -9,9 +9,10 @@ from metadata.ingestion.source.database.redshift.queries import (
 )
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
 from metadata.profiler.metrics.system.system import (
-    BaseSystemMetricsSource,
-    SQASessionProvider,
     CacheProvider,
+    EmptySystemMetricsSource,
+    SQASessionProvider,
+    SystemMetricsComputer,
 )
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import QueryResult
@@ -21,7 +22,7 @@ logger = profiler_logger()
 
 
 class RedshiftSystemMetricsSource(
-    SQASessionProvider, BaseSystemMetricsSource, CacheProvider
+    SQASessionProvider, EmptySystemMetricsSource, CacheProvider
 ):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -128,3 +129,7 @@ def get_metric_result(ddls: List[QueryResult], table_name: str) -> List:
         for ddl in ddls
         if ddl.table_name == table_name
     ]
+
+
+class RedshiftSystemMetricsComputer(SystemMetricsComputer, RedshiftSystemMetricsSource):
+    pass

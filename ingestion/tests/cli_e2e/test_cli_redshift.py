@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import List
 
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
-from metadata.generated.schema.entity.data.table import SystemProfile, DmlOperationType
+from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.status import Status
 

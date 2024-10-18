@@ -15,9 +15,8 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union, Type
+from typing import Any, Dict, List, Optional, Type, Union
 
-from metadata.profiler.metrics.system.system import System
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.database import (
@@ -61,6 +60,7 @@ from metadata.profiler.api.models import (
 )
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.system.system import System
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.partition import get_partition_details

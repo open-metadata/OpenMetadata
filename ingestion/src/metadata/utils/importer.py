@@ -15,7 +15,7 @@ import importlib
 import sys
 import traceback
 from enum import Enum
-from typing import Any, Callable, Optional, Type, TypeVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -24,13 +24,13 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseService,
     DatabaseConnection,
+    DatabaseService,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
-from metadata.profiler.metrics.system.system import BaseSystemMetricsSource
+from metadata.profiler.metrics.system.system import EmptySystemMetricsSource
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.client_version import get_client_version
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
@@ -136,7 +136,7 @@ def import_from_module(key: str) -> Type[Any]:
     """
     Dynamically import an object from a module path
     """
-
+    logger.debug("Importing: %s", key)
     module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
     try:
         obj = getattr(importlib.import_module(module_name), obj_name)
@@ -344,4 +344,4 @@ def import_system_metrics_computer(db_service: DatabaseService):
         )
     except DynamicImportException as err:
         logger.debug("Could not import system metrics computer: %s", err)
-        return BaseSystemMetricsSource
+        return EmptySystemMetricsSource

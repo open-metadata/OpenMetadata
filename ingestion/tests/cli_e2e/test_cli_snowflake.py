@@ -170,7 +170,8 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         self.system_profile_assertions()
 
     @staticmethod
-    def expected_tables() -> int:        return 7
+    def expected_tables() -> int:
+        return 7
 
     def inserted_rows_count(self) -> int:
         return len(

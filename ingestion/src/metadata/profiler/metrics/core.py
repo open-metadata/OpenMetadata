@@ -18,7 +18,7 @@ Metric Core definitions
 from abc import ABC, abstractmethod
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar
 
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta, Session

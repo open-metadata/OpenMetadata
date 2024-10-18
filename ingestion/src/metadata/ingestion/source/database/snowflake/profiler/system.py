@@ -1,29 +1,27 @@
+import hashlib
 import re
 import traceback
-from typing import List, Optional, Tuple, Any, TypeVar, Callable
+from typing import List, Optional, Tuple
 
 import sqlalchemy.orm
 from pydantic import TypeAdapter
 from sqlalchemy.orm import DeclarativeMeta
 
-from metadata.generated.schema.entity.data.table import SystemProfile, DmlOperationType
+from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeQueryLogEntry,
     SnowflakeQueryResult,
 )
-from metadata.profiler.metrics.system.dml_operation import (
-    DatabaseDMLOperations,
-)
+from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
 from metadata.profiler.metrics.system.system import (
-    BaseSystemMetricsSource,
-    SQASessionProvider,
     CacheProvider,
+    EmptySystemMetricsSource,
+    SQASessionProvider,
 )
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
-from metadata.utils.profiler_utils import get_identifiers_from_string, QueryResult
+from metadata.utils.profiler_utils import get_identifiers_from_string
 from metadata.utils.time_utils import datetime_to_timestamp
-import hashlib
 
 PUBLIC_SCHEMA = "PUBLIC"
 logger = profiler_logger()
@@ -264,7 +262,7 @@ def get_snowflake_system_queries(
 
 
 class SnowflakeSystemMetricsSource(
-    SQASessionProvider, BaseSystemMetricsSource, CacheProvider[SnowflakeQueryLogEntry]
+    SQASessionProvider, EmptySystemMetricsSource, CacheProvider[SnowflakeQueryLogEntry]
 ):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -379,8 +377,11 @@ class SnowflakeSystemMetricsSource(
             session=super().get_session(),
             tablename=table,
         )
-        results = [get_snowflake_system_queries(
-            query_log_entry=row,
-            resolver=self.resolver,
-        ) for row in queries]
+        results = [
+            get_snowflake_system_queries(
+                query_log_entry=row,
+                resolver=self.resolver,
+            )
+            for row in queries
+        ]
         return [result for result in results if result is not None]

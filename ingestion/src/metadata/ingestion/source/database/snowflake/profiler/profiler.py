@@ -30,4 +30,4 @@ class SnowflakeProfiler(SnowflakeProfilerInterface):
     sqlalchemy.
     """
 
-    system_metrics_source_class = SnowflakeSystemMetricsSource
+    system_metrics_computer_class = SnowflakeSystemMetricsSource

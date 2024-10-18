@@ -14,9 +14,9 @@ System Metric
 """
 
 import traceback
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections import defaultdict
-from typing import Dict, List, Optional, Callable, Generic, TypeVar
+from typing import Callable, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import TypeAdapter
 from sqlalchemy import text
@@ -41,7 +41,7 @@ from metadata.profiler.orm.registry import Dialects
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.logger import profiler_logger
-from metadata.utils.lru_cache import LRUCache, LRU_CACHE_SIZE
+from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.profiler_utils import get_value_from_cache, set_cache
 from metadata.utils.time_utils import datetime_to_timestamp
 
@@ -78,7 +78,10 @@ class CacheProvider(ABC, Generic[T]):
         return result
 
 
-class BaseSystemMetricsSource:
+class EmptySystemMetricsSource:
+    """Empty system metrics source that can be used as a default. Just returns an empty list of system metrics
+    for any resource."""
+
     def __init__(self, *args, **kwargs):
         kwargs.pop("session", None)
         if len(args) > 0:
@@ -87,37 +90,36 @@ class BaseSystemMetricsSource:
             logger.warning("Received unexpected keyword arguments: %s", kwargs)
         super().__init__()
 
-    def get_system_metrics(self, *args, **kwargs) -> List[SystemProfile]:
-        """Return system metrics for a given table. Actual passed object can be a variety of types based
-        on the underlying infrastructure. For example, in the case of SQLalchemy, it can be a Table object
-        and in the case of Mongo, it can be a collection object."""
-        kwargs = self.get_kwargs(*args, **kwargs)
-        return (
-            self.get_inserts(**kwargs)
-            + self.get_deletes(**kwargs)
-            + self.get_updates(**kwargs)
-        )
+    def get_inserts(self, *args, **kwargs) -> List[SystemProfile]:
+        """Get insert queries"""
+        return []
+
+    def get_deletes(self, *args, **kwargs) -> List[SystemProfile]:
+        """Get delete queries"""
+        return []
+
+    def get_updates(self, *args, **kwargs) -> List[SystemProfile]:
+        """Get update queries"""
+        return []
 
     def get_kwargs(self, *args, **kwargs):
         return {}
 
-    def get_inserts(
-        self, database: str, schema: str, table: str
-    ) -> List[SystemProfile]:
-        """Get insert queries"""
-        return []
 
-    def get_deletes(
-        self, database: str, schema: str, table: str
-    ) -> List[SystemProfile]:
-        """Get delete queries"""
-        return []
+class SystemMetricsComputer(EmptySystemMetricsSource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    def get_updates(
-        self, database: str, schema: str, table: str
-    ) -> List[SystemProfile]:
-        """Get update queries"""
-        return []
+    def get_system_metrics(self, *args, **kwargs) -> List[SystemProfile]:
+        """Return system metrics for a given table. Actual passed object can be a variety of types based
+        on the underlying infrastructure. For example, in the case of SQLalchemy, it can be a Table object
+        and in the case of Mongo, it can be a collection object."""
+        kwargs = super().get_kwargs(*args, **kwargs)
+        return (
+            super().get_inserts(**kwargs)
+            + super().get_deletes(**kwargs)
+            + super().get_updates(**kwargs)
+        )
 
 
 class SQASessionProvider:

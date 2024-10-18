@@ -29,8 +29,8 @@ from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
-    TableData,
     SystemProfile,
+    TableData,
 )
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
@@ -42,7 +42,7 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
-from metadata.profiler.metrics.system.system import System, BaseSystemMetricsSource
+from metadata.profiler.metrics.system.system import System, SystemMetricsComputer
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.metric_filter import MetricFilter
@@ -76,7 +76,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     # pylint: disable=too-many-arguments
 
-    system_metrics_source_class = BaseSystemMetricsSource
+    system_metrics_computer_class = SystemMetricsComputer
 
     def __init__(
         self,
@@ -112,7 +112,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         self._table = self._convert_table_to_orm_object(sqa_metadata)
         self.create_session()
-        self.system_metrics_computer = self.system_metrics_source_class(
+        self.system_metrics_computer = self.system_metrics_computer_class(
             session=self.session
         )
 

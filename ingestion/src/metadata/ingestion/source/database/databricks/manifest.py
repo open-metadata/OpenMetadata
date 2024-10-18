@@ -1,9 +1,8 @@
-from metadata.ingestion.source.database.databricks.profiler.profiler import (
-    DatabricksProfiler,
-)
-from metadata.ingestion.source.database.redshift.profiler.profiler import (
-    RedshiftProfiler,
+from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
+    DatabricksProfilerInterface,
 )
 from metadata.utils.manifest import BaseManifest, get_class_path
 
-RedshiftManifest = BaseManifest(profler_class=get_class_path(DatabricksProfiler))
+DatabricksManifest = BaseManifest(
+    profler_class=get_class_path(DatabricksProfilerInterface)
+)
