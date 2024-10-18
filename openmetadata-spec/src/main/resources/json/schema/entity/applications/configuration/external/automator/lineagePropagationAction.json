@@ -19,6 +19,54 @@
       "$ref": "#/definitions/lineagePropagationActionType",
       "default": "LineagePropagationAction"
     },
+    "propagateChildrenDescription": {
+      "title": "Propagate Column Description",
+      "description": "Propagate description through lineage",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateChildrenTags": {
+      "title": "Propagate Column Tags",
+      "description": "Propagate tags through lineage",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateChildrenGlossaryTerms": {
+      "title": "Propagate Column Glossary Terms",
+      "description": "Propagate glossary terms through lineage",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateParentDescription": {
+      "title": "Propagate Parent Description",
+      "description": "Propagate description from parent",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateParentTags": {
+      "title": "Propagate Parent Tags",
+      "description": "Propagate tags from parent",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateParentGlossaryTerms": {
+      "title": "Propagate Parent Glossary Terms",
+      "description": "Propagate glossary terms from parent",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateParentTier": {
+      "title": "Propagate Parent Tier",
+      "description": "Propagate tier from parent",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateParentOwner": {
+      "title": "Propagate Parent Owner",
+      "description": "Propagate owner from parent",
+      "type": "boolean",
+      "default": true
+    },
     "overwriteMetadata": {
       "title": "Overwrite Metadata",
       "description": "Update descriptions and tags via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset, and incoming tags are merged with the existing ones.",
