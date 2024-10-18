@@ -449,42 +449,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @GET
-  @Path("/executionSummary")
-  @Operation(
-      operationId = "getExecutionSummaryOfTestSuites",
-      summary = "Get the execution summary of test suites",
-      description = "Get the execution summary of test suites.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Tests Execution Summary",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestSummary.class)))
-      })
-  public TestSummary getTestsExecutionSummary(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Context HttpServletResponse response,
-      @Parameter(
-              description = "get summary for a specific test suite",
-              schema = @Schema(type = "String", format = "uuid"))
-          @QueryParam("testSuiteId")
-          UUID testSuiteId) {
-    ResourceContext<?> resourceContext = getResourceContext();
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    // Set the deprecation header based on draft specification from IETF
-    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
-    response.setHeader("Deprecation", "Monday, October 30, 2024");
-    response.setHeader(
-        "Link", "api/v1/dataQuality/testSuites/dataQualityReport; rel=\"alternate\"");
-    return repository.getTestSummary(testSuiteId);
-  }
-
-  @GET
   @Path("/dataQualityReport")
   @Operation(
       operationId = "getDataQualityReport",
