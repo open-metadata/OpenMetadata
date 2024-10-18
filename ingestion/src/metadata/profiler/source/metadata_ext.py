@@ -54,7 +54,7 @@ from metadata.utils.importer import (
     import_source_class,
 )
 from metadata.utils.logger import profiler_logger
-from metadata.utils.manifest import BaseManifest
+from metadata.utils.service_spec import BaseSpec
 from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_logger()
@@ -179,10 +179,10 @@ class OpenMetadataSourceExt(OpenMetadataSource):
             yield table_name
 
     def import_profiler_interface(self) -> Type[ProfilerInterface]:
-        class_path = BaseManifest.get_for_source(
+        class_path = BaseSpec.get_for_source(
             ServiceType.Database,
             source_type=self.config.source.type.lower(),
-        ).profler_class
+        ).profiler_class
         profiler_source_class = import_from_module(class_path)
         return profiler_source_class
 

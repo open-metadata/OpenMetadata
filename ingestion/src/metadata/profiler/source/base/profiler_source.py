@@ -47,7 +47,7 @@ from metadata.profiler.processor.default import DefaultProfiler, get_default_met
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 from metadata.utils.importer import import_from_module
 from metadata.utils.logger import profiler_logger
-from metadata.utils.manifest import BaseManifest
+from metadata.utils.service_spec.service_spec import BaseSpec
 
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
 
@@ -192,11 +192,6 @@ class ProfilerSource(ProfilerSourceInterface):
         profiler_class = self.import_profiler_class(
             ServiceType.Database, source_type=self.profiler_interface_type
         )
-        logger.debug(
-            "Using profiler class: %s from %s",
-            profiler_class,
-            profiler_class.__module__,
-        )
         profiler_interface: ProfilerInterface = profiler_class.create(
             entity,
             schema_entity,
@@ -216,9 +211,7 @@ class ProfilerSource(ProfilerSourceInterface):
     def import_profiler_class(
         self, service_type: ServiceType, source_type: str
     ) -> Type[ProfilerInterface]:
-        class_path = BaseManifest.get_for_source(
-            service_type, source_type
-        ).profler_class
+        class_path = BaseSpec.get_for_source(service_type, source_type).profiler_class
         return cast(Type[ProfilerInterface], import_from_module(class_path))
 
     def _get_context_entities(

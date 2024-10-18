@@ -19,8 +19,13 @@ from typing import Any, Callable
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 
-from metadata.utils.importer import import_connection_fn
+# isort: off
+# logger is a root library and needs to be imported first avoid circular imports
 from metadata.utils.logger import cli_logger
+from metadata.utils.importer import import_connection_fn
+
+# isort: on
+
 
 logger = cli_logger()
 
