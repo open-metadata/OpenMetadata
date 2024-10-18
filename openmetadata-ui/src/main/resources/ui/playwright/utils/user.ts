@@ -361,6 +361,9 @@ export const softDeleteUser = async (
 
   await toastNotification(page, `"${displayName}" deleted successfully!`);
 
+  // Wait for the loader to disappear
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+
   // Search soft deleted user in non-deleted mode
   const searchSoftDeletedUserResponse = page.waitForResponse(
     '/api/v1/search/query*'
@@ -382,7 +385,14 @@ export const restoreUser = async (
   editedUserName: string
 ) => {
   // Click on deleted user toggle
+  const fetchDeletedUsers = page.waitForResponse(
+    '/api/v1/users?**include=deleted'
+  );
   await page.click('[data-testid="show-deleted"]');
+  await fetchDeletedUsers;
+
+  // Wait for the loader to disappear
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   const searchUsers = page.waitForResponse('/api/v1/search/query*');
   await page.fill('[data-testid="searchbar"]', username);
@@ -414,7 +424,14 @@ export const permanentDeleteUser = async (
 ) => {
   if (isUserSoftDeleted) {
     // Click on deleted user toggle to off it
+    const fetchDeletedUsers = page.waitForResponse(
+      '/api/v1/users?**include=non-deleted'
+    );
     await page.click('[data-testid="show-deleted"]');
+    await fetchDeletedUsers;
+
+    // Wait for the loader to disappear
+    await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
   }
 
   // Search the user
@@ -429,13 +446,20 @@ export const permanentDeleteUser = async (
   await page.click('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
+  const reFetchUsers = page.waitForResponse(
+    '/api/v1/users?**include=non-deleted'
+  );
   const hardDeleteUserResponse = page.waitForResponse(
     'api/v1/users/*?hardDelete=true&recursive=false'
   );
   await page.click('[data-testid="confirm-button"]');
   await hardDeleteUserResponse;
+  await reFetchUsers;
 
   await toastNotification(page, `"${displayName}" deleted successfully!`);
+
+  // Wait for the loader to disappear
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   // Search the user again
   const searchUserAfterDeleteResponse = page.waitForResponse(
