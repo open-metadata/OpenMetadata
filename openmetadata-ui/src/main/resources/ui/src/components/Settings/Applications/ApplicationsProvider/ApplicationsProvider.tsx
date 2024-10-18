@@ -24,7 +24,6 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { App } from '../../../../generated/entity/applications/app';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getApplicationList } from '../../../../rest/applicationAPI';
-import Loader from '../../../common/Loader/Loader';
 import { ApplicationsContextType } from './ApplicationsProvider.interface';
 
 export const ApplicationsContext = createContext({} as ApplicationsContextType);
@@ -61,10 +60,6 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const appContext = useMemo(() => {
     return { applications, loading };
   }, [applications, loading]);
-
-  if (loading) {
-    return <Loader fullScreen />;
-  }
 
   return (
     <ApplicationsContext.Provider value={appContext}>
