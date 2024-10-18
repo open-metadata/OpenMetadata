@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -62,7 +65,7 @@ def test_connection(
     service_connection: MssqlConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
-) -> None:
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -71,7 +74,7 @@ def test_connection(
         "GetQueries": MSSQL_TEST_GET_QUERIES,
         "GetDatabases": MSSQL_GET_DATABASE,
     }
-    test_connection_db_common(
+    return test_connection_db_common(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,

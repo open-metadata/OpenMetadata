@@ -48,6 +48,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
@@ -375,4 +378,5 @@ class SalesforceSource(DatabaseServiceSource):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.client, self.service_connection)
+        result = test_connection_fn(self.client, self.service_connection)
+        raise_test_connection_exception(result)

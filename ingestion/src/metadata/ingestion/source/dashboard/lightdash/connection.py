@@ -20,6 +20,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.dashboard.lightdashConnection import (
     LightdashConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,
@@ -50,7 +53,7 @@ def test_connection(
     service_connection: LightdashConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
-) -> None:
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -61,7 +64,7 @@ def test_connection(
 
     test_fn = {"GetDashboards": custom_executor}
 
-    test_connection_steps(
+    return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,

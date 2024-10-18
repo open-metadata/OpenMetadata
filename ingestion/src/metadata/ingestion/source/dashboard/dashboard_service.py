@@ -55,6 +55,9 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -554,7 +557,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)
 
     def prepare(self):
         """By default, nothing to prepare"""
