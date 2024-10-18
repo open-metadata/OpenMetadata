@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Typography } from "antd";
-import { isEmpty, isUndefined, omit, trim } from "lodash";
+import { Typography } from "antd";
+import { isEmpty, omit, trim } from "lodash";
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { STEPS_FOR_ADD_INGESTION } from "../../../../constants/Ingestions.constant";
@@ -26,7 +26,6 @@ import {
 } from "../../../../generated/api/services/ingestionPipelines/createIngestionPipeline";
 import { IngestionPipeline } from "../../../../generated/entity/services/ingestionPipelines/ingestionPipeline";
 import { IngestionWorkflowData } from "../../../../interface/service.interface";
-import { getSuccessMessage } from "../../../../utils/IngestionUtils";
 import { cleanWorkFlowData } from "../../../../utils/IngestionWorkflowUtils";
 import { getScheduleOptionsFromSchedules } from "../../../../utils/ScheduleUtils";
 import { getIngestionName } from "../../../../utils/ServiceUtils";
@@ -35,17 +34,13 @@ import {
   getDayCron,
   getWeekCron,
 } from "../../../common/CronEditor/CronEditor.constant";
-import SuccessScreen from "../../../common/SuccessScreen/SuccessScreen";
 import IngestionStepper from "../Ingestion/IngestionStepper/IngestionStepper.component";
 import IngestionWorkflowForm from "../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm";
 import {
   AddIngestionProps,
   WorkflowExtraConfig,
 } from "./IngestionWorkflow.interface";
-import ScheduleInterval from "./Steps/ScheduleInterval";
-import DownloadYAML from "../../../../pages/DownloadPage";
 import { useHistory } from "react-router-dom";
-import axios from "axios";
 import { saveIngestion } from "../../../../utils/APIUtils";
 
 const AddIngestion = ({
@@ -142,9 +137,6 @@ const AddIngestion = ({
       const createIngestionPipelinePayload = createNewIngestion({})
 
       saveIngestion(createIngestionPipelinePayload)
-        .then(response => {
-          history.push("/download");
-        })
         .catch(error => {
           console.error('Error saving configuration:', error);
           alert(`Error saving ingestion ${error.message}`)

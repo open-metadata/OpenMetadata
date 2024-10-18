@@ -7,6 +7,7 @@ import IngestionOptionsPage from './pages/IngestionOptionsPage';
 import AddIngestionPage from './pages/AddIngestionPage.component';
 import DownloadYAML from './pages/DownloadPage';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
+import { LogsPage, LogsPageWrapper } from './pages/LogsPage';
 
 function App() {
   return (
@@ -19,6 +20,8 @@ function App() {
           <Route path="/ingestion/:serviceCategory/:ingestionType" component={AddIngestionPage} />
           <Route path="/ingestion" component={IngestionOptionsPage} exact />
           <Route path="/download" component={DownloadYAML} exact />
+          <Route path="/logs/start" component={LogsPageWrapper} exact />
+          <Route path="/logs" component={LogsPageWrapper} exact />
         </Switch>
       </Router>
     </AntDConfigProvider>

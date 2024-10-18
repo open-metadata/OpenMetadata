@@ -21,7 +21,7 @@ export const downloadYaml = () => APIClient.get('api/yaml/download', { responseT
 
 // It was quicker to use Fetch API instead of Axios.
 // We can revisit later.
-export const runIngestion = () => fetch(`${APIClient.defaults.baseURL}/api/run`, {
+export const runIngestion = () => fetch(`${APIClient.defaults.baseURL}api/run`, {
     method: 'POST',
 });
 

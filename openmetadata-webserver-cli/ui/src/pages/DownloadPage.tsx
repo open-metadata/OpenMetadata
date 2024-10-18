@@ -9,49 +9,6 @@ import { ReactComponent as ResumeIcon } from '../assets/svg/ic-play-button.svg';
 
 const DownloadYAML = () => {
     const [yaml, setYaml] = useState<string>('');
-    const [isFetching, setIsFetching] = useState(false);
-    const [logs, setLogs] = useState<string>('');
-
-    const fetchLogs = async () => {
-        setIsFetching(true);
-        try {
-            const response = await runIngestion();
-
-            if (!response.body) {
-                console.error('No response body found');
-                return;
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder('utf-8');
-
-            // Temporary variable to hold fetched logs
-            let receivedLogs = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const chunk = decoder.decode(value, { stream: true });
-
-                // Append the chunk to the temporary variable
-                receivedLogs += chunk;
-
-                // Set logs to re-render the LazyLog component with new data
-                // Appends a line break between prevLogs and chunk
-                setLogs((prevLogs) => `${prevLogs}\n${chunk}`);
-            }
-        } catch (error) {
-            setLogs('Logs could not be fetched...');
-            console.error('Error fetching logs:', error);
-        } finally {
-            setIsFetching(false);
-        }
-    };
-
-    const handleRunIngestion = () => {
-        fetchLogs();
-    };
 
     const handleDownload = async () => {
         try {
@@ -78,9 +35,15 @@ const DownloadYAML = () => {
         }
     };
 
-    // useEffect(() => {
-    //     fetchFileContent();
-    // }, []);
+    const fetchFileContent = () => {
+        fetchYaml()
+            .then(response => setYaml(response.data))
+            .catch(error => setYaml(`Failed to load yaml ${error.message}`));
+    }
+
+    useEffect(() => {
+        fetchFileContent();
+    }, []);
 
     return (
         <PageLayoutV1 pageTitle="View or Download Yaml">
@@ -126,7 +89,7 @@ const DownloadYAML = () => {
                                 enableSearch
                                 selectableLines
                                 extraLines={1}
-                                text={logs || 'No content to display'}
+                                text={yaml || 'No content to display'}
                                 follow
                             />
                         </Col>
@@ -140,17 +103,6 @@ const DownloadYAML = () => {
                         <Typography.Title level={5}>
                             Next steps
                         </Typography.Title>
-                        <Space direction="vertical" className="mt-2 mb-4">
-                            <Tooltip title="Run the ingestion with the yaml">
-                                <Button type="primary"
-                                    disabled={isFetching}
-                                    icon={<ResumeIcon height={16} width={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />}
-                                    onClick={handleRunIngestion}
-                                >
-                                    {isFetching ? 'Running...' : 'Run now'}
-                                </Button>
-                            </Tooltip>
-                        </Space>
                         <Typography.Text type="secondary">
                             You can also run the ingestion via:
                         </Typography.Text>

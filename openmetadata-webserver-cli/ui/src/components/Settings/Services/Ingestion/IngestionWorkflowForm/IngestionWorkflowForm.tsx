@@ -16,7 +16,7 @@ import { customizeValidator } from "@rjsf/validator-ajv8";
 import { Button, Space } from "antd";
 import classNames from "classnames";
 import { isUndefined, omit, omitBy } from "lodash";
-import React, { FC, useMemo, useState } from "react";
+import React, { FC, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
@@ -39,6 +39,7 @@ import { ObjectFieldTemplate } from "../../../../Form/JSONSchema/JSONSchemaTempl
 import WorkflowArrayFieldTemplate from "../../../../Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate";
 import { ServiceCategory } from "../../../../../enums/service.enum";
 import { useHistory } from "react-router-dom";
+import { downloadYaml } from "../../../../../utils/APIUtils";
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,
@@ -129,35 +130,57 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     ArrayField: WorkflowArrayFieldTemplate,
   };
 
-  const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
-    if (e.formData) {
-      let formData = { ...e.formData };
-      if (isElasticSearchPipeline) {
-        formData = {
-          ...omit(formData, [
-            "useSSL",
-            "verifyCerts",
-            "timeout",
-            "caCerts",
-            "useAwsCredentials",
-            "regionName",
-          ]),
-        };
-      }
-      if (isDbtPipeline) {
-        formData = {
-          ...formData,
-          dbtConfigSource: {
-            ...omitBy(formData.dbtConfigSource ?? {}, isUndefined),
-            dbtConfigType: formData.dbtConfigSource
-              ?.dbtConfigType as DbtConfigType,
-          },
-        };
-      }
+  const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>, event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-      onSubmit(formData);
+    return new Promise<void>((resolve) => {
+      if (e.formData) {
+        let formData = { ...e.formData };
+        if (isElasticSearchPipeline) {
+          formData = {
+            ...omit(formData, [
+              "useSSL",
+              "verifyCerts",
+              "timeout",
+              "caCerts",
+              "useAwsCredentials",
+              "regionName",
+            ]),
+          };
+        }
+        if (isDbtPipeline) {
+          formData = {
+            ...formData,
+            dbtConfigSource: {
+              ...omitBy(formData.dbtConfigSource ?? {}, isUndefined),
+              dbtConfigType: formData.dbtConfigSource
+                ?.dbtConfigType as DbtConfigType,
+            },
+          };
+        }
 
-    }
+        onSubmit(formData);
+
+        resolve();
+      }
+    }).then(() => {
+      event.preventDefault();
+      const nativeEvent = event.nativeEvent as SubmitEvent;
+      const submitter = nativeEvent.submitter as HTMLButtonElement;
+      const buttonName = submitter?.name;
+
+      console.log('Button clicked:', buttonName);
+
+      if (buttonName === 'download') {
+        console.log('Redirecting to /download');
+        history.push('/download');
+      } else if (buttonName === 'run') {
+        console.log('Redirecting to /logs/start');
+        history.push('/logs/start');
+      } else {
+        console.log('No redirection happening');
+      }
+    });
   };
 
   return (
@@ -189,9 +212,17 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
             {cancelText ?? t("label.cancel")}
           </Button>
 
-          <Button data-testid="submit-btn" htmlType="submit" type="primary">
-            {okText ?? t("label.submit")}
+          <Button name="download" type="default" htmlType="submit">
+            Download config
           </Button>
+
+          <Button name="run" type="primary" htmlType="submit">
+            Run now
+          </Button>
+
+          {/* <Button data-testid="submit-btn" htmlType="submit" type="primary">
+            {okText ?? t("label.submit")}
+          </Button> */}
         </Space>
       </div>
     </Form>
