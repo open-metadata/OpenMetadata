@@ -72,7 +72,7 @@ test.describe.serial(
       // Click on deploy button
       await page.click('.ant-modal-body [data-testid="deploy-button"]');
 
-      await toastNotification(page, 'Schedule saved successfully');
+      await toastNotification(page, 'Schedule saved successfully', 'success');
 
       // Verify cron string
       await expect(page.locator('[data-testid="cron-string"]')).toContainText(
@@ -101,7 +101,11 @@ test.describe.serial(
       // Click on the save button
       await page.click('[data-testid="save-button"]');
 
-      await toastNotification(page, 'Application uninstalled successfully');
+      await toastNotification(
+        page,
+        'Application uninstalled successfully',
+        'success'
+      );
 
       await expect(
         page.locator('[data-testid="data-insights-application-card"]')
