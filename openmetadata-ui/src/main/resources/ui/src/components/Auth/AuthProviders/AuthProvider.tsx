@@ -769,7 +769,6 @@ export const AuthProvider = ({
       updateAxiosInterceptors: initializeAxiosInterceptors,
     });
 
-    return cleanup;
   }, [handleSuccessfulLogin]);
 
   const isConfigLoading =
