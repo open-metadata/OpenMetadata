@@ -51,6 +51,7 @@ export const useApplicationStore = create<ApplicationStore>()(
       refreshTokenKey: '',
       searchCriteria: '',
       inlineAlertDetails: undefined,
+      applications: [],
 
       setInlineAlertDetails: (inlineAlertDetails) => {
         set({ inlineAlertDetails });
@@ -163,6 +164,9 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
       updateSearchCriteria: (criteria) => {
         set({ searchCriteria: criteria });
+      },
+      setApplicationsName: (applications: string[]) => {
+        set({ applications: applications });
       },
     }),
     {
