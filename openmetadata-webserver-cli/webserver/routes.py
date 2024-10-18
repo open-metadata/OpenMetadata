@@ -31,6 +31,7 @@ from webserver import app
 from webserver.models import OMetaServerModel
 from webserver.repository import LocalIngestionServer
 from webserver.workflow import workflow_runner, handle_log_queue
+from flask import Response
 
 
 @app.route("/ingestion", methods=["POST"])
@@ -115,4 +116,4 @@ def run_ingestion():
     3. Stream the generator results
     """
     thread, que = workflow_runner()
-    return handle_log_queue(thread=thread, que=que), {"Content-Type": "text/plain"}
+    return Response(handle_log_queue(thread=thread, que=que), content_type="text/plain")

@@ -26,6 +26,8 @@ from webserver.repository import LocalIngestionServer
 
 def workflow_runner() -> Tuple[Thread, Queue]:
     """Trigger the ingestion"""
+    LocalIngestionServer().build_workflow()
+    
     logger = logging.getLogger(METADATA_LOGGER)
     que = queue.Queue(-1)
     queue_handler = QueueHandler(que)
