@@ -173,6 +173,7 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Execution(ExecutionMode.CONCURRENT)
 public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   private final TagResourceTest tagResourceTest = new TagResourceTest();
   private final DatabaseServiceResourceTest dbServiceTest = new DatabaseServiceResourceTest();
@@ -2507,6 +2508,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
     Response response;
+    // lets refresh the indexes before calling search
+    Request refreshRequest =
+        new Request(
+            "POST",
+            String.format(
+                "%s/_refresh", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    searchClient.performRequest(refreshRequest);
+
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
