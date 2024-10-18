@@ -15,7 +15,7 @@ import importlib
 import sys
 import traceback
 from enum import Enum
-from typing import Any, Callable, Optional, Type, TypeVar
+from typing import Any, Callable, Optional, Type, TypeVar, TYPE_CHECKING
 
 from pydantic import BaseModel
 
@@ -23,14 +23,24 @@ from metadata.data_quality.validations.base_test_handler import BaseTestValidato
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseConnection,
+)
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
+from metadata.profiler.metrics.system.system import BaseSystemMetricsSource
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.client_version import get_client_version
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.logger import utils_logger
 from metadata.utils.singleton import Singleton
+
+if TYPE_CHECKING:
+    from metadata.profiler.interface.profiler_interface import ProfilerInterface
+else:
+    ProfilerInterface = Any
 
 logger = utils_logger()
 
@@ -131,7 +141,7 @@ def import_from_module(key: str) -> Type[Any]:
     try:
         obj = getattr(importlib.import_module(module_name), obj_name)
         return obj
-    except Exception as err:
+    except ModuleNotFoundError as err:
         logger.debug(traceback.format_exc())
         raise DynamicImportException(module=module_name, key=obj_name, cause=err)
 
@@ -148,6 +158,24 @@ def import_source_class(
             get_module_dir(source_type),
             get_source_module_name(source_type),
             get_class_name_root(source_type),
+        )
+    )
+
+
+def import_profiler_class(
+    source_connection_type: DatabaseConnection,
+    from_: str = "profiler",
+    service_type: ServiceType = ServiceType.Database,
+) -> Type[ProfilerInterface]:
+    """
+    Import the profiler class for a source connection by default will be found in the metadata
+    """
+    return import_from_module(
+        "metadata.ingestion.source.{}.{}.{}.profiler.{}Profiler".format(
+            service_type.name.lower(),
+            source_connection_type.config.type.value.lower(),
+            from_,
+            source_connection_type.config.type.value,
         )
     )
 
@@ -302,3 +330,18 @@ class SideEffectsLoader(metaclass=Singleton):
 
 def import_side_effects(*modules):
     SideEffectsLoader().import_side_effects(*modules)
+
+
+def import_system_metrics_computer(db_service: DatabaseService):
+    """
+    Import the system metrics profile class
+    """
+    try:
+        return import_from_module(
+            "metadata.ingestion.source.database.{}.profiler.system.SystemMetricsComputer".format(
+                db_service.type
+            )
+        )
+    except DynamicImportException as err:
+        logger.debug("Could not import system metrics computer: %s", err)
+        return BaseSystemMetricsSource

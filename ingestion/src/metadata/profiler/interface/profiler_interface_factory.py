@@ -57,6 +57,9 @@ from metadata.profiler.interface.profiler_interface import ProfilerInterface
 class ProfilerInterfaceFactory(Factory):
     def create(self, interface_type: str, *args, **kwargs):
         """Create interface object based on interface type"""
+        
+        
+    
         interface_class_path = profiler_class_mapping.get(
             interface_type, profiler_class_mapping[DatabaseConnection.__name__]
         )

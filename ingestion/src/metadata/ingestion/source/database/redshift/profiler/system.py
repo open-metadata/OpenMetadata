@@ -1,55 +1,72 @@
-from typing import Dict, List
+from typing import List
 
-from pydantic import TypeAdapter
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.ingestion.source.database.redshift.queries import (
     STL_QUERY,
-    get_metric_result,
     get_query_results,
 )
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
 from metadata.profiler.metrics.system.system import (
-    SYSTEM_QUERY_RESULT_CACHE,
-    get_system_metrics_for_dialect,
+    BaseSystemMetricsSource,
+    SQASessionProvider,
+    CacheProvider,
 )
-from metadata.profiler.orm.registry import Dialects
 from metadata.utils.logger import profiler_logger
-from metadata.utils.profiler_utils import get_value_from_cache, set_cache
+from metadata.utils.profiler_utils import QueryResult
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = profiler_logger()
 
 
-@get_system_metrics_for_dialect.register(Dialects.Redshift)
-def _(
-    dialect: str,
-    session: Session,
-    table: DeclarativeMeta,
-    *args,
-    **kwargs,
-) -> List[SystemProfile]:
-    """List all the DML operations for reshifts tables
+class RedshiftSystemMetricsSource(
+    SQASessionProvider, BaseSystemMetricsSource, CacheProvider
+):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    Args:
-        dialect (str): redshift
-        session (Session): session object
-        table (DeclarativeMeta): orm table
+    def get_inserts(
+        self, database: str, schema: str, table: str
+    ) -> List[SystemProfile]:
+        queries = self.get_or_update_cache(
+            f"{database}.{schema}",
+            self._get_insert_queries,
+            database=database,
+            schema=schema,
+        )
+        return get_metric_result(queries, table)
 
-    Returns:
-        List[Dict]:
-    """
-    logger.debug(f"Fetching system metrics for {dialect}")
-    database = session.get_bind().url.database
-    schema = table.__table_args__["schema"]  # type: ignore
+    def get_kwargs(self, table: DeclarativeMeta, *args, **kwargs):
+        return {
+            "table": table.__table__.name,
+            "database": self.get_session().get_bind().url.database,
+            "schema": table.__table__.schema,
+        }
 
-    metric_results: List[Dict] = []
+    def get_deletes(
+        self, database: str, schema: str, table: str
+    ) -> List[SystemProfile]:
+        queries = self.get_or_update_cache(
+            f"{database}.{schema}",
+            self._get_delete_queries,
+            database=database,
+            schema=schema,
+        )
+        return get_metric_result(queries, table)
 
-    # get inserts ddl queries
-    inserts = get_value_from_cache(
-        SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.Redshift}.{database}.{schema}.inserts"
-    )
-    if not inserts:
+    def get_updates(
+        self, database: str, schema: str, table: str
+    ) -> List[SystemProfile]:
+        queries = self.get_or_update_cache(
+            f"{database}.{schema}",
+            self._get_update_queries,
+            database=database,
+            schema=schema,
+        )
+        return get_metric_result(queries, table)
+
+    def _get_insert_queries(self, database: str, schema: str) -> List[QueryResult]:
         insert_query = STL_QUERY.format(
             alias="si",
             join_type="LEFT",
@@ -57,23 +74,13 @@ def _(
             database=database,
             schema=schema,
         )
-        inserts = get_query_results(
-            session,
+        return get_query_results(
+            super().get_session(),
             insert_query,
             DatabaseDMLOperations.INSERT.value,
         )
-        set_cache(
-            SYSTEM_QUERY_RESULT_CACHE,
-            f"{Dialects.Redshift}.{database}.{schema}.inserts",
-            inserts,
-        )
-    metric_results.extend(get_metric_result(inserts, table.__tablename__))
 
-    # get deletes ddl queries
-    deletes = get_value_from_cache(
-        SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.Redshift}.{database}.{schema}.deletes"
-    )
-    if not deletes:
+    def _get_delete_queries(self, database: str, schema: str) -> List[QueryResult]:
         delete_query = STL_QUERY.format(
             alias="sd",
             join_type="RIGHT",
@@ -81,23 +88,13 @@ def _(
             database=database,
             schema=schema,
         )
-        deletes = get_query_results(
-            session,
+        return get_query_results(
+            super().get_session(),
             delete_query,
             DatabaseDMLOperations.DELETE.value,
         )
-        set_cache(
-            SYSTEM_QUERY_RESULT_CACHE,
-            f"{Dialects.Redshift}.{database}.{schema}.deletes",
-            deletes,
-        )
-    metric_results.extend(get_metric_result(deletes, table.__tablename__))  # type: ignore
 
-    # get updates ddl queries
-    updates = get_value_from_cache(
-        SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.Redshift}.{database}.{schema}.updates"
-    )
-    if not updates:
+    def _get_update_queries(self, database: str, schema: str) -> List[QueryResult]:
         update_query = STL_QUERY.format(
             alias="si",
             join_type="INNER",
@@ -105,16 +102,29 @@ def _(
             database=database,
             schema=schema,
         )
-        updates = get_query_results(
-            session,
+        return get_query_results(
+            super().get_session(),
             update_query,
             DatabaseDMLOperations.UPDATE.value,
         )
-        set_cache(
-            SYSTEM_QUERY_RESULT_CACHE,
-            f"{Dialects.Redshift}.{database}.{schema}.updates",
-            updates,
-        )
-    metric_results.extend(get_metric_result(updates, table.__tablename__))  # type: ignore
 
-    return TypeAdapter(List[SystemProfile]).validate_python(metric_results)
+
+def get_metric_result(ddls: List[QueryResult], table_name: str) -> List:
+    """Given query results, retur the metric result
+
+    Args:
+        ddls (List[QueryResult]): list of query results
+        table_name (str): table name
+
+    Returns:
+        List:
+    """
+    return [
+        {
+            "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),
+            "operation": ddl.query_type,
+            "rowsAffected": ddl.rows,
+        }
+        for ddl in ddls
+        if ddl.table_name == table_name
+    ]

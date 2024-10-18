@@ -14,8 +14,9 @@ System Metric
 """
 
 import traceback
+from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable, Generic, TypeVar
 
 from pydantic import TypeAdapter
 from sqlalchemy import text
@@ -25,9 +26,6 @@ from metadata.generated.schema.configuration.profilerConfiguration import Metric
 from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
-)
-from metadata.ingestion.source.database.snowflake.profiler.system import (
-    build_snowflake_query_results,
 )
 from metadata.profiler.metrics.core import SystemMetric
 from metadata.profiler.metrics.system.dml_operation import (
@@ -43,6 +41,7 @@ from metadata.profiler.orm.registry import Dialects
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.logger import profiler_logger
+from metadata.utils.lru_cache import LRUCache, LRU_CACHE_SIZE
 from metadata.utils.profiler_utils import get_value_from_cache, set_cache
 from metadata.utils.time_utils import datetime_to_timestamp
 
@@ -57,6 +56,80 @@ def recursive_dic():
 
 
 SYSTEM_QUERY_RESULT_CACHE = recursive_dic()
+
+T = TypeVar("T")
+
+
+class CacheProvider(ABC, Generic[T]):
+    def __init__(self):
+        self.cache = LRUCache[T](LRU_CACHE_SIZE)
+
+    def get_or_update_cache(
+        self,
+        cache_path: str,
+        get_queries_fn: Callable[..., List[T]],
+        *args,
+        **kwargs,
+    ):
+        if cache_path in self.cache:
+            return self.cache.get(cache_path)
+        result = get_queries_fn(*args, **kwargs)
+        self.cache.put(cache_path, result)
+        return result
+
+
+class BaseSystemMetricsSource:
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("session", None)
+        if len(args) > 0:
+            logger.warning("Received unexpected arguments: %s", args)
+        if len(kwargs) > 0:
+            logger.warning("Received unexpected keyword arguments: %s", kwargs)
+        super().__init__()
+
+    def get_system_metrics(self, *args, **kwargs) -> List[SystemProfile]:
+        """Return system metrics for a given table. Actual passed object can be a variety of types based
+        on the underlying infrastructure. For example, in the case of SQLalchemy, it can be a Table object
+        and in the case of Mongo, it can be a collection object."""
+        kwargs = self.get_kwargs(*args, **kwargs)
+        return (
+            self.get_inserts(**kwargs)
+            + self.get_deletes(**kwargs)
+            + self.get_updates(**kwargs)
+        )
+
+    def get_kwargs(self, *args, **kwargs):
+        return {}
+
+    def get_inserts(
+        self, database: str, schema: str, table: str
+    ) -> List[SystemProfile]:
+        """Get insert queries"""
+        return []
+
+    def get_deletes(
+        self, database: str, schema: str, table: str
+    ) -> List[SystemProfile]:
+        """Get delete queries"""
+        return []
+
+    def get_updates(
+        self, database: str, schema: str, table: str
+    ) -> List[SystemProfile]:
+        """Get update queries"""
+        return []
+
+
+class SQASessionProvider:
+    def __init__(self, *args, **kwargs):
+        self.session = kwargs.pop("session")
+        super().__init__(*args, **kwargs)
+
+    def get_session(self):
+        return self.session
+
+    def get_database(self) -> str:
+        return self.session.get_bind().url.database
 
 
 @valuedispatch

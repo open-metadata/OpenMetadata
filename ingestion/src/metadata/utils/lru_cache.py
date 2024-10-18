@@ -14,46 +14,61 @@ LRU cache
 """
 
 from collections import OrderedDict
+from typing import TypeVar, Generic, Callable
+import threading
+
 
 LRU_CACHE_SIZE = 4096
 
+T = TypeVar("T")
 
-class LRUCache:
+
+class LRUCache(Generic[T]):
     """Least Recently Used cache"""
 
     def __init__(self, capacity: int) -> None:
         self._cache = OrderedDict()
         self.capacity = capacity
+        self.lock = threading.Lock()
 
     def clear(self):
-        self._cache = OrderedDict()
+        with self.lock:
+            self._cache = OrderedDict()
 
-    def get(self, key):
-        """
-        Returns the value associated to `key` if it exists,
-        updating the cache usage.
-        Raises `KeyError` if `key doesn't exist in the cache.
-        """
-        self._cache.move_to_end(key)
-        return self._cache[key]
+    def get(self, key) -> T:
+        with self.lock:
+            self._cache.move_to_end(key)
+            return self._cache[key]
 
-    def put(self, key, value) -> None:
-        """
-        Assigns `value` to `key`, overwriting `key` if it already exists
-        in the cache and updating the cache usage.
-        If the size of the cache grows above capacity, pops the least used
-        element.
-        """
-        self._cache[key] = value
-        self._cache.move_to_end(key)
-        if len(self._cache) > self.capacity:
-            self._cache.popitem(last=False)
+    def put(self, key: str, value: T) -> None:
+        with self.lock:
+            self._cache[key] = value
+            self._cache.move_to_end(key)
+            if len(self._cache) > self.capacity:
+                self._cache.popitem(last=False)
 
     def __contains__(self, key) -> bool:
-        if key not in self._cache:
-            return False
-        self._cache.move_to_end(key)
-        return True
+        with self.lock:
+            if key not in self._cache:
+                return False
+            self._cache.move_to_end(key)
+            return True
 
     def __len__(self) -> int:
-        return len(self._cache)
+        with self.lock:
+            return len(self._cache)
+
+    def wrap(self, key_func: Callable[..., str]):
+
+        def wrapper(func: Callable[..., T]):
+            def wrapped(*args, **kwargs) -> T:
+                key = key_func(*args, **kwargs)
+                if key in self:
+                    return self.get(key)
+                value = func(*args, **kwargs)
+                self.put(key, value)
+                return value
+
+            return wrapped
+
+        return wrapper

@@ -13,9 +13,11 @@
 Base source for the profiler used to instantiate a profiler runner with
 its interface
 """
+import traceback
 from copy import deepcopy
-from typing import List, Optional, Tuple, cast
+from typing import List, Optional, Tuple, cast, Type
 
+from docker.models.services import Service
 from sqlalchemy import MetaData
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
@@ -31,6 +33,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -40,12 +43,25 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
+    SQAProfilerInterface,
+)
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
+from metadata.utils.importer import (
+    import_source_class,
+    DynamicImportException,
+    import_profiler_class,
+    import_from_module,
+)
+from metadata.utils.logger import profiler_logger
+from metadata.utils.manifest import BaseManifest, get_class_path
 
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
+
+logger = profiler_logger()
 
 
 class ProfilerSource(ProfilerSourceInterface):
@@ -61,15 +77,14 @@ class ProfilerSource(ProfilerSourceInterface):
         global_profiler_configuration: ProfilerConfiguration,
     ):
         self.service_conn_config = self._copy_service_config(config, database)
-        self.source_config = config.source.sourceConfig.config
-        self.source_config = cast(
-            DatabaseServiceProfilerPipeline, self.source_config
-        )  # satisfy type checker
+        self.source_config = DatabaseServiceProfilerPipeline.model_validate(
+            config.source.sourceConfig.config
+        )
         self.profiler_config = ProfilerProcessorConfig.model_validate(
             config.processor.model_dump().get("config")
         )
         self.ometa_client = ometa_client
-        self.profiler_interface_type: str = self._get_profiler_interface_type(config)
+        self.profiler_interface_type: str = config.source.type.lower()
         self.sqa_metadata = self._set_sqa_metadata()
         self._interface = None
         self.global_profiler_configuration = global_profiler_configuration
@@ -91,18 +106,6 @@ class ProfilerSource(ProfilerSourceInterface):
         if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
             return MetaData()
         return None
-
-    def _get_profiler_interface_type(self, config) -> str:
-        """_summary_
-
-        Args:
-            config (_type_): profiler config
-        Returns:
-            str:
-        """
-        if isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
-            return self.service_conn_config.__class__.__name__
-        return config.source.serviceConnection.root.config.__class__.__name__
 
     @staticmethod
     def get_config_for_table(entity: Table, profiler_config) -> Optional[TableConfig]:
@@ -196,12 +199,15 @@ class ProfilerSource(ProfilerSourceInterface):
         db_service: Optional[DatabaseService],
     ) -> ProfilerInterface:
         """Create sqlalchemy profiler interface"""
-        from metadata.profiler.interface.profiler_interface_factory import (  # pylint: disable=import-outside-toplevel
-            profiler_interface_factory,
+        profiler_class = self.import_profiler_class(
+            ServiceType.Database, source_type=self.profiler_interface_type
         )
-
-        profiler_interface: ProfilerInterface = profiler_interface_factory.create(
-            self.profiler_interface_type,
+        logger.debug(
+            "Using profiler class: %s from %s",
+            profiler_class,
+            profiler_class.__module__,
+        )
+        profiler_interface: ProfilerInterface = profiler_class.create(
             entity,
             schema_entity,
             database_entity,
@@ -216,6 +222,21 @@ class ProfilerSource(ProfilerSourceInterface):
 
         self.interface = profiler_interface
         return self.interface
+
+    def import_profiler_class(
+        self, service_type: ServiceType, source_type: str
+    ) -> Type[ProfilerInterface]:
+        try:
+            class_path = BaseManifest.get_for_source(
+                service_type, source_type
+            ).profler_class
+            if class_path is None:
+                class_path = get_class_path(SQAProfilerInterface)
+            return cast(Type[ProfilerInterface], import_from_module(class_path))
+        except DynamicImportException as e:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to import profiler for source '{source_type}'")
+            return SQAProfilerInterface
 
     def _get_context_entities(
         self, entity: Table

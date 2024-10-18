@@ -167,11 +167,10 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         result = self.run_command("profile")
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_table_with_profiler(source_status, sink_status)
-        self.custom_profiler_assertions()
+        self.system_profile_assertions()
 
     @staticmethod
-    def expected_tables() -> int:
-        return 7
+    def expected_tables() -> int:        return 7
 
     def inserted_rows_count(self) -> int:
         return len(
@@ -233,7 +232,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             """,
         ]
 
-    def custom_profiler_assertions(self):
+    def system_profile_assertions(self):
         cases = [
             (
                 "e2e_snowflake.E2E_DB.E2E_TEST.E2E_TABLE",

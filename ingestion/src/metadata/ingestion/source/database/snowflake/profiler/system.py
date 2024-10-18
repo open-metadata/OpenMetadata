@@ -1,17 +1,29 @@
 import re
 import traceback
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any, TypeVar, Callable
 
 import sqlalchemy.orm
-from sqlalchemy.orm import DeclarativeMeta, Session
+from pydantic import TypeAdapter
+from sqlalchemy.orm import DeclarativeMeta
 
+from metadata.generated.schema.entity.data.table import SystemProfile, DmlOperationType
 from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeQueryLogEntry,
     SnowflakeQueryResult,
 )
+from metadata.profiler.metrics.system.dml_operation import (
+    DatabaseDMLOperations,
+)
+from metadata.profiler.metrics.system.system import (
+    BaseSystemMetricsSource,
+    SQASessionProvider,
+    CacheProvider,
+)
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
-from metadata.utils.profiler_utils import get_identifiers_from_string
+from metadata.utils.profiler_utils import get_identifiers_from_string, QueryResult
+from metadata.utils.time_utils import datetime_to_timestamp
+import hashlib
 
 PUBLIC_SCHEMA = "PUBLIC"
 logger = profiler_logger()
@@ -23,6 +35,16 @@ QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|ME
 IDENTIFIER_PATTERN = r"(IDENTIFIER\(\')([\w._\"]+)(\'\))"
 
 
+def sha256_hash(text: str) -> str:
+    """Return the SHA256 hash of the text"""
+
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+cache = LRUCache(LRU_CACHE_SIZE)
+
+
+@cache.wrap(key_func=lambda query: sha256_hash(query.strip()))
 def _parse_query(query: str) -> Optional[str]:
     """Parse snowflake queries to extract the identifiers"""
     match = re.match(QUERY_PATTERN, query, re.IGNORECASE)
@@ -48,7 +70,7 @@ def _parse_query(query: str) -> Optional[str]:
 
 class SnowflakeTableResovler:
     def __init__(self, session: sqlalchemy.orm.Session):
-        self._cache = LRUCache(LRU_CACHE_SIZE)
+        self._cache = LRUCache[bool](LRU_CACHE_SIZE)
         self.session = session
 
     def show_tables(self, db, schema, table):
@@ -241,20 +263,124 @@ def get_snowflake_system_queries(
     return None
 
 
-def build_snowflake_query_results(
-    session: Session,
-    table: DeclarativeMeta,
-) -> List[SnowflakeQueryResult]:
-    """List and parse snowflake DML query results"""
-    query_results = []
-    resolver = SnowflakeTableResovler(
-        session=session,
-    )
-    for row in SnowflakeQueryLogEntry.get_for_table(session, table.__tablename__):
-        result = get_snowflake_system_queries(
-            query_log_entry=row,
-            resolver=resolver,
+class SnowflakeSystemMetricsSource(
+    SQASessionProvider, BaseSystemMetricsSource, CacheProvider[SnowflakeQueryLogEntry]
+):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.resolver = SnowflakeTableResovler(
+            session=super().get_session(),
         )
-        if result:
-            query_results.append(result)
-    return query_results
+
+    def get_kwargs(self, table: DeclarativeMeta, *args, **kwargs):
+        return {
+            "table": table.__table__.name,
+            "database": self.get_session().get_bind().url.database,
+            "schema": table.__table__.schema,
+        }
+
+    def get_inserts(
+        self, database: str, schema: str, table: str
+    ) -> List[SystemProfile]:
+
+        return self.get_system_profile(
+            database,
+            schema,
+            table,
+            list(
+                self.get_queries_by_operation(
+                    table,
+                    [
+                        DatabaseDMLOperations.INSERT.value,
+                        DatabaseDMLOperations.MERGE.value,
+                    ],
+                )
+            ),
+            "rows_inserted",
+            DmlOperationType.INSERT,
+        )
+
+    def get_deletes(
+        self, database: str, schema: str, table: str
+    ) -> List[SystemProfile]:
+        return self.get_system_profile(
+            database,
+            schema,
+            table,
+            list(
+                self.get_queries_by_operation(
+                    table,
+                    [
+                        DatabaseDMLOperations.DELETE.value,
+                    ],
+                )
+            ),
+            "rows_deleted",
+            DmlOperationType.DELETE,
+        )
+
+    @staticmethod
+    def get_system_profile(
+        db: str,
+        schema: str,
+        table: str,
+        query_results: List[SnowflakeQueryResult],
+        rows_affected_field: str,
+        operation: DmlOperationType,
+    ) -> List[SystemProfile]:
+        if not SnowflakeQueryResult.model_fields.get(rows_affected_field):
+            raise ValueError(
+                f"rows_affected_field [{rows_affected_field}] is not a valid field in SnowflakeQueryResult."
+            )
+        return TypeAdapter(List[SystemProfile]).validate_python(
+            [
+                {
+                    "timestamp": datetime_to_timestamp(q.start_time, milliseconds=True),
+                    "operation": operation,
+                    "rowsAffected": getattr(q, rows_affected_field),
+                }
+                for q in query_results
+                if getattr(q, rows_affected_field) > 0
+                and q.database_name == db
+                and q.schema_name == schema
+                and q.table_name == table
+            ]
+        )
+
+    def get_update_queries(
+        self, database: str, schema: str, table: str
+    ) -> List[SystemProfile]:
+        return self.get_system_profile(
+            database,
+            schema,
+            table,
+            list(
+                self.get_queries_by_operation(
+                    table,
+                    [
+                        DatabaseDMLOperations.UPDATE.value,
+                        DatabaseDMLOperations.MERGE.value,
+                    ],
+                )
+            ),
+            "rows_updated",
+            DmlOperationType.UPDATE,
+        )
+
+    def get_queries_by_operation(self, table: str, operations: List[str]):
+        yield from (
+            query for query in self.get_queries(table) if query.query_type in operations
+        )
+
+    def get_queries(self, table: str) -> List[SnowflakeQueryResult]:
+        queries = self.get_or_update_cache(
+            table,
+            SnowflakeQueryLogEntry.get_for_table,
+            session=super().get_session(),
+            tablename=table,
+        )
+        results = [get_snowflake_system_queries(
+            query_log_entry=row,
+            resolver=self.resolver,
+        ) for row in queries]
+        return [result for result in results if result is not None]
