@@ -7,7 +7,7 @@ export const saveInit = (initData: SaveInitRequest) =>
     APIClient.post('/init', initData);
 
 export const runConnectionTest = (payload: TestConnectionRequest) =>
-    APIClient.post('/api/test', payload, { timeout: 2000 })
+    APIClient.post('/api/test', payload, { timeout: 2 * 60 * 1000 })
 
 export const saveConnection = (serviceData: ServicesUpdateRequest) =>
     APIClient.post('/connection', serviceData, { withCredentials: true });
