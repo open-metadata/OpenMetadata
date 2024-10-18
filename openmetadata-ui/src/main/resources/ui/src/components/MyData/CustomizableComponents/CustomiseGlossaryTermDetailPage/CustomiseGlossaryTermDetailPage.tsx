@@ -11,22 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Space, Typography } from 'antd';
-import { isEmpty, isNil } from 'lodash';
+import { Modal } from 'antd';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useFqn } from '../../../../hooks/useFqn';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../../pages/MyDataPage/my-data.less';
-import { Transi18next } from '../../../../utils/CommonUtils';
-import customizeDetailPageClassBase from '../../../../utils/CustomiseDetailPage/CustomiseDetailPageClassBase';
+import customizeGlossaryTermPageClassBase from '../../../../utils/CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
 import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
@@ -37,10 +33,9 @@ import {
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
-import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
-import ActivityFeedProvider from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
+import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import { CustomizeMyDataProps } from '../CustomizeMyData/CustomizeMyData.interface';
 
 const ReactGridLayout = WidthProvider(RGL);
@@ -53,13 +48,11 @@ function CustomizeGlossaryTermDetailPage({
   handleSaveCurrentPageLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
-  const { theme } = useApplicationStore();
-  const history = useHistory();
-  const { fqn: decodedPersonaFQN } = useFqn();
+
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(
       initialPageData.data?.page?.layout ??
-        customizeMyDataPageClassBase.defaultLayout,
+        customizeGlossaryTermPageClassBase.defaultLayout,
       2,
       4
     )
@@ -70,7 +63,6 @@ function CustomizeGlossaryTermDetailPage({
   );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
-  const [saving, setSaving] = useState<boolean>(false);
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);
@@ -164,16 +156,10 @@ function CustomizeGlossaryTermDetailPage({
     });
   }, [layout]);
 
-  const handleCancel = useCallback(() => {
-    history.push(
-      getPersonaDetailsPath(personaDetails?.fullyQualifiedName as string)
-    );
-  }, []);
-
   const handleReset = useCallback(() => {
     // Get default layout with the empty widget added at the end
     const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
-      customizeMyDataPageClassBase.defaultLayout,
+      customizeGlossaryTermPageClassBase.defaultLayout,
       2,
       4
     );
@@ -190,70 +176,18 @@ function CustomizeGlossaryTermDetailPage({
     setIsResetModalOpen(false);
   }, []);
 
-  const handleSave = async () => {
-    setSaving(true);
-    await onSaveLayout();
-
-    setSaving(false);
-  };
-
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
   return (
-    <ActivityFeedProvider>
+    <>
       <PageLayoutV1
         header={
-          <Col
-            className="bg-white d-flex justify-between border-bottom p-sm"
-            data-testid="customize-landing-page-header"
-            span={24}>
-            <div className="d-flex gap-2 items-center">
-              <Typography.Title
-                className="m-0"
-                data-testid="customize-page-title"
-                level={5}>
-                <Transi18next
-                  i18nKey="message.customize-landing-page-header"
-                  renderElement={
-                    <Link
-                      style={{ color: theme.primaryColor, fontSize: '16px' }}
-                      to={getPersonaDetailsPath(decodedPersonaFQN)}
-                    />
-                  }
-                  values={{
-                    persona: isNil(personaDetails)
-                      ? decodedPersonaFQN
-                      : getEntityName(personaDetails),
-                  }}
-                />
-              </Typography.Title>
-            </div>
-            <Space>
-              <Button
-                data-testid="cancel-button"
-                disabled={saving}
-                size="small"
-                onClick={handleCancel}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                data-testid="reset-button"
-                disabled={saving}
-                size="small"
-                onClick={handleOpenResetModal}>
-                {t('label.reset')}
-              </Button>
-              <Button
-                data-testid="save-button"
-                loading={saving}
-                size="small"
-                type="primary"
-                onClick={handleSave}>
-                {t('label.save')}
-              </Button>
-            </Space>
-          </Col>
+          <CustomizablePageHeader
+            personaName={getEntityName(personaDetails)}
+            onReset={handleOpenResetModal}
+            onSave={onSaveLayout}
+          />
         }
         headerClassName="m-0 p-0"
         mainContainerClassName="p-t-0"
@@ -266,14 +200,14 @@ function CustomizeGlossaryTermDetailPage({
         <ReactGridLayout
           verticalCompact
           className="grid-container"
-          cols={4}
+          cols={8}
           draggableHandle=".drag-widget-icon"
           isResizable={false}
           margin={[
-            customizeDetailPageClassBase.detailPageWidgetMargin,
-            customizeDetailPageClassBase.detailPageWidgetMargin,
+            customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
+            customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
           ]}
-          rowHeight={customizeDetailPageClassBase.detailPageRowHeight}
+          rowHeight={customizeGlossaryTermPageClassBase.detailPageRowHeight}
           onLayoutChange={handleLayoutUpdate}>
           {widgets}
         </ReactGridLayout>
@@ -304,7 +238,7 @@ function CustomizeGlossaryTermDetailPage({
           {t('message.reset-layout-confirmation')}
         </Modal>
       )}
-    </ActivityFeedProvider>
+    </>
   );
 }
 

@@ -12,19 +12,19 @@
       "type": "string",
       "enum": [
         "LandingPage",
-        "TableLandingPage",
-        "StoredProcedureLandingPage",
-        "DatabaseLandingPage",
-        "DatabaseSchemaLandingPage",
-        "TopicLandingPage",
-        "PipelineLandingPage",
-        "DashboardLandingPage",
-        "DashboardDataModelLandingPage",
-        "ContainerLandingPage",
-        "SearchIndexLandingPage",
-        "GlossaryLandingPage",
-        "GlossaryTermLandingPage",
-        "DomainLandingPage"
+        "Table",
+        "StoredProcedure",
+        "Database",
+        "DatabaseSchema",
+        "Topic",
+        "Pipeline",
+        "Dashboard",
+        "DashboardDataModel",
+        "Container",
+        "SearchIndex",
+        "Glossary",
+        "GlossaryTerm",
+        "Domain"
       ]
     }
   },

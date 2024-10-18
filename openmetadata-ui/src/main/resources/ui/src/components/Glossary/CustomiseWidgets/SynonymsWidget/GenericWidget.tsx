@@ -15,7 +15,7 @@ import { Card, Space } from 'antd';
 import React from 'react';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 
-export const GlossaryTermHeaderWidget = (props: WidgetCommonProps) => {
+export const GenericWidget = (props: WidgetCommonProps) => {
   const handleRemoveClick = () => {
     if (props.handleRemoveWidget) {
       props.handleRemoveWidget(props.widgetKey);

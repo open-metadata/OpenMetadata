@@ -12,14 +12,17 @@
  */
 import { PageType } from '../../generated/system/ui/page';
 import customizeDetailPageClassBase from '../CustomiseDetailPage/CustomiseDetailPageClassBase';
-import customizePageClassBase from '../CustomizeMyDataPageClassBase';
+import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
+import customizeMyDataPageClassBase from '../CustomizeMyDataPageClassBase';
 
 export const getDefaultLayout = (pageType: string) => {
   switch (pageType) {
-    case PageType.GlossaryTermLandingPage:
+    case PageType.GlossaryTerm:
+      return customizeGlossaryTermPageClassBase.defaultLayout;
+    case PageType.Table:
       return customizeDetailPageClassBase.defaultLayout;
     case PageType.LandingPage:
     default:
-      return customizePageClassBase.defaultLayout;
+      return customizeMyDataPageClassBase.defaultLayout;
   }
 };

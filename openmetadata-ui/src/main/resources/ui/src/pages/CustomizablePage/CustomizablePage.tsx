@@ -202,7 +202,7 @@ export const CustomizablePage = () => {
         />
       );
 
-    case PageType.GlossaryTermLandingPage:
+    case PageType.GlossaryTerm:
       return (
         <CustomizeGlossaryTermDetailPage
           handlePageDataChange={handlePageDataChange}

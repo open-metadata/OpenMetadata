@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { capitalize, isUndefined, map } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -45,6 +45,7 @@ import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getCustomizePagePath } from '../../../utils/GlobalSettingsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getCustomizePageOptions } from '../../../utils/Persona/PersonaUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -101,6 +102,8 @@ export const PersonaDetailsPage = () => {
       fetchPersonaDetails();
     }
   }, [fqn]);
+
+  const list = getCustomizePageOptions();
 
   const handleDescriptionUpdate = async (description: string) => {
     if (!personaDetails) {
@@ -258,20 +261,10 @@ export const PersonaDetailsPage = () => {
                 key: 'customize-ui',
                 children: (
                   <Row gutter={[16, 16]}>
-                    {map(PageType, (value) => (
-                      <Col key={value} span={8}>
+                    {list.map((value) => (
+                      <Col key={value.key} span={8}>
                         <SettingItemCard
-                          data={{
-                            label: capitalize(value.replace('LandingPage', '')),
-                            key: value,
-                            description: value,
-                            category: value,
-                            icon: IconPersona,
-                            isBeta: false,
-                            isProtected: false,
-                            items: [],
-                          }}
-                          key={value}
+                          data={value}
                           onClick={handleCustomizeItemClick}
                         />
                       </Col>
