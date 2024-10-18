@@ -108,7 +108,7 @@
         "type": "boolean"
       },
       "disabled": {
-        "type": "text"
+        "type": "boolean"
       },
       "entityType": {
         "type": "keyword"
