@@ -37,9 +37,11 @@ import Loader from "../Loader/Loader";
 import "./test-connection.style.less";
 import { TestConnectionProps, TestStatus } from "./TestConnection.interface";
 import TestConnectionModal from "./TestConnectionModal/TestConnectionModal";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 import { ServiceType } from "../../../generated/entity/services/serviceType";
 import { showErrorToast } from "../../../utils/ToastUtils";
+import { TestConnectionRequest } from "Models";
+import { runConnectionTest } from "../../../utils/APIUtils";
 
 const TestConnection: FC<TestConnectionProps> = ({
   isTestingDisabled,
@@ -123,8 +125,8 @@ const TestConnection: FC<TestConnectionProps> = ({
         serviceType: ServiceType.Database,
         connectionType,
         serviceName,
-      };
-      const response = await axios.post('/api/test', payload, { timeout: 2000 });
+      } as TestConnectionRequest;
+      const response = await runConnectionTest(payload);
       const { data } = response;
       setTestConnectionStepResult(data.steps);
       setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);

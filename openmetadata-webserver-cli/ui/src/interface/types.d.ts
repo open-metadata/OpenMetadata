@@ -24,11 +24,23 @@ declare module 'Models' {
   import { EntityReference } from '../generated/type/entityReference';
   import { TagLabel } from '../generated/type/tagLabel';
   import { SearchEntityHits } from '../utils/APIUtils';
-  import { Paging } from './../generated/type/paging';
+  import { Paging } from '../generated/type/paging';
+  import { ServiceType } from "../generated/entity/services/serviceType";
 
   export interface SaveInitRequest {
     server_url: string;
     token: string;
+  }
+
+  interface ConnectionConfig {
+    config: ConfigClass
+  }
+
+  export interface TestConnectionRequest {
+    connection: ConnectionConfig;
+    serviceType: ServiceType;
+    connectionType: string;
+    serviceName: string;
   }
 
   export interface RestoreRequestType {
