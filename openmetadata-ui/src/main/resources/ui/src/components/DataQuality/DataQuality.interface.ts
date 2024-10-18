@@ -3,6 +3,7 @@ import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { TestPlatform } from '../../generated/tests/testDefinition';
 import { TestCaseType } from '../../rest/testAPI';
+import { AreaChartColorScheme } from '../Visualisations/Chart/Chart.interface';
 
 /*
  *  Copyright 2023 Collate.
@@ -51,4 +52,10 @@ export interface IncidentTimeChartWidgetProps {
   title: string;
   incidentMetricType: IncidentTimeMetricsType;
   name: string;
+}
+export interface TestCaseStatusAreaChartWidgetProps {
+  title: string;
+  testCaseStatus: TestCaseStatus;
+  name: string;
+  chartColorScheme?: AreaChartColorScheme;
 }

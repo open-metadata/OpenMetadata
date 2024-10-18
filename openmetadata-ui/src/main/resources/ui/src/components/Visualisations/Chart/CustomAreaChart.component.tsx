@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Divider, Typography } from 'antd';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Area,
   AreaChart,
@@ -57,6 +57,26 @@ const CustomAreaChart = ({
 
     return null;
   };
+  const gradientId = `${name}-splitColor`;
+
+  const gradientArea = useMemo(() => {
+    return (
+      <defs>
+        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+          <stop
+            offset="0%"
+            stopColor={colorScheme?.gradientStartColor ?? BLUE_2}
+            stopOpacity="0.7"
+          />
+          <stop
+            offset="100%"
+            stopColor={colorScheme?.gradientEndColor ?? WHITE_COLOR}
+            stopOpacity="0.2"
+          />
+        </linearGradient>
+      </defs>
+    );
+  }, [colorScheme, gradientId]);
 
   return (
     <ResponsiveContainer
@@ -73,25 +93,12 @@ const CustomAreaChart = ({
         }}>
         <Tooltip content={<CustomTooltip />} />
 
-        <defs>
-          <linearGradient id="splitColor" x1="0" x2="0" y1="0" y2="1">
-            <stop
-              offset="0%"
-              stopColor={colorScheme?.gradientStartColor ?? BLUE_2}
-              stopOpacity="0.7"
-            />
-            <stop
-              offset="100%"
-              stopColor={colorScheme?.gradientEndColor ?? WHITE_COLOR}
-              stopOpacity="0.2"
-            />
-          </linearGradient>
-        </defs>
+        {gradientArea}
         <Area
           connectNulls
           dataKey="count"
           dot={false}
-          fill="url(#splitColor)"
+          fill={`url(#${gradientId})`}
           isAnimationActive={false}
           stroke={colorScheme?.strokeColor ?? PRIMARY_COLOR}
           strokeWidth={2}
