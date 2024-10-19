@@ -1010,9 +1010,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
-    assertTrue(generatedQuery.contains("owners.id"), "The query should contain 'owner.id'");
-    assertTrue(
-        generatedQuery.contains(userId.toString()), "The query should contain the user's ID");
+    assertTrue(generatedQuery.contains("match_all"), "The query should contain 'match_all'");
   }
 
   @Test
@@ -1105,21 +1103,17 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.should[?(@.term['owners.id'].value=='" + userId.toString() + "')]",
+        "$.bool.should[?(@.term['owners.id'].value=='" + userId + "')]",
         "The query should allow resources where the user is the owner");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.should[?(@.term['owners.id'].value=='" + teamId1.toString() + "')]",
+        "$.bool.should[?(@.term['owners.id'].value=='" + teamId1 + "')]",
         "The query should allow resources where TeamA is the owner");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.should[?(@.term['owners.id'].value=='" + teamId2.toString() + "')]",
+        "$.bool.should[?(@.term['owners.id'].value=='" + teamId2 + "')]",
         "The query should allow resources where TeamB is the owner");
-
-    assertFalse(
-        generatedQuery.contains("noOwner()"),
-        "The query should not contain 'noOwner()' as a string");
   }
 
   @Test

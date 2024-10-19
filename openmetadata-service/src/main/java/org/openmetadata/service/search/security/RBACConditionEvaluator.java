@@ -1,7 +1,6 @@
 package org.openmetadata.service.search.security;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -50,20 +49,10 @@ public class RBACConditionEvaluator {
 
       for (CompiledRule rule : context.getRules()) {
         boolean isDenyRule = rule.getEffect().toString().equalsIgnoreCase("DENY");
-        List<MetadataOperation> mappedOperations =
-            rule.getOperations().stream()
-                .map(
-                    op -> {
-                      if (op.toString().equalsIgnoreCase("Create")
-                          || op.toString().equalsIgnoreCase("Delete")
-                          || op.toString().toLowerCase().startsWith("edit")) {
-                        return MetadataOperation.VIEW_BASIC;
-                      }
-                      return op;
-                    })
-                .collect(Collectors.toList());
-
-        if (isDenyRule && SEARCH_RELEVANT_OPS.stream().noneMatch(mappedOperations::contains)) {
+        Set<MetadataOperation> ruleOperations = new HashSet<>(rule.getOperations());
+        ruleOperations.retainAll(SEARCH_RELEVANT_OPS);
+        if (ruleOperations.isEmpty()) {
+          // Skip this rule as it does not affect search results
           continue;
         }
 

@@ -143,7 +143,7 @@ class OpenSearchRBACConditionEvaluatorTest {
         "must_not for hasDomain");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['owner.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.should[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
         "owner.id");
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
   }
