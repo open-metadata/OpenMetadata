@@ -294,6 +294,10 @@
       <groupId>io.dropwizard.modules</groupId>
       <artifactId>dropwizard-web</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.github.erosb</groupId>
+      <artifactId>everit-json-schema</artifactId>
+    </dependency>
 
     <!-- Dependencies for cloudwatch monitoring -->
     <dependency>
