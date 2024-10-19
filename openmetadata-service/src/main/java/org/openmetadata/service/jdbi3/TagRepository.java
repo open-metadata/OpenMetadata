@@ -67,7 +67,11 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void setInheritedFields(Tag tag, Fields fields) {
-    tag.setInheritedRoles(getInheritedRoles(tag));
+    Classification parent =  Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "roles", ALL);
+    if (parent.getDisabled() != null && parent.getDisabled()) {
+      tag.setDisabled(true);
+    }
+    tag.setInheritedRoles(classification.getRoles());
   }
 
   @Override
@@ -189,7 +193,7 @@ public class TagRepository extends EntityRepository<Tag> {
     public void entitySpecificUpdate() {
       recordChange(
           "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
-      recordChange("disabled,", original.getDisabled(), updated.getDisabled());
+      recordChange("disabled", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
       updateParent(original, updated);
     }
