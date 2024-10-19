@@ -35,6 +35,13 @@
       "type" : "integer",
       "minimum": 0
     },
+    "roles": {
+      "description": "List of roles allowed to apply tags from this classification.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      }
+    },
     "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"

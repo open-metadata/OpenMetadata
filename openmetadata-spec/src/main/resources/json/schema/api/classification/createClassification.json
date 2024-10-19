@@ -30,6 +30,13 @@
     "domain" : {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"
+    },
+    "roles": {
+      "description": "List of roles allowed to apply tags from this classification.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      }
     }
   },
   "required": ["name", "description"],
