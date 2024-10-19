@@ -71,7 +71,7 @@ public class TagRepository extends EntityRepository<Tag> {
     if (parent.getDisabled() != null && parent.getDisabled()) {
       tag.setDisabled(true);
     }
-    tag.setInheritedRoles(classification.getRoles());
+     tag.setInheritedRoles(parent.getRoles());
   }
 
   @Override

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -98,6 +99,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   public void storeRelationships(Classification entity) {
     assignRoles(entity, entity.getRoles());
   }
+
 
   private int getTermCount(Classification classification) {
     ListFilter filter =

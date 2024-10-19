@@ -2322,6 +2322,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setTags(addDerivedTags(entity.getTags()));
     checkMutuallyExclusive(entity.getTags());
     checkDisabledTags(entity.getTags());
+    checkTagsPermissions(entity.getTags(), entity.getUpdatedBy());
   }
 
   protected void validateTags(List<TagLabel> labels) {

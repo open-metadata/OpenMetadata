@@ -31,10 +31,13 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -153,6 +156,20 @@ public class TagLabelUtil {
         }
       }
     }
+  }
+
+  public static void checkTagsPermissions(List<TagLabel> tagLabels, String user) {
+    if (tagLabels == null || tagLabels.isEmpty()) {
+      return;
+    }
+    List<TagLabel> classificationTags = tagLabels.stream()
+        .filter(tagLabel -> tagLabel.getSource() != TagSource.GLOSSARY)
+        .toList();
+    if (classificationTags.isEmpty()) {
+      return; // No classification tags to check
+    }
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(user);
+
   }
 
   public static void checkMutuallyExclusiveForParentAndSubField(
