@@ -144,6 +144,17 @@ public class TagLabelUtil {
     }
   }
 
+  public static void checkDisabledTags(List<TagLabel> tagLabels) {
+    for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
+      if (tagLabel.getSource().equals(TagSource.CLASSIFICATION)) {
+        Tag tag = Entity.getCollectionDAO().tagDAO().findEntityByName(tagLabel.getTagFQN());
+        if (tag.getDisabled()) {
+          throw new IllegalArgumentException(CatalogExceptionMessage.disabledTag(tagLabel));
+        }
+      }
+    }
+  }
+
   public static void checkMutuallyExclusiveForParentAndSubField(
       String assetFqn,
       String assetFqnHash,
