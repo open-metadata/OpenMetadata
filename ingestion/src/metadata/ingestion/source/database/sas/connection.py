@@ -20,6 +20,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.sasConnection import (
     SASConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.sas.client import SASClient
@@ -39,9 +42,9 @@ def test_connection(
     service_connection: SASConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
-) -> None:
+) -> TestConnectionResult:
     test_fn = {"CheckAccess": client.check_connection}
-    test_connection_steps(
+    return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,

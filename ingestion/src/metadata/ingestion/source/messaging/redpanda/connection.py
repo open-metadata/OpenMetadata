@@ -20,6 +20,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.kafka.connection import KafkaClient
 from metadata.ingestion.source.messaging.kafka.connection import (
@@ -47,13 +50,13 @@ def test_connection(
     service_connection: RedpandaConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
-) -> None:
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_kafka_connection(
+    return test_kafka_connection(
         metadata=metadata,
         client=client,
         service_connection=service_connection,
