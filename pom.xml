@@ -157,6 +157,7 @@
     <logback-classic.version>1.2.13</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
+    <json-patch.version>1.13</json-patch.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -550,6 +551,12 @@
         <artifactId>json-path</artifactId>
         <version>${jsonpath.version}</version>
       </dependency>
+
+    <dependency>
+      <groupId>com.github.java-json-tools</groupId>
+      <artifactId>json-patch</artifactId>
+      <version>${json-patch.version}</version>
+    </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->
     </dependencies>

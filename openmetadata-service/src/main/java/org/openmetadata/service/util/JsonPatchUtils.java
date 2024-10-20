@@ -15,11 +15,12 @@ package org.openmetadata.service.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.ArrayList;
-import java.util.Arrays;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonpatch.JsonPatchException;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import javax.json.JsonPatch;
@@ -33,290 +34,126 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 
 @Slf4j
 public class JsonPatchUtils {
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   private JsonPatchUtils() {}
 
   public static Set<MetadataOperation> getMetadataOperations(
       ResourceContextInterface resourceContextInterface, JsonPatch jsonPatch) {
     Set<MetadataOperation> uniqueOperations = new HashSet<>();
+    EntityInterface originalEntity = resourceContextInterface.getEntity();
+    boolean tagsAffected = false;
+
     for (JsonValue jsonValue : jsonPatch.toJsonArray()) {
-      Set<MetadataOperation> operations =
-          getOperationsForPatch(jsonValue, resourceContextInterface.getEntity());
-      if (operations.contains(MetadataOperation.EDIT_ALL)) {
+      MetadataOperation metadataOperation = getMetadataOperation(jsonValue);
+      if (metadataOperation.equals(MetadataOperation.EDIT_ALL)) {
         return Collections.singleton(MetadataOperation.EDIT_ALL);
       }
-      uniqueOperations.addAll(operations);
+      if (metadataOperation.equals(MetadataOperation.EDIT_TAGS)) {
+        tagsAffected = true;
+      } else {
+        uniqueOperations.add(metadataOperation);
+      }
     }
-    LOG.debug("Returning patch operations {}", uniqueOperations);
+    if (tagsAffected) {
+      try {
+        JsonNode originalEntityJson = JsonUtils.pojoToJsonNode(originalEntity);
+        JsonNode patchedEntityJson = applyPatch(originalEntityJson, jsonPatch);
+        Set<TagLabel> originalTags = extractTags(originalEntityJson);
+        Set<TagLabel> patchedTags = extractTags(patchedEntityJson);
+        Set<TagLabel> addedTags = new HashSet<>(patchedTags);
+        addedTags.removeAll(originalTags);
+
+        Set<TagLabel> removedTags = new HashSet<>(originalTags);
+        removedTags.removeAll(patchedTags);
+
+        for (TagLabel addedTag : addedTags) {
+          uniqueOperations.add(mapTagToOperation(addedTag));
+        }
+        for (TagLabel removedTag : removedTags) {
+          uniqueOperations.add(mapTagToOperation(removedTag));
+        }
+        LOG.debug("Returning patch operations {}", uniqueOperations);
+      } catch (JsonPatchException | IOException e) {
+        LOG.error("Failed to process JSON Patch for MetadataOperations", e);
+        throw new RuntimeException("Error processing JSON Patch", e);
+      }
+    }
+
     return uniqueOperations;
   }
 
-  private static Set<MetadataOperation> getOperationsForPatch(
-      JsonValue jsonValue, EntityInterface entity) {
-    Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonValue);
-    String path = jsonPatchMap.get("path").toString();
-    String operation = jsonPatchMap.get("op").toString();
-    Object value = jsonPatchMap.get("value");
-
-    // Split and clean the path
-    String[] pathParts =
-        Arrays.stream(path.split("/")).filter(s -> !s.isEmpty()).toArray(String[]::new);
-
-    if (containsPathSegment(pathParts, "tags")) {
-      // Handle tag modifications at any level
-      if ("remove".equalsIgnoreCase(operation)) {
-        return getOperationsForTagRemoval(entity, pathParts);
-      } else if ("add".equalsIgnoreCase(operation)) {
-        return getOperationsForTagAddition(value);
-      } else if ("replace".equalsIgnoreCase(operation)) {
-        return getOperationsForTagReplacement(entity, pathParts, value);
-      }
-    } else {
-      // Handle other fields
-      MetadataOperation op = getMetadataOperation(path);
-      return Collections.singleton(op);
-    }
-    return Collections.emptySet();
+  private static JsonNode applyPatch(JsonNode targetJson, JsonPatch patch)
+      throws JsonPatchException, IOException {
+    String patchString = patch.toString();
+    JsonNode patchNode = OBJECT_MAPPER.readTree(patchString);
+    com.github.fge.jsonpatch.JsonPatch jacksonPatch =
+        com.github.fge.jsonpatch.JsonPatch.fromJson(patchNode);
+    return jacksonPatch.apply(targetJson);
   }
 
-  private static boolean containsPathSegment(String[] pathParts, String segment) {
-    for (String part : pathParts) {
-      if (segment.equals(part)) {
-        return true;
-      }
-    }
-    return false;
+  private static Set<TagLabel> extractTags(JsonNode entityJson) {
+    Set<TagLabel> tags = new HashSet<>();
+    traverseForTags(entityJson, tags);
+    return tags;
   }
 
-  private static Set<MetadataOperation> getOperationsForTagRemoval(
-      EntityInterface entity, String[] pathParts) {
-    Set<MetadataOperation> operations = new HashSet<>();
-
-    TagLabel tagLabel = getTagLabelFromEntity(entity, pathParts);
-    if (tagLabel != null) {
-      if ("Classification".equals(tagLabel.getSource())) {
-        operations.add(MetadataOperation.EDIT_TAGS);
-      } else if ("Glossary".equals(tagLabel.getSource())) {
-        operations.add(MetadataOperation.EDIT_GLOSSARY_TERMS);
-      } else {
-        operations.add(MetadataOperation.EDIT_ALL);
-      }
-    } else {
-      // Unable to retrieve tag, conservative approach
-      operations.add(MetadataOperation.EDIT_ALL);
+  private static void traverseForTags(JsonNode node, Set<TagLabel> tags) {
+    if (node == null || node.isNull()) {
+      return;
     }
 
-    return operations;
-  }
-
-  private static Set<MetadataOperation> getOperationsForTagAddition(Object value) {
-    Set<MetadataOperation> operations = new HashSet<>();
-
-    if (value instanceof Map) {
-      Map<String, Object> valueMap = (Map<String, Object>) value;
-      String source = (String) valueMap.get("source");
-      if ("Classification".equals(source)) {
-        operations.add(MetadataOperation.EDIT_TAGS);
-      } else if ("Glossary".equals(source)) {
-        operations.add(MetadataOperation.EDIT_GLOSSARY_TERMS);
-      }
-    }
-    return operations;
-  }
-
-  private static Set<MetadataOperation> getOperationsForTagReplacement(
-      EntityInterface entity, String[] pathParts, Object newValue) {
-    Set<MetadataOperation> operations = new HashSet<>();
-    TagLabel oldTagLabel = getTagLabelFromEntity(entity, getTagLabelPath(pathParts));
-    TagLabel newTagLabel = null;
-    if (newValue instanceof Map) {
-      newTagLabel = JsonUtils.convertValue(newValue, TagLabel.class);
-    } else {
-      // For primitive values (e.g., replacing a single field of the tag), we need to reconstruct
-      // the new TagLabel
-      newTagLabel = reconstructTagLabel(entity, pathParts, newValue);
-    }
-
-    if (oldTagLabel != null && newTagLabel != null) {
-      if (tagsAreEqual(oldTagLabel, newTagLabel)) {
-        return operations;
-      } else {
-        String source = oldTagLabel.getSource().toString();
-        if ("Classification".equalsIgnoreCase(source)) {
-          operations.add(MetadataOperation.EDIT_TAGS);
-        } else if ("Glossary".equalsIgnoreCase(source)) {
-          operations.add(MetadataOperation.EDIT_GLOSSARY_TERMS);
-        } else {
-          operations.add(MetadataOperation.EDIT_TAGS);
-          operations.add(MetadataOperation.EDIT_GLOSSARY_TERMS);
+    if (node.isObject()) {
+      if (node.has("tags") && node.get("tags").isArray()) {
+        for (JsonNode tagNode : node.get("tags")) {
+          try {
+            TagLabel tag = OBJECT_MAPPER.treeToValue(tagNode, TagLabel.class);
+            tags.add(tag);
+          } catch (JsonProcessingException e) {
+            LOG.warn("Failed to parse TagLabel from node: {}", tagNode, e);
+          }
         }
       }
-    } else {
-      operations.add(MetadataOperation.EDIT_TAGS);
-      operations.add(MetadataOperation.EDIT_GLOSSARY_TERMS);
+
+      Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+      while (fields.hasNext()) {
+        Map.Entry<String, JsonNode> entry = fields.next();
+        traverseForTags(entry.getValue(), tags);
+      }
+    } else if (node.isArray()) {
+      for (JsonNode arrayItem : node) {
+        traverseForTags(arrayItem, tags);
+      }
     }
-
-    return operations;
   }
 
-  private static boolean tagsAreEqual(TagLabel tag1, TagLabel tag2) {
-    return tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
-  }
-
-  private static TagLabel reconstructTagLabel(
-      EntityInterface entity, String[] pathParts, Object newValue) {
-
-    String[] tagLabelPath = getTagLabelPath(pathParts);
-    TagLabel oldTagLabel = getTagLabelFromEntity(entity, tagLabelPath);
-    if (oldTagLabel == null) {
+  private static MetadataOperation mapTagToOperation(TagLabel tag) {
+    if (tag == null) {
       return null;
     }
-
-    TagLabel newTagLabel = JsonUtils.deepCopy(oldTagLabel, TagLabel.class);
-    String fieldName = pathParts[pathParts.length - 1];
-
-    switch (fieldName) {
-      case "tagFQN":
-        newTagLabel.setTagFQN(newValue.toString());
-        break;
-      case "source":
-        newTagLabel.setSource(TagLabel.TagSource.fromValue(newValue.toString()));
-        break;
-      case "labelType":
-        newTagLabel.setLabelType(TagLabel.LabelType.fromValue(newValue.toString()));
-        break;
-      case "state":
-        newTagLabel.setState(TagLabel.State.fromValue(newValue.toString()));
-        break;
-      default:
-        return null;
+    String source = tag.getSource().value();
+    String tagFQN = tag.getTagFQN();
+    if (isTierClassification(tagFQN)) {
+      return MetadataOperation.EDIT_TIER;
+    } else if ("Classification".equalsIgnoreCase(source)) {
+      return MetadataOperation.EDIT_TAGS;
+    } else if ("Glossary".equalsIgnoreCase(source)) {
+      return MetadataOperation.EDIT_GLOSSARY_TERMS;
     }
-
-    return newTagLabel;
+    // Default to EDIT_ALL if the tag is not recognized
+    return MetadataOperation.EDIT_ALL;
   }
 
-  private static String[] getTagLabelPath(String[] pathParts) {
-    List<String> tagPath = new ArrayList<>();
-    for (int i = 0; i < pathParts.length; i++) {
-      tagPath.add(pathParts[i]);
-      if ("tags".equals(pathParts[i])) {
-        if (i + 1 < pathParts.length) {
-          // Include the index after "tags"
-          tagPath.add(pathParts[i + 1]);
-        }
-        break;
-      }
-    }
-    return tagPath.toArray(new String[0]);
+  private static boolean isTierClassification(String tagFQN) {
+    return tagFQN != null && tagFQN.startsWith("Tier.");
   }
 
-  private static TagLabel getTagLabelFromEntity(EntityInterface entity, String[] pathParts) {
-    // Construct the JSON Pointer path to the TagLabel
-    String jsonPointerPath = "/" + String.join("/", pathParts);
-
-    try {
-      JsonNode entityNode = JsonUtils.getObjectMapper().valueToTree(entity);
-      JsonNode tagNode = entityNode.at(jsonPointerPath);
-
-      if (tagNode.isMissingNode() || tagNode.isNull()) {
-        return null;
-      }
-
-      return JsonUtils.getObjectMapper().treeToValue(tagNode, TagLabel.class);
-    } catch (JsonProcessingException e) {
-      return null;
-    }
+  public static MetadataOperation getMetadataOperation(Object jsonPatchObject) {
+    Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
+    String path = jsonPatchMap.get("path").toString(); // Get "path" node - "/defaultRoles/0"
+    return getMetadataOperation(path);
   }
 
-  private static Set<MetadataOperation> getOperationsForModifiedTags(Object value) {
-    Set<MetadataOperation> operations = new HashSet<>();
-
-    if (value == null) {
-      // No value to inspect, so no operations are required
-      return operations;
-    }
-
-    List<TagLabel> tagLabels = extractTagLabels(value);
-
-    for (TagLabel tagLabel : tagLabels) {
-      if ("Classification".equals(tagLabel.getSource())) {
-        operations.add(MetadataOperation.EDIT_TAGS);
-      } else if ("Glossary".equals(tagLabel.getSource())) {
-        operations.add(MetadataOperation.EDIT_GLOSSARY_TERMS);
-      }
-    }
-
-    return operations;
-  }
-
-  private static Set<MetadataOperation> getOperationsForRemovedTags(
-      EntityInterface entity, List<String> pathList) {
-    Set<MetadataOperation> operations = new HashSet<>();
-
-    TagLabel removedTagLabel = getTagLabelFromEntity(entity, pathList);
-    if (removedTagLabel != null) {
-      if ("Classification".equals(removedTagLabel.getSource())) {
-        operations.add(MetadataOperation.EDIT_TAGS);
-      } else if ("Glossary".equals(removedTagLabel.getSource())) {
-        operations.add(MetadataOperation.EDIT_GLOSSARY_TERMS);
-      }
-    }
-
-    return operations;
-  }
-
-  private static List<TagLabel> extractTagLabels(Object value) {
-    List<TagLabel> tagLabels = new ArrayList<>();
-
-    if (value instanceof Map) {
-      Map<String, Object> mapValue = (Map<String, Object>) value;
-      extractTagLabelsFromMap(mapValue, tagLabels);
-    } else if (value instanceof List) {
-      List<Object> valueList = (List<Object>) value;
-      for (Object item : valueList) {
-        tagLabels.addAll(extractTagLabels(item));
-      }
-    }
-    // Handle other types if necessary
-
-    return tagLabels;
-  }
-
-  private static void extractTagLabelsFromMap(Map<String, Object> map, List<TagLabel> tagLabels) {
-    if (map.containsKey("tagFQN") && map.containsKey("source")) {
-      // This is a TagLabel
-      TagLabel tagLabel = JsonUtils.convertValue(map, TagLabel.class);
-      tagLabels.add(tagLabel);
-    } else {
-      // Recursively search for TagLabels in nested structures
-      for (Object value : map.values()) {
-        tagLabels.addAll(extractTagLabels(value));
-      }
-    }
-  }
-
-  private static TagLabel getTagLabelFromEntity(EntityInterface entity, List<String> pathList) {
-    String jsonPointerPath = "/" + String.join("/", pathList);
-
-    try {
-      JsonNode entityNode = JsonUtils.getObjectMapper().valueToTree(entity);
-      JsonNode tagNode = entityNode.at(jsonPointerPath);
-      if (tagNode.isMissingNode() || tagNode.isNull()) {
-        return null;
-      }
-
-      return JsonUtils.getObjectMapper().treeToValue(tagNode, TagLabel.class);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public static String getPath(String path) {
-    return Arrays.stream(path.split("/")).filter(part -> !part.isEmpty()).findFirst().orElse(path);
-  }
-
-  // Its important that we parse the path from starting down to end
-  // In case of /owners/0/displayName we should see if the user has permission to EDIT_OWNERS
-  // If not, we will end up returning user does not have permission to edit the displayName
   public static MetadataOperation getMetadataOperation(String path) {
     String[] paths = path.contains("/") ? path.split("/") : new String[] {path};
     for (String p : paths) {

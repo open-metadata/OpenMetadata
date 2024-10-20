@@ -544,16 +544,26 @@ export const searchInFields = <T extends SearchIndexField | Column>(
   return searchedValue;
 };
 
-export const getUpdatedTags = <T extends TableFieldsInfoCommonEntities>(
-  newFieldTags: Array<EntityTags>,
-  field?: T
-): TagLabel[] => {
-  const existingTags: TagLabel[] = field?.tags || [];
-  const existingTagFQNs = new Set(existingTags.map((tag) => tag.tagFQN));
-  const uniqueNewTags = newFieldTags.filter(
-    (tag) => !existingTagFQNs.has(tag.tagFQN)
-  );
-  const mappedNewTags: TagLabel[] = uniqueNewTags.map((tag) => ({
+export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  newFieldTags: EntityTags[],
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      field.tags = getUpdatedTags(newFieldTags);
+    } else {
+      updateFieldTags(
+        changedFieldFQN,
+        newFieldTags,
+        field?.children as Array<T>
+      );
+    }
+  });
+};
+
+export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
+  const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
     ...omit(tag, 'isRemovable'),
     labelType: LabelType.Manual,
     state: State.Confirmed,
@@ -561,7 +571,7 @@ export const getUpdatedTags = <T extends TableFieldsInfoCommonEntities>(
     tagFQN: tag.tagFQN,
   }));
 
-  return [...existingTags, ...mappedNewTags];
+  return mappedNewTags;
 };
 
 export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
@@ -576,24 +586,6 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
       updateFieldDescription(
         changedFieldFQN,
         description,
-        field?.children as Array<T>
-      );
-    }
-  });
-};
-
-export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  newFieldTags: EntityTags[],
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.tags = getUpdatedTags<T>(newFieldTags, field);
-    } else {
-      updateFieldTags(
-        changedFieldFQN,
-        newFieldTags,
         field?.children as Array<T>
       );
     }
