@@ -508,6 +508,10 @@ public final class JsonUtils {
     return list;
   }
 
+  public static ObjectMapper getObjectMapper() {
+    return OBJECT_MAPPER;
+  }
+
   static class SortedNodeFactory extends JsonNodeFactory {
     @Override
     public ObjectNode objectNode() {

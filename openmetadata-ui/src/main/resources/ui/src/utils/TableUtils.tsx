@@ -20,7 +20,6 @@ import {
   isUndefined,
   lowerCase,
   omit,
-  reduce,
   toString,
   uniqBy,
   uniqueId,
@@ -549,28 +548,20 @@ export const getUpdatedTags = <T extends TableFieldsInfoCommonEntities>(
   newFieldTags: Array<EntityTags>,
   field?: T
 ): TagLabel[] => {
-  const prevTagsFqn = field?.tags?.map((tag) => tag.tagFQN);
-
-  return reduce(
-    newFieldTags,
-    (acc: Array<EntityTags>, cv: EntityTags) => {
-      if (prevTagsFqn?.includes(cv.tagFQN)) {
-        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.tagFQN);
-
-        return [...acc, prev];
-      } else {
-        return [
-          ...acc,
-          {
-            ...omit(cv, 'isRemovable'),
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ];
-      }
-    },
-    []
+  const existingTags: TagLabel[] = field?.tags || [];
+  const existingTagFQNs = new Set(existingTags.map((tag) => tag.tagFQN));
+  const uniqueNewTags = newFieldTags.filter(
+    (tag) => !existingTagFQNs.has(tag.tagFQN)
   );
+  const mappedNewTags: TagLabel[] = uniqueNewTags.map((tag) => ({
+    ...omit(tag, 'isRemovable'),
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+    source: tag.source || 'Classification',
+    tagFQN: tag.tagFQN,
+  }));
+
+  return [...existingTags, ...mappedNewTags];
 };
 
 export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(

@@ -38,6 +38,7 @@
         "EditSampleData",
         "EditStatus",
         "EditTags",
+        "EditGlossaryTerms",
         "EditTeams",
         "EditTier",
         "EditTests",

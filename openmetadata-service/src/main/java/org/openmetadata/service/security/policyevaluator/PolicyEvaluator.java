@@ -69,10 +69,12 @@ public class PolicyEvaluator {
     // Next run through all the ALLOW policies based on the user
     evaluateAllowSubjectPolicies(subjectContext, resourceContext, operationContext);
 
-    if (!operationContext.getOperations().isEmpty()) { // Some operations have not been allowed
+    if (!operationContext
+        .getOperations(resourceContext)
+        .isEmpty()) { // Some operations have not been allowed
       throw new AuthorizationException(
           CatalogExceptionMessage.permissionNotAllowed(
-              subjectContext.user().getName(), operationContext.getOperations()));
+              subjectContext.user().getName(), operationContext.getOperations(resourceContext)));
     }
   }
 
@@ -89,7 +91,7 @@ public class PolicyEvaluator {
             CatalogExceptionMessage.domainPermissionNotAllowed(
                 subjectContext.user().getName(),
                 domain.getName(),
-                operationContext.getOperations()));
+                operationContext.getOperations(resourceContext)));
       }
     }
   }
@@ -120,7 +122,7 @@ public class PolicyEvaluator {
       boolean evaluateDeny) {
     // When an operation is allowed by a rule, it is removed from operation context
     // When list of operations is empty in the operation context, all operations have been allowed
-    while (policies.hasNext() && !operationContext.getOperations().isEmpty()) {
+    while (policies.hasNext() && !operationContext.getOperations(resourceContext).isEmpty()) {
       PolicyContext context = policies.next();
       for (CompiledRule rule : context.getRules()) {
         LOG.debug(

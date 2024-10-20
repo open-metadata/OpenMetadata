@@ -89,7 +89,7 @@ public class CompiledRule extends Rule {
       return;
     }
 
-    List<MetadataOperation> operations = operationContext.getOperations();
+    List<MetadataOperation> operations = operationContext.getOperations(resourceContext);
     for (MetadataOperation operation : operations) {
       if (matchOperation(operation)) {
         LOG.debug(
@@ -127,7 +127,8 @@ public class CompiledRule extends Rule {
       return;
     }
 
-    Iterator<MetadataOperation> iterator = operationContext.getOperations().listIterator();
+    Iterator<MetadataOperation> iterator =
+        operationContext.getOperations(resourceContext).listIterator();
     while (iterator.hasNext()) {
       MetadataOperation operation = iterator.next();
       if (matchOperation(operation)
