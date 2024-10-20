@@ -623,7 +623,7 @@ export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
   });
 };
 
-export const geTableDetailPageBaseTabs = ({
+export const getTableDetailPageBaseTabs = ({
   schemaTab,
   queryCount,
   isTourOpen,

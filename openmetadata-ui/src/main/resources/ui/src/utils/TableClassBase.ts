@@ -15,7 +15,7 @@ import { EntityTabs } from '../enums/entity.enum';
 import { Table } from '../generated/entity/data/table';
 import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
-import { geTableDetailPageBaseTabs } from './TableUtils';
+import { getTableDetailPageBaseTabs } from './TableUtils';
 
 export interface TableDetailPageTabProps {
   queryCount: number;
@@ -44,7 +44,7 @@ class TableClassBase {
   public getTableDetailPageTabs(
     tableDetailsPageProps: TableDetailPageTabProps
   ) {
-    return geTableDetailPageBaseTabs(tableDetailsPageProps);
+    return getTableDetailPageBaseTabs(tableDetailsPageProps);
   }
 }
 
