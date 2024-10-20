@@ -58,6 +58,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.RandomStringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.Assertions;
@@ -846,18 +847,20 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TableResourceTest tableResourceTest = new TableResourceTest();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     CreateTable createTable = tableResourceTest.createRequest(testInfo);
+    String columnName = RandomStringUtils.random(10, true, false);
     createTable
         .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
         .withColumns(
             List.of(
                 new Column()
-                    .withName(C1)
-                    .withDisplayName("c1")
+                    .withName(columnName)
+                    .withDisplayName(columnName)
                     .withDataType(ColumnDataType.VARCHAR)
                     .withDataLength(10)
                     .withTags(List.of(PII_SENSITIVE_TAG_LABEL))))
         .withOwners(List.of(USER1_REF))
         .withDomain(DOMAIN1.getFullyQualifiedName())
+        .withTableConstraints(List.of())
         .withTags(List.of(PERSONAL_DATA_TAG_LABEL, TIER1_TAG_LABEL));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     CreateTestSuite createTestSuite =
@@ -874,7 +877,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     create =
         createRequest(testInfo)
             .withEntityLink(
-                String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), C1))
+                String.format(
+                    "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), columnName))
             .withTestSuite(testSuite.getFullyQualifiedName())
             .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
             .withParameterValues(
@@ -896,7 +900,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       HashSet<String> actualTags =
           tags.stream().map(TagLabel::getName).collect(Collectors.toCollection(HashSet::new));
       HashSet<String> expectedTags;
-      if (testCase.getEntityLink().contains(C1)) {
+      if (testCase.getEntityLink().contains(columnName)) {
         expectedTags =
             new HashSet<>(
                 List.of(
@@ -916,7 +920,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     createTable.withColumns(
         List.of(
             new Column()
-                .withName(C1)
+                .withName(columnName)
                 .withDisplayName("c1")
                 .withDataType(ColumnDataType.VARCHAR)
                 .withDataLength(10)
@@ -932,7 +936,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           tags.stream().map(TagLabel::getName).collect(Collectors.toCollection(HashSet::new));
       HashSet<String> expectedTags;
       List<TagLabel> expectedTagsList = table.getTags();
-      if (testCase.getEntityLink().contains(C1)) {
+      if (testCase.getEntityLink().contains(columnName)) {
         expectedTagsList.addAll(table.getColumns().get(0).getTags());
       }
       expectedTags = new HashSet<>(expectedTagsList.stream().map(TagLabel::getName).toList());
