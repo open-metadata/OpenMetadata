@@ -12,7 +12,7 @@
  */
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Button, Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -40,6 +40,7 @@ import { ReactComponent as ClassificationIcon } from '../assets/svg/classificati
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
+import { ReactComponent as IconEdit } from '../assets/svg/edit-new.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
@@ -94,7 +95,11 @@ import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+  TEXT_BODY_COLOR,
+} from '../constants/constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
@@ -117,7 +122,10 @@ import EntityLink from './EntityLink';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
-import { TableDetailPageTabProps } from './TableClassBase';
+import {
+  SchemaTableNameColumnActionButtonsProps,
+  TableDetailPageTabProps,
+} from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
@@ -830,4 +838,35 @@ export const getTableDetailPageBaseTabs = ({
       ),
     },
   ];
+};
+
+export const getSchemaTableNameColumnActionButtons = ({
+  tablePermissions,
+  isReadOnly,
+  handleEditDisplayNameClick,
+  record,
+}: SchemaTableNameColumnActionButtonsProps) => {
+  return (
+    (tablePermissions?.EditAll || tablePermissions?.EditDisplayName) &&
+    !isReadOnly && (
+      <Tooltip
+        placement="right"
+        title={t('label.edit-entity', {
+          entity: t('label.display-name'),
+        })}>
+        <Button
+          className="cursor-pointer hover-cell-icon w-fit-content"
+          data-testid="edit-displayName-button"
+          style={{
+            color: DE_ACTIVE_COLOR,
+            padding: 0,
+            border: 'none',
+            background: 'transparent',
+          }}
+          onClick={() => handleEditDisplayNameClick(record)}>
+          <IconEdit style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
+        </Button>
+      </Tooltip>
+    )
+  );
 };

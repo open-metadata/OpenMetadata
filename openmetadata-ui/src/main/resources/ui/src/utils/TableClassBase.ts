@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { UpdatedColumnFieldData } from '../components/Database/SchemaTable/SchemaTable.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../enums/entity.enum';
-import { Table } from '../generated/entity/data/table';
+import { Column, Table } from '../generated/entity/data/table';
 import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
-import { getTableDetailPageBaseTabs } from './TableUtils';
+import {
+  getSchemaTableNameColumnActionButtons,
+  getTableDetailPageBaseTabs,
+} from './TableUtils';
 
 export interface TableDetailPageTabProps {
   queryCount: number;
@@ -40,11 +44,27 @@ export interface TableDetailPageTabProps {
   handleFeedCount: (data: FeedCounts) => void;
 }
 
+export interface SchemaTableNameColumnActionButtonsProps {
+  record: Column;
+  isReadOnly: boolean;
+  tableColumns: Column[];
+  tablePermissions?: OperationPermission;
+  onUpdate: (columns: Column[]) => Promise<void>;
+  updateColumnFields: (data: UpdatedColumnFieldData) => void;
+  handleEditDisplayNameClick: (record: Column) => void;
+}
+
 class TableClassBase {
   public getTableDetailPageTabs(
     tableDetailsPageProps: TableDetailPageTabProps
   ) {
     return getTableDetailPageBaseTabs(tableDetailsPageProps);
+  }
+
+  public getSchemaTableNameColumnActionButtons(
+    data: SchemaTableNameColumnActionButtonsProps
+  ) {
+    return getSchemaTableNameColumnActionButtons(data);
   }
 }
 
