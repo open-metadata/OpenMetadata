@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_6'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_7'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1030,6 +1030,52 @@ To continue pursuing this objective, the application was completely refactored t
 -   **Minor**: Fixed role page size from 10 to 50.
 -   **Fix**: Search Indexing Fixes.
 -   **Improvement**: Collate API with Knowledge Center routes ${CollateIconWithLinkMD}.`,
+    },
+  },
+  {
+    id: 49,
+    version: 'v1.5.7',
+    description: 'Released on 17th October 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   **Feature**: Add table-type custom property.
+-   **Feature**: support Persian language option
+-   **Feature**: Postgres stored procedures support.
+-   **Feature**: Allow Custom Property Update in Glossary Bulk Import/export.
+-   **Improvement**: Remove table details from table level Import/Export, allowing updates only for column details.
+-   **MINOR**: looker exclude version.
+-   **MINOR**: Add deleteEntityByFQNPrefix.
+-   **MINOR**: Reduce lineage response size.
+-   **MINOR**: Updated pyiceberg version to 0.5.1
+-   **MINOR**: Fix dark border shown in navbar on UI.
+-   **MINOR**: Add column case sensitivity parameter.    
+-   **MINOR**: Pagination with search on service page.
+-   **MINOR**: Added loader in activity feed open and closed count.
+-   **MINOR**: Superset get primitive datatype in case of array, struct.
+-   **MINOR**: fix term references validation msg on glossary import.
+-   **MINOR**: supported search filter and only all show in case of all node value selected.
+-   **Fix**: Fix PinotDB Ingestion.
+-   **Fix**: MSAL popup auth issue.
+-   **Fix**: Fix Alerts for Test Suites.
+-   **Fix**: Added Glue Pipeline Lineage.
+-   **Fix**: ClassGraph performance issue.
+-   **Fix**: Superset query for mysql con. 
+-   **Fix**: Empty Connection Overwrite Logic.
+-   **Fix**: Couchbase columns not fetched fix.
+-   **Fix**: Quicksight Ingestion Error handled.
+-   **Fix**: DBT Manifest and Run results parsing.
+-   **Fix**: Increase MAX_AGGREGATE_SIZE in search.
+-   **Fix**: Add display name field in the advanced search filter.
+-   **Fix**: On dashboard soft delete, chart should not be visible.
+-   **Fix**: Fix the automator page breaking when no source is selected.
+-   **Fix**: Salesforce table description from label if not through query.
+-   **Fix**: Add Import/export support for table type custom property in glossary.
+-   **Fix**: Fix exception in search due to exception in database.displayName and databaseSchema.aggregation.
+-   **MINOR**: Knowledge Center publicationDate mismatch error ${CollateIconWithLinkMD}
+-   **MINOR**: Add owner label for knowledge center right panel ${CollateIconWithLinkMD}
+-   **Fix**: Automator pagination & improvments ${CollateIconWithLinkMD}
+-   **Fix**: ArchiveLog to FALSE for test connection ${CollateIconWithLinkMD}
+-   **Fix**: Knowledge Page deletion is not deleting from the search index ${CollateIconWithLinkMD}`,
     },
   },
 ];

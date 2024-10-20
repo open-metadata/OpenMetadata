@@ -288,10 +288,7 @@ class DbtSource(DbtServiceSource):
                     for tag_name in dbt_tags_list
                 ]
                 yield from get_ometa_tag_and_classification(
-                    tags=[
-                        tag_label.split(fqn.FQN_SEPARATOR)[1]
-                        for tag_label in dbt_tag_labels
-                    ],
+                    tags=[fqn.split(tag_label)[1] for tag_label in dbt_tag_labels],
                     classification_name=self.tag_classification_name,
                     tag_description="dbt Tags",
                     classification_description="dbt classification",
