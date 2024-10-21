@@ -123,7 +123,7 @@ export const showAdvancedSearchDialog = async (page: Page) => {
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 };
 
-const selectOption = async (
+export const selectOption = async (
   page: Page,
   dropdownLocator: Locator,
   optionTitle: string
