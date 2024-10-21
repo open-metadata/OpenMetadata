@@ -1114,6 +1114,7 @@ public class TableRepository extends EntityRepository<Table> {
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange("locationPath", original.getLocationPath(), updated.getLocationPath());
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) {

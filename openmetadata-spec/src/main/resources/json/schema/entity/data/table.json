@@ -996,6 +996,11 @@
       "description": "Reference to the Location that contains this table.",
       "$ref": "../../type/entityReference.json"
     },
+    "locationPath": {
+      "description": "Full storage path in case of external and managed tables.",
+      "type": "string",
+      "default": null
+    },
     "schemaDefinition": {
       "description": "DDL for Tables and Views",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
