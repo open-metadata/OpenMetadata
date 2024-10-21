@@ -16,6 +16,7 @@ import sys
 import traceback
 from multiprocessing import Process
 from typing import Optional
+from packaging import version
 
 from airflow import settings
 from airflow.models import DagBag
@@ -110,7 +111,7 @@ def get_dagbag():
 
 class ScanDagsTask(Process):
     def run(self):
-        if airflow_version >= "2.6":
+        if version.parse(airflow_version) >= version.parse("2.6"):
             scheduler_job = self._run_new_scheduler_job()
         else:
             scheduler_job = self._run_old_scheduler_job()
