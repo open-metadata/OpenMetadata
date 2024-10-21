@@ -51,6 +51,7 @@ import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -144,7 +145,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.type.customproperties.TableConfig;
+import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -1495,15 +1496,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void validateTableType(JsonNode fieldValue, String propertyConfig, String fieldName) {
     TableConfig tableConfig =
         JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
-    org.openmetadata.schema.type.customproperties.Table tableValue =
+    org.openmetadata.schema.type.customProperties.Table tableValue =
         JsonUtils.convertValue(
             JsonUtils.readTree(String.valueOf(fieldValue)),
-            org.openmetadata.schema.type.customproperties.Table.class);
+            org.openmetadata.schema.type.customProperties.Table.class);
     Set<String> configColumns = tableConfig.getColumns();
 
     try {
       JsonUtils.validateJsonSchema(
-          tableValue, org.openmetadata.schema.type.customproperties.Table.class);
+          tableValue, org.openmetadata.schema.type.customProperties.Table.class);
 
       Set<String> fieldColumns = new HashSet<>();
       fieldValue.get("columns").forEach(column -> fieldColumns.add(column.asText()));
@@ -1608,10 +1609,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      // Apply tagLabel to targetFQN that identifies an entity or field
-      boolean isTagDerived = tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED);
-      // Derived Tags should not create Relationships, and needs to be built on the during Read
-      if (!isTagDerived) {
+      if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
         daoCollection
             .tagUsageDAO()
             .applyTag(
@@ -2323,6 +2321,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     validateTags(entity.getTags());
     entity.setTags(addDerivedTags(entity.getTags()));
     checkMutuallyExclusive(entity.getTags());
+    checkDisabledTags(entity.getTags());
   }
 
   protected void validateTags(List<TagLabel> labels) {

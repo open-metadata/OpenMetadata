@@ -1,6 +1,8 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
+import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
+import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_NAME_LIST_KEY;
@@ -90,6 +92,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "storedProcedure",
           "storageService",
           "testCaseResolutionStatus",
+          "testCaseResult",
           "apiService",
           "apiEndpoint",
           "apiCollection",
@@ -101,7 +104,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
           ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA.value(),
           ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA.value(),
           ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA.value(),
-          "testCaseResolutionStatus");
+          TEST_CASE_RESOLUTION_STATUS,
+          TEST_CASE_RESULT);
   private final List<Source> paginatedSources = new ArrayList<>();
   private Processor entityProcessor;
   private Processor entityTimeSeriesProcessor;
@@ -174,6 +178,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void initializeJob() {
+    List<Source> paginatedEntityTimeSeriesSources = new ArrayList<>();
+
     // Remove any Stale Jobs
     cleanUpStaleJobsFromRuns();
 
@@ -205,9 +211,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
                 if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
                   source.setCursor(jobData.getAfterCursor());
                 }
-                paginatedSources.add(source);
+                paginatedEntityTimeSeriesSources.add(source);
               }
             });
+    // Add Time Series Sources at the End of the List to Process them last
+    paginatedSources.addAll(paginatedEntityTimeSeriesSources);
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.entityProcessor = new OpenSearchEntitiesProcessor(totalRecords);
       this.entityTimeSeriesProcessor = new OpenSearchEntityTimeSeriesProcessor(totalRecords);
