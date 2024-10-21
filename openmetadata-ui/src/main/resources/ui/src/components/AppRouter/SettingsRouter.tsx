@@ -161,6 +161,12 @@ const SettingsRouter = () => {
 
       {/* Setting Page Routes with categories */}
 
+      <AdminProtectedRoute
+        exact
+        component={PersonaPage}
+        path={getSettingPath(GlobalSettingOptions.PERSONA)}
+      />
+
       <Route
         exact
         component={GlobalSettingCategoryPage}
@@ -206,20 +212,8 @@ const SettingsRouter = () => {
       </Route>
       <AdminProtectedRoute
         exact
-        component={PersonaPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.PERSONA
-        )}
-      />
-      <AdminProtectedRoute
-        exact
         component={PersonaDetailsPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.PERSONA,
-          true
-        )}
+        path={getSettingPath(GlobalSettingOptions.PERSONA, '', true)}
       />
       {/* Roles route start
        * Do not change the order of these route

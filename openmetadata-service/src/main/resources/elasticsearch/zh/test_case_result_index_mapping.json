@@ -44,6 +44,12 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "timestamp": {
+        "type": "date"
+      },
+      "@timestamp": {
+          "type": "date"
+      },
       "testResultValue": {
         "properties": {
           "name": {

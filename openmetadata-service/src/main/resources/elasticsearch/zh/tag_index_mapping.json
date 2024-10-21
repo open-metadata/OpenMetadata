@@ -97,6 +97,9 @@
       "deleted": {
         "type": "boolean"
       },
+      "disabled": {
+        "type": "boolean"
+      },
       "classification": {
         "properties": {
           "id": {

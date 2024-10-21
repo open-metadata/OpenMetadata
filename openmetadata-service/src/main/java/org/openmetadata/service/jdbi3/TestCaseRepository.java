@@ -12,6 +12,7 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityByName;
+import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
@@ -206,7 +207,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return records.stream()
         .map(
             testSuiteId ->
-                Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL, false)
+                Entity.<TestSuite>getEntity(
+                        TEST_SUITE, testSuiteId.getId(), "owners,domain", Include.ALL, false)
                     .withInherited(true)
                     .withChangeDescription(null))
         .toList();
@@ -378,6 +380,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @SneakyThrows
   private TestCaseResult getTestCaseResult(TestCase testCase) {
+    TestCaseResult testCaseResult;
     if (testCase.getTestCaseResult() != null) {
       // we'll return the saved state if it exists otherwise we'll fetch it from the database
       // Should be the case if listing from the search repo. as the test case result
@@ -386,10 +389,21 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("testCaseFQN", testCase.getFullyQualifiedName());
-    EntityTimeSeriesRepository<?> timeSeriesRepository =
-        Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    return (TestCaseResult)
-        timeSeriesRepository.latestFromSearch(Fields.EMPTY_FIELDS, searchListFilter, null);
+    TestCaseResultRepository timeSeriesRepository =
+        (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
+    try {
+      testCaseResult =
+          timeSeriesRepository.latestFromSearch(Fields.EMPTY_FIELDS, searchListFilter, null);
+    } catch (Exception e) {
+      // Index may not exist in the search index (e.g. reindexing with recreate index on). Fall back
+      // to database
+      LOG.debug(
+          "Error fetching test case result from search. Fetching from test case results from database",
+          e);
+      testCaseResult =
+          timeSeriesRepository.listLastTestCaseResult(testCase.getFullyQualifiedName());
+    }
+    return testCaseResult;
   }
 
   public ResultList<TestCaseResult> getTestCaseResults(String fqn, Long startTs, Long endTs) {

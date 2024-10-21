@@ -58,3 +58,10 @@ SET json = jsonb_set(
 	to_jsonb(true)
 )
 where name = 'SearchIndexingApplication';
+
+ALTER TABLE apps_extension_time_series ADD COLUMN appName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'appName') STORED NOT NULL;
+
+-- Add supportsDataDiff for Athena, BigQuery, Mssql, Mysql, Oracle, Postgres, Redshift, SapHana, Snowflake, Trino
+UPDATE dbservice_entity
+SET json = jsonb_set(json::jsonb, '{connection,config,supportsDataDiff}', 'true'::jsonb)
+WHERE serviceType IN ('Athena','BigQuery','Mssql','Mysql','Oracle','Postgres','Redshift','SapHana','Snowflake','Trino');

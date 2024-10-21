@@ -16,7 +16,7 @@ We support
 
 - Azure SQL (MySQL) engine version 8 or higher
 - Azure SQL (PostgreSQL) engine version 12 or higher
-- Elastic Cloud (ElasticSearch version 8.10.2)
+- Elastic Cloud (ElasticSearch version 8.11.4)
 
 Once you have the Azure SQL and Elastic Cloud on Azure configured, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
 
