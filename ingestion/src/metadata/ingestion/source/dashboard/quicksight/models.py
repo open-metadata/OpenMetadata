@@ -23,6 +23,12 @@ class DataSourceResp(BaseModel):
     table_name: str = Field(alias="Name")
 
 
+class DataSourceRespQuery(BaseModel):
+    datasource_arn: str = Field(alias="DataSourceArn")
+    query: str = Field(alias="SqlQuery")
+    table_name: str = Field(alias="Name")
+
+
 class VersionSheet(BaseModel):
     ChartId: Optional[str] = Field(None, alias="SheetId")
     Name: Optional[str] = None
