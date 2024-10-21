@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.generated.schema.entity.utils.supersetApiConnection import (
     SupersetApiConnection,
 )
@@ -71,7 +74,7 @@ def test_connection(
     service_connection: SupersetConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
-) -> None:
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -93,7 +96,7 @@ def test_connection(
         else:
             test_fn["GetCharts"] = partial(test_query, client, FETCH_ALL_CHARTS_TEST)
 
-    test_connection_steps(
+    return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
