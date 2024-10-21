@@ -17,6 +17,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -145,7 +146,7 @@ public class PaginatedEntityTimeSeriesSource
   private ListFilter getFilter() {
     ListFilter filter = new ListFilter(null);
     if (ReindexingUtil.isDataInsightIndex(entityType)) {
-      filter.addQueryParam("entityFQNHash", entityType);
+      filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(entityType));
     }
     return filter;
   }
