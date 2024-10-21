@@ -1,6 +1,12 @@
 package org.openmetadata.service.search.security;
 
-import java.util.*;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
