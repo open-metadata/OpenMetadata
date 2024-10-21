@@ -34,6 +34,11 @@
     "dataModel": {
       "$ref": "../../entity/data/table.json#/definitions/dataModel"
     },
+    "locationPath": {
+      "description": "Full storage path in case of external and managed tables.",
+      "type": "string",
+      "default": null
+    },
     "tableConstraints": {
       "type": "array",
       "items": {

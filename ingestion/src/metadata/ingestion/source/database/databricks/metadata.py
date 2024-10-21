@@ -705,6 +705,14 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             )
         return description
 
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the location path of the table
+        """
+        return self.external_location_map.get(
+            (self.context.get().database, schema_name, table_name)
+        )
+
     def _filter_owner_name(self, owner_name: str) -> str:
         """remove unnecessary keyword from name"""
         pattern = r"\(Unknown\)"
