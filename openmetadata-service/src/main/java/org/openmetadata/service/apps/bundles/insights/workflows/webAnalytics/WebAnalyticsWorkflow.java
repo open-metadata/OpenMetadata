@@ -17,6 +17,7 @@ import org.openmetadata.schema.analytics.WebAnalyticEntityViewReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.WebAnalyticUserActivityReportData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
@@ -31,6 +32,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.sou
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -38,6 +40,14 @@ public class WebAnalyticsWorkflow {
   private final Long startTimestamp;
   private final Long endTimestamp;
   private final int batchSize;
+
+  private final SearchRepository searchRepository;
+
+  private static final String WEB_ANALYTICS_ENTITY_INDEX =
+      "web_analytic_entity_view_report_data_index";
+  private static final String WEB_ANALYTICS_USER_INDEX =
+      "web_analytic_user_activity_report_data_index";
+
   private static final int WEB_ANALYTIC_EVENTS_RETENTION_DAYS = 7;
   private final List<PaginatedWebAnalyticEventDataSource> sources = new ArrayList<>();
   private WebAnalyticsEntityViewProcessor webAnalyticsEntityViewProcessor;
@@ -58,7 +68,11 @@ public class WebAnalyticsWorkflow {
   public static final String ENTITY_VIEW_REPORT_DATA_KEY = "entityViewReportData";
 
   public WebAnalyticsWorkflow(
-      Long timestamp, int batchSize, Optional<DataInsightsApp.Backfill> backfill) {
+      Long timestamp,
+      int batchSize,
+      Optional<DataInsightsApp.Backfill> backfill,
+      SearchRepository searchRepository) {
+    this.searchRepository = searchRepository;
     if (backfill.isPresent()) {
       Long oldestPossibleTimestamp =
           TimestampUtils.getStartOfDayTimestamp(
@@ -115,18 +129,16 @@ public class WebAnalyticsWorkflow {
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 
+    // Delete data from ES before inserting
+    deleteDataBeforeInserting(WEB_ANALYTICS_ENTITY_INDEX);
+    deleteDataBeforeInserting(WEB_ANALYTICS_USER_INDEX);
+
     for (PaginatedWebAnalyticEventDataSource source : sources) {
       // TODO: Could the size of the Maps be an issue?
       Map<UUID, UserActivityData> userActivityData = new HashMap<>();
       Map<UUID, WebAnalyticUserActivityReportData> userActivityReportData = new HashMap<>();
       Map<String, WebAnalyticEntityViewReportData> entityViewReportData = new HashMap<>();
       Long referenceTimestamp = source.getStartTs();
-
-      // Delete the records of the days we are going to process
-      deleteReportDataRecordsAtDate(
-          referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
-      deleteReportDataRecordsAtDate(
-          referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
 
       contextData.put(TIMESTAMP_KEY, referenceTimestamp);
       contextData.put(USER_ACTIVITY_DATA_KEY, userActivityData);
@@ -316,6 +328,19 @@ public class WebAnalyticsWorkflow {
           .deleteWebAnalyticEventData(
               eventType,
               TimestampUtils.subtractDays(endTimestamp, WEB_ANALYTIC_EVENTS_RETENTION_DAYS));
+    }
+  }
+
+  private void deleteDataBeforeInserting(String indexName) throws SearchIndexException {
+    try {
+      searchRepository
+          .getSearchClient()
+          .deleteByQuery(
+              searchRepository.getIndexOrAliasName(indexName),
+              String.format(
+                  "{\"timestamp\": {\"gte\": %s, \"lte\": %s}}", startTimestamp, endTimestamp));
+    } catch (Exception rx) {
+      throw new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
     }
   }
 
