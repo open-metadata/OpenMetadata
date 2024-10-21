@@ -49,6 +49,7 @@ $$section
 This value is the `filter` query parameter that is passed to the Mode API. Different API
 calls use different types of acceptable values. Currently this parameter is only implemented
 to [list all collections](https://mode.com/developer/api-reference/management/collections/
-#listCollections). The valid values that is currently supported are: `all` and `custom`
+#listCollections). The valid values that is currently supported are: `all` and `custom`.
+If this field is left empty, `all` will be used.
 
 $$
