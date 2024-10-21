@@ -272,7 +272,7 @@ class TopologyPatchTest(TestCase):
                 dataType=DataType.BIGINT,
             ),
         ]
-        updated_table = self.table_entity_one.copy(deep=True)
+        updated_table = self.table_entity_one.model_copy(deep=True)
         updated_table.columns = new_columns_list
         updated_table.owners = self.override_owner
         updated_table.description = Markdown("TABLE ONE DESCRIPTION OVERRIDEN")
@@ -336,7 +336,7 @@ class TopologyPatchTest(TestCase):
                 description=Markdown("test column6"),
             ),
         ]
-        updated_table = self.table_entity_two.copy(deep=True)
+        updated_table = self.table_entity_two.model_copy(deep=True)
         updated_table.columns = new_columns_list
         self.metadata.patch(
             entity=type(self.table_entity_two),
@@ -392,7 +392,7 @@ class TopologyPatchTest(TestCase):
                 description=Markdown("test column4 overriden"),
             ),
         ]
-        updated_table = self.table_entity_three.copy(deep=True)
+        updated_table = self.table_entity_three.model_copy(deep=True)
         updated_table.columns = new_columns_list
         updated_table.owners = self.override_owner
         updated_table.description = Markdown("TABLE THREE DESCRIPTION OVERRIDEN")
