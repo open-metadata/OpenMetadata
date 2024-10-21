@@ -195,9 +195,10 @@ export const getSubLevelHierarchyKey = (
   const bucketMapping = isDatabaseHierarchy
     ? {
         [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
-        [EntityFields.SERVICE]: EntityFields.DATABASE,
-        [EntityFields.DATABASE]: EntityFields.DATABASE_SCHEMA,
-        [EntityFields.DATABASE_SCHEMA]: EntityFields.ENTITY_TYPE,
+        [EntityFields.SERVICE]: EntityFields.DATABASE_DISPLAY_NAME,
+        [EntityFields.DATABASE_DISPLAY_NAME]:
+          EntityFields.DATABASE_SCHEMA_DISPLAY_NAME,
+        [EntityFields.DATABASE_SCHEMA_DISPLAY_NAME]: EntityFields.ENTITY_TYPE,
       }
     : {
         [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
