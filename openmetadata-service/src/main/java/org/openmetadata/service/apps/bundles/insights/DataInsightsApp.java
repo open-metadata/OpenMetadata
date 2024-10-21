@@ -280,8 +280,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private WorkflowStats processWebAnalytics() {
-    WebAnalyticsWorkflow workflow =
-        new WebAnalyticsWorkflow(timestamp, batchSize, backfill, searchRepository);
+    WebAnalyticsWorkflow workflow = new WebAnalyticsWorkflow(timestamp, batchSize, backfill);
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
     try {
