@@ -176,7 +176,7 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
 
     return Elasticsearch(
         str(connection.hostPort),
-        http_auth=basic_auth,
+        basic_auth=basic_auth,
         api_key=api_key,
         ssl_context=ssl_context,
         **connection.connectionArguments.root,
