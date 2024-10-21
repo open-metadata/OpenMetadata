@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/system/ui/tab.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tab",
+  "description": "This schema defines a Tab within a Page.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.ui.Tab",
+  "properties": {
+    "id": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "name": {
+      "description": "Name of the tab.",
+      "type": "string"
+    },
+    "layout": {
+      "description": "Layout configuration for this tab.",
+      "type": "object"
+    },
+    "knowledgePanels": {
+      "description": "KnowledgePanels that are part of this Tab.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "order": {
+      "description": "Order of the tab within the page.",
+      "type": "integer"
+    }
+  },
+  "required": ["id", "name", "layout"],
+  "additionalProperties": false
+}
