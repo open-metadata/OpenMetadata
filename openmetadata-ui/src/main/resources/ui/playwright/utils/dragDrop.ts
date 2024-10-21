@@ -59,5 +59,5 @@ export const confirmationDragAndDropTeam = async (
   await page.locator('.ant-modal-footer > .ant-btn-primary').click();
   await patchResponse;
 
-  await toastNotification(page, 'Team moved successfully!');
+  await toastNotification(page, 'Team moved successfully!', 'success');
 };
