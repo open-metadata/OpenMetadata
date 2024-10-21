@@ -175,3 +175,20 @@ class ModeApiClient:
             logger.warning(f"Error fetching all data sources: {exc}")
 
         return None
+
+    def test_mode_connection(self, workspace_name: str) -> bool:
+        """Method to test Mode API connection
+        Args:
+            workspace_name:
+        Returns:
+            bool
+        """
+        try:
+            response = self.client.get(f"/{workspace_name}")
+            if response:
+                return True
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error testing workspace connection: {exc}")
+
+        return False

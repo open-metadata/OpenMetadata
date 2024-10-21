@@ -48,7 +48,7 @@ def test_connection(
 
     test_fn = {
         "CheckDashboards": partial(
-            client.fetch_all_reports, service_connection.workspaceName
+            client.test_mode_connection, service_connection.workspaceName
         )
     }
 
