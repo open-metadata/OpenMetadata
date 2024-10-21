@@ -79,29 +79,33 @@ public class MigrationUtil {
 
   public static void addViewAllRuleToOrgPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
-    Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
-    boolean noViewAllRule = true;
-    for (Rule rule : organizationPolicy.getRules()) {
-      if (rule.getName().equals("OrganizationPolicy-View-All-Rule")) {
-        noViewAllRule = false;
-        break;
+    try {
+      Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
+      boolean noViewAllRule = true;
+      for (Rule rule : organizationPolicy.getRules()) {
+        if (rule.getName().equals("OrganizationPolicy-View-All-Rule")) {
+          noViewAllRule = false;
+          break;
+        }
       }
-    }
-    if (noViewAllRule) {
-      Rule viewAllRule =
-          new Rule()
-              .withName("OrganizationPolicy-ViewAll-Rule")
-              .withResources(listOf("all"))
-              .withOperations(listOf(MetadataOperation.VIEW_ALL))
-              .withEffect(Rule.Effect.ALLOW)
-              .withDescription("Allow all users to view all metadata");
-      organizationPolicy.getRules().add(viewAllRule);
-      collectionDAO
-          .policyDAO()
-          .update(
-              organizationPolicy.getId(),
-              organizationPolicy.getFullyQualifiedName(),
-              JsonUtils.pojoToJson(organizationPolicy));
+      if (noViewAllRule) {
+        Rule viewAllRule =
+            new Rule()
+                .withName("OrganizationPolicy-ViewAll-Rule")
+                .withResources(listOf("all"))
+                .withOperations(listOf(MetadataOperation.VIEW_ALL))
+                .withEffect(Rule.Effect.ALLOW)
+                .withDescription("Allow all users to view all metadata");
+        organizationPolicy.getRules().add(viewAllRule);
+        collectionDAO
+            .policyDAO()
+            .update(
+                organizationPolicy.getId(),
+                organizationPolicy.getFullyQualifiedName(),
+                JsonUtils.pojoToJson(organizationPolicy));
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("OrganizationPolicy not found", ex);
     }
   }
 
