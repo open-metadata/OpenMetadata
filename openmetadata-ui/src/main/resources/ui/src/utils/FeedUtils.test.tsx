@@ -82,11 +82,11 @@ jest.mock('./CommonUtils', () => ({
 
 describe('Feed Utils', () => {
   it('should getEntityType return the correct entity type', () => {
-    expect(getEntityType('#E::Type::123')).toBe('entityType');
+    expect(getEntityType('#E::om::Type::om::123')).toBe('entityType');
   });
 
   it('should getEntityFQN return the correct entity FQN', () => {
-    expect(getEntityFQN('#E::Type::123')).toBe('123');
+    expect(getEntityFQN('#E::om::Type::om::123')).toBe('123');
   });
 
   it('should getEntityField return the correct entity field', () => {
@@ -112,21 +112,21 @@ describe('Feed Utils', () => {
   });
 
   it('should return correct backend format for a given message', () => {
-    const message = `<#E::user::"admin"|[@admin](http://localhost:3000/users/admin)> test`;
+    const message = `<#E::om::user::om::"admin"|[@admin](http://localhost:3000/users/admin)> test`;
     const result = getBackendFormat(message);
 
     // eslint-disable-next-line no-useless-escape
-    const expectedResult = `<#E::user::\"admin\"|<#E::user::admin|[@admin](http://localhost:3000/users/admin)>> test`;
+    const expectedResult = `<#E::om::user::om::\"admin\"|<#E::om::user::om::admin|[@admin](http://localhost:3000/users/admin)>> test`;
 
     expect(result).toStrictEqual(expectedResult);
   });
 
   it('should return correct backend format for a given message having . in username', () => {
-    const message = `<#E::user::"admin.test"|[@admin.test](http://localhost:3000/users/%22admin.test%22)> test`;
+    const message = `<#E::om::user::om::"admin.test"|[@admin.test](http://localhost:3000/users/%22admin.test%22)> test`;
     const result = getBackendFormat(message);
 
     // eslint-disable-next-line no-useless-escape
-    const expectedResult = `<#E::user::\"admin.test\"|<#E::user::%22admin.test%22|[@admin.test](http://localhost:3000/users/%22admin.test%22)>> test`;
+    const expectedResult = `<#E::om::user::om::\"admin.test\"|<#E::om::user::om::%22admin.test%22|[@admin.test](http://localhost:3000/users/%22admin.test%22)>> test`;
 
     expect(result).toStrictEqual(expectedResult);
   });

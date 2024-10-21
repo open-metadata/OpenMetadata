@@ -153,9 +153,9 @@ const mockProp = {
   entityFieldThreads: [
     {
       entityLink:
-        '<#E::mlmodel::mlflow_svc.eta_predictions::mlFeatures::sales::description>',
+        '<#E::om::mlmodel::om::mlflow_svc.eta_predictions::om::mlFeatures::om::sales::om::description>',
       count: 1,
-      entityField: 'mlFeatures::sales::description',
+      entityField: 'mlFeatures::om::sales::om::description',
     },
   ],
   entityFqn: 'mlflow_svc.eta_predictions',

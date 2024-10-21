@@ -20,7 +20,7 @@ export const MOCK_ANNOUNCEMENT_DATA = {
       href: 'http://localhost:8585/api/v1/feed/36ea94c9-7f12-489c-94df-56cbefe14b2f',
       threadTs: 1714026576902,
       about:
-        '<#E::database::cy-database-service-373851.cypress-database-1714026557974>',
+        '<#E::om::database::om::cy-database-service-373851.cypress-database-1714026557974>',
       entityId: '123f24e3-2a00-432e-b42b-b709f7ae74c0',
       createdBy: 'admin',
       updatedAt: 1714037939788,
@@ -77,7 +77,7 @@ export const MOCK_ANNOUNCEMENT_FEED_DATA = {
   href: 'http://localhost:8585/api/v1/feed/36ea94c9-7f12-489c-94df-56cbefe14b2f',
   threadTs: 1714026576902,
   about:
-    '<#E::database::cy-database-service-373851.cypress-database-1714026557974>',
+    '<#E::om::database::om::cy-database-service-373851.cypress-database-1714026557974>',
   entityId: '123f24e3-2a00-432e-b42b-b709f7ae74c0',
   createdBy: 'admin',
   updatedAt: 1714047427117,

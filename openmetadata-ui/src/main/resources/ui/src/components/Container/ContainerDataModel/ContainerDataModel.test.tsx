@@ -77,9 +77,9 @@ const props = {
   entityFieldThreads: [
     {
       entityLink:
-        '<#E::container::s3_storage_sample.departments.finance.expenditures::dataModel::columns::department_id::description>',
+        '<#E::om::container::om::s3_storage_sample.departments.finance.expenditures::om::dataModel::om::columns::om::department_id::om::description>',
       count: 2,
-      entityField: 'dataModel::columns::department_id::description',
+      entityField: 'dataModel::om::columns::om::department_id::om::description',
     },
   ],
   onThreadLinkSelect: jest.fn(),

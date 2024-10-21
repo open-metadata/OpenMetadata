@@ -29,13 +29,15 @@ const suggestions = [
     id: '1',
     description: 'Test suggestion1',
     createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    entityLink:
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>',
   },
   {
     id: '2',
     description: 'Test suggestion2',
     createdBy: { id: '2', name: 'Avatar 2', type: 'user' },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    entityLink:
+      '<#E::om::table::om::sample_data.ecommerce_db.shopify.dim_address>',
   },
 ];
 

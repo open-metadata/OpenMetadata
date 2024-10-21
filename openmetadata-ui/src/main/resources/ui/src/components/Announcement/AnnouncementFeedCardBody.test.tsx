@@ -78,7 +78,7 @@ const mockFeedCardProps = {
   },
   task: MOCK_ANNOUNCEMENT_DATA.data[0],
   entityLink:
-    '<#E::database::cy-database-service-373851.cypress-database-1714026557974>',
+    '<#E::om::database::om::cy-database-service-373851.cypress-database-1714026557974>',
   isThread: true,
   editPermission: true,
   isReplyThreadOpen: false,

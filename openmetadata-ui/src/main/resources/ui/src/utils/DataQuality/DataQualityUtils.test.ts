@@ -37,7 +37,7 @@ jest.mock('../../constants/profiler.constant', () => ({
 
 jest.mock('../TableUtils', () => ({
   generateEntityLink: jest.fn().mockImplementation((fqn: string) => {
-    return `<#E::table::${fqn}>`;
+    return `<#E::om::table::om::${fqn}>`;
   }),
 }));
 
@@ -224,7 +224,8 @@ describe('DataQualityUtils', () => {
       const expected = {
         endTimestamp: '1721022683445',
         startTimestamp: '1720417883445',
-        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.fact_sale>',
+        entityLink:
+          '<#E::om::table::om::sample_data.ecommerce_db.shopify.fact_sale>',
         testPlatforms: ['DBT', 'Deequ'],
         testCaseType: 'column',
         testCaseStatus: 'Success',

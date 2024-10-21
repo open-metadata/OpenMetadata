@@ -45,7 +45,7 @@ test.beforeAll(async ({ browser }) => {
   );
   await table2.createTestCase(apiContext, {
     name: `email_column_values_to_be_in_set_${uuid()}`,
-    entityLink: `<#E::table::${table2.entityResponseData?.['fullyQualifiedName']}::columns::email>`,
+    entityLink: `<#E::om::table::om::${table2.entityResponseData?.['fullyQualifiedName']}::om::columns::om::email>`,
     parameterValues: [
       { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
     ],
@@ -659,7 +659,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     );
     const testCase2 = await filterTable1.createTestCase(apiContext, {
       name: smilerNameTestCase[i],
-      entityLink: `<#E::table::${filterTable2Response?.['fullyQualifiedName']}>`,
+      entityLink: `<#E::om::table::om::${filterTable2Response?.['fullyQualifiedName']}>`,
       testSuite: testSuite2Response?.['fullyQualifiedName'],
     });
     await filterTable1.addTestCaseResult(
