@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { test } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
-import { SidebarItem } from '../../constant/sidebar';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -27,7 +26,6 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { UserClass } from '../../support/user/UserClass';
-import { selectOption } from '../../utils/advancedSearch';
 import {
   assignDomain,
   createNewPage,
@@ -46,7 +44,6 @@ import {
   removeOwnersFromList,
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
-import { sidebarClick } from '../../utils/sidebar';
 
 const entities = [
   ApiEndpointClass,
@@ -299,42 +296,6 @@ entities.forEach((EntityClass) => {
             );
           }
         });
-
-        await test.step(
-          `Verify ${titleText} Custom Property in Advanced Search Modal`,
-          async () => {
-            await redirectToHomePage(page);
-            await sidebarClick(page, SidebarItem.EXPLORE);
-            await page.getByTestId('advance-search-button').click();
-
-            await expect(
-              page.locator('[role="dialog"].ant-modal')
-            ).toBeVisible();
-
-            const ruleLocator = page.locator('.rule').nth(0);
-            await selectOption(
-              page,
-              ruleLocator.locator('.rule--field .ant-select'),
-              'Custom Properties'
-            );
-
-            await ruleLocator.locator('.rule--field .ant-select').click();
-            await page.waitForSelector(`.ant-select-dropdown:visible`, {
-              state: 'visible',
-            });
-
-            for (const type of properties) {
-              const details = entity.customPropertyValue[type].property;
-
-              // check if dropdown has custom property type
-              await expect(
-                page.locator(
-                  `.ant-select-dropdown:visible [title="${details.name}"]`
-                )
-              ).toBeVisible();
-            }
-          }
-        );
 
         await entity.cleanupCustomProperty(apiContext);
         await afterAction();

@@ -96,20 +96,14 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
       await redirectToHomePage(page);
 
       const responseExplorePage = page.waitForResponse(
-        '/api/v1/metadata/types/name/storedProcedure?fields=customProperties'
+        '/api/v1/metadata/types/customProperties'
       );
 
       await sidebarClick(page, SidebarItem.EXPLORE);
 
       await responseExplorePage;
 
-      const responseCustomPropertyDashboard = page.waitForResponse(
-        '/api/v1/metadata/types/name/dashboard?fields=customProperties'
-      );
-
       await page.getByTestId('explore-tree-title-Dashboards').click();
-
-      await responseCustomPropertyDashboard;
 
       await page.getByTestId('advance-search-button').click();
 
