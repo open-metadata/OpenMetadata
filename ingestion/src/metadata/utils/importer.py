@@ -15,7 +15,7 @@ import importlib
 import sys
 import traceback
 from enum import Enum
-from typing import Any, Callable, Optional, Type, TypeVar, cast
+from typing import Any, Callable, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -26,13 +26,12 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
-from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
+from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Stage
 from metadata.profiler.metrics.system.system import EmptySystemMetricsSource
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.client_version import get_client_version
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.logger import utils_logger
-from metadata.utils.service_spec import BaseSpec
 from metadata.utils.singleton import Singleton
 
 logger = utils_logger()
@@ -137,19 +136,6 @@ def import_from_module(key: str) -> Type[Any]:
     except ModuleNotFoundError as err:
         logger.debug(traceback.format_exc())
         raise DynamicImportException(module=module_name, key=obj_name, cause=err)
-
-
-def import_source_class(
-    service_type: ServiceType, source_type: str, from_: str = "ingestion"
-) -> Type[Source]:
-    return cast(
-        Type[Source],
-        import_from_module(
-            BaseSpec.get_for_source(
-                service_type, source_type, from_
-            ).metadata_source_class
-        ),
-    )
 
 
 def import_processor_class(

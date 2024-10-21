@@ -2,11 +2,12 @@
 Manifests are used to store class information
 """
 
-from typing import Optional
+from typing import Optional, Type, cast
 
 from pydantic import model_validator
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.utils.importer import get_module_dir, import_from_module
 
@@ -75,3 +76,16 @@ class BaseSpec(BaseModel):
 
 def get_class_path(module):
     return module.__module__ + "." + module.__name__
+
+
+def import_source_class(
+    service_type: ServiceType, source_type: str, from_: str = "ingestion"
+) -> Type[Source]:
+    return cast(
+        Type[Source],
+        import_from_module(
+            BaseSpec.get_for_source(
+                service_type, source_type, from_
+            ).metadata_source_class
+        ),
+    )

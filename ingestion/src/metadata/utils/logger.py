@@ -10,21 +10,6 @@
 #  limitations under the License.
 """
 Module centralising logger configs
-
-This library might produce circular imports when using together with metadata.utils in these cases use the following
-notation to avoid circular imports:
-
-````
-import third_pary_lib
-
-# isort: off - logger is a root library and this is how to avoid circular imports
-from metadata.utils.logger import cli_logger
-from metadata.utils.... import ...
-
-# isort: on
-
-```
-
 """
 
 import logging

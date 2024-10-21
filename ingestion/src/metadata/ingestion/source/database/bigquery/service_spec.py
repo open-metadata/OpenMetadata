@@ -1,9 +1,9 @@
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
-from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
-    BigQueryProfilerInterface,
+from metadata.ingestion.source.database.bigquery.profiler.profiler import (
+    BigQueryProfiler,
 )
-from metadata.utils.manifest import DefaultDatabaseSpec
+from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=BigquerySource, profiler_class=BigQueryProfilerInterface
+    metadata_source_class=BigquerySource, profiler_class=BigQueryProfiler
 )

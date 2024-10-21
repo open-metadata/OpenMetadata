@@ -280,7 +280,6 @@ class SnowflakeSystemMetricsSource(
     def get_inserts(
         self, database: str, schema: str, table: str
     ) -> List[SystemProfile]:
-
         return self.get_system_profile(
             database,
             schema,
@@ -345,7 +344,7 @@ class SnowflakeSystemMetricsSource(
             ]
         )
 
-    def get_update_queries(
+    def get_updates(
         self, database: str, schema: str, table: str
     ) -> List[SystemProfile]:
         return self.get_system_profile(

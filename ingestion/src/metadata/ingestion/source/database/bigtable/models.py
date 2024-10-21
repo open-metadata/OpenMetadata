@@ -43,7 +43,7 @@ class Row(BaseModel):
             cells.setdefault(column_family, {})
             for column, cell in cf_cells.items():
                 cells[column_family][column] = Cell(
-                    values=[Value(timestamp=c.timestamp, value=c.value) for c in cell]
+                    values=[Value(timestamp=c.start_time, value=c.value) for c in cell]
                 )
         return cls(cells=cells, row_key=row.row_key)
 

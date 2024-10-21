@@ -41,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.source.metadata import (
     OpenMetadataSource,
     ProfilerSourceAndEntity,
@@ -48,13 +49,10 @@ from metadata.profiler.source.metadata import (
 from metadata.utils import fqn
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
-from metadata.utils.importer import (
-    ProfilerInterface,
-    import_from_module,
-    import_source_class,
-)
+from metadata.utils.importer import import_from_module
 from metadata.utils.logger import profiler_logger
 from metadata.utils.service_spec import BaseSpec
+from metadata.utils.service_spec.service_spec import import_source_class
 from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_logger()
@@ -184,7 +182,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
             source_type=self.config.source.type.lower(),
         ).profiler_class
         profiler_source_class = import_from_module(class_path)
-        return profiler_source_class
+        return cast(Type[ProfilerInterface], profiler_source_class)
 
     def get_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
