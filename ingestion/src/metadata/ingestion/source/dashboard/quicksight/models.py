@@ -22,10 +22,12 @@ class DataSourceResp(BaseModel):
     schema_name: str = Field(alias="Schema")
     table_name: str = Field(alias="Name")
 
+
 class DataSourceRespQuery(BaseModel):
     datasource_arn: str = Field(alias="DataSourceArn")
     query: str = Field(alias="SqlQuery")
     table_name: str = Field(alias="Name")
+
 
 class VersionSheet(BaseModel):
     ChartId: Optional[str] = Field(None, alias="SheetId")
