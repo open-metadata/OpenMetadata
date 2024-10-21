@@ -18,16 +18,13 @@ Metric Core definitions
 from abc import ABC, abstractmethod
 from enum import Enum
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
 
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
-
-if TYPE_CHECKING:
-    pass
 
 # When creating complex metrics, use inherit_cache = CACHE
 CACHE = True
