@@ -17,10 +17,8 @@ from typing import Optional, cast
 
 from sqlalchemy import MetaData
 
+from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
-from metadata.data_quality.interface.test_suite_interface_factory import (
-    test_suite_interface_factory,
-)
 from metadata.data_quality.runner.core import DataTestsRunner
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
@@ -32,6 +30,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.importer import import_from_module
 
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
 
@@ -99,13 +98,17 @@ class BaseTestSuiteRunner:
         Returns:
             TestSuiteInterface: a data quality interface
         """
-        data_quality_interface: TestSuiteInterface = (
-            test_suite_interface_factory.create(
-                self.service_conn_config,
-                self.ometa_client,
-                self.entity,
-                sqa_metadata=self.sqa_metadata,
-            )
+
+        # here we can use a sophisticated lazy loading mechanism to load the interface
+        # and validate that it adheres to the required contract
+        test_suite_interface_class = import_from_module(
+            f"metadata.ingestion.source.database.{self.service_conn_config.config.type.value.lower()}"
+        ).config.get("test_suite_interface", SQATestSuiteInterface)
+        data_quality_interface: TestSuiteInterface = test_suite_interface_class(
+            self.service_conn_config,
+            self.ometa_client,
+            self.entity,
+            sqa_metadata=self.sqa_metadata,
         )
         self.interface = data_quality_interface
         return data_quality_interface
