@@ -240,6 +240,7 @@ public final class Entity {
   public static final String DOCUMENT = "document";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
+  public static final List<String> PARENT_ENTITY_TYPES = new ArrayList<>();
 
   static {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DATABASE, DATABASE_SERVICE);
@@ -251,6 +252,8 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
+    PARENT_ENTITY_TYPES.addAll(listOf(DATABASE_SERVICE, DASHBOARD_SERVICE, MLMODEL_SERVICE, PIPELINE_SERVICE, API_SERVICE,
+        STORAGE_SERVICE, METADATA_SERVICE, SEARCH_SERVICE, DATABASE, DATABASE_SCHEMA, CLASSIFICATION, GLOSSARY));
   }
 
   private Entity() {}

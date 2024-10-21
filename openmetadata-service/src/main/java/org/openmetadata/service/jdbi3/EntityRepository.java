@@ -44,6 +44,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.PARENT_ENTITY_TYPES;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityByName;
@@ -3157,7 +3158,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .getUpdatedBy()
               .equals(updated.getUpdatedBy()) // Must be updated by the same user
           && updated.getUpdatedAt() - original.getUpdatedAt()
-              <= sessionTimeoutMillis; // With in session timeout
+              <= sessionTimeoutMillis // With in session timeout
+          && !PARENT_ENTITY_TYPES.contains(entityType); // not for parent entities, as we need changeDescription to propagate changes to children
     }
 
     private T getPreviousVersion(T original) {
