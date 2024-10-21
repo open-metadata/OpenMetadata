@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.druidConnection import (
     DruidConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -29,6 +32,7 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection_url(connection: DruidConnection) -> str:
@@ -52,14 +56,16 @@ def test_connection(
     engine: Engine,
     service_connection: DruidConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    test_connection_db_common(
+    return test_connection_db_common(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

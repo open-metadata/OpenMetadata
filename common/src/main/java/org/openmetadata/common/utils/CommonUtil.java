@@ -198,6 +198,14 @@ public final class CommonUtil {
     return object == null || nullOrEmpty(object.toString());
   }
 
+  public static <T> T nullOrDefault(T object, T defaultValue) {
+    if (object == null || (nullOrEmpty(object.toString()))) {
+      return defaultValue;
+    } else {
+      return object;
+    }
+  }
+
   public static String getResourceAsStream(ClassLoader loader, String file) throws IOException {
     return IOUtils.toString(Objects.requireNonNull(loader.getResourceAsStream(file)), UTF_8);
   }

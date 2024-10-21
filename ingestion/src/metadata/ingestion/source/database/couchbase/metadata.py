@@ -27,10 +27,7 @@ from metadata.ingestion.source.database.common_nosql_source import (
     SAMPLE_SIZE,
     CommonNoSQLSource,
 )
-from metadata.ingestion.source.database.couchbase.queries import (
-    COUCHBASE_GET_DATA,
-    COUCHBASE_SQL_STATEMENT,
-)
+from metadata.ingestion.source.database.couchbase.queries import COUCHBASE_GET_DATA
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -111,18 +108,14 @@ class CouchbaseSource(CommonNoSQLSource):
         """
         try:
             database_name = self.context.get().database
-            query = COUCHBASE_SQL_STATEMENT.format(table_name=table_name)
-            result = self.couchbase.query(query)
-            for row in result.rows():
-                if len(row) > 0:
-                    query_coln = COUCHBASE_GET_DATA.format(
-                        database_name=database_name,
-                        schema_name=schema_name,
-                        table_name=table_name,
-                        sample_size=SAMPLE_SIZE,
-                    )
-                    query_iter = self.couchbase.query(query_coln)
-                    return list(query_iter.rows())
+            query_coln = COUCHBASE_GET_DATA.format(
+                database_name=database_name,
+                schema_name=schema_name,
+                table_name=table_name,
+                sample_size=SAMPLE_SIZE,
+            )
+            query_iter = self.couchbase.query(query_coln)
+            return list(query_iter.rows())
         except Exception as exp:
             logger.debug(f"Failed to list column names for table [{table_name}]: {exp}")
             logger.debug(traceback.format_exc())
