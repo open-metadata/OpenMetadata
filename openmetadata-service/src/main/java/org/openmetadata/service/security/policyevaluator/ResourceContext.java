@@ -28,6 +28,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private final UUID id;
   private final String name;
   private T entity; // Will be lazily initialized
+  private ResourceContextInterface.Operation operation = ResourceContextInterface.Operation.NONE;
 
   public ResourceContext(@NonNull String resource) {
     this.resource = resource;
@@ -40,6 +41,18 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     this.resource = resource;
     this.id = id;
     this.name = name;
+    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+  }
+
+  public ResourceContext(
+      @NonNull String resource,
+      UUID id,
+      String name,
+      ResourceContextInterface.Operation operation) {
+    this.resource = resource;
+    this.id = id;
+    this.name = name;
+    this.operation = operation;
     this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
   }
 
@@ -87,23 +100,31 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
 
   private EntityInterface resolveEntity() {
     if (entity == null) {
+      Fields fieldList;
       String fields = "";
-      if (entityRepository.isSupportsOwners()) {
-        fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
+      if (operation == ResourceContextInterface.Operation.PATCH) {
+        fieldList = entityRepository.getPatchFields();
+      } else if (operation == ResourceContextInterface.Operation.PUT) {
+        fieldList = entityRepository.getPutFields();
+      } else {
+        if (entityRepository.isSupportsOwners()) {
+          fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
+        }
+        if (entityRepository.isSupportsTags()) {
+          fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
+        }
+        if (entityRepository.isSupportsDomain()) {
+          fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
+        }
+        if (entityRepository.isSupportsReviewers()) {
+          fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+        }
+        if (entityRepository.isSupportsDomain()) {
+          fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
+        }
+        fieldList = entityRepository.getFields(fields);
       }
-      if (entityRepository.isSupportsTags()) {
-        fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
-      }
-      if (entityRepository.isSupportsDomain()) {
-        fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
-      }
-      if (entityRepository.isSupportsReviewers()) {
-        fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
-      }
-      if (entityRepository.isSupportsDomain()) {
-        fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
-      }
-      Fields fieldList = entityRepository.getFields(fields);
+
       try {
         if (id != null) {
           entity = entityRepository.get(null, id, fieldList, Include.ALL, true);

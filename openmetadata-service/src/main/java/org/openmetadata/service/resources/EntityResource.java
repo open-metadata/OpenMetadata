@@ -288,7 +288,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) {
     repository.prepareInternal(entity, true);
-
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
     MetadataOperation operation = createOrUpdateOperation(resourceContext);
@@ -301,6 +300,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       entity = addHref(uriInfo, repository.create(uriInfo, entity));
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
     }
+    resourceContext =
+        getResourceContextByName(
+            entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
     addHref(uriInfo, response.getEntity());
@@ -310,7 +312,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.entity());
@@ -320,7 +325,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, String fqn, JsonPatch patch) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
         repository.patch(uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.entity());
@@ -400,8 +408,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return new ResourceContext<>(entityType, id, null);
   }
 
+  protected ResourceContext<T> getResourceContextById(
+      UUID id, ResourceContextInterface.Operation operation) {
+    return new ResourceContext<>(entityType, id, null, operation);
+  }
+
   protected ResourceContext<T> getResourceContextByName(String name) {
     return new ResourceContext<>(entityType, null, name);
+  }
+
+  protected ResourceContext<T> getResourceContextByName(
+      String name, ResourceContextInterface.Operation operation) {
+    return new ResourceContext<>(entityType, null, name, operation);
   }
 
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
