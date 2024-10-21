@@ -136,7 +136,7 @@ export const addTagToTableColumn = async (
 
   await expect(
     page.locator(
-      `[data-testid="classification-tags-${columnNumber}"] [data-testid="tags-container"] [data-testid="icon"]`
+      `[data-testid="classification-tags-${columnNumber}"] [data-testid="tags-container"] [data-testid="tag-${tagDisplayName}]`
     )
   ).toBeVisible();
 };
