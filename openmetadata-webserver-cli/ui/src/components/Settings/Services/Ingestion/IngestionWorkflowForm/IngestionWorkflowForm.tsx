@@ -1,0 +1,232 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import Form, { IChangeEvent } from "@rjsf/core";
+import { RegistryFieldsType } from "@rjsf/utils";
+import { customizeValidator } from "@rjsf/validator-ajv8";
+import { Button, Space } from "antd";
+import classNames from "classnames";
+import { isUndefined, omit, omitBy } from "lodash";
+import React, { FC, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
+  INGESTION_WORKFLOW_UI_SCHEMA,
+} from "../../../../../constants/Services.constant";
+import {
+  DbtConfigType,
+  PipelineType,
+} from "../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline";
+import {
+  IngestionWorkflowData,
+  IngestionWorkflowFormProps,
+} from "../../../../../interface/service.interface";
+import { transformErrors } from "../../../../../utils/formUtils";
+import { getSchemaByWorkflowType } from "../../../../../utils/IngestionWorkflowUtils";
+import BooleanFieldTemplate from "../../../../Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate";
+import DescriptionFieldTemplate from "../../../../Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate";
+import { FieldErrorTemplate } from "../../../../Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate";
+import { ObjectFieldTemplate } from "../../../../Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate";
+import WorkflowArrayFieldTemplate from "../../../../Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate";
+import { ServiceCategory } from "../../../../../enums/service.enum";
+import { useHistory } from "react-router-dom";
+import { downloadYaml } from "../../../../../utils/APIUtils";
+
+const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
+  pipeLineType,
+  className,
+  okText,
+  cancelText,
+  serviceCategory,
+  workflowData,
+  operationType,
+  onCancel,
+  onFocus,
+  onSubmit,
+  onChange,
+}) => {
+  const history = useHistory();
+  const [internalData, setInternalData] =
+    useState<IngestionWorkflowData>(workflowData);
+  const { t } = useTranslation();
+
+  const schema = useMemo(
+    () => getSchemaByWorkflowType(pipeLineType, ServiceCategory.DATABASE_SERVICES),
+
+    [pipeLineType, serviceCategory]
+  );
+
+  // Must use this one when "noEmit: false" in the tsconfig.json file
+  const validator = useMemo(
+    () => customizeValidator<any>(),
+    []
+  );
+
+  // This one must be used when "noEmit: true"
+  // const validator = useMemo(
+  //   () => customizeValidator<IngestionWorkflowData>(),
+  //   []
+  // );
+
+  const isElasticSearchPipeline =
+    pipeLineType === PipelineType.ElasticSearchReindex;
+
+  const isDbtPipeline = pipeLineType === PipelineType.Dbt;
+
+  const uiSchema = useMemo(() => {
+    let commonSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
+    if (isElasticSearchPipeline) {
+      commonSchema = {
+        ...commonSchema,
+        ...INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
+      };
+    }
+
+    return commonSchema;
+  }, [isElasticSearchPipeline]);
+
+  const handleOnChange = (e: IChangeEvent<IngestionWorkflowData>) => {
+    if (e.formData) {
+      setInternalData(e.formData);
+
+      let formData = { ...e.formData };
+      if (isElasticSearchPipeline) {
+        formData = {
+          ...omit(formData, [
+            "useSSL",
+            "verifyCerts",
+            "timeout",
+            "caCerts",
+            "useAwsCredentials",
+            "regionName",
+          ]),
+        };
+      }
+      if (isDbtPipeline) {
+        formData = {
+          ...formData,
+          dbtConfigSource: {
+            ...omitBy(formData.dbtConfigSource ?? {}, isUndefined),
+            dbtConfigType: formData.dbtConfigSource
+              ?.dbtConfigType as DbtConfigType,
+          },
+        };
+      }
+      onChange?.(formData);
+    }
+  };
+
+  const customFields: RegistryFieldsType = {
+    BooleanField: BooleanFieldTemplate,
+    ArrayField: WorkflowArrayFieldTemplate,
+  };
+
+  const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>, event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    return new Promise<void>((resolve) => {
+      if (e.formData) {
+        let formData = { ...e.formData };
+        if (isElasticSearchPipeline) {
+          formData = {
+            ...omit(formData, [
+              "useSSL",
+              "verifyCerts",
+              "timeout",
+              "caCerts",
+              "useAwsCredentials",
+              "regionName",
+            ]),
+          };
+        }
+        if (isDbtPipeline) {
+          formData = {
+            ...formData,
+            dbtConfigSource: {
+              ...omitBy(formData.dbtConfigSource ?? {}, isUndefined),
+              dbtConfigType: formData.dbtConfigSource
+                ?.dbtConfigType as DbtConfigType,
+            },
+          };
+        }
+
+        onSubmit(formData);
+
+        resolve();
+      }
+    }).then(() => {
+      event.preventDefault();
+      const nativeEvent = event.nativeEvent as SubmitEvent;
+      const submitter = nativeEvent.submitter as HTMLButtonElement;
+      const buttonName = submitter?.name;
+
+      console.log('Button clicked:', buttonName);
+
+      if (buttonName === 'download') {
+        console.log('Redirecting to /download');
+        history.push('/download');
+      } else if (buttonName === 'run') {
+        console.log('Redirecting to /logs/start');
+        history.push('/logs/start');
+      } else {
+        console.log('No redirection happening');
+      }
+    });
+  };
+
+  return (
+    <Form
+      focusOnFirstError
+      noHtml5Validate
+      className={classNames("rjsf no-header", className)}
+      fields={customFields}
+      formContext={{ handleFocus: onFocus }}
+      formData={internalData}
+      idSeparator="/"
+      schema={schema}
+      showErrorList={false}
+      templates={{
+        DescriptionFieldTemplate: DescriptionFieldTemplate,
+        FieldErrorTemplate: FieldErrorTemplate,
+        ObjectFieldTemplate: ObjectFieldTemplate,
+      }}
+      transformErrors={transformErrors}
+      uiSchema={uiSchema}
+      validator={validator}
+      onChange={handleOnChange}
+      onFocus={onFocus}
+      onSubmit={handleSubmit}
+    >
+      <div className="d-flex w-full justify-end">
+        <Space>
+          <Button type="link" onClick={onCancel}>
+            {cancelText ?? t("label.cancel")}
+          </Button>
+
+          <Button name="download" type="default" htmlType="submit">
+            Download config
+          </Button>
+
+          <Button name="run" type="primary" htmlType="submit">
+            Run now
+          </Button>
+
+          {/* <Button data-testid="submit-btn" htmlType="submit" type="primary">
+            {okText ?? t("label.submit")}
+          </Button> */}
+        </Space>
+      </div>
+    </Form>
+  );
+};
+
+export default IngestionWorkflowForm;
