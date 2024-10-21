@@ -173,7 +173,9 @@ test('Classification Page', async ({ page }) => {
       )
     ).not.toBeVisible();
 
-    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+    await expect(page.getByText('No Tags are available')).toBeVisible();
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeDisabled();
 
     // Re-enable the disabled Classification
     await classification.visitPage(page);
