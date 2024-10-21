@@ -25,20 +25,17 @@ import {
   ImmutableTree,
   JsonTree,
   Utils as QbUtils,
-  ValueSource,
+  ValueField,
 } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
-import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import { getTierOptions } from '../../../utils/AdvancedSearchUtils';
-import { EntitiesSupportedCustomProperties } from '../../../utils/CustomProperties/CustomProperty.utils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { getEntityTypeFromSearchIndex } from '../../../utils/SearchUtils';
 import Loader from '../../common/Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
 import { UrlParams } from '../ExplorePage.interface';
@@ -204,72 +201,26 @@ export const AdvanceSearchProvider = ({
     });
   }, [history, location.pathname]);
 
-  const fetchCustomPropertyType = async (entityType: EntityType) => {
-    const subfields: Record<
-      string,
-      { type: string; valueSources: ValueSource[] }
-    > = {};
+  const fetchCustomPropertyType = async () => {
+    const subfields: Record<string, ValueField> = {};
 
-    const res = await getTypeByFQN(entityType);
-    const customAttributes = res.customProperties;
+    const res = await getAllCustomProperties();
 
-    if (customAttributes) {
-      customAttributes.forEach((attr) => {
-        subfields[attr.name] = {
-          type: 'text',
-          valueSources: ['value'],
-        };
-      });
-    }
+    Object.entries(res).forEach(([_, fields]) => {
+      if (Array.isArray(fields) && fields.length > 0) {
+        fields.forEach((field: { name: string; type: string }) => {
+          if (field.name && field.type) {
+            subfields[field.name] = {
+              type: 'text',
+              valueSources: ['value'],
+            };
+          }
+        });
+      }
+    });
 
     return subfields;
   };
-
-  async function getCustomAttributesSubfields() {
-    const subfields: Record<
-      string,
-      { type: string; valueSources: ValueSource[] }
-    > = {};
-
-    try {
-      if (isArray(searchIndex)) {
-        for await (const index of searchIndex) {
-          if (!EntitiesSupportedCustomProperties.includes(index)) {
-            continue; // Skip if entity type does not support custom properties
-          }
-
-          const entityType = getEntityTypeFromSearchIndex(index);
-
-          if (!entityType) {
-            continue; // Skip if entity type is not found
-          }
-
-          try {
-            const propertyTypes = await fetchCustomPropertyType(entityType);
-            Object.assign(subfields, propertyTypes); // Merge the subfields after each API call
-          } catch (error) {
-            continue; // continue the loop if error occurs in one API call
-          }
-        }
-
-        return subfields;
-      } else {
-        if (!EntitiesSupportedCustomProperties.includes(searchIndex)) {
-          return subfields;
-        }
-
-        const entityType = getEntityTypeFromSearchIndex(searchIndex);
-        if (!entityType) {
-          return subfields;
-        }
-
-        return await fetchCustomPropertyType(entityType);
-      }
-    } catch (error) {
-      // Error
-      return subfields;
-    }
-  }
 
   const loadData = async () => {
     const actualConfig = advancedSearchClassBase.getQbConfigs(
@@ -278,7 +229,7 @@ export const AdvanceSearchProvider = ({
       isExplorePage
     );
 
-    const extensionSubField = await getCustomAttributesSubfields();
+    const extensionSubField = await fetchCustomPropertyType();
 
     if (!isEmpty(extensionSubField)) {
       (actualConfig.fields.extension as FieldGroup).subfields =
