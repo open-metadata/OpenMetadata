@@ -1,6 +1,12 @@
 package org.openmetadata.service.search.security;
 
-import java.util.*;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -272,12 +278,12 @@ public class RBACConditionEvaluator {
 
   public void hasDomain(ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
-    if (user.getDomain() == null) {
+    if (nullOrEmpty(user.getDomains())) {
       OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domain.id");
       collector.addMustNot(existsQuery);
     } else {
-      String userDomainId = user.getDomain().getId().toString();
-      OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domain.id", userDomainId);
+      List<String> userIds = user.getDomains().stream().map(ref -> ref.getId().toString()).toList();
+      OMQueryBuilder domainQuery = queryBuilderFactory.termsQuery("domain.id", userIds);
       collector.addMust(domainQuery);
     }
   }
