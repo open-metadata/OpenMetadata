@@ -15,7 +15,7 @@ import importlib
 import sys
 import traceback
 from enum import Enum
-from typing import Any, Callable, Optional, Type, TypeVar
+from typing import Any, Callable, Optional, Type, TypeVar, cast
 
 from pydantic import BaseModel
 
@@ -23,13 +23,16 @@ from metadata.data_quality.validations.base_test_handler import BaseTestValidato
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
+from metadata.profiler.metrics.system.system import EmptySystemMetricsSource
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.client_version import get_client_version
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.logger import utils_logger
+from metadata.utils.service_spec import BaseSpec
 from metadata.utils.singleton import Singleton
 
 logger = utils_logger()
@@ -126,29 +129,26 @@ def import_from_module(key: str) -> Type[Any]:
     """
     Dynamically import an object from a module path
     """
-
+    logger.debug("Importing: %s", key)
     module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
     try:
         obj = getattr(importlib.import_module(module_name), obj_name)
         return obj
-    except Exception as err:
+    except ModuleNotFoundError as err:
         logger.debug(traceback.format_exc())
         raise DynamicImportException(module=module_name, key=obj_name, cause=err)
 
 
-# module building strings read better with .format instead of f-strings
-# pylint: disable=consider-using-f-string
 def import_source_class(
     service_type: ServiceType, source_type: str, from_: str = "ingestion"
 ) -> Type[Source]:
-    return import_from_module(
-        "metadata.{}.source.{}.{}.{}.{}Source".format(
-            from_,
-            service_type.name.lower(),
-            get_module_dir(source_type),
-            get_source_module_name(source_type),
-            get_class_name_root(source_type),
-        )
+    return cast(
+        Type[Source],
+        import_from_module(
+            BaseSpec.get_for_source(
+                service_type, source_type, from_
+            ).metadata_source_class
+        ),
     )
 
 
@@ -156,7 +156,7 @@ def import_processor_class(
     processor_type: str, from_: str = "ingestion"
 ) -> Type[Processor]:
     return import_from_module(
-        "metadata.{}.processor.{}.{}Processor".format(
+        "metadata.{}.processor.{}.{}Processor".format(  # pylint: disable=consider-using-f-string
             from_,
             get_module_name(processor_type),
             get_class_name_root(processor_type),
@@ -166,7 +166,7 @@ def import_processor_class(
 
 def import_stage_class(stage_type: str, from_: str = "ingestion") -> Type[Stage]:
     return import_from_module(
-        "metadata.{}.stage.{}.{}Stage".format(
+        "metadata.{}.stage.{}.{}Stage".format(  # pylint: disable=consider-using-f-string
             from_,
             get_module_name(stage_type),
             get_class_name_root(stage_type),
@@ -176,7 +176,7 @@ def import_stage_class(stage_type: str, from_: str = "ingestion") -> Type[Stage]
 
 def import_sink_class(sink_type: str, from_: str = "ingestion") -> Type[Sink]:
     return import_from_module(
-        "metadata.{}.sink.{}.{}Sink".format(
+        "metadata.{}.sink.{}.{}Sink".format(  # pylint: disable=consider-using-f-string
             from_,
             get_module_name(sink_type),
             get_class_name_root(sink_type),
@@ -188,7 +188,7 @@ def import_bulk_sink_type(
     bulk_sink_type: str, from_: str = "ingestion"
 ) -> Type[BulkSink]:
     return import_from_module(
-        "metadata.{}.bulksink.{}.{}BulkSink".format(
+        "metadata.{}.bulksink.{}.{}BulkSink".format(  # pylint: disable=consider-using-f-string
             from_,
             get_module_name(bulk_sink_type),
             get_class_name_root(bulk_sink_type),
@@ -273,7 +273,7 @@ def import_test_case_class(
         test_definition[0].upper() + test_definition[1:]
     )  # change test names to camel case
     return import_from_module(
-        "metadata.data_quality.validations.{}.{}.{}.{}Validator".format(
+        "metadata.data_quality.validations.{}.{}.{}.{}Validator".format(  # pylint: disable=consider-using-f-string
             test_type.lower(),
             runner_type,
             test_definition,
@@ -302,3 +302,18 @@ class SideEffectsLoader(metaclass=Singleton):
 
 def import_side_effects(*modules):
     SideEffectsLoader().import_side_effects(*modules)
+
+
+def import_system_metrics_computer(db_service: DatabaseService):
+    """
+    Import the system metrics profile class
+    """
+    try:
+        return import_from_module(
+            "metadata.ingestion.source.database.{}.profiler.system.SystemMetricsComputer".format(  # pylint: disable=consider-using-f-string
+                db_service.type
+            )
+        )
+    except DynamicImportException as err:
+        logger.debug("Could not import system metrics computer: %s", err)
+        return EmptySystemMetricsSource
