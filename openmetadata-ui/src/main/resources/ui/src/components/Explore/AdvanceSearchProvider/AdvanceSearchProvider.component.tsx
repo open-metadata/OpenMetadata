@@ -204,20 +204,24 @@ export const AdvanceSearchProvider = ({
   const fetchCustomPropertyType = async () => {
     const subfields: Record<string, ValueField> = {};
 
-    const res = await getAllCustomProperties();
+    try {
+      const res = await getAllCustomProperties();
 
-    Object.entries(res).forEach(([_, fields]) => {
-      if (Array.isArray(fields) && fields.length > 0) {
-        fields.forEach((field: { name: string; type: string }) => {
-          if (field.name && field.type) {
-            subfields[field.name] = {
-              type: 'text',
-              valueSources: ['value'],
-            };
-          }
-        });
-      }
-    });
+      Object.entries(res).forEach(([_, fields]) => {
+        if (Array.isArray(fields) && fields.length > 0) {
+          fields.forEach((field: { name: string; type: string }) => {
+            if (field.name && field.type) {
+              subfields[field.name] = {
+                type: 'text',
+                valueSources: ['value'],
+              };
+            }
+          });
+        }
+      });
+    } catch (error) {
+      return subfields;
+    }
 
     return subfields;
   };
