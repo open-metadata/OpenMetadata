@@ -78,7 +78,7 @@
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.17.2</jackson.version>
-    <dropwizard.version>2.1.11</dropwizard.version>
+    <dropwizard.version>3.0.8</dropwizard.version>
     <dropwizard-jdbi3.version>2.1.6</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
     <jersey-bom.version>2.40</jersey-bom.version>
@@ -114,7 +114,7 @@
 
     <httpclient.version>4.5.14</httpclient.version>
     <!-- Upgrading to spring version 6.x requires Java 17 -->
-    <spring.version>6.1.12</spring.version>
+    <spring.version>6.1.14</spring.version>
     <log4j.version>2.21.0</log4j.version>
     <!-- Upgrading jupiter version causes test failures -->
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
