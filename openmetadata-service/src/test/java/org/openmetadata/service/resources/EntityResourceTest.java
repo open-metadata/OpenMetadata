@@ -272,6 +272,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference USER2_REF;
   public static User USER_TEAM21;
   public static User BOT_USER;
+  public static EntityReference DEFAULT_BOT_ROLE_REF;
+  public static EntityReference DOMAIN_ONLY_ACCESS_ROLE_REF;
 
   public static Team ORG_TEAM;
   public static Team TEAM1;

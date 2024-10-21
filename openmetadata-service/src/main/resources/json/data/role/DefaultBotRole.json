@@ -1,0 +1,17 @@
+{
+  "name": "DefaultBotRole",
+  "displayName": "Default Bot Role",
+  "description": "Role Corresponding to a Bot by default.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DefaultBotPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "DataConsumerPolicy"
+    }
+  ]
+}
