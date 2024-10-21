@@ -91,14 +91,34 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
       </div>
     ));
 });
-
-const mockProps = {
-  summaryPanel: <div>SummaryPanel.component</div>,
+const mockDataQualityContext = {
+  isTestCaseSummaryLoading: false,
+  testCaseSummary: {
+    total: 0,
+    passed: 0,
+    failed: 0,
+    skipped: 0,
+  },
+  activeTab: DataQualityPageTabs.TEST_CASES,
 };
+jest.mock('../../../pages/DataQuality/DataQualityProvider', () => {
+  return {
+    useDataQualityProvider: jest
+      .fn()
+      .mockImplementation(() => mockDataQualityContext),
+  };
+});
+jest.mock('../SummaryPannel/SummaryPanel.component', () => {
+  return {
+    SummaryPanel: jest
+      .fn()
+      .mockImplementation(() => <div>SummaryPanel.component</div>),
+  };
+});
 
 describe('TestCases component', () => {
   it('component should render', async () => {
-    render(<TestCases {...mockProps} />);
+    render(<TestCases />);
 
     expect(
       await screen.findByTestId('test-case-container')
@@ -122,7 +142,7 @@ describe('TestCases component', () => {
   it('on page load getListTestCaseBySearch API should call', async () => {
     const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
 
-    render(<TestCases {...mockProps} />);
+    render(<TestCases />);
 
     expect(mockGetListTestCase).toHaveBeenCalledWith({
       fields: ['testCaseResult', 'testSuite', 'incidentId'],
@@ -140,7 +160,7 @@ describe('TestCases component', () => {
     const mockSearchQuery = getListTestCaseBySearch as jest.Mock;
     mockLocation.search = '?searchValue=sale';
 
-    render(<TestCases {...mockProps} />);
+    render(<TestCases />);
 
     expect(mockSearchQuery).toHaveBeenCalledWith({
       fields: ['testCaseResult', 'testSuite', 'incidentId'],

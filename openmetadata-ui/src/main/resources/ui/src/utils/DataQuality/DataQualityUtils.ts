@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { isArray, isUndefined, omit, omitBy } from 'lodash';
+import { StatusByDimension } from '../../components/DataQuality/ChartWidgets/StatusByDimensionWidget/StatusByDimensionWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
+import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
   TestDataType,
@@ -99,4 +101,41 @@ export const getTestCaseFiltersValue = (
   );
 
   return updatedParams;
+};
+
+export const transformToTestCaseStatusByDimension = (
+  inputData: DataQualityReport['data']
+): StatusByDimension[] => {
+  const result: { [key: string]: StatusByDimension } = {};
+
+  inputData.forEach((item) => {
+    const {
+      document_count,
+      'testCaseResult.testCaseStatus': status,
+      dataQualityDimension,
+    } = item;
+    const count = parseInt(document_count, 10);
+
+    if (!result[dataQualityDimension]) {
+      result[dataQualityDimension] = {
+        title: dataQualityDimension,
+        success: 0,
+        failed: 0,
+        aborted: 0,
+        total: 0,
+      };
+    }
+
+    if (status === 'success') {
+      result[dataQualityDimension].success += count;
+    } else if (status === 'failed') {
+      result[dataQualityDimension].failed += count;
+    } else if (status === 'aborted') {
+      result[dataQualityDimension].aborted += count;
+    }
+
+    result[dataQualityDimension].total += count;
+  });
+
+  return Object.values(result);
 };
