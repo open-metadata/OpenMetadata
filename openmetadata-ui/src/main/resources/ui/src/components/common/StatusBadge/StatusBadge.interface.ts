@@ -18,6 +18,7 @@ export enum StatusType {
   Running = 'running',
   Started = 'started',
   Stopped = 'stopped',
+  PartialSuccess = 'partialSuccess',
 }
 
 export interface StatusBadgeProps {
