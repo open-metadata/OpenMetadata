@@ -118,6 +118,7 @@ import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
+  getServiceDisplayNameQueryFilter,
   shouldTestConnection,
 } from '../../utils/ServiceUtils';
 import {
@@ -338,6 +339,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
                 index < SERVICE_INGESTION_PIPELINE_TYPES.length - 1 ? 'OR' : ''
               }`
           ).join(' ')})`,
+          queryFilter: getServiceDisplayNameQueryFilter(
+            getEntityName(serviceDetails)
+          ),
         });
         const pipelines = res.hits.hits.map((hit) => hit._source);
         const total = res?.hits?.total.value ?? 0;
@@ -348,7 +352,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [ingestionPageSize, handleIngestionPagingChange]
+    [ingestionPageSize, handleIngestionPagingChange, serviceDetails]
   );
 
   const include = useMemo(

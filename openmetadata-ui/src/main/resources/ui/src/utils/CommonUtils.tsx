@@ -39,10 +39,6 @@ import {
 import React, { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -60,7 +56,6 @@ import {
 } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
-import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { FeedCounts } from '../interface/feed.interface';
@@ -680,23 +675,6 @@ export const getOwnerValue = (owner?: EntityReference) => {
       return getUserPath(owner?.fullyQualifiedName ?? '');
     default:
       return '';
-  }
-};
-
-export const getIngestionFrequency = (pipelineType: PipelineType) => {
-  const value = {
-    min: 0,
-    hour: 0,
-  };
-
-  switch (pipelineType) {
-    case PipelineType.TestSuite:
-    case PipelineType.Metadata:
-    case PipelineType.Application:
-      return getHourCron(value);
-
-    default:
-      return getDayCron(value);
   }
 };
 

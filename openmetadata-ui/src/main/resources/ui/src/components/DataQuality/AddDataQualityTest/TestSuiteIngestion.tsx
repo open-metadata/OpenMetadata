@@ -41,7 +41,6 @@ import {
   updateIngestionPipeline,
 } from '../../../rest/ingestionPipelineAPI';
 import {
-  getIngestionFrequency,
   getNameFromFQN,
   replaceAllSpacialCharWith_,
   Transi18next,
@@ -51,7 +50,6 @@ import { getScheduleOptionsFromSchedules } from '../../../utils/ScheduleUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { getWeekCron } from '../../common/CronEditor/CronEditor.constant';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import {
@@ -117,15 +115,11 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     );
   }, [ingestionData, showDeployButton]);
 
-  const initialFormData: TestSuiteIngestionDataType = useMemo(() => {
+  const initialFormData = useMemo(() => {
     const testCases = ingestionPipeline?.sourceConfig.config?.testCases;
 
     return {
-      repeatFrequency:
-        ingestionPipeline?.airflowConfig.scheduleInterval ??
-        (config?.enable
-          ? getWeekCron({ hour: 0, min: 0, dow: 0 })
-          : getIngestionFrequency(PipelineType.TestSuite)),
+      cron: ingestionPipeline?.airflowConfig.scheduleInterval,
       enableDebugLog: ingestionPipeline?.loggerLevel === LogLevels.Debug,
       testCases,
       name: ingestionPipeline?.displayName,
@@ -171,9 +165,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
 
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: isEmpty(data.repeatFrequency)
-          ? undefined
-          : data.repeatFrequency,
+        scheduleInterval: data.cron,
       },
       displayName: updatedName,
       name: generateUUID(),
@@ -211,9 +203,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       displayName: data.name ?? ingestionPipeline.displayName,
       airflowConfig: {
         ...ingestionPipeline?.airflowConfig,
-        scheduleInterval: isEmpty(data.repeatFrequency)
-          ? undefined
-          : data.repeatFrequency,
+        scheduleInterval: data.cron,
       },
       loggerLevel: data.enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       sourceConfig: {

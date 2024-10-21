@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,33 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../styles/variables.less');
+@import (reference) url('../../../../../styles/variables.less');
 
-.cron-row {
+.schedular-card-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 100%;
+  .schedular-card {
+    border-radius: 6px;
+    cursor: pointer;
+    height: 100%;
+    .ant-card-body {
+      padding: 24px;
+      height: 100%;
+
+      .ant-radio {
+        margin-right: 12px;
+      }
+    }
+  }
+  .schedular-card.active {
+    border-color: @primary-color;
+  }
+}
+
+.schedule-interval {
   .ant-form-item {
     margin: 0px;
   }
