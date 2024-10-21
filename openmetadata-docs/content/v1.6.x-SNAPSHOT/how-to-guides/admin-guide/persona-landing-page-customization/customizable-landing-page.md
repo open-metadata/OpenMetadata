@@ -64,8 +64,6 @@ A **data engineer** might add a Pipeline Status panel, while a **data steward** 
 ### Future Enhancements:
 Additional panels, such as **Data Quality Status** or **Knowledge Articles**, can be added to further personalize and enhance the user experience. By leveraging pluggable panels, the customizable landing page can be tailored to enrich each user's experience, making the platform more relevant and effective for different personas.
 
----
-
 ## Switching Between Personas
 
 Users can switch between different personas without logging out or reconfiguring the platform. Upon switching, the application’s landing page and configuration adjust automatically to reflect the new role.
@@ -84,8 +82,6 @@ Users can set a **default persona**, so the system displays the layout and setti
 - **Needs**: Access to recent data views, performance indicators, and analysis tools.
 - **Customized Landing Page**: Prioritizes recent data views and KPI dashboards, while removing unnecessary panels such as pipeline status.
 - **Persona-Specific Panels**: Data stewards might add panels related to KPIs or recently viewed data assets.
-
----
 
 ## Future Customizations:
 
