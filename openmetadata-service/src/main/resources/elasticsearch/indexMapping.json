@@ -158,7 +158,7 @@
     "indexMappingFile": "/elasticsearch/%s/classification_index_mapping.json",
     "alias": "classification",
     "parentAliases": ["all"],
-    "childAliases": []
+    "childAliases": ["tag"]
   },
   "user": {
     "indexName": "user_search_index",
