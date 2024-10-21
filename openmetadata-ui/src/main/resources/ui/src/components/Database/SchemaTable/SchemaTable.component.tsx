@@ -12,7 +12,7 @@
  */
 
 import { FilterOutlined } from '@ant-design/icons';
-import { Button, Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -29,13 +29,8 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -55,6 +50,7 @@ import {
   searchInColumns,
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
+import tableClassBase from '../../../utils/TableClassBase';
 import {
   getAllTags,
   searchTagInData,
@@ -76,7 +72,11 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
-import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
+import {
+  SchemaTableProps,
+  TableCellRendered,
+  UpdatedColumnFieldData,
+} from './SchemaTable.interface';
 
 const SchemaTable = ({
   searchText,
@@ -171,12 +171,7 @@ const SchemaTable = ({
     field,
     value,
     columns,
-  }: {
-    fqn: string;
-    field: keyof Column;
-    value?: string;
-    columns: Column[];
-  }) => {
+  }: UpdatedColumnFieldData) => {
     columns?.forEach((col) => {
       if (col.fullyQualifiedName === fqn) {
         set(col, field, value);
@@ -372,30 +367,18 @@ const SchemaTable = ({
                   {getEntityName(record)}
                 </Typography.Text>
               ) : null}
-              {(tablePermissions?.EditAll ||
-                tablePermissions?.EditDisplayName) &&
-                !isReadOnly && (
-                  <Tooltip
-                    placement="right"
-                    title={t('label.edit-entity', {
-                      entity: t('label.display-name'),
-                    })}>
-                    <Button
-                      className="cursor-pointer hover-cell-icon w-fit-content"
-                      data-testid="edit-displayName-button"
-                      style={{
-                        color: DE_ACTIVE_COLOR,
-                        padding: 0,
-                        border: 'none',
-                        background: 'transparent',
-                      }}
-                      onClick={() => handleEditDisplayNameClick(record)}>
-                      <IconEdit
-                        style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                      />
-                    </Button>
-                  </Tooltip>
-                )}
+
+              <div className="d-flex items-center gap-2">
+                {tableClassBase.getSchemaTableNameColumnActionButtons({
+                  record,
+                  tableColumns,
+                  isReadOnly,
+                  tablePermissions,
+                  onUpdate,
+                  updateColumnFields,
+                  handleEditDisplayNameClick,
+                })}
+              </div>
             </div>
           );
         },
