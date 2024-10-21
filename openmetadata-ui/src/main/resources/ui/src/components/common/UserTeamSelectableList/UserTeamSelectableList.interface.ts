@@ -26,6 +26,7 @@ export interface UserSelectDropdownProps {
   children?: ReactNode;
   popoverProps?: PopoverProps;
   multiple?: MultipleUserTeam;
+  selectBoth?: boolean;
   label?: string;
   previewSelected?: boolean;
   listHeight?: number;
