@@ -764,6 +764,7 @@
     "no-description": "بدون توضیح",
     "no-diff-available": "هیچ تفاوتی موجود نیست",
     "no-entity": "هیچ {{entity}}",
+    "no-entity-available": "No {{entity}} are available",
     "no-entity-selected": "هیچ {{entity}} انتخاب نشده",
     "no-matching-data-asset": "هیچ دارایی داده‌ی منطبق یافت نشد",
     "no-of-test": "تعداد تست",

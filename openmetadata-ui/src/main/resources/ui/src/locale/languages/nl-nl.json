@@ -764,6 +764,7 @@
     "no-description": "Geen beschrijving",
     "no-diff-available": "Geen verschil beschikbaar",
     "no-entity": "Geen {{entity}}",
+    "no-entity-available": "No {{entity}} are available",
     "no-entity-selected": "No {{entity}} Selected",
     "no-matching-data-asset": "Geen overeenkomende data-assets gevonden",
     "no-of-test": " Aantal tests",

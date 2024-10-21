@@ -764,6 +764,7 @@
     "no-description": "Keine Beschreibung",
     "no-diff-available": "Keine Unterschiede verfügbar",
     "no-entity": "Keine {{entity}}",
+    "no-entity-available": "No {{entity}} are available",
     "no-entity-selected": "No {{entity}} Selected",
     "no-matching-data-asset": "Keine passenden Datenanlagen gefunden",
     "no-of-test": " Nr. der Tests",
