@@ -13,7 +13,9 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
@@ -24,6 +26,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
@@ -60,6 +63,15 @@ public class TagRepository extends EntityRepository<Tag> {
     EntityReference classification =
         Entity.getEntityReference(entity.getClassification(), NON_DELETED);
     entity.setClassification(classification);
+  }
+
+  @Override
+  public void setInheritedFields(Tag tag, Fields fields) {
+    Classification parent =
+        Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "", ALL);
+    if (parent.getDisabled() != null && parent.getDisabled()) {
+      tag.setDisabled(true);
+    }
   }
 
   @Override
@@ -172,7 +184,7 @@ public class TagRepository extends EntityRepository<Tag> {
     public void entitySpecificUpdate() {
       recordChange(
           "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
-      recordChange("disabled,", original.getDisabled(), updated.getDisabled());
+      recordChange("disabled", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
       updateParent(original, updated);
     }
