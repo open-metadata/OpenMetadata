@@ -44,12 +44,12 @@ export const FIELDS: EntityFields[] = [
   },
   {
     id: 'Database',
-    name: 'database.displayName',
+    name: 'database.displayName.keyword',
     localSearch: false,
   },
   {
     id: 'Database Schema',
-    name: 'databaseSchema.displayName',
+    name: 'databaseSchema.displayName.keyword',
     localSearch: false,
   },
   {
