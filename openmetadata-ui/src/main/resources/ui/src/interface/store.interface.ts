@@ -55,6 +55,7 @@ export interface ApplicationStore
   searchCriteria: ExploreSearchIndex | '';
   theme: UIThemePreference['customTheme'];
   inlineAlertDetails?: InlineAlertProps;
+  applications: string[];
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
@@ -82,6 +83,7 @@ export interface ApplicationStore
   removeRefreshToken: () => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
   trySilentSignIn: (forceLogout?: boolean) => void;
+  setApplicationsName: (applications: string[]) => void;
 }
 
 export interface DomainStore {
