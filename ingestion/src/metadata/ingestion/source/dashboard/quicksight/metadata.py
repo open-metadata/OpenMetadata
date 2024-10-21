@@ -11,10 +11,11 @@
 """QuickSight source module"""
 
 import traceback
+import sqlparse
 from typing import Iterable, List, Optional
 
 from pydantic import ValidationError
-
+from sqlparse.tokens import Keyword
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -44,6 +45,7 @@ from metadata.ingestion.source.dashboard.quicksight.models import (
     DashboardDetail,
     DashboardResp,
     DataSourceResp,
+    DataSourceRespQuery,
     DescribeDataSourceResponse,
 )
 from metadata.utils import fqn
@@ -169,6 +171,26 @@ class QuicksightSource(DashboardServiceSource):
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
 
+    def _parse_sql_query(self, sql_query: str) -> Optional[tuple]:
+        try:
+            parsed = sqlparse.parse(sql_query)[0]
+            tokens = parsed.tokens
+
+            from_read=False
+            for token in tokens:
+                if token.ttype is Keyword and token.value.upper() == 'FROM':
+                    from_read = True
+                    continue
+                if from_read and isinstance(token, sqlparse.sql.Identifier):
+                    # jump to identifier only after from clause
+                    identifier = token.get_real_name()
+                    table_name = token.get_name()
+                    schema_name = token.get_parent_name()
+                    return table_name, schema_name
+        except Exception as err:
+            logger.info(f"Error to parse query:{sql_query}")
+            return None
+
     def yield_dashboard_chart(
         self, dashboard_details: DashboardDetail
     ) -> Iterable[Either[CreateChartRequest]]:
@@ -239,13 +261,18 @@ class QuicksightSource(DashboardServiceSource):
                     or []
                 ):
                     try:
-                        if not data_source.get("RelationalTable"):
+                        if data_source.get("RelationalTable"):
+                            data_source_resp = DataSourceResp(
+                                **data_source["RelationalTable"]
+                            )
+                        elif data_source.get("CustomSql"):
+                            data_source_resp = DataSourceRespQuery(
+                                **data_source["CustomSql"]
+                            )
+                        else:
                             raise KeyError(
                                 f"We currently don't support lineage to {list(data_source.keys())}"
                             )
-                        data_source_resp = DataSourceResp(
-                            **data_source["RelationalTable"]
-                        )
                     except (KeyError, ValidationError) as err:
                         data_source_resp = None
                         yield Either(
@@ -259,8 +286,12 @@ class QuicksightSource(DashboardServiceSource):
                             )
                         )
                     if data_source_resp:
-                        schema_name = data_source_resp.schema_name
-                        table_name = data_source_resp.table_name
+                        if isinstance(data_source_resp, DataSourceResp):
+                            schema_name = data_source_resp.schema_name
+                            table_name = data_source_resp.table_name
+                        else:
+                            query = data_source_resp.query
+                            table_name, schema_name = self._parse_sql_query(query)
 
                         list_data_source_func = lambda kwargs: self.client.list_data_sources(  # pylint: disable=unnecessary-lambda-assignment
                             **kwargs
