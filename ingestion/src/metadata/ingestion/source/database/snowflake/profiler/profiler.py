@@ -19,7 +19,6 @@ from metadata.ingestion.source.database.snowflake.profiler.system import (
 from metadata.profiler.interface.sqlalchemy.snowflake.profiler_interface import (
     SnowflakeProfilerInterface,
 )
-from metadata.utils.logger import profiler_interface_registry_logger
 
 
 class SnowflakeProfiler(SnowflakeProfilerInterface):

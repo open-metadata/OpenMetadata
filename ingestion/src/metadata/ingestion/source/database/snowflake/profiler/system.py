@@ -288,13 +288,33 @@ class SnowflakeSystemMetricsSource(
                 self.get_queries_by_operation(
                     table,
                     [
-                        DatabaseDMLOperations.INSERT.value,
-                        DatabaseDMLOperations.MERGE.value,
+                        DatabaseDMLOperations.INSERT,
+                        DatabaseDMLOperations.MERGE,
                     ],
                 )
             ),
             "rows_inserted",
             DmlOperationType.INSERT,
+        )
+
+    def get_updates(
+        self, database: str, schema: str, table: str
+    ) -> List[SystemProfile]:
+        return self.get_system_profile(
+            database,
+            schema,
+            table,
+            list(
+                self.get_queries_by_operation(
+                    table,
+                    [
+                        DatabaseDMLOperations.UPDATE,
+                        DatabaseDMLOperations.MERGE,
+                    ],
+                )
+            ),
+            "rows_updated",
+            DmlOperationType.UPDATE,
         )
 
     def get_deletes(
@@ -308,7 +328,7 @@ class SnowflakeSystemMetricsSource(
                 self.get_queries_by_operation(
                     table,
                     [
-                        DatabaseDMLOperations.DELETE.value,
+                        DatabaseDMLOperations.DELETE,
                     ],
                 )
             ),
@@ -344,29 +364,12 @@ class SnowflakeSystemMetricsSource(
             ]
         )
 
-    def get_updates(
-        self, database: str, schema: str, table: str
-    ) -> List[SystemProfile]:
-        return self.get_system_profile(
-            database,
-            schema,
-            table,
-            list(
-                self.get_queries_by_operation(
-                    table,
-                    [
-                        DatabaseDMLOperations.UPDATE.value,
-                        DatabaseDMLOperations.MERGE.value,
-                    ],
-                )
-            ),
-            "rows_updated",
-            DmlOperationType.UPDATE,
-        )
-
-    def get_queries_by_operation(self, table: str, operations: List[str]):
+    def get_queries_by_operation(
+        self, table: str, operations: List[DatabaseDMLOperations]
+    ):
+        ops = [op.value for op in operations]
         yield from (
-            query for query in self.get_queries(table) if query.query_type in operations
+            query for query in self.get_queries(table) if query.query_type in ops
         )
 
     def get_queries(self, table: str) -> List[SnowflakeQueryResult]:
