@@ -16,13 +16,13 @@ import sys
 import traceback
 from multiprocessing import Process
 from typing import Optional
-from packaging import version
 
 from airflow import settings
 from airflow.models import DagBag
 from airflow.version import version as airflow_version
 from flask import request
 from openmetadata_managed_apis.utils.logger import api_logger
+from packaging import version
 
 logger = api_logger()
 
