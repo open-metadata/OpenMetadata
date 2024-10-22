@@ -286,3 +286,7 @@ class SideEffectsLoader(metaclass=Singleton):
 
 def import_side_effects(*modules):
     SideEffectsLoader().import_side_effects(*modules)
+
+
+def get_class_path(module):
+    return module.__module__ + "." + module.__name__

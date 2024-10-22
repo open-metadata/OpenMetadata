@@ -9,7 +9,7 @@ from pydantic import model_validator
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.models.custom_pydantic import BaseModel
-from metadata.utils.importer import get_module_dir, import_from_module
+from metadata.utils.importer import get_class_path, get_module_dir, import_from_module
 
 
 class BaseSpec(BaseModel):
@@ -34,7 +34,7 @@ class BaseSpec(BaseModel):
     4. We can hot-swap the class implementation without changing the manifest (example: for testing).
     """
 
-    profiler_class: Optional[str]
+    profiler_class: Optional[str] = None
     metadata_source_class: str
 
     @model_validator(mode="before")
@@ -72,10 +72,6 @@ class BaseSpec(BaseModel):
                 )
             )
         )
-
-
-def get_class_path(module):
-    return module.__module__ + "." + module.__name__
 
 
 def import_source_class(
