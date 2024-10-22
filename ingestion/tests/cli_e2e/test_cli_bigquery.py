@@ -12,10 +12,8 @@
 """
 Test Bigquery connector with CLI
 """
-from datetime import datetime
 from typing import List
 
-from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.generated.schema.type.basic import Timestamp
 
@@ -38,8 +36,8 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     insert_data_queries: List[str] = [
-        "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES (1,'XBOX');",
-        "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES (2,'PS');",
+        "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES (1,'XBOX'), (2,'PS');",
+        "UPDATE `open-metadata-beta.exclude_me`.orders SET order_name = 'NINTENDO' WHERE id = 2",
     ]
 
     drop_table_query: str = """
@@ -132,32 +130,21 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             """,
         ]
 
-    def system_profile_assertions(self):
-        cases = [
+    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+        return [
             (
-                "e2e_redshift.e2e_cli_tests.dbt_jaffle.persons",
+                "local_bigquery.open-metadata-beta.exclude_me.orders",
                 [
                     SystemProfile(
                         timestamp=Timestamp(root=0),
+                        operation=DmlOperationType.UPDATE,
+                        rowsAffected=1,
+                    ),
+                    SystemProfile(
+                        timestamp=Timestamp(root=0),
                         operation=DmlOperationType.INSERT,
-                        rowsAffected=6,
-                    )
+                        rowsAffected=2,
+                    ),
                 ],
             )
         ]
-        for table_fqn, expected_profile in cases:
-            actual_profiles = self.openmetadata.get_profile_data(
-                table_fqn,
-                start_ts=int((datetime.now().timestamp() - 600) * 1000),
-                end_ts=int(datetime.now().timestamp() * 1000),
-                profile_type=SystemProfile,
-            ).entities
-            actual_profiles = sorted(actual_profiles, key=lambda x: x.timestamp.root)
-            actual_profiles = actual_profiles[-len(expected_profile) :]
-            actual_profiles = [
-                p.copy(update={"timestamp": Timestamp(root=0)}) for p in actual_profiles
-            ]
-            try:
-                assert_equal_pydantic_objects(expected_profile, actual_profiles)
-            except AssertionError as e:
-                raise AssertionError(f"Table: {table_fqn}") from e

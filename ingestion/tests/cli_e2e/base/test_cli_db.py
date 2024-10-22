@@ -13,7 +13,8 @@
 Test database connectors with CLI
 """
 from abc import abstractmethod
-from typing import List, Optional
+from datetime import datetime
+from typing import List, Optional, Tuple
 from unittest import TestCase
 
 import pytest
@@ -21,7 +22,7 @@ from pydantic import TypeAdapter
 
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import SystemProfile, Table
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase as OMTestCase
 from metadata.ingestion.api.status import Status
@@ -419,4 +420,32 @@ class CliDBBase(TestCase):
             pass
 
         def system_profile_assertions(self):
-            pass
+            cases = self.get_system_profile_cases()
+            if not cases:
+                return
+            for table_fqn, expected_profile in cases:
+                actual_profiles = self.openmetadata.get_profile_data(
+                    table_fqn,
+                    start_ts=int((datetime.now().timestamp() - 600) * 1000),
+                    end_ts=int(datetime.now().timestamp() * 1000),
+                    profile_type=SystemProfile,
+                ).entities
+                actual_profiles = sorted(
+                    actual_profiles, key=lambda x: x.timestamp.root
+                )
+                actual_profiles = actual_profiles[-len(expected_profile) :]
+                assert len(expected_profile) == len(actual_profiles)
+                for expected, actual in zip(expected_profile, actual_profiles):
+                    try:
+                        assert_equal_pydantic_objects(
+                            expected.model_copy(update={"timestamp": actual.timestamp}),
+                            actual,
+                        )
+                    except AssertionError as e:
+                        raise AssertionError(
+                            f"System metrics profile did not return exepcted results for table: {table_fqn}"
+                        ) from e
+
+        def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+            """Return a list of tuples with the table fqn and the expected system profile"""
+            return []

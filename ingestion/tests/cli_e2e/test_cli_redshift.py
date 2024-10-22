@@ -12,10 +12,8 @@
 """
 Redshift E2E tests
 """
-from datetime import datetime
-from typing import List
+from typing import List, Tuple
 
-from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.status import Status
@@ -236,8 +234,8 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             """,
         ]
 
-    def system_profile_assertions(self):
-        cases = [
+    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+        return [
             (
                 "e2e_redshift.e2e_cli_tests.dbt_jaffle.persons",
                 [
@@ -249,19 +247,3 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 ],
             )
         ]
-        for table_fqn, expected_profile in cases:
-            actual_profiles = self.openmetadata.get_profile_data(
-                table_fqn,
-                start_ts=int((datetime.now().timestamp() - 600) * 1000),
-                end_ts=int(datetime.now().timestamp() * 1000),
-                profile_type=SystemProfile,
-            ).entities
-            actual_profiles = sorted(actual_profiles, key=lambda x: x.timestamp.root)
-            actual_profiles = actual_profiles[-len(expected_profile) :]
-            actual_profiles = [
-                p.copy(update={"timestamp": Timestamp(root=0)}) for p in actual_profiles
-            ]
-            try:
-                assert_equal_pydantic_objects(expected_profile, actual_profiles)
-            except AssertionError as e:
-                raise AssertionError(f"Table: {table_fqn}") from e
