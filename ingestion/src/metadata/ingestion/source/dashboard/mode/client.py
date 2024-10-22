@@ -188,19 +188,18 @@ class ModeApiClient:
 
         return None
 
-    def test_mode_connection(self, workspace_name: str) -> bool:
-        """Method to test Mode API connection
+    def get_workspace(self, workspace_name: str) -> Optional[dict]:
+        """Method to get info about a workspace
         Args:
             workspace_name:
         Returns:
-            bool
+            dict
         """
         try:
             response = self.client.get(f"/{workspace_name}")
-            if response:
-                return True
+            return response.json()
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error testing workspace connection: {exc}")
 
-        return False
+        return None
