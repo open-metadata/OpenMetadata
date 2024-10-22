@@ -23,11 +23,9 @@ from metadata.data_quality.validations.base_test_handler import BaseTestValidato
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Stage
-from metadata.profiler.metrics.system.system import EmptySystemMetricsSource
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.client_version import get_client_version
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
@@ -288,18 +286,3 @@ class SideEffectsLoader(metaclass=Singleton):
 
 def import_side_effects(*modules):
     SideEffectsLoader().import_side_effects(*modules)
-
-
-def import_system_metrics_computer(db_service: DatabaseService):
-    """
-    Import the system metrics profile class
-    """
-    try:
-        return import_from_module(
-            "metadata.ingestion.source.database.{}.profiler.system.SystemMetricsComputer".format(  # pylint: disable=consider-using-f-string
-                db_service.type
-            )
-        )
-    except DynamicImportException as err:
-        logger.debug("Could not import system metrics computer: %s", err)
-        return EmptySystemMetricsSource
