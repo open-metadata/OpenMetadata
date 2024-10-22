@@ -46,10 +46,36 @@ const ENTITY_ICONS: Record<string, SvgComponent> = {
 export const getCustomizePageOptions = (): SettingMenuItem[] => {
   const list = map(PageType);
 
-  return list.map((item) => ({
-    key: item,
-    label: capitalize(item),
-    description: item,
-    icon: ENTITY_ICONS[camelCase(item)],
-  }));
+  return [
+    {
+      key: 'navigation',
+      label: 'Navigation',
+      description: 'Navigation',
+      icon: ENTITY_ICONS[camelCase('Navigation')],
+    },
+    {
+      key: 'govern',
+      label: 'Govern',
+      description: 'Govern',
+      icon: ENTITY_ICONS[camelCase('Govern')],
+      items: list.map((item) => ({
+        key: item,
+        label: capitalize(item),
+        description: item,
+        icon: ENTITY_ICONS[camelCase(item)],
+      })),
+    },
+    {
+      key: 'data-assets',
+      label: 'Data assets',
+      description: 'Data assets',
+      icon: ENTITY_ICONS[camelCase('Data assets')],
+      items: list.map((item) => ({
+        key: item,
+        label: capitalize(item),
+        description: item,
+        icon: ENTITY_ICONS[camelCase(item)],
+      })),
+    },
+  ];
 };

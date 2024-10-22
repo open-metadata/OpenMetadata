@@ -12,14 +12,12 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { Glossary } from '../../../generated/entity/data/glossary';
 import {
-  mockedGlossaryTerms,
   MOCK_GLOSSARY,
+  mockedGlossaryTerms,
 } from '../../../mocks/Glossary.mock';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import GlossaryHeader from './GlossaryHeader.component';
 
@@ -175,9 +173,6 @@ describe('GlossaryHeader component', () => {
   it('should render name of Glossary', () => {
     render(
       <GlossaryHeader
-        isGlossary
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
@@ -191,9 +186,6 @@ describe('GlossaryHeader component', () => {
   it('should render import and export dropdown menu items only for glossary', async () => {
     render(
       <GlossaryHeader
-        isGlossary
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
@@ -219,9 +211,6 @@ describe('GlossaryHeader component', () => {
     glossaryTermPermission.EditAll = false;
     render(
       <GlossaryHeader
-        isGlossary
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
@@ -235,9 +224,6 @@ describe('GlossaryHeader component', () => {
   it('should render changeParentHierarchy and style dropdown menu items only for glossaryTerm', async () => {
     render(
       <GlossaryHeader
-        isGlossary={false}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
@@ -259,9 +245,6 @@ describe('GlossaryHeader component', () => {
   it('should not render ChangeParentHierarchy component when it is close', () => {
     render(
       <GlossaryHeader
-        isGlossary={false}
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
@@ -277,9 +260,6 @@ describe('GlossaryHeader component', () => {
   it('should render ChangeParentHierarchy component after clicking dropdown menu item', async () => {
     render(
       <GlossaryHeader
-        isGlossary={false}
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
@@ -307,9 +287,6 @@ describe('GlossaryHeader component', () => {
   it('should not render ChangeParentHierarchy component after onCancel call', async () => {
     render(
       <GlossaryHeader
-        isGlossary={false}
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
@@ -341,9 +318,6 @@ describe('GlossaryHeader component', () => {
   it('should call onSubmit of ChangeParentHierarchy Component along with the patch API', async () => {
     render(
       <GlossaryHeader
-        isGlossary={false}
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}

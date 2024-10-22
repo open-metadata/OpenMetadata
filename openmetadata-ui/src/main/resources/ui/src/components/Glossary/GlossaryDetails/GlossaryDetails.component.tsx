@@ -107,31 +107,31 @@ const GlossaryDetails = ({
     [glossary, isVersionView]
   );
 
-  const name = useMemo(
-    () =>
-      isVersionView
-        ? getEntityVersionByField(
-            glossary.changeDescription as ChangeDescription,
-            EntityField.NAME,
-            glossary.name
-          )
-        : glossary.name,
+  //   const name = useMemo(
+  //     () =>
+  //       isVersionView
+  //         ? getEntityVersionByField(
+  //             glossary.changeDescription as ChangeDescription,
+  //             EntityField.NAME,
+  //             glossary.name
+  //           )
+  //         : glossary.name,
 
-    [glossary, isVersionView]
-  );
+  //     [glossary, isVersionView]
+  //   );
 
-  const displayName = useMemo(
-    () =>
-      isVersionView
-        ? getEntityVersionByField(
-            glossary.changeDescription as ChangeDescription,
-            EntityField.DISPLAYNAME,
-            glossary.displayName
-          )
-        : glossary.displayName,
+  //   const displayName = useMemo(
+  //     () =>
+  //       isVersionView
+  //         ? getEntityVersionByField(
+  //             glossary.changeDescription as ChangeDescription,
+  //             EntityField.DISPLAYNAME,
+  //             glossary.displayName
+  //           )
+  //         : glossary.displayName,
 
-    [glossary, isVersionView]
-  );
+  //     [glossary, isVersionView]
+  //   );
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -277,10 +277,7 @@ const GlossaryDetails = ({
         })}
         span={24}>
         <GlossaryHeader
-          isGlossary
           isVersionView={isVersionView}
-          permissions={permissions}
-          selectedData={{ ...glossary, displayName, name }}
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}

@@ -156,6 +156,7 @@ export enum TabSpecificField {
   CUSTOM_PROPERTIES = 'customProperties',
   LOCATION = 'location',
   RELATED_METRICS = 'relatedMetrics',
+  UI_CUSTOMIZATION = 'uiCustomization',
 }
 
 export enum FqnPart {

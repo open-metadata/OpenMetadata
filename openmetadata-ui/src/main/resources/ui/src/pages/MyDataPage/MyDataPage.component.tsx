@@ -214,6 +214,7 @@ const MyDataPage = () => {
             <ReactGridLayout
               className="bg-white"
               cols={4}
+              compactType="vertical"
               isDraggable={false}
               isResizable={false}
               margin={[

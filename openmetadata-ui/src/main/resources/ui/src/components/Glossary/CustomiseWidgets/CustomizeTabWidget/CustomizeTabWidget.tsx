@@ -10,29 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, DragOutlined } from '@ant-design/icons';
-import { Card, Space, Tabs, TabsProps } from 'antd';
+import { Input, Modal, TabsProps } from 'antd';
+import { isNil, toString } from 'lodash';
 import React, { useRef, useState } from 'react';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { DraggableTabs } from '../../../common/DraggableTabs/DraggableTabs';
 
-interface Props extends WidgetCommonProps {
+export interface CustomizeTabWidgetProps extends WidgetCommonProps {
   tabs: NonNullable<TabsProps['items']>;
 }
 
 type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 
-export const CustomizeTabWidget = (props: Props) => {
+export const CustomizeTabWidget = (props: CustomizeTabWidgetProps) => {
   const [activeKey, setActiveKey] = useState(props.tabs[0].key);
   const [items, setItems] = useState(props.tabs);
   const newTabIndex = useRef(0);
+  const [editableItem, setEditableItem] = useState<typeof items[number] | null>(
+    null
+  );
 
   const onChange = (newActiveKey: string) => {
     setActiveKey(newActiveKey);
-  };
-  const handleRemoveClick = () => {
-    if (props.handleRemoveWidget) {
-      props.handleRemoveWidget(props.widgetKey);
-    }
   };
 
   const add = () => {
@@ -78,35 +77,46 @@ export const CustomizeTabWidget = (props: Props) => {
     }
   };
 
+  const handleTabClick = (key: string) => {
+    setEditableItem(items.find((item) => item.key === key) || null);
+  };
+
+  const handleRenameSave = () => {
+    if (editableItem) {
+      const newItems = items.map((item) =>
+        item.key === editableItem.key ? editableItem : item
+      );
+      setItems(newItems);
+      setEditableItem(null);
+    }
+  };
+
+  const handleChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
+    editableItem &&
+      setEditableItem({
+        ...editableItem,
+        label: event.target.value ?? '',
+      });
+  };
+
   return (
-    <Card
-      bodyStyle={{ height: '100%' }}
-      className="h-full"
-      title={
-        <div className="d-flex justify-between align-center">
-          <span>{props.widgetKey}</span>
-          {props.isEditView && (
-            <Space size={8}>
-              <DragOutlined
-                className="drag-widget-icon cursor-pointer"
-                data-testid="drag-widget-button"
-                size={14}
-              />
-              <CloseOutlined
-                data-testid="remove-widget-button"
-                size={14}
-                onClick={handleRemoveClick}
-              />
-            </Space>
-          )}
-        </div>
-      }>
-      <Tabs
+    <div className="bg-white">
+      <DraggableTabs
         activeKey={activeKey}
         items={items}
+        type="editable-card"
         onChange={onChange}
         onEdit={onEdit}
+        onTabClick={handleTabClick}
       />
-    </Card>
+      <Modal
+        maskClosable
+        open={!isNil(editableItem)}
+        title="Rename tab"
+        onCancel={() => setEditableItem(null)}
+        onOk={handleRenameSave}>
+        <Input value={toString(editableItem?.label)} onChange={handleChange} />
+      </Modal>
+    </div>
   );
 };

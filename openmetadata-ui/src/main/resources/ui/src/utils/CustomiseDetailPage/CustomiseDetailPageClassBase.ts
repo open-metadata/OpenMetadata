@@ -12,7 +12,7 @@
  */
 
 import { FC } from 'react';
-import { GlossaryTermHeaderWidget } from '../../components/Glossary/CustomiseWidgets/GlossaryTermHeaderWidget/GlossaryTermHeaderWidget';
+import { GenericWidget } from '../../components/Glossary/CustomiseWidgets/SynonymsWidget/GenericWidget';
 import { DetailPageWidgetKeys } from '../../enums/CustomiseDetailPage.enum';
 import {
   WidgetCommonProps,
@@ -147,12 +147,8 @@ class CustomizeDetailPageClassBase {
     }
   >
    */
-  public getWidgetsFromKey(widgetKey: string): FC<WidgetCommonProps> {
-    if (widgetKey.startsWith(DetailPageWidgetKeys.HEADER)) {
-      return GlossaryTermHeaderWidget;
-    }
-
-    return (() => null) as React.FC;
+  public getWidgetsFromKey(_widgetKey: string): FC<WidgetCommonProps> {
+    return GenericWidget;
   }
 
   public getWidgetHeight(widgetName: string) {

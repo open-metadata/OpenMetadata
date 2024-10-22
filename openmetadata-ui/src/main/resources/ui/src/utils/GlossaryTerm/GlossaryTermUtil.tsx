@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TabsProps } from 'antd';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import EmptyWidgetPlaceholder from '../../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../../enums/common.enum';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import customizeDetailPageClassBase from '../CustomiseDetailPage/CustomiseDetailPageClassBase';
+import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
 
 export const getWidgetFromKey = ({
   widgetConfig,
@@ -53,7 +54,45 @@ export const getWidgetFromKey = ({
     );
   }
 
-  const Widget = customizeDetailPageClassBase.getWidgetsFromKey(widgetConfig.i);
+  const tabs: TabsProps['items'] = [
+    {
+      key: 'overview',
+      label: 'Overview',
+      closable: false,
+    },
+    {
+      key: 'terms',
+      label: 'Glossary Terms',
+      disabled: true,
+      closable: false,
+    },
+    {
+      key: 'assets',
+      label: 'Assets',
+      disabled: true,
+      closable: false,
+    },
+    {
+      key: 'feeds-tasks',
+      label: 'Feeds & Tasks',
+      disabled: true,
+      closable: false,
+    },
+    {
+      key: 'custom-property',
+      label: 'Custom Property',
+      disabled: true,
+      closable: false,
+    },
+  ];
+
+  const widgetKey = customizeGlossaryTermPageClassBase.getKeyFromWidgetName(
+    widgetConfig.i
+  );
+
+  const Widget = customizeGlossaryTermPageClassBase.getWidgetsFromKey<
+    typeof widgetKey
+  >(widgetConfig.i);
 
   return (
     <Widget
@@ -61,6 +100,7 @@ export const getWidgetFromKey = ({
       isEditView={isEditView}
       selectedGridSize={widgetConfig.w}
       widgetKey={widgetConfig.i}
+      {...{ tabs: tabs }}
     />
   );
 };

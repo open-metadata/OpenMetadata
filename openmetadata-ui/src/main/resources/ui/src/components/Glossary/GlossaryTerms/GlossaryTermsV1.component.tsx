@@ -24,7 +24,6 @@ import React, {
 import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
@@ -32,13 +31,11 @@ import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
-import { ChangeDescription } from '../../../generated/entity/type';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import {
@@ -311,41 +308,38 @@ const GlossaryTermsV1 = ({
     getEntityFeedCount();
   }, [glossaryFqn]);
 
-  const name = useMemo(
-    () =>
-      isVersionView
-        ? getEntityVersionByField(
-            glossaryTerm.changeDescription as ChangeDescription,
-            EntityField.NAME,
-            glossaryTerm.name
-          )
-        : glossaryTerm.name,
+  //   const name = useMemo(
+  //     () =>
+  //       isVersionView
+  //         ? getEntityVersionByField(
+  //             glossaryTerm.changeDescription as ChangeDescription,
+  //             EntityField.NAME,
+  //             glossaryTerm.name
+  //           )
+  //         : glossaryTerm.name,
 
-    [glossaryTerm, isVersionView]
-  );
+  //     [glossaryTerm, isVersionView]
+  //   );
 
-  const displayName = useMemo(
-    () =>
-      isVersionView
-        ? getEntityVersionByField(
-            glossaryTerm.changeDescription as ChangeDescription,
-            EntityField.DISPLAYNAME,
-            glossaryTerm.displayName
-          )
-        : glossaryTerm.displayName,
+  //   const displayName = useMemo(
+  //     () =>
+  //       isVersionView
+  //         ? getEntityVersionByField(
+  //             glossaryTerm.changeDescription as ChangeDescription,
+  //             EntityField.DISPLAYNAME,
+  //             glossaryTerm.displayName
+  //           )
+  //         : glossaryTerm.displayName,
 
-    [glossaryTerm, isVersionView]
-  );
+  //     [glossaryTerm, isVersionView]
+  //   );
 
   return (
     <>
       <Row data-testid="glossary-term" gutter={[0, 8]}>
         <Col className="p-x-md" span={24}>
           <GlossaryHeader
-            isGlossary={false}
             isVersionView={isVersionView}
-            permissions={permissions}
-            selectedData={{ ...glossaryTerm, displayName, name }}
             updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModalVisible(true)}

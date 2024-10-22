@@ -43,6 +43,7 @@ import { Transi18next } from '../../utils/CommonUtils';
 import { getDefaultLayout } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
 
 export const CustomizablePage = () => {
   const { pageFqn } = useParams<{ pageFqn: PageType }>();
@@ -191,6 +192,9 @@ export const CustomizablePage = () => {
   }
 
   switch (pageFqn) {
+    case 'navigation':
+      return <SettingsNavigationPage />;
+
     case PageType.LandingPage:
       return (
         <CustomizeMyData
