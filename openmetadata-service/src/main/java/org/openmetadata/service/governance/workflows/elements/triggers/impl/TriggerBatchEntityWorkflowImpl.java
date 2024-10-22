@@ -35,21 +35,17 @@ public class TriggerBatchEntityWorkflowImpl implements JavaDelegate {
 
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
 
-    try {
-      triggerBatchEntityWorkflow(
-          workflowHandler, entityType, searchFilter, workflowName, batchSize);
-    } catch (SearchIndexException e) {
-      throw new RuntimeException(e);
-    }
+    triggerBatchEntityWorkflow(
+          workflowHandler, execution.getProcessInstanceBusinessKey(), entityType, searchFilter, workflowName, batchSize);
   }
 
   private void triggerBatchEntityWorkflow(
-      WorkflowHandler workflowHandler,
+          WorkflowHandler workflowHandler,
       String entityType,
+      String businessKey,
       String searchFilter,
       String workflowName,
-      int batchSize)
-      throws SearchIndexException {
+      int batchSize) {
     SearchRepository searchRepository = Entity.getSearchRepository();
     SearchSortFilter searchSortFilter =
         new SearchSortFilter("fullyQualifiedName", null, null, null);
@@ -69,6 +65,7 @@ public class TriggerBatchEntityWorkflowImpl implements JavaDelegate {
             results.stream().map(result -> (String) result.get("fullyQualifiedName")).toList(),
             entityType,
             workflowName,
+                businessKey,
             workflowHandler);
 
         if (Optional.ofNullable(searchAfter).isEmpty()) {
@@ -85,6 +82,7 @@ public class TriggerBatchEntityWorkflowImpl implements JavaDelegate {
       List<String> entityFQNs,
       String entityType,
       String workflowName,
+      String businessKey,
       WorkflowHandler workflowHandler) {
     List<String> runningProcessInstanceIds = new ArrayList<>();
 
@@ -94,9 +92,10 @@ public class TriggerBatchEntityWorkflowImpl implements JavaDelegate {
       Map<String, Object> variables = new HashMap<>();
       variables.put("relatedEntity", entityLink.getLinkString());
 
-      runningProcessInstanceIds.add(workflowHandler.triggerByKey(workflowName, variables).getId());
+      runningProcessInstanceIds.add(workflowHandler.triggerByKey(workflowName, businessKey, variables).getId());
     }
 
+    // TODO: Improve Waiting
     while (!runningProcessInstanceIds.isEmpty()) {
       runningProcessInstanceIds =
           getRunningProcessInstances(runningProcessInstanceIds, workflowHandler);

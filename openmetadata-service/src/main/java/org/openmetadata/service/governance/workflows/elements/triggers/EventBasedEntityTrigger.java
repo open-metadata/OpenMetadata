@@ -9,6 +9,9 @@ import lombok.Getter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.FieldExtension;
+import org.flowable.bpmn.model.IntermediateCatchEvent;
+import org.flowable.bpmn.model.Message;
+import org.flowable.bpmn.model.MessageEventDefinition;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
@@ -38,11 +41,13 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     Process process = new Process();
     process.setId(triggerWorkflowId);
     process.setName(triggerWorkflowId);
+    attachWorkflowInstanceListeners(process);
 
     setStartEvents(triggerWorkflowId, triggerDefinition);
 
     ServiceTask triggerWorkflow =
         getWorkflowTriggerTask(triggerWorkflowId, mainWorkflowName, triggerDefinition);
+    triggerWorkflow.setAsynchronous(true);
     process.addFlowElement(triggerWorkflow);
 
     EndEvent endEvent =

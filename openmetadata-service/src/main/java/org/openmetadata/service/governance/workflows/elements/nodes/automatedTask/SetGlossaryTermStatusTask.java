@@ -44,7 +44,7 @@ public class SetGlossaryTermStatusTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setGlossaryTermStatus.getId()));
     subProcess.addFlowElement(new SequenceFlow(setGlossaryTermStatus.getId(), endEvent.getId()));
 
-//    attachDefaultListeners(subProcess);
+    attachWorkflowInstanceStageListeners(subProcess);
 
     this.subProcess = subProcess;
   }

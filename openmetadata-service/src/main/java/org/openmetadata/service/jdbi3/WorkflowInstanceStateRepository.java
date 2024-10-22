@@ -48,6 +48,7 @@ public class WorkflowInstanceStateRepository
 
   public UUID addNewStageToInstance(
       String workflowInstanceStage,
+      UUID workflowInstanceExecutionId,
       UUID workflowInstanceId,
       String workflowDefinitionName,
       Long startedAt) {
@@ -60,6 +61,7 @@ public class WorkflowInstanceStateRepository
         createNewRecord(
             new WorkflowInstanceState()
                 .withStage(stage)
+                    .withWorkflowInstanceExecutionId(workflowInstanceExecutionId)
                 .withWorkflowInstanceId(workflowInstanceId)
                 .withTimestamp(System.currentTimeMillis())
                 .withWorkflowDefinitionId(workflowDefinitionId),

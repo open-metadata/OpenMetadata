@@ -13,6 +13,7 @@ public class TriggerWorkflow {
 
   public TriggerWorkflow(WorkflowDefinition workflowDefinition) {
     BpmnModel model = new BpmnModel();
+    model.setTargetNamespace("");
     TriggerInterface trigger = TriggerFactory.createTrigger(workflowDefinition);
     trigger.addToWorkflow(model);
 

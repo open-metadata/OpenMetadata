@@ -43,7 +43,7 @@ public class CheckEntityAttributesTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), checkEntityAttributes.getId()));
     subProcess.addFlowElement(new SequenceFlow(checkEntityAttributes.getId(), endEvent.getId()));
 
-//    attachDefaultListeners(subProcess);
+    attachWorkflowInstanceStageListeners(subProcess);
 
     this.subProcess = subProcess;
   }

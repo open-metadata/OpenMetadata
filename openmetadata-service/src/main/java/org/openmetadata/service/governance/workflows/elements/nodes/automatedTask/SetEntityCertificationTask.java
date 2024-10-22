@@ -45,7 +45,7 @@ public class SetEntityCertificationTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setEntityCertification.getId()));
     subProcess.addFlowElement(new SequenceFlow(setEntityCertification.getId(), endEvent.getId()));
 
-//    attachDefaultListeners(subProcess);
+    attachWorkflowInstanceStageListeners(subProcess);
 
     this.subProcess = subProcess;
   }

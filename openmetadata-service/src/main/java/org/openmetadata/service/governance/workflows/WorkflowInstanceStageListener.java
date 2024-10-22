@@ -11,7 +11,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 
 @Slf4j
-public class WorkflowInstanceStageUpdaterListener implements JavaDelegate {
+public class WorkflowInstanceStageListener implements JavaDelegate {
   @Override
   public void execute(DelegateExecution execution) {
     WorkflowInstanceStateRepository workflowInstanceStateRepository =
@@ -34,11 +34,12 @@ public class WorkflowInstanceStageUpdaterListener implements JavaDelegate {
     String workflowDefinitionName =
         getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
+    UUID workflowInstanceExecutionId = (UUID) execution.getVariable("workflowInstanceExecutionId");
     String stage =
         Optional.ofNullable(execution.getCurrentActivityId()).orElse(workflowDefinitionName);
     UUID workflowInstanceStateId =
         workflowInstanceStateRepository.addNewStageToInstance(
-            stage, workflowInstanceId, workflowDefinitionName, System.currentTimeMillis());
+            stage, workflowInstanceExecutionId, workflowInstanceId, workflowDefinitionName, System.currentTimeMillis());
     execution.setVariable("stageInstanceStateId", workflowInstanceStateId);
   }
 

@@ -115,6 +115,10 @@ public class WorkflowHandler {
     return runtimeService.startProcessInstanceByKey(processDefinitionKey, variables);
   }
 
+  public ProcessInstance triggerByKey(String processDefinitionKey, String businessKey, Map<String, Object> variables) {
+    return  runtimeService.startProcessInstanceByKey(processDefinitionKey, businessKey, variables);
+  }
+
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
     runtimeService.signalEventReceived(signal, variables);
   }
@@ -201,5 +205,13 @@ public class WorkflowHandler {
     }
 
     return hasFinished;
+  }
+
+  public void confirmMainWorkflowHasFinished(String triggerWorkflowExecutionId) {
+    runtimeService.messageEventReceived("mainWorkflowHasFinished", triggerWorkflowExecutionId);
+  }
+
+  public void confirmAllMainWorkflowHaveFinished(String triggerWorkflowExecutionId) {
+    runtimeService.messageEventReceived("allMainWorkflowsHaveFinished", triggerWorkflowExecutionId);
   }
 }

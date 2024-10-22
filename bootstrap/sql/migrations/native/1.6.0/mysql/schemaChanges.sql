@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS workflow_definition_entity (
 CREATE TABLE workflow_instance_state_time_series (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.id'))) STORED NOT NULL,
   workflowInstanceId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowInstanceId'))) STORED NOT NULL,
+  workflowInstanceExecutionId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowInstanceExecutionId'))) STORED NOT NULL,
   workflowDefinitionId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowDefinitionId'))) STORED NOT NULL,
   stage varchar(256) GENERATED ALWAYS AS (json_unquote(json_Extract(json, '$.stage.name'))) STORED NOT NULL,
   stageStartedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.stage.startedAt'))) STORED NOT NULL,

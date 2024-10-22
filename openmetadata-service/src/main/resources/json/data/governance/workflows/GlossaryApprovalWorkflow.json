@@ -1,5 +1,6 @@
 {
   "name": "GlossaryTermApprovalWorkflow",
+  "fullyQualifiedName": "GlossaryTermApprovalWorkflow",
   "displayName": "Glossary Term Approval Workflow",
   "description": "When a Glossary Term is Created or Updated, this Workflow will be triggered for the Term to be Approved.",
   "type": "eventBasedEntityWorkflow",
@@ -15,27 +16,46 @@
       "type": "startEvent",
       "subType": "startEvent",
       "name": "GlossaryTermCreated",
-      "displayName": "Glossary Term Created"
+      "displayName": "Glossary Term Created or Updated"
     },
     {
       "type": "endEvent",
       "subType": "endEvent",
-      "name": "ApprovedEnd"
+      "name": "ApprovedEnd",
+      "displayName": "Glossary Term Status: Approved"
     },
     {
       "type": "endEvent",
       "subType": "endEvent",
-      "name": "RejectedEnd"
+      "name": "RejectedEnd",
+      "displayName": "Glossary Term Status: Rejected"
     },
     {
       "type": "endEvent",
       "subType": "endEvent",
-      "name": "DraftEnd"
+      "name": "DraftEnd",
+      "displayName": "Glossary Term Status: Draft"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "NoOpEnd",
+      "displayName": "Glossary Term Status Unchanged"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckUpdatedMoreThanReviewers",
+      "displayName": "End Workflow if only Reviewers were updated",
+      "config": {
+        "rules": "{\"or\":[{\"some\":[{\"merge\":[{\"var\":\"changeDescription.fieldsAdded\"},{\"var\":\"changeDescription.fieldsUpdated\"},{\"var\":\"changeDescription.fieldsDeleted\"}]},{\"!=\":[{\"var\":\"name\"},\"reviewers\"]}]},{\"!\":[{\"!!\":[{\"merge\":[{\"var\":\"changeDescription.fieldsAdded\"},{\"var\":\"changeDescription.fieldsUpdated\"},{\"var\":\"changeDescription.fieldsDeleted\"}]}]}]}]}"
+      }
     },
     {
       "type": "automatedTask",
       "subType": "checkEntityAttributesTask",
       "name": "CheckGlossaryTermHasReviewers",
+      "displayName": "Check if Glossary Term has Reviewers",
       "config": {
         "rules": "{ \"!!\": [ { \"var\": \"reviewers\" } ] }"
       }
@@ -44,6 +64,7 @@
       "type": "automatedTask",
       "subType": "checkEntityAttributesTask",
       "name": "CheckGlossaryTermIsReadyToBeReviewed",
+      "displayName": "Check if Glossary Term is Ready to be Reviewed",
       "config": {
         "rules": "{ \"in\": [ \"Bar\", { \"var\": \"extension.foo\" } ] }"
       }
@@ -52,6 +73,7 @@
       "type": "automatedTask",
       "subType": "setGlossaryTermStatusTask",
       "name": "SetGlossaryTermStatusToInReview",
+      "displayName": "Set Status to 'In Review'",
       "config": {
         "glossaryTermStatus": "In Review"
       }
@@ -60,6 +82,7 @@
       "type": "automatedTask",
       "subType": "setGlossaryTermStatusTask",
       "name": "SetGlossaryTermStatusToDraft",
+      "displayName": "Set Status to 'Draft'",
       "config": {
         "glossaryTermStatus": "Draft"
       }
@@ -68,6 +91,7 @@
       "type": "userTask",
       "subType": "userApprovalTask",
       "name": "ApproveGlossaryTerm",
+      "displayName": "Create User Approval Task",
       "config": {
         "assignees": {
           "addReviewers": true
@@ -78,6 +102,7 @@
       "type": "automatedTask",
       "subType": "setGlossaryTermStatusTask",
       "name": "SetGlossaryTermStatusToApproved",
+      "displayName": "Set Status to 'Approved'",
       "config": {
         "glossaryTermStatus": "Approved"
       }
@@ -86,6 +111,7 @@
       "type": "automatedTask",
       "subType": "setGlossaryTermStatusTask",
       "name": "SetGlossaryTermStatusToRejected",
+      "displayName": "Set Status to 'Rejected'",
       "config": {
         "glossaryTermStatus": "Rejected"
       }
@@ -94,7 +120,17 @@
   "edges": [
     {
       "from": "GlossaryTermCreated",
-      "to": "CheckGlossaryTermHasReviewers"
+      "to": "CheckUpdatedMoreThanReviewers"
+    },
+    {
+      "from": "CheckUpdatedMoreThanReviewers",
+      "to": "NoOpEnd",
+      "condition": "${!checkPassed}"
+    },
+    {
+      "from": "CheckUpdatedMoreThanReviewers",
+      "to": "CheckGlossaryTermHasReviewers",
+      "condition": "${checkPassed}"
     },
     {
       "from": "CheckGlossaryTermHasReviewers",

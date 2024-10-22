@@ -21,6 +21,7 @@ public class MainWorkflow {
 
   public MainWorkflow(WorkflowDefinition workflowDefinition) {
     BpmnModel model = new BpmnModel();
+    model.setTargetNamespace("");
     String workflowName = workflowDefinition.getFullyQualifiedName();
 
     Process process = new Process();

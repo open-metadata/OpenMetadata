@@ -11,6 +11,8 @@ public class EndEvent implements NodeInterface {
 
   public EndEvent(EndEventDefinition nodeDefinition) {
     this.endEvent = new EndEventBuilder().id(nodeDefinition.getName()).build();
+    attachWorkflowInstanceStageListeners(endEvent);
+    attachMainWorkflowHasFinishedListener(endEvent);
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {

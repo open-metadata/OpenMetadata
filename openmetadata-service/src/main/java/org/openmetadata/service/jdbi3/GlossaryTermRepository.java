@@ -777,31 +777,25 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   protected void updateTaskWithNewReviewers(GlossaryTerm term) {
     try {
-
       MessageParser.EntityLink about =
           new MessageParser.EntityLink(GLOSSARY_TERM, term.getFullyQualifiedName());
-      Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval);
+      Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      term =
+          Entity.getEntityByName(
+              Entity.GLOSSARY_TERM,
+              term.getFullyQualifiedName(),
+              "id,fullyQualifiedName,reviewers",
+              Include.ALL);
 
-      // Update assignees only for open approval tasks
-      if (TaskStatus.Open.equals(originalTask.getTask().getStatus())) {
+      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+      updatedTask.getTask().withAssignees(new ArrayList<>(term.getReviewers()));
+      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+      RestUtil.PatchResponse<Thread> thread =
+          feedRepository.patchThread(
+              null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
 
-        term =
-            Entity.getEntityByName(
-                Entity.GLOSSARY_TERM,
-                term.getFullyQualifiedName(),
-                "id,fullyQualifiedName,reviewers",
-                Include.ALL);
-
-        Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-        updatedTask.getTask().withAssignees(new ArrayList<>(term.getReviewers()));
-        JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
-        RestUtil.PatchResponse<Thread> thread =
-            feedRepository.patchThread(
-                null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
-
-        // Send WebSocket Notification
-        WebsocketNotificationHandler.handleTaskNotification(thread.entity());
-      }
+      // Send WebSocket Notification
+      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
     } catch (EntityNotFoundException e) {
       LOG.info(
           "{} Task not found for glossary term {}",
@@ -826,9 +820,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         List<GlossaryTerm> childTerms = getNestedTerms(updated);
         childTerms.add(updated);
         for (GlossaryTerm term : childTerms) {
-          if (term.getStatus().equals(Status.IN_REVIEW)) {
-            updateTaskWithNewReviewers(term);
-          }
+          updateTaskWithNewReviewers(term);
         }
       }
     }
