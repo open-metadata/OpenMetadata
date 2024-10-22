@@ -841,10 +841,10 @@ export const getTableDetailPageBaseTabs = ({
 };
 
 export const getSchemaTableNameColumnActionButtons = ({
-  tablePermissions,
-  isReadOnly,
-  handleEditDisplayNameClick,
   record,
+  isReadOnly,
+  tablePermissions,
+  handleEditDisplayNameClick,
 }: SchemaTableNameColumnActionButtonsProps) => {
   return (
     (tablePermissions?.EditAll || tablePermissions?.EditDisplayName) &&

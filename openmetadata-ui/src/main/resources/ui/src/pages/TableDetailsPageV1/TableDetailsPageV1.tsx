@@ -571,6 +571,7 @@ const TableDetailsPageV1: React.FC = () => {
                     isReadOnly={deleted}
                     table={tableDetails}
                     testCaseSummary={testCaseSummary}
+                    onTableUpdate={onTableUpdate}
                     onThreadLinkSelect={onThreadLinkSelect}
                     onUpdate={onColumnsUpdate}
                   />

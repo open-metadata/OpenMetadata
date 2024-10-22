@@ -80,13 +80,14 @@ import {
 
 const SchemaTable = ({
   searchText,
-  onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
   isReadOnly = false,
-  onThreadLinkSelect,
   table,
   testCaseSummary,
+  onUpdate,
+  onTableUpdate,
+  onThreadLinkSelect,
 }: SchemaTableProps) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
@@ -371,10 +372,11 @@ const SchemaTable = ({
               <div className="d-flex items-center gap-2">
                 {tableClassBase.getSchemaTableNameColumnActionButtons({
                   record,
-                  tableColumns,
+                  tableDetails: table,
                   isReadOnly,
                   tablePermissions,
                   onUpdate,
+                  onTableUpdate,
                   updateColumnFields,
                   handleEditDisplayNameClick,
                 })}

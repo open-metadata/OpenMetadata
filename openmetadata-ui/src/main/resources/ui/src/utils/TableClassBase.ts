@@ -47,11 +47,12 @@ export interface TableDetailPageTabProps {
 export interface SchemaTableNameColumnActionButtonsProps {
   record: Column;
   isReadOnly: boolean;
-  tableColumns: Column[];
+  tableDetails?: Table;
   tablePermissions?: OperationPermission;
   onUpdate: (columns: Column[]) => Promise<void>;
   updateColumnFields: (data: UpdatedColumnFieldData) => void;
   handleEditDisplayNameClick: (record: Column) => void;
+  onTableUpdate: (updatedTable: Table, key: keyof Table) => Promise<void>;
 }
 
 class TableClassBase {
