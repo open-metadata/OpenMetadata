@@ -1238,7 +1238,7 @@
     "total": "Total",
     "total-entity": "Все {{entity}}",
     "total-index-sent": "Все индексы отправлены",
-    "total-user": "Total User",
+    "total-user-plural": "Total Users",
     "tour": "Руководство пользователя",
     "tracking": "Отслеживание",
     "transportation-strategy": "Стратегия транспортировки",

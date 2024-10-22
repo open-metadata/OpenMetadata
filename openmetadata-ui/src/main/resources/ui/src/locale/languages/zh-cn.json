@@ -1238,7 +1238,7 @@
     "total": "Total",
     "total-entity": "所有{{entity}}",
     "total-index-sent": "已发送的索引",
-    "total-user": "Total User",
+    "total-user-plural": "Total Users",
     "tour": "导览",
     "tracking": "跟踪",
     "transportation-strategy": "传输协议",

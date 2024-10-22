@@ -324,23 +324,23 @@ const TeamsInfo = ({
 
       <Space size={4}>
         <Divider type="vertical" />
-        <Typography.Text className="text-grey-muted">
-          {`${t('label.total-user')} :`}
+        <Typography.Text className="text-grey-muted d-flex items-center">
+          {t('label.total-user-plural')}
+          <Tooltip
+            destroyTooltipOnHide
+            title={t('message.team-distinct-user-description')}>
+            <InfoCircleOutlined
+              className="m-x-xss"
+              data-testid="helper-icon"
+              style={{ color: GRAYED_OUT_COLOR }}
+            />
+          </Tooltip>
+          {' : '}
         </Typography.Text>
 
         <Typography.Text className="font-medium" data-testid="team-user-count">
           {currentTeam.userCount}
         </Typography.Text>
-
-        <Tooltip
-          destroyTooltipOnHide
-          title={t('message.team-distinct-user-description')}>
-          <InfoCircleOutlined
-            className="m-l-xss"
-            data-testid="helper-icon"
-            style={{ color: GRAYED_OUT_COLOR }}
-          />
-        </Tooltip>
       </Space>
     </Space>
   );

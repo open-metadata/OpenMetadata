@@ -1238,7 +1238,7 @@
     "total": "Total",
     "total-entity": "Gesamte {{entity}}",
     "total-index-sent": "Gesamtindex gesendet",
-    "total-user": "Total User",
+    "total-user-plural": "Total Users",
     "tour": "Tour",
     "tracking": "Verfolgung",
     "transportation-strategy": "Transportstrategie",
