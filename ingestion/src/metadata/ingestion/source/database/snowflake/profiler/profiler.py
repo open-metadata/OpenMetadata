@@ -21,8 +21,6 @@ from metadata.profiler.interface.sqlalchemy.snowflake.profiler_interface import 
 )
 from metadata.utils.logger import profiler_interface_registry_logger
 
-logger = profiler_interface_registry_logger()
-
 
 class SnowflakeProfiler(SnowflakeProfilerInterface):
     """

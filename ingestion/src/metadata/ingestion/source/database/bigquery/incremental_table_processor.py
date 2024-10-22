@@ -66,7 +66,7 @@ class BigQueryIncrementalTableProcessor:
 
         for entry in entries:
             table_name = entry.payload.get("resourceName", "").split("/")[-1]
-            timestamp = entry.start_time
+            timestamp = entry.timestamp
             deleted = self._is_table_deleted(entry)
 
             if table_name not in table_map:

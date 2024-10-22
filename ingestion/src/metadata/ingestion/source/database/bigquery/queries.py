@@ -216,12 +216,6 @@ class BigQueryQueryResult(BaseModel):
         return TypeAdapter(List[BigQueryQueryResult]).validate_python(map(dict, rows))
 
 
-DML_STAT_TO_DML_STATEMENT_MAPPING = {
-    "inserted_row_count": DatabaseDMLOperations.INSERT.value,
-    "deleted_row_count": DatabaseDMLOperations.DELETE.value,
-    "updated_row_count": DatabaseDMLOperations.UPDATE.value,
-}
-
 JOBS = """
     SELECT
         statement_type,
