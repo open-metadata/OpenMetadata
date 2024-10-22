@@ -256,9 +256,11 @@ public final class Entity {
         listOf(
             DATABASE_SERVICE,
             DASHBOARD_SERVICE,
+            MESSAGING_SERVICE,
             MLMODEL_SERVICE,
             PIPELINE_SERVICE,
             API_SERVICE,
+            API_COLLCECTION,
             STORAGE_SERVICE,
             METADATA_SERVICE,
             SEARCH_SERVICE,
