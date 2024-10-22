@@ -1,5 +1,6 @@
 import os.path
 import random
+from copy import deepcopy
 from time import sleep
 
 import docker
@@ -205,6 +206,17 @@ def create_test_data(trino_container):
             method=custom_insert,
         )
         sleep(1)
+
+    engine.execute(
+        "create view minio.my_schema.titanic_vw as select * from minio.my_schema.titanic"
+    )
+    engine.execute(
+        "create view minio.my_schema.broken_titanic_vw as select * from minio.my_schema.titanic_vw"
+    )
+    engine.execute("select * from minio.my_schema.broken_titanic_vw").fetchone()
+    engine.execute(
+        "create or replace view minio.my_schema.titanic_vw as select *, 'extra' as this_breaks_views from minio.my_schema.titanic"
+    )
     return
 
 
@@ -248,6 +260,7 @@ def create_service_request(trino_container, tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def ingestion_config(db_service, sink_config, workflow_config, base_ingestion_config):
+    base_ingestion_config = deepcopy(base_ingestion_config)
     base_ingestion_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
         "excludes": [
             "^information_schema$",
@@ -262,3 +275,14 @@ def unmask_password():
         return service
 
     return patch_password
+
+
+@pytest.fixture(scope="module")
+def trino_profiler_config(db_service, profiler_config):
+    profiler_config = deepcopy(profiler_config)
+    profiler_config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {
+        "excludes": [
+            "^broken_titanic_vw$",
+        ]
+    }
+    return profiler_config

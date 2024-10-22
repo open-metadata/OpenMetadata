@@ -20,12 +20,12 @@ def run_profiler(
     patch_passwords_for_db_services,
     run_workflow,
     ingestion_config,
-    profiler_config,
+    trino_profiler_config,
     create_test_data,
 ):
     search_cache.clear()
     run_workflow(MetadataWorkflow, ingestion_config)
-    run_workflow(ProfilerWorkflow, profiler_config)
+    run_workflow(ProfilerWorkflow, trino_profiler_config)
 
 
 @dataclass
@@ -126,3 +126,18 @@ def test_profiler(
             profile,
             column.profile.model_copy(update={"timestamp": profile.timestamp}),
         )
+
+
+@pytest.mark.xfail(
+    reason="TODO: the profiler fails when running on invalid views", strict=True
+)
+def test_broken_view(
+    patch_passwords_for_db_services,
+    run_workflow,
+    ingestion_config,
+    profiler_config,
+    create_test_data,
+):
+    search_cache.clear()
+    run_workflow(MetadataWorkflow, ingestion_config)
+    run_workflow(ProfilerWorkflow, profiler_config)
