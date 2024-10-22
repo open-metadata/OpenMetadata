@@ -83,7 +83,6 @@ public class ResourceRegistry {
     // Set up operations based on common fields present in an entity
     if (entityFields.contains(Entity.FIELD_TAGS)) {
       operations.add(MetadataOperation.EDIT_TAGS);
-      operations.add(MetadataOperation.EDIT_GLOSSARY_TERMS);
     }
     if (entityFields.contains(Entity.FIELD_OWNERS)) {
       operations.add(MetadataOperation.EDIT_OWNERS);
