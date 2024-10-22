@@ -16,8 +16,9 @@ from datetime import datetime
 from typing import List
 
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
-from metadata.generated.schema.entity.data.table import SystemProfile, DmlOperationType
+from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.generated.schema.type.basic import Timestamp
+
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 
