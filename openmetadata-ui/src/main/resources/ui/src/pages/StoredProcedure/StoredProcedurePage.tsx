@@ -500,6 +500,7 @@ const StoredProcedurePage = () => {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
@@ -511,6 +512,10 @@ const StoredProcedurePage = () => {
         (storedProcedurePermissions.EditTags ||
           storedProcedurePermissions.EditAll) &&
         !storedProcedure?.deleted,
+      editGlossaryTermsPermission:
+        (storedProcedurePermissions.EditGlossaryTerms ||
+          storedProcedurePermissions.EditAll) &&
+        !deleted,
       editDescriptionPermission:
         (storedProcedurePermissions.EditDescription ||
           storedProcedurePermissions.EditAll) &&
@@ -590,6 +595,9 @@ const StoredProcedurePage = () => {
                         domain={storedProcedure?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedStoredProcedureFQN}
@@ -680,6 +688,7 @@ const StoredProcedurePage = () => {
       storedProcedure,
       decodedStoredProcedureFQN,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editLineagePermission,
       editDescriptionPermission,
       editCustomAttributePermission,

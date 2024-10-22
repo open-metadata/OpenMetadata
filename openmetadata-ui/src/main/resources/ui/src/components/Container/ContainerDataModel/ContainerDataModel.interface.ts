@@ -24,6 +24,7 @@ export interface ContainerDataModelProps {
   dataModel: Container['dataModel'];
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
+  hasGlossaryTermEditAccess: boolean;
   isReadOnly: boolean;
   entityFqn: string;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;

@@ -352,6 +352,7 @@ const PipelineDetails = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
@@ -360,6 +361,10 @@ const PipelineDetails = ({
     () => ({
       editTagsPermission:
         (pipelinePermissions.EditTags || pipelinePermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (pipelinePermissions.EditGlossaryTerms ||
+          pipelinePermissions.EditAll) &&
         !deleted,
       editDescriptionPermission:
         (pipelinePermissions.EditDescription || pipelinePermissions.EditAll) &&
@@ -503,7 +508,7 @@ const PipelineDetails = ({
             entityFqn={pipelineFQN}
             entityType={EntityType.PIPELINE}
             handleTagSelection={handleTableTagSelection}
-            hasTagEditAccess={editTagsPermission}
+            hasTagEditAccess={editGlossaryTermsPermission}
             index={index}
             isReadOnly={deleted}
             record={record}
@@ -518,6 +523,7 @@ const PipelineDetails = ({
       deleted,
       editTask,
       editTagsPermission,
+      editGlossaryTermsPermission,
       getEntityName,
       onThreadLinkSelect,
       handleTableTagSelection,
@@ -661,6 +667,9 @@ const PipelineDetails = ({
                         editCustomAttributePermission={
                           editCustomAttributePermission
                         }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
+                        }
                         editTagPermission={editTagsPermission}
                         entityFQN={pipelineFQN}
                         entityId={pipelineDetails.id}
@@ -776,6 +785,7 @@ const PipelineDetails = ({
       onThreadLinkSelect,
       editDescriptionPermission,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,

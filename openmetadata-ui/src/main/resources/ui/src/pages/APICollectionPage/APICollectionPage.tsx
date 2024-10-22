@@ -514,6 +514,7 @@ const APICollectionPage: FunctionComponent = () => {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     viewAllPermission,
@@ -521,6 +522,10 @@ const APICollectionPage: FunctionComponent = () => {
     () => ({
       editTagsPermission:
         (apiCollectionPermission.EditTags || apiCollectionPermission.EditAll) &&
+        !apiCollection.deleted,
+      editGlossaryTermsPermission:
+        (apiCollectionPermission.EditGlossaryTerms ||
+          apiCollectionPermission.EditAll) &&
         !apiCollection.deleted,
       editDescriptionPermission:
         (apiCollectionPermission.EditDescription ||
@@ -601,6 +606,7 @@ const APICollectionPage: FunctionComponent = () => {
                       editCustomAttributePermission={
                         editCustomAttributePermission
                       }
+                      editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
                       entityFQN={decodedAPICollectionFQN}
                       entityId={apiCollection?.id ?? ''}
