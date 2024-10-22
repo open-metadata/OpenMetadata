@@ -14,8 +14,8 @@ import React, { FC } from 'react';
 import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 
 export const withAdvanceSearch =
-  (Component: FC) =>
-  (props: JSX.IntrinsicAttributes & { children?: React.ReactNode }) => {
+  <P extends Record<string, unknown>>(Component: FC<P>) =>
+  (props: P) => {
     return (
       <AdvanceSearchProvider>
         <Component {...props} />

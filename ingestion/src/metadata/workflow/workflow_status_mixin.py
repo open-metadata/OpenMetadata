@@ -37,8 +37,6 @@ from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
-SUCCESS_THRESHOLD_VALUE = 90
-
 
 class WorkflowResultStatus(Enum):
     SUCCESS = 0

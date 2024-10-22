@@ -162,6 +162,9 @@ public interface CollectionDAO {
   AppExtensionTimeSeries appExtensionTimeSeriesDao();
 
   @CreateSqlObject
+  AppsDataStore appStoreDAO();
+
+  @CreateSqlObject
   EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDao();
 
   @CreateSqlObject
@@ -4243,6 +4246,52 @@ public interface CollectionDAO {
     }
   }
 
+  interface AppsDataStore {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json :: jsonb)",
+        connectionType = POSTGRES)
+    void insert(
+        @Bind("identifier") String identifier,
+        @Bind("type") String type,
+        @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_data_store set json = :json where identifier = :identifier AND type=:type",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_data_store set json = (:json :: jsonb) where identifier = :identifier AND type=:type",
+        connectionType = POSTGRES)
+    void update(
+        @Bind("identifier") String identifier,
+        @Bind("type") String type,
+        @Bind("json") String json);
+
+    @SqlUpdate("DELETE FROM apps_data_store WHERE identifier = :identifier AND type = :type")
+    void delete(@Bind("identifier") String identifier, @Bind("type") String type);
+
+    @SqlQuery(
+        "SELECT count(*) FROM apps_data_store where identifier = :identifier AND type = :type")
+    int listAppDataCount(@Bind("identifier") String identifier, @Bind("type") String type);
+
+    @SqlQuery(
+        "SELECT json FROM apps_data_store where identifier in (<identifier>) AND type = :type")
+    List<String> listAppsDataWithIds(
+        @BindList("identifier") List<String> identifier, @Bind("type") String type);
+
+    @SqlQuery("SELECT json FROM apps_data_store where type = :type")
+    List<String> listAppsDataWithType(@Bind("type") String type);
+
+    @SqlQuery("SELECT json FROM apps_data_store where identifier = :identifier AND type = :type")
+    String findAppData(@Bind("identifier") String identifier, @Bind("type") String type);
+  }
+
   interface AppExtensionTimeSeries {
     @ConnectionAwareSqlUpdate(
         value =
@@ -4533,6 +4582,30 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("incidentStateId") String incidentStateId);
 
+    @SqlQuery(
+        """
+              SELECT dqdts1.json FROM
+              data_quality_data_time_series dqdts1
+              INNER JOIN (
+                  SELECT tc.fqnHash
+                  FROM entity_relationship er
+                  INNER JOIN test_case tc ON er.toId = tc.id
+                  where fromEntity = 'testSuite' AND toEntity = 'testCase' and fromId = :testSuiteId
+              ) ts ON dqdts1.entityFQNHash = ts.fqnHash
+              LEFT JOIN data_quality_data_time_series dqdts2 ON
+                  (dqdts1.entityFQNHash = dqdts2.entityFQNHash and dqdts1.timestamp < dqdts2.timestamp)
+              WHERE dqdts2.entityFQNHash IS NULL""")
+    List<String> listLastTestCaseResultsForTestSuite(@BindMap Map<String, String> params);
+
+    @SqlQuery(
+        """
+            SELECT dqdts1.json FROM
+            data_quality_data_time_series dqdts1
+            LEFT JOIN data_quality_data_time_series dqdts2 ON
+                (dqdts1.entityFQNHash = dqdts2.entityFQNHash and dqdts1.timestamp < dqdts2.timestamp)
+            WHERE dqdts2.entityFQNHash IS NULL AND dqdts1.entityFQNHash = :testCaseFQN""")
+    String listLastTestCaseResult(@BindFQN("testCaseFQN") String testCaseFQN);
+
     default void insert(
         String testCaseFQN,
         String extension,
@@ -4547,6 +4620,10 @@ public interface CollectionDAO {
           jsonSchema,
           json,
           incidentStateId != null ? incidentStateId.toString() : null);
+    }
+
+    default List<String> listLastTestCaseResultsForTestSuite(UUID testSuiteId) {
+      return listLastTestCaseResultsForTestSuite(Map.of("testSuiteId", testSuiteId.toString()));
     }
   }
 
