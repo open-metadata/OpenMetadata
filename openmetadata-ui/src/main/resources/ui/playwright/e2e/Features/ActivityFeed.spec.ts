@@ -850,6 +850,10 @@ base.describe('Activity feed with Data Consumer User', () => {
           page2.locator('[data-testid="edit-accept-task-dropdown"]')
         ).not.toBeVisible();
 
+        await page2.waitForSelector('.ant-skeleton-element', {
+          state: 'detached',
+        });
+
         const tagsSuggestionResponse = page2.waitForResponse(
           '/api/v1/search/query?q=***'
         );

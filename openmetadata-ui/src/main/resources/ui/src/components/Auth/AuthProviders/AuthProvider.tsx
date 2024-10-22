@@ -768,8 +768,6 @@ export const AuthProvider = ({
       handleFailedLogin,
       updateAxiosInterceptors: initializeAxiosInterceptors,
     });
-
-    return cleanup;
   }, [handleSuccessfulLogin]);
 
   const isConfigLoading =
