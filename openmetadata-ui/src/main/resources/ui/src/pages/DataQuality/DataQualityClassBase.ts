@@ -101,6 +101,10 @@ class DataQualityClassBase {
       },
     ];
   }
+
+  public getDefaultActiveTab(): DataQualityPageTabs {
+    return DataQualityPageTabs.TABLES;
+  }
 }
 
 const dataQualityClassBase = new DataQualityClassBase();

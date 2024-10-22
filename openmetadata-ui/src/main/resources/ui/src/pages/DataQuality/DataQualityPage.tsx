@@ -81,7 +81,9 @@ const DataQualityPage = () => {
               data-testid="tabs"
               items={menuItems}
               mode="inline"
-              selectedKeys={[activeTab ?? DataQualityPageTabs.TABLES]}
+              selectedKeys={[
+                activeTab ?? DataQualityClassBase.getDefaultActiveTab(),
+              ]}
               onClick={handleTabChange}
             />
           </LeftPanelCard>
@@ -121,7 +123,9 @@ const DataQualityPage = () => {
 
                   <Route exact path={ROUTES.DATA_QUALITY}>
                     <Redirect
-                      to={getDataQualityPagePath(DataQualityPageTabs.TABLES)}
+                      to={getDataQualityPagePath(
+                        DataQualityClassBase.getDefaultActiveTab()
+                      )}
                     />
                   </Route>
                 </Switch>
