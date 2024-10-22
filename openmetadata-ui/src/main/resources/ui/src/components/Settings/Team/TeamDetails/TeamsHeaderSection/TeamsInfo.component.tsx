@@ -314,6 +314,19 @@ const TeamsInfo = ({
         updateTeamSubscription={updateTeamSubscription}
       />
       {teamTypeElement}
+
+      <Divider type="vertical" />
+
+      <Space size={4}>
+        <Divider type="vertical" />
+        <Typography.Text className="text-grey-muted">
+          {`${t('label.user-count')} :`}
+        </Typography.Text>
+
+        <Typography.Text className="font-medium" data-testid="team-user-count">
+          {currentTeam.userCount}
+        </Typography.Text>
+      </Space>
     </Space>
   );
 };

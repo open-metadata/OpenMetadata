@@ -60,5 +60,5 @@ export const getTabs = (
     return [tabs.users, tabs.assets, ...commonTabs];
   }
 
-  return [tabs.teams, tabs.users, ...commonTabs];
+  return [tabs.teams, ...commonTabs];
 };
