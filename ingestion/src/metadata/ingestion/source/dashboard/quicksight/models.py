@@ -29,6 +29,10 @@ class DataSourceRespQuery(BaseModel):
     table_name: str = Field(alias="Name")
 
 
+class DataSourceRespS3(BaseModel):
+    datasource_arn: str = Field(alias="DataSourceArn")
+
+
 class VersionSheet(BaseModel):
     ChartId: Optional[str] = Field(None, alias="SheetId")
     Name: Optional[str] = None

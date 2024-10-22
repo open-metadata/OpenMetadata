@@ -56,6 +56,7 @@ from metadata.ingestion.source.dashboard.quicksight.models import (
     DashboardResp,
     DataSourceResp,
     DataSourceRespQuery,
+    DataSourceRespS3,
     DescribeDataSourceResponse,
 )
 from metadata.utils import fqn
@@ -311,6 +312,70 @@ class QuicksightSource(DashboardServiceSource):
                 )
             )
 
+    def _yield_lineage_from_s3(
+        self, data_source_ids: list, dashboard_details: DashboardDetail
+    ) -> Iterable[Either[AddLineageRequest]]:
+        try:
+            for data_source_id in data_source_ids or []:
+                data_source_resp = DescribeDataSourceResponse(
+                    **self.client.describe_data_source(
+                        AwsAccountId=self.aws_account_id,
+                        DataSourceId=data_source_id,
+                    )
+                ).DataSource
+                if data_source_resp and data_source_resp.DataSourceParameters:
+                    data_source_dict = data_source_resp.DataSourceParameters
+                    for s3_param in data_source_dict.keys() or []:
+                        bucket_name = (
+                            data_source_dict[s3_param]
+                            .get("ManifestFileLocation", {})
+                            .get("Bucket")
+                        )
+                        key_name = (
+                            data_source_dict[s3_param]
+                            .get("ManifestFileLocation", {})
+                            .get("Key")
+                        )
+                        container = self.metadata.es_search_container_by_path(
+                            full_path=f"s3://{bucket_name}/{key_name}"
+                        )
+                        if container and container[0]:
+                            storage_entity = EntityReference(
+                                id=Uuid(container[0].id.root),
+                                type="container",
+                            )
+                            to_fqn = fqn.build(
+                                self.metadata,
+                                entity_type=Dashboard,
+                                service_name=self.config.serviceName,
+                                dashboard_name=dashboard_details.DashboardId,
+                            )
+                            to_entity = self.metadata.get_by_name(
+                                entity=Dashboard,
+                                fqn=to_fqn,
+                            )
+
+                            if to_entity and storage_entity:
+                                yield Either(
+                                    right=AddLineageRequest(
+                                        edge=EntitiesEdge(
+                                            fromEntity=storage_entity,
+                                            toEntity=EntityReference(
+                                                id=Uuid(to_entity.id.root),
+                                                type=LINEAGE_MAP[type(to_entity)],
+                                            ),
+                                        )
+                                    )
+                                )
+        except Exception as err:
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.DashboardId,
+                    error=f"Wild error ingesting dashboard lineage {dashboard_details} - {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self, dashboard_details: DashboardDetail, db_service_name: str
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -348,6 +413,10 @@ class QuicksightSource(DashboardServiceSource):
                         elif data_source.get("CustomSql"):
                             data_source_resp = DataSourceRespQuery(
                                 **data_source["CustomSql"]
+                            )
+                        elif data_source.get("S3Source"):
+                            data_source_resp = DataSourceRespS3(
+                                **data_source["S3Source"]
                             )
                         else:
                             raise KeyError(
@@ -387,6 +456,10 @@ class QuicksightSource(DashboardServiceSource):
                                 data_source_resp,
                                 db_service_name,
                                 dashboard_details,
+                            )
+                        elif isinstance(data_source_resp, DataSourceRespS3):
+                            yield from self._yield_lineage_from_s3(
+                                data_source_ids, dashboard_details
                             )
 
                         elif isinstance(data_source_resp, DataSourceResp):
