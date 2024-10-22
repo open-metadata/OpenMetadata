@@ -22,6 +22,7 @@ import { SchemaTableProps } from './SchemaTable.interface';
 
 const onThreadLinkSelect = jest.fn();
 const onUpdate = jest.fn();
+const onTableUpdate = jest.fn();
 
 const mockTableConstraints = [
   {
@@ -74,6 +75,7 @@ const mockEntityTableProp: SchemaTableProps = {
   hasTagEditAccess: true,
   onThreadLinkSelect,
   onUpdate,
+  onTableUpdate,
   table: { ...MOCK_TABLE, columns, tableConstraints: mockTableConstraints },
 };
 
