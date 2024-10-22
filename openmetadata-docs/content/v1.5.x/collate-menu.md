@@ -585,6 +585,14 @@ site_menu:
     url: /how-to-guides/data-discovery/import
   - category: How-to Guides / Data Discovery / How to Export Data Asset
     url: /how-to-guides/data-discovery/export
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension
+    url: /how-to-guides/data-discovery/openmetadata-extension
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing Activity Feeds and Managing Tasks
+    url: /how-to-guides/data-discovery/openmetadata-extension/activity-feeds
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Looking Up Data Assets and Accessing Details
+    url: /how-to-guides/data-discovery/openmetadata-extension/looking-up
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing tasks & add comment directly from the extension
+    url: /how-to-guides/data-discovery/openmetadata-extension/viewing-tasks
 
   - category: How-to Guides / Data Collaboration
     url: /how-to-guides/data-collaboration
@@ -767,6 +775,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.6 Release
+    url: /releases/all-releases/#1.5.6-release
   - category: Releases / All Releases / 1.5.5 Release
     url: /releases/all-releases/#1.5.5-release
   - category: Releases / All Releases / 1.5.4 Release
