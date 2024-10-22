@@ -10,8 +10,7 @@
 #  limitations under the License.
 
 """
-Interfaces with database for all database engine
-supporting sqlalchemy abstraction layer
+Profiler for Snowflake
 """
 from metadata.ingestion.source.database.snowflake.profiler.system import (
     SnowflakeSystemMetricsSource,
