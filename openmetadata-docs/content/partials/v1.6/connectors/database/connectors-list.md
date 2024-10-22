@@ -40,5 +40,6 @@
 {% connectorInfoCard name="Trino" stage="PROD" href="/connectors/database/trino" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Unity Catalog" stage="PROD" href="/connectors/database/unity-catalog" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Vertica" stage="PROD" href="/connectors/database/vertica" platform="OpenMetadata" / %}
+{% connectorInfoCard name="SAP ERP" stage="PROD" href="/connectors/database/sap-erp" platform="OpenMetadata" / %}
 
 {% /connectorsListContainer %}
