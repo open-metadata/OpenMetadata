@@ -12,8 +12,6 @@ from metadata.profiler.processor.runner import QueryRunner
 
 
 class BigQueryProfiler(BigQueryProfilerInterface):
-    system_metrics_computer_class = BigQuerySystemMetricsComputer
-
     def _compute_system_metrics(
         self,
         metrics: Type[System],
@@ -24,3 +22,8 @@ class BigQueryProfiler(BigQueryProfilerInterface):
         return self.system_metrics_computer.get_system_metrics(
             runner.table, self.service_connection_config
         )
+
+    def initialize_system_metrics_computer(
+        self, **kwargs
+    ) -> BigQuerySystemMetricsComputer:
+        return BigQuerySystemMetricsComputer(session=self.session)

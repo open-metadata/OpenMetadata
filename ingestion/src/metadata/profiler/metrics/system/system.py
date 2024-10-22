@@ -63,12 +63,9 @@ class EmptySystemMetricsSource:
     """Empty system metrics source that can be used as a default. Just returns an empty list of system metrics
     for any resource."""
 
-    def __init__(self, *args, **kwargs):
-        kwargs.pop("session", None)
-        if len(args) > 0:
-            logger.warning("Received unexpected arguments: %s", args)
-        if len(kwargs) > 0:
-            logger.warning("Received unexpected keyword arguments: %s", kwargs)
+    def __init__(self, *_, **__):
+        """This is a 'collaborative' constructor that takes any number of arguments and keyword arguments and
+        is required for using it in dependency injection."""
         super().__init__()
 
     def get_inserts(self, *args, **kwargs) -> List[SystemProfile]:

@@ -76,8 +76,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     # pylint: disable=too-many-arguments
 
-    system_metrics_computer_class = SystemMetricsComputer
-
     def __init__(
         self,
         service_connection_config,
@@ -112,9 +110,13 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         self._table = self._convert_table_to_orm_object(sqa_metadata)
         self.create_session()
-        self.system_metrics_computer = self.system_metrics_computer_class(
-            session=self.session
-        )
+        self.system_metrics_computer = self.initialize_system_metrics_computer()
+
+    def initialize_system_metrics_computer(self) -> SystemMetricsComputer:
+        """Initialize system metrics computer. Override this if you want to use a metric source with
+        state or other dependencies.
+        """
+        return SystemMetricsComputer()
 
     def create_session(self):
         self.session_factory = self._session_factory()
