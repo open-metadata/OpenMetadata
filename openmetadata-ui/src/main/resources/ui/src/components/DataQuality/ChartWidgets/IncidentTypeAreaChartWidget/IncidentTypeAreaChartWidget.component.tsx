@@ -21,6 +21,7 @@ const IncidentTypeAreaChartWidget = ({
   incidentStatusType,
   title,
   name,
+  chartFilter,
 }: IncidentTypeAreaChartWidgetProps) => {
   const [isChartLoading, setIsChartLoading] = useState(true);
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
@@ -37,7 +38,8 @@ const IncidentTypeAreaChartWidget = ({
     setIsChartLoading(true);
     try {
       const { data } = await fetchCountOfIncidentStatusTypeByDays(
-        incidentStatusType
+        incidentStatusType,
+        chartFilter
       );
       const updatedData = data.map((item) => ({
         timestamp: +item.timestamp,
@@ -53,7 +55,7 @@ const IncidentTypeAreaChartWidget = ({
 
   useEffect(() => {
     getCountOfIncidentStatus();
-  }, []);
+  }, [chartFilter]);
 
   return (
     <Card loading={isChartLoading}>

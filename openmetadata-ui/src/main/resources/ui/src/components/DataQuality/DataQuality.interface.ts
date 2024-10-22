@@ -2,6 +2,7 @@ import { DateRangeObject } from 'Models';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { TestPlatform } from '../../generated/tests/testDefinition';
+import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
 import { TestCaseType } from '../../rest/testAPI';
 import { AreaChartColorScheme } from '../Visualisations/Chart/Chart.interface';
 
@@ -46,16 +47,23 @@ export interface IncidentTypeAreaChartWidgetProps {
   title: string;
   incidentStatusType: TestCaseResolutionStatusTypes;
   name: string;
+  chartFilter?: DataQualityDashboardChartFilters;
 }
 
 export interface IncidentTimeChartWidgetProps {
   title: string;
   incidentMetricType: IncidentTimeMetricsType;
   name: string;
+  chartFilter?: DataQualityDashboardChartFilters;
 }
 export interface TestCaseStatusAreaChartWidgetProps {
   title: string;
   testCaseStatus: TestCaseStatus;
   name: string;
   chartColorScheme?: AreaChartColorScheme;
+  chartFilter?: DataQualityDashboardChartFilters;
+}
+
+export interface PieChartWidgetCommonProps {
+  chartFilter?: DataQualityDashboardChartFilters;
 }

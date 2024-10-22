@@ -26,8 +26,11 @@ import {
   fetchTotalEntityCount,
 } from '../../../../rest/dataQualityDashboardAPI';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
+import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 
-const DataAssetsCoveragePieChartWidget = () => {
+const DataAssetsCoveragePieChartWidget = ({
+  chartFilter,
+}: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -80,8 +83,11 @@ const DataAssetsCoveragePieChartWidget = () => {
   const fetchDataAssetsCoverage = async () => {
     setIsLoading(true);
     try {
-      const { data: coverageData } = await fetchEntityCoveredWithDQ();
-      const { data: totalData } = await fetchTotalEntityCount();
+      const { data: coverageData } = await fetchEntityCoveredWithDQ(
+        false,
+        chartFilter
+      );
+      const { data: totalData } = await fetchTotalEntityCount(chartFilter);
       if (coverageData.length === 0 || totalData.length === 0) {
         setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
       }
@@ -103,7 +109,7 @@ const DataAssetsCoveragePieChartWidget = () => {
 
   useEffect(() => {
     fetchDataAssetsCoverage();
-  }, []);
+  }, [chartFilter]);
 
   return (
     <Card loading={isLoading}>

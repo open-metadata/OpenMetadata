@@ -44,7 +44,13 @@ const DataQualityPage = () => {
 
       return {
         key: value.key,
-        label: <TabsLabel id={value.id} name={value.label} />,
+        label: (
+          <TabsLabel
+            description={value.description}
+            id={value.id}
+            name={value.label}
+          />
+        ),
         icon: <SvgIcon {...value.iconProps} height={16} width={16} />,
       };
     });
@@ -71,7 +77,7 @@ const DataQualityPage = () => {
         children: (
           <LeftPanelCard id="data-quality">
             <Menu
-              className="custom-menu data-quality-page-left-panel-menu"
+              className="custom-menu custom-menu-with-description data-quality-page-left-panel-menu"
               data-testid="tabs"
               items={menuItems}
               mode="inline"

@@ -23,6 +23,7 @@ import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TestSummary } from '../../generated/tests/testCase';
 import { fetchTestCaseSummary } from '../../rest/dataQualityDashboardAPI';
+import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DataQualityContextInterface,
@@ -55,31 +56,7 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
     setIsTestCaseSummaryLoading(true);
     try {
       const { data } = await fetchTestCaseSummary();
-      // Initialize output data with zeros
-      const outputData = {
-        success: 0,
-        failed: 0,
-        aborted: 0,
-        total: 0,
-      };
-
-      // Use reduce to process input data and calculate the counts
-      const updatedData = data.reduce((acc, item) => {
-        const count = parseInt(item.document_count);
-        const status = item['testCaseResult.testCaseStatus'];
-
-        if (status === 'success') {
-          acc.success += count;
-        } else if (status === 'failed') {
-          acc.failed += count;
-        } else if (status === 'aborted') {
-          acc.aborted += count;
-        }
-
-        acc.total += count; // Update total count
-
-        return acc;
-      }, outputData);
+      const updatedData = transformToTestCaseStatusObject(data);
       setTestCaseSummary(updatedData);
     } catch (error) {
       showErrorToast(error as AxiosError);

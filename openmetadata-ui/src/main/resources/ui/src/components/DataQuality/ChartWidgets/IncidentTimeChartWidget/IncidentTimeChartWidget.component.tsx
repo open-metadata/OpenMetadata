@@ -23,6 +23,7 @@ const IncidentTimeChartWidget = ({
   incidentMetricType,
   name,
   title,
+  chartFilter,
 }: IncidentTimeChartWidgetProps) => {
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(true);
@@ -32,13 +33,16 @@ const IncidentTimeChartWidget = ({
       return acc + curr.count;
     }, 0);
 
-    return totalTime / chartData.length;
+    return totalTime > 0 ? totalTime / chartData.length : 0;
   }, [chartData]);
 
   const getRespondTimeMetrics = async () => {
     setIsChartLoading(true);
     try {
-      const { data } = await fetchIncidentTimeMetrics(incidentMetricType);
+      const { data } = await fetchIncidentTimeMetrics(
+        incidentMetricType,
+        chartFilter
+      );
       const updatedData = data.reduce((act, cur) => {
         if (isNull(cur['metrics.value'])) {
           return act;
@@ -63,7 +67,7 @@ const IncidentTimeChartWidget = ({
 
   useEffect(() => {
     getRespondTimeMetrics();
-  }, []);
+  }, [chartFilter]);
 
   return (
     <Card loading={isChartLoading}>
@@ -71,7 +75,9 @@ const IncidentTimeChartWidget = ({
         {title}
       </Typography.Paragraph>
       <Typography.Paragraph className="font-medium text-xl m-b-0">
-        {convertMillisecondsToHumanReadableFormat(avgTimeValue)}
+        {chartData.length > 0
+          ? convertMillisecondsToHumanReadableFormat(avgTimeValue)
+          : '--'}
       </Typography.Paragraph>
 
       <CustomAreaChart

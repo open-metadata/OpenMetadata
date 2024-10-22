@@ -139,3 +139,68 @@ export const transformToTestCaseStatusByDimension = (
 
   return Object.values(result);
 };
+
+export const transformToTestCaseStatusObject = (
+  data: DataQualityReport['data']
+) => {
+  // Initialize output data with zeros
+  const outputData = {
+    success: 0,
+    failed: 0,
+    aborted: 0,
+    total: 0,
+  };
+
+  // Use reduce to process input data and calculate the counts
+  const updatedData = data.reduce((acc, item) => {
+    const count = parseInt(item.document_count);
+    const status = item['testCaseResult.testCaseStatus'];
+
+    if (status === 'success') {
+      acc.success += count;
+    } else if (status === 'failed') {
+      acc.failed += count;
+    } else if (status === 'aborted') {
+      acc.aborted += count;
+    }
+
+    acc.total += count; // Update total count
+
+    return acc;
+  }, outputData);
+
+  return updatedData;
+};
+
+export const buildMustEsFilterForTags = (
+  tags: string[],
+  isTestCaseResult = false
+) => {
+  return {
+    nested: {
+      path: isTestCaseResult ? 'testCase.tags' : 'tags',
+      query: {
+        bool: {
+          must: tags.map((tag) => ({
+            match: {
+              [isTestCaseResult ? 'testCase.tags.tagFQN' : 'tags.tagFQN']: tag,
+            },
+          })),
+        },
+      },
+    },
+  };
+};
+
+export const buildMustEsFilterForOwner = (
+  ownerFqn: string,
+  isTestCaseResult = false
+) => {
+  return {
+    term: {
+      [isTestCaseResult
+        ? 'testCase.owners.fullyQualifiedName'
+        : 'owners.fullyQualifiedName']: ownerFqn,
+    },
+  };
+};

@@ -25,6 +25,7 @@ const TestCaseStatusAreaChartWidget = ({
   name,
   title,
   chartColorScheme,
+  chartFilter,
 }: TestCaseStatusAreaChartWidgetProps) => {
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(true);
@@ -38,7 +39,10 @@ const TestCaseStatusAreaChartWidget = ({
   const getTestCaseStatusMetrics = async () => {
     setIsChartLoading(true);
     try {
-      const { data } = await fetchTestCaseStatusMetricsByDays(testCaseStatus);
+      const { data } = await fetchTestCaseStatusMetricsByDays(
+        testCaseStatus,
+        chartFilter
+      );
       const updatedData = data.map((cur) => {
         return {
           timestamp: +cur.timestamp,
@@ -56,7 +60,7 @@ const TestCaseStatusAreaChartWidget = ({
 
   useEffect(() => {
     getTestCaseStatusMetrics();
-  }, []);
+  }, [chartFilter]);
 
   return (
     <Card

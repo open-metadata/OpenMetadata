@@ -14,49 +14,152 @@
 import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.interface';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
+import { DataQualityDashboardChartFilters } from '../pages/DataQuality/DataQualityPage.interface';
+import {
+  buildMustEsFilterForOwner,
+  buildMustEsFilterForTags,
+} from '../utils/DataQuality/DataQualityUtils';
 import { getDataQualityReport } from './testAPI';
 
-export const fetchEntityCoveredWithDQ = (unhealthy = false) => {
+export const fetchEntityCoveredWithDQ = (
+  unhealthy = false,
+  filters?: DataQualityDashboardChartFilters
+) => {
+  const mustFilter = [];
+  if (unhealthy) {
+    mustFilter.push({
+      terms: {
+        'testCaseStatus.keyword': ['Failed', 'Aborted'],
+      },
+    });
+  }
+
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+
+  if (filters?.tags || filters?.tier) {
+    mustFilter.push(
+      buildMustEsFilterForTags([
+        ...(filters?.tags ?? []),
+        ...(filters?.tier ?? []),
+      ])
+    );
+  }
+
   return getDataQualityReport({
-    ...(unhealthy
-      ? {
-          q: JSON.stringify({
-            query: {
-              bool: {
-                must: [
-                  {
-                    terms: {
-                      'testCaseStatus.keyword': ['Failed', 'Aborted'],
-                    },
-                  },
-                ],
-              },
-            },
-          }),
-        }
-      : {}),
+    q: JSON.stringify({
+      query: {
+        bool: {
+          must: mustFilter,
+        },
+      },
+    }),
     index: 'testCase',
     aggregationQuery: `bucketName=entityWithTests:aggType=cardinality:field=originEntityFQN`,
   });
 };
 
-export const fetchTotalEntityCount = () => {
+export const fetchTotalEntityCount = (
+  filters?: DataQualityDashboardChartFilters
+) => {
+  const mustFilter = [];
+
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+
+  if (filters?.tags) {
+    mustFilter.push({
+      bool: {
+        should: filters.tags.map((tag) => ({
+          term: {
+            'tags.tagFQN': tag,
+          },
+        })),
+      },
+    });
+  }
+
+  if (filters?.tier) {
+    mustFilter.push({
+      bool: {
+        should: filters.tier.map((tag) => ({
+          term: {
+            'tier.tagFQN': tag,
+          },
+        })),
+      },
+    });
+  }
+
   return getDataQualityReport({
+    q: JSON.stringify({
+      query: {
+        bool: {
+          must: mustFilter,
+        },
+      },
+    }),
     index: 'table',
     aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
   });
 };
 
-export const fetchTestCaseSummary = () => {
+export const fetchTestCaseSummary = (
+  filters?: DataQualityDashboardChartFilters
+) => {
+  const mustFilter = [];
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+  if (filters?.tags || filters?.tier) {
+    mustFilter.push(
+      buildMustEsFilterForTags([
+        ...(filters?.tags ?? []),
+        ...(filters?.tier ?? []),
+      ])
+    );
+  }
+
   return getDataQualityReport({
+    q: JSON.stringify({
+      query: {
+        bool: {
+          must: mustFilter,
+        },
+      },
+    }),
     index: 'testCase',
     aggregationQuery:
       'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
   });
 };
 
-export const fetchTestCaseSummaryByDimension = () => {
+export const fetchTestCaseSummaryByDimension = (
+  filters?: DataQualityDashboardChartFilters
+) => {
+  const mustFilter = [];
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+  if (filters?.tags || filters?.tier) {
+    mustFilter.push(
+      buildMustEsFilterForTags([
+        ...(filters?.tags ?? []),
+        ...(filters?.tier ?? []),
+      ])
+    );
+  }
+
   return getDataQualityReport({
+    q: JSON.stringify({
+      query: {
+        bool: {
+          must: mustFilter,
+        },
+      },
+    }),
     index: 'testCase',
     aggregationQuery:
       'bucketName=dimension:aggType=terms:field=dataQualityDimension,bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
@@ -64,8 +167,22 @@ export const fetchTestCaseSummaryByDimension = () => {
 };
 
 export const fetchCountOfIncidentStatusTypeByDays = (
-  status: TestCaseResolutionStatusTypes
+  status: TestCaseResolutionStatusTypes,
+  filters?: DataQualityDashboardChartFilters
 ) => {
+  const mustFilter = [];
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
+  }
+  if (filters?.tags || filters?.tier) {
+    mustFilter.push(
+      buildMustEsFilterForTags(
+        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
+        true
+      )
+    );
+  }
+
   return getDataQualityReport({
     q: JSON.stringify({
       query: {
@@ -74,13 +191,13 @@ export const fetchCountOfIncidentStatusTypeByDays = (
             { term: { testCaseResolutionStatusType: status } },
             {
               range: {
-                // Todo: Update the timestamp range
                 timestamp: {
-                  lte: 1729148365000,
-                  gte: 1727784000000,
+                  lte: filters?.endTs,
+                  gte: filters?.startTs,
                 },
               },
             },
+            ...mustFilter,
           ],
         },
       },
@@ -91,7 +208,23 @@ export const fetchCountOfIncidentStatusTypeByDays = (
   });
 };
 
-export const fetchIncidentTimeMetrics = (type: IncidentTimeMetricsType) => {
+export const fetchIncidentTimeMetrics = (
+  type: IncidentTimeMetricsType,
+  filters?: DataQualityDashboardChartFilters
+) => {
+  const mustFilter = [];
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
+  }
+  if (filters?.tags || filters?.tier) {
+    mustFilter.push(
+      buildMustEsFilterForTags(
+        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
+        true
+      )
+    );
+  }
+
   return getDataQualityReport({
     q: JSON.stringify({
       query: {
@@ -99,10 +232,9 @@ export const fetchIncidentTimeMetrics = (type: IncidentTimeMetricsType) => {
           must: [
             {
               range: {
-                // Todo: Update the timestamp range
                 timestamp: {
-                  lte: 1729148365000,
-                  gte: 1727784000000,
+                  lte: filters?.endTs,
+                  gte: filters?.startTs,
                 },
               },
             },
@@ -116,6 +248,7 @@ export const fetchIncidentTimeMetrics = (type: IncidentTimeMetricsType) => {
                 },
               },
             },
+            ...mustFilter,
           ],
         },
       },
@@ -126,7 +259,23 @@ export const fetchIncidentTimeMetrics = (type: IncidentTimeMetricsType) => {
   });
 };
 
-export const fetchTestCaseStatusMetricsByDays = (status: TestCaseStatus) => {
+export const fetchTestCaseStatusMetricsByDays = (
+  status: TestCaseStatus,
+  filters?: DataQualityDashboardChartFilters
+) => {
+  const mustFilter = [];
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
+  }
+  if (filters?.tags || filters?.tier) {
+    mustFilter.push(
+      buildMustEsFilterForTags(
+        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
+        true
+      )
+    );
+  }
+
   return getDataQualityReport({
     q: JSON.stringify({
       query: {
@@ -135,13 +284,13 @@ export const fetchTestCaseStatusMetricsByDays = (status: TestCaseStatus) => {
             { term: { testCaseStatus: status } },
             {
               range: {
-                // Todo: Update the timestamp range
                 timestamp: {
-                  lte: 1729148365000,
-                  gte: 1727784000000,
+                  lte: filters?.endTs,
+                  gte: filters?.startTs,
                 },
               },
             },
+            ...mustFilter,
           ],
         },
       },

@@ -23,8 +23,11 @@ import { TEXT_GREY_MUTED } from '../../../../constants/constants';
 import { INITIAL_ENTITY_HEALTH_MATRIX } from '../../../../constants/profiler.constant';
 import { fetchEntityCoveredWithDQ } from '../../../../rest/dataQualityDashboardAPI';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
+import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 
-const EntityHealthStatusPieChartWidget = () => {
+const EntityHealthStatusPieChartWidget = ({
+  chartFilter,
+}: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -77,8 +80,14 @@ const EntityHealthStatusPieChartWidget = () => {
   const fetchEntityHealthSummary = async () => {
     setIsLoading(true);
     try {
-      const { data: unhealthyData } = await fetchEntityCoveredWithDQ(true);
-      const { data: totalData } = await fetchEntityCoveredWithDQ();
+      const { data: unhealthyData } = await fetchEntityCoveredWithDQ(
+        true,
+        chartFilter
+      );
+      const { data: totalData } = await fetchEntityCoveredWithDQ(
+        false,
+        chartFilter
+      );
       if (unhealthyData.length === 0 || totalData.length === 0) {
         setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
       }
@@ -95,7 +104,7 @@ const EntityHealthStatusPieChartWidget = () => {
 
   useEffect(() => {
     fetchEntityHealthSummary();
-  }, []);
+  }, [chartFilter]);
 
   return (
     <Card loading={isLoading}>

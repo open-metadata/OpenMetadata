@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as TestCaseIcon } from '../../../../assets/svg/all-activity-v2.svg';
 import {
@@ -22,30 +22,61 @@ import {
   YELLOW_2,
 } from '../../../../constants/Color.constants';
 import { TEXT_GREY_MUTED } from '../../../../constants/constants';
-import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
+import { INITIAL_TEST_SUMMARY } from '../../../../constants/TestSuite.constant';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
+import { transformToTestCaseStatusObject } from '../../../../utils/DataQuality/DataQualityUtils';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
+import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 
-const TestCaseStatusPieChartWidget = () => {
+const TestCaseStatusPieChartWidget = ({
+  chartFilter,
+}: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
-  const { isTestCaseSummaryLoading, testCaseSummary } =
-    useDataQualityProvider();
+
+  const [testCaseSummary, setTestCaseSummary] = useState(INITIAL_TEST_SUMMARY);
+  const [isTestCaseSummaryLoading, setIsTestCaseSummaryLoading] =
+    useState(true);
+
+  const { permissions } = usePermissionProvider();
+  const { testCase: testCasePermission } = permissions;
+
+  const fetchTestSummary = async () => {
+    setIsTestCaseSummaryLoading(true);
+    try {
+      const { data } = await fetchTestCaseSummary(chartFilter);
+      const updatedData = transformToTestCaseStatusObject(data);
+      setTestCaseSummary(updatedData);
+    } catch (error) {
+      setTestCaseSummary(INITIAL_TEST_SUMMARY);
+    } finally {
+      setIsTestCaseSummaryLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
+      fetchTestSummary();
+    } else {
+      setIsTestCaseSummaryLoading(false);
+    }
+  }, [chartFilter]);
 
   const { data, chartLabel } = useMemo(
     () => ({
       data: [
         {
           name: t('label.success'),
-          value: testCaseSummary.success ?? 0,
+          value: testCaseSummary.success,
           color: GREEN_3,
         },
         {
           name: t('label.failed'),
-          value: testCaseSummary.failed ?? 0,
+          value: testCaseSummary.failed,
           color: RED_3,
         },
         {
           name: t('label.aborted'),
-          value: testCaseSummary.aborted ?? 0,
+          value: testCaseSummary.aborted,
           color: YELLOW_2,
         },
       ],

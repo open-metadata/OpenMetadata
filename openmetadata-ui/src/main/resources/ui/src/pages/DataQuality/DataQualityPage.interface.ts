@@ -24,3 +24,11 @@ export interface DataQualityContextInterface {
   testCaseSummary: TestSummary;
   activeTab: DataQualityPageTabs;
 }
+
+export type DataQualityDashboardChartFilters = {
+  ownerFqn?: string;
+  tags?: string[];
+  tier?: string[];
+  startTs?: number;
+  endTs?: number;
+};
