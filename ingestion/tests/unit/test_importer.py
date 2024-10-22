@@ -28,9 +28,9 @@ from metadata.utils.importer import (
     import_from_module,
     import_processor_class,
     import_sink_class,
-    import_source_class,
     import_stage_class,
 )
+from metadata.utils.service_spec.service_spec import import_source_class
 
 
 # pylint: disable=import-outside-toplevel
@@ -61,31 +61,11 @@ class ImporterTest(TestCase):
         )
 
     def test_import_source_class(self) -> None:
-        from metadata.ingestion.source.database.bigquery.lineage import (
-            BigqueryLineageSource,
-        )
-        from metadata.ingestion.source.database.bigquery.usage import (
-            BigqueryUsageSource,
-        )
         from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 
         self.assertEqual(
             import_source_class(service_type=ServiceType.Database, source_type="mysql"),
             MysqlSource,
-        )
-
-        self.assertEqual(
-            import_source_class(
-                service_type=ServiceType.Database, source_type="bigquery-lineage"
-            ),
-            BigqueryLineageSource,
-        )
-
-        self.assertEqual(
-            import_source_class(
-                service_type=ServiceType.Database, source_type="bigquery-usage"
-            ),
-            BigqueryUsageSource,
         )
 
     def test_import_processor_class(self) -> None:
@@ -126,7 +106,7 @@ class ImporterTest(TestCase):
         self.assertIsNotNone(get_connection_fn)
 
         self.assertRaises(
-            DynamicImportException,
+            AttributeError,
             import_connection_fn,
             connection=connection,
             function_name="random",
