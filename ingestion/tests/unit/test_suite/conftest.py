@@ -36,12 +36,12 @@ from metadata.generated.schema.type.entityReference import EntityReference
 Base = declarative_base()
 
 TEST_CASE_NAME = "my_test_case"
-ENTITY_LINK_NICKNAME = "<#E::table::service.db.users::columns::nickname>"
-ENTITY_LINK_FNAME = "<#E::table::service.db.users::columns::first name>"
-ENTITY_LINK_AGE = "<#E::table::service.db.users::columns::age>"
-ENTITY_LINK_NAME = "<#E::table::service.db.users::columns::name>"
-ENTITY_LINK_USER = "<#E::table::service.db.users>"
-ENTITY_LINK_INSERTED_DATE = "<#E::table::service.db.users::columns::inserted_date>"
+ENTITY_LINK_NICKNAME = "<#E::om::table::om::service.db.users::om::columns::om::nickname>"
+ENTITY_LINK_FNAME = "<#E::om::table::om::service.db.users::om::columns::om::first name>"
+ENTITY_LINK_AGE = "<#E::om::table::om::service.db.users::om::columns::om::age>"
+ENTITY_LINK_NAME = "<#E::om::table::om::service.db.users::om::columns::om::name>"
+ENTITY_LINK_USER = "<#E::om::table::om::service.db.users>"
+ENTITY_LINK_INSERTED_DATE = "<#E::om::table::om::service.db.users::om::columns::om::inserted_date>"
 
 TABLE = Table(
     id=uuid4(),
