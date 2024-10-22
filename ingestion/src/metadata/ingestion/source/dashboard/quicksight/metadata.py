@@ -228,11 +228,11 @@ class QuicksightSource(DashboardServiceSource):
     def _yield_lineage_from_query(
         self,
         data_source_ids: list,
-        data_source_resp: DataSourceRespQuery,
-        db_service_name: str,
         dashboard_details: DashboardDetail,
+        db_service_name: str,
+        data_source_resp: DataSourceRespQuery,
     ) -> Iterable[Either[AddLineageRequest]]:
-        """"""
+        """yield lineage from table(parsed form query source) <-> dashboard"""
         sql_query = data_source_resp.query
         database_names = []
         try:
@@ -315,6 +315,7 @@ class QuicksightSource(DashboardServiceSource):
     def _yield_lineage_from_s3(
         self, data_source_ids: list, dashboard_details: DashboardDetail
     ) -> Iterable[Either[AddLineageRequest]]:
+        """yield lineage from s3 container <-> dashboard"""
         try:
             for data_source_id in data_source_ids or []:
                 data_source_resp = DescribeDataSourceResponse(
@@ -376,6 +377,55 @@ class QuicksightSource(DashboardServiceSource):
                 )
             )
 
+    def _yield_lineage_from_table(
+        self,
+        data_source_ids: list,
+        dashboard_details: DashboardDetail,
+        db_service_name: str,
+        data_source_resp: DataSourceResp,
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """yield lineage from table <-> dashboard"""
+        schema_name = data_source_resp.schema_name
+        table_name = data_source_resp.table_name
+
+        for data_source_id in data_source_ids or []:
+            data_source_resp = DescribeDataSourceResponse(
+                **self.client.describe_data_source(
+                    AwsAccountId=self.aws_account_id,
+                    DataSourceId=data_source_id,
+                )
+            ).DataSource
+            if data_source_resp and data_source_resp.DataSourceParameters:
+                data_source_dict = data_source_resp.DataSourceParameters
+                for db in data_source_dict.keys() or []:
+                    from_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=db_service_name,
+                        database_name=data_source_dict[db].get("Database"),
+                        schema_name=schema_name,
+                        table_name=table_name,
+                    )
+                    from_entity = self.metadata.get_by_name(
+                        entity=Table,
+                        fqn=from_fqn,
+                    )
+                    to_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Dashboard,
+                        service_name=self.config.serviceName,
+                        dashboard_name=dashboard_details.DashboardId,
+                    )
+                    to_entity = self.metadata.get_by_name(
+                        entity=Dashboard,
+                        fqn=to_fqn,
+                    )
+                    if from_entity is not None and to_entity is not None:
+                        yield self._get_add_lineage_request(
+                            to_entity=to_entity,
+                            from_entity=from_entity,
+                        )
+
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self, dashboard_details: DashboardDetail, db_service_name: str
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -397,14 +447,10 @@ class QuicksightSource(DashboardServiceSource):
             }
 
             for dataset_id in dataset_ids or []:
-                for data_source in (
-                    list(
-                        self.client.describe_data_set(
-                            AwsAccountId=self.aws_account_id, DataSetId=dataset_id
-                        )["DataSet"]["PhysicalTableMap"].values()
-                    )
-                    or []
-                ):
+                data_source_list = self._describe_data_sets(
+                    dataset_id, dashboard_details
+                )
+                for data_source in data_source_list:
                     try:
                         if data_source.get("RelationalTable"):
                             data_source_resp = DataSourceResp(
@@ -453,66 +499,21 @@ class QuicksightSource(DashboardServiceSource):
                         if isinstance(data_source_resp, DataSourceRespQuery):
                             yield from self._yield_lineage_from_query(
                                 data_source_ids,
-                                data_source_resp,
-                                db_service_name,
                                 dashboard_details,
+                                db_service_name,
+                                data_source_resp,
                             )
                         elif isinstance(data_source_resp, DataSourceRespS3):
                             yield from self._yield_lineage_from_s3(
                                 data_source_ids, dashboard_details
                             )
-
                         elif isinstance(data_source_resp, DataSourceResp):
-                            schema_name = data_source_resp.schema_name
-                            table_name = data_source_resp.table_name
-
-                            for data_source_id in data_source_ids or []:
-                                data_source_resp = DescribeDataSourceResponse(
-                                    **self.client.describe_data_source(
-                                        AwsAccountId=self.aws_account_id,
-                                        DataSourceId=data_source_id,
-                                    )
-                                ).DataSource
-                                if (
-                                    data_source_resp
-                                    and data_source_resp.DataSourceParameters
-                                ):
-                                    data_source_dict = (
-                                        data_source_resp.DataSourceParameters
-                                    )
-                                    for db in data_source_dict.keys() or []:
-                                        from_fqn = fqn.build(
-                                            self.metadata,
-                                            entity_type=Table,
-                                            service_name=db_service_name,
-                                            database_name=data_source_dict[db].get(
-                                                "Database"
-                                            ),
-                                            schema_name=schema_name,
-                                            table_name=table_name,
-                                        )
-                                        from_entity = self.metadata.get_by_name(
-                                            entity=Table,
-                                            fqn=from_fqn,
-                                        )
-                                        to_fqn = fqn.build(
-                                            self.metadata,
-                                            entity_type=Dashboard,
-                                            service_name=self.config.serviceName,
-                                            dashboard_name=dashboard_details.DashboardId,
-                                        )
-                                        to_entity = self.metadata.get_by_name(
-                                            entity=Dashboard,
-                                            fqn=to_fqn,
-                                        )
-                                        if (
-                                            from_entity is not None
-                                            and to_entity is not None
-                                        ):
-                                            yield self._get_add_lineage_request(
-                                                to_entity=to_entity,
-                                                from_entity=from_entity,
-                                            )
+                            yield from self._yield_lineage_from_table(
+                                data_source_ids,
+                                dashboard_details,
+                                db_service_name,
+                                data_source_resp,
+                            )
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -521,3 +522,17 @@ class QuicksightSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _describe_data_sets(self, dataset_id, dashboard_details) -> List:
+        """call botocore's describe api for datasets"""
+        try:
+            return list(
+                self.client.describe_data_set(
+                    AwsAccountId=self.aws_account_id, DataSetId=dataset_id
+                )["DataSet"]["PhysicalTableMap"].values()
+            )
+        except Exception as err:
+            logger.info(
+                f"Cannot parse lineage from the dashboard: {dashboard_details.Name} to dataset due to: {err}"
+            )
+            return []
