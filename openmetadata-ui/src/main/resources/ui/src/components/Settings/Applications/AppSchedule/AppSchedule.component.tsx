@@ -28,7 +28,10 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import { getCronInitialValue, getWeekCron } from '../../../../utils/CronUtils';
+import {
+  getCronInitialValue,
+  getWeekCron,
+} from '../../../../utils/SchedularUtils';
 import Loader from '../../../common/Loader/Loader';
 import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../Services/AddIngestion/Steps/ScheduleInterval.interface';
@@ -255,7 +258,7 @@ const AppSchedule = ({
           }}
           defaultSchedule={
             config?.enable
-              ? getWeekCron({ hour: 0, min: 0, dow: 0 })
+              ? getWeekCron({ hour: '0', min: '0', dow: '0' })
               : getCronInitialValue(appData?.name ?? '')
           }
           includePeriodOptions={initialOptions}

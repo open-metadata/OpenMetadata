@@ -48,8 +48,8 @@ import { Connection as MetadataConnection } from '../generated/entity/services/m
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
 import { Transi18next } from './CommonUtils';
-import { getDayCron } from './CronUtils';
 import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
+import { getDayCron } from './SchedularUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 
@@ -420,8 +420,8 @@ export const getDefaultIngestionSchedule = ({
   return (
     defaultSchedule ??
     getDayCron({
-      min: 0,
-      hour: 0,
+      min: '0',
+      hour: '0',
     })
   );
 };

@@ -45,12 +45,12 @@ import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
-import { getCronInitialValue, getWeekCron } from '../../utils/CronUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import { getCronInitialValue, getWeekCron } from '../../utils/SchedularUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './app-install.less';
 
@@ -95,7 +95,7 @@ const AppInstall = () => {
       initialOptions,
       initialValue: {
         cron: config?.enable
-          ? getWeekCron({ hour: 0, min: 0, dow: 0 })
+          ? getWeekCron({ hour: '0', min: '0', dow: '0' })
           : getCronInitialValue(appData?.name ?? ''),
       },
     };

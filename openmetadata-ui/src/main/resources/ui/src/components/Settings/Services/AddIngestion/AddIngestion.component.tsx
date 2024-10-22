@@ -30,7 +30,7 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
 import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
@@ -304,11 +304,7 @@ const AddIngestion = ({
                 : t('label.submit'),
             }}
             disabled={pipelineType === PipelineType.DataInsight}
-            includePeriodOptions={
-              pipelineType === PipelineType.DataInsight
-                ? ['day']
-                : periodOptions
-            }
+            includePeriodOptions={periodOptions}
             initialData={{ cron: data?.airflowConfig.scheduleInterval }}
             isEditMode={isEditMode}
             status={saveState}

@@ -27,12 +27,13 @@ import {
 } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  DAY_IN_MONTH_OPTIONS,
   DAY_OPTIONS,
-  DEFAULT_SCHEDULE_CRON,
+  DEFAULT_SCHEDULE_CRON_DAILY,
   PERIOD_OPTIONS,
   SCHEDULAR_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
@@ -46,13 +47,15 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../../interface/FormUtils.interface';
-import {
-  getCron,
-  getHourMinuteSelect,
-  getStateValue,
-} from '../../../../../utils/CronUtils';
 import { generateFormFields } from '../../../../../utils/formUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
+import {
+  getCron,
+  getDefaultScheduleFromPeriod,
+  getHourMinuteSelect,
+  getStateValue,
+  getUpdatedStateFromFormState,
+} from '../../../../../utils/SchedularUtils';
 import './schedule-interval.less';
 import {
   ScheduleIntervalProps,
@@ -74,16 +77,19 @@ const ScheduleInterval = <T,>({
   },
   isEditMode = false,
   buttonProps,
-  defaultSchedule = DEFAULT_SCHEDULE_CRON,
+  defaultSchedule = DEFAULT_SCHEDULE_CRON_DAILY,
   topChildren,
 }: ScheduleIntervalProps<T>) => {
   const { t } = useTranslation();
+  const finalDefaultSchedule = isUndefined(includePeriodOptions)
+    ? defaultSchedule
+    : getDefaultScheduleFromPeriod(includePeriodOptions);
   const initialCron = isEditMode
     ? initialData?.cron
-    : initialData?.cron || defaultSchedule;
+    : initialData?.cron || finalDefaultSchedule;
   const initialValues = {
     ...initialData,
-    ...getStateValue(initialCron, defaultSchedule),
+    ...getStateValue(initialCron, finalDefaultSchedule),
   };
   const [state, setState] = useState<StateValue>(initialValues);
   const [selectedSchedular, setSelectedSchedular] =
@@ -93,38 +99,45 @@ const ScheduleInterval = <T,>({
         : SchedularOptions.SCHEDULE
     );
   const [form] = Form.useForm<StateValue>();
-  const { cron: cronString, selectedPeriod, dow } = state;
+  const { cron: cronString, selectedPeriod, dow, dom } = state;
 
   const {
     showMinuteSelect,
     showHourSelect,
     showWeekSelect,
+    showMonthSelect,
     minuteCol,
     hourCol,
     weekCol,
+    monthCol,
   } = useMemo(() => {
     const isHourSelected = selectedPeriod === 'hour';
     const isDaySelected = selectedPeriod === 'day';
     const isWeekSelected = selectedPeriod === 'week';
-    const showMinuteSelect = isHourSelected || isDaySelected || isWeekSelected;
-    const showHourSelect = isDaySelected || isWeekSelected;
+    const isMonthSelected = selectedPeriod === 'month';
+    const showMinuteSelect =
+      isHourSelected || isDaySelected || isWeekSelected || isMonthSelected;
+    const showHourSelect = isDaySelected || isWeekSelected || isMonthSelected;
     const showWeekSelect = isWeekSelected;
+    const showMonthSelect = isMonthSelected;
     const minuteCol = isHourSelected ? 12 : 6;
 
     return {
       showMinuteSelect,
       showHourSelect,
       showWeekSelect,
+      showMonthSelect,
       minuteCol: showMinuteSelect ? minuteCol : 0,
       hourCol: showHourSelect ? 6 : 0,
       weekCol: showWeekSelect ? 24 : 0,
+      monthCol: showMonthSelect ? 24 : 0,
     };
   }, [selectedPeriod]);
 
   const handleSelectedSchedular = useCallback(
     (value: SchedularOptions) => {
       setSelectedSchedular(value);
-      let newState = getStateValue(initialData?.cron ?? defaultSchedule);
+      let newState = getStateValue(initialData?.cron ?? finalDefaultSchedule);
       if (value === SchedularOptions.ON_DEMAND) {
         newState = {
           ...newState,
@@ -134,7 +147,7 @@ const ScheduleInterval = <T,>({
       setState(newState);
       form.setFieldsValue(newState);
     },
-    [isEditMode, initialData?.cron, defaultSchedule]
+    [isEditMode, initialData?.cron, finalDefaultSchedule]
   );
 
   const formFields: FieldProp[] = useMemo(
@@ -166,7 +179,7 @@ const ScheduleInterval = <T,>({
   );
 
   const handleValuesChange = (values: StateValue & WorkflowExtraConfig & T) => {
-    const newState = { ...state, ...values };
+    const newState = getUpdatedStateFromFormState(state, values);
     const cronExp = getCron(newState);
     const updatedState = { ...newState, cron: cronExp };
     form.setFieldsValue(updatedState);
@@ -290,6 +303,33 @@ const ScheduleInterval = <T,>({
                         {label[0]}
                       </Radio.Button>
                     ))}
+                  </Radio.Group>
+                </Form.Item>
+              </Col>
+
+              <Col span={monthCol}>
+                <Form.Item
+                  data-testid="month-segment-day-option-container"
+                  hidden={!showMonthSelect}
+                  label={`${t('label.date')}:`}
+                  labelCol={{ span: 24 }}
+                  name="dom">
+                  <Radio.Group
+                    buttonStyle="solid"
+                    className="d-flex flex-wrap gap-2"
+                    value={dom}>
+                    {DAY_IN_MONTH_OPTIONS.map(
+                      ({ label, value: optionValue }) => (
+                        <Radio.Button
+                          className="week-selector-buttons"
+                          data-value={optionValue}
+                          disabled={disabled}
+                          key={`day-${label}-${optionValue}`}
+                          value={optionValue}>
+                          {label}
+                        </Radio.Button>
+                      )
+                    )}
                   </Radio.Group>
                 </Form.Item>
               </Col>

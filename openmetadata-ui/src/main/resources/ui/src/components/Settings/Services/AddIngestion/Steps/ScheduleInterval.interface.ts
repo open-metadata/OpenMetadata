@@ -48,16 +48,18 @@ export interface Combination {
   hour: RegExp;
   day: RegExp;
   week: RegExp;
+  month: RegExp;
 }
 export interface StateValue {
   selectedPeriod: string;
-  hour: number;
-  min: number;
-  dow: number;
+  hour: string;
+  min: string;
+  dow: string;
+  dom: string;
   cron?: string;
 }
 
 export interface CronOption {
   label: string;
-  value: number;
+  value: string;
 }
