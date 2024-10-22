@@ -1,5 +1,7 @@
 package org.openmetadata.service.migration.utils.v160;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import java.util.UUID;
 import javax.json.JsonObject;
 import lombok.extern.slf4j.Slf4j;
@@ -8,11 +10,15 @@ import org.jdbi.v3.core.statement.Update;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -68,6 +74,38 @@ public class MigrationUtil {
               });
     } catch (Exception ex) {
       LOG.warn("Error running app extension migration ", ex);
+    }
+  }
+
+  public static void addViewAllRuleToOrgPolicy(CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
+      boolean noViewAllRule = true;
+      for (Rule rule : organizationPolicy.getRules()) {
+        if (rule.getName().equals("OrganizationPolicy-View-All-Rule")) {
+          noViewAllRule = false;
+          break;
+        }
+      }
+      if (noViewAllRule) {
+        Rule viewAllRule =
+            new Rule()
+                .withName("OrganizationPolicy-ViewAll-Rule")
+                .withResources(listOf("all"))
+                .withOperations(listOf(MetadataOperation.VIEW_ALL))
+                .withEffect(Rule.Effect.ALLOW)
+                .withDescription("Allow all users to view all metadata");
+        organizationPolicy.getRules().add(viewAllRule);
+        collectionDAO
+            .policyDAO()
+            .update(
+                organizationPolicy.getId(),
+                organizationPolicy.getFullyQualifiedName(),
+                JsonUtils.pojoToJson(organizationPolicy));
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("OrganizationPolicy not found", ex);
     }
   }
 
