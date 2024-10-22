@@ -13,9 +13,9 @@ site_menu:
     url: /quick-start/sandbox
   - category: Quickstart / Getting Started  
     url: /quick-start/getting-started
-  - category: Quickstart / Day 1  
+  - category: Quickstart / Getting Started / Day 1  
     url: /quick-start/getting-started/day-1
-  - category: Quickstart / Day 1 / Database Service Setup
+  - category: Quickstart / Getting Started / Day 1 / Database Service Setup
     url: /quick-start/getting-started/day-1/database-service-setup
 
   - category: Deployment
@@ -929,6 +929,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.6 Release
+    url: /releases/all-releases/#1.5.6-release
   - category: Releases / All Releases / 1.5.5 Release
     url: /releases/all-releases/#1.5.5-release
   - category: Releases / All Releases / 1.5.4 Release
