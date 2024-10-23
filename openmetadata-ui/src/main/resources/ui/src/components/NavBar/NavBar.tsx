@@ -311,7 +311,8 @@ const NavBar = ({
         return;
       }
       const newVersion = await getVersion();
-      if (version !== newVersion.version) {
+      // Compare version only if version is set previously to have fair comparison
+      if (version && version !== newVersion.version) {
         setShowVersionMissMatchAlert(true);
       }
     };
@@ -449,6 +450,7 @@ const NavBar = ({
                           'text-primary': !isSearchBlur,
                         })}
                         component={IconCloseCircleOutlined}
+                        data-testid="cancel-icon"
                         style={{ fontSize: '16px' }}
                         onClick={handleClear}
                       />

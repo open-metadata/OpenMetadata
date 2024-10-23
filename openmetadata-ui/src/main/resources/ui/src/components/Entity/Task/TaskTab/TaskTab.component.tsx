@@ -962,9 +962,9 @@ export const TaskTab = ({
       {isTaskTestCaseResult ? (
         <Modal
           destroyOnClose
-          maskClosable
           closable={false}
           closeIcon={null}
+          maskClosable={false}
           okButtonProps={{
             loading: isActionLoading,
           }}
@@ -1025,9 +1025,9 @@ export const TaskTab = ({
       ) : (
         <Modal
           destroyOnClose
-          maskClosable
           closable={false}
           closeIcon={null}
+          maskClosable={false}
           open={showEditTaskModel}
           title={`${t('label.edit-entity', {
             entity: t('label.task-lowercase'),

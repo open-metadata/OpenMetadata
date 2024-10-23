@@ -54,6 +54,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'containers',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_dashboard: {
@@ -72,6 +75,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'dashboards',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_database: {
@@ -90,6 +96,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'databases',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_databaseSchema: {
@@ -108,6 +117,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'databaseSchemas',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_glossaryTerm: {
@@ -126,6 +138,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'glossaryTerm',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_mlmodel: {
@@ -144,6 +159,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'mlmodels',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_pipeline: {
@@ -162,6 +180,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'pipelines',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_searchIndex: {
@@ -180,6 +201,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'searchIndexes',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_storedProcedure: {
@@ -198,6 +222,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'storedProcedures',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_table: {
@@ -216,6 +243,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'tables',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_topic: {
@@ -234,6 +264,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'topics',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
   entity_apiCollection: {
     name: 'apiCollection',
@@ -251,6 +284,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'apiCollections',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_apiEndpoint: {
@@ -269,6 +305,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'apiEndpoints',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
   entity_dataProduct: {
     name: 'dataProduct',
@@ -286,6 +325,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'dataProducts',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
   entity_dashboardDataModel: {
     name: 'dataModel',
@@ -303,6 +345,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'dashboardDataModels',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
   entity_metric: {
     name: 'metric',
@@ -320,6 +365,9 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'metrics',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 };
 

@@ -1,6 +1,7 @@
 ---
 title: Matillion
 slug: /connectors/pipeline/matillion
+collate: true
 ---
 
 {% connectorDetailsHeader

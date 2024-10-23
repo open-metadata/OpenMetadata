@@ -29,6 +29,7 @@ export enum CustomPropertyType {
   MARKDOWN = 'Markdown',
 }
 export enum CustomPropertyTypeByName {
+  TABLE_CP = 'table-cp',
   STRING = 'string',
   INTEGER = 'integer',
   MARKDOWN = 'markdown',
@@ -56,6 +57,27 @@ export interface CustomProperty {
   };
 }
 
+export const fillTableColumnInputDetails = async (
+  page: Page,
+  text: string,
+  columnName: string
+) => {
+  await page
+    .locator(`div[data-state-props-id="${columnName}"]`)
+    .last()
+    .dblclick();
+
+  await page
+    .getByTestId('edit-table-type-property-modal')
+    .getByRole('textbox')
+    .fill(text);
+
+  await page
+    .locator(`div[data-state-props-id="${columnName}"]`)
+    .last()
+    .press('Enter', { delay: 100 });
+};
+
 export const setValueForProperty = async (data: {
   page: Page;
   propertyName: string;
@@ -66,12 +88,18 @@ export const setValueForProperty = async (data: {
   const { page, propertyName, value, propertyType, endpoint } = data;
   await page.click('[data-testid="custom_properties"]');
 
-  await expect(page.getByRole('cell', { name: propertyName })).toContainText(
-    propertyName
+  const container = page.locator(
+    `[data-testid="custom-property-${propertyName}-card"]`
   );
 
+  await expect(
+    page.locator(
+      `[data-testid="custom-property-${propertyName}-card"] [data-testid="property-name"]`
+    )
+  ).toHaveText(propertyName);
+
   const editButton = page.locator(
-    `[data-row-key="${propertyName}"] [data-testid="edit-icon"]`
+    `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
   );
   await editButton.scrollIntoViewIfNeeded();
   await editButton.click({ force: true });
@@ -96,14 +124,14 @@ export const setValueForProperty = async (data: {
     case 'email':
       await page.locator('[data-testid="email-input"]').isVisible();
       await page.locator('[data-testid="email-input"]').fill(value);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'duration':
       await page.locator('[data-testid="duration-input"]').isVisible();
       await page.locator('[data-testid="duration-input"]').fill(value);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
@@ -112,21 +140,21 @@ export const setValueForProperty = async (data: {
       await page.fill('#enumValues', value, { force: true });
       await page.press('#enumValues', 'Enter');
       await clickOutside(page);
-      await page.click('[data-testid="inline-save-btn"]');
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'sqlQuery':
       await page.locator("pre[role='presentation']").last().click();
       await page.keyboard.type(value);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'timestamp':
       await page.locator('[data-testid="timestamp-input"]').isVisible();
       await page.locator('[data-testid="timestamp-input"]').fill(value);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
@@ -136,7 +164,7 @@ export const setValueForProperty = async (data: {
       await page.locator('[data-testid="start-input"]').fill(startValue);
       await page.locator('[data-testid="end-input"]').isVisible();
       await page.locator('[data-testid="end-input"]').fill(endValue);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -146,7 +174,7 @@ export const setValueForProperty = async (data: {
       await page.locator('[data-testid="time-picker"]').click();
       await page.locator('[data-testid="time-picker"]').fill(value);
       await page.getByRole('button', { name: 'OK', exact: true }).click();
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -161,7 +189,7 @@ export const setValueForProperty = async (data: {
       } else {
         await page.getByText('Today', { exact: true }).click();
       }
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -171,7 +199,7 @@ export const setValueForProperty = async (data: {
     case 'number':
       await page.locator('[data-testid="value-input"]').isVisible();
       await page.locator('[data-testid="value-input"]').fill(value);
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
@@ -191,7 +219,22 @@ export const setValueForProperty = async (data: {
         await page.locator(`[data-testid="${val}"]`).click();
       }
 
-      await page.locator('[data-testid="inline-save-btn"]').click();
+      await clickOutside(page);
+
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+    }
+
+    case 'table-cp': {
+      const values = value.split(',');
+      await page.locator('[data-testid="add-new-row"]').click();
+
+      await fillTableColumnInputDetails(page, values[0], 'pw-column1');
+
+      await fillTableColumnInputDetails(page, values[1], 'pw-column2');
+
+      await page.locator('[data-testid="update-table-type-property"]').click();
 
       break;
     }
@@ -208,23 +251,37 @@ export const validateValueForProperty = async (data: {
   const { page, propertyName, value, propertyType } = data;
   await page.click('[data-testid="custom_properties"]');
 
+  const container = page.locator(
+    `[data-testid="custom-property-${propertyName}-card"]`
+  );
+
+  const toggleBtnVisibility = await container
+    .locator(`[data-testid="toggle-${propertyName}"]`)
+    .isVisible();
+
+  if (toggleBtnVisibility && propertyType !== 'table-cp') {
+    await container.locator(`[data-testid="toggle-${propertyName}"]`).click();
+  }
+
   if (propertyType === 'enum') {
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('enum-value')
-    ).toContainText(value);
+    await expect(container.getByTestId('enum-value')).toContainText(value);
   } else if (propertyType === 'timeInterval') {
     const [startValue, endValue] = value.split(',');
 
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
-    ).toContainText(startValue);
-    await expect(
-      page.getByLabel('Custom Properties').getByTestId('time-interval-value')
-    ).toContainText(endValue);
+    await expect(container.getByTestId('time-interval-value')).toContainText(
+      startValue
+    );
+    await expect(container.getByTestId('time-interval-value')).toContainText(
+      endValue
+    );
   } else if (propertyType === 'sqlQuery') {
+    await expect(container.locator('.CodeMirror-scroll')).toContainText(value);
+  } else if (propertyType === 'table-cp') {
+    const values = value.split(',');
+
     await expect(
-      page.getByLabel('Custom Properties').locator('.CodeMirror-scroll')
-    ).toContainText(value);
+      page.getByRole('row', { name: `${values[0]} ${values[1]}` })
+    ).toBeVisible();
   } else if (
     ![
       'entityReference',
@@ -233,9 +290,7 @@ export const validateValueForProperty = async (data: {
       'dateTime-cp',
     ].includes(propertyType)
   ) {
-    await expect(page.getByRole('row', { name: propertyName })).toContainText(
-      value.replace(/\*|_/gi, '')
-    );
+    await expect(container).toContainText(value.replace(/\*|_/gi, ''));
   }
 };
 
@@ -325,6 +380,12 @@ export const getPropertyValues = (
       return {
         value: '2024-07-09 15:07:59',
         newValue: '2025-07-09 15:07:59',
+      };
+
+    case 'table-cp':
+      return {
+        value: 'column1,column2',
+        newValue: 'column3,column4',
       };
 
     default:
@@ -437,6 +498,15 @@ export const createCustomPropertyForEntity = async (
                 },
               }
             : {}),
+          ...(item.name === 'table-cp'
+            ? {
+                customPropertyConfig: {
+                  config: {
+                    columns: ['pw-column1', 'pw-column2'],
+                  },
+                },
+              }
+            : {}),
         },
       }
     );
@@ -474,6 +544,7 @@ export const addCustomPropertiesForEntity = async ({
   enumConfig,
   formatConfig,
   entityReferenceConfig,
+  tableConfig,
 }: {
   page: Page;
   propertyName: string;
@@ -482,6 +553,7 @@ export const addCustomPropertiesForEntity = async ({
   enumConfig?: { values: string[]; multiSelect: boolean };
   formatConfig?: string;
   entityReferenceConfig?: string[];
+  tableConfig?: { columns: string[] };
 }) => {
   // Add Custom property for selected entity
   await page.click('[data-testid="add-field-button"]');
@@ -559,6 +631,15 @@ export const addCustomPropertiesForEntity = async ({
       await page.click('#root\\/multiSelect');
     }
   }
+  // Table configuration
+  if (customType === 'Table' && tableConfig) {
+    for (const val of tableConfig.columns) {
+      await page.click('#root\\/columns');
+      await page.fill('#root\\/columns', val);
+      await page.press('#root\\/columns', 'Enter');
+    }
+    await clickOutside(page);
+  }
 
   // Entity reference configuration
   if (
@@ -586,6 +667,7 @@ export const addCustomPropertiesForEntity = async ({
   }
 
   // Description
+
   await page.fill(descriptionBox, customPropertyData.description);
 
   const createPropertyPromise = page.waitForResponse(
@@ -619,6 +701,14 @@ export const editCreatedProperty = async (
         `[data-row-key="${propertyName}"] [data-testid="enum-config"]`
       )
     ).toContainText('["enum1","enum2","enum3"]');
+  }
+
+  if (type === 'Table') {
+    await expect(
+      page
+        .locator(`[data-row-key="${propertyName}"]`)
+        .getByText('Columns:pw-column1pw-column2')
+    ).toBeVisible();
   }
 
   await editButton.click();
@@ -664,6 +754,7 @@ export const editCreatedProperty = async (
       )
     ).toContainText('["enum1","enum2","enum3","updatedValue"]');
   }
+
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
     await expect(
       page.locator(

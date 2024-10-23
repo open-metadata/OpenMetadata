@@ -14,14 +14,18 @@ import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.searcg.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.SSLUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
@@ -108,6 +112,8 @@ public interface SearchClient {
 
   void createAliases(IndexMapping indexMapping);
 
+  void addIndexAlias(IndexMapping indexMapping, String... aliasName);
+
   Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
   Response getDocByID(String indexName, String entityId) throws IOException;
@@ -145,6 +151,9 @@ public interface SearchClient {
       String entityType)
       throws IOException;
 
+  Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException;
+
   /*
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
   */
@@ -167,11 +176,12 @@ public interface SearchClient {
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
-  JsonObject aggregate(String query, String index, JsonObject aggregationJson, String filters)
+  JsonObject aggregate(
+      String query, String index, SearchAggregation searchAggregation, String filters)
       throws IOException;
 
   DataQualityReport genericAggregation(
-      String query, String index, Map<String, Object> aggregationMetadata) throws IOException;
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
   Response suggest(SearchRequest request) throws IOException;
 
@@ -189,6 +199,8 @@ public interface SearchClient {
   void deleteEntity(String indexName, String docId);
 
   void deleteEntityByFields(List<String> indexName, List<Pair<String, String>> fieldAndValue);
+
+  void deleteEntityByFQNPrefix(String indexName, String fqnPrefix);
 
   void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
 
@@ -289,4 +301,15 @@ public interface SearchClient {
   }
 
   Object getLowLevelClient();
+
+  static boolean shouldApplyRbacConditions(
+      SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
+    return Boolean.TRUE.equals(
+            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
+                .getEnableAccessControl())
+        && subjectContext != null
+        && !subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && rbacConditionEvaluator != null;
+  }
 }

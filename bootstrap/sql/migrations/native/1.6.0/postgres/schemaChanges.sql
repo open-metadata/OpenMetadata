@@ -21,4 +21,19 @@ CREATE TABLE workflow_instance_state_time_series (
   entityFQNHash varchar(768) COLLATE "C" DEFAULT NULL,
   CONSTRAINT workflow_instance_time_series_unique_constraint UNIQUE (id, timestamp, entityFQNHash),
   INDEX (id)
+
+-- Extend app extension for limits
+ALTER TABLE apps_extension_time_series ADD COLUMN extension VARCHAR(255);
+UPDATE apps_extension_time_series SET extension = 'status' WHERE extension IS NULL;
+ALTER TABLE apps_extension_time_series ALTER COLUMN extension SET NOT NULL;
+CREATE INDEX IF NOT EXISTS apps_extension_time_series_extension ON apps_extension_time_series(extension);
+
+-- Clean dangling workflows not removed after test connection
+truncate automations_workflow;
+
+-- App Data Store
+CREATE TABLE IF NOT EXISTS apps_data_store (
+    identifier VARCHAR(256) NOT NULL,      
+    type VARCHAR(256) NOT NULL,   
+    json JSON NOT NULL
 );

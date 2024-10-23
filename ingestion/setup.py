@@ -46,7 +46,7 @@ VERSIONS = {
     "databricks-sdk": "databricks-sdk>=0.18.0,<0.20.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
-    "looker-sdk": "looker-sdk>=22.20.0",
+    "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableau-api-lib~=0.1",
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
@@ -183,7 +183,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
-    "db2": {"ibm-db-sa~=0.3"},
+    "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=2.0.0"},
     "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
     "databricks": {
         VERSIONS["sqlalchemy-databricks"],
@@ -236,7 +236,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        "pyiceberg>=0.5",
+        "pyiceberg==0.5.1",
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],
@@ -258,6 +258,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["lkml"],
         "gitpython~=3.1.34",
         VERSIONS["giturlparse"],
+        "python-liquid",
     },
     "mlflow": {"mlflow-skinny>=2.3.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
@@ -299,6 +300,7 @@ plugins: Dict[str, Set[str]] = {
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
+    "mstr": {"mstr-rest-requests==0.14.1"},
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11"},
     "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},

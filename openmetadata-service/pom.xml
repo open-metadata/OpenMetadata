@@ -294,6 +294,10 @@
       <groupId>io.dropwizard.modules</groupId>
       <artifactId>dropwizard-web</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.github.erosb</groupId>
+      <artifactId>everit-json-schema</artifactId>
+    </dependency>
 
     <!-- Dependencies for cloudwatch monitoring -->
     <dependency>
@@ -722,7 +726,7 @@
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
                   <jdbcContainerImage>postgres:15</jdbcContainerImage>
-                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>
                 </systemPropertyVariables>
@@ -762,7 +766,7 @@
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
                   <jdbcContainerImage>mysql:8.3.0</jdbcContainerImage>
-                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>
                 </systemPropertyVariables>

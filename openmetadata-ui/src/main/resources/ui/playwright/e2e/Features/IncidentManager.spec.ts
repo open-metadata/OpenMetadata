@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -39,7 +40,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('Incident Manager', () => {
+test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     // since we need to poll for the pipeline status, we need to increase the timeout
     test.setTimeout(90000);
@@ -230,7 +231,7 @@ test.describe('Incident Manager', () => {
     await test.step('Resolve task from incident list page', async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -276,7 +277,7 @@ test.describe('Incident Manager', () => {
     await test.step('Task should be closed', async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -372,7 +373,7 @@ test.describe('Incident Manager', () => {
     await test.step("Verify incident's status on DQ page", async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')

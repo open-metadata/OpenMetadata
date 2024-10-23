@@ -50,6 +50,11 @@
       "type": "boolean",
       "default": true
     },
+    "supportsSystemProfile": {
+      "description": "The source database supports system profiles for tables such as last update.",
+      "type": "boolean",
+      "default": false
+    },
     "supportsDataInsightExtraction": {
       "description": "Support Metadata To Elastic Search",
       "type": "boolean",
@@ -62,6 +67,11 @@
     },
     "supportsDBTExtraction": {
       "description": "Supports DBT Extraction.",
+      "type": "boolean",
+      "default": true
+    }, 
+    "supportsDataDiff": {
+      "description": "Supports the data diff data qualty specification.",
       "type": "boolean",
       "default": true
     },

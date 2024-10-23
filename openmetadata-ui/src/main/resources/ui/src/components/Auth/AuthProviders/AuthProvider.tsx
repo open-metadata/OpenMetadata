@@ -461,16 +461,21 @@ export const AuthProvider = ({
     }
   }, [location.pathname, storeRedirectPath]);
 
-  const updateAuthInstance = (configJson: AuthenticationConfiguration) => {
+  const updateAuthInstance = async (
+    configJson: AuthenticationConfiguration
+  ) => {
     const { provider, ...otherConfigs } = configJson;
     switch (provider) {
       case AuthProviderEnum.Azure:
         {
-          setMsalInstance(
-            new PublicClientApplication(
-              otherConfigs as unknown as Configuration
-            )
+          const instance = new PublicClientApplication(
+            otherConfigs as unknown as Configuration
           );
+
+          // Need to initialize the instance before setting it
+          await instance.initialize();
+
+          setMsalInstance(instance);
         }
 
         break;
@@ -763,8 +768,6 @@ export const AuthProvider = ({
       handleFailedLogin,
       updateAxiosInterceptors: initializeAxiosInterceptors,
     });
-
-    return cleanup;
   }, [handleSuccessfulLogin]);
 
   const isConfigLoading =

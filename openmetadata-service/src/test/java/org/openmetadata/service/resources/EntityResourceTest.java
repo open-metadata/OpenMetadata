@@ -272,6 +272,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference USER2_REF;
   public static User USER_TEAM21;
   public static User BOT_USER;
+  public static EntityReference DEFAULT_BOT_ROLE_REF;
+  public static EntityReference DOMAIN_ONLY_ACCESS_ROLE_REF;
 
   public static Team ORG_TEAM;
   public static Team TEAM1;
@@ -389,8 +391,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Type INT_TYPE;
   public static Type STRING_TYPE;
+  public static Type EMAIL_TYPE;
+  public static Type DATECP_TYPE;
+  public static Type DATETIMECP_TYPE;
+  public static Type TIMECP_TYPE;
+  public static Type DURATION_TYPE;
+  public static Type MARKDOWN_TYPE;
+  public static Type ENTITY_REFERENCE_TYPE;
+  public static Type ENTITY_REFERENCE_LIST_TYPE;
+  public static Type TIME_INTERVAL_TYPE;
+  public static Type NUMBER_TYPE;
+  public static Type SQLQUERY_TYPE;
+  public static Type TIMESTAMP_TYPE;
 
   public static Type ENUM_TYPE;
+  public static Type TABLE_TYPE;
 
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
   // evey time junit tests are run to save time. But over the course of development of a release,
@@ -2880,7 +2895,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   /**
    * Helper function to generate JSON PATCH, submit PATCH API request and validate response.
    */
-  protected final T patchEntityAndCheck(
+  public final T patchEntityAndCheck(
       T updated,
       String originalJson,
       Map<String, String> authHeaders,

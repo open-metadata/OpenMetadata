@@ -47,7 +47,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMessagingService;
-import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -232,7 +231,7 @@ public class MessagingServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseService.class)))
+                    schema = @Schema(implementation = MessagingService.class)))
       })
   public MessagingService addTestConnectionResult(
       @Context UriInfo uriInfo,

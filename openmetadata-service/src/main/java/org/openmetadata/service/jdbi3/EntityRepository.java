@@ -51,6 +51,7 @@ import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -101,6 +102,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
+import javax.validation.ConstraintViolationException;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
@@ -143,6 +145,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -1426,38 +1429,112 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
       String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-      DateTimeFormatter formatter;
-      try {
-        if ("date-cp".equals(customPropertyType)) {
-          DateTimeFormatter inputFormatter =
-              DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig), Locale.ENGLISH);
 
-          // Parse the input string into a TemporalAccessor
-          TemporalAccessor date = inputFormatter.parse(fieldValue.textValue());
-
-          // Create a formatter for the desired output format
-          DateTimeFormatter outputFormatter =
-              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
-          ((ObjectNode) jsonNode).put(fieldName, outputFormatter.format(date));
-        } else if ("dateTime-cp".equals(customPropertyType)) {
-          formatter = DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig));
-          LocalDateTime dateTime = LocalDateTime.parse(fieldValue.textValue(), formatter);
-          ((ObjectNode) jsonNode).put(fieldName, dateTime.format(formatter));
-        } else if ("time-cp".equals(customPropertyType)) {
-          formatter = DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig));
-          LocalTime time = LocalTime.parse(fieldValue.textValue(), formatter);
-          ((ObjectNode) jsonNode).put(fieldName, time.format(formatter));
-        }
-      } catch (DateTimeParseException e) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.dateTimeValidationError(
-                fieldName, TypeRegistry.getCustomPropertyConfig(entityType, fieldName)));
-      }
-      Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
+      validateAndUpdateExtensionBasedOnPropertyType(
+          entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
+      Set<ValidationMessage> validationMessages = jsonSchema.validate(entry.getValue());
       if (!validationMessages.isEmpty()) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
       }
+    }
+  }
+
+  private void validateAndUpdateExtensionBasedOnPropertyType(
+      T entity,
+      ObjectNode jsonNode,
+      String fieldName,
+      JsonNode fieldValue,
+      String customPropertyType,
+      String propertyConfig) {
+
+    switch (customPropertyType) {
+      case "date-cp", "dateTime-cp", "time-cp" -> {
+        String formattedValue =
+            getFormattedDateTimeField(
+                fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
+        jsonNode.put(fieldName, formattedValue);
+      }
+      case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
+      default -> {}
+    }
+  }
+
+  private String getFormattedDateTimeField(
+      String fieldValue, String customPropertyType, String propertyConfig, String fieldName) {
+    DateTimeFormatter formatter;
+
+    try {
+      return switch (customPropertyType) {
+        case "date-cp" -> {
+          DateTimeFormatter inputFormatter =
+              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+          TemporalAccessor date = inputFormatter.parse(fieldValue);
+          DateTimeFormatter outputFormatter =
+              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+          yield outputFormatter.format(date);
+        }
+        case "dateTime-cp" -> {
+          formatter = DateTimeFormatter.ofPattern(propertyConfig);
+          LocalDateTime dateTime = LocalDateTime.parse(fieldValue, formatter);
+          yield dateTime.format(formatter);
+        }
+        case "time-cp" -> {
+          formatter = DateTimeFormatter.ofPattern(propertyConfig);
+          LocalTime time = LocalTime.parse(fieldValue, formatter);
+          yield time.format(formatter);
+        }
+        default -> throw new IllegalArgumentException(
+            "Unsupported customPropertyType: " + customPropertyType);
+      };
+    } catch (DateTimeParseException e) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.dateTimeValidationError(fieldName, propertyConfig));
+    }
+  }
+
+  private void validateTableType(JsonNode fieldValue, String propertyConfig, String fieldName) {
+    TableConfig tableConfig =
+        JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
+    org.openmetadata.schema.type.customProperties.Table tableValue =
+        JsonUtils.convertValue(
+            JsonUtils.readTree(String.valueOf(fieldValue)),
+            org.openmetadata.schema.type.customProperties.Table.class);
+    Set<String> configColumns = tableConfig.getColumns();
+
+    try {
+      JsonUtils.validateJsonSchema(
+          tableValue, org.openmetadata.schema.type.customProperties.Table.class);
+
+      Set<String> fieldColumns = new HashSet<>();
+      fieldValue.get("columns").forEach(column -> fieldColumns.add(column.asText()));
+
+      Set<String> undefinedColumns = new HashSet<>(fieldColumns);
+      undefinedColumns.removeAll(configColumns);
+      if (!undefinedColumns.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Expected columns: "
+                + configColumns
+                + ", but found undefined columns: "
+                + undefinedColumns);
+      }
+
+      Set<String> rowFieldNames = new HashSet<>();
+      fieldValue.get("rows").forEach(row -> row.fieldNames().forEachRemaining(rowFieldNames::add));
+
+      undefinedColumns = new HashSet<>(rowFieldNames);
+      undefinedColumns.removeAll(configColumns);
+      if (!undefinedColumns.isEmpty()) {
+        throw new IllegalArgumentException("Rows contain undefined columns: " + undefinedColumns);
+      }
+    } catch (ConstraintViolationException e) {
+      String validationErrors =
+          e.getConstraintViolations().stream()
+              .map(violation -> violation.getPropertyPath() + " " + violation.getMessage())
+              .collect(Collectors.joining(", "));
+
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.jsonValidationError(fieldName, validationErrors));
     }
   }
 
@@ -1532,10 +1609,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      // Apply tagLabel to targetFQN that identifies an entity or field
-      boolean isTagDerived = tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED);
-      // Derived Tags should not create Relationships, and needs to be built on the during Read
-      if (!isTagDerived) {
+      if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
         daoCollection
             .tagUsageDAO()
             .applyTag(
@@ -2247,6 +2321,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     validateTags(entity.getTags());
     entity.setTags(addDerivedTags(entity.getTags()));
     checkMutuallyExclusive(entity.getTags());
+    checkDisabledTags(entity.getTags());
   }
 
   protected void validateTags(List<TagLabel> labels) {

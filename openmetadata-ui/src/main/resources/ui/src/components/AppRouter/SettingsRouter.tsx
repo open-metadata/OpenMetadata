@@ -48,6 +48,7 @@ import ProfilerConfigurationPage from '../../pages/ProfilerConfigurationPage/Pro
 import AddRolePage from '../../pages/RolesPage/AddRolePage/AddRolePage';
 import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPage';
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
+import SearchRBACSettingsPage from '../../pages/SearchRBACSettingsPage/SearchRBACSettingsPage';
 import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
@@ -160,6 +161,12 @@ const SettingsRouter = () => {
 
       {/* Setting Page Routes with categories */}
 
+      <AdminProtectedRoute
+        exact
+        component={PersonaPage}
+        path={getSettingPath(GlobalSettingOptions.PERSONA)}
+      />
+
       <Route
         exact
         component={GlobalSettingCategoryPage}
@@ -205,20 +212,8 @@ const SettingsRouter = () => {
       </Route>
       <AdminProtectedRoute
         exact
-        component={PersonaPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.PERSONA
-        )}
-      />
-      <AdminProtectedRoute
-        exact
         component={PersonaDetailsPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.PERSONA,
-          true
-        )}
+        path={getSettingPath(GlobalSettingOptions.PERSONA, '', true)}
       />
       {/* Roles route start
        * Do not change the order of these route
@@ -244,6 +239,15 @@ const SettingsRouter = () => {
       {/* Roles route end
        * Do not change the order of these route
        */}
+
+      <AdminProtectedRoute
+        exact
+        component={SearchRBACSettingsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.SEARCH_RBAC
+        )}
+      />
 
       <AdminProtectedRoute
         exact

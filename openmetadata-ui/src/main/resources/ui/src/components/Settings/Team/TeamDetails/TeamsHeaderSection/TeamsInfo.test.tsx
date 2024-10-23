@@ -93,8 +93,10 @@ describe('TeamsInfo', () => {
       render(<TeamsInfo {...teamProps} />);
     });
     const domainLabel = screen.getByText('DomainLabel');
+    const userCount = screen.getByTestId('team-user-count');
 
     expect(domainLabel).toBeInTheDocument();
+    expect(userCount).toContainHTML('1');
   });
 
   it('should handle edit team email', () => {

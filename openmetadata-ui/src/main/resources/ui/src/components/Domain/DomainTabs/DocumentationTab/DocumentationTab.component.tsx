@@ -22,6 +22,7 @@ import { UserTeamSelectableList } from '../../../../components/common/UserTeamSe
 import DomainTypeSelectForm from '../../../../components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component';
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
@@ -191,8 +192,7 @@ const DocumentationTab = ({
             />
           </div>
         ),
-        minWidth: 800,
-        flex: 0.75,
+        ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
       }}
       secondPanel={{
         children: (
@@ -200,7 +200,7 @@ const DocumentationTab = ({
             <Col data-testid="domain-owner-name" span="24">
               <div className="d-flex items-center m-b-xss">
                 <Typography.Text className="right-panel-label">
-                  {t('label.owner')}
+                  {t('label.owner-plural')}
                 </Typography.Text>
                 {editOwnerPermission && domain.owners && (
                   <UserTeamSelectableList
@@ -210,7 +210,7 @@ const DocumentationTab = ({
                     onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
                     <Tooltip
                       title={t('label.edit-entity', {
-                        entity: t('label.owner'),
+                        entity: t('label.owner-plural'),
                       })}>
                       <Button
                         className="cursor-pointer flex-center m-l-xss"
@@ -374,8 +374,7 @@ const DocumentationTab = ({
             )}
           </Row>
         ),
-        minWidth: 320,
-        flex: 0.25,
+        ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
         className:
           'entity-resizable-right-panel-container domain-resizable-panel-container',
       }}

@@ -83,7 +83,7 @@ export const getFunctionDisplayName = (func: string): string => {
     case 'matchAnyEntityFqn':
       return i18next.t('label.fqn-uppercase');
     case 'matchAnyOwnerName':
-      return i18next.t('label.owner');
+      return i18next.t('label.owner-plural');
     case 'matchAnyEventType':
       return i18next.t('label.event-type');
     case 'matchTestResult':
@@ -477,7 +477,7 @@ export const getMessageFromArgumentName = (argumentName: string) => {
       return t('message.field-text-is-required', {
         fieldText: t('label.entity-list', {
           entity: t('label.entity-name', {
-            entity: t('label.owner'),
+            entity: t('label.owner-plural'),
           }),
         }),
       });
@@ -614,7 +614,7 @@ export const getFieldByArgumentType = (
           data-testid="owner-name-select"
           mode="multiple"
           placeholder={t('label.search-by-type', {
-            type: t('label.owner-lowercase'),
+            type: t('label.owner-lowercase-plural'),
           })}
         />
       );

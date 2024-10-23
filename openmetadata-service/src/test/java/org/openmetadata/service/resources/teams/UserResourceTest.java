@@ -44,6 +44,8 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.operationNotAllowed;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.jdbi3.RoleRepository.DEFAULT_BOT_ROLE;
+import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -109,18 +111,17 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.RevokePersonalTokenRequest;
 import org.openmetadata.schema.auth.RevokeTokenRequest;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
@@ -129,6 +130,7 @@ import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -150,11 +152,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   private static final Profile PROFILE =
       new Profile().withImages(new ImageList().withImage(URI.create("https://image.com")));
   private static final TeamResourceTest TEAM_TEST = new TeamResourceTest();
+  private final RoleRepository roleRepository;
 
   public UserResourceTest() {
     super(USER, User.class, UserList.class, "users", UserResource.FIELDS);
     supportedNameCharacters = "_-.";
     supportsSearchIndex = true;
+    roleRepository = Entity.getRoleRepository();
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
@@ -193,6 +197,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Set<String> userFields = Entity.getEntityFields(User.class);
     userFields.remove("authenticationMechanism");
     BOT_USER = getEntityByName(INGESTION_BOT, String.join(",", userFields), ADMIN_AUTH_HEADERS);
+
+    // Get the bot roles
+    DEFAULT_BOT_ROLE_REF = roleRepository.getReferenceByName(DEFAULT_BOT_ROLE, Include.NON_DELETED);
+    DOMAIN_ONLY_ACCESS_ROLE_REF =
+        roleRepository.getReferenceByName(DOMAIN_ONLY_ACCESS_ROLE, Include.NON_DELETED);
   }
 
   @Test
@@ -886,12 +895,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   void put_generateToken_bot_user_200_ok() throws HttpResponseException {
     AuthenticationMechanism authMechanism =
         new AuthenticationMechanism()
-            .withAuthType(AuthType.SSO)
-            .withConfig(
-                new SSOAuthMechanism()
-                    .withSsoServiceType(SSOAuthMechanism.SsoServiceType.GOOGLE)
-                    .withAuthConfig(
-                        new GoogleSSOClientConfig().withSecretKey("/path/to/secret.json")));
+            .withAuthType(AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
     CreateUser create =
         createBotUserRequest("ingestion-bot-jwt")
             .withEmail("ingestion-bot-jwt@email.com")
@@ -899,7 +904,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withAuthenticationMechanism(authMechanism);
     User user = createEntity(create, USER_WITH_CREATE_HEADERS);
     user = getEntity(user.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(1, user.getRoles().size());
+    // Has the given role and the default bot role
+    assertEquals(2, user.getRoles().size());
     TestUtils.put(
         getResource(String.format("users/generateToken/%s", user.getId())),
         new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
@@ -907,7 +913,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         ADMIN_AUTH_HEADERS);
     user = getEntity(user.getId(), "*", ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
-    assertEquals(1, user.getRoles().size());
+    // Has the given role and the default bot role
+    assertEquals(2, user.getRoles().size());
     JWTAuthMechanism jwtAuthMechanism =
         TestUtils.get(
             getResource(String.format("users/token/%s", user.getId())),
@@ -1122,7 +1129,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String record = "invalid::User,,,user@domain.com,,,team-invalidCsv,";
     String csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows = {
       resultsHeader, getFailedRecord(record, "[name must match \"^((?!::).)*$\"]")
     };
@@ -1134,7 +1141,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     record = "user,,,user@domain.com,,,invalidTeam,";
     csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -1146,7 +1153,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     record = "user,,,user@domain.com,,,team-invalidCsv,invalidRole";
     csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -1440,6 +1447,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     List<EntityReference> expectedRoles = new ArrayList<>();
     for (UUID roleId : listOrEmpty(createRequest.getRoles())) {
       expectedRoles.add(new EntityReference().withId(roleId).withType(Entity.ROLE));
+    }
+
+    // bots are created with default roles
+    if (createRequest.getIsBot()) {
+      expectedRoles.add(DEFAULT_BOT_ROLE_REF);
+      if (!nullOrEmpty(createRequest.getDomains())) {
+        expectedRoles.add(DOMAIN_ONLY_ACCESS_ROLE_REF);
+      }
     }
     assertRoles(user, expectedRoles);
 
