@@ -256,6 +256,9 @@ class QuicksightSource(DashboardServiceSource):
         db_service_entity,
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table(parsed form query source) <-> dashboard"""
+        if not db_service_entity:
+            logger.debug(f"db service is not ingested")
+            return None
         sql_query = data_source_resp.data_source_resp.query
         source_database_names = []
         try:
@@ -293,7 +296,7 @@ class QuicksightSource(DashboardServiceSource):
                         table=table,
                     )
                     for from_entity in from_entities:
-                        if from_entity and data_model_entity:
+                        if from_entity is not None and data_model_entity is not None:
                             columns = [
                                 col.name.root for col in data_model_entity.columns
                             ]
@@ -321,7 +324,7 @@ class QuicksightSource(DashboardServiceSource):
             yield Either(
                 left=StackTraceError(
                     name=dashboard_details.DashboardId,
-                    error=f"Wild error ingesting dashboard lineage {dashboard_details} - {err}",
+                    error=f"Wild error ingesting table(query) <-> datamodel lineage {dashboard_details} - {err}",
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -347,20 +350,23 @@ class QuicksightSource(DashboardServiceSource):
                         .get("ManifestFileLocation", {})
                         .get("Key")
                     )
-                    container = self.metadata.es_search_container_by_path(
+                    containers = self.metadata.es_search_container_by_path(
                         full_path=f"s3://{bucket_name}/{key_name}"
                     )
-                    if container and container[0]:
-                        storage_entity = EntityReference(
-                            id=Uuid(container[0].id.root),
-                            type="container",
-                        )
-                        if storage_entity and storage_entity:
+                    for container in containers:
+                        if container is not None and data_model_entity is not None:
+                            storage_entity = EntityReference(
+                                id=Uuid(container.id.root),
+                                type="container",
+                            )
                             yield Either(
                                 right=AddLineageRequest(
                                     edge=EntitiesEdge(
                                         fromEntity=storage_entity,
-                                        toEntity=data_model_entity,
+                                        toEntity=EntityReference(
+                                            id=Uuid(data_model_entity.id.root),
+                                            type=LINEAGE_MAP[type(data_model_entity)],
+                                        ),
                                     )
                                 )
                             )
@@ -368,7 +374,7 @@ class QuicksightSource(DashboardServiceSource):
             yield Either(
                 left=StackTraceError(
                     name=dashboard_details.DashboardId,
-                    error=f"Wild error ingesting dashboard lineage {dashboard_details} - {err}",
+                    error=f"Wild error ingesting s3 <-> datamodel lineage {dashboard_details} - {err}",
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -381,33 +387,42 @@ class QuicksightSource(DashboardServiceSource):
         db_service_entity,
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table <-> dashboard"""
-        schema_name = data_source_resp.data_source_resp.schema_name
-        table_name = data_source_resp.data_source_resp.table_name
-        if data_source_resp and data_source_resp.DataSourceParameters:
-            data_source_dict = data_source_resp.DataSourceParameters
-            for db in data_source_dict.keys() or []:
-                from_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=db_service_entity.name.root,
-                    database_name=data_source_dict[db].get("Database"),
-                    schema_name=schema_name,
-                    table_name=table_name,
-                )
-                from_entity = self.metadata.get_by_name(
-                    entity=Table,
-                    fqn=from_fqn,
-                )
-                if from_entity is not None and data_model_entity is not None:
-                    columns = [col.name.root for col in data_model_entity.columns]
-                    column_lineage = self._get_column_lineage(
-                        from_entity, data_model_entity, columns
+        try:
+            schema_name = data_source_resp.data_source_resp.schema_name
+            table_name = data_source_resp.data_source_resp.table_name
+            if data_source_resp and data_source_resp.DataSourceParameters:
+                data_source_dict = data_source_resp.DataSourceParameters
+                for db in data_source_dict.keys() or []:
+                    from_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=db_service_entity.name.root,
+                        database_name=data_source_dict[db].get("Database"),
+                        schema_name=schema_name,
+                        table_name=table_name,
                     )
-                    yield self._get_add_lineage_request(
-                        to_entity=data_model_entity,
-                        from_entity=from_entity,
-                        column_lineage=column_lineage,
+                    from_entity = self.metadata.get_by_name(
+                        entity=Table,
+                        fqn=from_fqn,
                     )
+                    if from_entity is not None and data_model_entity is not None:
+                        columns = [col.name.root for col in data_model_entity.columns]
+                        column_lineage = self._get_column_lineage(
+                            from_entity, data_model_entity, columns
+                        )
+                        yield self._get_add_lineage_request(
+                            to_entity=data_model_entity,
+                            from_entity=from_entity,
+                            column_lineage=column_lineage,
+                        )
+        except Exception as err:
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.DashboardId,
+                    error=f"Wild error ingesting table <-> datamodel lineage {dashboard_details} - {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def _get_datamodel(self, datamodel_id: str):
         datamodel_fqn = fqn.build(
@@ -432,7 +447,7 @@ class QuicksightSource(DashboardServiceSource):
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
         )
-        for datamodel in self.data_models:
+        for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(
                     datamodel_id=datamodel.DataSource.DataSourceId
@@ -469,7 +484,7 @@ class QuicksightSource(DashboardServiceSource):
                 )
 
     def _get_column_info(self, data_model: DescribeDataSourceResponse):
-        """"""
+        """Get column info"""
         datasource_columns = []
         for field in data_model.DataSource.data_source_resp.columns or []:
             try:
@@ -485,20 +500,27 @@ class QuicksightSource(DashboardServiceSource):
         return datasource_columns
 
     def _get_dashboard_datamodels(self, dashboard_details: DashboardDetail) -> list:
-        """"""
+        """Get dashboard datamodels"""
         data_models = []
-        list_data_set_func = lambda kwargs: self.client.list_data_sets(  # pylint: disable=unnecessary-lambda-assignment
-            **kwargs
-        )
-        data_set_summary_list = self._check_pagination(
-            listing_method=list_data_set_func,
-            entity_key="DataSetSummaries",
-        )
-        dataset_ids = {
-            dataset["DataSetId"]
-            for dataset in data_set_summary_list or []
-            if dataset.get("Arn") in dashboard_details.Version.DataSetArns
-        }
+        dataset_ids = []
+        try:
+            list_data_set_func = lambda kwargs: self.client.list_data_sets(  # pylint: disable=unnecessary-lambda-assignment
+                **kwargs
+            )
+            data_set_summary_list = self._check_pagination(
+                listing_method=list_data_set_func,
+                entity_key="DataSetSummaries",
+            )
+            dataset_ids = {
+                dataset["DataSetId"]
+                for dataset in data_set_summary_list or []
+                if dataset.get("Arn") in dashboard_details.Version.DataSetArns
+            }
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error while processing datamodels for dashboard: {dashboard_details.Name}: {exc}"
+            )
 
         for dataset_id in dataset_ids or []:
             data_source_list = self._describe_data_sets(dataset_id, dashboard_details)
@@ -525,27 +547,34 @@ class QuicksightSource(DashboardServiceSource):
                     )
                     continue
                 if data_source_resp:
-                    list_data_source_func = lambda kwargs: self.client.list_data_sources(  # pylint: disable=unnecessary-lambda-assignment
-                        **kwargs
-                    )
-                    data_source_summary_list = self._check_pagination(
-                        listing_method=list_data_source_func,
-                        entity_key="DataSources",
-                    )
-                    data_source_ids = [
-                        data_source_arn["DataSourceId"]
-                        for data_source_arn in data_source_summary_list or []
-                        if data_source_arn["Arn"] in data_source_resp.datasource_arn
-                    ]
-                    for data_source_id in data_source_ids or []:
-                        desribed_source = DescribeDataSourceResponse(
-                            **self.client.describe_data_source(
-                                AwsAccountId=self.aws_account_id,
-                                DataSourceId=data_source_id,
-                            )
+                    try:
+                        list_data_source_func = lambda kwargs: self.client.list_data_sources(  # pylint: disable=unnecessary-lambda-assignment
+                            **kwargs
                         )
-                        desribed_source.DataSource.data_source_resp = data_source_resp
-                        data_models.append(desribed_source)
+                        data_source_summary_list = self._check_pagination(
+                            listing_method=list_data_source_func,
+                            entity_key="DataSources",
+                        )
+                        data_source_ids = [
+                            data_source_arn["DataSourceId"]
+                            for data_source_arn in data_source_summary_list or []
+                            if data_source_arn["Arn"] in data_source_resp.datasource_arn
+                        ]
+                        for data_source_id in data_source_ids or []:
+                            desribed_source = DescribeDataSourceResponse(
+                                **self.client.describe_data_source(
+                                    AwsAccountId=self.aws_account_id,
+                                    DataSourceId=data_source_id,
+                                )
+                            )
+                            desribed_source.DataSource.data_source_resp = (
+                                data_source_resp
+                            )
+                            data_models.append(desribed_source)
+                    except Exception as err:
+                        logger.info(
+                            f"Error while processing data sources for dashboard {dashboard_details.Name}: {err}"
+                        )
         return data_models
 
     def yield_datamodel(
