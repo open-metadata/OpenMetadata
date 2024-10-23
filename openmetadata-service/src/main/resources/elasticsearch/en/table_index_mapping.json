@@ -499,6 +499,9 @@
           }
         }
       },
+      "locationPath": {
+        "type": "keyword"
+      },
       "usageSummary": {
         "properties": {
           "dailyStats": {

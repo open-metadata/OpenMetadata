@@ -526,7 +526,13 @@ site_menu:
   - category: How-to Guides / Admin Guide / How to Add Custom Logo
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
   - category: How-to Guides / Admin Guide / Reindexing Search
-    url: /how-to-guides/admin-guide/Reindexing-Search  
+    url: /how-to-guides/admin-guide/Reindexing-Search
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
+    url: /how-to-guides/admin-guide/persona-landing-page-customization 
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
+    url: /how-to-guides/admin-guide/persona-landing-page-customization/customizable-landing-page
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Define Personas
+    url: /how-to-guides/admin-guide/persona-landing-page-customization/defining-persona
 
   - category: How-to Guides / Guide for Data Users
     url: /how-to-guides/guide-for-data-users
@@ -579,6 +585,14 @@ site_menu:
     url: /how-to-guides/data-discovery/import
   - category: How-to Guides / Data Discovery / How to Export Data Asset
     url: /how-to-guides/data-discovery/export
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension
+    url: /how-to-guides/data-discovery/openmetadata-extension
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing Activity Feeds and Managing Tasks
+    url: /how-to-guides/data-discovery/openmetadata-extension/activity-feeds
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Looking Up Data Assets and Accessing Details
+    url: /how-to-guides/data-discovery/openmetadata-extension/looking-up
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing tasks & add comment directly from the extension
+    url: /how-to-guides/data-discovery/openmetadata-extension/viewing-tasks
 
   - category: How-to Guides / Data Collaboration
     url: /how-to-guides/data-collaboration
@@ -761,6 +775,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.6 Release
+    url: /releases/all-releases/#1.5.6-release
   - category: Releases / All Releases / 1.5.5 Release
     url: /releases/all-releases/#1.5.5-release
   - category: Releases / All Releases / 1.5.4 Release
