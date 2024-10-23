@@ -551,6 +551,12 @@
         <version>${jsonpath.version}</version>
       </dependency>
 
+      <dependency>
+        <groupId>com.microsoft.azure</groupId>
+        <artifactId>msal4j</artifactId>
+        <version>1.13.0</version>
+      </dependency>
+
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->
     </dependencies>
   </dependencyManagement>

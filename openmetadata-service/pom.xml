@@ -639,6 +639,10 @@
       <artifactId>jakarta.activation</artifactId>
       <version>2.0.1</version>
     </dependency>
+    <dependency>
+      <groupId>com.microsoft.azure</groupId>
+      <artifactId>msal4j</artifactId>
+    </dependency>
   </dependencies>
 
   <profiles>
