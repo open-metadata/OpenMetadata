@@ -164,8 +164,7 @@
         "BITMAP",
         "UINT",
         "BIT",
-        "MONEY",
-        "INTEGER"
+        "MONEY"
       ]
     },
     "constraint": {

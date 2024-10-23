@@ -66,6 +66,7 @@ from metadata.ingestion.source.dashboard.quicksight.models import (
     DataSourceRespS3,
     DescribeDataSourceResponse,
 )
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.logger import ingestion_logger
@@ -488,10 +489,13 @@ class QuicksightSource(DashboardServiceSource):
         datasource_columns = []
         for field in data_model.DataSource.data_source_resp.columns or []:
             try:
+                col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                    field.get("Type")
+                )
                 parsed_fields = {
                     "name": field.get("Name"),
-                    "dataType": field.get("Type"),
                     "displayName": field.get("Name"),
+                    "dataType": col_parse.get("dataType"),
                 }
                 datasource_columns.append(Column(**parsed_fields))
             except Exception as exc:
