@@ -22,8 +22,8 @@ import {
 import { getDataQualityReport } from './testAPI';
 
 export const fetchEntityCoveredWithDQ = (
-  unhealthy = false,
-  filters?: DataQualityDashboardChartFilters
+  filters?: DataQualityDashboardChartFilters,
+  unhealthy = false
 ) => {
   const mustFilter = [];
   if (unhealthy) {

@@ -81,12 +81,12 @@ const EntityHealthStatusPieChartWidget = ({
     setIsLoading(true);
     try {
       const { data: unhealthyData } = await fetchEntityCoveredWithDQ(
-        true,
-        chartFilter
+        chartFilter,
+        true
       );
       const { data: totalData } = await fetchEntityCoveredWithDQ(
-        false,
-        chartFilter
+        chartFilter,
+        false
       );
       if (unhealthyData.length === 0 || totalData.length === 0) {
         setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
