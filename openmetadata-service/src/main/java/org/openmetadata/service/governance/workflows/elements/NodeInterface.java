@@ -9,9 +9,9 @@ import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.StartEvent;
 import org.openmetadata.service.governance.workflows.MainWorkflowHasFinishedListener;
+import org.openmetadata.service.governance.workflows.MainWorkflowTerminationListener;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceExecutionIdSetterListener;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceStageListener;
-import org.openmetadata.service.governance.workflows.MainWorkflowTerminationListener;
 import org.openmetadata.service.governance.workflows.flowable.builders.FlowableListenerBuilder;
 
 public interface NodeInterface {
@@ -21,6 +21,7 @@ public interface NodeInterface {
     List<String> events = List.of("start", "end");
     attachWorkflowInstanceStageListeners(flowableNode, events);
   }
+
   default void attachWorkflowInstanceStageListeners(FlowNode flowableNode, List<String> events) {
     for (FlowableListener listener : getWorkflowInstanceStageListeners(events)) {
       flowableNode.getExecutionListeners().add(listener);
@@ -44,29 +45,28 @@ public interface NodeInterface {
 
   default void attachWorkflowInstanceExecutionIdSetterListener(StartEvent startEvent) {
     FlowableListener listener =
-            new FlowableListenerBuilder()
-                    .event("start")
-                    .implementation(WorkflowInstanceExecutionIdSetterListener.class.getName())
-                    .build();
+        new FlowableListenerBuilder()
+            .event("start")
+            .implementation(WorkflowInstanceExecutionIdSetterListener.class.getName())
+            .build();
     startEvent.getExecutionListeners().add(listener);
   }
 
   default void attachMainWorkflowHasFinishedListener(EndEvent endEvent) {
     FlowableListener listener =
-            new FlowableListenerBuilder()
-                    .event("end")
-                    .implementation(MainWorkflowHasFinishedListener.class.getName())
-                    .build();
+        new FlowableListenerBuilder()
+            .event("end")
+            .implementation(MainWorkflowHasFinishedListener.class.getName())
+            .build();
     endEvent.getExecutionListeners().add(listener);
   }
 
   default void attachMainWorkflowTerminationListener(EndEvent endEvent) {
     FlowableListener listener =
-            new FlowableListenerBuilder()
-                    .event("start")
-                    .implementation(MainWorkflowTerminationListener.class.getName())
-                    .build();
+        new FlowableListenerBuilder()
+            .event("start")
+            .implementation(MainWorkflowTerminationListener.class.getName())
+            .build();
     endEvent.getExecutionListeners().add(listener);
   }
-
 }

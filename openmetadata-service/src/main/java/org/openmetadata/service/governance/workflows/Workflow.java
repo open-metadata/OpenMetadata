@@ -7,8 +7,9 @@ import org.openmetadata.service.governance.workflows.flowable.TriggerWorkflow;
 
 @Getter
 public class Workflow {
-  public final static String STAGE_INSTANCE_STATE_ID_VARIABLE = "stageInstanceStateId";
-  public final static String WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE = "workflowInstanceExecutionId";
+  public static final String STAGE_INSTANCE_STATE_ID_VARIABLE = "stageInstanceStateId";
+  public static final String WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE =
+      "workflowInstanceExecutionId";
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;
 

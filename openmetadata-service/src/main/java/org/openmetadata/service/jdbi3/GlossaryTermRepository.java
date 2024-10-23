@@ -779,7 +779,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     try {
       MessageParser.EntityLink about =
           new MessageParser.EntityLink(GLOSSARY_TERM, term.getFullyQualifiedName());
-      Thread originalTask = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      Thread originalTask =
+          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
       term =
           Entity.getEntityByName(
               Entity.GLOSSARY_TERM,
@@ -791,8 +792,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updatedTask.getTask().withAssignees(new ArrayList<>(term.getReviewers()));
       JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
       RestUtil.PatchResponse<Thread> thread =
-          feedRepository.patchThread(
-              null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
 
       // Send WebSocket Notification
       WebsocketNotificationHandler.handleTaskNotification(thread.entity());

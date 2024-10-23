@@ -454,8 +454,8 @@ public class WorkflowDefinitionResource
     return repository
         .copy(new WorkflowDefinition(), create, user)
         .withFullyQualifiedName(create.getName())
-            .withType(WorkflowDefinition.Type.fromValue(create.getType().toString()))
-            .withTrigger(create.getTrigger())
+        .withType(WorkflowDefinition.Type.fromValue(create.getType().toString()))
+        .withTrigger(create.getTrigger())
         .withNodes(create.getNodes())
         .withEdges(create.getEdges());
   }

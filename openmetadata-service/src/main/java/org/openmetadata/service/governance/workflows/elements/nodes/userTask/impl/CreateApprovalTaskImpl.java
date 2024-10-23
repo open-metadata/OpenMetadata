@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
+import static org.openmetadata.service.governance.workflows.Workflow.STAGE_INSTANCE_STATE_ID_VARIABLE;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -9,7 +11,6 @@ import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskDetails;
@@ -20,14 +21,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
-
-import static org.openmetadata.service.governance.workflows.Workflow.STAGE_INSTANCE_STATE_ID_VARIABLE;
 
 public class CreateApprovalTaskImpl implements TaskListener {
   @Override
@@ -40,7 +37,8 @@ public class CreateApprovalTaskImpl implements TaskListener {
     Thread task = createApprovalTask(entity, assignees);
     WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
 
-    UUID workflowInstanceStateId = (UUID) delegateTask.getVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
+    UUID workflowInstanceStateId =
+        (UUID) delegateTask.getVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
     WorkflowInstanceStateRepository workflowInstanceStateRepository =
         (WorkflowInstanceStateRepository)
             Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
@@ -63,7 +61,8 @@ public class CreateApprovalTaskImpl implements TaskListener {
 
   private EntityReference getEntityReferenceFromLinkString(String entityLinkString) {
     MessageParser.EntityLink assigneeEntityLink = MessageParser.EntityLink.parse(entityLinkString);
-    return Entity.getEntityReferenceByName(assigneeEntityLink.getEntityType(), assigneeEntityLink.getEntityFQN(), Include.NON_DELETED);
+    return Entity.getEntityReferenceByName(
+        assigneeEntityLink.getEntityType(), assigneeEntityLink.getEntityFQN(), Include.NON_DELETED);
   }
 
   private Thread createApprovalTask(GlossaryTerm entity, List<EntityReference> assignees) {

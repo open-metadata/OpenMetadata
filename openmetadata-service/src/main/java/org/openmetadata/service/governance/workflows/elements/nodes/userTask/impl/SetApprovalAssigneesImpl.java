@@ -37,14 +37,18 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
     }
 
     oExtraAssignees.ifPresent(
-        extraAssignees ->
-            assignees.addAll(getEntityLinkStringFromEntityReference(extraAssignees)));
+        extraAssignees -> assignees.addAll(getEntityLinkStringFromEntityReference(extraAssignees)));
 
     execution.setVariableLocal(
         assigneesVarNameExpr.getValue(execution).toString(), JsonUtils.pojoToJson(assignees));
   }
 
   private List<String> getEntityLinkStringFromEntityReference(List<EntityReference> assignees) {
-    return assignees.stream().map(reviewer -> new MessageParser.EntityLink(reviewer.getType(), reviewer.getFullyQualifiedName()).getLinkString()).toList();
+    return assignees.stream()
+        .map(
+            reviewer ->
+                new MessageParser.EntityLink(reviewer.getType(), reviewer.getFullyQualifiedName())
+                    .getLinkString())
+        .toList();
   }
 }

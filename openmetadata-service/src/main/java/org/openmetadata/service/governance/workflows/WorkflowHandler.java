@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -24,8 +26,6 @@ import org.flowable.task.api.Task;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-
-import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
 @Slf4j
 public class WorkflowHandler {
@@ -115,10 +115,10 @@ public class WorkflowHandler {
 
     // Also Delete the Trigger
     List<ProcessDefinition> triggerProcessDefinition =
-            repositoryService
-                    .createProcessDefinitionQuery()
-                    .processDefinitionKey(getTriggerWorkflowId(processDefinitionKey))
-                    .list();
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKey(getTriggerWorkflowId(processDefinitionKey))
+            .list();
 
     for (ProcessDefinition processDefinition : triggerProcessDefinition) {
       String deploymentId = processDefinition.getDeploymentId();
@@ -126,8 +126,9 @@ public class WorkflowHandler {
     }
   }
 
-  public ProcessInstance triggerByKey(String processDefinitionKey, String businessKey, Map<String, Object> variables) {
-    return  runtimeService.startProcessInstanceByKey(processDefinitionKey, businessKey, variables);
+  public ProcessInstance triggerByKey(
+      String processDefinitionKey, String businessKey, Map<String, Object> variables) {
+    return runtimeService.startProcessInstanceByKey(processDefinitionKey, businessKey, variables);
   }
 
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
@@ -173,14 +174,16 @@ public class WorkflowHandler {
   public void terminateTaskProcessInstance(UUID customTaskId, String reason) {
     try {
       List<Task> tasks =
-              taskService
-                  .createTaskQuery()
-                  .processVariableValueEquals("customTaskId", customTaskId.toString())
-                  .list();
+          taskService
+              .createTaskQuery()
+              .processVariableValueEquals("customTaskId", customTaskId.toString())
+              .list();
       for (Task task : tasks) {
-        Execution execution = runtimeService.createExecutionQuery()
-                        .processInstanceId(task.getProcessInstanceId())
-                                .messageEventSubscriptionName("terminateProcess")
+        Execution execution =
+            runtimeService
+                .createExecutionQuery()
+                .processInstanceId(task.getProcessInstanceId())
+                .messageEventSubscriptionName("terminateProcess")
                 .singleResult();
         runtimeService.messageEventReceived("terminateProcess", execution.getId());
       }

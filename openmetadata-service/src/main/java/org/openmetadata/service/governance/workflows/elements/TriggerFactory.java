@@ -16,11 +16,13 @@ public class TriggerFactory {
       case EVENT_BASED_ENTITY_WORKFLOW -> new EventBasedEntityTrigger(
           mainWorkflowName,
           triggerWorkflowId,
-          JsonUtils.readOrConvertValue(workflowDefinition.getTrigger(), EventBasedEntityTriggerDefinition.class));
+          JsonUtils.readOrConvertValue(
+              workflowDefinition.getTrigger(), EventBasedEntityTriggerDefinition.class));
       case PERIODIC_BATCH_ENTITY_WORKFLOW -> new PeriodicBatchEntityTrigger(
           mainWorkflowName,
           triggerWorkflowId,
-          JsonUtils.readOrConvertValue(workflowDefinition.getTrigger(), PeriodicBatchEntityTriggerDefinition.class));
+          JsonUtils.readOrConvertValue(
+              workflowDefinition.getTrigger(), PeriodicBatchEntityTriggerDefinition.class));
     };
   }
 

@@ -5,11 +5,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.getFlowable
 import lombok.Getter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
-import org.flowable.bpmn.model.EventSubProcess;
 import org.flowable.bpmn.model.FieldExtension;
-import org.flowable.bpmn.model.IntermediateCatchEvent;
-import org.flowable.bpmn.model.Message;
-import org.flowable.bpmn.model.MessageEventDefinition;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
@@ -25,9 +21,6 @@ import org.openmetadata.service.governance.workflows.flowable.builders.FieldExte
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.quartz.CronTrigger;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class PeriodicBatchEntityTrigger implements TriggerInterface {
   private final Process process;

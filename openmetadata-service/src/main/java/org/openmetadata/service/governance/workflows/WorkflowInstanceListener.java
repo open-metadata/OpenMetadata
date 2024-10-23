@@ -36,7 +36,8 @@ public class WorkflowInstanceListener implements JavaDelegate {
     updateBusinessKey(execution.getProcessInstanceId());
 
     String workflowDefinitionName =
-            getMainWorkflowDefinitionNameFromTrigger(getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()));
+        getMainWorkflowDefinitionNameFromTrigger(
+            getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()));
     UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
 
     workflowInstanceRepository.addNewWorkflowInstance(
@@ -54,6 +55,6 @@ public class WorkflowInstanceListener implements JavaDelegate {
   }
 
   private String getMainWorkflowDefinitionNameFromTrigger(String triggerWorkflowDefinitionName) {
-    return triggerWorkflowDefinitionName.replaceFirst("Trigger$",  "");
+    return triggerWorkflowDefinitionName.replaceFirst("Trigger$", "");
   }
 }

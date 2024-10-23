@@ -61,7 +61,7 @@ public class WorkflowInstanceStateRepository
         createNewRecord(
             new WorkflowInstanceState()
                 .withStage(stage)
-                    .withWorkflowInstanceExecutionId(workflowInstanceExecutionId)
+                .withWorkflowInstanceExecutionId(workflowInstanceExecutionId)
                 .withWorkflowInstanceId(workflowInstanceId)
                 .withTimestamp(System.currentTimeMillis())
                 .withWorkflowDefinitionId(workflowDefinitionId),

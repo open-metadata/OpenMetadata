@@ -2,11 +2,13 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
+import java.util.ArrayList;
+import java.util.List;
+import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.FlowableListener;
-import org.flowable.bpmn.model.IntermediateCatchEvent;
 import org.flowable.bpmn.model.Message;
 import org.flowable.bpmn.model.MessageEventDefinition;
 import org.flowable.bpmn.model.Process;
@@ -30,9 +32,6 @@ import org.openmetadata.service.governance.workflows.flowable.builders.SubProces
 import org.openmetadata.service.governance.workflows.flowable.builders.UserTaskBuilder;
 import org.openmetadata.service.util.JsonUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class UserApprovalTask implements NodeInterface {
   private final SubProcess subProcess;
   private final List<Message> messages = new ArrayList<>();
@@ -55,27 +54,6 @@ public class UserApprovalTask implements NodeInterface {
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
 
-    Message terminationMessage = new Message();
-    terminationMessage.setId("terminateProcess");
-    terminationMessage.setName("terminateProcess");
-    messages.add(terminationMessage);
-
-    MessageEventDefinition terminationMessageDefinition = new MessageEventDefinition();
-    terminationMessageDefinition.setMessageRef("terminateProcess");
-
-    IntermediateCatchEvent terminationEvent = new IntermediateCatchEvent();
-    terminationEvent.setId("terminationEvent");
-    terminationEvent.addEventDefinition(terminationMessageDefinition);
-    subProcess.addFlowElement(terminationEvent);
-
-    TerminateEventDefinition terminateEventDefinition = new TerminateEventDefinition();
-    terminateEventDefinition.setTerminateAll(true);
-
-    EndEvent terminatedEvent = new EndEventBuilder().id(getFlowableElementId(subProcessId, "terminatedEvent")).build();
-    terminatedEvent.addEventDefinition(terminateEventDefinition);
-    attachMainWorkflowTerminationListener(terminatedEvent);
-    subProcess.addFlowElement(terminatedEvent);
-
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
@@ -87,17 +65,29 @@ public class UserApprovalTask implements NodeInterface {
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
 
+    // NOTE: If the Task is killed instead of Resolved, the Workflow is Finished.
+    BoundaryEvent terminationEvent = getTerminationEvent();
+    terminationEvent.setAttachedToRef(userTask);
+
+    TerminateEventDefinition terminateEventDefinition = new TerminateEventDefinition();
+    terminateEventDefinition.setTerminateAll(true);
+
+    EndEvent terminatedEvent =
+        new EndEventBuilder().id(getFlowableElementId(subProcessId, "terminatedEvent")).build();
+    terminatedEvent.addEventDefinition(terminateEventDefinition);
+    attachMainWorkflowTerminationListener(terminatedEvent);
+
     subProcess.addFlowElement(startEvent);
     subProcess.addFlowElement(setAssigneesVariable);
     subProcess.addFlowElement(userTask);
     subProcess.addFlowElement(endEvent);
 
+    subProcess.addFlowElement(terminationEvent);
+    subProcess.addFlowElement(terminatedEvent);
+
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setAssigneesVariable.getId()));
     subProcess.addFlowElement(new SequenceFlow(setAssigneesVariable.getId(), userTask.getId()));
     subProcess.addFlowElement(new SequenceFlow(userTask.getId(), endEvent.getId()));
-
-
-    subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), terminationEvent.getId()));
     subProcess.addFlowElement(new SequenceFlow(terminationEvent.getId(), terminatedEvent.getId()));
 
     attachWorkflowInstanceStageListeners(subProcess);
@@ -135,7 +125,23 @@ public class UserApprovalTask implements NodeInterface {
         new UserTaskBuilder().id(getFlowableElementId(subProcessId, "approvalTask")).build();
     userTask.getTaskListeners().add(setCandidateUsersListener);
     userTask.getTaskListeners().add(createOpenMetadataTaskListener);
+
     return userTask;
+  }
+
+  private BoundaryEvent getTerminationEvent() {
+    Message terminationMessage = new Message();
+    terminationMessage.setId("terminateProcess");
+    terminationMessage.setName("terminateProcess");
+    messages.add(terminationMessage);
+
+    MessageEventDefinition terminationMessageDefinition = new MessageEventDefinition();
+    terminationMessageDefinition.setMessageRef("terminateProcess");
+
+    BoundaryEvent terminationEvent = new BoundaryEvent();
+    terminationEvent.setId("terminationEvent");
+    terminationEvent.addEventDefinition(terminationMessageDefinition);
+    return terminationEvent;
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {

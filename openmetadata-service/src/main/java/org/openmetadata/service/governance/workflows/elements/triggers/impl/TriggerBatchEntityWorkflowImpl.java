@@ -10,7 +10,6 @@ import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchClient;
@@ -36,11 +35,16 @@ public class TriggerBatchEntityWorkflowImpl implements JavaDelegate {
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
 
     triggerBatchEntityWorkflow(
-          workflowHandler, entityType, execution.getProcessInstanceBusinessKey(), searchFilter, workflowName, batchSize);
+        workflowHandler,
+        entityType,
+        execution.getProcessInstanceBusinessKey(),
+        searchFilter,
+        workflowName,
+        batchSize);
   }
 
   private void triggerBatchEntityWorkflow(
-          WorkflowHandler workflowHandler,
+      WorkflowHandler workflowHandler,
       String entityType,
       String businessKey,
       String searchFilter,
@@ -65,7 +69,7 @@ public class TriggerBatchEntityWorkflowImpl implements JavaDelegate {
             results.stream().map(result -> (String) result.get("fullyQualifiedName")).toList(),
             entityType,
             workflowName,
-                businessKey,
+            businessKey,
             workflowHandler);
 
         if (Optional.ofNullable(searchAfter).isEmpty()) {
@@ -92,7 +96,8 @@ public class TriggerBatchEntityWorkflowImpl implements JavaDelegate {
       Map<String, Object> variables = new HashMap<>();
       variables.put("relatedEntity", entityLink.getLinkString());
 
-      runningProcessInstanceIds.add(workflowHandler.triggerByKey(workflowName, businessKey, variables).getId());
+      runningProcessInstanceIds.add(
+          workflowHandler.triggerByKey(workflowName, businessKey, variables).getId());
     }
 
     // TODO: Improve Waiting
