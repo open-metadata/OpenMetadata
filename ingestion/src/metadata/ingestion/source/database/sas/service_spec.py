@@ -1,4 +1,4 @@
 from metadata.ingestion.source.database.sas.metadata import SasSource
-from metadata.utils.service_spec import BaseSpec
+from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
-ServiceSpec = BaseSpec(metadata_source_class=SasSource)
+ServiceSpec = DefaultDatabaseSpec(metadata_source_class=SasSource)

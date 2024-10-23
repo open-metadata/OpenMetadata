@@ -9,7 +9,15 @@ from pydantic import model_validator
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.models.custom_pydantic import BaseModel
-from metadata.utils.importer import get_class_path, get_module_dir, import_from_module
+from metadata.utils.importer import (
+    TYPE_SEPARATOR,
+    get_class_path,
+    get_module_dir,
+    import_from_module,
+)
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 
 class BaseSpec(BaseModel):
@@ -36,6 +44,8 @@ class BaseSpec(BaseModel):
 
     profiler_class: Optional[str] = None
     metadata_source_class: str
+    lineage_source_class: Optional[str] = None
+    usage_source_class: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -77,11 +87,13 @@ class BaseSpec(BaseModel):
 def import_source_class(
     service_type: ServiceType, source_type: str, from_: str = "ingestion"
 ) -> Type[Source]:
+    source_class_type = source_type.split(TYPE_SEPARATOR)[-1]
+    if source_class_type in ["usage", "lineage"]:
+        field = f"{source_class_type}_source_class"
+    else:
+        field = "metadata_source_class"
+    spec = BaseSpec.get_for_source(service_type, source_type, from_)
     return cast(
         Type[Source],
-        import_from_module(
-            BaseSpec.get_for_source(
-                service_type, source_type, from_
-            ).metadata_source_class
-        ),
+        import_from_module(spec.model_dump()[field]),
     )
