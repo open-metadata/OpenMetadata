@@ -26,7 +26,6 @@ const SchemaTab: FunctionComponent<Props> = ({
   onThreadLinkSelect,
   isReadOnly = false,
   testCaseSummary,
-  onTableUpdate,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -54,7 +53,6 @@ const SchemaTab: FunctionComponent<Props> = ({
         searchText={lowerCase(searchText)}
         table={table}
         testCaseSummary={testCaseSummary}
-        onTableUpdate={onTableUpdate}
         onThreadLinkSelect={onThreadLinkSelect}
         onUpdate={onUpdate}
       />

@@ -12,7 +12,7 @@
  */
 
 import { FilterOutlined } from '@ant-design/icons';
-import { Tooltip, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -29,8 +29,13 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -86,7 +91,6 @@ const SchemaTable = ({
   table,
   testCaseSummary,
   onUpdate,
-  onTableUpdate,
   onThreadLinkSelect,
 }: SchemaTableProps) => {
   const { theme } = useApplicationStore();
@@ -306,17 +310,18 @@ const SchemaTable = ({
     setEditColumnDisplayName(record);
   };
 
-  const handleEditDisplayName = async ({ displayName }: EntityName) => {
+  const handleEditDisplayName = async (data: EntityName) => {
     if (
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
     ) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnFields({
-        fqn: editColumnDisplayName.fullyQualifiedName,
-        value: isEmpty(displayName) ? undefined : displayName,
-        field: 'displayName',
-        columns: tableCols,
+
+      tableClassBase.getUpdatedSchemaTableColumnData({
+        columnData: editColumnDisplayName,
+        tableCols,
+        updatedFormData: data,
+        updateColumnFields,
       });
       await onUpdate(tableCols);
       setEditColumnDisplayName(undefined);
@@ -369,18 +374,30 @@ const SchemaTable = ({
                 </Typography.Text>
               ) : null}
 
-              <div className="d-flex items-center gap-2">
-                {tableClassBase.getSchemaTableNameColumnActionButtons({
-                  record,
-                  tableDetails: table,
-                  isReadOnly,
-                  tablePermissions,
-                  onUpdate,
-                  onTableUpdate,
-                  updateColumnFields,
-                  handleEditDisplayNameClick,
-                })}
-              </div>
+              {(tablePermissions?.EditAll ||
+                tablePermissions?.EditDisplayName) &&
+                !isReadOnly && (
+                  <Tooltip
+                    placement="right"
+                    title={t('label.edit-entity', {
+                      entity: t('label.column'),
+                    })}>
+                    <Button
+                      className="cursor-pointer hover-cell-icon w-fit-content"
+                      data-testid="edit-displayName-button"
+                      style={{
+                        color: DE_ACTIVE_COLOR,
+                        padding: 0,
+                        border: 'none',
+                        background: 'transparent',
+                      }}
+                      onClick={() => handleEditDisplayNameClick(record)}>
+                      <IconEdit
+                        style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                      />
+                    </Button>
+                  </Tooltip>
+                )}
             </div>
           );
         },

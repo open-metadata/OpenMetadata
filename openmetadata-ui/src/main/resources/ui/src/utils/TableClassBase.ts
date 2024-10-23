@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isEmpty } from 'lodash';
+import { ReactNode } from 'react';
 import { UpdatedColumnFieldData } from '../components/Database/SchemaTable/SchemaTable.interface';
+import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../enums/entity.enum';
 import { Column, Table } from '../generated/entity/data/table';
 import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
-import {
-  getSchemaTableNameColumnActionButtons,
-  getTableDetailPageBaseTabs,
-} from './TableUtils';
+import { getTableDetailPageBaseTabs } from './TableUtils';
 
 export interface TableDetailPageTabProps {
   queryCount: number;
@@ -44,17 +44,6 @@ export interface TableDetailPageTabProps {
   handleFeedCount: (data: FeedCounts) => void;
 }
 
-export interface SchemaTableNameColumnActionButtonsProps {
-  record: Column;
-  isReadOnly: boolean;
-  tableDetails?: Table;
-  tablePermissions?: OperationPermission;
-  onUpdate: (columns: Column[]) => Promise<void>;
-  updateColumnFields: (data: UpdatedColumnFieldData) => void;
-  handleEditDisplayNameClick: (record: Column) => void;
-  onTableUpdate: (updatedTable: Table, key: keyof Table) => Promise<void>;
-}
-
 class TableClassBase {
   public getTableDetailPageTabs(
     tableDetailsPageProps: TableDetailPageTabProps
@@ -62,10 +51,29 @@ class TableClassBase {
     return getTableDetailPageBaseTabs(tableDetailsPageProps);
   }
 
-  public getSchemaTableNameColumnActionButtons(
-    data: SchemaTableNameColumnActionButtonsProps
-  ) {
-    return getSchemaTableNameColumnActionButtons(data);
+  public getAdditionalFormFieldForSchemaTableColumn(): ReactNode | null {
+    return null;
+  }
+
+  public getUpdatedSchemaTableColumnData({
+    tableCols,
+    columnData,
+    updatedFormData,
+    updateColumnFields,
+  }: {
+    columnData: Column;
+    tableCols: Column[];
+    updatedFormData: EntityName;
+    updateColumnFields: (data: UpdatedColumnFieldData) => void;
+  }) {
+    updateColumnFields({
+      fqn: columnData.fullyQualifiedName ?? '',
+      value: isEmpty(updatedFormData.displayName)
+        ? undefined
+        : updatedFormData.displayName,
+      field: 'displayName',
+      columns: tableCols,
+    });
   }
 }
 

@@ -35,7 +35,6 @@ describe('Test SchemaTab Component', () => {
         hasTagEditAccess
         isReadOnly={false}
         table={MOCK_TABLE}
-        onTableUpdate={mockUpdate}
         onThreadLinkSelect={jest.fn()}
         onUpdate={mockUpdate}
       />,

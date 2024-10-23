@@ -25,7 +25,6 @@ export interface SchemaTableProps {
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   table?: Table;
   testCaseSummary?: TestSummary;
-  onTableUpdate: (updatedTable: Table, key: keyof Table) => Promise<void>;
 }
 
 export type TableCellRendered<T, K extends keyof T> = (

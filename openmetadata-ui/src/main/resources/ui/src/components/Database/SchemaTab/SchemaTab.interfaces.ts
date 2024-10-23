@@ -23,5 +23,4 @@ export type Props = {
   testCaseSummary?: TestSummary;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (columns: Table['columns']) => Promise<void>;
-  onTableUpdate: (updatedTable: Table, key: keyof Table) => Promise<void>;
 };
