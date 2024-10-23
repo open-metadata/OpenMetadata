@@ -44,6 +44,11 @@
       "description": "Mode Workspace Name",
       "type": "string"
     },
+    "filterQueryParam": {
+      "title": "Filter Query Param",
+      "description": "Filter query parameter for some of the Mode API calls",
+      "type": "string"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
