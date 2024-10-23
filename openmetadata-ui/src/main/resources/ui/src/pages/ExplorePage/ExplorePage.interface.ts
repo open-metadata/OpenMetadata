@@ -38,6 +38,12 @@ export interface EsExistsQuery {
   field: string;
 }
 
+export interface EsWildCard {
+  wildcard: {
+    [key: string]: { value: string };
+  };
+}
+
 export interface EsBoolQuery {
   filter?: QueryFieldInterface | QueryFieldInterface[];
   must?: QueryFieldInterface | QueryFieldInterface[];
@@ -54,6 +60,12 @@ export interface QueryFieldInterface {
 
 export interface QueryFilterInterface {
   query: QueryFieldInterface;
+}
+
+export interface EsTerm {
+  term: {
+    [key: string]: string | boolean;
+  };
 }
 
 export enum ExploreSidebarTab {
