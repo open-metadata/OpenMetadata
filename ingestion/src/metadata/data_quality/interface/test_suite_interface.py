@@ -43,17 +43,12 @@ class TestSuiteInterface(ABC):
 
     runtime_params_setter_fact = RuntimeParameterSetterFactory
 
-    @abstractmethod
-    def __init__(
-        self,
-        service_connection_config: DatabaseConnection,
-        ometa_client: OpenMetadata,
-        table_entity: Table,
-    ):
+    def __init__(self):
         """Required attribute for the interface"""
-        self.ometa_client = ometa_client
-        self.service_connection_config = service_connection_config
-        self.table_entity = table_entity
+        self.ometa_client: DatabaseConnection = None
+        self.ometa_client: OpenMetadata = None
+        self.table_entity: Table = None
+        self.service_connection_config: DatabaseConnection = None
 
     @property
     def sampler(self):

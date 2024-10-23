@@ -26,6 +26,7 @@ from metadata.profiler.metrics.composed.like_ratio import LikeRatio
 from metadata.profiler.metrics.composed.non_parametric_skew import NonParametricSkew
 from metadata.profiler.metrics.composed.null_ratio import NullRatio
 from metadata.profiler.metrics.composed.unique_ratio import UniqueRatio
+from metadata.profiler.metrics.core import Metric
 from metadata.profiler.metrics.hybrid.histogram import Histogram
 from metadata.profiler.metrics.static.column_count import ColumnCount
 from metadata.profiler.metrics.static.column_names import ColumnNames
@@ -107,3 +108,13 @@ class Metrics(MetricRegistry):
 
     # Missing Count
     NULL_MISSING_COUNT = NullMissingCount
+
+    @classmethod
+    def from_metric(cls, metric: Metric):
+        """
+        Get a metric from the registry
+        """
+        for metric_type in cls:
+            if metric_type.value == metric.name():
+                return metric_type
+        raise ValueError(f"Metric {metric} not found in the registry")

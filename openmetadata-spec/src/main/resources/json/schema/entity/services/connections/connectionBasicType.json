@@ -39,6 +39,11 @@
       "description": "Supports Profiler",
       "type": "boolean",
       "default": true
+    }, 
+    "supportsStatistics": {
+      "description": "Supports statistics table",
+      "type": "boolean",
+      "default": false
     },
     "supportsDatabase": {
       "description": "The source service supports the database concept in its hierarchy",

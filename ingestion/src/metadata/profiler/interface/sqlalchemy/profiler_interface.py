@@ -21,7 +21,7 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
@@ -33,7 +33,7 @@ from metadata.ingestion.connections.session import create_and_bind_thread_safe_s
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.metrics.core import MetricTypes
+from metadata.profiler.metrics.core import HybridMetric, MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
@@ -174,7 +174,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         session,
         *args,
         **kwargs,
-    ):
+    ) -> Optional[Dict[str, Any]]:
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -576,14 +576,19 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             return None
 
     def get_hybrid_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict, **kwargs
+        self,
+        column: Column,
+        metric: Type[HybridMetric],
+        column_results: Dict[str, Any],
+        **kwargs,
     ):
         """Given a list of metrics, compute the given results
         and returns the values
 
         Args:
             column: the column to compute the metrics against
-            metrics: list of metrics to compute
+            metric: metric to compute
+            column_results: results of the column
         Returns:
             dictionnary of results
         """
