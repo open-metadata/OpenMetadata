@@ -737,9 +737,7 @@ site_menu:
 
   - category: Enable Security
     url: /security
-
-  - category: Enable Security / Basic Authentication
-    url: /security/basic-auth
+   
   - category: Enable Security / Ldap Authentication
     url: /security/ldap
   - category: Enable Security / Auth0 SSO
