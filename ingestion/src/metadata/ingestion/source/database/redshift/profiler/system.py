@@ -25,6 +25,7 @@ class RedshiftSystemMetricsSource(
     SQASessionProvider, EmptySystemMetricsSource, CacheProvider
 ):
     def __init__(self, *args, **kwargs):
+        # collaborative constructor that initalizes the SQASessionProvider and CacheProvider
         super().__init__(*args, **kwargs)
 
     def get_inserts(

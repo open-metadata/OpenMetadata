@@ -63,11 +63,6 @@ class EmptySystemMetricsSource:
     """Empty system metrics source that can be used as a default. Just returns an empty list of system metrics
     for any resource."""
 
-    def __init__(self, *_, **__):
-        """This is a 'collaborative' constructor that takes any number of arguments and keyword arguments and
-        is required for using it in dependency injection."""
-        super().__init__()
-
     def get_inserts(self, *args, **kwargs) -> List[SystemProfile]:
         """Get insert queries"""
         return []
@@ -86,6 +81,7 @@ class EmptySystemMetricsSource:
 
 class SystemMetricsComputer(EmptySystemMetricsSource):
     def __init__(self, *args, **kwargs):
+        # collaborative constructor that initalizes upstream classes
         super().__init__(*args, **kwargs)
 
     def get_system_metrics(self, *args, **kwargs) -> List[SystemProfile]:
