@@ -15,6 +15,8 @@ import uuid
 
 import pytest
 
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -22,12 +24,14 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
     MysqlConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.source.metadata.alationsink.models import Table
 from metadata.workflow.metadata import MetadataWorkflow
 
 from ..containers import MySqlContainerConfigs, get_mysql_container
 from ..integration_base import (
     METADATA_INGESTION_CONFIG_TEMPLATE,
     generate_name,
+    get_create_entity,
     get_create_service,
 )
 
@@ -56,6 +60,26 @@ def service(metadata):
         recursive=True,
         hard_delete=True,
     )
+
+
+@pytest.fixture
+def tables(service, metadata):
+    database: Database = metadata.create_or_update(
+        data=get_create_entity(entity=Database, reference=service.name.root)
+    )
+    db_schema: DatabaseSchema = metadata.create_or_update(
+        data=get_create_entity(
+            entity=DatabaseSchema, reference=database.fullyQualifiedName
+        )
+    )
+    tables = [
+        metadata.create_or_update(
+            data=get_create_entity(entity=Table, reference=db_schema.fullyQualifiedName)
+        )
+        for _ in range(10)
+    ]
+
+    return tables
 
 
 @pytest.fixture(scope="module")
