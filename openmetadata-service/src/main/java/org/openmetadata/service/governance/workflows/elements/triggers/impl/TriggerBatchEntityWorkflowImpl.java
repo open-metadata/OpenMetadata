@@ -36,7 +36,7 @@ public class TriggerBatchEntityWorkflowImpl implements JavaDelegate {
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
 
     triggerBatchEntityWorkflow(
-          workflowHandler, execution.getProcessInstanceBusinessKey(), entityType, searchFilter, workflowName, batchSize);
+          workflowHandler, entityType, execution.getProcessInstanceBusinessKey(), searchFilter, workflowName, batchSize);
   }
 
   private void triggerBatchEntityWorkflow(

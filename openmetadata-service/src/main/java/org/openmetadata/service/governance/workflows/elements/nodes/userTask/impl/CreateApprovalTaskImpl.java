@@ -27,6 +27,8 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
+import static org.openmetadata.service.governance.workflows.Workflow.STAGE_INSTANCE_STATE_ID_VARIABLE;
+
 public class CreateApprovalTaskImpl implements TaskListener {
   @Override
   public void notify(DelegateTask delegateTask) {
@@ -38,11 +40,11 @@ public class CreateApprovalTaskImpl implements TaskListener {
     Thread task = createApprovalTask(entity, assignees);
     WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
 
-//    UUID workflowInstanceStateId = (UUID) delegateTask.getVariable("stageInstanceStateId");
-//    WorkflowInstanceStateRepository workflowInstanceStateRepository =
-//        (WorkflowInstanceStateRepository)
-//            Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
-//    workflowInstanceStateRepository.updateStageWithTask(task.getId(), workflowInstanceStateId);
+    UUID workflowInstanceStateId = (UUID) delegateTask.getVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
+    WorkflowInstanceStateRepository workflowInstanceStateRepository =
+        (WorkflowInstanceStateRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
+    workflowInstanceStateRepository.updateStageWithTask(task.getId(), workflowInstanceStateId);
   }
 
   private List<EntityReference> getAssignees(DelegateTask delegateTask) {

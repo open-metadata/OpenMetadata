@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.STAGE_INSTANCE_STATE_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import java.util.Optional;
@@ -34,19 +36,19 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
     String workflowDefinitionName =
         getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
-    UUID workflowInstanceExecutionId = (UUID) execution.getVariable("workflowInstanceExecutionId");
+    UUID workflowInstanceExecutionId = (UUID) execution.getVariable(WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE);
     String stage =
         Optional.ofNullable(execution.getCurrentActivityId()).orElse(workflowDefinitionName);
     UUID workflowInstanceStateId =
         workflowInstanceStateRepository.addNewStageToInstance(
             stage, workflowInstanceExecutionId, workflowInstanceId, workflowDefinitionName, System.currentTimeMillis());
-    execution.setVariable("stageInstanceStateId", workflowInstanceStateId);
+    execution.setVariable(STAGE_INSTANCE_STATE_ID_VARIABLE, workflowInstanceStateId);
   }
 
   private void updateStage(
       DelegateExecution execution,
       WorkflowInstanceStateRepository workflowInstanceStateRepository) {
-    UUID workflowInstanceStateId = (UUID) execution.getVariable("stageInstanceStateId");
+    UUID workflowInstanceStateId = (UUID) execution.getVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
     workflowInstanceStateRepository.updateStage(
         workflowInstanceStateId, System.currentTimeMillis(), execution.getVariables());
   }

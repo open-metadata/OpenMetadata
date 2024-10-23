@@ -6,11 +6,15 @@ import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.FlowableListener;
+import org.flowable.bpmn.model.IntermediateCatchEvent;
+import org.flowable.bpmn.model.Message;
+import org.flowable.bpmn.model.MessageEventDefinition;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
+import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.flowable.bpmn.model.UserTask;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
@@ -26,8 +30,12 @@ import org.openmetadata.service.governance.workflows.flowable.builders.SubProces
 import org.openmetadata.service.governance.workflows.flowable.builders.UserTaskBuilder;
 import org.openmetadata.service.util.JsonUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class UserApprovalTask implements NodeInterface {
   private final SubProcess subProcess;
+  private final List<Message> messages = new ArrayList<>();
 
   public UserApprovalTask(UserApprovalTaskDefinition nodeDefinition) {
     String subProcessId = nodeDefinition.getName();
@@ -46,6 +54,27 @@ public class UserApprovalTask implements NodeInterface {
             .build();
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
+
+    Message terminationMessage = new Message();
+    terminationMessage.setId("terminateProcess");
+    terminationMessage.setName("terminateProcess");
+    messages.add(terminationMessage);
+
+    MessageEventDefinition terminationMessageDefinition = new MessageEventDefinition();
+    terminationMessageDefinition.setMessageRef("terminateProcess");
+
+    IntermediateCatchEvent terminationEvent = new IntermediateCatchEvent();
+    terminationEvent.setId("terminationEvent");
+    terminationEvent.addEventDefinition(terminationMessageDefinition);
+    subProcess.addFlowElement(terminationEvent);
+
+    TerminateEventDefinition terminateEventDefinition = new TerminateEventDefinition();
+    terminateEventDefinition.setTerminateAll(true);
+
+    EndEvent terminatedEvent = new EndEventBuilder().id(getFlowableElementId(subProcessId, "terminatedEvent")).build();
+    terminatedEvent.addEventDefinition(terminateEventDefinition);
+    attachMainWorkflowTerminationListener(terminatedEvent);
+    subProcess.addFlowElement(terminatedEvent);
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
@@ -66,6 +95,10 @@ public class UserApprovalTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setAssigneesVariable.getId()));
     subProcess.addFlowElement(new SequenceFlow(setAssigneesVariable.getId(), userTask.getId()));
     subProcess.addFlowElement(new SequenceFlow(userTask.getId(), endEvent.getId()));
+
+
+    subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), terminationEvent.getId()));
+    subProcess.addFlowElement(new SequenceFlow(terminationEvent.getId(), terminatedEvent.getId()));
 
     attachWorkflowInstanceStageListeners(subProcess);
 
@@ -107,5 +140,8 @@ public class UserApprovalTask implements NodeInterface {
 
   public void addToWorkflow(BpmnModel model, Process process) {
     process.addFlowElement(subProcess);
+    for (Message message : messages) {
+      model.addMessage(message);
+    }
   }
 }

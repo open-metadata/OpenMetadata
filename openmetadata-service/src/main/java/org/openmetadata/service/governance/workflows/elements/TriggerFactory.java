@@ -24,7 +24,7 @@ public class TriggerFactory {
     };
   }
 
-  private static String getTriggerWorkflowId(String workflowFQN) {
+  public static String getTriggerWorkflowId(String workflowFQN) {
     return String.format("%sTrigger", workflowFQN);
   }
 }

@@ -18,11 +18,14 @@ import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.flowable.engine.repository.ProcessDefinition;
+import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+
+import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
 @Slf4j
 public class WorkflowHandler {
@@ -109,10 +112,18 @@ public class WorkflowHandler {
       String deploymentId = processDefinition.getDeploymentId();
       repositoryService.deleteDeployment(deploymentId, true);
     }
-  }
 
-  public ProcessInstance triggerByKey(String processDefinitionKey, Map<String, Object> variables) {
-    return runtimeService.startProcessInstanceByKey(processDefinitionKey, variables);
+    // Also Delete the Trigger
+    List<ProcessDefinition> triggerProcessDefinition =
+            repositoryService
+                    .createProcessDefinitionQuery()
+                    .processDefinitionKey(getTriggerWorkflowId(processDefinitionKey))
+                    .list();
+
+    for (ProcessDefinition processDefinition : triggerProcessDefinition) {
+      String deploymentId = processDefinition.getDeploymentId();
+      repositoryService.deleteDeployment(deploymentId, true);
+    }
   }
 
   public ProcessInstance triggerByKey(String processDefinitionKey, String businessKey, Map<String, Object> variables) {
@@ -161,17 +172,17 @@ public class WorkflowHandler {
 
   public void terminateTaskProcessInstance(UUID customTaskId, String reason) {
     try {
-      Optional<Task> oTask =
-          Optional.ofNullable(
+      List<Task> tasks =
               taskService
                   .createTaskQuery()
                   .processVariableValueEquals("customTaskId", customTaskId.toString())
-                  .singleResult());
-      if (oTask.isPresent()) {
-        Task task = oTask.get();
-        runtimeService.deleteProcessInstance(task.getProcessInstanceId(), reason);
-      } else {
-        LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+                  .list();
+      for (Task task : tasks) {
+        Execution execution = runtimeService.createExecutionQuery()
+                        .processInstanceId(task.getProcessInstanceId())
+                                .messageEventSubscriptionName("terminateProcess")
+                .singleResult();
+        runtimeService.messageEventReceived("terminateProcess", execution.getId());
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
@@ -205,13 +216,5 @@ public class WorkflowHandler {
     }
 
     return hasFinished;
-  }
-
-  public void confirmMainWorkflowHasFinished(String triggerWorkflowExecutionId) {
-    runtimeService.messageEventReceived("mainWorkflowHasFinished", triggerWorkflowExecutionId);
-  }
-
-  public void confirmAllMainWorkflowHaveFinished(String triggerWorkflowExecutionId) {
-    runtimeService.messageEventReceived("allMainWorkflowsHaveFinished", triggerWorkflowExecutionId);
   }
 }
