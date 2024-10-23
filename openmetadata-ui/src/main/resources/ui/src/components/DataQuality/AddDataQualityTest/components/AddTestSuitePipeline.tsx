@@ -16,6 +16,7 @@ import { isEmpty, isString } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
@@ -117,6 +118,7 @@ const AddTestSuitePipeline = ({
     <Form.Provider onFormChange={handleFromChange}>
       <ScheduleInterval
         debugLog={{ allow: true }}
+        defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
         includePeriodOptions={includePeriodOptions}
         initialData={initialData}
         isEditMode={isEditMode}

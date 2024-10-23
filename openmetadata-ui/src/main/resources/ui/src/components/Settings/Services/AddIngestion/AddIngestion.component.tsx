@@ -16,6 +16,7 @@ import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
+import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { FormSubmitType } from '../../../../enums/form.enum';
@@ -303,6 +304,7 @@ const AddIngestion = ({
                 ? t('label.add-deploy')
                 : t('label.submit'),
             }}
+            defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
             disabled={pipelineType === PipelineType.DataInsight}
             includePeriodOptions={periodOptions}
             initialData={{ cron: data?.airflowConfig.scheduleInterval }}

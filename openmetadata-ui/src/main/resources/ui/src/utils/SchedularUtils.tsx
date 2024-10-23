@@ -12,7 +12,7 @@
  */
 
 import { Select } from 'antd';
-import { toNumber, toString } from 'lodash';
+import { isUndefined, toNumber, toString } from 'lodash';
 import React from 'react';
 import {
   Combination,
@@ -141,7 +141,7 @@ export const getStateValue = (value?: string, defaultValue?: string) => {
   return stateVal;
 };
 
-export const getCronInitialValue = (appName: string) => {
+export const getCronDefaultValue = (appName: string) => {
   const value = {
     min: '0',
     hour: '0',
@@ -183,6 +183,31 @@ export const getHourMinuteSelect = ({
     }
   />
 );
+
+export const getDefaultScheduleValue = ({
+  defaultSchedule,
+  includePeriodOptions,
+  allowNoSchedule = false,
+}: {
+  defaultSchedule?: string;
+  includePeriodOptions?: string[];
+  allowNoSchedule?: boolean;
+}) => {
+  if (isUndefined(includePeriodOptions)) {
+    return allowNoSchedule
+      ? defaultSchedule
+      : defaultSchedule || DEFAULT_SCHEDULE_CRON_DAILY;
+  }
+
+  // In case of include periodOptions are present
+  // but the default schedule is undefined and allowNoSchedule is true
+  // return the default schedule
+  if (allowNoSchedule && isUndefined(defaultSchedule)) {
+    return defaultSchedule;
+  }
+
+  return getDefaultScheduleFromPeriod(includePeriodOptions);
+};
 
 export const getDefaultScheduleFromPeriod = (
   includePeriodOptions: string[]

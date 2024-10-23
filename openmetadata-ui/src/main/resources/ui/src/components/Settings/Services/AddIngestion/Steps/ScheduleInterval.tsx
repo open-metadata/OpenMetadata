@@ -27,13 +27,12 @@ import {
 } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DAY_IN_MONTH_OPTIONS,
   DAY_OPTIONS,
-  DEFAULT_SCHEDULE_CRON_DAILY,
   PERIOD_OPTIONS,
   SCHEDULAR_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
@@ -51,7 +50,7 @@ import { generateFormFields } from '../../../../../utils/formUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import {
   getCron,
-  getDefaultScheduleFromPeriod,
+  getDefaultScheduleValue,
   getHourMinuteSelect,
   getStateValue,
   getUpdatedStateFromFormState,
@@ -77,19 +76,23 @@ const ScheduleInterval = <T,>({
   },
   isEditMode = false,
   buttonProps,
-  defaultSchedule = DEFAULT_SCHEDULE_CRON_DAILY,
+  defaultSchedule,
   topChildren,
 }: ScheduleIntervalProps<T>) => {
   const { t } = useTranslation();
-  const finalDefaultSchedule = isUndefined(includePeriodOptions)
-    ? defaultSchedule
-    : getDefaultScheduleFromPeriod(includePeriodOptions);
+  // Since includePeriodOptions can limit the schedule options
+  // we need to get the default schedule which is suitable for includePeriodOptions
+  const initialDefaultSchedule = getDefaultScheduleValue({
+    defaultSchedule,
+    includePeriodOptions,
+    allowNoSchedule: true,
+  });
   const initialCron = isEditMode
     ? initialData?.cron
-    : initialData?.cron || finalDefaultSchedule;
+    : initialData?.cron ?? initialDefaultSchedule;
   const initialValues = {
     ...initialData,
-    ...getStateValue(initialCron, finalDefaultSchedule),
+    ...getStateValue(initialCron, initialDefaultSchedule),
   };
   const [state, setState] = useState<StateValue>(initialValues);
   const [selectedSchedular, setSelectedSchedular] =
@@ -137,7 +140,14 @@ const ScheduleInterval = <T,>({
   const handleSelectedSchedular = useCallback(
     (value: SchedularOptions) => {
       setSelectedSchedular(value);
-      let newState = getStateValue(initialData?.cron ?? finalDefaultSchedule);
+      // Since the initialDefaultSchedule can be empty
+      // we need to get the default schedule which will be non empty
+      const nonEmptyScheduleValue = getDefaultScheduleValue({
+        includePeriodOptions,
+        defaultSchedule,
+      }); // Get the default schedule based on the includePeriodOptions
+
+      let newState = getStateValue(initialData?.cron ?? nonEmptyScheduleValue);
       if (value === SchedularOptions.ON_DEMAND) {
         newState = {
           ...newState,
@@ -147,7 +157,7 @@ const ScheduleInterval = <T,>({
       setState(newState);
       form.setFieldsValue(newState);
     },
-    [isEditMode, initialData?.cron, finalDefaultSchedule]
+    [includePeriodOptions, defaultSchedule, initialData?.cron]
   );
 
   const formFields: FieldProp[] = useMemo(

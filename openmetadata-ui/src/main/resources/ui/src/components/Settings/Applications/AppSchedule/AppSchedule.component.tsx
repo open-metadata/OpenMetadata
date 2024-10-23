@@ -28,10 +28,7 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import {
-  getCronInitialValue,
-  getWeekCron,
-} from '../../../../utils/SchedularUtils';
+import { getCronDefaultValue } from '../../../../utils/SchedularUtils';
 import Loader from '../../../common/Loader/Loader';
 import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../Services/AddIngestion/Steps/ScheduleInterval.interface';
@@ -148,13 +145,19 @@ const AppSchedule = ({
     );
   }, [appData, isPipelineDeployed, appRunsHistoryRef]);
 
-  const initialOptions = useMemo(() => {
-    return applicationsClassBase.getScheduleOptionsForApp(
-      appData.name,
-      appData.appType,
-      pipelineSchedules
-    );
-  }, [appData.name, appData.appType, pipelineSchedules]);
+  const { initialOptions, initialData, defaultCron } = useMemo(() => {
+    return {
+      initialOptions: applicationsClassBase.getScheduleOptionsForApp(
+        appData.name,
+        appData.appType,
+        pipelineSchedules
+      ),
+      initialData: {
+        cron: (appData.appSchedule as AppScheduleClass)?.cronExpression,
+      },
+      defaultCron: getCronDefaultValue(appData?.name ?? ''),
+    };
+  }, [appData.name, appData.appType, appData.appSchedule, pipelineSchedules]);
 
   useEffect(() => {
     fetchPipelineDetails();
@@ -256,15 +259,9 @@ const AppSchedule = ({
             cancelText: t('label.cancel'),
             okText: t('label.save'),
           }}
-          defaultSchedule={
-            config?.enable
-              ? getWeekCron({ hour: '0', min: '0', dow: '0' })
-              : getCronInitialValue(appData?.name ?? '')
-          }
+          defaultSchedule={defaultCron}
           includePeriodOptions={initialOptions}
-          initialData={{
-            cron: (appData.appSchedule as AppScheduleClass)?.cronExpression,
-          }}
+          initialData={initialData}
           status={isSaveLoading ? 'waiting' : 'initial'}
           onBack={onDialogCancel}
           onDeploy={onDialogSave}

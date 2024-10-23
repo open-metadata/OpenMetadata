@@ -20,26 +20,26 @@ import {
   mockOldState1,
 } from '../mocks/Schedular.mock';
 import {
-  getCronInitialValue,
+  getCronDefaultValue,
   getScheduleOptionsFromSchedules,
   getUpdatedStateFromFormState,
 } from './SchedularUtils';
 
-describe('getCronInitialValue function', () => {
+describe('getCronDefaultValue function', () => {
   it('should generate day cron expression if appType is internal and appName is not DataInsightsReportApplication', () => {
-    const result = getCronInitialValue('SearchIndexingApplication');
+    const result = getCronDefaultValue('SearchIndexingApplication');
 
     expect(result).toEqual('0 0 * * *');
   });
 
   it('should generate week cron expression if appName is DataInsightsReportApplication', () => {
-    const result = getCronInitialValue('DataInsightsReportApplication');
+    const result = getCronDefaultValue('DataInsightsReportApplication');
 
     expect(result).toEqual('0 0 * * 0');
   });
 
   it('should generate day cron expression if appType is external', () => {
-    const result = getCronInitialValue('DataInsightsApplication');
+    const result = getCronDefaultValue('DataInsightsApplication');
 
     expect(result).toEqual('0 0 * * *');
   });

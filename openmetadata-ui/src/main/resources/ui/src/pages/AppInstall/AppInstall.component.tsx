@@ -50,7 +50,7 @@ import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import { getCronInitialValue, getWeekCron } from '../../utils/SchedularUtils';
+import { getCronDefaultValue } from '../../utils/SchedularUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './app-install.less';
 
@@ -80,7 +80,7 @@ const AppInstall = () => {
     [appData]
   );
 
-  const { initialOptions, initialValue } = useMemo(() => {
+  const { initialOptions, defaultValue } = useMemo(() => {
     if (!appData) {
       return {};
     }
@@ -93,11 +93,7 @@ const AppInstall = () => {
 
     return {
       initialOptions,
-      initialValue: {
-        cron: config?.enable
-          ? getWeekCron({ hour: '0', min: '0', dow: '0' })
-          : getCronInitialValue(appData?.name ?? ''),
-      },
+      defaultValue: getCronDefaultValue(appData?.name ?? ''),
     };
   }, [appData?.name, appData?.appType, pipelineSchedules, config?.enable]);
 
@@ -208,8 +204,8 @@ const AppInstall = () => {
           <div className="w-500 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <ScheduleInterval
+              defaultSchedule={defaultValue}
               includePeriodOptions={initialOptions}
-              initialData={initialValue}
               status={isSavingLoading ? 'waiting' : 'initial'}
               onBack={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
@@ -226,7 +222,7 @@ const AppInstall = () => {
     appData,
     jsonSchema,
     initialOptions,
-    initialValue,
+    defaultValue,
     isSavingLoading,
   ]);
 
