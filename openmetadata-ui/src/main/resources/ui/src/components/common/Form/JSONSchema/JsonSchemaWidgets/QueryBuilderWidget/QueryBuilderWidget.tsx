@@ -21,6 +21,7 @@ import {
   Builder,
   Config,
   ImmutableTree,
+  JsonTree,
   Query,
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
@@ -28,6 +29,7 @@ import { getExplorePath } from '../../../../../../constants/constants';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { searchQuery } from '../../../../../../rest/searchAPI';
+import { getJsonTreeFromQueryFilter } from '../../../../../../utils/QueryBuilderUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -105,6 +107,21 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   useEffect(() => {
     onChangeSearchIndex(searchIndex);
   }, [searchIndex]);
+
+  useEffect(() => {
+    if (
+      !isEmpty(value) &&
+      outputType === QueryBuilderOutputType.ELASTICSEARCH
+    ) {
+      const tree = QbUtils.checkTree(
+        QbUtils.loadTree(
+          getJsonTreeFromQueryFilter(JSON.parse(value || '')) as JsonTree
+        ),
+        config
+      );
+      onTreeUpdate(tree, config);
+    }
+  }, []);
 
   return (
     <div
