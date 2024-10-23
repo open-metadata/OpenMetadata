@@ -145,9 +145,9 @@ database:
   driverClass: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
   # the username and password
   user: ${DB_USER:-openmetadata_user}
-  password: ${DB_USER_PASSWORD:-openmetadata_password}
+  password: "${DB_USER_PASSWORD:-openmetadata_password}"
   # the JDBC URL; the database is called openmetadata_db
-  url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
+  url: "jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}"
   maxSize: ${DB_CONNECTION_POOL_MAX_SIZE:-50}
   minSize: ${DB_CONNECTION_POOL_MIN_SIZE:-10}
   initialSize: ${DB_CONNECTION_POOL_INITIAL_SIZE:-10}
@@ -278,7 +278,7 @@ elasticsearch:
   port: ${ELASTICSEARCH_PORT:-9200}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
   username: ${ELASTICSEARCH_USER:-""}
-  password: ${ELASTICSEARCH_PASSWORD:-""}
+  password: "${ELASTICSEARCH_PASSWORD:-''}"
   clusterAlias: ${ELASTICSEARCH_CLUSTER_ALIAS:-""}
   truststorePath: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
   truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
@@ -328,7 +328,7 @@ pipelineServiceClientConfiguration:
   # Default required parameters for Airflow as Pipeline Service Client
   parameters:
     username: ${AIRFLOW_USERNAME:-admin}
-    password: ${AIRFLOW_PASSWORD:-admin}
+    password: "${AIRFLOW_PASSWORD:-admin}"
     timeout: ${AIRFLOW_TIMEOUT:-10}
     # If we need to use SSL to reach Airflow
     truststorePath: ${AIRFLOW_TRUST_STORE_PATH:-""}
