@@ -193,7 +193,7 @@ const AppInstall = () => {
 
       case 2:
         return (
-          <div className="w-500 p-md border rounded-4">
+          <div className="w-4/5 p-md border rounded-4">
             <FormBuilder
               showFormHeader
               useSelectWidget
