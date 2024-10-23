@@ -11,6 +11,14 @@
         }
       },
       "analyzer": {
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 2,
+          "max_gram": 3,
+          "filter": [
+            "lowercase"
+          ]
+        }
       },
       "filter": {
         "om_stemmer": {
