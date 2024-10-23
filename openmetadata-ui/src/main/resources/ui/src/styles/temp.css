@@ -816,7 +816,6 @@ body .list-option.rdw-option-active {
   --ant-navbar-height: 64px;
 }
 
-:root .extra-banner,
-:root .alert-banner {
+:root .extra-banner {
   --ant-navbar-height: 128px;
 }

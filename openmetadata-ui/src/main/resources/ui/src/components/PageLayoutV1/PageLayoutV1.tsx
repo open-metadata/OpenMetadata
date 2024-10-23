@@ -103,12 +103,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             {leftPanel}
           </Col>
         )}
-        <Col className="w-full">
-          {alert && (
-            <Row>
-              <AlertBar message={alert.message} type={alert.type} />
-            </Row>
-          )}
+        <Col span={24}>
+          {alert && <AlertBar message={alert.message} type={alert.type} />}
           <Row>
             <Col
               className={classNames(

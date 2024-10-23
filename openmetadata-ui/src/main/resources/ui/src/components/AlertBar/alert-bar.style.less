@@ -22,17 +22,6 @@
   }
 }
 
-@keyframes resize-hide-animation {
-  from {
-    height: 64px;
-    padding: 20px;
-  }
-  to {
-    height: 0;
-    padding: 0 20px;
-  }
-}
-
 .alert-container {
   width: 100%;
   display: flex;
@@ -43,10 +32,6 @@
 
   &.show-alert {
     animation: resize-show-animation 1.2s ease-in-out forwards;
-  }
-
-  &.hide-alert {
-    animation: resize-hide-animation 1.2s ease-out forwards;
   }
 
   &.info {

@@ -68,12 +68,12 @@ const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
     <Alert
       closable
       showIcon
+      afterClose={resetAlert}
       className={classNames(className, 'alert-container', animationClass)}
       closeIcon={<CrossIcon color={crossIconColor} />}
       description={message}
       icon={icon}
       type={type}
-      onClose={resetAlert}
     />
   );
 };
