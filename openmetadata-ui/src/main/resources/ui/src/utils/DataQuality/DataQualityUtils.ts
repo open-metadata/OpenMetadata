@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isArray, isUndefined, omit, omitBy } from 'lodash';
+import { cloneDeep, isArray, isUndefined, omit, omitBy } from 'lodash';
 import { StatusByDimension } from '../../components/DataQuality/ChartWidgets/StatusByDimensionWidget/StatusByDimensionWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
-import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
+import {
+  DEFAULT_DIMENSIONS_DATA,
+  TEST_CASE_FILTERS,
+} from '../../constants/profiler.constant';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
@@ -106,7 +109,9 @@ export const getTestCaseFiltersValue = (
 export const transformToTestCaseStatusByDimension = (
   inputData: DataQualityReport['data']
 ): StatusByDimension[] => {
-  const result: { [key: string]: StatusByDimension } = {};
+  const result: { [key: string]: StatusByDimension } = cloneDeep(
+    DEFAULT_DIMENSIONS_DATA
+  );
 
   inputData.forEach((item) => {
     const {
