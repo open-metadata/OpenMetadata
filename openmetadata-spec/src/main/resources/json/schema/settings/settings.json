@@ -29,7 +29,8 @@
         "slackBot",
         "slackInstaller",
         "slackState",
-        "profilerConfiguration"
+        "profilerConfiguration",
+        "searchSettings"
       ]
     }
   },
@@ -72,6 +73,9 @@
         },
         {
           "$ref": "../configuration/profilerConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/searchSettings.json"
         }
       ]
     }

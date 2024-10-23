@@ -73,6 +73,7 @@ export enum GlobalSettingOptions {
   DATA_PRODUCTS = 'dataProducts',
   DASHBOARD_DATA_MODEL = 'dashboardDataModels',
   METRICS = 'metrics',
+  SEARCH_RBAC = 'search-rbac',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -181,6 +182,11 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.GLOSSARY_TERM]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
+  ],
+
+  [GlobalSettingOptions.SEARCH_RBAC]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
   ],
 };
 
