@@ -23,7 +23,6 @@ import {
 } from '../../../../constants/Color.constants';
 import { TEXT_GREY_MUTED } from '../../../../constants/constants';
 import { INITIAL_TEST_SUMMARY } from '../../../../constants/TestSuite.constant';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
 import { transformToTestCaseStatusObject } from '../../../../utils/DataQuality/DataQualityUtils';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
@@ -38,9 +37,6 @@ const TestCaseStatusPieChartWidget = ({
   const [isTestCaseSummaryLoading, setIsTestCaseSummaryLoading] =
     useState(true);
 
-  const { permissions } = usePermissionProvider();
-  const { testCase: testCasePermission } = permissions;
-
   const fetchTestSummary = async () => {
     setIsTestCaseSummaryLoading(true);
     try {
@@ -54,11 +50,7 @@ const TestCaseStatusPieChartWidget = ({
     }
   };
   useEffect(() => {
-    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
-      fetchTestSummary();
-    } else {
-      setIsTestCaseSummaryLoading(false);
-    }
+    fetchTestSummary();
   }, [chartFilter]);
 
   const { data, chartLabel } = useMemo(

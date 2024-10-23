@@ -25,14 +25,18 @@ const TabsLabel = ({
 }: TabsLabelProps) => {
   return (
     <div className="w-full tabs-label-container" data-testid={id}>
-      <div className="d-flex justify-between">
+      <div className="d-flex justify-between gap-2">
         {name}
         {!isNil(count) && (
           <span data-testid="count">{getCountBadge(count, '', isActive)}</span>
         )}
       </div>
       {/* Note: add ".custom-menu-with-description" class in Menu component if need description in menu */}
-      {description && <div className="label-description">{description}</div>}
+      {description && (
+        <div className="label-description" data-testid="label-description">
+          {description}
+        </div>
+      )}
     </div>
   );
 };
