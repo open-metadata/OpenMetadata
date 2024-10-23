@@ -59,6 +59,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
@@ -386,9 +387,15 @@ public class SearchRepository {
       ChangeDescription changeDescription,
       IndexMapping indexMapping,
       EntityInterface entity) {
+    Pair<String, Map<String, Object>> updates = null;
     if (changeDescription != null) {
-      Pair<String, Map<String, Object>> updates =
-          getInheritedFieldChanges(changeDescription, entity);
+      updates = getInheritedFieldChanges(changeDescription, entity);
+    } else if (entityType.equals(Entity.CLASSIFICATION)) {
+      String scriptTxt =
+          String.format(PROPAGATE_FIELD_SCRIPT, "deleted", ((Classification) entity).getDisabled());
+      updates = new ImmutablePair<>(scriptTxt, new HashMap<>());
+    }
+    if (updates != null) {
       Pair<String, String> parentMatch;
       if (!updates.getValue().isEmpty() && updates.getValue().containsKey("domain")) {
         if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
