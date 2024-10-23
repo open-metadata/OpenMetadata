@@ -102,6 +102,11 @@ const searchForEntityShouldWorkShowNoResult = async (
     displayName
   );
 
+  await expect(
+    page.getByText(`No result found.
+Try adjusting your search or filter to find what you are looking for.`)
+  ).toBeVisible();
+
   await page
     .getByTestId('navbar-search-container')
     .getByTestId('cancel-icon')
