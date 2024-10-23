@@ -2890,10 +2890,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@okta/okta-auth-js@^7.5.0":
-  version "7.5.0"
-  resolved "https://registry.yarnpkg.com/@okta/okta-auth-js/-/okta-auth-js-7.5.0.tgz#7cb3816058afdb6e8e12b4e9c232006a2b6c7b95"
-  integrity sha512-1pPC8xCJ9JuxSI53XJMZuqNtYLJxrgHC1zFLzI+C3STbm75GVl1e5yxBDTFBkEnU+Il6PWX7AQpok74w/XFWfA==
+"@okta/okta-auth-js@^7.8.1":
+  version "7.8.1"
+  resolved "https://registry.yarnpkg.com/@okta/okta-auth-js/-/okta-auth-js-7.8.1.tgz#eb36ac8deb0290f59917ede239fae82d76cc2ab8"
+  integrity sha512-vrsh1QK2NxZQgOQHqIX33ykTsf+X3zcHIzdNjbPbxp1YvTZeyd9oNlcLh1cgp4m0xA/NXoj5xM4no6j3SFtnUw==
   dependencies:
     "@babel/runtime" "^7.12.5"
     "@peculiar/webcrypto" "^1.4.0"
@@ -2905,7 +2905,6 @@
     cross-fetch "^3.1.5"
     fast-text-encoding "^1.0.6"
     js-cookie "^3.0.1"
-    jsonpath-plus "^6.0.1"
     node-cache "^5.1.2"
     p-cancelable "^2.0.0"
     tiny-emitter "1.1.0"
@@ -9966,11 +9965,6 @@ jsonify@^0.0.1:
   version "0.0.1"
   resolved "https://registry.yarnpkg.com/jsonify/-/jsonify-0.0.1.tgz#2aa3111dae3d34a0f151c63f3a45d995d9420978"
   integrity sha512-2/Ki0GcmuqSrgFyelQq9M05y7PS0mEwuIzrf3f1fPqkVDVRvZrPZtVSMHxdgo8Aq0sxAOb/cr2aqqA3LeWHVPg==
-
-jsonpath-plus@^6.0.1:
-  version "6.0.1"
-  resolved "https://registry.yarnpkg.com/jsonpath-plus/-/jsonpath-plus-6.0.1.tgz#9a3e16cedadfab07a3d8dc4e8cd5df4ed8f49c4d"
-  integrity sha512-EvGovdvau6FyLexFH2OeXfIITlgIbgZoAZe3usiySeaIDm5QS+A10DKNpaPBBqqRSZr2HN6HVNXxtwUAr2apEw==
 
 jsonpointer@^5.0.1:
   version "5.0.1"
