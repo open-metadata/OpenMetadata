@@ -26,9 +26,6 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableProfilerConfig,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
@@ -36,6 +33,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
+from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
@@ -122,7 +120,7 @@ def test_init_workflow(mocked_method, mocked_orm):  # pylint: disable=unused-arg
     mocked_method.assert_called()
 
     assert isinstance(workflow.source.source_config, DatabaseServiceProfilerPipeline)
-    assert isinstance(workflow.metadata_config, OpenMetadataConnection)
+    assert isinstance(workflow.workflow_config, WorkflowConfig)
 
     profiler_processor_step = workflow.steps[0]
     assert isinstance(profiler_processor_step.profiler_config, ProfilerProcessorConfig)

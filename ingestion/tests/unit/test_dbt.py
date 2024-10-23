@@ -135,6 +135,14 @@ EXPECTED_DATA_MODELS = [
                 state="Suggested",
                 href=None,
             ),
+            TagLabel(
+                tagFQN='dbtTags."22.8.5.1"',
+                description=None,
+                source="Classification",
+                labelType="Automated",
+                state="Suggested",
+                href=None,
+            ),
         ],
         columns=[
             Column(
@@ -422,6 +430,12 @@ class DbtUnitTest(TestCase):
             ),
             TagLabel(
                 tagFQN="dbtTags.model_tag_two",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            TagLabel(
+                tagFQN='dbtTags."22.8.5.1"',
                 labelType=LabelType.Automated.value,
                 state=State.Suggested.value,
                 source=TagSource.Classification.value,

@@ -22,7 +22,7 @@ export const COMMON_DROPDOWN_ITEMS = [
     key: EntityFields.DOMAIN,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
   {
@@ -53,7 +53,7 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
     key: EntityFields.DOMAIN,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
   {
@@ -174,7 +174,7 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
     key: EntityFields.DOMAIN,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
   {
@@ -208,7 +208,7 @@ export const DATA_PRODUCT_DROPDOWN_ITEMS = [
     key: EntityFields.DOMAIN,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
 ];
@@ -221,7 +221,7 @@ export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
     key: EntityFields.ENTITY_TYPE,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
   {
@@ -254,7 +254,7 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
     key: EntityFields.DOMAIN,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
   {
