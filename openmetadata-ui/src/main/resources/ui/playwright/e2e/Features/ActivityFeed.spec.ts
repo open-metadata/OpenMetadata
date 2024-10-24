@@ -412,7 +412,11 @@ test.describe('Activity feed', () => {
 
     await page.getByRole('menuitem', { name: 'close' }).click();
 
-    await toastNotification(page, 'Task cannot be closed without a comment.');
+    await toastNotification(
+      page,
+      'Task cannot be closed without a comment.',
+      'error'
+    );
 
     // Close the task from the Button.Group, with comment is added.
     await page.fill(
@@ -671,7 +675,8 @@ base.describe('Activity feed with Data Consumer User', () => {
       //   await toastNotification(page1, 'Task closed successfully.');
       await toastNotification(
         page1,
-        'An exception with message [Cannot invoke "java.util.List.stream()" because "owners" is null] was thrown while processing request.'
+        'An exception with message [Cannot invoke "java.util.List.stream()" because "owners" is null] was thrown while processing request.',
+        'error'
       );
 
       // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
@@ -984,7 +989,8 @@ base.describe('Activity feed with Data Consumer User', () => {
             await toastNotification(
               page2,
               // eslint-disable-next-line max-len
-              `Principal: CatalogPrincipal{name='${viewAllUser.responseData.name}'} operation EditDescription denied by role ${viewAllRoles.responseData.name}, policy ${viewAllPolicy.responseData.name}, rule editNotAllowed`
+              `Principal: CatalogPrincipal{name='${viewAllUser.responseData.name}'} operation EditDescription denied by role ${viewAllRoles.responseData.name}, policy ${viewAllPolicy.responseData.name}, rule editNotAllowed`,
+              'error'
             );
 
             await afterActionUser2();

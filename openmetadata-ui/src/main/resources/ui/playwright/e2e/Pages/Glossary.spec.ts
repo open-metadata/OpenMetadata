@@ -351,7 +351,8 @@ test.describe('Glossary tests', () => {
 
         await toastNotification(
           page,
-          /mutually exclusive and can't be assigned together/
+          /mutually exclusive and can't be assigned together/,
+          'error'
         );
 
         // Add non mutually exclusive tags

@@ -69,6 +69,7 @@ const AppContainer = () => {
       <Layout
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
+          ['reserve-right-sidebar']: Boolean(ApplicationExtras),
         })}>
         <Sider
           className={classNames('left-sidebar-col', {

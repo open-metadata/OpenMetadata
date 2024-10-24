@@ -24,7 +24,7 @@ import {
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { clickOutside, redirectToHomePage } from './common';
+import { clickOutside, redirectToHomePage, toastNotification } from './common';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -778,7 +778,6 @@ const announcementForm = async (
   );
   await page.click('#announcement-submit');
   await announcementSubmit;
-  await page.click('.Toastify__close-button');
 };
 
 export const createAnnouncement = async (
@@ -1168,11 +1167,7 @@ export const restoreEntity = async (page: Page) => {
   await page.click('[data-testid="restore-button"]');
   await page.click('button:has-text("Restore")');
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /restored successfully/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /restored successfully/);
 
   const exists = await page
     .locator('[data-testid="deleted-badge"]')
@@ -1211,11 +1206,7 @@ export const softDeleteEntity = async (
 
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /deleted successfully!/);
 
   await page.reload();
 
@@ -1280,11 +1271,7 @@ export const hardDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const checkDataAssetWidget = async (
