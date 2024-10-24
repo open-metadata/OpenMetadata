@@ -16,7 +16,6 @@ import tagClassBase, { TagClassBase } from './TagClassBase';
 
 jest.mock('../rest/searchAPI');
 
-
 jest.mock('./StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockReturnValue('test'),
   escapeESReservedCharacters: jest.fn().mockReturnValue('test'),
