@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CloseOutlined } from '@ant-design/icons';
+import { Button } from 'antd';
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
+import React from 'react';
+import { RenderSettings } from 'react-awesome-query-builder';
 import {
   EsBoolQuery,
   EsExistsQuery,
@@ -262,9 +267,7 @@ export const getJsonTreePropertyFromQueryFilter = (
           ...acc,
           ...getCommonFieldProperties(
             parentPath,
-            Object.keys(
-              (curr.bool?.must_not as EsWildCard)?.wildcard
-            )[0] as string,
+            Object.keys((curr.bool?.must_not as EsWildCard)?.wildcard)[0],
             'not_like',
             Object.values((curr.bool?.must_not as EsWildCard)?.wildcard)[0]
               ?.value
@@ -310,4 +313,35 @@ export const getJsonTreeFromQueryFilter = (
   } catch {
     return {};
   }
+};
+
+export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
+  props
+) => {
+  const type = props?.type;
+
+  if (type === 'delRule') {
+    return (
+      <Button
+        className="action action--DELETE"
+        data-testid="delete-condition-button"
+        icon={<CloseOutlined />}
+        onClick={props?.onClick}
+      />
+    );
+  } else if (type === 'addRule') {
+    return (
+      <Button
+        className="action action--ADD-RULE"
+        data-testid="add-condition-button"
+        type="primary"
+        onClick={props?.onClick}>
+        {t('label.add-entity', {
+          entity: t('label.condition'),
+        })}
+      </Button>
+    );
+  }
+
+  return <></>;
 };
