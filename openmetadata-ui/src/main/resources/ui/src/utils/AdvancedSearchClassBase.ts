@@ -451,7 +451,7 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autocomplete({
-            searchIndex: [SearchIndex.DATA_ASSET],
+            searchIndex: SearchIndex.DATA_ASSET,
             entityField: EntityFields.DISPLAY_NAME_KEYWORD,
           }),
           useAsyncSearch: true,
@@ -472,7 +472,7 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autocomplete({
-            searchIndex: [SearchIndex.DATA_ASSET],
+            searchIndex: SearchIndex.DATA_ASSET,
             entityField: EntityFields.NAME_KEYWORD,
           }),
           useAsyncSearch: true,
