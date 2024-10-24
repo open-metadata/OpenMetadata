@@ -8,7 +8,6 @@ import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import com.codahale.metrics.NoopMetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -37,8 +36,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
@@ -63,7 +60,6 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -73,6 +69,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
+import org.openmetadata.service.util.jdbi.JdbiUtils;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -211,6 +208,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       flyway.clean();
       LOG.info("Creating the OpenMetadata Schema.");
       flyway.migrate();
+      LOG.info("Running the Native Migrations.");
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
       LOG.info("create indexes.");
@@ -545,6 +543,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
     String jdbcUrl = dataSourceFactory.getUrl();
     String user = dataSourceFactory.getUser();
     String password = dataSourceFactory.getPassword();
+    LOG.info("JDBC URL: {}", jdbcUrl);
+    LOG.info("User: {}", user);
+    LOG.info("Password: {}", password);
     assert user != null && password != null;
 
     String flywayRootPath = config.getMigrationConfiguration().getFlywayPath();
@@ -569,12 +570,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .load();
     nativeSQLScriptRootPath = config.getMigrationConfiguration().getNativePath();
     extensionSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
-    jdbi = Jdbi.create(dataSourceFactory.build(new NoopMetricRegistry(), "open-metadata-ops"));
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(
-            new ConnectionAwareAnnotationSqlLocator(
-                config.getDataSourceFactory().getDriverClass()));
+
+    jdbi = JdbiUtils.createAndSetupJDBI(dataSourceFactory);
 
     searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
