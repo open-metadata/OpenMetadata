@@ -70,11 +70,15 @@ const IncidentTimeChartWidget = ({
   }, [chartFilter]);
 
   return (
-    <Card loading={isChartLoading}>
+    <Card
+      data-testid={`incident-${incidentMetricType}-time-chart-widget`}
+      loading={isChartLoading}>
       <Typography.Paragraph className="text-xs text-grey-muted">
         {title}
       </Typography.Paragraph>
-      <Typography.Paragraph className="font-medium text-xl m-b-0">
+      <Typography.Paragraph
+        className="font-medium text-xl m-b-0"
+        data-testid="average-time">
         {chartData.length > 0
           ? convertMillisecondsToHumanReadableFormat(avgTimeValue)
           : '--'}

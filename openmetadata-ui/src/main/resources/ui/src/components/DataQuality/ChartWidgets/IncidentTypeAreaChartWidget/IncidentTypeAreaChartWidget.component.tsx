@@ -58,11 +58,15 @@ const IncidentTypeAreaChartWidget = ({
   }, [chartFilter]);
 
   return (
-    <Card loading={isChartLoading}>
+    <Card
+      data-testid={`incident-${incidentStatusType}-type-area-chart-widget-container`}
+      loading={isChartLoading}>
       <Typography.Paragraph className="text-xs text-grey-muted">
         {title}
       </Typography.Paragraph>
-      <Typography.Paragraph className="font-medium text-xl m-b-0">
+      <Typography.Paragraph
+        className="font-medium text-xl m-b-0"
+        data-testid="total-value">
         {totalValue}
       </Typography.Paragraph>
 

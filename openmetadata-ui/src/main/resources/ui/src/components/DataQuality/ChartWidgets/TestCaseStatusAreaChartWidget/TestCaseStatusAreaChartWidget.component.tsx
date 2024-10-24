@@ -68,11 +68,14 @@ const TestCaseStatusAreaChartWidget = ({
         'test-case-area-chart-widget-container',
         toLower(testCaseStatus)
       )}
+      data-testid={`test-case-${testCaseStatus}-area-chart-widget`}
       loading={isChartLoading}>
       <Typography.Paragraph className="text-xs text-grey-muted">
         {title}
       </Typography.Paragraph>
-      <Typography.Paragraph className="font-medium text-xl m-b-0">
+      <Typography.Paragraph
+        className="font-medium text-xl m-b-0"
+        data-testid="total-value">
         {totalValue}
       </Typography.Paragraph>
 
