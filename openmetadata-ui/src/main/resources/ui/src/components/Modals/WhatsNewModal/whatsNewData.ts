@@ -1097,7 +1097,6 @@ To continue pursuing this objective, the application was completely refactored t
 - **Fix**: web analytic activity being reset.
 - **Fix**: Quicksight lineage source fix.
 - **Fix**: Add Azure Token Base Authentication.
-- **Minor**:  Add IN entities for PII. ${CollateIconWithLinkMD}
 `,
     },
   },
