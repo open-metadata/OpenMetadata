@@ -103,7 +103,6 @@ import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import './table-details-page-v1.less';
-import TableConstraints from './TableConstraints/TableConstraints';
 
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
@@ -588,9 +587,6 @@ const TableDetailsPageV1: React.FC = () => {
                         direction="vertical"
                         size="large">
                         {tableClassBase.getAfterSlotComponents(tableDetails)}
-                        <TableConstraints
-                          constraints={tableDetails?.tableConstraints}
-                        />
                       </Space>
                     }
                     beforeSlot={
