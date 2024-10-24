@@ -27,6 +27,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 
 class AdvancedSearchClassBase {
   baseConfig = AntdConfig as BasicConfig;
@@ -408,7 +409,9 @@ class AdvancedSearchClassBase {
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
-        renderButton: renderAdvanceSearchButtons,
+        renderButton: isExplorePage
+          ? renderAdvanceSearchButtons
+          : renderQueryBuilderFilterButtons,
       },
     };
 

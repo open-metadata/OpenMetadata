@@ -12,12 +12,16 @@
  */
 import React, { FC } from 'react';
 import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { AdvanceSearchProviderProps } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
 export const withAdvanceSearch =
-  <P extends Record<string, unknown>>(Component: FC<P>) =>
+  <P extends Record<string, unknown>>(
+    Component: FC<P>,
+    providerProps?: Omit<AdvanceSearchProviderProps, 'children'>
+  ) =>
   (props: P) => {
     return (
-      <AdvanceSearchProvider>
+      <AdvanceSearchProvider {...providerProps}>
         <Component {...props} />
       </AdvanceSearchProvider>
     );

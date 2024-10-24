@@ -10,6 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../../../../styles/variables.less');
+
+.query-builder-card {
+  background-color: @grey-6;
+
+  .ant-alert-info {
+    background-color: @blue-8;
+    border-color: @blue-7;
+
+    .ant-alert-icon {
+      color: @blue-7;
+    }
+  }
+}
+
 .query-builder-form-field {
   .hide--line.one--child {
     margin-top: 0;
@@ -37,6 +53,127 @@
     label {
       font-weight: normal;
       margin-bottom: 6px;
+    }
+  }
+
+  .query-builder-container {
+    .group-or-rule-container.rule-container {
+      padding: 0px;
+
+      .rule.group-or-rule {
+        .rule--header {
+          .ant-btn-group {
+            margin: 0px;
+            align-self: flex-start;
+          }
+        }
+      }
+    }
+
+    .group-or-rule-container.group-container {
+      padding: 0px;
+
+      .group.rule_group {
+        .group--field {
+          margin: 0px;
+          flex: 0 1 25%;
+
+          .ant-select {
+            min-width: 100% !important; // override the inline min-width style of the select provided by antd
+          }
+        }
+      }
+
+      & > .group.group-or-rule {
+        display: flex;
+        flex-direction: column;
+
+        & > .group--header {
+          order: 9999;
+
+          .group--actions.group--actions--tr {
+            justify-content: flex-start;
+            margin: 0px;
+          }
+
+          .action.action--ADD-GROUP {
+            display: none;
+          }
+
+          .rule-container .ant-btn-group {
+            visibility: visible;
+          }
+
+          .action.action--ADD-RULE {
+            position: static;
+            margin-top: 8px;
+          }
+        }
+
+        .rule--body--wrapper {
+          .rule--body {
+            margin: 0px;
+            display: flex;
+            gap: 16px;
+
+            .group--field,
+            .rule--field,
+            .rule--operator,
+            .rule--value,
+            .widget--widget {
+              margin: 0px;
+              flex: 1;
+
+              .ant-col {
+                padding: 0px !important; // remove padding from ant-col inline styling by antd
+              }
+            }
+
+            .rule--operator,
+            .rule--value .rule--widget {
+              width: 100%;
+
+              .ant-select {
+                min-width: 100% !important; // override the inline min-width style of the select provided by antd
+              }
+            }
+          }
+        }
+      }
+
+      & > .group.group-or-rule.rule_group {
+        flex-direction: row;
+        align-items: center;
+      }
+    }
+
+    .group--children {
+      padding: 0px;
+      margin: 0px;
+
+      .group-or-rule-container.group-container,
+      .group-or-rule-container.rule-container {
+        .group.group-or-rule,
+        .rule.group-or-rule {
+          background: inherit;
+          padding: 0px;
+          border: none;
+
+          .group--header {
+            .group--conjunctions {
+              display: none;
+            }
+          }
+
+          &:not(:first-child) {
+            padding: 16px 8px;
+          }
+        }
+      }
+
+      .rule-container .ant-btn-group {
+        visibility: visible;
+      }
     }
   }
 }
