@@ -95,6 +95,11 @@ const DataModelTable = () => {
             </span>
           ),
       },
+      {
+        title: t('label.data-model-type'),
+        dataIndex: 'dataModelType',
+        key: 'dataModelType',
+      },
     ],
     []
   );
