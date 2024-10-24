@@ -333,5 +333,5 @@ export const EXPLORE_ROOT_INDEX_MAPPING = {
     SearchIndex.API_ENDPOINT_INDEX,
     SearchIndex.API_COLLECTION_INDEX,
   ],
-  Governance: [SearchIndex.GLOSSARY_TERM],
+  Governance: [SearchIndex.GLOSSARY_TERM, SearchIndex.TAG],
 };

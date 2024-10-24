@@ -466,6 +466,27 @@ class AdvancedSearchClassBase {
           'regexp',
         ],
       },
+      [EntityFields.NAME_KEYWORD]: {
+        label: t('label.name'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: entitySearchIndex ?? [SearchIndex.DATA_ASSET],
+            entityField: EntityFields.NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+        operators: [
+          'select_equals',
+          'select_not_equals',
+          'select_any_in',
+          'select_not_any_in',
+          'like',
+          'not_like',
+          'regexp',
+        ],
+      },
 
       deleted: {
         label: t('label.deleted'),
