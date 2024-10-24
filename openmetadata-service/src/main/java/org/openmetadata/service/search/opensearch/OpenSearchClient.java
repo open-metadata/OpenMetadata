@@ -171,7 +171,6 @@ import os.org.opensearch.index.query.QueryStringQueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
 import os.org.opensearch.index.query.ScriptQueryBuilder;
 import os.org.opensearch.index.query.TermQueryBuilder;
-import os.org.opensearch.index.query.TermsQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
@@ -229,9 +228,7 @@ public class OpenSearchClient implements SearchClient {
           "chart_suggest",
           "field_suggest");
   private static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
-      Stream.concat(
-              FIELDS_TO_REMOVE.stream(),
-              Stream.of("schemaDefinition", "testSuite", "customMetrics"))
+      Stream.concat(FIELDS_TO_REMOVE.stream(), Stream.of("schemaDefinition", "customMetrics"))
           .toList();
 
   static {
@@ -357,22 +354,6 @@ public class OpenSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder =
         getSearchSourceBuilder(
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
-
-    // Add Domain filter
-    if (request.isApplyDomainFilter()) {
-      if (!nullOrEmpty(request.getDomains())) {
-        TermsQueryBuilder domainFilter =
-            QueryBuilders.termsQuery("domain.fullyQualifiedName", request.getDomains());
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(domainFilter));
-      } else {
-        // Else condition to list entries where domain field is null
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery()
-                .must(searchSourceBuilder.query())
-                .mustNot(QueryBuilders.existsQuery("domain.fullyQualifiedName")));
-      }
-    }
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
@@ -1234,7 +1215,6 @@ public class OpenSearchClient implements SearchClient {
   @SneakyThrows
   public void updateSearch(UpdateRequest updateRequest) {
     if (updateRequest != null) {
-      updateRequest.docAsUpsert(true);
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
@@ -1333,6 +1313,24 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildSearchAcrossIndexesBuilder(
+      String query, int from, int size) {
+    QueryStringQueryBuilder queryStringBuilder =
+        buildSearchQueryBuilder(query, SearchIndex.getAllFields());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
+    queryBuilder.boostMode(CombineFunction.SUM);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("database.name.keyword")
+            .field("database.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("databaseSchema.name.keyword")
+            .field("databaseSchema.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
+    return addAggregation(searchSourceBuilder);
+  }
+
+  private static SearchSourceBuilder buildDataAssetsSearchBuilder(
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getAllFields());
@@ -1632,6 +1630,7 @@ public class OpenSearchClient implements SearchClient {
     if (isClientAvailable) {
       UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
       updateRequest.doc(doc, XContentType.JSON);
+      updateRequest.docAsUpsert(true);
       updateSearch(updateRequest);
     }
   }
@@ -1641,6 +1640,7 @@ public class OpenSearchClient implements SearchClient {
     if (isClientAvailable) {
       UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
       updateRequest.doc(doc, XContentType.JSON);
+      updateRequest.docAsUpsert(true);
       updateSearch(updateRequest);
     }
   }
@@ -2323,7 +2323,8 @@ public class OpenSearchClient implements SearchClient {
           "storage_service_index",
           "search_service_index",
           "metadata_service_index" -> buildServiceSearchBuilder(q, from, size);
-      case "all", "dataAsset" -> buildSearchAcrossIndexesBuilder(q, from, size);
+      case "dataAsset" -> buildDataAssetsSearchBuilder(q, from, size);
+      case "all" -> buildSearchAcrossIndexesBuilder(q, from, size);
       default -> buildAggregateSearchBuilder(q, from, size);
     };
   }
@@ -2367,7 +2368,7 @@ public class OpenSearchClient implements SearchClient {
 
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
-    if (subjectContext != null && !subjectContext.isAdmin()) {
+    if (SearchClient.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQuery != null) {
         searchSourceBuilder.query(

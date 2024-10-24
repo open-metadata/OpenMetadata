@@ -23,7 +23,6 @@ import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -43,8 +42,8 @@ import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.customproperties.EnumConfig;
-import org.openmetadata.schema.type.customproperties.TableConfig;
+import org.openmetadata.schema.type.customProperties.EnumConfig;
+import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -242,12 +241,6 @@ public class TypeRepository extends EntityRepository<Type> {
 
     JsonNode configNode = JsonUtils.valueToTree(config.getConfig());
     TableConfig tableConfig = JsonUtils.convertValue(config.getConfig(), TableConfig.class);
-
-    // rowCount is optional, if not present set it to the default value
-    if (!configNode.has("rowCount")) {
-      ((ObjectNode) configNode).put("rowCount", tableConfig.getRowCount());
-      config.setConfig(configNode);
-    }
 
     List<String> columns = new ArrayList<>();
     configNode.path("columns").forEach(node -> columns.add(node.asText()));

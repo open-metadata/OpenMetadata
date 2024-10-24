@@ -13,6 +13,8 @@
 import { expect, Page, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
 import {
   clickOutside,
   createNewPage,
@@ -21,7 +23,7 @@ import {
   uuid,
 } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
-import { submitForm, validateForm } from '../../utils/tag';
+import { addTagToTableColumn, submitForm, validateForm } from '../../utils/tag';
 
 const NEW_CLASSIFICATION = {
   name: `PlaywrightClassification-${uuid()}`,
@@ -57,16 +59,26 @@ const permanentDeleteModal = async (page: Page, entity: string) => {
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const table = new TableClass();
+const classification = new ClassificationClass({
+  provider: 'system',
+});
+const tag = new TagClass({
+  classification: classification.data.name,
+});
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
+  await classification.create(apiContext);
+  await tag.create(apiContext);
   await afterAction();
 });
 
 test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.delete(apiContext);
+  await classification.delete(apiContext);
+  await tag.delete(apiContext);
   await afterAction();
 });
 
@@ -99,6 +111,99 @@ test('Classification Page', async ({ page }) => {
       .allTextContents();
 
     expect(headers).toEqual(['Tag', 'Display Name', 'Description', 'Actions']);
+  });
+
+  await test.step('Disabled system tags should not render', async () => {
+    const classificationResponse = page.waitForResponse(
+      `/api/v1/tags?*parent=${classification.responseData.name}*`
+    );
+    await page
+      .locator(`[data-testid="side-panel-classification"]`)
+      .filter({ hasText: classification.responseData.displayName })
+      .click();
+    await classificationResponse;
+
+    await page.click('[data-testid="manage-button"]');
+
+    const fetchTags = page.waitForResponse(
+      `/api/v1/tags?fields=usageCount&parent=${classification.responseData.name}*`
+    );
+    const disabledTag = page.waitForResponse('/api/v1/classifications/*');
+    await page.click('[data-testid="enable-disable-title"]');
+    await disabledTag;
+    await fetchTags;
+
+    await expect(
+      page.locator(
+        `[data-testid="classification-${classification.responseData.name}"] [data-testid="disabled"]`
+      )
+    ).toBeVisible();
+
+    await expect(
+      page.locator('[data-testid="add-new-tag-button"]')
+    ).toBeDisabled();
+
+    await expect(
+      page.locator('[data-testid="no-data-placeholder"]')
+    ).toBeVisible();
+
+    // Check if the disabled Classification tag is not visible in the table
+    await table.visitEntityPage(page);
+
+    await page.click(
+      '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
+    );
+
+    const tagResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${tag.responseData.displayName}***`
+    );
+    await page.fill(
+      '[data-testid="tag-selector"] input',
+      tag.responseData.displayName
+    );
+    await tagResponse;
+
+    await expect(
+      page.locator('[data-testid="tag-selector"] > .ant-select-selector')
+    ).toContainText(tag.responseData.displayName);
+
+    await expect(
+      page.getByTestId(
+        `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
+      )
+    ).not.toBeVisible();
+
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
+    // Re-enable the disabled Classification
+    await classification.visitPage(page);
+
+    await page.click('[data-testid="manage-button"]');
+
+    const enableTagResponse = page.waitForResponse('/api/v1/classifications/*');
+    await page.click('[data-testid="enable-disable-title"]');
+    await enableTagResponse;
+
+    await expect(
+      page.locator('[data-testid="add-new-tag-button"]')
+    ).not.toBeDisabled();
+
+    await expect(
+      page.locator(
+        `[data-testid="classification-${classification.responseData.name}"] [data-testid="disabled"]`
+      )
+    ).not.toBeVisible();
+
+    /* This code test will be fix in this PR  https://github.com/open-metadata/OpenMetadata/pull/18333  */
+    // await table.visitEntityPage(page);
+    // await addTagToTableColumn(page, {
+    //   tagName: tag.responseData.name,
+    //   tagFqn: tag.responseData.fullyQualifiedName,
+    //   tagDisplayName: tag.responseData.displayName,
+    //   tableId: table.entityResponseData?.['id'],
+    //   columnNumber: 1,
+    //   rowName: 'shop_id numeric',
+    // });
   });
 
   await test.step('Create classification with validation checks', async () => {
@@ -169,41 +274,14 @@ test('Classification Page', async ({ page }) => {
     await table.visitEntityPage(page);
     const { name, displayName } = NEW_TAG;
 
-    await page.click(
-      '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
-    );
-    await page.fill('[data-testid="tag-selector"] input', name);
-    await page.click(`[data-testid="tag-${tagFqn}"]`);
-
-    await expect(
-      page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-    ).toContainText(displayName);
-
-    const saveAssociatedTag = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'PATCH' &&
-        response
-          .url()
-          .includes(`/api/v1/tables/${table.entityResponseData?.['id']}`)
-    );
-    await page.click('[data-testid="saveAssociatedTag"]');
-    await saveAssociatedTag;
-
-    await page.waitForSelector('.ant-select-dropdown', {
-      state: 'detached',
+    await addTagToTableColumn(page, {
+      tagName: name,
+      tagFqn,
+      tagDisplayName: displayName,
+      tableId: table.entityResponseData?.['id'],
+      columnNumber: 0,
+      rowName: 'user_id numeric',
     });
-
-    await expect(
-      page
-        .getByRole('row', { name: 'user_id numeric Unique' })
-        .getByTestId('tags-container')
-    ).toContainText(displayName);
-
-    await expect(
-      page.locator(
-        '[data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="icon"]'
-      )
-    ).toBeVisible();
   });
 
   await test.step(
