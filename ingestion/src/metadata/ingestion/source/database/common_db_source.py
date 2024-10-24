@@ -481,6 +481,12 @@ class CommonDbSourceService(
         """Not Implemented"""
         yield from []
 
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the location path of the table
+        by default there will be no location path
+        """
+
     @calculate_execution_time_generator()
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
@@ -556,6 +562,9 @@ class CommonDbSourceService(
                     table_type=table_type,
                 ),
                 owners=self.get_owner_ref(table_name=table_name),
+                locationPath=self.get_location_path(
+                    table_name=table_name, schema_name=schema_name
+                ),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(

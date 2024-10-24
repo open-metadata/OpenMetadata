@@ -8,7 +8,7 @@ slug: /developers/bots
 The default account for any ingestion pipeline deployed from the UI is `ingestion-bot`. To configure `ingestion-bot` from the UI, go to the settings page and access the `Bots` tile.
 
 {% image
-src="/images/v1.4/developers/settings-bot.png"
+src="/images/v1.5/developers/settings-bot.png"
 alt="settings-bot"
 /%}
 
