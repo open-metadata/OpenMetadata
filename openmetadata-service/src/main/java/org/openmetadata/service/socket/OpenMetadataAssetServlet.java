@@ -23,20 +23,39 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.resources.system.IndexResource;
 
 public class OpenMetadataAssetServlet extends AssetServlet {
   private final OMWebConfiguration webConfiguration;
 
+  private final String basePath;
+
   public OpenMetadataAssetServlet(
-      String resourcePath, String uriPath, @Nullable String indexFile, OMWebConfiguration webConf) {
+      String basePath,
+      String resourcePath,
+      String uriPath,
+      @Nullable String indexFile,
+      OMWebConfiguration webConf) {
     super(resourcePath, uriPath, indexFile, "text/html", StandardCharsets.UTF_8);
     this.webConfiguration = webConf;
+    this.basePath = basePath;
   }
 
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp)
       throws ServletException, IOException {
     setSecurityHeader(webConfiguration, resp);
+
+    String requestUri = req.getRequestURI();
+
+    if (requestUri.endsWith("/")) {
+      IndexResource index = new IndexResource();
+      // Write the dynamic config.js content to the response
+      resp.setContentType("text/html");
+      resp.getWriter().write(IndexResource.getIndexFile(this.basePath));
+      return;
+    }
+
     super.doGet(req, resp);
     if (!resp.isCommitted() && (resp.getStatus() == 404)) {
       resp.sendError(404);

@@ -18,7 +18,6 @@ const process = require('process');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
 const outputPath = path.join(__dirname, 'dist/assets');
-const subPath = process.env.APP_SUB_PATH ?? '';
 
 module.exports = {
   // Production mode
@@ -35,7 +34,7 @@ module.exports = {
     // Clean the output directory before emit.
     clean: true,
     // Ensures bundle is served from absolute path as opposed to relative
-    publicPath: `${subPath ?? ''}/`,
+    publicPath: '/',
   },
 
   // Loaders
