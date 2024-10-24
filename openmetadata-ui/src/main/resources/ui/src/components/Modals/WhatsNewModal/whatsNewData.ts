@@ -1084,19 +1084,19 @@ To continue pursuing this objective, the application was completely refactored t
     description: 'Released on 24th October 2024.',
     features: [],
     changeLogs: {
-      Improvements: `- **Fix**: Hive Metastore connection issue.
-- **Fix**: live index on test suite creation.
-- **Minor**: supported total unique user count in Team page.
-- **Fix**: Fix issues in zh language search index mapping.
-- **Minor**: Add location path to table entity.
-- **Minor**: Fix LocationPath Index.
-- **Fix** : Mode dashboard ingestion API call.
-- **Fix**: fixed task deserialization in Airflow metadata ingestion.
-- **Fix**: Mode test connection returns data in dict instead of json.
-- **Minor**: Not Include Soft Deleted Assets in DI.
-- **Fix**: web analytic activity being reset.
-- **Fix**: Quicksight lineage source fix.
-- **Fix**: Add Azure Token Base Authentication.
+      Improvements: `- **Fix**: Hive Meta store connection issue.
+- **Fix**: Live index is on test suite creation.
+- **Minor**: Supported total unique user count on the Team page.
+- **Fix**: Issues in zh language search index mapping.
+- **Minor**: Add location path to a table entity.
+- **Fix**: LocationPath Index.
+- **Fix**: Mode dashboard ingestion API call.
+- **Fix**: Task deserialization in Airflow metadata ingestion.
+- **Fix**: Mode test connection returns data in dict instead of JSON.
+- **Minor**: Do not include soft deleted assets in the Data Insight.
+- **Fix**: Web analytic activity being reset.
+- **Fix**: Quicksight lineage source.
+- **Fix**: Add Azure Token Base Authentication
 `,
     },
   },
