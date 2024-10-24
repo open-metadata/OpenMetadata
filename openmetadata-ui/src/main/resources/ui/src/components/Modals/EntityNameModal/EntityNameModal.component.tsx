@@ -14,7 +14,6 @@ import { Button, Form, FormProps, Input, Modal, Typography } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
-import tableClassBase from '../../../utils/TableClassBase';
 import { EntityNameModalProps } from './EntityNameModal.interface';
 
 const EntityNameModal: React.FC<EntityNameModalProps> = ({
@@ -27,6 +26,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
   // By default its disabled, send allowRename true to get the functionality
   allowRename = false,
   nameValidationRules = [],
+  additionalFields,
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -98,7 +98,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
           <Input placeholder={t('message.enter-display-name')} />
         </Form.Item>
 
-        {tableClassBase.getAdditionalFormFieldForSchemaTableColumn()}
+        {additionalFields}
       </Form>
     </Modal>
   );

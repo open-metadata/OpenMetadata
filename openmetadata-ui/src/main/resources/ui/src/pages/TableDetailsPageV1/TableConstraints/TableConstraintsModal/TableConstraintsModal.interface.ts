@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,22 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Rule } from 'antd/lib/form';
-import { Constraint } from '../../../generated/entity/data/table';
+import {
+  RelationshipType,
+  Table,
+  TableConstraint,
+} from '../../../../generated/entity/data/table';
 
-export type EntityName = { name: string; displayName: string };
+export interface TableConstraintModalProps {
+  constraint: Table['tableConstraints'];
+  tableDetails?: Table;
+  onClose: () => void;
+  onSave: (values: TableConstraint[]) => Promise<void>;
+}
 
-export type EntityNameWithAdditionFields = EntityName & {
-  constraint: Constraint;
-};
+export interface TableConstraintForm {
+  columns: string;
+  referredColumns: string;
+  relationshipType: RelationshipType;
+}
 
-export interface EntityNameModalProps {
-  visible: boolean;
-  allowRename?: boolean;
-  onCancel: () => void;
-  onSave: (obj: EntityName) => void | Promise<void>;
-  entity: Partial<EntityName>;
-  title: string;
-  nameValidationRules?: Rule[];
-  additionalFields?: React.ReactNode;
+export interface SelectOptions {
+  label: string;
+  value: string;
 }

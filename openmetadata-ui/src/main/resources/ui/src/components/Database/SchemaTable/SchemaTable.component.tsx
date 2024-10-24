@@ -12,7 +12,7 @@
  */
 
 import { FilterOutlined } from '@ant-design/icons';
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Form, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -36,7 +36,10 @@ import {
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
-import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  COLUMN_CONSTRAINT_TYPE_OPTIONS,
+  TABLE_SCROLL_VALUE,
+} from '../../../constants/Table.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -55,7 +58,6 @@ import {
   searchInColumns,
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
-import tableClassBase from '../../../utils/TableClassBase';
 import {
   getAllTags,
   searchTagInData,
@@ -72,7 +74,10 @@ import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTabl
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
-import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import {
+  EntityName,
+  EntityNameWithAdditionFields,
+} from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
@@ -310,18 +315,26 @@ const SchemaTable = ({
     setEditColumnDisplayName(record);
   };
 
-  const handleEditDisplayName = async (data: EntityName) => {
+  const handleEditColumnData = async (data: EntityName) => {
+    const { displayName, constraint } = data as EntityNameWithAdditionFields;
     if (
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
     ) {
       const tableCols = cloneDeep(tableColumns);
 
-      tableClassBase.getUpdatedSchemaTableColumnData({
-        columnData: editColumnDisplayName,
-        tableCols,
-        updatedFormData: data,
-        updateColumnFields,
+      updateColumnFields({
+        fqn: editColumnDisplayName.fullyQualifiedName,
+        value: isEmpty(displayName) ? undefined : displayName,
+        field: 'displayName',
+        columns: tableCols,
+      });
+
+      updateColumnFields({
+        fqn: editColumnDisplayName.fullyQualifiedName,
+        value: isEmpty(constraint) ? undefined : constraint,
+        field: 'constraint',
+        columns: tableCols,
       });
       await onUpdate(tableCols);
       setEditColumnDisplayName(undefined);
@@ -518,6 +531,19 @@ const SchemaTable = ({
     ]
   );
 
+  const additionalFieldsInEntityNameModal = (
+    <Form.Item
+      label={t('label.entity-type-plural', {
+        entity: t('label.constraint'),
+      })}
+      name="constraint">
+      <Select
+        data-testid="constraint-type-select"
+        options={COLUMN_CONSTRAINT_TYPE_OPTIONS}
+      />
+    </Form.Item>
+  );
+
   useEffect(() => {
     setExpandedRowKeys(nestedTableFqnKeys);
   }, [searchText]);
@@ -570,13 +596,14 @@ const SchemaTable = ({
       )}
       {editColumnDisplayName && (
         <EntityNameModal
+          additionalFields={additionalFieldsInEntityNameModal}
           entity={editColumnDisplayName}
           title={`${t('label.edit-entity', {
             entity: t('label.column'),
           })}: "${editColumnDisplayName?.name}"`}
           visible={Boolean(editColumnDisplayName)}
           onCancel={() => setEditColumnDisplayName(undefined)}
-          onSave={handleEditDisplayName}
+          onSave={handleEditColumnData}
         />
       )}
     </>

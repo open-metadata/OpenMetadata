@@ -11,11 +11,53 @@
  *  limitations under the License.
  */
 
-import { ConstraintType } from '../generated/entity/data/table';
+import {
+  Constraint,
+  ConstraintType,
+  RelationshipType,
+} from '../generated/entity/data/table';
 
 export const TABLE_SCROLL_VALUE = { x: 1200 };
 
 export const SUPPORTED_TABLE_CONSTRAINTS = [
   ConstraintType.ForeignKey,
   ConstraintType.PrimaryKey,
+];
+
+export const COLUMN_CONSTRAINT_TYPE_OPTIONS = [
+  {
+    label: 'Primary Key',
+    value: Constraint.PrimaryKey,
+  },
+  {
+    label: 'Not Null',
+    value: Constraint.NotNull,
+  },
+  {
+    label: 'Null',
+    value: Constraint.Null,
+  },
+  {
+    label: 'Unique',
+    value: Constraint.Unique,
+  },
+];
+
+export const RELATIONSHIP_TYPE_OPTION = [
+  {
+    label: 'One-to-One',
+    value: RelationshipType.OneToOne,
+  },
+  {
+    label: 'One-to-Many',
+    value: RelationshipType.OneToMany,
+  },
+  {
+    label: 'Many-to-One',
+    value: RelationshipType.ManyToOne,
+  },
+  {
+    label: 'Many-to-Many',
+    value: RelationshipType.ManyToMany,
+  },
 ];

@@ -10,19 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
-import { ReactNode } from 'react';
-import { UpdatedColumnFieldData } from '../components/Database/SchemaTable/SchemaTable.interface';
-import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../enums/entity.enum';
-import { Column, Table } from '../generated/entity/data/table';
+import { Table } from '../generated/entity/data/table';
 import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
-import {
-  getTableConstraintsComponent,
-  getTableDetailPageBaseTabs,
-} from './TableUtils';
+import { getTableDetailPageBaseTabs } from './TableUtils';
 
 export interface TableDetailPageTabProps {
   queryCount: number;
@@ -52,35 +45,6 @@ class TableClassBase {
     tableDetailsPageProps: TableDetailPageTabProps
   ) {
     return getTableDetailPageBaseTabs(tableDetailsPageProps);
-  }
-
-  public getAdditionalFormFieldForSchemaTableColumn(): ReactNode | null {
-    return null;
-  }
-
-  public getUpdatedSchemaTableColumnData({
-    tableCols,
-    columnData,
-    updatedFormData,
-    updateColumnFields,
-  }: {
-    columnData: Column;
-    tableCols: Column[];
-    updatedFormData: EntityName;
-    updateColumnFields: (data: UpdatedColumnFieldData) => void;
-  }) {
-    updateColumnFields({
-      fqn: columnData.fullyQualifiedName ?? '',
-      value: isEmpty(updatedFormData.displayName)
-        ? undefined
-        : updatedFormData.displayName,
-      field: 'displayName',
-      columns: tableCols,
-    });
-  }
-
-  public getAfterSlotComponents(tableDetails?: Table): JSX.Element {
-    return getTableConstraintsComponent(tableDetails?.tableConstraints);
   }
 }
 

@@ -103,6 +103,7 @@ import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import './table-details-page-v1.less';
+import TableConstraints from './TableConstraints/TableConstraints';
 
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
@@ -441,6 +442,19 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
+  const onTableConstraintsUpdate = async (
+    updatedTableConstraints: Table['tableConstraints']
+  ) => {
+    if (!tableDetails) {
+      return;
+    }
+    const updatedTableDetails = {
+      ...tableDetails,
+      tableConstraints: updatedTableConstraints,
+    };
+    await onTableUpdate(updatedTableDetails, 'tableConstraints');
+  };
+
   const onColumnsUpdate = async (updateColumns: Table['columns']) => {
     if (tableDetails && !isEqual(tableDetails.columns, updateColumns)) {
       const updatedTableDetails = {
@@ -586,7 +600,11 @@ const TableDetailsPageV1: React.FC = () => {
                         className="w-full m-t-lg"
                         direction="vertical"
                         size="large">
-                        {tableClassBase.getAfterSlotComponents(tableDetails)}
+                        <TableConstraints
+                          hasPermission={editAllPermission && !deleted}
+                          tableDetails={tableDetails}
+                          onUpdate={onTableConstraintsUpdate}
+                        />
                       </Space>
                     }
                     beforeSlot={
