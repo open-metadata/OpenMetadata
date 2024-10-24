@@ -10,23 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export const getScheduleOptionsFromSchedules = (
-  scheduleOptions: string[]
-): string[] => {
-  return scheduleOptions.map((scheduleOption) => {
-    switch (scheduleOption) {
-      case 'run_once':
-        return '';
-      case 'hourly':
-        return 'hour';
-      case 'daily':
-        return 'day';
-      case 'weekly':
-        return 'week';
-      case 'monthly':
-        return 'month';
-    }
 
-    return '';
-  });
-};
+export enum CronTypes {
+  MINUTE = 'minute',
+  HOUR = 'hour',
+  DAY = 'day',
+  WEEK = 'week',
+}
+
+export enum SchedularOptions {
+  SCHEDULE = 'schedule',
+  ON_DEMAND = 'on-demand',
+}

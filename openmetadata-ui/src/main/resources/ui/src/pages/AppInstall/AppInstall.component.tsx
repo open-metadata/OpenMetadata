@@ -19,25 +19,23 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getWeekCron } from '../../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
 import Loader from '../../components/common/Loader/Loader';
-import { TestSuiteIngestionDataType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
-import TestSuiteScheduler from '../../components/DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   default as applicationSchemaClassBase,
   default as applicationsClassBase,
 } from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
+import ScheduleInterval from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval';
+import { WorkflowExtraConfig } from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { AppType } from '../../generated/entity/applications/app';
 import {
   CreateAppRequest,
   ScheduleTimeline,
@@ -47,12 +45,12 @@ import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
-import { getCronInitialValue } from '../../utils/CronUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import { getCronDefaultValue } from '../../utils/SchedularUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './app-install.less';
 
@@ -82,7 +80,7 @@ const AppInstall = () => {
     [appData]
   );
 
-  const { initialOptions, initialValue } = useMemo(() => {
+  const { initialOptions, defaultValue } = useMemo(() => {
     if (!appData) {
       return {};
     }
@@ -95,14 +93,7 @@ const AppInstall = () => {
 
     return {
       initialOptions,
-      initialValue: {
-        repeatFrequency: config?.enable
-          ? getWeekCron({ hour: 0, min: 0, dow: 0 })
-          : getCronInitialValue(
-              appData?.appType ?? AppType.Internal,
-              appData?.name ?? ''
-            ),
-      },
+      defaultValue: getCronDefaultValue(appData?.name ?? ''),
     };
   }, [appData?.name, appData?.appType, pipelineSchedules, config?.enable]);
 
@@ -132,17 +123,17 @@ const AppInstall = () => {
     history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
-  const onSubmit = async (updatedValue: TestSuiteIngestionDataType) => {
-    const { repeatFrequency } = updatedValue;
+  const onSubmit = async (updatedValue: WorkflowExtraConfig) => {
+    const { cron } = updatedValue;
     try {
       setIsSavingLoading(true);
       const data: CreateAppRequest = {
         appConfiguration: appConfiguration ?? appData?.appConfiguration,
         appSchedule: {
-          scheduleTimeline: isEmpty(repeatFrequency)
+          scheduleTimeline: isEmpty(cron)
             ? ScheduleTimeline.None
             : ScheduleTimeline.Custom,
-          ...(repeatFrequency ? { cronExpression: repeatFrequency } : {}),
+          ...(cron ? { cronExpression: cron } : {}),
         },
         name: fqn,
         description: appData?.description,
@@ -212,21 +203,28 @@ const AppInstall = () => {
         return (
           <div className="w-500 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
-            <TestSuiteScheduler
+            <ScheduleInterval
+              defaultSchedule={defaultValue}
               includePeriodOptions={initialOptions}
-              initialData={initialValue}
-              isLoading={isSavingLoading}
-              onCancel={() =>
+              status={isSavingLoading ? 'waiting' : 'initial'}
+              onBack={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
               }
-              onSubmit={onSubmit}
+              onDeploy={onSubmit}
             />
           </div>
         );
       default:
         return <></>;
     }
-  }, [activeServiceStep, appData, jsonSchema, initialOptions, isSavingLoading]);
+  }, [
+    activeServiceStep,
+    appData,
+    jsonSchema,
+    initialOptions,
+    defaultValue,
+    isSavingLoading,
+  ]);
 
   useEffect(() => {
     fetchAppDetails();
