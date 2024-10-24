@@ -185,6 +185,8 @@ site_menu:
 
   - category: Deployment / How to enable AWS RDS IAM Auth
     url: /deployment/rds-iam-auth
+  - category: Deployment / How to enable Azure Database Auth
+    url: /deployment/azure-auth
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
   - category: Deployment / Database Connection Pooling

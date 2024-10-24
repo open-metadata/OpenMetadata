@@ -2,13 +2,8 @@ package org.openmetadata.service.util.jdbi;
 
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import org.jetbrains.annotations.NotNull;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.rds.RdsUtilities;
@@ -27,9 +22,8 @@ public class AwsRdsDatabaseAuthenticationProvider implements DatabaseAuthenticat
 
   @Override
   public String authenticate(String jdbcUrl, String username, String password) {
-    // !!
     try {
-      // Prepare
+
       URI uri = URI.create(PROTOCOL + removeProtocolFrom(jdbcUrl));
       Map<String, String> queryParams = parseQueryParams(uri.toURL());
 
@@ -62,28 +56,5 @@ public class AwsRdsDatabaseAuthenticationProvider implements DatabaseAuthenticat
       // Throw
       throw new DatabaseAuthenticationProviderException(e);
     }
-  }
-
-  @NotNull
-  private static String removeProtocolFrom(String jdbcUrl) {
-    return jdbcUrl.substring(jdbcUrl.indexOf("://") + 3);
-  }
-
-  private Map<String, String> parseQueryParams(URL url) {
-    // Prepare
-    Map<String, String> queryPairs = new LinkedHashMap<>();
-    String query = url.getQuery();
-    String[] pairs = query.split("&");
-
-    // Loop
-    for (String pair : pairs) {
-      int idx = pair.indexOf("=");
-      // Add
-      queryPairs.put(
-          URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8),
-          URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8));
-    }
-    // Return
-    return queryPairs;
   }
 }
