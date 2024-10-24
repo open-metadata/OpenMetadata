@@ -35,15 +35,9 @@ import {
   uniq,
 } from 'lodash';
 import QueryString from 'qs';
-import React, {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -67,6 +61,7 @@ import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
 import {
@@ -84,14 +79,19 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { TestCaseSearchParams } from '../DataQuality.interface';
+import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
-export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
+export const TestCases = () => {
   const [form] = useForm();
   const history = useHistory();
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: DataQualityPageTabs }>();
   const { permissions } = usePermissionProvider();
+  const {
+    isTestCaseSummaryLoading,
+    testCaseSummary,
+    activeTab: tab,
+  } = useDataQualityProvider();
   const { testCase: testCasePermission } = permissions;
   const [tableOptions, setTableOptions] = useState<DefaultOptionType[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
@@ -474,10 +474,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   }
 
   return (
-    <Row
-      className="p-x-lg p-t-md"
-      data-testid="test-case-container"
-      gutter={[16, 16]}>
+    <Row className="p-x-md" data-testid="test-case-container" gutter={[16, 16]}>
       <Col span={24}>
         <Form<TestCaseSearchParams>
           form={form}
@@ -627,7 +624,12 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           </Space>
         </Form>
       </Col>
-      <Col span={24}>{summaryPanel}</Col>
+      <Col span={24}>
+        <SummaryPanel
+          isLoading={isTestCaseSummaryLoading}
+          testSummary={testCaseSummary}
+        />
+      </Col>
       <Col span={24}>
         <DataQualityTab
           afterDeleteAction={fetchTestCases}

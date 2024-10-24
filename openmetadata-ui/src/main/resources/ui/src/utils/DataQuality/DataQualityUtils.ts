@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isArray, isUndefined, omit, omitBy } from 'lodash';
+import { cloneDeep, isArray, isUndefined, omit, omitBy } from 'lodash';
+import { StatusByDimension } from '../../components/DataQuality/ChartWidgets/StatusByDimensionWidget/StatusByDimensionWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
-import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
+import {
+  DEFAULT_DIMENSIONS_DATA,
+  TEST_CASE_FILTERS,
+} from '../../constants/profiler.constant';
+import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
   TestDataType,
@@ -99,4 +104,108 @@ export const getTestCaseFiltersValue = (
   );
 
   return updatedParams;
+};
+
+export const transformToTestCaseStatusByDimension = (
+  inputData: DataQualityReport['data']
+): StatusByDimension[] => {
+  const result: { [key: string]: StatusByDimension } = cloneDeep(
+    DEFAULT_DIMENSIONS_DATA
+  );
+
+  inputData.forEach((item) => {
+    const {
+      document_count,
+      'testCaseResult.testCaseStatus': status,
+      dataQualityDimension,
+    } = item;
+    const count = parseInt(document_count, 10);
+
+    if (!result[dataQualityDimension]) {
+      result[dataQualityDimension] = {
+        title: dataQualityDimension,
+        success: 0,
+        failed: 0,
+        aborted: 0,
+        total: 0,
+      };
+    }
+
+    if (status === 'success') {
+      result[dataQualityDimension].success += count;
+    } else if (status === 'failed') {
+      result[dataQualityDimension].failed += count;
+    } else if (status === 'aborted') {
+      result[dataQualityDimension].aborted += count;
+    }
+
+    result[dataQualityDimension].total += count;
+  });
+
+  return Object.values(result);
+};
+
+export const transformToTestCaseStatusObject = (
+  data: DataQualityReport['data']
+) => {
+  // Initialize output data with zeros
+  const outputData = {
+    success: 0,
+    failed: 0,
+    aborted: 0,
+    total: 0,
+  };
+
+  // Use reduce to process input data and calculate the counts
+  const updatedData = data.reduce((acc, item) => {
+    const count = parseInt(item.document_count);
+    const status = item['testCaseResult.testCaseStatus'];
+
+    if (status === 'success') {
+      acc.success += count;
+    } else if (status === 'failed') {
+      acc.failed += count;
+    } else if (status === 'aborted') {
+      acc.aborted += count;
+    }
+
+    acc.total += count; // Update total count
+
+    return acc;
+  }, outputData);
+
+  return updatedData;
+};
+
+export const buildMustEsFilterForTags = (
+  tags: string[],
+  isTestCaseResult = false
+) => {
+  return {
+    nested: {
+      path: isTestCaseResult ? 'testCase.tags' : 'tags',
+      query: {
+        bool: {
+          must: tags.map((tag) => ({
+            match: {
+              [isTestCaseResult ? 'testCase.tags.tagFQN' : 'tags.tagFQN']: tag,
+            },
+          })),
+        },
+      },
+    },
+  };
+};
+
+export const buildMustEsFilterForOwner = (
+  ownerFqn: string,
+  isTestCaseResult = false
+) => {
+  return {
+    term: {
+      [isTestCaseResult
+        ? 'testCase.owners.fullyQualifiedName'
+        : 'owners.fullyQualifiedName']: ownerFqn,
+    },
+  };
 };
