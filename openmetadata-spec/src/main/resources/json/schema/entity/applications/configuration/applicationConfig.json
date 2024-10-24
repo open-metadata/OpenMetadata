@@ -27,7 +27,7 @@
     "privateConfig": {
       "oneOf": [
         {
-          "$ref": "./private/external/CollateAIAppPrivateConfig.json"
+          "$ref": "private/external/collateAIAppPrivateConfig.json"
         }
       ]
     }
