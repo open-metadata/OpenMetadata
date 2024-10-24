@@ -814,6 +814,9 @@ body .list-option.rdw-option-active {
 
 :root {
   --ant-navbar-height: 64px;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 :root .extra-banner {
