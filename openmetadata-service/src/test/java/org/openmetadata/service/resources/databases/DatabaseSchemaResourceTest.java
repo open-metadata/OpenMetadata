@@ -120,7 +120,7 @@ public class DatabaseSchemaResourceTest
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
     // Create table with invalid tags field
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(DatabaseSchemaCsv.HEADERS));
-    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,";
+    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,";
     String csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(schemaName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -131,7 +131,7 @@ public class DatabaseSchemaResourceTest
     assertRows(result, expectedRows);
 
     // Tag will cause failure
-    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,";
+    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,,";
     csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
     result = importCsv(schemaName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -142,7 +142,7 @@ public class DatabaseSchemaResourceTest
     assertRows(result, expectedRows);
 
     // non-existing table will cause
-    record = "non-existing,dsp1,dsc1,,,,,,,";
+    record = "non-existing,dsp1,dsc1,,,,,,,,";
     String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), "non-existing");
     csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
     result = importCsv(schemaName, csv, false);
@@ -167,7 +167,7 @@ public class DatabaseSchemaResourceTest
     List<String> updateRecords =
         listOf(
             String.format(
-                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s",
+                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,",
                 user1, escapeCsv(DOMAIN.getFullyQualifiedName())));
 
     // Update created entity with changes
