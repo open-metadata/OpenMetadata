@@ -4,7 +4,7 @@
   "title": "TableConfig",
   "description": "Custom property configuration for table-type property where all column data types are strings.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.type.customproperties.TableConfig",
+  "javaType": "org.openmetadata.schema.type.customProperties.TableConfig",
   "properties": {
     "columns": {
       "type": "array",
@@ -17,13 +17,6 @@
       "maxItems": 3,
       "uniqueItems": true
     },
-    "rowCount": {
-      "type": "integer",
-      "default": 10,
-      "description": "Number of rows. Defaults to maxRows if not explicitly set.",
-      "minimum": 1,
-      "maximum": 10
-    },
     "minColumns": {
       "type": "integer",
       "default": 1,
@@ -33,16 +26,6 @@
       "type": "integer",
       "default": 3,
       "$comment": "For internal use only: Maximum number of columns."
-    },
-    "minRows": {
-      "type": "integer",
-      "default": 1,
-      "$comment": "For internal use only: Minimum number of rows."
-    },
-    "maxRows": {
-      "type": "integer",
-      "default": 10,
-      "$comment": "For internal use only: Maximum number of rows."
     }
   },
   "required": ["columns"],

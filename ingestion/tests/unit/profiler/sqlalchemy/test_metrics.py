@@ -34,6 +34,7 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 )
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.system.system import SystemMetricsComputer
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.processor.core import Profiler
 
@@ -928,11 +929,7 @@ class MetricsTest(TestCase):
         assert res == 61
 
     def test_system_metric(self):
-        system = add_props(table=User, ometa_client=None, db_service=None)(
-            Metrics.SYSTEM.value
-        )
-        session = self.sqa_profiler_interface.session
-        system().sql(session)
+        assert SystemMetricsComputer().get_system_metrics() == []
 
     def test_table_custom_metric(self):
         table_entity = Table(

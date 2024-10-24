@@ -450,6 +450,7 @@ const NavBar = ({
                           'text-primary': !isSearchBlur,
                         })}
                         component={IconCloseCircleOutlined}
+                        data-testid="cancel-icon"
                         style={{ fontSize: '16px' }}
                         onClick={handleClear}
                       />

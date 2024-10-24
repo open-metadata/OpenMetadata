@@ -20,12 +20,12 @@ on:
         required: True
         default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]'
       debug:
-        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered"
+        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered [default, true or false]"
         required: False
-        default: "false"
+        default: "default"
 
 env:
-  DEBUG: ${{ inputs.debug || 'false' }}
+  DEBUG: ${{ inputs.debug == 'true' || (inputs.debug == 'default' && github.ref != 'refs/heads/main') }}' }}
 
 permissions:
   id-token: write
@@ -188,14 +188,17 @@ jobs:
         cd ./docker/development
         docker compose down --remove-orphans
         sudo rm -rf ${PWD}/docker-volume
-
+    
+    - uses: austenstone/job-id@v1
+      id: job-id  
+    
     - name: Slack on Failure
       if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success' && env.DEBUG == 'false'
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: |
           {
-            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\nCommit: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"        
+            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ steps.job-id.outputs.job-id }}"         
           }          
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}

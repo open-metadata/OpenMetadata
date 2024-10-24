@@ -125,9 +125,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getEntityFQNHashCondition() {
     String entityFQN = getQueryParam("entityFQNHash");
-    return entityFQN == null
-        ? ""
-        : String.format("entityFQNHash = :entityFQNHash", FullyQualifiedName.buildHash(entityFQN));
+    return entityFQN == null ? "" : "entityFQNHash = :entityFQNHash";
   }
 
   public String getParentCondition(String tableName) {

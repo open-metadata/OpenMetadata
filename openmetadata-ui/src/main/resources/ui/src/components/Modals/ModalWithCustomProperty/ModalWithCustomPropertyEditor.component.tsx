@@ -40,18 +40,21 @@ export const ModalWithCustomPropertyEditor = ({
   visible,
 }: ModalWithCustomPropertyEditorProps) => {
   const { t } = useTranslation();
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
-  const [customPropertyValue, setCustomPropertyValue] =
-    useState<ExtensionDataProps>();
-  const [customPropertyTypes, setCustomPropertyTypes] = useState<Type>();
+
+  const [extensionObject, setExtensionObject] = useState<ExtensionDataProps>();
+
+  const [customPropertyEntityRecord, setCustomPropertyEntityRecord] =
+    useState<Type>();
 
   const fetchTypeDetail = async () => {
     setIsLoading(true);
     try {
       const response = await getTypeByFQN(entityType);
-      setCustomPropertyTypes(response);
-      setCustomPropertyValue(
+      setCustomPropertyEntityRecord(response);
+      setExtensionObject(
         convertCustomPropertyStringToEntityExtension(value ?? '', response)
       );
     } catch (err) {
@@ -65,15 +68,15 @@ export const ModalWithCustomPropertyEditor = ({
     setIsSaveLoading(true);
     await onSave(
       convertEntityExtensionToCustomPropertyString(
-        customPropertyValue,
-        customPropertyTypes
+        extensionObject,
+        customPropertyEntityRecord
       )
     );
     setIsSaveLoading(false);
   };
 
   const onExtensionUpdate = async (data: GlossaryTerm) => {
-    setCustomPropertyValue(data.extension);
+    setExtensionObject(data.extension);
   };
 
   useEffect(() => {
@@ -117,7 +120,7 @@ export const ModalWithCustomPropertyEditor = ({
           hasEditAccess
           hasPermission
           isRenderedInRightPanel
-          entityDetails={{ extension: customPropertyValue } as GlossaryTerm}
+          entityDetails={{ extension: extensionObject } as GlossaryTerm}
           entityType={EntityType.GLOSSARY_TERM}
           handleExtensionUpdate={onExtensionUpdate}
         />

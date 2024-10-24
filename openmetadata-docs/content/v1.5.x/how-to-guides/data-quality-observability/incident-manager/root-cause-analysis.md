@@ -26,19 +26,19 @@ The sample will be collected when the option `computePassedFailedRowCount` is se
 If you wish to delete sample rows, you can do so by clicking on the three dots above the table of sample rows. This will open a window with the `Delete` option. Note that failed sample rows will automatically be deleted upon test success.
 
 {% image 
-src="/images/v1.4/features/ingestion/workflows/data-quality/sample-row-failure-deletion.png"
+src="/images/v1.5/features/ingestion/workflows/data-quality/sample-row-failure-deletion.png"
 alt="set compute row count"
 /%}
 
 ### Example
 
 {% image 
-src="/images/v1.4/features/ingestion/workflows/data-quality/set_compute_row_count.png"
+src="/images/v1.5/features/ingestion/workflows/data-quality/set_compute_row_count.png"
 alt="set compute row count"
 /%}
 
-![test definition](/images/v1.4/features/ingestion/workflows/data-quality/failed_rows_sample_1.png)
-![failed rows sampls](/images/v1.4/features/ingestion/workflows/data-quality/failed_rows_sample_2.png)
+![test definition](/images/v1.5/features/ingestion/workflows/data-quality/failed_rows_sample_1.png)
+![failed rows sampls](/images/v1.5/features/ingestion/workflows/data-quality/failed_rows_sample_2.png)
 
 ## Inspection Query
 
