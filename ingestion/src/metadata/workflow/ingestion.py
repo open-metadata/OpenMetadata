@@ -48,9 +48,9 @@ from metadata.utils.importer import (
     DynamicImportException,
     MissingPluginException,
     import_from_module,
-    import_source_class,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.service_spec.service_spec import import_source_class
 from metadata.workflow.base import BaseWorkflow, InvalidWorkflowJSONException
 
 logger = ingestion_logger()

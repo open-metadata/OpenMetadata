@@ -14,6 +14,13 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.5/releases/latest.md" /%}
 
+# 1.6.0
+
+## Breaking Changes
+
+- The ingestion Framework now uses the OpenMetadata Ingestion Service Specificaiton (OMISS) to specify
+enrtypoints to ingestion operations. [Click here](./todo-need-link) for more info.
+
 # 1.5.6 Release
 
 {% note noteType="Tip" %}

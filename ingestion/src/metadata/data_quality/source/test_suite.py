@@ -38,8 +38,8 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
-from metadata.utils.importer import import_source_class
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.service_spec.service_spec import import_source_class
 
 logger = test_suite_logger()
 
