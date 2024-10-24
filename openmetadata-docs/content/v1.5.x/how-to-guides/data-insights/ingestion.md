@@ -10,6 +10,12 @@ Admin users can set up a data insights ingestion pipeline right from the OpenMet
 - Navigate to **Settings >> Applications**. If the data insights application does not show up, click on **Add Apps**
 
 {% image
+src="/images/v1.5/how-to-guides/insights/apps-1.png"
+alt="Applications"
+caption="Applications"
+/%}
+
+{% image
 src="/images/v1.5/how-to-guides/insights/apps.png"
 alt="Add Apps"
 caption="Add Apps"
@@ -24,16 +30,23 @@ caption="Data Insights Application"
 /%}
 
 - Install the Data Insights application.
+
 {% image
 src="/images/v1.5/how-to-guides/insights/di.png"
 alt="Install Data Insights"
 caption="Install Data Insights"
 /%}
 
-- To authorize data insights app, click on **Schedule**.
+- Click on **Configure** to adjust the **batch size** and other settings according to your specific requirements. To authorize the Data Insights app, proceed by clicking on **Schedule**.
 
 {% image
 src="/images/v1.5/how-to-guides/insights/di5.png"
+alt="configure Data Insights"
+caption="Configure Data Insights"
+/%}
+
+{% image
+src="/images/v1.5/how-to-guides/insights/configure.png"
 alt="Schedule Data Insights"
 caption="Schedule Data Insights"
 /%}
@@ -54,20 +67,20 @@ alt="Installed the Data Insights Application"
 caption="Installed the Data Insights Application"
 /%}
 
-- Click on **Deploy** to setup the ingestion pipeline.
+- Click on **Run now** to setup the ingestion pipeline.
 
 {% image
 src="/images/v1.5/how-to-guides/insights/dpy.png"
-alt="Deploy the Data Insights Pipeline"
-caption="Deploy the Data Insights Pipeline"
+alt="Run the Data Insights Pipeline"
+caption="Run the Data Insights Pipeline"
 /%}
 
-- You can also **Edit** the ingestion schedule. The ingestion pipeline can also be run on demand by clicking on **Run now**. You can view the **History** tab for details on when the ingestion was last run.
+- You can also **Edit** the ingestion schedule. The ingestion pipeline can also be run on demand by again clicking on **Run now**. You can view the **Recent Runs** tab for details on when the ingestion was last run.
 
 {% image
 src="/images/v1.5/how-to-guides/insights/history.png"
-alt="History of the Data Insights Pipeline"
-caption="History of the Data Insights Pipeline"
+alt="Recent Runs of the Data Insights Pipeline"
+caption="Recent Runs of the Data Insights Pipeline"
 /%}
 
 Navigate to the Insights page. You should see your [Data Insights Reports](/how-to-guides/data-insights/report). Note that if you have just deployed OpenMetadata, App Analytics data might not be present. App Analytics data is fetched from the previous day (UTC).
