@@ -35,7 +35,8 @@ public class ResourceRegistry {
               MetadataOperation.EDIT_ALL,
               MetadataOperation.EDIT_DESCRIPTION,
               MetadataOperation.EDIT_DISPLAY_NAME,
-              MetadataOperation.EDIT_GLOSSARY_TERMS));
+              MetadataOperation.EDIT_GLOSSARY_TERMS,
+              MetadataOperation.EDIT_TIER));
 
   static {
     mapFieldOperation(MetadataOperation.EDIT_TAGS, Entity.FIELD_TAGS);
