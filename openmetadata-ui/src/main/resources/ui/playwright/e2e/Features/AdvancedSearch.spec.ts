@@ -26,7 +26,7 @@ import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { addMultiOwner, assignTag, assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
-test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
+test.describe.serial('Advanced Search', { tag: '@advanced-search' }, () => {
   // use the admin user to login
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
