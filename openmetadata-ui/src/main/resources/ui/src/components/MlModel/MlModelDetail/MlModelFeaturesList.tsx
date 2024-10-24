@@ -47,6 +47,11 @@ const MlModelFeaturesList = ({
     [permissions]
   );
 
+  const hasEditGlossaryTermPermission = useMemo(
+    () => permissions.EditGlossaryTerms || permissions.EditAll,
+    [permissions]
+  );
+
   const handleCancelEditDescription = () => {
     setSelectedFeature({});
     setEditDescription(false);
@@ -175,7 +180,7 @@ const MlModelFeaturesList = ({
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
-                            hasTagEditAccess={hasEditPermission}
+                            hasTagEditAccess={hasEditGlossaryTermPermission}
                             index={index}
                             isReadOnly={isDeleted}
                             record={feature}

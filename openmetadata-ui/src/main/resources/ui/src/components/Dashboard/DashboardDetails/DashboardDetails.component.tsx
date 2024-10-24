@@ -404,6 +404,17 @@ const DashboardDetails = ({
     );
   };
 
+  const hasEditGlossaryTermAccess = (record: ChartType) => {
+    const permissionsObject = chartsPermissionsArray?.find(
+      (chart) => chart.id === record.id
+    )?.permissions;
+
+    return (
+      !isUndefined(permissionsObject) &&
+      (permissionsObject.EditGlossaryTerms || permissionsObject.EditAll)
+    );
+  };
+
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
@@ -551,7 +562,7 @@ const DashboardDetails = ({
             entityFqn={decodedDashboardFQN}
             entityType={EntityType.DASHBOARD}
             handleTagSelection={handleChartTagSelection}
-            hasTagEditAccess={hasEditTagAccess(record)}
+            hasTagEditAccess={hasEditGlossaryTermAccess(record)}
             index={index}
             isReadOnly={deleted}
             record={record}
@@ -578,6 +589,7 @@ const DashboardDetails = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -587,6 +599,10 @@ const DashboardDetails = ({
     () => ({
       editTagsPermission:
         (dashboardPermissions.EditTags || dashboardPermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (dashboardPermissions.EditGlossaryTerms ||
+          dashboardPermissions.EditAll) &&
         !deleted,
       editDescriptionPermission:
         (dashboardPermissions.EditDescription ||
@@ -664,6 +680,9 @@ const DashboardDetails = ({
                         domain={dashboardDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedDashboardFQN}
@@ -760,6 +779,7 @@ const DashboardDetails = ({
       onThreadLinkSelect,
       handleTagSelection,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editLineagePermission,
       editDescriptionPermission,
       editCustomAttributePermission,

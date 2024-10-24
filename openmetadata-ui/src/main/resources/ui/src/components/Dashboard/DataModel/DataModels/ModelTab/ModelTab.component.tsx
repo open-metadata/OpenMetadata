@@ -38,6 +38,7 @@ const ModelTab = ({
   isReadOnly,
   hasEditDescriptionPermission,
   hasEditTagsPermission,
+  hasEditGlossaryTermPermission,
   onUpdate,
   entityFqn,
   onThreadLinkSelect,
@@ -168,7 +169,7 @@ const ModelTab = ({
             entityFqn={entityFqn}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={hasEditTagsPermission}
+            hasTagEditAccess={hasEditGlossaryTermPermission}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
@@ -184,6 +185,7 @@ const ModelTab = ({
       isReadOnly,
       tagFilter,
       hasEditTagsPermission,
+      hasEditGlossaryTermPermission,
       editColumnDescription,
       hasEditDescriptionPermission,
       onThreadLinkSelect,

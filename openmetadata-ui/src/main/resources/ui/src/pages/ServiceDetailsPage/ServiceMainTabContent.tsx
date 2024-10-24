@@ -139,10 +139,17 @@ function ServiceMainTabContent({
     [serviceCategory]
   );
 
-  const { editTagsPermission, editDescriptionPermission } = useMemo(
+  const {
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    editDescriptionPermission,
+  } = useMemo(
     () => ({
       editTagsPermission:
         (servicePermission.EditTags || servicePermission.EditAll) &&
+        !serviceDetails.deleted,
+      editGlossaryTermsPermission:
+        (servicePermission.EditGlossaryTerms || servicePermission.EditAll) &&
         !serviceDetails.deleted,
       editDescriptionPermission:
         (servicePermission.EditDescription || servicePermission.EditAll) &&
@@ -234,6 +241,7 @@ function ServiceMainTabContent({
                     (serviceDetails as DatabaseService)?.dataProducts ?? []
                   }
                   domain={(serviceDetails as DatabaseService)?.domain}
+                  editGlossaryTermsPermission={editGlossaryTermsPermission}
                   editTagPermission={editTagsPermission}
                   entityFQN={serviceFQN}
                   entityId={serviceDetails.id}
