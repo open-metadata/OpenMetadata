@@ -46,10 +46,10 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     useAdvanceSearch();
   const [searchResults, setSearchResults] = useState<number>(0);
   const entityType =
-    (props.formContext?.entityType ?? props?.entityType) || EntityType.ALL;
+    (props.formContext?.entityType ?? schema?.entityType) || EntityType.ALL;
   const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
   const searchIndex = searchIndexMapping[entityType as string];
-  const outputType = props?.outputType ?? QueryBuilderOutputType.ELASTICSEARCH;
+  const outputType = schema?.outputType ?? QueryBuilderOutputType.ELASTICSEARCH;
 
   const fetchEntityCount = useCallback(
     async (queryFilter: Record<string, unknown>) => {
@@ -152,17 +152,17 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
                 showIcon
                 icon={<InfoCircleOutlined height={16} />}
                 message={
-                  <>
+                  <div className="d-flex flex-wrap items-center gap-1">
                     <Typography.Text>
                       {t('message.search-entity-count', {
                         count: searchResults,
                       })}
                     </Typography.Text>
 
-                    <Typography.Text className="m-l-sm text-xs text-grey-muted">
+                    <Typography.Text className="text-xs text-grey-muted">
                       {t('message.click-here-to-view-assets-on-explore')}
                     </Typography.Text>
-                  </>
+                  </div>
                 }
                 type="info"
               />
