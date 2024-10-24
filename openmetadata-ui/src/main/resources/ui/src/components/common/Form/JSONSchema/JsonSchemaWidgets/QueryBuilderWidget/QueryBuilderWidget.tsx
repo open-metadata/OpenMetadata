@@ -45,7 +45,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
 }: WidgetProps) => {
   const { config, treeInternal, onTreeUpdate, onChangeSearchIndex } =
     useAdvanceSearch();
-  const [searchResults, setSearchResults] = useState<number>(0);
+  const [searchResults, setSearchResults] = useState<number | undefined>();
   const [isCountLoading, setIsCountLoading] = useState<boolean>(false);
   const entityType =
     (props.formContext?.entityType ?? schema?.entityType) || EntityType.ALL;
@@ -94,6 +94,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     () =>
       outputType === QueryBuilderOutputType.ELASTICSEARCH &&
       !isUndefined(value) &&
+      searchResults !== undefined &&
       !isCountLoading,
     [outputType, value, isCountLoading]
   );
