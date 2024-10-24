@@ -21,6 +21,7 @@ import {
   Builder,
   Config,
   ImmutableTree,
+  JsonTree,
   Query,
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
@@ -28,6 +29,7 @@ import { getExplorePath } from '../../../../../../constants/constants';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { searchQuery } from '../../../../../../rest/searchAPI';
+import { getJsonTreeFromQueryFilter } from '../../../../../../utils/QueryBuilderUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -44,10 +46,10 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     useAdvanceSearch();
   const [searchResults, setSearchResults] = useState<number>(0);
   const entityType =
-    (props.formContext?.entityType ?? props?.entityType) || EntityType.ALL;
+    (props.formContext?.entityType ?? schema?.entityType) || EntityType.ALL;
   const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
   const searchIndex = searchIndexMapping[entityType as string];
-  const outputType = props?.outputType ?? QueryBuilderOutputType.ELASTICSEARCH;
+  const outputType = schema?.outputType ?? QueryBuilderOutputType.ELASTICSEARCH;
 
   const fetchEntityCount = useCallback(
     async (queryFilter: Record<string, unknown>) => {
@@ -106,6 +108,21 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     onChangeSearchIndex(searchIndex);
   }, [searchIndex]);
 
+  useEffect(() => {
+    if (
+      !isEmpty(value) &&
+      outputType === QueryBuilderOutputType.ELASTICSEARCH
+    ) {
+      const tree = QbUtils.checkTree(
+        QbUtils.loadTree(
+          getJsonTreeFromQueryFilter(JSON.parse(value || '')) as JsonTree
+        ),
+        config
+      );
+      onTreeUpdate(tree, config);
+    }
+  }, []);
+
   return (
     <div
       className="query-builder-form-field"
@@ -135,17 +152,17 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
                 showIcon
                 icon={<InfoCircleOutlined height={16} />}
                 message={
-                  <>
+                  <div className="d-flex flex-wrap items-center gap-1">
                     <Typography.Text>
                       {t('message.search-entity-count', {
                         count: searchResults,
                       })}
                     </Typography.Text>
 
-                    <Typography.Text className="m-l-sm text-xs text-grey-muted">
+                    <Typography.Text className="text-xs text-grey-muted">
                       {t('message.click-here-to-view-assets-on-explore')}
                     </Typography.Text>
-                  </>
+                  </div>
                 }
                 type="info"
               />
