@@ -59,6 +59,7 @@ public class DatabaseServiceRepository
         "",
         ServiceType.DATABASE);
     supportsSearch = true;
+    parent = true;
   }
 
   @Override

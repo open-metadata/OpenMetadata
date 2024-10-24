@@ -44,7 +44,6 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
-import static org.openmetadata.service.Entity.PARENT_ENTITY_TYPES;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityByName;
@@ -251,7 +250,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Fields that can be updated during PUT operation */
   @Getter protected final Fields putFields;
 
-  protected boolean supportsSearch = false;
+  @Getter protected boolean supportsSearch = false;
+  @Getter protected boolean parent = false;
 
   protected EntityRepository(
       String collectionPath,
@@ -3150,7 +3150,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private boolean consolidateChanges(T original, T updated, Operation operation) {
       // If user is the same and the new update is with in the user session timeout
-      return original.getVersion() > 0.1 // First update on an entity that
+      return !parent // Parent entity shouldn't consolidate changes, as we need ChangeDescription to
+          // propagate to children
+          && original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
           && !Boolean.TRUE.equals(original.getDeleted()) // Entity is not soft deleted
           && !operation.isDelete() // Operation must be an update
@@ -3158,9 +3160,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .getUpdatedBy()
               .equals(updated.getUpdatedBy()) // Must be updated by the same user
           && updated.getUpdatedAt() - original.getUpdatedAt()
-              <= sessionTimeoutMillis // With in session timeout
-          && !PARENT_ENTITY_TYPES.contains(
-              entityType); // not for parent entities, as we need changeDescription to propagate
+              <= sessionTimeoutMillis; // With in session timeout
       // changes to children
     }
 
