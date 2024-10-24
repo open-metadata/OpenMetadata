@@ -96,7 +96,7 @@ test('Search Index Application', async ({ page }) => {
     await page.click('.ant-modal-body [data-testid="deploy-button"]');
     await deployResponse;
 
-    await toastNotification(page, 'Schedule saved successfully', 'success');
+    await toastNotification(page, 'Schedule saved successfully');
 
     expect(await page.innerText('[data-testid="schedule-type"]')).toContain(
       'None'
@@ -119,11 +119,7 @@ test('Search Index Application', async ({ page }) => {
     await page.click('[data-testid="submit-btn"]');
     await responseAfterSubmit;
 
-    await toastNotification(
-      page,
-      'Configuration saved successfully',
-      'success'
-    );
+    await toastNotification(page, 'Configuration saved successfully');
   });
 
   await test.step('Uninstall application', async () => {
@@ -136,11 +132,7 @@ test('Search Index Application', async ({ page }) => {
     await page.click('[data-testid="save-button"]');
     await deleteRequest;
 
-    await toastNotification(
-      page,
-      'Application uninstalled successfully',
-      'success'
-    );
+    await toastNotification(page, 'Application uninstalled successfully');
 
     const card1 = page.locator(
       '[data-testid="search-indexing-application-card"]'
@@ -174,11 +166,7 @@ test('Search Index Application', async ({ page }) => {
     await page.click('[data-testid="deploy-button"]');
     await installApplicationResponse;
 
-    await toastNotification(
-      page,
-      'Application installed successfully',
-      'success'
-    );
+    await toastNotification(page, 'Application installed successfully');
 
     const card = page.locator(
       '[data-testid="search-indexing-application-card"]'
@@ -202,11 +190,7 @@ test('Search Index Application', async ({ page }) => {
 
       await triggerPipelineResponse;
 
-      await toastNotification(
-        page,
-        'Application triggered successfully',
-        'success'
-      );
+      await toastNotification(page, 'Application triggered successfully');
 
       await page.reload();
 

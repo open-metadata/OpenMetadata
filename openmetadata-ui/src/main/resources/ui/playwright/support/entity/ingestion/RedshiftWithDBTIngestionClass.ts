@@ -160,11 +160,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       );
       await page.getByTestId('run-button').click();
 
-      await toastNotification(
-        page,
-        `Pipeline triggered successfully!`,
-        'success'
-      );
+      await toastNotification(page, `Pipeline triggered successfully!`);
 
       // need manual wait to make sure we are awaiting on latest run results
       await page.waitForTimeout(2000);

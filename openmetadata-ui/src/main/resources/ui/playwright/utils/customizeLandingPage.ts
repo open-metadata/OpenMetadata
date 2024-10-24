@@ -145,7 +145,6 @@ export const saveCustomizeLayoutPage = async (
 
   await toastNotification(
     page,
-    `Page layout ${isCreated ? 'created' : 'updated'} successfully.`,
-    'success'
+    `Page layout ${isCreated ? 'created' : 'updated'} successfully.`
   );
 };

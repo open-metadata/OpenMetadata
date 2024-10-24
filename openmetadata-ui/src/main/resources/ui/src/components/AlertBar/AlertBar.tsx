@@ -14,54 +14,16 @@ import { Alert } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
-import { ReactComponent as ErrorIcon } from '../../assets/svg/ic-error.svg';
-import { ReactComponent as InfoIcon } from '../../assets/svg/ic-info-tag.svg';
-import { ReactComponent as SuccessIcon } from '../../assets/svg/ic-success.svg';
-import { ReactComponent as WarningIcon } from '../../assets/svg/ic-warning-tag.svg';
 import { useAlertStore } from '../../hooks/useAlertStore';
+import { getIconAndClassName } from '../../utils/ToastUtils';
 import './alert-bar.style.less';
 import { AlertBarProps } from './AlertBar.interface';
 
 const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
   const { resetAlert, animationClass } = useAlertStore();
 
-  const { icon, className, crossIconColor } = useMemo(() => {
-    switch (type) {
-      case 'info':
-        return {
-          icon: <InfoIcon />,
-          className: 'info',
-          crossIconColor: '#0950c5',
-        };
-
-      case 'success':
-        return {
-          icon: <SuccessIcon />,
-          className: 'success',
-          crossIconColor: '#1D7C4D',
-        };
-
-      case 'warning':
-        return {
-          icon: <WarningIcon />,
-          className: 'warning',
-          crossIconColor: '#F59638',
-        };
-
-      case 'error':
-        return {
-          icon: <ErrorIcon />,
-          className: 'error',
-          crossIconColor: '#CB2531',
-        };
-
-      default:
-        return {
-          icon: null,
-          className: '',
-          crossIconColor: '',
-        };
-    }
+  const { icon: AlertIcon, className } = useMemo(() => {
+    return getIconAndClassName(type);
   }, [type]);
 
   return (
@@ -70,9 +32,9 @@ const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
       showIcon
       afterClose={resetAlert}
       className={classNames(className, 'alert-container', animationClass)}
-      closeIcon={<CrossIcon color={crossIconColor} />}
+      closeIcon={<CrossIcon color="currentColor" />}
       description={message}
-      icon={icon}
+      icon={AlertIcon && <AlertIcon />}
       type={type}
     />
   );

@@ -239,11 +239,7 @@ test.describe('Customize Landing Page Flow', () => {
           .click();
 
         // Verify the toast notification
-        await toastNotification(
-          adminPage,
-          'Page layout updated successfully.',
-          'success'
-        );
+        await toastNotification(adminPage, 'Page layout updated successfully.');
 
         // Check if all widgets are present after resetting the layout
         await checkAllDefaultWidgets(adminPage, true);

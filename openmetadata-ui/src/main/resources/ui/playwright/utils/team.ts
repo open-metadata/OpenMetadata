@@ -74,7 +74,7 @@ export const softDeleteTeam = async (page: Page) => {
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/, 'success');
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const hardDeleteTeam = async (page: Page) => {
@@ -100,7 +100,7 @@ export const hardDeleteTeam = async (page: Page) => {
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/, 'success');
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const getNewTeamDetails = (teamName: string) => {

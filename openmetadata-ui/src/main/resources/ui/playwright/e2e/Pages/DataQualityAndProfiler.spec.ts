@@ -148,7 +148,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     );
     await page.locator('button').filter({ hasText: 'Submit' }).click();
     await updateTestCaseResponse;
-    await toastNotification(page, 'Test case updated successfully.', 'success');
+    await toastNotification(page, 'Test case updated successfully.');
     await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
 
     await page.waitForSelector('#tableTestForm_params_columnName');
@@ -232,7 +232,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     );
     await page.locator('button').getByText('Submit').click();
     await updateTestCaseResponse;
-    await toastNotification(page, 'Test case updated successfully.', 'success');
+    await toastNotification(page, 'Test case updated successfully.');
 
     await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
     await page.waitForSelector('#tableTestForm_params_minLength');
@@ -464,11 +464,7 @@ test(
         await page.locator('#tableTestForm_displayName').clear();
         await page.fill('#tableTestForm_displayName', 'Updated display name');
         await page.click('.ant-modal-footer >> text=Submit');
-        await toastNotification(
-          page,
-          'Test case updated successfully.',
-          'success'
-        );
+        await toastNotification(page, 'Test case updated successfully.');
 
         await expect(
           page.locator(`[data-testid="${testCaseName}"]`)

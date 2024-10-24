@@ -36,7 +36,10 @@ export const useAlertStore = create<AlertStore>()((set) => ({
 
     if (autoCloseTimer !== Infinity) {
       setTimeout(() => {
-        set({ alert: undefined });
+        set({ animationClass: 'hide-alert' });
+        setTimeout(() => {
+          set({ alert: undefined });
+        }, 1000);
       }, autoCloseTimer);
     }
   },

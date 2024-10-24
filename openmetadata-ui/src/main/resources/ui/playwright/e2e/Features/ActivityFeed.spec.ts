@@ -204,13 +204,13 @@ test.describe('Activity feed', () => {
 
     await page.getByText('Accept Suggestion').click();
 
-    await toastNotification(page, /Task resolved successfully/, 'success');
+    await toastNotification(page, /Task resolved successfully/);
 
     // Task 1 - Request to update tag to be resolved
 
     await page.getByText('Accept Suggestion').click();
 
-    await toastNotification(page, /Task resolved successfully/, 'success');
+    await toastNotification(page, /Task resolved successfully/);
 
     await checkTaskCount(page, 0, 2);
   });
@@ -363,13 +363,13 @@ test.describe('Activity feed', () => {
     await page.getByText('OK').click();
     await resolveTask;
 
-    await toastNotification(page, /Task resolved successfully/, 'success');
+    await toastNotification(page, /Task resolved successfully/);
 
     // Task 1 - Resolved the task
 
     await page.getByText('Accept Suggestion').click();
 
-    await toastNotification(page, /Task resolved successfully/, 'success');
+    await toastNotification(page, /Task resolved successfully/);
 
     await checkTaskCount(page, 0, 2);
   });
@@ -433,7 +433,7 @@ test.describe('Activity feed', () => {
     await page.getByRole('menuitem', { name: 'close' }).click();
     await commentWithCloseTask;
 
-    await toastNotification(page, 'Task closed successfully.', 'success');
+    await toastNotification(page, 'Task closed successfully.');
 
     await checkTaskCount(page, 0, 1);
   });
@@ -485,7 +485,7 @@ test.describe('Activity feed', () => {
     await page.getByRole('menuitem', { name: 'close' }).click();
     await commentWithCloseTask;
 
-    await toastNotification(page, 'Task closed successfully.', 'success');
+    await toastNotification(page, 'Task closed successfully.');
     // open task count after closing one task
     await checkTaskCount(page, 1, 1);
 
@@ -742,7 +742,7 @@ base.describe('Activity feed with Data Consumer User', () => {
 
       await page2.getByText('Accept Suggestion').click();
 
-      await toastNotification(page2, /Task resolved successfully/, 'success');
+      await toastNotification(page2, /Task resolved successfully/);
 
       await page2.waitForLoadState('networkidle');
 
@@ -893,7 +893,7 @@ base.describe('Activity feed with Data Consumer User', () => {
 
         await page2.getByText('OK').click();
 
-        await toastNotification(page2, /Task resolved successfully/, 'success');
+        await toastNotification(page2, /Task resolved successfully/);
 
         // Accept the description task
 
@@ -915,7 +915,7 @@ base.describe('Activity feed with Data Consumer User', () => {
 
         await page2.getByText('OK').click();
 
-        await toastNotification(page2, /Task resolved successfully/, 'success');
+        await toastNotification(page2, /Task resolved successfully/);
 
         await afterActionUser2();
       }

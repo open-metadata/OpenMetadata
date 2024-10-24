@@ -138,7 +138,7 @@ export const softDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/, 'success');
+  await toastNotification(page, /deleted successfully!/);
 
   await deletedUserChecks(page);
 };
@@ -161,7 +161,7 @@ export const restoreUserProfilePage = async (page: Page, fqn: string) => {
 
   await restoreResponse;
 
-  await toastNotification(page, /User restored successfully/, 'success');
+  await toastNotification(page, /User restored successfully/);
 
   await nonDeletedUserChecks(page);
 };
@@ -189,7 +189,7 @@ export const hardDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/, 'success');
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const editDisplayName = async (page: Page, editedUserName: string) => {
@@ -355,11 +355,7 @@ export const softDeleteUser = async (
   await deleteResponse;
   await fetchUpdatedUsers;
 
-  await toastNotification(
-    page,
-    `"${displayName}" deleted successfully!`,
-    'success'
-  );
+  await toastNotification(page, `"${displayName}" deleted successfully!`);
 
   // Wait for the loader to disappear
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
@@ -413,7 +409,7 @@ export const restoreUser = async (
   await page.click('.ant-modal-footer > .ant-btn-primary');
   await restoreUserResponse;
 
-  await toastNotification(page, 'User restored successfully', 'success');
+  await toastNotification(page, 'User restored successfully');
 };
 
 export const permanentDeleteUser = async (
@@ -459,11 +455,7 @@ export const permanentDeleteUser = async (
   await hardDeleteUserResponse;
   await reFetchUsers;
 
-  await toastNotification(
-    page,
-    `"${displayName}" deleted successfully!`,
-    'success'
-  );
+  await toastNotification(page, `"${displayName}" deleted successfully!`);
 
   // Wait for the loader to disappear
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });

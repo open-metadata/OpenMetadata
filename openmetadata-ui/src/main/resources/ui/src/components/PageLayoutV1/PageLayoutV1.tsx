@@ -104,30 +104,28 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           </Col>
         )}
         <Col span={24}>
-          <Row>
-            <Col
-              className={classNames(
-                'page-layout-v1-center p-t-sm page-layout-v1-vertical-scroll',
-                {
-                  'flex justify-center': center,
-                },
-                mainContainerClassName
-              )}
-              flex={contentWidth}
-              offset={center ? 3 : 0}
-              span={center ? 18 : 24}>
-              {alert && <AlertBar message={alert.message} type={alert.type} />}
-              {children}
-            </Col>
-            {rightPanel && (
-              <Col
-                className="page-layout-rightpanel page-layout-v1-vertical-scroll"
-                flex={rightPanelWidth + 'px'}
-                id="right-panelV1">
-                {rightPanel}
-              </Col>
+          <Col
+            className={classNames(
+              'page-layout-v1-center p-t-sm page-layout-v1-vertical-scroll',
+              {
+                'flex justify-center': center,
+              },
+              mainContainerClassName
             )}
-          </Row>
+            flex={contentWidth}
+            offset={center ? 3 : 0}
+            span={center ? 18 : 24}>
+            {alert && <AlertBar message={alert.message} type={alert.type} />}
+            {children}
+          </Col>
+          {rightPanel && (
+            <Col
+              className="page-layout-rightpanel page-layout-v1-vertical-scroll"
+              flex={rightPanelWidth + 'px'}
+              id="right-panelV1">
+              {rightPanel}
+            </Col>
+          )}
         </Col>
       </Row>
     </Fragment>

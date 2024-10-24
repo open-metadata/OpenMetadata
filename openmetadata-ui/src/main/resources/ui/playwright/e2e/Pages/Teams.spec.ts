@@ -201,7 +201,7 @@ test.describe('Teams Page', () => {
       // Click on join teams button
       await page.locator('[data-testid="join-teams"]').click();
 
-      await toastNotification(page, 'Team joined successfully!', 'success');
+      await toastNotification(page, 'Team joined successfully!');
 
       // Verify leave team button exists
       await expect(

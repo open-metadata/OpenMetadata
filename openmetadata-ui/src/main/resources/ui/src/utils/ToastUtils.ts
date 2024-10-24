@@ -11,13 +11,52 @@
  *  limitations under the License.
  */
 
+import { AlertProps } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
+import { ReactComponent as ErrorIcon } from '../assets/svg/ic-error.svg';
+import { ReactComponent as InfoIcon } from '../assets/svg/ic-info-tag.svg';
+import { ReactComponent as SuccessIcon } from '../assets/svg/ic-success.svg';
+import { ReactComponent as WarningIcon } from '../assets/svg/ic-warning-tag.svg';
 import { ClientErrors } from '../enums/Axios.enum';
 import { useAlertStore } from '../hooks/useAlertStore';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
+
+export const getIconAndClassName = (type: AlertProps['type']) => {
+  switch (type) {
+    case 'info':
+      return {
+        icon: InfoIcon,
+        className: 'info',
+      };
+
+    case 'success':
+      return {
+        icon: SuccessIcon,
+        className: 'success',
+      };
+
+    case 'warning':
+      return {
+        icon: WarningIcon,
+        className: 'warning',
+      };
+
+    case 'error':
+      return {
+        icon: ErrorIcon,
+        className: 'error',
+      };
+
+    default:
+      return {
+        icon: null,
+        className: '',
+      };
+  }
+};
 
 export const hashCode = (str: string) => {
   let hash = 0,

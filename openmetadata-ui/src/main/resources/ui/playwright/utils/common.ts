@@ -114,7 +114,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
 export const toastNotification = async (
   page: Page,
   message: string | RegExp,
-  type: 'info' | 'success' | 'warning' | 'error'
+  type: 'info' | 'success' | 'warning' | 'error' = 'success'
 ) => {
   await expect(page.locator(`.alert-container.${type}`)).toHaveText(message);
 

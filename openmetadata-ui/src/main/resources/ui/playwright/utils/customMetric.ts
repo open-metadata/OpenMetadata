@@ -121,8 +121,7 @@ export const createCustomMetric = async ({
 
   await toastNotification(
     page,
-    new RegExp(`${metric.name} created successfully.`),
-    'success'
+    new RegExp(`${metric.name} created successfully.`)
   );
 
   // verify the created custom metric

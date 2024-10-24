@@ -1167,7 +1167,7 @@ export const restoreEntity = async (page: Page) => {
   await page.click('[data-testid="restore-button"]');
   await page.click('button:has-text("Restore")');
 
-  await toastNotification(page, /restored successfully/, 'success');
+  await toastNotification(page, /restored successfully/);
 
   const exists = await page
     .locator('[data-testid="deleted-badge"]')
@@ -1206,7 +1206,7 @@ export const softDeleteEntity = async (
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/, 'success');
+  await toastNotification(page, /deleted successfully!/);
 
   await page.reload();
 
@@ -1271,7 +1271,7 @@ export const hardDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/, 'success');
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const checkDataAssetWidget = async (

@@ -202,7 +202,7 @@ entities.forEach((EntityClass) => {
 
           await deleteResponse;
 
-          await toastNotification(page, /deleted successfully!/, 'success');
+          await toastNotification(page, /deleted successfully!/);
 
           await page.reload();
 

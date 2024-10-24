@@ -250,8 +250,7 @@ test.describe.serial('Persona operations', () => {
 
     await toastNotification(
       page,
-      `"${PERSONA_DETAILS.displayName}" deleted successfully!`,
-      'success'
+      `"${PERSONA_DETAILS.displayName}" deleted successfully!`
     );
   });
 });
