@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_7'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_8'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1076,6 +1076,29 @@ To continue pursuing this objective, the application was completely refactored t
 -   **Fix**: Automator pagination & improvments ${CollateIconWithLinkMD}
 -   **Fix**: ArchiveLog to FALSE for test connection ${CollateIconWithLinkMD}
 -   **Fix**: Knowledge Page deletion is not deleting from the search index ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 50,
+    version: 'v1.5.8',
+    description: 'Released on 24th October 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Fix**: Hive Metastore connection issue.
+- **Fix**: live index on test suite creation.
+- **Minor**: supported total unique user count in Team page.
+- **Fix**: Fix issues in zh language search index mapping.
+- **Minor**: Add location path to table entity.
+- **Minor**: Fix LocationPath Index.
+- **Fix** : Mode dashboard ingestion API call.
+- **Fix**: fixed task deserialization in Airflow metadata ingestion.
+- **Fix**: Mode test connection returns data in dict instead of json.
+- **Minor**: Not Include Soft Deleted Assets in DI.
+- **Fix**: web analytic activity being reset.
+- **Fix**: Quicksight lineage source fix.
+- **Fix**: Add Azure Token Base Authentication.
+- **Minor**:  Add IN entities for PII. ${CollateIconWithLinkMD}
+`,
     },
   },
 ];
