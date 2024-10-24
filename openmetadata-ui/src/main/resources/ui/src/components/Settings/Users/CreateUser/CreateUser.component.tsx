@@ -203,6 +203,7 @@ const CreateUser = ({
       validateMessages={VALIDATION_MESSAGES}
       onFinish={handleSave}>
       <Form.Item
+        data-testid="user-bot-email"
         label={t('label.email')}
         name="email"
         rules={[
@@ -239,7 +240,10 @@ const CreateUser = ({
           placeholder={t('label.email')}
         />
       </Form.Item>
-      <Form.Item label={t('label.display-name')} name="displayName">
+      <Form.Item
+        data-testid="user-bot-display-name"
+        label={t('label.display-name')}
+        name="displayName">
         <Input
           data-testid="displayName"
           name="displayName"
@@ -266,6 +270,7 @@ const CreateUser = ({
         </Form.Item>
       )}
       <Form.Item
+        data-testid="user-bot-description"
         label={t('label.description')}
         name="description"
         trigger="onTextChange"
