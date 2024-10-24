@@ -107,6 +107,9 @@ public interface EntityInterface {
   default LifeCycle getLifeCycle() {
     return null;
   }
+  default AssetCertification getCertification() {
+    return null;
+  }
 
   void setId(UUID id);
 
@@ -175,6 +178,10 @@ public interface EntityInterface {
   }
 
   default void setLifeCycle(LifeCycle lifeCycle) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setCertification(AssetCertification certification) {
     /* no-op implementation to be overridden */
   }
 

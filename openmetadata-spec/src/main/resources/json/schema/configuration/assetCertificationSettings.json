@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/assetCertificationSettings.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AssetCertificationSettings",
+  "description": "This schema defines the Asset Certification Settings.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.AssetCertificationSettings",
+  "properties": {
+    "CertificationSettings": {
+      "type": "object",
+      "properties": {
+        "allowedClassifications": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Classification names that can be used for certifications."
+          },
+          "description": "List of classifications approved for certifications."
+        },
+        "validityPeriods": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "description": "ISO 8601 duration for the validity period."
+          },
+          "description": "Mapping of classification names to their default validity periods."
+        }
+      },
+      "required": ["allowedClassifications", "validityPeriods"]
+    }
+  }
+}
