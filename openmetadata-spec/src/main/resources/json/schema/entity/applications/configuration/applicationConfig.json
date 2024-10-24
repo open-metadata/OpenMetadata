@@ -8,7 +8,7 @@
     "appConfig": {
       "oneOf": [
         {
-          "$ref": "external/CollateAIAppConfig.json"
+          "$ref": "external/collateAIAppConfig.json"
         },
         {
           "$ref": "external/automatorAppConfig.json"
@@ -27,7 +27,7 @@
     "privateConfig": {
       "oneOf": [
         {
-          "$ref": "private/external/CollateAIAppPrivateConfig.json"
+          "$ref": "./private/external/CollateAIAppPrivateConfig.json"
         }
       ]
     }
