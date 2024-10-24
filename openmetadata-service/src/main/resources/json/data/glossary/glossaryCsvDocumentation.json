@@ -108,7 +108,8 @@
         "`\"timeCp:10:08:45;timeIntervalCp:1726142300000:17261420000;timeStampCp:1726142400000\"`",
         "`\"integerCp:7777;numberCp:123456\"`",
         "`\"\"\"queryCp:select col,row from table where id ='30';\"\";stringcp:sample string content\"`",
-        "`markdownCp:# Sample Markdown Text`"
+        "`markdownCp:# Sample Markdown Text`",
+        "\"\"\"tableCp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value\"\"\""
       ]
     }
   ]
