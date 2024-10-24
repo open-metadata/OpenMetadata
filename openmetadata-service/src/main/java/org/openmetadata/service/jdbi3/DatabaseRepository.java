@@ -68,6 +68,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         "",
         "");
     supportsSearch = true;
+    parent = true;
   }
 
   @Override

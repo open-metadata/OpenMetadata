@@ -4036,8 +4036,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
     }
   }
+
   public UpdateType getChangeType() {
-    if (PARENT_ENTITY_TYPES.contains(entityType)) {
+    if (isParent()) {
       return MINOR_UPDATE;
     } else {
       return CHANGE_CONSOLIDATED;
