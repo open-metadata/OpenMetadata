@@ -12,21 +12,14 @@ public class AzureTokenProvider {
   private static final String SCOPE =
       "https://ossrdbms-aad.database.windows.net/.default"; // Scope for PostgreSQL
 
-  // Method to get access token
   public static String getAccessToken() throws MalformedURLException {
-    // Build confidential client application
     ConfidentialClientApplication app =
         ConfidentialClientApplication.builder(
-                CLIENT_ID,
-                ClientCredentialFactory.createFromSecret(
-                    CLIENT_SECRET)) // authenticate using client secret
+                CLIENT_ID, ClientCredentialFactory.createFromSecret(CLIENT_SECRET))
             .authority("https://login.microsoftonline.com/" + TENANT_ID) // Azure AD authority
             .build();
 
-    // Set the permission scope (for PostgreSQL it's ossrdbms-aad)
     Set<String> scopes = Set.of(SCOPE);
-
-    // Create request for a token
     ClientCredentialParameters parameters = ClientCredentialParameters.builder(scopes).build();
     IAuthenticationResult result = app.acquireToken(parameters).join(); // Get the token
 

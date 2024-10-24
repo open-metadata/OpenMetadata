@@ -554,7 +554,12 @@
       <dependency>
         <groupId>com.microsoft.azure</groupId>
         <artifactId>msal4j</artifactId>
-        <version>1.13.0</version>
+        <version>1.17.2</version>
+      </dependency>
+      <dependency>
+        <groupId>com.azure</groupId>
+        <artifactId>azure-identity</artifactId>
+        <version>1.14.0</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->
