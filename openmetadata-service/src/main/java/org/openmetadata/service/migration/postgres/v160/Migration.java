@@ -1,6 +1,7 @@
 package org.openmetadata.service.migration.postgres.v160;
 
 import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addAppExtensionName;
+import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addViewAllRuleToOrgPolicy;
 import static org.openmetadata.service.migration.utils.v160.MigrationUtil.migrateServiceTypesAndConnections;
 
 import lombok.SneakyThrows;
@@ -18,5 +19,6 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     addAppExtensionName(handle, collectionDAO, authenticationConfiguration, true);
     migrateServiceTypesAndConnections(handle, true);
+    addViewAllRuleToOrgPolicy(collectionDAO);
   }
 }

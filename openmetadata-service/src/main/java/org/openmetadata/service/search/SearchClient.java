@@ -14,14 +14,18 @@ import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.searcg.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.SSLUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
@@ -280,4 +284,15 @@ public interface SearchClient {
   }
 
   Object getLowLevelClient();
+
+  static boolean shouldApplyRbacConditions(
+      SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
+    return Boolean.TRUE.equals(
+            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
+                .getEnableAccessControl())
+        && subjectContext != null
+        && !subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && rbacConditionEvaluator != null;
+  }
 }

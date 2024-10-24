@@ -704,7 +704,11 @@ export const editCreatedProperty = async (
   }
 
   if (type === 'Table') {
-    await expect(page.getByText('Columns:pw-column1pw-column2')).toBeVisible();
+    await expect(
+      page
+        .locator(`[data-row-key="${propertyName}"]`)
+        .getByText('Columns:pw-column1pw-column2')
+    ).toBeVisible();
   }
 
   await editButton.click();

@@ -41,4 +41,4 @@ openmetadata:
       keyStorePassword: ${SAML_KEYSTORE_PASSWORD:-""}
 ```
 
-{% partial file="/v1.4/deployment/configure-ingestion.md" /%}
+{% partial file="/v1.5/deployment/configure-ingestion.md" /%}
