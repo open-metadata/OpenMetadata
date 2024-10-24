@@ -24,7 +24,7 @@ from metadata.ingestion.source.dashboard.powerbi.file_client import (
     _get_datamodel_schema_list,
 )
 
-current_dir = os.getcwd()
+current_dir = os.path.dirname(__file__)
 
 powerbi_connection_config = {
     "type": "PowerBI",
@@ -36,7 +36,7 @@ powerbi_connection_config = {
     "useAdminApis": False,
     "pbitFilesSource": {
         "pbitFileConfigType": "local",
-        "path": f"{current_dir}/ingestion/tests/integration/powerbi/resources",
+        "path": f"{current_dir}/resources",
         "pbitFilesExtractDir": f"{current_dir}/ingestion/tests/integration/powerbi/resources/extracted",
     },
 }

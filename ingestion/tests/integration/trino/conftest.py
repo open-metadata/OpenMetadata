@@ -1,12 +1,11 @@
+import glob
 import os.path
 import random
-from time import sleep
 
 import docker
-import pandas as pd
 import pytest
 import testcontainers.core.network
-from sqlalchemy import create_engine, insert
+from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 from tenacity import retry, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
@@ -183,7 +182,7 @@ def minio_container(docker_network):
 
 
 @pytest.fixture(scope="session")
-def create_test_data(trino_container):
+def create_test_data(trino_container, minio_container):
     engine = create_engine(
         make_url(trino_container.get_connection_url()).set(database="minio")
     )
@@ -191,42 +190,16 @@ def create_test_data(trino_container):
         "create schema minio.my_schema WITH (location = 's3a://hive-warehouse/')"
     )
     data_dir = os.path.dirname(__file__) + "/data"
-    for file in os.listdir(data_dir):
-        df = pd.read_parquet(f"{data_dir}/{file}")
-        for col in df.columns:
-            if pd.api.types.is_datetime64tz_dtype(df[col]):
-                df[col] = df[col].dt.tz_convert(None)
-        df.to_sql(
-            file.replace(".parquet", ""),
-            engine,
-            schema="my_schema",
-            if_exists="fail",
-            index=False,
-            method=custom_insert,
+    for file in glob.glob(data_dir + "/*.parquet"):
+        parquet_file = os.path.relpath(file, data_dir)
+        ddl_file = file.replace(".parquet", ".sql")
+        object_name = "{}/{}".format(parquet_file.replace(".parquet", ""), parquet_file)
+        minio_container.get_client().fput_object(
+            "hive-warehouse", object_name, os.path.join(data_dir, parquet_file)
         )
-        sleep(1)
-    return
-
-
-def custom_insert(self, conn, keys: list[str], data_iter):
-    """
-    Hack pandas.io.sql.SQLTable._execute_insert_multi to retry untill rows are inserted.
-    This is required becauase using trino with pd.to_sql in our setup us unreliable.
-    """
-    rowcount = 0
-    max_tries = 10
-    try_num = 0
-    data = [dict(zip(keys, row)) for row in data_iter]
-    while rowcount != len(data):
-        if try_num >= max_tries:
-            raise RuntimeError(f"Failed to insert data after {max_tries} tries")
-        try_num += 1
-        stmt = insert(self.table).values(data)
-        conn.execute(stmt)
-        rowcount = conn.execute(
-            "SELECT COUNT(*) FROM " + f'"{self.schema}"."{self.name}"'
-        ).scalar()
-    return rowcount
+        engine.execute(
+            open(ddl_file).read().strip().format(schema_name='"minio"."my_schema"')
+        )
 
 
 @pytest.fixture(scope="module")
