@@ -30,6 +30,11 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
+  public String getBoldWithSpace() {
+    return "<b>%s</b> ";
+  }
+
+  @Override
   public String getLineBreak() {
     return " <br/> ";
   }
