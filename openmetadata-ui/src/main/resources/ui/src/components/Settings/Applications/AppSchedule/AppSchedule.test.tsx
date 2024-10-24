@@ -115,7 +115,8 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
   }),
 }));
 
-jest.mock('../../../../utils/ScheduleUtils', () => ({
+jest.mock('../../../../utils/SchedularUtils', () => ({
+  getCronDefaultValue: jest.fn().mockReturnValue('0 0 * * *'),
   getScheduleOptionsFromSchedules: jest.fn().mockReturnValue([]),
 }));
 
