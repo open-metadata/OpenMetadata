@@ -19,7 +19,10 @@ import { EntityTabs } from '../enums/entity.enum';
 import { Column, Table } from '../generated/entity/data/table';
 import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
-import { getTableDetailPageBaseTabs } from './TableUtils';
+import {
+  getTableConstraintsComponent,
+  getTableDetailPageBaseTabs,
+} from './TableUtils';
 
 export interface TableDetailPageTabProps {
   queryCount: number;
@@ -74,6 +77,10 @@ class TableClassBase {
       field: 'displayName',
       columns: tableCols,
     });
+  }
+
+  public getAfterSlotComponents(tableDetails?: Table): JSX.Element {
+    return getTableConstraintsComponent(tableDetails?.tableConstraints);
   }
 }
 

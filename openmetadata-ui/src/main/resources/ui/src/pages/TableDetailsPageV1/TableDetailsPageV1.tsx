@@ -587,6 +587,7 @@ const TableDetailsPageV1: React.FC = () => {
                         className="w-full m-t-lg"
                         direction="vertical"
                         size="large">
+                        {tableClassBase.getAfterSlotComponents(tableDetails)}
                         <TableConstraints
                           constraints={tableDetails?.tableConstraints}
                         />

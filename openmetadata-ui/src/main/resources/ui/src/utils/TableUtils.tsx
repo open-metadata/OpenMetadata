@@ -20,6 +20,7 @@ import {
   get,
   isUndefined,
   lowerCase,
+  map,
   omit,
   reduce,
   toString,
@@ -28,7 +29,7 @@ import {
   upperCase,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { CSSProperties } from 'react';
+import React, { CSSProperties, Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
@@ -81,6 +82,7 @@ import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/teams.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 
+import { Link } from 'react-router-dom';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -95,6 +97,7 @@ import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
+import { SUPPORTED_TABLE_CONSTRAINTS } from '../constants/Table.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
@@ -103,17 +106,23 @@ import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
   Column,
+  ConstraintType,
   DataType,
+  Table,
   TableConstraint,
 } from '../generated/entity/data/table';
 import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
+import ForeignKeyConstraint from '../pages/TableDetailsPageV1/TableConstraints/ForeignKeyConstraint';
+import PrimaryKeyConstraint from '../pages/TableDetailsPageV1/TableConstraints/PrimaryKeyConstraint';
+import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
 import EntityLink from './EntityLink';
+import entityUtilClassBase from './EntityUtilClassBase';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
@@ -830,4 +839,95 @@ export const getTableDetailPageBaseTabs = ({
       ),
     },
   ];
+};
+
+export const getTableConstraintsComponent = (
+  tableConstraints: Table['tableConstraints']
+) => {
+  return <TableConstraints constraints={tableConstraints} />;
+};
+
+export const getSupportedConstraints = (
+  constraints: Table['tableConstraints']
+) =>
+  constraints?.filter((constraint) =>
+    SUPPORTED_TABLE_CONSTRAINTS.includes(
+      constraint.constraintType as ConstraintType
+    )
+  ) ?? [];
+
+export const renderTableConstraints = (constraints: TableConstraint[]) => {
+  return constraints.map(
+    ({ constraintType, columns, referredColumns }, index) => {
+      if (constraintType === ConstraintType.PrimaryKey) {
+        return (
+          <div className="d-flex constraint-columns" key={index}>
+            <Space
+              className="constraint-icon-container"
+              direction="vertical"
+              size={0}>
+              {columns?.map((column, index) => (
+                <Fragment key={column}>
+                  {(columns?.length ?? 0) - 1 !== index ? (
+                    <PrimaryKeyConstraint />
+                  ) : null}
+                </Fragment>
+              ))}
+            </Space>
+
+            <Space direction="vertical" size={16}>
+              {columns?.map((column) => (
+                <Typography.Text
+                  className="w-60"
+                  ellipsis={{ tooltip: true }}
+                  key={column}>
+                  {column}
+                </Typography.Text>
+              ))}
+            </Space>
+          </div>
+        );
+      }
+      if (constraintType === ConstraintType.ForeignKey) {
+        return (
+          <Space className="constraint-columns" key={index}>
+            <ForeignKeyConstraint />
+            <Space direction="vertical" size={16}>
+              <Typography.Text>{columns?.join(', ')}</Typography.Text>
+              <div data-testid="referred-column-name">
+                {map(referredColumns, (referredColumn) => (
+                  <Tooltip
+                    placement="top"
+                    title={referredColumn}
+                    trigger="hover">
+                    <Link
+                      className="no-underline"
+                      to={entityUtilClassBase.getEntityLink(
+                        EntityType.TABLE,
+                        getPartialNameFromTableFQN(
+                          referredColumn,
+                          [
+                            FqnPart.Service,
+                            FqnPart.Database,
+                            FqnPart.Schema,
+                            FqnPart.Table,
+                          ],
+                          FQN_SEPARATOR_CHAR
+                        )
+                      )}>
+                      <Typography.Text className="truncate referred-column-name">
+                        {referredColumn}
+                      </Typography.Text>
+                    </Link>
+                  </Tooltip>
+                ))}
+              </div>
+            </Space>
+          </Space>
+        );
+      }
+
+      return null;
+    }
+  );
 };
