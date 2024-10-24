@@ -120,7 +120,7 @@ export const toastNotification = async (
 
   await expect(page.locator('.ant-alert-icon')).toBeVisible();
 
-  await page.locator('.alert-container .ant-alert-close-icon').click();
+  await page.locator('.alert-container button').click();
 };
 
 export const clickOutside = async (page: Page) => {

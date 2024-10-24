@@ -415,7 +415,7 @@ test.describe('Activity feed', () => {
     await toastNotification(
       page,
       'Task cannot be closed without a comment.',
-      'warning'
+      'error'
     );
 
     // Close the task from the Button.Group, with comment is added.
