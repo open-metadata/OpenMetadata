@@ -41,6 +41,12 @@
       "description": "Configuration for the Knowledge Panel.",
       "type": "object"
     },
+    "tabs": {
+      "description": "Tabs included in this page.",
+      "type": "array",
+      "items": { "$ref": "tab.json" },
+      "default": []
+    },
     "persona": {
       "description": "Persona this page belongs to.",
       "$ref": "../../type/entityReference.json"
