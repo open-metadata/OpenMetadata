@@ -96,7 +96,6 @@ from metadata.utils.execution_time_tracker import (
 )
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
-from metadata.utils.importer import import_side_effects
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -106,9 +105,6 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = ingestion_logger()
 
-import_side_effects(
-    "metadata.ingestion.source.database.redshift.profiler.system",
-)
 
 STANDARD_TABLE_TYPES = {
     "r": TableType.Regular,

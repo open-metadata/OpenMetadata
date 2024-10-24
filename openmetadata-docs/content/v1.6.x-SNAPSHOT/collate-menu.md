@@ -5,8 +5,6 @@ site_menu:
 
   - category: Enable Security
     url: /deployment
-  - category: Enable Security / Basic Authentication
-    url: /deployment/security/basic-auth
   - category: Enable Security / Ldap Authentication
     url: /deployment/security/ldap
   - category: Enable Security / Auth0 SSO
