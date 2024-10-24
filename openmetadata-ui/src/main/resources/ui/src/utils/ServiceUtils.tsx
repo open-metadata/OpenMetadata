@@ -501,3 +501,23 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
       return entityUtilClassBase.getEntityLink(EntityType.DATABASE, fqn);
   }
 };
+
+export const getServiceDisplayNameQueryFilter = (displayName: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'service.displayName.keyword': displayName,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});
