@@ -33,5 +33,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["queryFilter"]
+  "required": ["filter"]
 }
