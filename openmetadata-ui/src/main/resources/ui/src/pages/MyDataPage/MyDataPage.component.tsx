@@ -36,7 +36,6 @@ import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
 import LimitWrapper from '../../hoc/LimitWrapper';
-import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
@@ -64,7 +63,6 @@ const MyDataPage = () => {
     useState<boolean>(true);
   const [announcements, setAnnouncements] = useState<Thread[]>([]);
   const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
-  const { addAlert } = useAlertStore();
 
   const loggedInUserName = useMemo(() => {
     return currentUser?.name ?? '';
@@ -142,12 +140,6 @@ const MyDataPage = () => {
       fetchUserFollowedData();
     }
   }, [currentUser]);
-
-  useEffect(() => {
-    setTimeout(() => {
-      addAlert({ type: 'info', message: 'Info' }, Infinity);
-    }, 3000);
-  }, []);
 
   const widgets = useMemo(
     () =>

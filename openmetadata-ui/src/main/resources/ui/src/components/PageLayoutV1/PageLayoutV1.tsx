@@ -104,7 +104,6 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           </Col>
         )}
         <Col span={24}>
-          {alert && <AlertBar message={alert.message} type={alert.type} />}
           <Row>
             <Col
               className={classNames(
@@ -117,6 +116,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
               flex={contentWidth}
               offset={center ? 3 : 0}
               span={center ? 18 : 24}>
+              {alert && <AlertBar message={alert.message} type={alert.type} />}
               {children}
             </Col>
             {rightPanel && (
