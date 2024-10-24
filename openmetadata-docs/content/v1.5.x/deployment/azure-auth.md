@@ -1,6 +1,6 @@
 ---
-title: How to enable AWS RDS IAM Auth
-slug: /deployment/rds-iam-auth
+title: How to enable Azure Auth
+slug: /deployment/azure-auth
 collate: false
 ---
 
@@ -11,7 +11,7 @@ https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/concepts-exte
 1. Azure Postgres or MySQL Cluster with auth enabled
 2. User on DB Cluster with authentication enabled
 
-# How to enable ADS RDS IAM Auth on postgresql
+# How to enable Azure Auth on postgresql
 
 Set the environment variables
 
