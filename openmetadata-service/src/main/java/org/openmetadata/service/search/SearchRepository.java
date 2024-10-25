@@ -449,7 +449,7 @@ public class SearchRepository {
     Map<String, Object> fieldData = new HashMap<>();
 
     if (changeDescription != null) {
-      for (FieldChange field : changeDescription.getFieldsAdded()) {
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
@@ -458,24 +458,21 @@ public class SearchRepository {
               for (EntityReference inheritedOwner : inheritedOwners) {
                 inheritedOwner.setInherited(true);
               }
-              fieldData.put("updatedOwners", inheritedOwners);
-              scriptTxt.append(ADD_OWNERS_SCRIPT);
+              fieldData.put("deletedOwners", inheritedOwners);
+              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
-                  JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
               scriptTxt.append(
                   String.format(
-                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
-                      field.getName(),
-                      field.getName(),
+                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
                       field.getName(),
                       field.getName(),
                       field.getName()));
-              fieldData.put(field.getName(), entityReference);
+              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
             }
           } catch (UnhandledServerException e) {
-            scriptTxt.append(
-                String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
           }
         }
       }
@@ -507,7 +504,7 @@ public class SearchRepository {
           }
         }
       }
-      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
@@ -516,21 +513,24 @@ public class SearchRepository {
               for (EntityReference inheritedOwner : inheritedOwners) {
                 inheritedOwner.setInherited(true);
               }
-              fieldData.put("deletedOwners", inheritedOwners);
-              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
+              fieldData.put("updatedOwners", inheritedOwners);
+              scriptTxt.append(ADD_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
-                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+                  JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
               scriptTxt.append(
                   String.format(
-                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      field.getName(),
+                      field.getName(),
                       field.getName(),
                       field.getName(),
                       field.getName()));
-              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
+              fieldData.put(field.getName(), entityReference);
             }
           } catch (UnhandledServerException e) {
-            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
+            scriptTxt.append(
+                String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
           }
         }
       }

@@ -37,11 +37,11 @@ import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -168,11 +168,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     glossary.withReviewers(List.of(USER1_REF, USER2_REF));
     change =
         getChangeDescription(
-            glossary,
-            CHANGE_CONSOLIDATED); // PATCH operation update is consolidated in a user session
-    fieldAdded(change, "reviewers", List.of(USER1_REF, USER2_REF));
-    glossary =
-        patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+            glossary, MINOR_UPDATE); // PATCH operation update is consolidated in a user session
+    fieldAdded(change, "reviewers", List.of(USER2_REF));
+    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Create a glossary term and assign USER2 as a reviewer
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
@@ -220,10 +218,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     glossary.withReviewers(List.of(USER2_REF));
     change =
         getChangeDescription(
-            glossary,
-            CHANGE_CONSOLIDATED); // PATCH operation update is consolidated in a user session
-    fieldAdded(change, "reviewers", List.of(USER2_REF));
-    patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+            glossary, MINOR_UPDATE); // PATCH operation update is consolidated in a user session
+    fieldDeleted(change, "reviewers", List.of(USER1_REF));
+    patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Verify that USER1_REF is removed from the reviewers for the terms inside the glossary
     GLOSSARY_TERM1 =

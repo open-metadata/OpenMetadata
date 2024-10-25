@@ -19,5 +19,6 @@ public class MetadataServiceRepository
         UPDATE_FIELDS,
         ServiceType.METADATA);
     supportsSearch = true;
+    parent = true;
   }
 }
