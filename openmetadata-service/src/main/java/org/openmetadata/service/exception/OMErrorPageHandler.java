@@ -13,6 +13,8 @@ import org.openmetadata.service.config.OMWebConfiguration;
 
 @Slf4j
 public class OMErrorPageHandler extends ErrorPageErrorHandler {
+  private static final String CACHE_CONTROL_HEADER = "Cache-Control";
+  private static final String PRAGMA_HEADER = "Pragma";
   private final OMWebConfiguration webConfiguration;
 
   public OMErrorPageHandler(OMWebConfiguration webConfiguration) {
@@ -87,6 +89,12 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
 
     // Policy Permission
     webConfiguration.getPermissionPolicyHeaderFactory().build().forEach(response::setHeader);
+
+    // Cache-Control
+    response.setHeader(CACHE_CONTROL_HEADER, webConfiguration.getCacheControl());
+
+    // Pragma
+    response.setHeader(PRAGMA_HEADER, webConfiguration.getPragma());
 
     // Additional Headers
     webConfiguration.getHeaders().forEach(response::setHeader);
