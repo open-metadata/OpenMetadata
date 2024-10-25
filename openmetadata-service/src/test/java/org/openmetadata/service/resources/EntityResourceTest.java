@@ -1887,34 +1887,63 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     origJson = JsonUtils.pojoToJson(entity);
     entity.setDescription("description1");
     entity.setDisplayName("displayName1");
-    change = getChangeDescription(entity, CHANGE_CONSOLIDATED);
-    fieldUpdated(change, "description", "", "description1");
-    fieldAdded(change, "displayName", "displayName1");
-    if (supportsOwners) {
-      entity.setOwners(List.of(USER1_REF));
-      fieldAdded(change, FIELD_OWNERS, List.of(USER1_REF));
-    }
-
-    if (supportsTags) {
-      entity.getTags().add(TIER1_TAG_LABEL);
-      fieldAdded(
+    change = getChangeDescription(entity, getChangeType());
+    if (isParent()) {
+      fieldUpdated(change, "displayName", "displayName", "displayName1");
+      fieldUpdated(change, "description", "description", "description1");
+      if (supportsOwners) {
+        entity.setOwners(List.of(USER1_REF));
+        fieldAdded(change, FIELD_OWNERS, List.of(USER1_REF));
+        fieldDeleted(change, FIELD_OWNERS, List.of(TEAM11_REF));
+      }
+      if (supportsTags) {
+        entity.getTags().add(TIER1_TAG_LABEL);
+        fieldAdded(change, FIELD_TAGS, List.of(TIER1_TAG_LABEL));
+      }
+      entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, getChangeType(), change);
+      //
+      // Remove description, tier, owner - Changes are reverted going to 0.1 version of the entity
+      //
+      origJson = JsonUtils.pojoToJson(entity);
+      change = getChangeDescription(entity, MINOR_UPDATE);
+      entity.setDescription("");
+      entity.setDisplayName(null);
+      entity.setOwners(null);
+      entity.setTags(null);
+      fieldUpdated(change, "description", "description1", "");
+      fieldDeleted(change, "displayName", "displayName1");
+      fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
+      fieldDeleted(
           change,
           FIELD_TAGS,
           List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL, TIER1_TAG_LABEL));
+      patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    } else {
+      fieldUpdated(change, "description", "", "description1");
+      fieldAdded(change, "displayName", "displayName1");
+      if (supportsOwners) {
+        entity.setOwners(List.of(USER1_REF));
+        fieldAdded(change, FIELD_OWNERS, List.of(USER1_REF));
+      }
+      if (supportsTags) {
+        entity.getTags().add(TIER1_TAG_LABEL);
+        fieldAdded(
+            change,
+            FIELD_TAGS,
+            List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL, TIER1_TAG_LABEL));
+      }
+      entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, getChangeType(), change);
+      //
+      // Remove description, tier, owner - Changes are reverted going to 0.1 version of the entity
+      //
+      origJson = JsonUtils.pojoToJson(entity);
+      change = getChangeDescription(entity, REVERT);
+      entity.setDescription("");
+      entity.setDisplayName(null);
+      entity.setOwners(null);
+      entity.setTags(null);
+      patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, REVERT, change);
     }
-
-    entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, getChangeType(), change);
-
-    //
-    // Remove description, tier, owner - Changes are reverted going to 0.1 version of the entity
-    //
-    origJson = JsonUtils.pojoToJson(entity);
-    change = getChangeDescription(entity, REVERT);
-    entity.setDescription("");
-    entity.setDisplayName(null);
-    entity.setOwners(null);
-    entity.setTags(null);
-    patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, REVERT, change);
   }
 
   @Test
@@ -1953,20 +1982,36 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Update description with a new description and the version changes as admin - the changes are
     // consolidated
-    json = JsonUtils.pojoToJson(entity);
-    entity.setDescription("description2");
-    change = getChangeDescription(entity, getChangeType()); // Version changes
-    fieldUpdated(change, "description", "description", "description2");
-    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, getChangeType(), change);
+    if (isParent()) {
+      json = JsonUtils.pojoToJson(entity);
+      entity.setDescription("description2");
+      change = getChangeDescription(entity, getChangeType()); // Version changes
+      fieldUpdated(change, "description", "description1", "description2");
+      entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Update displayName with a new displayName - but as USER1
-    // Since the previous change is done by a different user, changes ** are not ** consolidated
-    json = JsonUtils.pojoToJson(entity);
-    entity.setDisplayName("displayName");
-    change = getChangeDescription(entity, CHANGE_CONSOLIDATED); // Version changes
-    fieldUpdated(change, "description", "description", "description2");
-    fieldAdded(change, "displayName", "displayName");
-    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+      // Update displayName with a new displayName - but as USER1
+      // Since the previous change is done by a different user, changes ** are not ** consolidated
+      json = JsonUtils.pojoToJson(entity);
+      entity.setDisplayName("displayName");
+      change = getChangeDescription(entity, MINOR_UPDATE); // Version changes
+      fieldAdded(change, "displayName", "displayName");
+      entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    } else {
+      json = JsonUtils.pojoToJson(entity);
+      entity.setDescription("description2");
+      change = getChangeDescription(entity, getChangeType()); // Version changes
+      fieldUpdated(change, "description", "description", "description2");
+      entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+
+      // Update displayName with a new displayName - but as USER1
+      // Since the previous change is done by a different user, changes ** are not ** consolidated
+      json = JsonUtils.pojoToJson(entity);
+      entity.setDisplayName("displayName");
+      change = getChangeDescription(entity, CHANGE_CONSOLIDATED); // Version changes
+      fieldUpdated(change, "description", "description", "description2");
+      fieldAdded(change, "displayName", "displayName");
+      entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    }
 
     // Update displayName to a new displayName.
     // In this test, the user who previously made a change makes the change after session timeout.
@@ -2104,20 +2149,32 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
 
     // PATCH and remove field stringB from the entity extension
-    json = JsonUtils.pojoToJson(entity);
-    jsonNode.remove("stringB");
-    entity.setExtension(jsonNode);
-    change =
-        getChangeDescription(
-            entity, CHANGE_CONSOLIDATED); // PATCH operation update is consolidated into a session
-    fieldDeleted(
-        change,
-        "extension",
-        List.of(
-            JsonUtils.getObjectNode("intA", intAValue),
-            JsonUtils.getObjectNode("stringB", stringBValue)));
-    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, getChangeType(), change);
-    assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
+    if (isParent()) {
+      json = JsonUtils.pojoToJson(entity);
+      jsonNode.remove("stringB");
+      entity.setExtension(jsonNode);
+      change =
+          getChangeDescription(
+              entity, MINOR_UPDATE); // PATCH operation update is consolidated into a session
+      fieldDeleted(change, "extension", List.of(JsonUtils.getObjectNode("stringB", stringBValue)));
+      entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+      assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
+    } else {
+      json = JsonUtils.pojoToJson(entity);
+      jsonNode.remove("stringB");
+      entity.setExtension(jsonNode);
+      change =
+          getChangeDescription(
+              entity, CHANGE_CONSOLIDATED); // PATCH operation update is consolidated into a session
+      fieldDeleted(
+          change,
+          "extension",
+          List.of(
+              JsonUtils.getObjectNode("intA", intAValue),
+              JsonUtils.getObjectNode("stringB", stringBValue)));
+      entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, getChangeType(), change);
+      assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
+    }
 
     // Now set the entity custom property to an invalid value
     jsonNode.set(

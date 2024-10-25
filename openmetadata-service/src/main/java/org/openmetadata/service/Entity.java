@@ -269,7 +269,8 @@ public final class Entity {
             DATABASE,
             DATABASE_SCHEMA,
             CLASSIFICATION,
-            GLOSSARY));
+            GLOSSARY,
+            TEAM));
   }
 
   private Entity() {}
