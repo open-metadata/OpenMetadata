@@ -67,37 +67,23 @@ class DBTCloudClient:
         """
         list jobs for an account in dbt cloud
         """
-        try:
-            job_path = f"{self.config.jobId}/" if self.config.jobId else ""
-            result = self.client.get(
-                f"/accounts/{self.config.accountId}/jobs/{job_path}"
-            )
-            if result:
-                job_list = DBTJobList(**result).Jobs
-                return job_list
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get job info :{exc}")
-
-        return None
+        job_path = f"{self.config.jobId}/" if self.config.jobId else ""
+        result = self.client.get(f"/accounts/{self.config.accountId}/jobs/{job_path}")
+        if result:
+            job_list = DBTJobList(**result).Jobs
+            return job_list
 
     def get_runs(self, job_id: int) -> Optional[List[DBTRun]]:
         """
         list runs for a job in dbt cloud
         """
-        try:
-            result = self.client.get(
-                f"/accounts/{self.config.accountId}/runs/",
-                data={"job_definition_id": job_id},
-            )
-            if result:
-                run_list = DBTRunList(**result).Runs
-                return run_list
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get run info :{exc}")
-
-        return None
+        result = self.client.get(
+            f"/accounts/{self.config.accountId}/runs/",
+            data={"job_definition_id": job_id},
+        )
+        if result:
+            run_list = DBTRunList(**result).Runs
+            return run_list
 
     def get_model_details(self, job_id: int, run_id: int):
         """
