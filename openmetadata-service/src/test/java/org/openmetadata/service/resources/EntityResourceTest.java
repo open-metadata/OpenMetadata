@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -128,6 +129,8 @@ import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.ValidityPeriods;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entities.docStore.Document;
@@ -155,11 +158,14 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AccessDetails;
 import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -178,6 +184,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -247,6 +254,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final boolean supportsDataProducts;
   protected final boolean supportsExperts;
   protected final boolean supportsReviewers;
+  protected final boolean supportsCertification;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -454,6 +462,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
     this.supportsExperts = allowedFields.contains(FIELD_EXPERTS);
     this.supportsReviewers = allowedFields.contains(FIELD_REVIEWERS);
+    this.supportsCertification = allowedFields.contains(FIELD_CERTIFICATION);
   }
 
   @BeforeAll
@@ -2430,6 +2439,84 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     LifeCycle lifeCycle1 =
         new LifeCycle().withAccessed(accessed).withUpdated(updated).withCreated(createdOld);
     updateLifeCycle(json, entity, lifeCycle1, lifeCycle);
+  }
+
+  @Test
+  void postPutPatch_entityCertification(TestInfo test) throws IOException {
+    if (!supportsCertification) {
+      return;
+    }
+    // Create an entity without lifeCycle
+    T entity =
+        createEntity(
+            createRequest(getEntityName(test), "description", null, null), ADMIN_AUTH_HEADERS);
+
+    // Create Tag
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    Tag firstTag =
+        tagResourceTest.createEntity(tagResourceTest.createRequest(test, 0), ADMIN_AUTH_HEADERS);
+    TagLabel firstTagLabel = EntityUtil.toTagLabel(firstTag);
+
+    Tag secondTag =
+        tagResourceTest.createEntity(tagResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    TagLabel secondTagLabel = EntityUtil.toTagLabel(secondTag);
+
+    // Add lifeCycle using PATCH request
+    String json = JsonUtils.pojoToJson(entity);
+    AssetCertification certification = new AssetCertification().withTagLabel(firstTagLabel);
+    entity.setCertification(certification);
+    try {
+      patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+      fail("Expected an exception to be thrown: Certification is not configured yet.");
+    } catch (HttpResponseException e) {
+      assertEquals(e.getStatusCode(), 400);
+    }
+
+    // Configure Certification Settings
+    ValidityPeriods validityPeriods = new ValidityPeriods();
+    validityPeriods.setAdditionalProperty(firstTagLabel.getTagFQN(), "P30D");
+    validityPeriods.setAdditionalProperty(secondTagLabel.getTagFQN(), "P60D");
+
+    AssetCertificationSettings certificationSettings =
+        new AssetCertificationSettings()
+            .withAllowedClassifications(
+                validityPeriods.getAdditionalProperties().keySet().stream().toList())
+            .withValidityPeriods(validityPeriods);
+
+    SystemRepository systemRepository = Entity.getSystemRepository();
+    systemRepository.updateSetting(
+        new Settings()
+            .withConfigType(SettingsType.ASSET_CERTIFICATION_SETTINGS)
+            .withConfigValue(certificationSettings));
+
+    T patchedEntity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        patchedEntity.getCertification().getTagLabel().getTagFQN(), firstTagLabel.getTagFQN());
+    assertEquals(
+        patchedEntity.getCertification().getAppliedDate(), System.currentTimeMillis(), 10 * 1000);
+    assertEquals(
+        (double)
+            (patchedEntity.getCertification().getExpiryDate()
+                - patchedEntity.getCertification().getAppliedDate()),
+        30D * 24 * 60 * 60 * 1000,
+        10 * 1000);
+
+    // Change Certification
+    String originalJson = JsonUtils.pojoToJson(entity);
+    AssetCertification newCertification = new AssetCertification().withTagLabel(secondTagLabel);
+    entity.setCertification(newCertification);
+    T updatedEntity = patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        updatedEntity.getCertification().getTagLabel().getTagFQN(), secondTagLabel.getTagFQN());
+    assertEquals(
+        updatedEntity.getCertification().getAppliedDate(), System.currentTimeMillis(), 10 * 1000);
+    assertEquals(
+        (double)
+            (updatedEntity.getCertification().getExpiryDate()
+                - patchedEntity.getCertification().getAppliedDate()),
+        60D * 24 * 60 * 60 * 1000,
+        10 * 1000);
   }
 
   private T updateLifeCycle(
