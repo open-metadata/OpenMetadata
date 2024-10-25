@@ -90,6 +90,15 @@ jest.mock('../../../../common/NextPrevious/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div>NextPrevious</div>)
 );
 
+jest.mock('../../../../../utils/IngestionListTableUtils', () => ({
+  renderNameField: jest.fn().mockImplementation(() => <div>nameField</div>),
+  renderScheduleField: jest
+    .fn()
+    .mockImplementation(() => <div>scheduleField</div>),
+  renderStatusField: jest.fn().mockImplementation(() => <div>statusField</div>),
+  renderTypeField: jest.fn().mockImplementation(() => <div>typeField</div>),
+}));
+
 describe('Ingestion', () => {
   it('should render custom emptyPlaceholder if passed', async () => {
     await act(async () => {
