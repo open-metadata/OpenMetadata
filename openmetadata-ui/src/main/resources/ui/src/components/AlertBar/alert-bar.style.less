@@ -37,9 +37,14 @@
 
 .alert-container {
   overflow-y: scroll;
+  backdrop-filter: blur(500px);
 
   &.show-alert {
     animation: resize-show-animation 1.2s ease-in-out forwards;
+    position: fixed;
+    top: 64px;
+    z-index: 20;
+    width: 96%;
   }
 
   &.hide-alert {

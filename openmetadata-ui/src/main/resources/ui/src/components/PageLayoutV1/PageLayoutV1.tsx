@@ -115,8 +115,13 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             flex={contentWidth}
             offset={center ? 3 : 0}
             span={center ? 18 : 24}>
-            {alert && <AlertBar message={alert.message} type={alert.type} />}
-            {children}
+            <div className="alert-page-container">
+              {alert && <AlertBar message={alert.message} type={alert.type} />}
+              <div
+                className={`page-content ${alert && 'page-content-shifted'}`}>
+                {children}
+              </div>
+            </div>
           </Col>
           {rightPanel && (
             <Col
