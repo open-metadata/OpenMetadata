@@ -20,7 +20,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
-import { ERROR_MESSAGE } from '../constants/constants';
+import { ERROR_MESSAGE, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { MASKED_EMAIL } from '../constants/User.constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { getIsErrorMatch } from './CommonUtils';
@@ -46,6 +46,12 @@ export const commonUserDetailColumns = (
     dataIndex: 'username',
     key: 'username',
     render: (_, record) => userCellRenderer(record),
+  },
+  {
+    title: t('label.display-name'),
+    dataIndex: 'displayName',
+    key: 'displayName',
+    render: (text) => (isEmpty(text) ? NO_DATA_PLACEHOLDER : text),
   },
   {
     title: t('label.team-plural'),
