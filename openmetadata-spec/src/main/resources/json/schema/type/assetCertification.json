@@ -5,24 +5,18 @@
   "javaType": "org.openmetadata.schema.type.AssetCertification",
   "type": "object",
   "properties": {
-    "certification": {
-      "type": "object",
-      "properties": {
-        "tagLabel": {
-          "$ref": "./tagLabel.json"
-        },
-        "appliedDate": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The date when the certification was applied."
-        },
-        "expiryDate": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The date when the certification expires."
-        }
-      },
-      "required": ["tagLabel", "appliedDate", "expiryDate"]
+    "tagLabel": {
+      "$ref": "./tagLabel.json"
+    },
+    "appliedDate": {
+      "description": "The date when the certification was applied.",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "expiryDate": {
+      "description": "The date when the certification expires.",
+      "$ref": "basic.json#/definitions/timestamp"
     }
-  }
+  },
+  "required": ["tagLabel", "appliedDate", "expiryDate"],
+  "additionalProperties": false
 }

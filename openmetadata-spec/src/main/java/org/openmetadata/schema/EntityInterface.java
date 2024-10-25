@@ -107,6 +107,7 @@ public interface EntityInterface {
   default LifeCycle getLifeCycle() {
     return null;
   }
+
   default AssetCertification getCertification() {
     return null;
   }
