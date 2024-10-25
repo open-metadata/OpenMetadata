@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 import { cloneDeep, isArray, isUndefined, omit, omitBy } from 'lodash';
-import { StatusByDimension } from '../../components/DataQuality/ChartWidgets/StatusByDimensionWidget/StatusByDimensionWidget.interface';
+import { ReactComponent as TestCaseIcon } from '../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
+import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
+import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
+import { ReactComponent as IntegrityIcon } from '../../assets/svg/ic-integrity.svg';
+import { ReactComponent as SqlIcon } from '../../assets/svg/ic-sql.svg';
+import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
+import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
+import { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import {
   DEFAULT_DIMENSIONS_DATA,
@@ -20,6 +28,7 @@ import {
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
+  DataQualityDimensions,
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
@@ -108,8 +117,8 @@ export const getTestCaseFiltersValue = (
 
 export const transformToTestCaseStatusByDimension = (
   inputData: DataQualityReport['data']
-): StatusByDimension[] => {
-  const result: { [key: string]: StatusByDimension } = cloneDeep(
+): StatusData[] => {
+  const result: { [key: string]: StatusData } = cloneDeep(
     DEFAULT_DIMENSIONS_DATA
   );
 
@@ -208,4 +217,25 @@ export const buildMustEsFilterForOwner = (
         : 'owners.fullyQualifiedName']: ownerFqn,
     },
   };
+};
+
+export const getDimensionIcon = (dimension: DataQualityDimensions) => {
+  switch (dimension) {
+    case DataQualityDimensions.Accuracy:
+      return AccuracyIcon;
+    case DataQualityDimensions.Consistency:
+      return ConsistencyIcon;
+    case DataQualityDimensions.Completeness:
+      return CompletenessIcon;
+    case DataQualityDimensions.Integrity:
+      return IntegrityIcon;
+    case DataQualityDimensions.SQL:
+      return SqlIcon;
+    case DataQualityDimensions.Uniqueness:
+      return UniquenessIcon;
+    case DataQualityDimensions.Validity:
+      return ValidityIcon;
+    default:
+      return TestCaseIcon;
+  }
 };

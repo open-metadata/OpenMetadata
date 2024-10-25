@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { StatusByDimension } from '../../components/DataQuality/ChartWidgets/StatusByDimensionWidget/StatusByDimensionWidget.interface';
+
+import { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import {
@@ -575,7 +576,7 @@ describe('DataQualityUtils', () => {
 
     it('should return empty array for empty input', () => {
       const inputData: DataQualityReport['data'] = [];
-      const expectedOutput: StatusByDimension[] = [];
+      const expectedOutput: StatusData[] = [];
 
       expect(transformToTestCaseStatusByDimension(inputData)).toEqual(
         expectedOutput

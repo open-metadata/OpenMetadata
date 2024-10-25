@@ -14,7 +14,7 @@
 import { t } from 'i18next';
 import { capitalize, map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
-import { StatusByDimension } from '../components/DataQuality/ChartWidgets/StatusByDimensionWidget/StatusByDimensionWidget.interface';
+import { StatusData } from '../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { CSMode } from '../enums/codemirror.enum';
 import { SORT_ORDER } from '../enums/common.enum';
@@ -347,7 +347,7 @@ export const DEFAULT_DIMENSIONS_DATA = Object.values(
       total: 0,
     },
   };
-}, {} as { [key: string]: StatusByDimension });
+}, {} as { [key: string]: StatusData });
 
 export const codeMirrorOption = {
   tabSize: JSON_TAB_SIZE,

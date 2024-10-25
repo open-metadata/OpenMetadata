@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export type StatusByDimension = {
+export type StatusData = {
   title: string;
   success: number;
   failed: number;
@@ -18,7 +18,7 @@ export type StatusByDimension = {
   total: number;
 };
 
-export interface StatusByDimensionWidgetProps {
-  statusByDimension: StatusByDimension;
-  isLoading: boolean;
+export interface StatusCardWidgetProps {
+  statusData: StatusData;
+  icon: SvgComponent;
 }
