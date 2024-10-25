@@ -1,7 +1,10 @@
+import os.path
+import shutil
 import sys
 import time
 from os import path
 
+from dbt.cli.main import dbtRunner
 import pytest
 
 from metadata.generated.schema.entity.data.table import Table
@@ -187,6 +190,71 @@ def long_cell_query_file(
     }
 
 
+@pytest.fixture(scope="session")
+def dbt_project_dir(tmp_path_factory):
+    project_dir = tmp_path_factory.mktemp("dbt")
+    shutil.copytree(
+        os.path.join(os.path.dirname(__file__), "data", "dbt"),
+        project_dir,
+        dirs_exist_ok=True,
+    )
+    return str(project_dir)
+
+
+@pytest.fixture(scope="module")
+def run_dbt_workflow(postgres_container, dbt_project_dir):
+    def run():
+        with open(
+            os.path.join(dbt_project_dir, "profiles_template.yml"), "r"
+        ) as rf, open(os.path.join(dbt_project_dir, "profiles.yml"), "w") as wf:
+            wf.write(
+                rf.read().format(
+                    port=postgres_container.get_exposed_port(postgres_container.port),
+                    user=postgres_container.username,
+                    password=postgres_container.password,
+                    host="localhost",
+                )
+            )
+
+        dbt = dbtRunner()
+        cmds = [
+            [
+                "deps",
+                "--project-dir",
+                dbt_project_dir,
+                "--profiles-dir",
+                dbt_project_dir,
+            ],
+            [
+                "seed",
+                "--project-dir",
+                dbt_project_dir,
+                "--profiles-dir",
+                dbt_project_dir,
+            ],
+            [
+                "run",
+                "--project-dir",
+                dbt_project_dir,
+                "--profiles-dir",
+                dbt_project_dir,
+            ],
+            [
+                "docs",
+                "generate",
+                "--project-dir",
+                dbt_project_dir,
+                "--profiles-dir",
+                dbt_project_dir,
+            ],
+        ]
+        for args in cmds:
+            result = dbt.invoke(args)
+            assert result.success, "dbt command failed: '{}'".format(" ".join(args))
+
+    return run
+
+
 def test_log_file_with_long_cell(
     patch_passwords_for_db_services,
     run_workflow,
@@ -215,3 +283,69 @@ def test_log_file_with_long_cell(
         str(payment_table.id.root), str(rental_table.id.root)
     )
     assert edge is not None
+
+
+@pytest.fixture(scope="module")
+def dbt_lineage_configuration(
+    db_service, metadata, workflow_config, sink_config, dbt_project_dir
+):
+    return {
+        "source": {
+            "serviceName": db_service.fullyQualifiedName.root,
+            "sourceConfig": {
+                "config": {
+                    "dbtConfigSource": {
+                        "dbtCatalogFilePath": os.path.join(
+                            dbt_project_dir, "target", "catalog.json"
+                        ),
+                        "dbtConfigType": "local",
+                        "dbtManifestFilePath": os.path.join(
+                            dbt_project_dir, "target", "manifest.json"
+                        ),
+                        "dbtRunResultsFilePath": os.path.join(
+                            dbt_project_dir, "target", "run_results.json"
+                        ),
+                    },
+                    "type": "DBT",
+                }
+            },
+            "type": "dbt",
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }
+
+
+def replace_in_file(file_path: str, old: str, new: str):
+    with open(file_path, mode="r+") as f:
+        content = f.read()
+        f.seek(0)
+        f.write(content.replace(old, new))
+        f.truncate()
+
+
+def test_dbt_lineage(
+    patch_passwords_for_db_services,
+    run_workflow,
+    postgres_ingestion_config,
+    dbt_lineage_configuration,
+    metadata,
+    db_service,
+    run_dbt_workflow,
+    dbt_project_dir,
+):
+    # since query cache is stored in ES, we need to reindex to avoid having a stale cache
+    # TODO fix the server so that we dont need to run this
+    reindex_search(metadata, 120)
+    search_cache.clear()
+    run_dbt_workflow()
+    run_workflow(MetadataWorkflow, postgres_ingestion_config)
+    run_workflow(MetadataWorkflow, dbt_lineage_configuration)
+    # TODO assert lineage from stg_orders to orders
+    for file_name in ["orders.yml", "orders.sql"]:
+        file_path = os.path.join(dbt_project_dir, "models", "marts", file_name)
+        replace_in_file(file_path, "stg_orders", "stg_orders_backup")
+    run_dbt_workflow()
+    run_workflow(MetadataWorkflow, dbt_lineage_configuration)
+    # TODO assert lineage from stg_orders_backup to orders
+    # TODO assert no lineage from stg_orders to orders <- this fails!
