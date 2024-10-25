@@ -436,7 +436,9 @@ const UserListPageV1 = () => {
                   data-testid="add-user"
                   type="primary"
                   onClick={handleAddNewUser}>
-                  {t('label.add-entity', { entity: t('label.user') })}
+                  {t('label.add-entity', {
+                    entity: t(`label.${isAdminPage ? 'admin' : 'user'}`),
+                  })}
                 </Button>
               </LimitWrapper>
             )}
