@@ -40,6 +40,7 @@ import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_LIFE_CYCLE;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_RELATED_TERMS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -86,6 +87,7 @@ import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -98,6 +100,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -131,6 +134,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
@@ -251,6 +255,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final Fields putFields;
 
   protected boolean supportsSearch = false;
+  private final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
 
   protected EntityRepository(
       String collectionPath,
@@ -325,7 +330,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_LIFE_CYCLE);
       this.putFields.addField(allowedFields, FIELD_LIFE_CYCLE);
     }
+
+    Map<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> fieldSupportMap = Map.of(
+        FIELD_TAGS, Pair.of(supportsTags, this::fetchAndSetTags),
+        FIELD_OWNERS, Pair.of(supportsOwners, this::fetchAndSetOwners),
+        FIELD_DOMAIN, Pair.of(supportsDomain, this::fetchAndSetDomain),
+        FIELD_REVIEWERS, Pair.of(supportsReviewers, this::fetchAndSetReviewers),
+        FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension)
+    );
+
+    for (Map.Entry<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> entry : fieldSupportMap.entrySet()) {
+      String fieldName = entry.getKey();
+      boolean supportsField = entry.getValue().getLeft();
+      BiConsumer<List<T>, Fields> fetcher = entry.getValue().getRight();
+
+      if (supportsField) {
+        this.fieldFetchers.put(fieldName, fetcher);
+        this.patchFields.addField(allowedFields, fieldName);
+        this.putFields.addField(allowedFields, fieldName);
+      }
+    }
+
     Entity.registerEntity(entityClass, entityType, this);
+
   }
 
   /**
@@ -630,9 +657,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final List<T> listAll(Fields fields, ListFilter filter) {
-    // forward scrolling, if after == null then first page is being asked
-    List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "", "");
+  public final List<T> listAll(Fields fields, String parentFqn) {
+    List<String> jsons = listAllByParentFqn(parentFqn);
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
@@ -641,6 +667,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entities.add(entity);
     }
     return entities;
+  }
+
+  public List<String> listAllByParentFqn(String parentFqn) {
+    String fqnPrefixHash = FullyQualifiedName.buildHash(parentFqn);
+    String startHash = fqnPrefixHash + ".00000000000000000000000000000000";
+    String endHash = fqnPrefixHash + ".ffffffffffffffffffffffffffffffff";
+    return dao.listAll(startHash, endHash);
   }
 
   public ResultList<T> listAfter(
@@ -3362,6 +3395,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
         table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
     if (!validColumn) {
       throw new IllegalArgumentException("Invalid column name " + columnName);
+    }
+  }
+
+  private void fetchAndSetFields(List<T> entities, Fields fields) {
+    for (String field : fields) {
+      BiConsumer<List<T>, Fields> fetcher = fieldFetchers.get(field);
+      if (fetcher != null) {
+        fetcher.accept(entities, fields);
+      }
+    }
+  }
+
+  private void fetchAndSetOwners(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_OWNERS)) {
+      return;
+    }
+
+    List<UUID> entityIds = entities.stream()
+        .map(EntityInterface::getId)
+        .collect(Collectors.toList());
+
+    Map<UUID, List<EntityReference>> ownersMap = batchFetchOwners(entityIds);
+
+    for (T entity : entities) {
+      entity.setOwners(ownersMap.getOrDefault(entity.getId(), Collections.emptyList()));
     }
   }
 }
