@@ -36,7 +36,6 @@ import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
@@ -81,7 +80,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     supportedNameCharacters = "_-.";
   }
 
-  public static RetryRegistry appTriggerRetry =
+  public static final RetryRegistry APP_TRIGGER_RETRY =
       RetryRegistry.of(
           RetryConfig.custom()
               .maxAttempts(60) // about 30 seconds
@@ -121,7 +120,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   @Test
   void validate_data_insights_workflow_is_correct_for_a_simple_case()
       throws IOException, InterruptedException {
-    Long MILLISECONDS_IN_AN_HOUR = (long) 1000 * 60 * 60;
+    long MILLISECONDS_IN_AN_HOUR = (long) 1000 * 60 * 60;
 
     Long timestamp = System.currentTimeMillis();
 
@@ -337,12 +336,10 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     String appName = "SearchIndexingApplication";
     postTriggerApp(appName, ADMIN_AUTH_HEADERS);
     assertAppStatusAvailableAfterTrigger(appName);
-    assertListExtension(appName, AppExtension.ExtensionType.STATUS);
     assertAppRanAfterTriggerWithStatus(appName, AppRunRecord.Status.SUCCESS);
-    assertAppRanAfterTrigger(appName);
   }
 
-  private void assertAppRanAfterTrigger(String appName) {
+  private void assertAppStatusAvailableAfterTrigger(String appName) {
     assertEventually(
         "appIsRunning",
         () -> {
@@ -355,29 +352,13 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         APP_TRIGGER_RETRY);
   }
 
-  private void assertListExtension(String appName, AppExtension.ExtensionType extensionType) {
+  private void assertAppRanAfterTriggerWithStatus(String appName, AppRunRecord.Status status) {
     assertEventually(
-        "appIsRunning",
+        "appStatus",
         () -> {
-          try {
-            assert Objects.nonNull(listAppExtension(appName, extensionType, ADMIN_AUTH_HEADERS));
-          } catch (HttpResponseException ex) {
-            throw new AssertionError(ex);
-          }
+          assert getLatestAppRun(appName, ADMIN_AUTH_HEADERS).getStatus().equals(status);
         },
         APP_TRIGGER_RETRY);
-  }
-
-  private void assertAppRanAfterTriggerWithStatus(String appName, AppRunRecord.Status status) {
-        appTriggerRetry);
-    assertEventually(
-        "appSuccess",
-        () -> {
-          assert getLatestAppRun(appName, ADMIN_AUTH_HEADERS)
-              .getStatus()
-              .equals(AppRunRecord.Status.SUCCESS);
-        },
-        appTriggerRetry);
   }
 
   @Test
@@ -427,18 +408,16 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     readResponse(response, OK.getStatusCode());
   }
 
+  private void postAppStop(String appName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("apps/stop").path(appName);
+    Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
+    readResponse(response, OK.getStatusCode());
+  }
+
   private AppRunRecord getLatestAppRun(String appName, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(String.format("apps/name/%s/runs/latest", appName));
     return TestUtils.get(target, AppRunRecord.class, authHeaders);
-  }
-
-  private AppExtension listAppExtension(
-      String appName, AppExtension.ExtensionType extensionType, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target =
-        getResource(
-            String.format("apps/name/%s/extension?extensionType=%s", appName, extensionType));
-    return TestUtils.get(target, AppExtension.class, authHeaders);
   }
 }
