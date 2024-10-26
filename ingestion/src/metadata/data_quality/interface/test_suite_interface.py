@@ -46,8 +46,8 @@ class TestSuiteInterface(ABC):
     @abstractmethod
     def __init__(
         self,
-        ometa_client: OpenMetadata,
         service_connection_config: DatabaseConnection,
+        ometa_client: OpenMetadata,
         table_entity: Table,
     ):
         """Required attribute for the interface"""

@@ -48,3 +48,9 @@ ALTER TABLE apps_extension_time_series ADD COLUMN appName VARCHAR(256) GENERATED
 UPDATE dbservice_entity
 SET json = JSON_SET(json, '$.connection.config.supportsDataDiff', 'true')
 WHERE serviceType IN ('Athena','BigQuery','Mssql','Mysql','Oracle','Postgres','Redshift','SapHana','Snowflake','Trino');
+
+
+-- Add supportsSystemProfile for Snowflake, Redshift, and BigQuery
+update dbservice_entity
+set json = JSON_SET(json, '$.connection.config.supportsSystemProfile', true)
+where serviceType in ('Snowflake', 'Redshift', 'BigQuery');

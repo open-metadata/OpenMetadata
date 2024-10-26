@@ -1233,6 +1233,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .copy(new Table(), create, user)
                 .withColumns(create.getColumns())
                 .withSourceUrl(create.getSourceUrl())
+                .withLocationPath(create.getLocationPath())
                 .withTableConstraints(create.getTableConstraints())
                 .withTablePartition(create.getTablePartition())
                 .withTableType(create.getTableType())
