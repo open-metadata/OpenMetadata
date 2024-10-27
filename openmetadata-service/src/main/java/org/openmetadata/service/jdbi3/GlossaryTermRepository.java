@@ -869,9 +869,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     for (CollectionDAO.EntityRelationshipObject rec : parentRecords) {
       parentMap.put(
           UUID.fromString(rec.getToId()),
-          new EntityReference()
-              .withId(UUID.fromString(rec.getFromId()))
-              .withType(rec.getFromEntity()));
+          Entity.getEntityReferenceById(
+              rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL));
     }
 
     // Set parent references on GlossaryTerms
@@ -921,9 +920,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     for (CollectionDAO.EntityRelationshipObject rec : allRecords) {
       glossaryMap.put(
           UUID.fromString(rec.getToId()),
-          new EntityReference()
-              .withId(UUID.fromString(rec.getFromId()))
-              .withType(rec.getFromEntity()));
+          Entity.getEntityReferenceById(
+              rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL));
     }
 
     for (GlossaryTerm term : terms) {
