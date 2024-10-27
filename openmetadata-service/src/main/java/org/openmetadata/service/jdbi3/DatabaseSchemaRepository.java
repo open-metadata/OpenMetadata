@@ -196,8 +196,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public String exportToCsv(String name, String user) throws IOException {
     DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
     TableRepository repository = (TableRepository) Entity.getEntityRepository(TABLE);
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("databaseSchema", name);
-    List<Table> tables = repository.listAll(repository.getFields("owners,tags,domain"), filter);
+    List<Table> tables =
+        repository.listAllForCSV(
+            repository.getFields("owners,tags,domain"), schema.getFullyQualifiedName());
     tables.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseSchemaCsv(schema, user).exportCsv(tables);
   }

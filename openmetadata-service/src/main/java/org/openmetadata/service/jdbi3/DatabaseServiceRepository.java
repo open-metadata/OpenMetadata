@@ -66,9 +66,9 @@ public class DatabaseServiceRepository
     DatabaseService databaseService =
         getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate database name
     DatabaseRepository repository = (DatabaseRepository) Entity.getEntityRepository(DATABASE);
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("service", name);
     List<Database> databases =
-        repository.listAll(repository.getFields("owners,tags,domain"), filter);
+        repository.listAllForCSV(
+            repository.getFields("owners,tags,domain"), databaseService.getFullyQualifiedName());
     databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseServiceCsv(databaseService, user).exportCsv(databases);
   }
