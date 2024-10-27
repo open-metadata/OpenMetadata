@@ -155,10 +155,10 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
     GlossaryTermRepository repository =
         (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", name);
     List<GlossaryTerm> terms =
-        repository.listAll(
-            repository.getFields("owners,reviewers,tags,relatedTerms,synonyms,extension"), filter);
+        repository.listAllForCSV(
+            repository.getFields("owners,reviewers,tags,relatedTerms,synonyms,extension,parent"),
+            glossary.getFullyQualifiedName());
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms);
   }
