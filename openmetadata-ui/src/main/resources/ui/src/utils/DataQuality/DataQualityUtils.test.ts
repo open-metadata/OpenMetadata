@@ -308,7 +308,7 @@ describe('DataQualityUtils', () => {
       const ownerFqn = 'owner1';
       const expectedFilter = {
         term: {
-          'owners.fullyQualifiedName': ownerFqn,
+          'owners.name': ownerFqn,
         },
       };
 
@@ -319,7 +319,7 @@ describe('DataQualityUtils', () => {
       const ownerFqn = 'owner2';
       const expectedFilter = {
         term: {
-          'testCase.owners.fullyQualifiedName': ownerFqn,
+          'testCase.owners.name': ownerFqn,
         },
       };
 

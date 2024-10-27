@@ -212,9 +212,7 @@ export const buildMustEsFilterForOwner = (
 ) => {
   return {
     term: {
-      [isTestCaseResult
-        ? 'testCase.owners.fullyQualifiedName'
-        : 'owners.fullyQualifiedName']: ownerFqn,
+      [isTestCaseResult ? 'testCase.owners.name' : 'owners.name']: ownerFqn,
     },
   };
 };

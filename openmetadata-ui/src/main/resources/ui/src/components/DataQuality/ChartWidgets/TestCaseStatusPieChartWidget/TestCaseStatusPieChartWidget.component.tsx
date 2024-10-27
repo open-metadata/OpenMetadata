@@ -99,7 +99,9 @@ const TestCaseStatusPieChartWidget = ({
   );
 
   return (
-    <Card loading={isTestCaseSummaryLoading}>
+    <Card
+      data-testid="test-case-status-pie-chart-widget"
+      loading={isTestCaseSummaryLoading}>
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <TestCaseIcon color={PRIMARY_COLOR} height={20} width={20} />

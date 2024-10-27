@@ -31,14 +31,16 @@ export const formatDateTime = (date?: number) => {
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
-export const formatDate = (date?: number) => {
+export const formatDate = (date?: number, supportUTC = false) => {
   if (isNil(date)) {
     return '';
   }
 
   const dateTime = DateTime.fromMillis(date, { locale: 'en-US' });
 
-  return dateTime.setLocale('en-US').toLocaleString(DateTime.DATE_MED);
+  return supportUTC
+    ? dateTime.toUTC().toLocaleString(DateTime.DATE_MED)
+    : dateTime.setLocale('en-US').toLocaleString(DateTime.DATE_MED);
 };
 
 /**
@@ -249,3 +251,9 @@ export const convertMillisecondsToHumanReadableFormat = (
 
   return result.join(' ');
 };
+
+export const getStartOfDayInMillis = (timestamp: number) =>
+  DateTime.fromMillis(timestamp).toUTC().startOf('day').toMillis();
+
+export const getEndOfDayInMillis = (timestamp: number) =>
+  DateTime.fromMillis(timestamp).toUTC().endOf('day').toMillis();
