@@ -44,12 +44,14 @@ const TableConstraintsModal = ({
   const [searchValue, setSearchValue] = useState<string>('');
   const [relatedColumns, setRelatedColumns] = useState<SelectOptions[]>([]);
 
-  const tableColumnNameOptions = useMemo(() => {
-    return tableDetails?.columns.map((item) => ({
-      label: item.name,
-      value: item.name,
-    }));
-  }, [tableDetails?.columns]);
+  const tableColumnNameOptions = useMemo(
+    () =>
+      tableDetails?.columns.map((item) => ({
+        label: item.name,
+        value: item.name,
+      })) ?? [],
+    [tableDetails?.columns]
+  );
 
   const getSearchResults = async (value: string) => {
     setIsRelatedColumnLoading(true);
@@ -116,12 +118,14 @@ const TableConstraintsModal = ({
   };
 
   useEffect(() => {
-    const newRefs = !isEmpty(constraint)
-      ? constraint?.map((item) => ({
-          columns: item.columns?.[0],
-          relationshipType: item.relationshipType,
-          referredColumns: item.referredColumns?.[0],
-        }))
+    const filteredConstraints = !isEmpty(constraint)
+      ? constraint
+          ?.filter((item) => item.constraintType !== ConstraintType.PrimaryKey)
+          .map((item) => ({
+            columns: item.columns?.[0],
+            relationshipType: item.relationshipType,
+            referredColumns: item.referredColumns?.[0],
+          }))
       : [
           {
             columns: '',
@@ -129,8 +133,9 @@ const TableConstraintsModal = ({
             referredColumns: '',
           },
         ];
-    form.setFieldValue('constraint', newRefs);
-  }, []);
+
+    form.setFieldValue('constraint', filteredConstraints);
+  }, [constraint]);
 
   useEffect(() => {
     getSearchResults(searchValue);
@@ -138,8 +143,10 @@ const TableConstraintsModal = ({
 
   return (
     <Modal
+      centered
       destroyOnClose
       open
+      closable={false}
       data-testid="table-constraint-modal"
       footer={[
         <Button
@@ -158,7 +165,10 @@ const TableConstraintsModal = ({
           {t('label.save')}
         </Button>,
       ]}
-      title={t('label.constraint')}
+      maskClosable={false}
+      title={t(`label.${isEmpty(constraint) ? 'add' : 'update'}-entity`, {
+        entity: t('label.table-constraint-plural'),
+      })}
       width={600}
       onCancel={onClose}>
       <Form
@@ -190,7 +200,7 @@ const TableConstraintsModal = ({
                         },
                       ]}>
                       <Select
-                        data-testid="column-type-select"
+                        data-testid={`${key}-column-type-select`}
                         options={tableColumnNameOptions}
                       />
                     </Form.Item>
@@ -213,7 +223,7 @@ const TableConstraintsModal = ({
                         },
                       ]}>
                       <Select
-                        data-testid="relationship-type-select"
+                        data-testid={`${key}-relationship-type-select`}
                         options={RELATIONSHIP_TYPE_OPTION}
                       />
                     </Form.Item>
@@ -234,7 +244,7 @@ const TableConstraintsModal = ({
                       ]}>
                       <Select
                         showSearch
-                        data-testid="related-column-select"
+                        data-testid={`${key}-related-column-select`}
                         loading={isRelatedColumnLoading}
                         options={relatedColumns}
                         onClick={(e) => e.stopPropagation()}
@@ -245,6 +255,7 @@ const TableConstraintsModal = ({
 
                   <Col span={1}>
                     <Button
+                      data-testid={`${key}-delete-constraint-button`}
                       icon={
                         <Icon
                           className="align-middle"
@@ -262,7 +273,7 @@ const TableConstraintsModal = ({
               <Form.Item>
                 <Button
                   className="text-primary d-flex items-center"
-                  data-testid="add-references-button"
+                  data-testid="add-constraint-button"
                   icon={<PlusIcon className="anticon" />}
                   size="small"
                   onClick={() => add()}>

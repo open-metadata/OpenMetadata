@@ -605,7 +605,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       isEdit,
       showDeletedTables,
       tableDataLoading,
-      databaseSchema,
       editCustomAttributePermission,
       editTagsPermission,
       decodedDatabaseSchemaFQN,

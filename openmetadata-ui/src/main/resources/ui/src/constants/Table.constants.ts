@@ -16,6 +16,7 @@ import {
   ConstraintType,
   RelationshipType,
 } from '../generated/entity/data/table';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const TABLE_SCROLL_VALUE = { x: 1200 };
 
@@ -26,38 +27,38 @@ export const SUPPORTED_TABLE_CONSTRAINTS = [
 
 export const COLUMN_CONSTRAINT_TYPE_OPTIONS = [
   {
-    label: 'Primary Key',
+    label: i18n.t('label.primary-key'),
     value: Constraint.PrimaryKey,
   },
   {
-    label: 'Not Null',
+    label: i18n.t('label.not-null'),
     value: Constraint.NotNull,
   },
   {
-    label: 'Null',
+    label: i18n.t('label.null'),
     value: Constraint.Null,
   },
   {
-    label: 'Unique',
+    label: i18n.t('label.unique'),
     value: Constraint.Unique,
   },
 ];
 
 export const RELATIONSHIP_TYPE_OPTION = [
   {
-    label: 'One-to-One',
+    label: i18n.t('label.one-to-one'),
     value: RelationshipType.OneToOne,
   },
   {
-    label: 'One-to-Many',
+    label: i18n.t('label.one-to-many'),
     value: RelationshipType.OneToMany,
   },
   {
-    label: 'Many-to-One',
+    label: i18n.t('label.many-to-one'),
     value: RelationshipType.ManyToOne,
   },
   {
-    label: 'Many-to-Many',
+    label: i18n.t('label.many-to-many'),
     value: RelationshipType.ManyToMany,
   },
 ];

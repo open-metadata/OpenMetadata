@@ -12,7 +12,7 @@
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { isEmpty, map } from 'lodash';
-import React, { FC, Fragment, useMemo } from 'react';
+import React, { FC, Fragment, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -42,7 +42,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
   onUpdate,
 }) => {
   const { t } = useTranslation();
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const supportedConstraints = useMemo(
     () =>
@@ -54,8 +54,14 @@ const TableConstraints: FC<TableConstraintsProps> = ({
     [tableDetails?.tableConstraints]
   );
 
-  const handleOpenEditConstraintModal = () => setIsModalOpen(true);
-  const handleCloseEditConstraintModal = () => setIsModalOpen(false);
+  const handleOpenEditConstraintModal = useCallback(
+    () => setIsModalOpen(true),
+    []
+  );
+  const handleCloseEditConstraintModal = useCallback(
+    () => setIsModalOpen(false),
+    []
+  );
 
   const handleSubmit = async (values: Table['tableConstraints']) => {
     await onUpdate(values);
@@ -74,7 +80,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
             <Tooltip
               placement="right"
               title={t('label.edit-entity', {
-                entity: t('label.column'),
+                entity: t('label.table-constraint-plural'),
               })}>
               <Button
                 className="cursor-pointer hover-cell-icon w-fit-content"
