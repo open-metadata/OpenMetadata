@@ -124,7 +124,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     DatabaseSchemaRepository repository =
         (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
     List<DatabaseSchema> schemas =
-        repository.listAll(repository.getFields("owners,tags,domain"), database.getFullyQualifiedName());
+        repository.listAllForCSV(
+            repository.getFields("owners,tags,domain"), database.getFullyQualifiedName());
     schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseCsv(database, user).exportCsv(schemas);
   }

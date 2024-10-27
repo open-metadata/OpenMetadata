@@ -104,8 +104,7 @@
     },
     "owners": {
       "description": "Owners of this glossary term.",
-      "$ref": "../../type/entityReferenceList.json",
-      "javaAnnotation": "@SupportedField(name = \"owners\", fetchMethod = \"fetchAndSetOwners\")"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "usageCount": {
       "description": "Count of how many times this and it's children glossary terms are used as labels.",
@@ -117,7 +116,6 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "javaAnnotation": "@SupportedField(name = \"tags\", fetchMethod = \"fetchAndSetTags\")",
       "default": null
     },
     "changeDescription": {

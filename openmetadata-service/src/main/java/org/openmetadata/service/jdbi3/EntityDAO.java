@@ -315,8 +315,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("afterName") String afterName,
       @Bind("afterId") String after);
 
-  @SqlQuery(
-      "SELECT json FROM <table> where <nameHashColumn> BETWEEN :startHash AND :endHash ")
+  @SqlQuery("SELECT json FROM <table> where <nameHashColumn> BETWEEN :startHash AND :endHash ")
   List<String> listAll(
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
@@ -468,8 +467,7 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<String> listAll(String startHash, String endHash) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
-    return listAll(
-        getTableName(), getNameHashColumn(), startHash, endHash);
+    return listAll(getTableName(), getNameHashColumn(), startHash, endHash);
   }
 
   default List<String> listAfterWithOffset(int limit, int offset) {
