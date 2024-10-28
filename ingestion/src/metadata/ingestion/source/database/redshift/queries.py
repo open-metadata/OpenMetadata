@@ -328,7 +328,7 @@ Q_HISTORY as (
         pid as query_session_id,
         starttime as query_start_time,
         endtime as query_end_time,
-        userid as query_user_name
+        b.usename as query_user_name
     from STL_QUERY q
     join pg_catalog.pg_user b
       on b.usesysid = q.userid
@@ -339,16 +339,16 @@ Q_HISTORY as (
       and userid <> 1
 )
 select
-    sp.procedure_text,
+    trim(sp.procedure_text) procedure_text,
     sp.procedure_start_time,
     sp.procedure_end_time,
-    q.query_text,
+    trim(q.query_text) query_text,
     q.query_type,
-    q.query_database_name,
+    trim(q.query_database_name) query_database_name,
     null as query_schema_name,
     q.query_start_time,
     q.query_end_time,
-    q.query_user_name
+    trim(q.query_user_name) query_user_name
 from SP_HISTORY sp
   join Q_HISTORY q
     on sp.procedure_session_id = q.query_session_id

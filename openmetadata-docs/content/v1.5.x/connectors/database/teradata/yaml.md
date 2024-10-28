@@ -7,8 +7,8 @@ slug: /connectors/database/teradata/yaml
 name="Teradata"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
-unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Lineage", "Column-level Lineage", "dbt"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "dbt"]
 / %}
 
 In this section, we provide guides and references to use the Teradata connector.
