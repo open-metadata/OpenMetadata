@@ -14,6 +14,9 @@ Test Bigquery connector with CLI
 """
 from typing import List
 
+from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
+from metadata.generated.schema.type.basic import Timestamp
+
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 
@@ -33,8 +36,8 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     insert_data_queries: List[str] = [
-        "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES (1,'XBOX');",
-        "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES (2,'PS');",
+        "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES (1,'XBOX'), (2,'PS');",
+        "UPDATE `open-metadata-beta.exclude_me`.orders SET order_name = 'NINTENDO' WHERE id = 2",
     ]
 
     drop_table_query: str = """
@@ -125,4 +128,23 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             """
             UPDATE `open-metadata-beta.exclude_me`.orders SET order_name = 'NINTENDO' WHERE id = 2
             """,
+        ]
+
+    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+        return [
+            (
+                "local_bigquery.open-metadata-beta.exclude_me.orders",
+                [
+                    SystemProfile(
+                        timestamp=Timestamp(root=0),
+                        operation=DmlOperationType.UPDATE,
+                        rowsAffected=1,
+                    ),
+                    SystemProfile(
+                        timestamp=Timestamp(root=0),
+                        operation=DmlOperationType.INSERT,
+                        rowsAffected=2,
+                    ),
+                ],
+            )
         ]

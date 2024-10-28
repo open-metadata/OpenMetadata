@@ -101,6 +101,9 @@
       "href": {
         "type": "text"
       },
+      "schemaDefinition": {
+        "type": "text"
+      },
       "sourceUrl": {
         "type": "keyword"
       },
@@ -582,6 +585,9 @@
         }
       },
       "lineage": {
+        "type" : "object"
+      },
+      "entityRelationship": {
         "type" : "object"
       },
       "serviceType": {

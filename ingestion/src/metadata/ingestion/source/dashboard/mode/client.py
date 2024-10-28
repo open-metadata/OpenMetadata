@@ -197,9 +197,8 @@ class ModeApiClient:
         """
         try:
             response = self.client.get(f"/{workspace_name}")
-            return response.json()
+            return response
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error testing workspace connection: {exc}")
-
-        return None
+            raise exc
