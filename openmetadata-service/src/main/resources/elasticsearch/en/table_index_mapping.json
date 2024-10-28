@@ -146,7 +146,8 @@
           "tags": {
             "properties": {
               "tagFQN": {
-                "type": "keyword"
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
               },
               "labelType": {
                 "type": "keyword"
