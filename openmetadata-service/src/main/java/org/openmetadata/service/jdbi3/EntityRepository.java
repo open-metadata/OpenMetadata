@@ -255,7 +255,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected boolean supportsSearch = false;
   @Getter protected boolean parent = false;
   protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
-  @Getter protected boolean parent = false;
 
   protected EntityRepository(
       String collectionPath,

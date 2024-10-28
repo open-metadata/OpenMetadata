@@ -270,6 +270,7 @@ public final class Entity {
             DATABASE_SCHEMA,
             CLASSIFICATION,
             GLOSSARY,
+            DOMAIN,
             TEAM));
   }
 
