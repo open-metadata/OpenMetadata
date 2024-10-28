@@ -62,6 +62,7 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
                 "testCaseResult",
                 "testDefinition")); // remove testCase fields not needed
     esDoc.put("testCase", testCaseMap);
+    esDoc.put("@timestamp", testCaseResult.getTimestamp());
     esDoc.put("testDefinition", JsonUtils.getMap(testDefinition));
     setParentRelationships(testCase, esDoc);
     return esDoc;

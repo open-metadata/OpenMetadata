@@ -234,6 +234,7 @@ const KPIList = () => {
       <Col span={24}>
         <Table
           bordered
+          className="kpi-table"
           columns={columns}
           data-testid="kpi-table"
           dataSource={kpiList}

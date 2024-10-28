@@ -12,8 +12,6 @@
  */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 
-import { ToolbarEmoji } from '@windmillcode/quill-emoji';
-import '@windmillcode/quill-emoji/quill-emoji.css';
 import classNames from 'classnames';
 import { debounce, isNil } from 'lodash';
 import { Parchment } from 'quill';
@@ -31,7 +29,8 @@ import React, {
 } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { useTranslation } from 'react-i18next';
-import ReactQuill, { Quill } from 'react-quill';
+import ReactQuill, { Quill } from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { BORDER_COLOR } from '../../../constants/constants';
 import {
   MENTION_ALLOWED_CHARS,
@@ -55,7 +54,6 @@ import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
-Quill.register('modules/emoji-toolbar', ToolbarEmoji);
 Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
 const Delta = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

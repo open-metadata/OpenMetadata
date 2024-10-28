@@ -1390,3 +1390,15 @@ export const getPaginatedChildMap = (
 
   return { nodes, edges };
 };
+
+export const getColumnFunctionValue = (
+  columns: ColumnLineage[],
+  sourceFqn: string,
+  targetFqn: string
+) => {
+  const column = columns.find(
+    (col) => col.toColumn === targetFqn && col.fromColumns?.includes(sourceFqn)
+  );
+
+  return column?.function;
+};

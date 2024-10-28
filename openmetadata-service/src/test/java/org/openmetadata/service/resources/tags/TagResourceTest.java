@@ -32,6 +32,8 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,10 +52,13 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
@@ -61,6 +66,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.tags.TagResource.TagList;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -174,7 +180,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   }
 
   @Test
-  void get_TagsWithPagination_200(TestInfo test) throws IOException {
+  void get_TagsWithPagination_200() throws IOException {
     // get Pagination results for same name entities
     boolean supportsSoftDelete = true;
     int numEntities = 5;
@@ -415,6 +421,93 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
       assertEquals(termCount + 1, getClassification(request.getClassification()).getTermCount());
     }
     return tag;
+  }
+
+  @Test
+  void test_disableClassification_disablesAllTags() throws IOException {
+    String classificationName = "TestClassification";
+    CreateClassification createClassification =
+        classificationResourceTest.createRequest(classificationName);
+    Classification classification =
+        classificationResourceTest.createAndCheckEntity(createClassification, ADMIN_AUTH_HEADERS);
+
+    String tagName1 = "Tag1";
+    String tagName2 = "Tag2";
+    CreateTag createTag1 = createRequest(tagName1).withClassification(classificationName);
+    CreateTag createTag2 = createRequest(tagName2).withClassification(classificationName);
+    Tag tag1 = createEntity(createTag1, ADMIN_AUTH_HEADERS);
+    Tag tag2 = createEntity(createTag2, ADMIN_AUTH_HEADERS);
+
+    Tag getTag1 = getEntity(tag1.getId(), ADMIN_AUTH_HEADERS);
+    Tag getTag2 = getEntity(tag2.getId(), ADMIN_AUTH_HEADERS);
+    assertFalse(getTag1.getDisabled(), "Tag1 should not be disabled");
+    assertFalse(getTag2.getDisabled(), "Tag2 should not be disabled");
+
+    String classificationJson = JsonUtils.pojoToJson(classification);
+    classification.setDisabled(true);
+    ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
+    fieldUpdated(change, "disabled", false, true);
+    classification =
+        classificationResourceTest.patchEntityAndCheck(
+            classification,
+            classificationJson,
+            ADMIN_AUTH_HEADERS,
+            UpdateType.MINOR_UPDATE,
+            change);
+
+    getTag1 = getEntity(tag1.getId(), ADMIN_AUTH_HEADERS);
+    getTag2 = getEntity(tag2.getId(), ADMIN_AUTH_HEADERS);
+    assertTrue(
+        getTag1.getDisabled(), "Tag1 should be disabled because its Classification is disabled");
+    assertTrue(
+        getTag2.getDisabled(), "Tag2 should be disabled because its Classification is disabled");
+
+    classificationJson = JsonUtils.pojoToJson(classification);
+    ObjectMapper mapper = new ObjectMapper();
+    classification.setDisabled(false);
+    classificationResourceTest.patchEntity(
+        classification.getId(),
+        JsonDiff.asJson(
+            mapper.readTree(classificationJson),
+            mapper.readTree(JsonUtils.pojoToJson(classification))),
+        ADMIN_AUTH_HEADERS);
+
+    getTag1 = getEntity(tag1.getId(), ADMIN_AUTH_HEADERS);
+    getTag2 = getEntity(tag2.getId(), ADMIN_AUTH_HEADERS);
+    assertFalse(
+        getTag1.getDisabled(), "Tag1 should not be disabled after Classification is enabled");
+    assertFalse(
+        getTag2.getDisabled(), "Tag2 should not be disabled after Classification is enabled");
+
+    CreateTag createTag = createRequest("SingleTag").withClassification(classificationName);
+    Tag getTag = createEntity(createTag, ADMIN_AUTH_HEADERS);
+
+    getTag = getEntity(getTag.getId(), ADMIN_AUTH_HEADERS);
+    assertFalse(getTag.getDisabled(), "Tag should not be disabled initially");
+
+    String tagJson = JsonUtils.pojoToJson(getTag);
+    ChangeDescription change1 = getChangeDescription(getTag, MINOR_UPDATE);
+    getTag.setDisabled(true);
+    fieldUpdated(change1, "disabled", false, true);
+    getTag =
+        patchEntityAndCheck(getTag, tagJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    getTag = getEntity(getTag.getId(), ADMIN_AUTH_HEADERS);
+    assertTrue(getTag.getDisabled(), "Tag should be disabled after update");
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName("TestTable")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("column1").withDataType(ColumnDataType.INT)))
+            .withTags(List.of(new TagLabel().withTagFQN(getTag.getFullyQualifiedName())));
+    TableResourceTest tableResourceTest = new TableResourceTest();
+
+    assertResponse(
+        () -> tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.disabledTag(
+            new TagLabel().withTagFQN(getTag.getFullyQualifiedName())));
   }
 
   public Tag createTag(

@@ -803,7 +803,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     String record = getRecord(1, GROUP, team.getName(), "", false, "", "invalidPolicy");
     String csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows = {
       resultsHeader,
       getFailedRecord(record, EntityCsv.entityNotFound(8, Entity.POLICY, "invalidPolicy"))
@@ -814,7 +814,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, team.getName(), "", false, "invalidRole", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -826,7 +826,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, team.getName(), "user:invalidOwner", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -838,7 +838,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, "invalidParent", "", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(4, TEAM, "invalidParent"))
@@ -849,7 +849,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, TEAM21.getName(), "", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,

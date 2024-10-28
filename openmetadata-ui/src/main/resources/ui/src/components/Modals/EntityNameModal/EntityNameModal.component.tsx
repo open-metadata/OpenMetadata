@@ -25,6 +25,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
   // re-name will update actual name of the entity, it will impact across application
   // By default its disabled, send allowRename true to get the functionality
   allowRename = false,
+  nameValidationRules = [],
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm<{ name: string; displayName: string }>();
@@ -83,6 +84,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
               pattern: ENTITY_NAME_REGEX,
               message: t('message.entity-name-validation'),
             },
+            ...nameValidationRules,
           ]}>
           <Input
             disabled={!allowRename}

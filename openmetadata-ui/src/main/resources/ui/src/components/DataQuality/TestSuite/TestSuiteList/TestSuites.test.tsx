@@ -129,7 +129,7 @@ describe('TestSuites component', () => {
       'label.name',
       'label.test-plural',
       'label.success %',
-      'label.owner',
+      'label.owner-plural',
     ]);
     expect(await screen.findByTestId('test-suite-table')).toBeInTheDocument();
     expect(

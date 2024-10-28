@@ -1,7 +1,7 @@
-# 1.5.5 Release 🎉
+# 1.5.8 Release 🎉
 
 {% note noteType="Tip" %}
-**Sep 25th, 2024**
+**Oct 24th, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,37 +10,27 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.5!
+Learn how to upgrade your OpenMetadata instance to 1.5.8!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.5-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.8-release).
 
 # What's Changed
 
-- Made the type optional in ES Response.
-- Added support for refresh tokens with multiple tabs open.
-- Resolved issue of overriding user info after login.
-- Updated the custom property entities data model, along with the data product and database schema icons.
-- Ensured Teams and Owner fields are correctly passed in the policy API call.
-- Enhanced PII logging information.
-- Addressed the paginate_es issue in OpenSearch.
-- Decrypted JWT internally for system health checks.
-- Implemented multithreading in View Lineage Processing.
-- Improved search relevancy.
-- Resolved issue with owners patch.
-- Fixed Snowflake data diff issue.
-- Updated Presidio Analyzer version and validated support for legal entities.
-- Added validations for Salesforce connection.
-- Allowed PII Processor to operate without storing sample data.
-- Added seconds to the human-readable format scale for test case graphs.
-- Added missing field in glossary term.
-- Excluded defaultPersona if not present in personas.
-- Resolved team export issue.
-- Updated Python lineage SDK to work with UUID and FQN models.
-- Fixed LDAP login issue.
-- Column sizing of data quality and pipeline widget ${CollateIconWithLinkMD}
-- Export with new line in description ${CollateIconWithLinkMD}
-- Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
+- Minor: Add location path to a table entity.
+- Minor: Do not include soft deleted assets in the Data Insight.
+- Minor: Supported total unique user count on the Team page.
+- Fix: Add Azure Token Base Authentication
+- Fix: Hive Meta store connection issue.
+- Fix: Issues in zh language search index mapping.
+- Fix: Live index is on test suite creation.
+- Fix: LocationPath Index.
+- Fix: Mode dashboard ingestion API call.
+- Fix: Mode test connection returns data in dict instead of JSON.
+- Fix: Quicksight lineage source.
+- Fix: Task deserialization in Airflow metadata ingestion.
+- Fix: Web analytic activity being reset.
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.4-release...1.5.5-release
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.7-release...1.5.8-release

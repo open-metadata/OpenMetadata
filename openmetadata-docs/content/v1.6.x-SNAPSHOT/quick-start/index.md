@@ -6,11 +6,26 @@ description: The easiest way to deploy and use OpenMetadata
 
 # Quickstart
 
-Just getting started? This is the right place 🚀
+**Getting Started with OpenMetadata**
 
-In this section we are going to guide you through the installation and first steps of using OpenMetadata.
+This section will guide you through the installation process and the initial steps for using OpenMetadata.
 
-We have two approaches to start exploring:
+Before you proceed with the installation, you have the option to explore OpenMetadata’s features using the sandbox environment. This allows you to try out its capabilities before setting it up.
+
+Get hands-on experience and discover how OpenMetadata can streamline your workflows by trying the sandbox environment today.
+
+{% inlineCalloutContainer %}
+
+{% inlineCallout
+    icon="open_in_new"
+    bold="Try the OpenMetadata Sandbox"
+    href="/quick-start/sandbox" %}
+Interact with a sample installation with 0 setup to explore our Discovery, Governance and Collaboration features.
+{% /inlineCallout %}
+
+{% /inlineCalloutContainer %}
+
+Additionally, you can explore the OpenMetadata by setting up one of the two approaches locally with your own customizations, allowing you to test and experiment with the features.
 
 {% inlineCalloutContainer %}
 
@@ -28,11 +43,15 @@ Get OpenMetadata up and running with docker in under 5 minutes!
 Get OpenMetadata up and running with kubernetes in under 5 minutes!
 {% /inlineCallout %}
 
-{% inlineCallout
-    icon="open_in_new"
-    bold="Try the OpenMetadata Sandbox"
-    href="/quick-start/sandbox" %}
-Interact with a sample installation with 0 setup to explore our Discovery, Governance and Collaboration features.
-{% /inlineCallout %}
-
 {% /inlineCalloutContainer %}
+
+Set up and explore OpenMetadata's core features, from basic configuration to advanced functionalities, for a seamless onboarding experience.
+
+{% tilesContainer %}
+{% tile
+    title="Getting Started"
+    description="Unlock metadata insights for informed business decisions."
+    link="/how-to-guides/getting-started"
+    icon="discovery"
+/%}
+{% /tilesContainer %}

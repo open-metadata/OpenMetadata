@@ -25,6 +25,7 @@ import {
   TestCaseStatus,
 } from '../generated/tests/testCase';
 import {
+  DataQualityDimensions,
   EntityType,
   TestDefinition,
   TestPlatform,
@@ -95,6 +96,21 @@ export type ListTestCaseResultsParams = Omit<
   endTs?: number;
 };
 
+export type ListTestCaseSearchResultsParams = {
+  q?: string;
+  startTimestamp?: number;
+  endTimestamp?: number;
+  offset?: number;
+  limit?: number;
+  fields?: string[];
+  testCaseStatus?: TestCaseStatus;
+  testCaseFQN?: string;
+  testSuiteId?: string;
+  latest?: boolean;
+  testCaseType?: TestCaseType;
+  dataQualityDimension?: DataQualityDimensions;
+};
+
 export type AddTestCaseToLogicalTestSuiteType = {
   testCaseIds: string[];
   testSuiteId: string;
@@ -129,6 +145,19 @@ export const getListTestCaseResults = async (
   params?: ListTestCaseResultsParams
 ) => {
   const url = `${testCaseUrl}/${getEncodedFqn(fqn)}/testCaseResult`;
+  const response = await APIClient.get<{
+    data: TestCaseResult[];
+    paging: Paging;
+  }>(url, {
+    params,
+  });
+
+  return response.data;
+};
+export const getListTestCaseSearchResults = async (
+  params?: ListTestCaseSearchResultsParams
+) => {
+  const url = `${testCaseUrl}/testCaseResults/search/list`;
   const response = await APIClient.get<{
     data: TestCaseResult[];
     paging: Paging;

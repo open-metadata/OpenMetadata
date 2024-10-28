@@ -159,7 +159,11 @@ const GlossaryTermsV1 = ({
 
   const onTermUpdate = async (data: GlossaryTerm | Glossary) => {
     await handleGlossaryTermUpdate(data as GlossaryTerm);
-    getEntityFeedCount();
+    // For name change, do not update the feed. It will be updated when the page is redirected to
+    // have the new value.
+    if (glossaryTerm.name === data.name) {
+      getEntityFeedCount();
+    }
   };
 
   const tabItems = useMemo(() => {

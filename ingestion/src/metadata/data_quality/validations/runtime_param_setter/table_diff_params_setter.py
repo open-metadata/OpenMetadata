@@ -13,8 +13,7 @@ from ast import literal_eval
 from typing import List, Optional
 from urllib.parse import urlparse
 
-from sqlalchemy.engine import Engine
-
+from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.models import (
     Column,
     TableDiffRuntimeParameters,
@@ -29,6 +28,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils import fqn
+from metadata.utils.collections import CaseInsensitiveList
 
 
 class TableDiffParamsSetter(RuntimeParameterSetter):
@@ -51,12 +51,29 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         }
 
     def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
-        service1: Engine = get_connection(self.service_connection_config)
+        service1_url = (
+            str(get_connection(self.service_connection_config).url)
+            if self.service_connection_config
+            else None
+        )
+        service1: DatabaseService = self.ometa_client.get_by_id(
+            DatabaseService, self.table_entity.service.id, nullable=False
+        )
         table2_fqn = self.get_parameter(test_case, "table2")
+        case_sensitive_columns: bool = utils.get_bool_test_case_param(
+            test_case.parameterValues, "caseSensitiveColumns"
+        )
+        if table2_fqn is None:
+            raise ValueError("table2 not set")
         table2: Table = self.ometa_client.get_by_name(
             Table, fqn=table2_fqn, nullable=False
         )
-        service2 = self.get_service2_url(service1, table2, test_case)
+        service2_url = (
+            service1_url if table2.service == self.table_entity.service else None
+        )
+        service2: DatabaseService = self.ometa_client.get_by_id(
+            DatabaseService, table2.service.id, nullable=False
+        )
         key_columns = self.get_key_columns(test_case)
         extra_columns = self.get_extra_columns(key_columns, test_case)
         return TableDiffRuntimeParameters(
@@ -65,17 +82,30 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
                     self.table_entity.fullyQualifiedName.root
                 ),
                 serviceUrl=self.get_data_diff_url(
-                    str(service1.url), self.table_entity.fullyQualifiedName.root
+                    service1,
+                    self.table_entity.fullyQualifiedName.root,
+                    override_url=service1_url,
                 ),
                 columns=self.filter_relevant_columns(
-                    self.table_entity.columns, key_columns, extra_columns
+                    self.table_entity.columns,
+                    key_columns,
+                    extra_columns,
+                    case_sensitive=case_sensitive_columns,
                 ),
             ),
             table2=TableParameter(
                 path=self.get_data_diff_table_path(table2_fqn),
-                serviceUrl=self.get_data_diff_url(service2, table2_fqn),
+                serviceUrl=self.get_data_diff_url(
+                    service2,
+                    table2_fqn,
+                    override_url=self.get_parameter(test_case, "service2Url")
+                    or service2_url,
+                ),
                 columns=self.filter_relevant_columns(
-                    table2.columns, key_columns, extra_columns
+                    table2.columns,
+                    key_columns,
+                    extra_columns,
+                    case_sensitive=case_sensitive_columns,
                 ),
             ),
             keyColumns=key_columns,
@@ -98,19 +128,6 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         where_clauses = [x for x in where_clauses if x]
         where_clauses = [f"({x})" for x in where_clauses]
         return " AND ".join(where_clauses)
-
-    def get_service2_url(self, service1, table2, test_case):
-        service2 = self.get_parameter(test_case, "service2Url")
-        if service2 is not None:
-            pass
-        elif self.table_entity.service.id == table2.service.id:
-            service2 = str(service1.url)
-        else:
-            table2_service = self.ometa_client.get_by_id(
-                DatabaseService, table2.service.id
-            )
-            service2 = str(get_connection(table2_service.connection.config).url)
-        return service2
 
     def get_extra_columns(
         self, key_columns: List[str], test_case
@@ -150,9 +167,17 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
 
     @staticmethod
     def filter_relevant_columns(
-        columns: List[Column], key_columns: List[str], extra_columns: List[str]
+        columns: List[Column],
+        key_columns: List[str],
+        extra_columns: List[str],
+        case_sensitive: bool,
     ) -> List[Column]:
-        return [c for c in columns if c.name.root in [*key_columns, *extra_columns]]
+        validated_columns = (
+            [*key_columns, *extra_columns]
+            if case_sensitive
+            else CaseInsensitiveList([*key_columns, *extra_columns])
+        )
+        return [c for c in columns if c.name.root in validated_columns]
 
     @staticmethod
     def get_parameter(test_case: TestCase, key: str, default=None):
@@ -161,14 +186,33 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         )
 
     @staticmethod
-    def get_data_diff_url(service_url: str, table_fqn) -> str:
-        url = urlparse(service_url)
+    def get_data_diff_url(
+        db_service: DatabaseService, table_fqn, override_url: Optional[str] = None
+    ) -> str:
+        """Get the url for the data diff service.
+
+        Args:
+            db_service (DatabaseService): The database service entity
+            table_fqn (str): The fully qualified name of the table
+            override_url (Optional[str], optional): Override the url. Defaults to None.
+
+        Returns:
+            str: The url for the data diff service
+        """
+        source_url = (
+            str(get_connection(db_service.connection.config).url)
+            if not override_url
+            else override_url
+        )
+        url = urlparse(source_url)
         # remove the driver name from the url because table-diff doesn't support it
         kwargs = {"scheme": url.scheme.split("+")[0]}
         service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
             table_fqn
         )
         # path needs to include the database AND schema in some of the connectors
+        if hasattr(db_service.connection.config, "supportsDatabase"):
+            kwargs["path"] = f"/{database}"
         if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake}:
             kwargs["path"] = f"/{database}/{schema}"
         return url._replace(**kwargs).geturl()

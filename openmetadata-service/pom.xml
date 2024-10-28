@@ -17,8 +17,9 @@
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.20.1</org.testcontainers.version>
     <awssdk.version>2.27.17</awssdk.version>
-    <azure-identity.version>1.13.2</azure-identity.version>
+    <azure-identity.version>1.14.0</azure-identity.version>
     <azure-kv.version>4.8.6</azure-kv.version>
+    <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
@@ -291,8 +292,17 @@
       <version>${azure-identity.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-identity-extensions</artifactId>
+      <version>${azure-identity-extensions.version}</version>
+  </dependency>
+    <dependency>
       <groupId>io.dropwizard.modules</groupId>
       <artifactId>dropwizard-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.erosb</groupId>
+      <artifactId>everit-json-schema</artifactId>
     </dependency>
 
     <!-- Dependencies for cloudwatch monitoring -->
@@ -635,6 +645,10 @@
       <artifactId>jakarta.activation</artifactId>
       <version>2.0.1</version>
     </dependency>
+    <dependency>
+      <groupId>com.microsoft.azure</groupId>
+      <artifactId>msal4j</artifactId>
+    </dependency>
   </dependencies>
 
   <profiles>
@@ -710,7 +724,7 @@
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
                   <jdbcContainerImage>postgres:15</jdbcContainerImage>
-                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>
                 </systemPropertyVariables>
@@ -750,7 +764,7 @@
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
                   <jdbcContainerImage>mysql:8.3.0</jdbcContainerImage>
-                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>
                 </systemPropertyVariables>

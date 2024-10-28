@@ -39,12 +39,14 @@
       "storedProcedure",
       "dataProduct",
       "testCaseResolutionStatus",
+      "testCaseResult",
       "apiService",
       "apiEndpoint",
       "apiCollection"
     ],
     "recreateIndex": false,
     "batchSize": "100",
+    "payLoadSize": 104857600,
     "searchIndexMappingLanguage": "EN"
   },
   "appSchedule": {

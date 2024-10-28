@@ -20,6 +20,7 @@ from pydantic import BaseModel
 class GlueSchema(BaseModel):
     CatalogId: Optional[str] = None
     Name: str
+    Description: Optional[str] = None
 
 
 class DatabasePage(BaseModel):

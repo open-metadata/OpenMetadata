@@ -23,7 +23,7 @@ class MentionBlot {
 }
 
 // Mock the Quill.import function
-jest.mock('react-quill', () => ({
+jest.mock('react-quill-new', () => ({
   Quill: {
     import: jest.fn().mockImplementation(() => {
       return MentionBlot;

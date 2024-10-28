@@ -113,6 +113,18 @@ public class MigrationFile implements Comparable<MigrationFile> {
     return clazzName;
   }
 
+  public String getMigrationProcessExtClassName() {
+    String clazzName =
+        String.format(
+            "io.collate.service.migration.%s.%s.Migration", dbPackageName, getVersionPackageName());
+    try {
+      Class.forName(clazzName);
+    } catch (ClassNotFoundException e) {
+      return null;
+    }
+    return clazzName;
+  }
+
   public String getMigrationsFilePath() {
     if (connectionType == ConnectionType.MYSQL) {
       return Paths.get(dir.getAbsolutePath(), "mysql").toString();

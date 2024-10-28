@@ -296,3 +296,14 @@ POSTGRES_GET_JSON_FIELDS = """
     FROM
         aggregate_hierarchy;
 """
+
+POSTGRES_GET_STORED_PROCEDURES = """
+    SELECT proname AS procedure_name,
+        nspname AS schema_name,
+        proargtypes AS argument_types,
+        prorettype::regtype AS return_type,
+        prosrc AS definition
+    FROM pg_proc
+    JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
+    WHERE prokind = 'p';
+"""

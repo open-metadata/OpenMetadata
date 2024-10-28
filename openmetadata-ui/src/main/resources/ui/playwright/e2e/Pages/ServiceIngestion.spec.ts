@@ -16,6 +16,7 @@ import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { MYSQL, POSTGRES, REDSHIFT } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
+import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
 import BigQueryIngestionClass from '../../support/entity/ingestion/BigQueryIngestionClass';
 import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionClass';
 import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
@@ -30,6 +31,7 @@ import { INVALID_NAMES, redirectToHomePage } from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const services = [
+  ApiIngestionClass,
   S3IngestionClass,
   MetabaseIngestionClass,
   MysqlIngestionClass,

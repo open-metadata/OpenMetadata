@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { MentionBlot, MentionBlotData } from 'quill-mention';
-import { Quill } from 'react-quill';
+import { Quill } from 'react-quill-new';
 
 type RenderType = (
   data: MentionBlotData & { link: string; id: string }

@@ -23,6 +23,7 @@ import { Link, useHistory } from 'react-router-dom';
 import {
   DISABLED,
   getServiceDetailsPath,
+  INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../../constants/constants';
 import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
@@ -194,15 +195,27 @@ const Services = ({ serviceName }: ServicesProps) => {
     [searchIndex, serviceName, deleted]
   );
 
-  const handleServicePageChange = ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => {
-    if (cursorType) {
-      getServiceDetails({ [cursorType]: paging[cursorType] });
-    }
-    handlePageChange(currentPage);
-  };
+  const handleServicePageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (searchTerm) {
+        handlePageChange(currentPage);
+        getServiceDetails({
+          currentPage,
+          search: searchTerm,
+          limit: pageSize,
+          filters: serviceTypeFilter?.length
+            ? `(${serviceTypeFilter
+                .map((type) => `serviceType:${type}`)
+                .join(' ')})`
+            : undefined,
+        });
+      } else if (cursorType) {
+        handlePageChange(currentPage);
+        getServiceDetails({ [cursorType]: paging[cursorType] });
+      }
+    },
+    [getServiceDetails, searchTerm, serviceTypeFilter, paging, pageSize]
+  );
 
   const addServicePermission = useMemo(
     () =>
@@ -344,7 +357,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       ),
     },
     {
-      title: t('label.owner'),
+      title: t('label.owner-plural'),
       dataIndex: 'owners',
       key: 'owners',
       width: 200,
@@ -414,6 +427,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const handleServiceSearch = useCallback(
     async (search: string) => {
+      handlePageChange(INITIAL_PAGING_VALUE);
       setSearchTerm(search);
     },
     [getServiceDetails]
@@ -511,6 +525,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isNumberBased={!isEmpty(searchTerm)}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleServicePageChange}

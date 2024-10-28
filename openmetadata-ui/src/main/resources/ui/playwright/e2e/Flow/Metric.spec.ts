@@ -149,7 +149,7 @@ test.describe('Listing page and add Metric flow should work', () => {
       page.getByRole('cell', { name: 'Glossary Terms', exact: true })
     ).toBeVisible();
     await expect(
-      page.getByRole('cell', { name: 'Owner', exact: true })
+      page.getByRole('cell', { name: 'Owners', exact: true })
     ).toBeVisible();
 
     // check for metric entities in table

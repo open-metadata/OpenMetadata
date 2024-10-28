@@ -33,7 +33,6 @@ To have cost analysis data available you will need to execute the below workflow
 3. **Data Insights Workflow**:
 - Purpose: Aggregate information from Usage Workflow and Profiler Workflow.
 - Description: The Data Insights Workflow serves as the central aggregator of data, combining the Life Cycle information from the Usage Workflow and the size information from the Profiler Workflow. This aggregated data is then utilized in the creation of the Cost Analysis charts. By integrating both usage and size data, it provides a comprehensive view of resource utilization and its impact on costs.
-- Click [here](/how-to-guides/data-insights/airflow-sdk) for documentation on the data insight workflow.
 
 With these three interconnected workflows, the `Cost Analysis` feature enables users to make informed decisions about resource allocation, cost optimization, and performance improvement.
 

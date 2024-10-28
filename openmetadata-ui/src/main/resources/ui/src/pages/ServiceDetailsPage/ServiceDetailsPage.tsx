@@ -118,6 +118,7 @@ import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
+  getServiceDisplayNameQueryFilter,
   shouldTestConnection,
 } from '../../utils/ServiceUtils';
 import {
@@ -338,6 +339,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
                 index < SERVICE_INGESTION_PIPELINE_TYPES.length - 1 ? 'OR' : ''
               }`
           ).join(' ')})`,
+          queryFilter: getServiceDisplayNameQueryFilter(
+            getEntityName(serviceDetails)
+          ),
         });
         const pipelines = res.hits.hits.map((hit) => hit._source);
         const total = res?.hits?.total.value ?? 0;
@@ -348,7 +352,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [ingestionPageSize, handleIngestionPagingChange]
+    [ingestionPageSize, handleIngestionPagingChange, serviceDetails]
   );
 
   const include = useMemo(
@@ -668,7 +672,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-updating-error', {
-            entity: t('label.owner-lowercase'),
+            entity: t('label.owner-lowercase-plural'),
           })
         );
       }
@@ -1021,22 +1025,21 @@ const ServiceDetailsPage: FunctionComponent = () => {
       });
     }
 
-    if (serviceCategory !== ServiceCategory.API_SERVICES) {
-      tabs.push({
+    tabs.push(
+      {
         name: t('label.ingestion-plural'),
         key: EntityTabs.INGESTIONS,
         isHidden: !showIngestionTab,
         count: ingestionPaging.total,
         children: ingestionTab,
-      });
-    }
-
-    tabs.push({
-      name: t('label.connection'),
-      isHidden: !servicePermission.EditAll,
-      key: EntityTabs.CONNECTION,
-      children: testConnectionTab,
-    });
+      },
+      {
+        name: t('label.connection'),
+        isHidden: !servicePermission.EditAll,
+        key: EntityTabs.CONNECTION,
+        children: testConnectionTab,
+      }
+    );
 
     return tabs
       .filter((tab) => !tab.isHidden)

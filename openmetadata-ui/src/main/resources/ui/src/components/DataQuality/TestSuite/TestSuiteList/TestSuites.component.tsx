@@ -182,7 +182,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         },
       },
       {
-        title: t('label.owner'),
+        title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,

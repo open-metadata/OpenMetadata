@@ -25,6 +25,17 @@ jest.mock('../../hooks/useApplicationStore', () => {
   };
 });
 
+jest.mock(
+  '../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => {
+    return {
+      useApplicationsProvider: jest.fn(() => ({
+        applications: [],
+      })),
+    };
+  }
+);
+
 jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );

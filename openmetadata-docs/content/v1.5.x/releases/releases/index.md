@@ -14,6 +14,128 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.5/releases/latest.md" /%}
 
+# 1.5.7 Release
+
+{% note noteType="Tip" %}
+**Oct 17th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.7-release).
+
+# What's Changed
+
+- Feature: Add table-type custom property.
+- Feature: support Persian language option
+- Feature: Postgres stored procedures support.
+- Feature: Allow Custom Property Update in Glossary Bulk Import/export.
+- Improvement: Remove table details from table level Import/Export, allowing updates only for column details.
+- MINOR: looker exclude version.
+- MINOR: Add deleteEntityByFQNPrefix.
+- MINOR: Reduce lineage response size.
+- MINOR: Updated pyiceberg version to 0.5.1
+- MINOR: Fix dark border shown in navbar on UI.
+- MINOR: Add column case sensitivity parameter.
+- MINOR: Pagination with search on service page.
+- MINOR: Added loader in activity feed open and closed count.
+- MINOR: Superset get primitive datatype in case of array, struct.
+- MINOR: fix term references validation msg on glossary import.
+- MINOR: supported search filter and only all show in case of all node value selected.
+- Fix: Fix PinotDB Ingestion.
+- Fix: MSAL popup auth issue.
+- Fix: Fix Alerts for Test Suites.
+- Fix: Added Glue Pipeline Lineage.
+- Fix: ClassGraph performance issue.
+- Fix: Superset query for mysql con.
+- Fix: Empty Connection Overwrite Logic.
+- Fix: Couchbase columns not fetched fix.
+- Fix: Quicksight Ingestion Error handled.
+- Fix: DBT Manifest and Run results parsing.
+- Fix: Increase MAX_AGGREGATE_SIZE in search.
+- Fix: Add display name field in the advanced search filter.
+- Fix: On dashboard soft delete, chart should not be visible.
+- Fix: Fix the automator page breaking when no source is selected.
+- Fix: Salesforce table description from label if not through query.
+- Fix: Add Import/export support for table type custom property in glossary.
+- Fix: Fix exception in search due to exception in database.displayName and databaseSchema.aggregation.
+- MINOR: Knowledge Center publicationDate mismatch error ${CollateIconWithLinkMD}
+- MINOR: Add owner label for knowledge center right panel ${CollateIconWithLinkMD}
+- Fix: Automator pagination & improvments ${CollateIconWithLinkMD}
+- Fix: ArchiveLog to FALSE for test connection ${CollateIconWithLinkMD}
+- Fix: Knowledge Page deletion is not deleting from the search index ${CollateIconWithLinkMD}`,
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.6-release...1.5.7-release
+
+# 1.5.6 Release
+
+{% note noteType="Tip" %}
+**Oct 3rd, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.6-release).
+
+# What's Changed
+
+- Fixed MSTR connector import.
+- Show displayName for database and databaseSchema in explore tree.
+- Allow PowerBI datamodel children in column lineage.
+- Fixed manifest is not parsed correctly on dbt versionless.
+- Fixed lineage & queries in dbt.
+- Added DBT tests with versionless and fixed v7 parsing.
+- Reset displayName to avoid being persisted while editing user display name.
+- Fixed incorrect schema implementations in Swagger annotations.
+- Resolved type null exception on user feed.
+- Addressed missing cast to str.
+- Fixed DI Missing Dashboard Description Status.
+- Fixed SAML redirect leads to 404 page on UI.
+- Fixed General Profiler Bugs.
+- Fixed time format for the created_at of the DBT cloud pipeline status.
+- Fixed role page size from 10 to 50.
+- Fixed Search Indexing.
+- Improved AlationSink connector.
+- Fixed sktime version to fix AUT
+- Fixed Expected ColumnLineage but got dict
+- Improved Collate API with Knowledge Center routes.  ${CollateIconWithLinkMD}
+
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.5-release...1.5.6-release
+
+# 1.5.5 Release
+
+{% note noteType="Tip" %}
+**Sep 25th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.5-release).
+
+# What's Changed
+
+- Made the type optional in ES Response.
+- Added support for refresh tokens with multiple tabs open.
+- Resolved issue of overriding user info after login.
+- Updated the custom property entities data model, along with the data product and database schema icons.
+- Ensured Teams and Owner fields are correctly passed in the policy API call.
+- Enhanced PII logging information.
+- Addressed the paginate_es issue in OpenSearch.
+- Decrypted JWT internally for system health checks.
+- Implemented multithreading in View Lineage Processing.
+- Improved search relevancy.
+- Resolved issue with owners patch.
+- Fixed Snowflake data diff issue.
+- Updated Presidio Analyzer version and validated support for legal entities.
+- Added validations for Salesforce connection.
+- Allowed PII Processor to operate without storing sample data.
+- Added seconds to the human-readable format scale for test case graphs.
+- Added missing field in glossary term.
+- Excluded defaultPersona if not present in personas.
+- Resolved team export issue.
+- Updated Python lineage SDK to work with UUID and FQN models.
+- Fixed LDAP login issue.
+- Column sizing of data quality and pipeline widget ${CollateIconWithLinkMD}
+- Export with new line in description ${CollateIconWithLinkMD}
+- Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.4-release...1.5.5-release
+
 # 1.5.4 Release
 
 {% note noteType="Tip" %}
