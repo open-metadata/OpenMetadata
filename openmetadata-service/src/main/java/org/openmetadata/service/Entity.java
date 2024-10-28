@@ -128,6 +128,8 @@ public final class Entity {
 
   public static final String FIELD_TEST_SUITES = "testSuites";
 
+  public static final String FIELD_RELATED_TERMS = "relatedTerms";
+
   //
   // Service entities
   //
