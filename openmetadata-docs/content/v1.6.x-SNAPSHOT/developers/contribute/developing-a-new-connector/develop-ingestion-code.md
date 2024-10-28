@@ -26,6 +26,12 @@ From the Service Topology you can understand what methods you need to implement:
 
 Can be found in [`ingestion/src/metadata/ingestion/source/database/database_service.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/database_service.py)
 
+{%inlineCallout icon="description" bold="OpenMetadata 1.6.0 or later" href="/deployment"%}
+Starting from 1.6.0 the OpenMetadata Ingestion Framewotk is using a ServiceSpec specificaiton
+in order to define the entrypoints for the ingestion process.
+{%/inlineCallout%}
+
+
 ```python
 class DatabaseServiceTopology(ServiceTopology):
     """

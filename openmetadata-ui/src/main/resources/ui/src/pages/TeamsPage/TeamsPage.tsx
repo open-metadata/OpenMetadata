@@ -218,6 +218,7 @@ const TeamsPage = () => {
       const data = await getTeamByName(name, {
         fields: [
           TabSpecificField.USERS,
+          TabSpecificField.USER_COUNT,
           TabSpecificField.PARENTS,
           TabSpecificField.PROFILE,
           TabSpecificField.OWNERS,
@@ -242,6 +243,7 @@ const TeamsPage = () => {
       const data = await getTeamByName(name, {
         fields: [
           TabSpecificField.USERS,
+          TabSpecificField.USER_COUNT,
           TabSpecificField.DEFAULT_ROLES,
           TabSpecificField.POLICIES,
           TabSpecificField.CHILDREN_COUNT,

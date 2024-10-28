@@ -202,6 +202,7 @@ public abstract class OpenMetadataApplicationTest {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
+    // jdbi.setSqlLogger(new DebugSqlLogger());
     validateAndRunSystemDataMigrations(
         jdbi,
         config,
