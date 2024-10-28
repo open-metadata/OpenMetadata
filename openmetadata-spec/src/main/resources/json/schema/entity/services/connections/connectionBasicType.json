@@ -41,7 +41,7 @@
       "default": true
     }, 
     "supportsStatistics": {
-      "description": "Supports statistics table",
+      "description": "Supports collecting metrics from an aggregated statistics table",
       "type": "boolean",
       "default": false
     },
