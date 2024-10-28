@@ -114,7 +114,7 @@ ignore-paths = [
     "ingestion/src/metadata/great_expectations/action.py",
     "ingestion/src/metadata/profiler/interface/nosql/profiler_interface.py",
     "ingestion/src/metadata/profiler/processor/sampler/nosql/sampler.py",
-#    "ingestion/src/metadata/ingestion/source",
+    "ingestion/src/metadata/ingestion/source",
     "ingestion/src/metadata/profiler/metrics",
     "ingestion/src/metadata/profiler/source/databricks",
 ]
