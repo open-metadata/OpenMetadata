@@ -30,10 +30,10 @@ In order to install it, You need to first find out which connector you are inter
 For exammple, snowflake you can refer to document here and go through the requirements https://docs.getcollate.io/connectors/database/snowflake/yaml#requirements
 Below is the command to install the connector. 
 
-**The version of 1.5.7.0 must match your Collate/OpenMetadata version**
+**The version of 1.5.8.0 must match your Collate/OpenMetadata version**
 
 ```shell
-pip install openmetadata-ingestion[snowflake]==1.5.7.0
+pip install openmetadata-ingestion[snowflake]==1.5.8.0
 ```
 
 We will show further examples later, but a piece of code is the best showcase for its simplicity. In order to run
