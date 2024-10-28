@@ -25,6 +25,8 @@
     <xmlsec.version>2.3.4</xmlsec.version>
     <quartz.version>2.5.0-rc1</quartz.version>
     <pac4j.version>5.7.0</pac4j.version>
+    <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
+    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -893,6 +895,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
+        <version>${maven-source-plugin.version}</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
