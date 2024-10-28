@@ -22,7 +22,8 @@ import { PAGE_SIZE } from '../../../../constants/constants';
 import { RELATIONSHIP_TYPE_OPTION } from '../../../../constants/Table.constants';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { ConstraintType, Table } from '../../../../generated/entity/data/table';
-import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
+import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   SelectOptions,
@@ -56,16 +57,17 @@ const TableConstraintsModal = ({
   const getSearchResults = async (value: string) => {
     setIsRelatedColumnLoading(true);
     try {
-      const data = await searchData(
-        value,
-        1,
-        PAGE_SIZE,
-        '',
-        '',
-        '',
-        SearchIndex.TABLE
-      );
-      const sources = data.data.hits.hits.map((hit) => hit._source);
+      const data = await searchQuery({
+        query: value,
+        searchIndex: SearchIndex.TABLE,
+        queryFilter: getServiceNameQueryFilter(
+          tableDetails?.service?.name ?? ''
+        ),
+        pageNumber: 1,
+        pageSize: PAGE_SIZE,
+        includeDeleted: false,
+      });
+      const sources = data.hits.hits.map((hit) => hit._source);
 
       const allColumns = sources.reduce((acc: SelectOptions[], cv: Table) => {
         const columnOption = cv.columns
