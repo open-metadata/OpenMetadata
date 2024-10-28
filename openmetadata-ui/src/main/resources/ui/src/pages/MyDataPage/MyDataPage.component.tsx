@@ -33,7 +33,7 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Thread } from '../../generated/entity/feed/thread';
-import { PageType } from '../../generated/system/ui/page';
+import { Page, PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -78,9 +78,14 @@ const MyDataPage = () => {
     try {
       setIsLoading(true);
       if (!isEmpty(selectedPersona)) {
-        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
-        const pageData = await getDocumentByFQN(pageFQN);
-        setLayout(pageData.data.page.layout);
+        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
+        const docData = await getDocumentByFQN(pageFQN);
+
+        const pageData = docData.data?.pages?.find(
+          (p: Page) => p.pageType === PageType.LandingPage
+        ) ?? { layout: [], pageType: PageType.LandingPage };
+
+        setLayout(pageData.layout);
       } else {
         setLayout(customizePageClassBase.defaultLayout);
       }

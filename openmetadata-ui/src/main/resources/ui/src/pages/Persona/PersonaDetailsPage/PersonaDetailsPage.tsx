@@ -28,7 +28,7 @@ import { UserSelectableList } from '../../../components/common/UserSelectableLis
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import SettingItemCard from '../../../components/Settings/SettingItemCard/SettingItemCard.component';
+import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import {
   GlobalSettingOptions,
@@ -39,13 +39,10 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
-import { PageType } from '../../../generated/system/ui/page';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getCustomizePagePath } from '../../../utils/GlobalSettingsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { getCustomizePageOptions } from '../../../utils/Persona/PersonaUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -102,8 +99,6 @@ export const PersonaDetailsPage = () => {
       fetchPersonaDetails();
     }
   }, [fqn]);
-
-  const list = getCustomizePageOptions();
 
   const handleDescriptionUpdate = async (description: string) => {
     if (!personaDetails) {
@@ -174,15 +169,6 @@ export const PersonaDetailsPage = () => {
       getSettingPath(
         GlobalSettingsMenuCategory.MEMBERS,
         GlobalSettingOptions.PERSONA
-      )
-    );
-  };
-
-  const handleCustomizeItemClick = (category: string) => {
-    history.push(
-      getCustomizePagePath(
-        personaDetails?.fullyQualifiedName as string,
-        category as PageType
       )
     );
   };
@@ -259,18 +245,7 @@ export const PersonaDetailsPage = () => {
               {
                 label: t('label.customize-ui'),
                 key: 'customize-ui',
-                children: (
-                  <Row gutter={[16, 16]}>
-                    {list.map((value) => (
-                      <Col key={value.key} span={8}>
-                        <SettingItemCard
-                          data={value}
-                          onClick={handleCustomizeItemClick}
-                        />
-                      </Col>
-                    ))}
-                  </Row>
-                ),
+                children: <CustomizeUI />,
               },
             ]}
             tabBarExtraContent={

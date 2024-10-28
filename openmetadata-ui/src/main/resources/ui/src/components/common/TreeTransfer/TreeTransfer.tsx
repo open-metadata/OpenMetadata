@@ -3,7 +3,9 @@ import { Transfer, Tree, TreeDataNode, TreeProps } from 'antd';
 import type { TransferDirection, TransferItem } from 'antd/es/transfer';
 import type { DataNode } from 'antd/es/tree';
 import { cloneDeep } from 'lodash';
-import React from 'react';
+import React, { useCallback } from 'react';
+import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
+import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import {
   filterAndArrangeTreeByKeys,
   generateTree,
@@ -32,6 +34,10 @@ export const TreeTransfer = ({
 }: TreeTransferProps) => {
   const transferDataSource: TransferItem[] = [];
 
+  const switcherIcon = useCallback(({ expanded }) => {
+    return expanded ? <IconDown /> : <IconRight />;
+  }, []);
+
   function flatten(list: DataNode[] = []) {
     list.forEach((item) => {
       transferDataSource.push(item as TransferItem);
@@ -57,7 +63,9 @@ export const TreeTransfer = ({
               checkStrictly
               checkable
               defaultExpandAll
+              showIcon
               checkedKeys={checkedKeys}
+              switcherIcon={switcherIcon}
               treeData={generateTree(dataSource, targetKeys)}
               onCheck={(_, { node: { key } }) => {
                 onItemSelect(key as string, !isChecked(checkedKeys, key));
@@ -132,7 +140,6 @@ export const TreeTransfer = ({
             // setGData(data);
 
             restProps.onChange?.(getNestedKeys(tempData), direction);
-            console.log('data: ', tempData);
           };
 
           return (
@@ -141,6 +148,8 @@ export const TreeTransfer = ({
               blockNode
               defaultExpandAll
               draggable
+              showIcon
+              switcherIcon={switcherIcon}
               titleRender={(node) => (
                 <div className="space-between">
                   {node.title}{' '}

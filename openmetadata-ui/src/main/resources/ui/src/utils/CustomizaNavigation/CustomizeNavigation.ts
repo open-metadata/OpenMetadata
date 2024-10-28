@@ -1,13 +1,14 @@
 import { DataNode } from 'antd/lib/tree';
+import { sortBy } from 'lodash';
 
 export const filterAndArrangeTreeByKeys = (
   tree: DataNode[],
-  keys: string[]
+  keys: Array<string | number>
 ) => {
-  // Sort nodes according to the keys order
-  function sortByKeys(nodeArray: DataNode[]) {
-    return nodeArray.sort((a, b) => keys.indexOf(a.key) - keys.indexOf(b.key));
-  }
+  //   // Sort nodes according to the keys order
+  //   function sortByKeys(nodeArray: DataNode[]) {
+  //     return nodeArray.sort((a, b) => keys.indexOf(a.key) - keys.indexOf(b.key));
+  //   }
 
   // Helper function to recursively filter and arrange the tree
   function filterAndArrange(node: DataNode) {
@@ -20,7 +21,7 @@ export const filterAndArrangeTreeByKeys = (
           .filter(Boolean); // Remove any undefined children
 
         // Sort the children according to the order of the keys array
-        node.children = sortByKeys(node.children);
+        node.children = sortBy(node.children, 'key');
       }
 
       return node; // Return the node if it has the required key
@@ -33,7 +34,7 @@ export const filterAndArrangeTreeByKeys = (
   let filteredTree = tree.map(filterAndArrange).filter(Boolean);
 
   // Sort the filtered tree based on the order of keys at the root level
-  filteredTree = sortByKeys(filteredTree);
+  filteredTree = sortBy(filteredTree, 'key');
 
   return filteredTree;
 };

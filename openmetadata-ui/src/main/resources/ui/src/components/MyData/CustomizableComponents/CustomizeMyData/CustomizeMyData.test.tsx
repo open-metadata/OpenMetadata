@@ -18,22 +18,18 @@ import { PageType } from '../../../../generated/system/ui/page';
 import {
   mockActiveAnnouncementData,
   mockCustomizePageClassBase,
-  mockDefaultLayout,
   mockDocumentData,
   mockPersonaName,
   mockUserData,
 } from '../../../../mocks/MyDataPage.mock';
-import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import CustomizeMyData from './CustomizeMyData';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
 
 const mockPush = jest.fn();
 
 const mockProps: CustomizeMyDataProps = {
-  initialPageData: mockDocumentData,
+  initialPageData: mockDocumentData.data.page,
   onSaveLayout: jest.fn(),
-  handlePageDataChange: jest.fn(),
-  handleSaveCurrentPageLayout: jest.fn(),
 };
 
 jest.mock(
@@ -187,9 +183,6 @@ describe('CustomizeMyData component', () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
-    // handlePageDataChange is called 1 time on mount
-    expect(mockProps.handlePageDataChange).toHaveBeenCalledTimes(1);
-
     const resetButton = screen.getByTestId('reset-button');
 
     await act(async () => userEvent.click(resetButton));
@@ -200,19 +193,6 @@ describe('CustomizeMyData component', () => {
 
     await act(async () => userEvent.click(yesButton));
 
-    expect(mockProps.handlePageDataChange).toHaveBeenCalledTimes(3);
-    // Check if the handlePageDataChange is passed an object with the default layout
-    expect(mockProps.handlePageDataChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        ...mockDocumentData,
-        data: {
-          page: {
-            layout: expect.arrayContaining<WidgetConfig>(mockDefaultLayout),
-          },
-        },
-      })
-    );
-
     expect(screen.queryByTestId('reset-layout-modal')).toBeNull();
   });
 
@@ -220,9 +200,6 @@ describe('CustomizeMyData component', () => {
     await act(async () => {
       render(<CustomizeMyData {...mockProps} />);
     });
-
-    // handlePageDataChange is called 1 time on mount
-    expect(mockProps.handlePageDataChange).toHaveBeenCalledTimes(1);
 
     const resetButton = screen.getByTestId('reset-button');
 
@@ -233,9 +210,6 @@ describe('CustomizeMyData component', () => {
     const noButton = screen.getByText('label.no');
 
     await act(async () => userEvent.click(noButton));
-
-    // handlePageDataChange is not called again
-    expect(mockProps.handlePageDataChange).toHaveBeenCalledTimes(1);
 
     expect(screen.queryByTestId('reset-layout-modal')).toBeNull();
   });

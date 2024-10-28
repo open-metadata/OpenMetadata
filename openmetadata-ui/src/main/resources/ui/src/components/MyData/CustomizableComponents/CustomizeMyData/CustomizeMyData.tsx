@@ -22,6 +22,8 @@ import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { EntityReference } from '../../../../generated/entity/type';
+import { Page } from '../../../../generated/system/ui/page';
+import { PageType } from '../../../../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -51,15 +53,13 @@ function CustomizeMyData({
   personaDetails,
   initialPageData,
   onSaveLayout,
-  handlePageDataChange,
-  handleSaveCurrentPageLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(
-      initialPageData.data?.page?.layout ??
+      (initialPageData?.layout as WidgetConfig[]) ??
         customizeMyDataPageClassBase.defaultLayout,
       2,
       4
@@ -176,17 +176,6 @@ function CustomizeMyData({
     ]
   );
 
-  useEffect(() => {
-    handlePageDataChange({
-      ...initialPageData,
-      data: {
-        page: {
-          layout: getUniqueFilteredLayout(layout),
-        },
-      },
-    });
-  }, [layout]);
-
   const handleReset = useCallback(() => {
     // Get default layout with the empty widget added at the end
     const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
@@ -195,20 +184,23 @@ function CustomizeMyData({
       4
     );
     setLayout(newMainPanelLayout);
-    handlePageDataChange({
-      ...initialPageData,
-      data: {
-        page: {
-          layout: getUniqueFilteredLayout(newMainPanelLayout),
-        },
-      },
-    });
-    handleSaveCurrentPageLayout(true);
   }, []);
 
   useEffect(() => {
     fetchUserFollowedData();
   }, []);
+
+  const handleSave = async () => {
+    await onSaveLayout({
+      ...(initialPageData ??
+        ({
+          pageType: PageType.LandingPage,
+        } as Page)),
+      layout: getUniqueFilteredLayout(layout),
+    });
+  };
+
+  console.info('layout', layout);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
@@ -220,7 +212,7 @@ function CustomizeMyData({
           <CustomizablePageHeader
             personaName={getEntityName(personaDetails)}
             onReset={handleReset}
-            onSave={onSaveLayout}
+            onSave={handleSave}
           />
         }
         headerClassName="m-0 p-0"

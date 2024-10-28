@@ -13,8 +13,8 @@
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { cloneDeep, isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -30,7 +30,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
-import { PageType } from '../../generated/system/ui/page';
+import { Page, PageType } from '../../generated/system/ui/page';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -51,19 +51,17 @@ export const CustomizablePage = () => {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
   const [page, setPage] = useState<Document>({} as Document);
-  const [editedPage, setEditedPage] = useState<Document>({} as Document);
   const [isLoading, setIsLoading] = useState(false);
   const [isPersonaLoading, setIsPersonaLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
-  const [saveCurrentPageLayout, setSaveCurrentPageLayout] = useState(false);
 
-  const handlePageDataChange = useCallback((newPageData: Document) => {
-    setEditedPage(newPageData);
-  }, []);
-
-  const handleSaveCurrentPageLayout = useCallback((value: boolean) => {
-    setSaveCurrentPageLayout(value);
-  }, []);
+  const pageData = useMemo(
+    () =>
+      page.data?.pages?.find(
+        (p: Page) => p.pageType === pageFqn
+      ) as Page | null,
+    [page, pageFqn]
+  );
 
   const fetchPersonaDetails = useCallback(async () => {
     try {
@@ -81,13 +79,12 @@ export const CustomizablePage = () => {
 
   const fetchDocument = async () => {
     if (!isUndefined(personaDetails)) {
-      const pageLayoutFQN = `${EntityType.PERSONA}.${decodedPageFQN}.${EntityType.PAGE}.${pageFqn}`;
+      const pageLayoutFQN = `${EntityType.PERSONA}.${decodedPageFQN}`;
       try {
         setIsLoading(true);
         const pageData = await getDocumentByFQN(pageLayoutFQN);
 
         setPage(pageData);
-        setEditedPage(pageData);
       } catch (error) {
         if ((error as AxiosError).response?.status === ClientErrors.NOT_FOUND) {
           setPage({
@@ -107,22 +104,31 @@ export const CustomizablePage = () => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (newPage: Page) => {
     try {
       let response: Document;
+      const newDoc = cloneDeep(page);
+
+      if (pageData) {
+        newDoc.data.pages = newDoc.data?.pages?.map((p: Page) =>
+          p.pageType === pageFqn ? newPage : p
+        );
+      } else {
+        newDoc.data.pages.push(newPage);
+      }
 
       if (page.id) {
-        const jsonPatch = compare(page, editedPage);
+        const jsonPatch = compare(page, newDoc);
 
         response = await updateDocument(page.id ?? '', jsonPatch);
       } else {
         response = await createDocument({
-          ...editedPage,
-          domain: editedPage.domain?.fullyQualifiedName,
+          ...newDoc,
+          domain: newDoc.domain?.fullyQualifiedName,
         });
       }
       setPage(response);
-      setEditedPage(response);
+
       showSuccessToast(
         t('server.page-layout-operation-success', {
           operation: page.id
@@ -141,13 +147,6 @@ export const CustomizablePage = () => {
       );
     }
   };
-
-  useEffect(() => {
-    if (saveCurrentPageLayout) {
-      handleSave();
-      setSaveCurrentPageLayout(false);
-    }
-  }, [saveCurrentPageLayout]);
 
   useEffect(() => {
     fetchPersonaDetails();
@@ -193,14 +192,12 @@ export const CustomizablePage = () => {
 
   switch (pageFqn) {
     case 'navigation':
-      return <SettingsNavigationPage />;
+      return <SettingsNavigationPage currentPage={page} onSave={handleSave} />;
 
     case PageType.LandingPage:
       return (
         <CustomizeMyData
-          handlePageDataChange={handlePageDataChange}
-          handleSaveCurrentPageLayout={handleSaveCurrentPageLayout}
-          initialPageData={page}
+          initialPageData={pageData}
           personaDetails={personaDetails}
           onSaveLayout={handleSave}
         />
@@ -209,9 +206,7 @@ export const CustomizablePage = () => {
     case PageType.GlossaryTerm:
       return (
         <CustomizeGlossaryTermDetailPage
-          handlePageDataChange={handlePageDataChange}
-          handleSaveCurrentPageLayout={handleSaveCurrentPageLayout}
-          initialPageData={page}
+          initialPageData={pageData}
           personaDetails={personaDetails}
           onSaveLayout={handleSave}
         />

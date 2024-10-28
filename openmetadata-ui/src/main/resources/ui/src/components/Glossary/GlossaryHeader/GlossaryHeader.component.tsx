@@ -77,11 +77,10 @@ import Voting from '../../Entity/Voting/Voting.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
-import { useGlossaryStore } from '../useGlossary.store';
+import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 
 const GlossaryHeader = ({
-  onUpdate,
   onDelete,
   onAssetAdd,
   onAddGlossaryTerm,
@@ -258,6 +257,11 @@ const GlossaryHeader = ({
     setIsDelete(false);
   };
 
+  const handleGlossaryPatch = async (glossary: ModifiedGlossary) => {
+    // handle glossary patch
+    // Console.log(glossary);
+  };
+
   const onNameSave = async (obj: { name: string; displayName: string }) => {
     const { name, displayName } = obj;
     let updatedDetails = cloneDeep(selectedData);
@@ -268,7 +272,7 @@ const GlossaryHeader = ({
       displayName: displayName?.trim(),
     };
 
-    await onUpdate(updatedDetails);
+    await handleGlossaryPatch(updatedDetails);
     setIsNameEditing(false);
   };
 
@@ -283,7 +287,7 @@ const GlossaryHeader = ({
       style,
     };
 
-    await onUpdate(updatedDetails);
+    await handleGlossaryPatch(updatedDetails);
     setIsStyleEditing(false);
   };
 
@@ -575,7 +579,7 @@ const GlossaryHeader = ({
   }, [id, isEditView]);
 
   if (isEditView) {
-    return <>Header</>;
+    return <>{t('label.header')}</>;
   }
 
   return (

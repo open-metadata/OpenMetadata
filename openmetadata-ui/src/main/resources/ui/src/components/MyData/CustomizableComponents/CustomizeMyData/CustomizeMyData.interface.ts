@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { Document } from '../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../generated/entity/teams/persona';
+import { Page } from '../../../../generated/system/ui/page';
 
 export interface CustomizeMyDataProps {
   personaDetails?: Persona;
-  initialPageData: Document;
-  onSaveLayout: () => Promise<void>;
-  handlePageDataChange: (newPageData: Document) => void;
-  handleSaveCurrentPageLayout: (value: boolean) => void;
+  initialPageData: Page | null;
+  onSaveLayout: (page: Page) => Promise<void>;
 }

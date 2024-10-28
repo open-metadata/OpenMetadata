@@ -43,9 +43,7 @@ const ENTITY_ICONS: Record<string, SvgComponent> = {
   [PageType.LandingPage]: MessagingIcon,
 };
 
-export const getCustomizePageOptions = (): SettingMenuItem[] => {
-  const list = map(PageType);
-
+export const getCustomizePageCategories = (): SettingMenuItem[] => {
   return [
     {
       key: 'navigation',
@@ -58,24 +56,52 @@ export const getCustomizePageOptions = (): SettingMenuItem[] => {
       label: 'Govern',
       description: 'Govern',
       icon: ENTITY_ICONS[camelCase('Govern')],
-      items: list.map((item) => ({
-        key: item,
-        label: capitalize(item),
-        description: item,
-        icon: ENTITY_ICONS[camelCase(item)],
-      })),
     },
     {
       key: 'data-assets',
       label: 'Data assets',
       description: 'Data assets',
       icon: ENTITY_ICONS[camelCase('Data assets')],
-      items: list.map((item) => ({
-        key: item,
-        label: capitalize(item),
-        description: item,
-        icon: ENTITY_ICONS[camelCase(item)],
-      })),
     },
   ];
+};
+
+export const getCustomizePageOptions = (
+  category: string
+): SettingMenuItem[] => {
+  const list = map(PageType);
+
+  switch (category) {
+    case 'govern':
+      return list
+        .filter((item) =>
+          [PageType.Glossary, PageType.GlossaryTerm, PageType.Domain].includes(
+            item
+          )
+        )
+        .map((item) => ({
+          key: item,
+          label: capitalize(item),
+          description: item,
+          icon: ENTITY_ICONS[camelCase(item)],
+        }));
+    case 'data-assets':
+      return list
+        .filter(
+          (item) =>
+            ![
+              PageType.Glossary,
+              PageType.GlossaryTerm,
+              PageType.Domain,
+            ].includes(item)
+        )
+        .map((item) => ({
+          key: item,
+          label: capitalize(item),
+          description: item,
+          icon: ENTITY_ICONS[camelCase(item)],
+        }));
+    default:
+      return [];
+  }
 };
