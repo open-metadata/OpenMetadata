@@ -20,7 +20,7 @@ import {
 } from './AdvanceSearchProvider.component';
 
 jest.mock('../../../rest/metadataTypeAPI', () => ({
-  getTypeByFQN: jest.fn().mockResolvedValue({}),
+  getAllCustomProperties: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../rest/tagAPI', () => ({

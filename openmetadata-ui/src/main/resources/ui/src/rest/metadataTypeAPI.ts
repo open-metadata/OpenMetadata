@@ -42,6 +42,13 @@ export const getTypeByFQN = async (typeFQN: string) => {
   return response.data;
 };
 
+export const getAllCustomProperties = async () => {
+  const path = `/metadata/types/customProperties`;
+  const response = await APIClient.get<Type>(path);
+
+  return response.data;
+};
+
 export const addPropertyToEntity = async (
   entityTypeId: string,
   data: CustomProperty
