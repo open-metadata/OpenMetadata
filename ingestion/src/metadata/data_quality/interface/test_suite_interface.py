@@ -44,7 +44,7 @@ class TestSuiteInterface(ABC):
     runtime_params_setter_fact = RuntimeParameterSetterFactory
 
     def __init__(self):
-        """Required attribute for the interface"""
+        """This constructor exists to staisfy the linter. Its feilds should be set in the implementation class"""
         self.ometa_client: DatabaseConnection = None
         self.ometa_client: OpenMetadata = None
         self.table_entity: Table = None
@@ -97,14 +97,14 @@ class TestSuiteInterface(ABC):
         runtime_params_setter_fact: RuntimeParameterSetterFactory = (
             self._get_runtime_params_setter_fact()
         )  # type: ignore
-        runtime_params_setter: Optional[
-            RuntimeParameterSetter
-        ] = runtime_params_setter_fact.get_runtime_param_setter(
-            test_case.testDefinition.fullyQualifiedName,  # type: ignore
-            self.ometa_client,
-            self.service_connection_config,
-            self.table_entity,
-            self.sampler,
+        runtime_params_setter: Optional[RuntimeParameterSetter] = (
+            runtime_params_setter_fact.get_runtime_param_setter(
+                test_case.testDefinition.fullyQualifiedName,  # type: ignore
+                self.ometa_client,
+                self.service_connection_config,
+                self.table_entity,
+                self.sampler,
+            )
         )
 
         # get `column` or `table` type for validator import
