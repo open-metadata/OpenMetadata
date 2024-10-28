@@ -1497,10 +1497,8 @@ public class EventSubscriptionResourceTest
   void post_alertActionWithEnabledStateChange_MSTeams(TestInfo test) throws IOException {
     String entityName = getEntityName(test);
 
-    String webhookName = sanitizeWebhookName(entityName);
-
     LOG.info("creating webhook in disabled state");
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/msteams/" + webhookName;
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/msteams/" + entityName;
 
     // Create a Disabled Generic Webhook
     CreateEventSubscription genericWebhookActionRequest =
@@ -1532,7 +1530,7 @@ public class EventSubscriptionResourceTest
     assertEquals(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
 
     // Ensure the call back notification has started
-    details = waitForFirstMSTeamsEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstMSTeamsEvent(alert.getId(), entityName, 25);
     assertEquals(1, details.getEvents().size());
     ConcurrentLinkedQueue<TeamsMessage> messages = details.getEvents();
     assertNotNull(messages);
@@ -1641,10 +1639,6 @@ public class EventSubscriptionResourceTest
   private String getEntityUrlSlack(EventSubscription alert) {
     return slackCallbackResource.getEntityUrl(
         Entity.EVENT_SUBSCRIPTION, alert.getFullyQualifiedName(), "");
-  }
-
-  private String getEntityUrlMSTeams() {
-    return teamsCallbackResource.getEntityUrlMSTeams();
   }
 
   private EventSubscription getAndAssertAlert(UUID id, EventSubscription expectedAlert)
@@ -1813,9 +1807,9 @@ public class EventSubscriptionResourceTest
     waitForAllEventToComplete(createdSub.getId());
     waitForAllEventToComplete(updatedSub.getId());
 
-    List<TeamsMessage> callbackEvents =
+    List<String> callbackEvents =
         teamsCallbackResource.getEntityCallbackEvents(
-            EventType.ENTITY_CREATED, entity + "_MSTEAMS");
+            EventType.ENTITY_CREATED.toString(), entity + "_MSTEAMS");
     assertTrue(callbackEvents.size() > 0);
   }
 
@@ -2190,7 +2184,7 @@ public class EventSubscriptionResourceTest
                 new Webhook()
                     .withEndpoint(URI.create(uri))
                     .withReceivers(new HashSet<>())
-                    .withSecretKey("teamsTest")));
+                    .withSecretKey(MSTeamsCallbackResource.getSecretKey())));
   }
 
   public WebhookCallbackResource.EventDetails waitForFirstEvent(

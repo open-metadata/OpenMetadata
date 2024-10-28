@@ -586,7 +586,7 @@ public interface MessageDecorator<T> {
         .add(
             DQ_Template_Section.TEST_CASE_DETAILS,
             DQ_TestCaseDetailsKeys.DESCRIPTION,
-            testCase.getTestDefinition())
+            testCase.getTestDefinition().getDescription())
         .add(
             DQ_Template_Section.TEST_CASE_DETAILS,
             DQ_TestCaseDetailsKeys.TEST_CASE_FQN,
