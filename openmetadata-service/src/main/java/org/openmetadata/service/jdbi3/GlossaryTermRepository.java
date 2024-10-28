@@ -40,6 +40,7 @@ import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -119,6 +120,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         UPDATE_FIELDS);
     supportsSearch = true;
     renameAllowed = true;
+    fieldFetchers.put("relatedTerms", this::fetchAndSetRelatedTerms);
+    fieldFetchers.put("parent", this::fetchAndSetParentOrGlossary);
   }
 
   @Override
@@ -801,6 +804,131 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           "{} Task not found for glossary term {}",
           TaskType.RequestApproval,
           term.getFullyQualifiedName());
+    }
+  }
+
+  private void fetchAndSetRelatedTerms(List<GlossaryTerm> entities, Fields fields) {
+    if (!fields.contains("relatedTerms") || entities.isEmpty()) {
+      return;
+    }
+    Set<String> termIdsSet =
+        entities.stream().map(GlossaryTerm::getId).map(UUID::toString).collect(Collectors.toSet());
+
+    List<CollectionDAO.EntityRelationshipObject> fromRecords =
+        findFromRecordsBatch(termIdsSet, GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
+    List<CollectionDAO.EntityRelationshipObject> toRecords =
+        findToRecordsBatch(
+            termIdsSet, Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
+
+    List<CollectionDAO.EntityRelationshipObject> allRecords = new ArrayList<>();
+    allRecords.addAll(fromRecords);
+    allRecords.addAll(toRecords);
+
+    Map<UUID, List<EntityReference>> relatedTermsMap = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : allRecords) {
+      UUID termId;
+      UUID relatedTermId;
+
+      if (termIdsSet.contains(rec.getFromId())) {
+        termId = UUID.fromString(rec.getFromId());
+        relatedTermId = UUID.fromString(rec.getToId());
+      } else {
+        termId = UUID.fromString(rec.getToId());
+        relatedTermId = UUID.fromString(rec.getFromId());
+      }
+
+      EntityReference relatedTermRef =
+          new EntityReference().withId(relatedTermId).withType(Entity.GLOSSARY_TERM);
+
+      relatedTermsMap.computeIfAbsent(termId, k -> new ArrayList<>()).add(relatedTermRef);
+    }
+
+    if (!allRecords.isEmpty()) {
+      for (GlossaryTerm term : entities) {
+        List<EntityReference> relatedTerms =
+            relatedTermsMap.getOrDefault(term.getId(), Collections.emptyList());
+        term.setRelatedTerms(relatedTerms);
+      }
+    }
+  }
+
+  private void fetchAndSetParentOrGlossary(List<GlossaryTerm> terms, Fields fields) {
+    if (terms == null || terms.isEmpty() || (!fields.contains("parent"))) {
+      return;
+    }
+
+    List<String> entityIds = terms.stream().map(GlossaryTerm::getId).map(UUID::toString).toList();
+
+    List<CollectionDAO.EntityRelationshipObject> parentRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityIds, Relationship.CONTAINS.ordinal(), entityType, entityType);
+
+    Map<UUID, EntityReference> parentMap = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject rec : parentRecords) {
+      parentMap.put(
+          UUID.fromString(rec.getToId()),
+          Entity.getEntityReferenceById(
+              rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL));
+    }
+
+    // Set parent references on GlossaryTerms
+    for (GlossaryTerm term : terms) {
+      EntityReference parentRef = parentMap.get(term.getId());
+      if (parentRef != null) {
+        term.setParent(parentRef);
+      }
+    }
+
+    List<String> hasRelationIds =
+        terms.stream()
+            .filter(term -> term.getParent() != null)
+            .map(GlossaryTerm::getId)
+            .map(UUID::toString)
+            .toList();
+
+    List<String> containsRelationIds =
+        terms.stream()
+            .filter(term -> term.getParent() == null)
+            .map(GlossaryTerm::getId)
+            .map(UUID::toString)
+            .toList();
+
+    List<CollectionDAO.EntityRelationshipObject> hasRecords = Collections.emptyList();
+    if (!hasRelationIds.isEmpty()) {
+      hasRecords =
+          daoCollection
+              .relationshipDAO()
+              .findFromBatch(hasRelationIds, Relationship.HAS.ordinal(), GLOSSARY);
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> containsRecords = Collections.emptyList();
+    if (!containsRelationIds.isEmpty()) {
+      containsRecords =
+          daoCollection
+              .relationshipDAO()
+              .findFromBatch(containsRelationIds, Relationship.CONTAINS.ordinal(), GLOSSARY);
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRecords = new ArrayList<>();
+    allRecords.addAll(hasRecords);
+    allRecords.addAll(containsRecords);
+
+    // Map to entity ID -> glossary reference
+    Map<UUID, EntityReference> glossaryMap = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject rec : allRecords) {
+      glossaryMap.put(
+          UUID.fromString(rec.getToId()),
+          Entity.getEntityReferenceById(
+              rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL));
+    }
+
+    for (GlossaryTerm term : terms) {
+      EntityReference glossaryRef = glossaryMap.get(term.getId());
+      if (glossaryRef != null) {
+        term.setGlossary(glossaryRef);
+      }
     }
   }
 
