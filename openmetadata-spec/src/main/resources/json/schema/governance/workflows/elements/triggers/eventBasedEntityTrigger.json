@@ -28,6 +28,13 @@
             "$ref": "#/definitions/event"
           },
           "uniqueItems": true
+        },
+        "exclude": {
+          "description": "Exclude events that only modify given attributes.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": ["entityType", "events"],

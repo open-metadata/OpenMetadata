@@ -1,10 +1,14 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.util.EntityUtil.objectMatch;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -54,6 +58,66 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void prepare(WorkflowDefinition entity, boolean update) {}
+
+  @Override
+  public EntityUpdater getUpdater(
+      WorkflowDefinition original, WorkflowDefinition updated, Operation operation) {
+    return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
+  }
+
+  public class WorkflowDefinitionUpdater extends EntityUpdater {
+    public WorkflowDefinitionUpdater(
+        WorkflowDefinition original, WorkflowDefinition updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Transaction
+    @Override
+    public void entitySpecificUpdate() {
+      updateType();
+      updateTrigger();
+      updateNodes();
+      updateEdges();
+    }
+
+    private void updateType() {
+      if (original.getType() == updated.getType()) {
+        return;
+      }
+      recordChange("type", original.getType(), updated.getType());
+    }
+
+    private void updateTrigger() {
+      if (original.getTrigger() == updated.getTrigger()) {
+        return;
+      }
+      recordChange("trigger", original.getTrigger(), updated.getTrigger());
+    }
+
+    private void updateNodes() {
+      List<Object> addedNodes = new ArrayList<>();
+      List<Object> deletedNodes = new ArrayList<>();
+      recordListChange(
+          "nodes",
+          (List<Object>) original.getNodes(),
+          (List<Object>) updated.getNodes(),
+          addedNodes,
+          deletedNodes,
+          objectMatch);
+    }
+
+    private void updateEdges() {
+      List<Object> addedEdges = new ArrayList<>();
+      List<Object> deletedEdges = new ArrayList<>();
+      recordListChange(
+          "nodes",
+          (List<Object>) original.getNodes(),
+          (List<Object>) updated.getNodes(),
+          addedEdges,
+          deletedEdges,
+          objectMatch);
+    }
+  }
 
   @Override
   protected void storeEntity(WorkflowDefinition entity, boolean update) {

@@ -24,6 +24,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.FieldExte
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SignalBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
+import org.openmetadata.service.util.JsonUtils;
 
 public class EventBasedEntityTrigger implements TriggerInterface {
   private final Process process;
@@ -103,12 +104,19 @@ public class EventBasedEntityTrigger implements TriggerInterface {
             .fieldValue(mainWorkflowName)
             .build();
 
+    FieldExtension excludedFilterExpr =
+        new FieldExtensionBuilder()
+            .fieldName("excludedFilterExpr")
+            .fieldValue(JsonUtils.pojoToJson(triggerDefinition.getConfig().getExclude()))
+            .build();
+
     ServiceTask serviceTask =
         new ServiceTaskBuilder()
             .id(getFlowableElementId(workflowTriggerId, "workflowTrigger"))
             .implementation(TriggerEntityWorkflowImpl.class.getName())
             .build();
     serviceTask.getFieldExtensions().add(workflowNameExpr);
+    serviceTask.getFieldExtensions().add(excludedFilterExpr);
 
     return serviceTask;
   }

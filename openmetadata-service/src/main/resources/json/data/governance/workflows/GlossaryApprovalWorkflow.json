@@ -8,7 +8,8 @@
     "type": "eventBasedEntityWorkflow",
     "config": {
       "entityType": "glossaryTerm",
-      "events": ["Created", "Updated"]
+      "events": ["Created", "Updated"],
+      "exclude": ["reviewers"]
     }
   },
   "nodes": [
@@ -35,21 +36,6 @@
       "subType": "endEvent",
       "name": "DraftEnd",
       "displayName": "Glossary Term Status: Draft"
-    },
-    {
-      "type": "endEvent",
-      "subType": "endEvent",
-      "name": "NoOpEnd",
-      "displayName": "Glossary Term Status Unchanged"
-    },
-    {
-      "type": "automatedTask",
-      "subType": "checkEntityAttributesTask",
-      "name": "CheckUpdatedMoreThanReviewers",
-      "displayName": "End Workflow if only Reviewers were updated",
-      "config": {
-        "rules": "{\"or\":[{\"some\":[{\"merge\":[{\"var\":\"changeDescription.fieldsAdded\"},{\"var\":\"changeDescription.fieldsUpdated\"},{\"var\":\"changeDescription.fieldsDeleted\"}]},{\"!=\":[{\"var\":\"name\"},\"reviewers\"]}]},{\"!\":[{\"!!\":[{\"merge\":[{\"var\":\"changeDescription.fieldsAdded\"},{\"var\":\"changeDescription.fieldsUpdated\"},{\"var\":\"changeDescription.fieldsDeleted\"}]}]}]}]}"
-      }
     },
     {
       "type": "automatedTask",
@@ -120,17 +106,7 @@
   "edges": [
     {
       "from": "GlossaryTermCreated",
-      "to": "CheckUpdatedMoreThanReviewers"
-    },
-    {
-      "from": "CheckUpdatedMoreThanReviewers",
-      "to": "NoOpEnd",
-      "condition": "${!checkPassed}"
-    },
-    {
-      "from": "CheckUpdatedMoreThanReviewers",
-      "to": "CheckGlossaryTermHasReviewers",
-      "condition": "${checkPassed}"
+      "to": "CheckGlossaryTermHasReviewers"
     },
     {
       "from": "CheckGlossaryTermHasReviewers",
