@@ -308,6 +308,7 @@ const AppRunsHistory = forwardRef(
             <NextPrevious
               isNumberBased
               currentPage={currentPage}
+              isLoading={isLoading}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handleAppHistoryPageChange}

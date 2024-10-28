@@ -340,6 +340,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           <NextPrevious
             isNumberBased
             currentPage={currentPage}
+            isLoading={isLoading}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleTestSuitesPageChange}
