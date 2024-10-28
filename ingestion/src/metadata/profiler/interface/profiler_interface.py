@@ -61,6 +61,7 @@ from metadata.profiler.api.models import (
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.collaborative_super import Root
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.partition import get_partition_details
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -85,7 +86,7 @@ class ProfilerProcessorStatus(Status):
 
 
 # pylint: disable=too-many-instance-attributes
-class ProfilerInterface(ABC):
+class ProfilerInterface(Root, ABC):
     """Protocol interface for the profiler processor"""
 
     def __init__(  # pylint: disable=too-many-arguments

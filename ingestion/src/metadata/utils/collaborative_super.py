@@ -2,12 +2,16 @@
 This module provides utilties for building a collaborative constructor library.
 """
 
+from abc import ABC
+
 
 class Root:
     """Root class for any class that needs to implement a colllaborative constructor but
     might end up at the end of the inheritance chain. Since python's object.__init__ is not
     a collaborative constructor, we need to have a root class that has a collaborative constructor.
     """
+
+    __terminal__ = {object, ABC}
 
     def __init__(self, *args, **kwargs):
         """Collaborative constructor"""
@@ -17,7 +21,8 @@ class Root:
         ):
             if cls is Root:
                 break
-        if super_class is object:
-            super().__init__()
+        for cls in self.__terminal__:
+            if super_class is cls:
+                break
         else:
             super().__init__(*args, **kwargs)
