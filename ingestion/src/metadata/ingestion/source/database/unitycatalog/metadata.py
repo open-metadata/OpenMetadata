@@ -325,7 +325,7 @@ class UnitycatalogSource(
             ) = self.get_table_constraints(table.table_constraints)
 
             table_constraints = self.update_table_constraints(
-                primary_constraints, foreign_constraints
+                primary_constraints, foreign_constraints, columns
             )
 
             table_request = CreateTableRequest(
@@ -436,7 +436,7 @@ class UnitycatalogSource(
         return table_constraints
 
     def update_table_constraints(
-        self, table_constraints, foreign_columns
+        self, table_constraints, foreign_columns, columns
     ) -> List[TableConstraint]:
         """
         From topology.
