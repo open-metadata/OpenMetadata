@@ -44,7 +44,7 @@ class TestSuiteInterface(ABC):
     runtime_params_setter_fact = RuntimeParameterSetterFactory
 
     def __init__(self):
-        """This constructor exists to staisfy the linter. Its feilds should be set in the implementation class"""
+        """This constructor exists to staisfy the linter. Its fields should be set in the implementation class"""
         self.ometa_client: DatabaseConnection = None
         self.ometa_client: OpenMetadata = None
         self.table_entity: Table = None
