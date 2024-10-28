@@ -17,6 +17,7 @@ from metadata.profiler.metrics.system.system import (
     CacheProvider,
     EmptySystemMetricsSource,
     SQASessionProvider,
+    SystemMetricsComputer,
 )
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
@@ -387,3 +388,9 @@ class SnowflakeSystemMetricsSource(
             for row in queries
         ]
         return [result for result in results if result is not None]
+
+
+class SnowflakeSystemMetricsComputer(
+    SystemMetricsComputer, SnowflakeSystemMetricsSource
+):
+    pass
