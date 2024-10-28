@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Space, Tooltip, Typography } from 'antd';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
 import './status-card-widget.less';
@@ -20,6 +20,15 @@ import { StatusCardWidgetProps } from './StatusCardWidget.interface';
 const StatusDataWidget = ({ statusData, icon }: StatusCardWidgetProps) => {
   const IconSvg = icon;
   const { t } = useTranslation();
+
+  const countCard = useMemo(
+    () => ({
+      success: statusData.success,
+      failed: statusData.failed,
+      aborted: statusData.aborted,
+    }),
+    [statusData]
+  );
 
   return (
     <Space
@@ -42,27 +51,15 @@ const StatusDataWidget = ({ statusData, icon }: StatusCardWidgetProps) => {
         {statusData.total}
       </Typography.Text>
       <div className="d-flex items-center gap-3">
-        <Tooltip title={t('label.success')}>
-          <div
-            className="status-count-container success"
-            data-testid="success-count">
-            {statusData.success}
-          </div>
-        </Tooltip>
-        <Tooltip title={t('label.aborted')}>
-          <div
-            className="status-count-container aborted"
-            data-testid="aborted-count">
-            {statusData.aborted}
-          </div>
-        </Tooltip>
-        <Tooltip title={t('label.failed')}>
-          <div
-            className="status-count-container failed"
-            data-testid="failed-count">
-            {statusData.failed}
-          </div>
-        </Tooltip>
+        {Object.entries(countCard).map(([key, value]) => (
+          <Tooltip key={key} title={t(`label.${key}`)}>
+            <div
+              className={`status-count-container ${key}`}
+              data-testid={`${key}-count`}>
+              {value}
+            </div>
+          </Tooltip>
+        ))}
       </div>
     </Space>
   );
