@@ -16,20 +16,20 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    createNewPage,
+    descriptionBox,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import { addMultiOwner } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 import {
-  createTeam,
-  hardDeleteTeam,
-  searchTeam,
-  softDeleteTeam,
+    createTeam,
+    hardDeleteTeam,
+    searchTeam,
+    softDeleteTeam
 } from '../../utils/team';
 
 // use the admin user to login
@@ -440,6 +440,9 @@ test.describe('Teams Page', () => {
       for (const team of [team1, team2, team3]) {
         await searchTeam(page, team.responseData?.['displayName']);
       }
+
+      // Should not find the organization team and show errorPlaceholder
+      await searchTeam(page, 'Organization', true);
     } finally {
       await team1.delete(apiContext);
       await team2.delete(apiContext);
