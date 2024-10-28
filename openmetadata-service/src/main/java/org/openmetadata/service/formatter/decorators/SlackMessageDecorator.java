@@ -29,24 +29,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackAttachment;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
-
-  private static final String SLACK_ATTACHMENT_BODY =
-      """
-    Open and unified metadata platform for data discovery, observability, and governance.
-    A single place for all your data and all your data practitioners to build and manage
-    high-quality data assets at scale.
-    """;
 
   @Override
   public String getBold() {
@@ -95,12 +85,12 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
   @Override
   public SlackMessage buildEntityMessage(String publisherName, ChangeEvent event) {
-    return getSlackMessage(publisherName, event, createEntityMessage(publisherName, event));
+    return getSlackMessage(event, createEntityMessage(publisherName, event));
   }
 
   @Override
   public SlackMessage buildThreadMessage(String publisherName, ChangeEvent event) {
-    return getSlackMessage(publisherName, event, createThreadMessage(publisherName, event));
+    return getSlackMessage(event, createThreadMessage(publisherName, event));
   }
 
   @Override
@@ -108,35 +98,20 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return createConnectionTestMessage(publisherName);
   }
 
-  private SlackMessage getSlackMessage(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+  private SlackMessage getSlackMessage(ChangeEvent event, OutgoingMessage outgoingMessage) {
     if (outgoingMessage.getMessages().isEmpty()) {
       throw new UnhandledServerException("No messages found for the event");
     }
 
-    return createMessage(publisherName, event, outgoingMessage);
+    return createMessage(event, outgoingMessage);
   }
 
-  private SlackMessage createMessage(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+  private SlackMessage createMessage(ChangeEvent event, OutgoingMessage outgoingMessage) {
 
     return switch (event.getEntityType()) {
-      case Entity.TEST_CASE -> createDQTemplateMessage(publisherName, event, outgoingMessage);
-      default -> createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
+      case Entity.TEST_CASE -> createDQTemplateMessage(event, outgoingMessage);
+      default -> createGeneralChangeEventMessage(event, outgoingMessage);
     };
-  }
-
-  private List<SlackAttachment> createSlackAttachments() {
-    SlackAttachment attachment = new SlackAttachment();
-    attachment.setFallback("Slack destination test successful.");
-    attachment.setColor("#36a64f");
-    attachment.setTitle("OpenMetadata");
-    attachment.setText(SLACK_ATTACHMENT_BODY);
-    attachment.setTs(String.valueOf(System.currentTimeMillis() / 1000));
-
-    List<SlackAttachment> attachmentList = new ArrayList<>();
-    attachmentList.add(attachment);
-    return attachmentList;
   }
 
   public SlackMessage createConnectionTestMessage(String publisherName) {
@@ -191,7 +166,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   private SlackMessage createGeneralChangeEventMessage(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+      ChangeEvent event, OutgoingMessage outgoingMessage) {
     List<LayoutBlock> generalChangeEventBody = createGeneralChangeEventBody(event, outgoingMessage);
     SlackMessage message = new SlackMessage();
     message.setBlocks(generalChangeEventBody);
@@ -354,8 +329,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   // DQ TEMPLATE
-  public SlackMessage createDQTemplateMessage(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+  public SlackMessage createDQTemplateMessage(ChangeEvent event, OutgoingMessage outgoingMessage) {
 
     Map<DQ_Template_Section, Map<Enum<?>, Object>> dqTemplateData =
         MessageDecorator.buildDQTemplateData(event, outgoingMessage);
@@ -367,8 +341,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
     Map<Enum<?>, Object> enumObjectMap = dqTemplateData.get(DQ_Template_Section.TEST_CASE_RESULT);
     if (!nullOrEmpty(enumObjectMap)) {
-      SlackMessage.Attachment attachment =
-          createDQAttachment(publisherName, event, outgoingMessage, dqTemplateData);
+      SlackMessage.Attachment attachment = createDQAttachment(dqTemplateData);
 
       attachment.setColor("#ffcc00");
 
@@ -406,9 +379,6 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   public SlackMessage.Attachment createDQAttachment(
-      String publisherName,
-      ChangeEvent event,
-      OutgoingMessage outgoingMessage,
       Map<DQ_Template_Section, Map<Enum<?>, Object>> dqTemplateData) {
     List<LayoutBlock> blocks = new ArrayList<>();
 
@@ -427,7 +397,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     // Divider
     blocks.add(Blocks.divider());
 
-    // Section 6 and 7 - Result and Test Definition
+    // Section 4 and 5 - Result and Test Definition
     blocks.addAll(createTestCaseResultAndDefinitionSections(dqTemplateData));
 
     // Context Block - Image and Markdown Text
@@ -682,7 +652,6 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return blocks;
   }
 
-  // Method to add the Sample Data section to the blocks list
   private void addSampleDataSection(
       Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData, List<LayoutBlock> blocks) {
 
@@ -705,45 +674,6 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                                 DQ_TestCaseDetailsKeys.SAMPLE_DATA, testCaseDetails)))));
       }
     }
-  }
-
-  private String buildPipelineStatusMessage(PipelineStatus pipelineStatus) {
-    StringBuilder statusString = new StringBuilder();
-
-    PipelineStatusType pipelineState = pipelineStatus.getPipelineState();
-    switch (pipelineState) {
-      case QUEUED:
-        statusString.append("Queued :hourglass_flowing_sand: ").append(getLineBreak());
-        break;
-      case RUNNING:
-        statusString.append("Running :gear: ").append(getLineBreak());
-        break;
-      case SUCCESS:
-        statusString.append("Success :white_check_mark: ").append(getLineBreak());
-        break;
-      case PARTIAL_SUCCESS:
-        statusString.append("Partial Success :warning: ").append(getLineBreak());
-        break;
-      case FAILED:
-        statusString.append("Failed :x:").append(getLineBreak());
-        break;
-      default:
-        statusString.append("Unknown :grey_question:").append(getLineBreak());
-        break;
-    }
-
-    return statusString.toString();
-  }
-
-  private String getPipelineStatusColor(PipelineStatusType pipelineState) {
-    return switch (pipelineState) {
-      case QUEUED -> "#439FE0"; // Blue for queued
-      case RUNNING -> "#FFA500"; // Orange for running
-      case SUCCESS -> "#36a64f"; // Green for success
-      case PARTIAL_SUCCESS -> "#ffcc00"; // Yellow for partial success
-      case FAILED -> "#ff0000"; // Red for failure
-      default -> "#808080"; // Gray for unknown cases
-    };
   }
 
   private String buildClickableEntityUrl(String entityUrl) {
