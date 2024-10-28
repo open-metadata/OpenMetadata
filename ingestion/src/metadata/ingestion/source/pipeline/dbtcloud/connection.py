@@ -53,8 +53,8 @@ def test_connection(
     job_id = int(service_connection.jobId) if service_connection.jobId else 0
 
     test_fn = {
-        "GetJobs": client.get_jobs,
-        "GetRuns": partial(client.get_runs, job_id=job_id),
+        "GetJobs": client.test_get_jobs,
+        "GetRuns": partial(client.test_get_runs, job_id=job_id),
     }
 
     return test_connection_steps(
