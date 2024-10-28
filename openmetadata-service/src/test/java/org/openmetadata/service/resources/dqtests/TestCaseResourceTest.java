@@ -3230,9 +3230,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     entityLink = "<#E::table::::baz>";
     create.setEntityLink(entityLink);
     assertThrows(
-            HttpResponseException.class,
-            () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
-            "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
   }
 
   private void putInspectionQuery(TestCase testCase, String sql) throws IOException {
