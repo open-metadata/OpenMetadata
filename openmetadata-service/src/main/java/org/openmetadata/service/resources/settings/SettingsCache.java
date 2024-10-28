@@ -128,11 +128,16 @@ public class SettingsCache {
     }
 
     // Initialise Certification Settings
-    Settings certificationSettings = systemRepository.getConfigWithKey(ASSET_CERTIFICATION_SETTINGS.toString());
+    Settings certificationSettings =
+        systemRepository.getConfigWithKey(ASSET_CERTIFICATION_SETTINGS.toString());
     if (certificationSettings == null) {
-      Settings setting = new Settings()
+      Settings setting =
+          new Settings()
               .withConfigType(ASSET_CERTIFICATION_SETTINGS)
-              .withConfigValue(new AssetCertificationSettings().withAllowedClassification("Certification").withValidityPeriod("P30D"));
+              .withConfigValue(
+                  new AssetCertificationSettings()
+                      .withAllowedClassification("Certification")
+                      .withValidityPeriod("P30D"));
       systemRepository.createNewSetting(setting);
     }
   }

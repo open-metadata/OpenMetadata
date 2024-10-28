@@ -2964,10 +2964,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       LocalDateTime nowDateTime =
           LocalDateTime.ofInstant(Instant.ofEpochMilli(certificationDate), ZoneOffset.UTC);
-      Period datePeriod =
-          Period.parse(
-              assetCertificationSettings
-                  .getValidityPeriod());
+      Period datePeriod = Period.parse(assetCertificationSettings.getValidityPeriod());
       LocalDateTime targetDateTime = nowDateTime.plus(datePeriod);
       updatedCertification.setExpiryDate(targetDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
 
@@ -2980,8 +2977,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         throw new IllegalArgumentException(
             "Certification is not configured. Please configure the Classification used for Certification in the Settings.");
       } else {
-        String allowedClassification =
-            assetCertificationSettings.getAllowedClassification();
+        String allowedClassification = assetCertificationSettings.getAllowedClassification();
         String[] fqnParts = FullyQualifiedName.split(certificationLabel);
         String parentFqn = FullyQualifiedName.getParentFQN(fqnParts);
         if (!allowedClassification.equals(parentFqn)) {
