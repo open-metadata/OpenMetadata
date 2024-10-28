@@ -147,9 +147,8 @@ export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
     config?.supportsMetadataExtraction &&
       pipelineType.push(PipelineType.Metadata);
     config?.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
-    config?.supportsLineageExtraction &&
-      pipelineType.push(PipelineType.Lineage);
-    config?.supportsViewLineageExtraction &&
+    (config?.supportsLineageExtraction ||
+      config?.supportsViewLineageExtraction) &&
       pipelineType.push(PipelineType.Lineage);
     config?.supportsProfiler && pipelineType.push(PipelineType.Profiler);
     config?.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
