@@ -43,7 +43,7 @@
       "name": "CheckGlossaryTermHasReviewers",
       "displayName": "Check if Glossary Term has Reviewers",
       "config": {
-        "rules": "{ \"!!\": [ { \"var\": \"reviewers\" } ] }"
+        "rules": "{\"and\":[{\"!!\":[{\"var\":\"reviewers\"}]}]}"
       }
     },
     {
@@ -52,7 +52,7 @@
       "name": "CheckGlossaryTermIsReadyToBeReviewed",
       "displayName": "Check if Glossary Term is Ready to be Reviewed",
       "config": {
-        "rules": "{ \"in\": [ \"Bar\", { \"var\": \"extension.foo\" } ] }"
+        "rules": "{\"and\":[{\"some\":[{\"var\":\"extension\"},{\"==\":[{\"var\":\"foo\"},\"bar\"]}]}]}"
       }
     },
     {
