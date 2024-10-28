@@ -69,7 +69,8 @@ public class DatabaseServiceRepository
     DatabaseRepository repository = (DatabaseRepository) Entity.getEntityRepository(DATABASE);
     List<Database> databases =
         repository.listAllForCSV(
-            repository.getFields("owners,tags,domain,extension"), databaseService.getFullyQualifiedName());
+            repository.getFields("owners,tags,domain,extension"),
+            databaseService.getFullyQualifiedName());
 
     databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseServiceCsv(databaseService, user).exportCsv(databases);
