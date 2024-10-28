@@ -500,7 +500,7 @@
         }
       },
       "locationPath": {
-        "type": "text"
+        "type": "keyword"
       },
       "usageSummary": {
         "properties": {
