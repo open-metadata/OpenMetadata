@@ -1,7 +1,6 @@
-package org.openmetadata.service.migration.mysql.v160;
+package org.openmetadata.service.migration.mysql.v159;
 
-import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addViewAllRuleToOrgPolicy;
-import static org.openmetadata.service.migration.utils.v160.MigrationUtil.migrateServiceTypesAndConnections;
+import static org.openmetadata.service.migration.utils.v159.MigrationUtil.addAppExtensionName;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -16,7 +15,6 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    migrateServiceTypesAndConnections(handle, false);
-    addViewAllRuleToOrgPolicy(collectionDAO);
+    addAppExtensionName(handle, collectionDAO, authenticationConfiguration, false);
   }
 }
