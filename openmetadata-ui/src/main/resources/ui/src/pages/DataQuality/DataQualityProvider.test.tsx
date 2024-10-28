@@ -13,7 +13,7 @@
 /* eslint-disable i18next/no-literal-string */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getTestCaseExecutionSummary } from '../../rest/testAPI';
+import { fetchTestCaseSummary } from '../../rest/dataQualityDashboardAPI';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider, {
   useDataQualityProvider,
@@ -38,14 +38,17 @@ jest.mock('react-router-dom', () => {
     useParams: jest.fn().mockImplementation(() => mockUseParam),
   };
 });
-jest.mock('../../rest/testAPI', () => ({
-  getTestCaseExecutionSummary: jest.fn().mockImplementation(() => {
+jest.mock('../../rest/dataQualityDashboardAPI', () => ({
+  fetchTestCaseSummary: jest.fn().mockImplementation(() => {
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({ data: [] });
       }, 2000); // Simulate a delay
     });
   }),
+}));
+jest.mock('../../utils/DataQuality/DataQualityUtils', () => ({
+  transformToTestCaseStatusObject: jest.fn().mockImplementation((data) => data),
 }));
 
 const MockComponent = () => {
@@ -84,7 +87,7 @@ describe('DataQualityProvider', () => {
     expect(await screen.findByText('tables component')).toBeInTheDocument();
   });
 
-  it('should call getTestCaseExecutionSummary', async () => {
-    expect(getTestCaseExecutionSummary).toHaveBeenCalledTimes(1);
+  it('should call fetchTestCaseSummary', async () => {
+    expect(fetchTestCaseSummary).toHaveBeenCalledTimes(1);
   });
 });
