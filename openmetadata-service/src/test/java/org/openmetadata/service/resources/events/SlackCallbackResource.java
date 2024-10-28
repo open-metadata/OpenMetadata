@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
@@ -21,6 +22,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.awaitility.Awaitility;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.util.RestUtil;
 
@@ -56,6 +58,25 @@ public class SlackCallbackResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String event) {
     addEventDetails("simulate-slowServer", event);
     return Response.ok().build();
+  }
+
+  @POST
+  @Path("/simulate/timeout")
+  public Response receiveEventWithTimeout(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, String event) {
+    addEventDetails("simulate-timeout", event);
+    Awaitility.await()
+        .pollDelay(java.time.Duration.ofSeconds(100L))
+        .untilTrue(new AtomicBoolean(true));
+    return Response.ok().build();
+  }
+
+  @POST
+  @Path("/simulate/300")
+  public Response receiveEvent300(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, String event) {
+    addEventDetails("simulate-300", event);
+    return Response.status(Response.Status.MOVED_PERMANENTLY).build();
   }
 
   @POST
