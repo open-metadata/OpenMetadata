@@ -646,7 +646,7 @@ public class DatabaseSchemaResource
   }
 
   @GET
-  @Path("/getEntityRelationship")
+  @Path("/entityRelationship")
   @Operation(
       operationId = "searchSchemaEntityRelationship",
       summary = "Search Schema Entity Relationship",
@@ -673,6 +673,7 @@ public class DatabaseSchemaResource
           String queryFilter,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
+          @DefaultValue("false")
           boolean deleted)
       throws IOException {
 

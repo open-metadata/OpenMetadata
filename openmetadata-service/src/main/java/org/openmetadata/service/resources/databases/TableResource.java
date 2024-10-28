@@ -128,7 +128,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         MetadataOperation.EDIT_QUERIES,
         MetadataOperation.EDIT_DATA_PROFILE,
         MetadataOperation.EDIT_SAMPLE_DATA,
-        MetadataOperation.EDIT_LINEAGE);
+        MetadataOperation.EDIT_LINEAGE,
+        MetadataOperation.EDIT_ENTITY_RELATIONSHIP);
   }
 
   public static class TableList extends ResultList<Table> {
@@ -1221,7 +1222,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @GET
-  @Path("/getEntityRelationship")
+  @Path("/entityRelationship")
   @Operation(
       operationId = "searchEntityRelationship",
       summary = "Search Entity Relationship",
@@ -1248,6 +1249,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String queryFilter,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
+          @DefaultValue("false")
           boolean deleted)
       throws IOException {
 

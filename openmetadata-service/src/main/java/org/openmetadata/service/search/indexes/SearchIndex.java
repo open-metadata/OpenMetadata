@@ -186,35 +186,39 @@ public interface SearchIndex {
           .equalsIgnoreCase(TableConstraint.ConstraintType.FOREIGN_KEY.value())) {
         continue;
       }
-      String relatedEntityFQN = getParentFQN(tableConstraint.getReferredColumns().get(0));
-      Table relatedEntity;
-      try {
-        relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", NON_DELETED);
-        IndexMapping destinationIndexMapping =
-            Entity.getSearchRepository()
-                .getIndexMapping(relatedEntity.getEntityReference().getType());
-        String destinationIndexName =
-            destinationIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
-        Map<String, Object> relationshipsMap = buildRelationshipsMap(entity, relatedEntity);
-        int relatedEntityIndex =
-            checkRelatedEntity(relatedEntity.getFullyQualifiedName(), constraints);
-        if (relatedEntityIndex >= 0) {
-          updateExistingConstraint(
-              entity,
-              tableConstraint,
-              constraints.get(relatedEntityIndex),
-              destinationIndexName,
-              relatedEntity);
-        } else {
-          addNewConstraint(
-              entity,
-              tableConstraint,
-              constraints,
-              relationshipsMap,
-              destinationIndexName,
-              relatedEntity);
+      for (String referredColumn : tableConstraint.getReferredColumns()) {
+        String relatedEntityFQN = getParentFQN(referredColumn);
+        Table relatedEntity;
+        try {
+          relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", NON_DELETED);
+          IndexMapping destinationIndexMapping =
+              Entity.getSearchRepository()
+                  .getIndexMapping(relatedEntity.getEntityReference().getType());
+          String destinationIndexName =
+              destinationIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+          Map<String, Object> relationshipsMap = buildRelationshipsMap(entity, relatedEntity);
+          int relatedEntityIndex =
+              checkRelatedEntity(relatedEntity.getFullyQualifiedName(), constraints);
+          if (relatedEntityIndex >= 0) {
+            updateExistingConstraint(
+                entity,
+                tableConstraint,
+                constraints.get(relatedEntityIndex),
+                destinationIndexName,
+                relatedEntity,
+                referredColumn);
+          } else {
+            addNewConstraint(
+                entity,
+                tableConstraint,
+                constraints,
+                relationshipsMap,
+                destinationIndexName,
+                relatedEntity,
+                referredColumn);
+          }
+        } catch (EntityNotFoundException ex) {
         }
-      } catch (EntityNotFoundException ex) {
       }
     }
     return constraints;
@@ -254,21 +258,25 @@ public interface SearchIndex {
       TableConstraint tableConstraint,
       Map<String, Object> presentConstraint,
       String destinationIndexName,
-      Table relatedEntity) {
-    String columnFQN =
-        FullyQualifiedName.add(entity.getFullyQualifiedName(), tableConstraint.getColumns().get(0));
-    String relatedColumnFQN = tableConstraint.getReferredColumns().get(0);
+      Table relatedEntity,
+      String referredColumn) {
+    for (String currentColumn : tableConstraint.getColumns()) {
+      if (currentColumn.equals(FullyQualifiedName.getColumnName(referredColumn))) {
+        String columnFQN = FullyQualifiedName.add(entity.getFullyQualifiedName(), currentColumn);
 
-    Map<String, Object> columnMap = new HashMap<>();
-    columnMap.put("columnFQN", columnFQN);
-    columnMap.put("relatedColumnFQN", relatedColumnFQN);
-    columnMap.put("relationshipType", tableConstraint.getRelationshipType());
+        Map<String, Object> columnMap = new HashMap<>();
+        columnMap.put("columnFQN", columnFQN);
+        columnMap.put("relatedColumnFQN", referredColumn);
+        columnMap.put("relationshipType", tableConstraint.getRelationshipType());
 
-    List<Map<String, Object>> presentColumns =
-        (List<Map<String, Object>>) presentConstraint.get("columns");
-    presentColumns.add(columnMap);
+        List<Map<String, Object>> presentColumns =
+            (List<Map<String, Object>>) presentConstraint.get("columns");
+        presentColumns.add(columnMap);
 
-    updateRelatedEntityIndex(destinationIndexName, relatedEntity, presentConstraint);
+        updateRelatedEntityIndex(destinationIndexName, relatedEntity, presentConstraint);
+        break;
+      }
+    }
   }
 
   private static void addNewConstraint(
@@ -277,23 +285,24 @@ public interface SearchIndex {
       List<Map<String, Object>> constraints,
       Map<String, Object> relationshipsMap,
       String destinationIndexName,
-      Table relatedEntity) {
-    String columnFQN =
-        FullyQualifiedName.add(entity.getFullyQualifiedName(), tableConstraint.getColumns().get(0));
-    String relatedColumnFQN = tableConstraint.getReferredColumns().get(0);
+      Table relatedEntity,
+      String referredColumn) {
+    for (String currentColumn : tableConstraint.getColumns()) {
+      if (currentColumn.equals(FullyQualifiedName.getColumnName(referredColumn))) {
+        List<Map<String, Object>> columns = new ArrayList<>();
+        String columnFQN = FullyQualifiedName.add(entity.getFullyQualifiedName(), currentColumn);
 
-    Map<String, Object> columnMap = new HashMap<>();
-    columnMap.put("columnFQN", columnFQN);
-    columnMap.put("relatedColumnFQN", relatedColumnFQN);
-    columnMap.put("relationshipType", tableConstraint.getRelationshipType());
+        Map<String, Object> columnMap = new HashMap<>();
+        columnMap.put("columnFQN", columnFQN);
+        columnMap.put("relatedColumnFQN", referredColumn);
+        columnMap.put("relationshipType", tableConstraint.getRelationshipType());
+        columns.add(columnMap);
+        relationshipsMap.put("columns", columns);
+        constraints.add(JsonUtils.getMap(relationshipsMap));
 
-    List<Map<String, Object>> columns = new ArrayList<>();
-    columns.add(columnMap);
-    relationshipsMap.put("columns", columns);
-
-    constraints.add(JsonUtils.getMap(relationshipsMap));
-
-    updateRelatedEntityIndex(destinationIndexName, relatedEntity, relationshipsMap);
+        updateRelatedEntityIndex(destinationIndexName, relatedEntity, relationshipsMap);
+      }
+    }
   }
 
   static Map<String, Object> buildEntityRefMap(EntityReference entityRef) {

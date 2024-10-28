@@ -78,6 +78,10 @@ public interface SearchClient {
 
   String ADD_UPDATE_LINEAGE =
       "boolean docIdExists = false; for (int i = 0; i < ctx._source.lineage.size(); i++) { if (ctx._source.lineage[i].doc_id.equalsIgnoreCase(params.lineageData.doc_id)) { ctx._source.lineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.lineage.add(params.lineageData);}";
+
+  // The script is used for updating the entityRelationship attribute of the entity in ES
+  // It checks if any duplicate entry is present based on the doc_id and updates only if it is not
+  // present
   String ADD_UPDATE_ENTITY_RELATIONSHIP =
       "boolean docIdExists = false; for (int i = 0; i < ctx._source.entityRelationship.size(); i++) { if (ctx._source.entityRelationship[i].doc_id.equalsIgnoreCase(params.entityRelationshipData.doc_id)) { ctx._source.entityRelationship[i] = params.entityRelationshipData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.entityRelationship.add(params.entityRelationshipData);}";
   String UPDATE_ADDED_DELETE_GLOSSARY_TAGS =
