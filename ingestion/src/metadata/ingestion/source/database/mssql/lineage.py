@@ -22,9 +22,11 @@ from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.mssql.constants import (
     DEFAULT_DATETIME_FORMAT,
     MSSQL_DATEFORMAT_DATETIME_MAP,
-    MSSQL_GET_STORED_PROCEDURE_QUERIES,
 )
-from metadata.ingestion.source.database.mssql.queries import MSSQL_SQL_STATEMENT
+from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_STORED_PROCEDURE_QUERIES,
+    MSSQL_SQL_STATEMENT,
+)
 from metadata.ingestion.source.database.mssql.query_parser import MssqlQueryParserSource
 from metadata.ingestion.source.database.mssql.utils import (
     get_sqlalchemy_engine_dateformat,
