@@ -93,7 +93,11 @@ const DataAssetsCoveragePieChartWidget = ({
       }
 
       const covered = parseInt(coverageData[0].originEntityFQN);
-      const total = parseInt(totalData[0].fullyQualifiedName);
+      let total = parseInt(totalData[0].fullyQualifiedName);
+
+      if (covered > total) {
+        total = covered;
+      }
 
       setDataAssetsCoverageStates({
         covered,
