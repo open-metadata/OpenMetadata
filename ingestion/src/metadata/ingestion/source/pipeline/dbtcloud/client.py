@@ -63,6 +63,30 @@ class DBTCloudClient:
         self.client = REST(client_config)
         self.graphql_client = REST(graphql_client_config)
 
+    def test_get_jobs(self) -> Optional[List[DBTJob]]:
+        """
+        test fetch jobs for an account in dbt cloud
+        """
+        job_path = f"{self.config.jobId}/" if self.config.jobId else ""
+        result = self.client.get(f"/accounts/{self.config.accountId}/jobs/{job_path}")
+        job_list = (
+            [DBTJob.model_validate(result["data"])]
+            if self.config.jobId
+            else DBTJobList.model_validate(result).Jobs
+        )
+        return job_list
+
+    def test_get_runs(self, job_id: int) -> Optional[List[DBTRun]]:
+        """
+        test fetch runs for a job in dbt cloud
+        """
+        result = self.client.get(
+            f"/accounts/{self.config.accountId}/runs/",
+            data={"job_definition_id": job_id},
+        )
+        run_list = DBTRunList.model_validate(result).Runs
+        return run_list
+
     def get_jobs(self) -> Optional[List[DBTJob]]:
         """
         list jobs for an account in dbt cloud
@@ -73,7 +97,11 @@ class DBTCloudClient:
                 f"/accounts/{self.config.accountId}/jobs/{job_path}"
             )
             if result:
-                job_list = DBTJobList(**result).Jobs
+                job_list = (
+                    [DBTJob.model_validate(result.get("data"))]
+                    if self.config.jobId
+                    else DBTJobList.model_validate(result).Jobs
+                )
                 return job_list
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -91,7 +119,7 @@ class DBTCloudClient:
                 data={"job_definition_id": job_id},
             )
             if result:
-                run_list = DBTRunList(**result).Runs
+                run_list = DBTRunList.model_validate(result).Runs
                 return run_list
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -112,7 +140,7 @@ class DBTCloudClient:
             result = self.graphql_client.post("", json=query_params)
 
             if result.get("data") and result["data"].get("job"):
-                model_list = DBTModelList(**result["data"]["job"]).models
+                model_list = DBTModelList.model_validate(result["data"]["job"]).models
                 return model_list
 
         except Exception as exc:
@@ -133,7 +161,7 @@ class DBTCloudClient:
             result = self.graphql_client.post("", json=query_params)
 
             if result.get("data") and result["data"].get("job"):
-                result = DBTModelList(**result["data"]["job"])
+                result = DBTModelList.model_validate(result["data"]["job"])
                 parents_list = result.models + result.seeds
                 return parents_list
 
