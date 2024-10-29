@@ -465,7 +465,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AlertDetailsPage}
-        path={ROUTES.OBSERVABILITY_ALERT_DETAILS}
+        path={ROUTES.OBSERVABILITY_ALERT_DETAILS_WITH_TAB}
       />
 
       <AdminProtectedRoute

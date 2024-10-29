@@ -117,7 +117,7 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={() => <AlertDetailsPage isNotificationAlert />}
-        path={ROUTES.NOTIFICATION_ALERT_DETAILS}
+        path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB}
       />
       <AdminProtectedRoute
         exact

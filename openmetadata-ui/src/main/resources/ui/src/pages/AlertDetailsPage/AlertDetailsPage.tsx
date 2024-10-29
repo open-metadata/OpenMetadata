@@ -11,20 +11,26 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Space, Tabs, Tooltip, Typography } from 'antd';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import AlertConfigDetails from '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import NoDataPlaceholder from '../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { ExtraInfoLabel } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { AlertDetailTabs } from '../../enums/Alerts.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
   EventSubscription,
@@ -34,22 +40,32 @@ import { useFqn } from '../../hooks/useFqn';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
+  getNotificationAlertDetailsPath,
   getNotificationAlertsEditPath,
+  getObservabilityAlertDetailsPath,
   getObservabilityAlertsEditPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
   isNotificationAlert = false,
 }: Readonly<AlertDetailsPageProps>) {
   const { t } = useTranslation();
+  const { tab = AlertDetailTabs.CONFIGURATION } =
+    useParams<{ tab: AlertDetailTabs }>();
   const { fqn } = useFqn();
   const history = useHistory();
 
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
   const [loading, setLoading] = useState<boolean>(true);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+
+  const alertIcon = useMemo(
+    () => searchClassBase.getEntityIcon(EntityType.ALERT, 'h-9'),
+    []
+  );
 
   const fetchAlerts = async () => {
     try {
@@ -112,6 +128,41 @@ function AlertDetailsPage({
     );
   }, [history]);
 
+  const onOwnerUpdate = useCallback(() => {
+    return 'update owner';
+  }, []);
+
+  const tabItems = useMemo(
+    () => [
+      {
+        label: t('label.configuration'),
+        key: AlertDetailTabs.CONFIGURATION,
+        children: isUndefined(alertDetails) ? (
+          <NoDataPlaceholder />
+        ) : (
+          <AlertConfigDetails alertDetails={alertDetails} />
+        ),
+      },
+      {
+        label: t('label.recent-event-plural'),
+        key: AlertDetailTabs.RECENT_EVENTS,
+        children: 'Recent Events',
+      },
+    ],
+    [alertDetails]
+  );
+
+  const handleTabChange = useCallback(
+    (activeKey: string) => {
+      history.replace(
+        isNotificationAlert
+          ? getNotificationAlertDetailsPath(fqn, activeKey)
+          : getObservabilityAlertDetailsPath(fqn, activeKey)
+      );
+    },
+    [history, fqn]
+  );
+
   useEffect(() => {
     fetchAlerts();
   }, []);
@@ -137,14 +188,37 @@ function AlertDetailsPage({
 
               <Col span={24}>
                 <Row justify="space-between">
-                  <Col>
-                    <Typography.Title level={5}>
-                      {t('label.entity-detail-plural', {
-                        entity: isNotificationAlert
-                          ? t('label.notification-alert')
-                          : t('label.observability-alert'),
-                      })}
-                    </Typography.Title>
+                  <Col span={21}>
+                    <Row gutter={[16, 16]}>
+                      <Col span={24}>
+                        <EntityHeaderTitle
+                          displayName={alertDetails?.displayName}
+                          icon={alertIcon}
+                          name={alertDetails?.name ?? ''}
+                          serviceName=""
+                        />
+                      </Col>
+                      <Col span={24}>
+                        <div className="d-flex flex-wrap gap-2">
+                          <OwnerLabel
+                            owners={alertDetails?.owners}
+                            onUpdate={onOwnerUpdate}
+                          />
+                          <ExtraInfoLabel
+                            label={t('label.total-entity', {
+                              entity: t('label.event-plural'),
+                            })}
+                            value={0}
+                          />
+                          <ExtraInfoLabel
+                            label={t('label.pending-entity', {
+                              entity: t('label.event-plural'),
+                            })}
+                            value={0}
+                          />
+                        </div>
+                      </Col>
+                    </Row>
                   </Col>
                   <Col>
                     <Space align="center" size={8}>
@@ -181,16 +255,6 @@ function AlertDetailsPage({
                 </Row>
               </Col>
 
-              <Col span={24}>
-                <Space direction="vertical">
-                  <Typography.Text className="font-medium">
-                    {`${t('label.name')} :`}
-                  </Typography.Text>
-                  <Typography.Text data-testid="alert-name">
-                    {getEntityName(alertDetails)}
-                  </Typography.Text>
-                </Space>
-              </Col>
               {alertDetails?.description && (
                 <Col data-testid="alert-description" span={24}>
                   <Typography.Text className="font-medium">{`${t(
@@ -202,9 +266,15 @@ function AlertDetailsPage({
                   />
                 </Col>
               )}
-              {alertDetails && (
-                <AlertConfigDetails alertDetails={alertDetails} />
-              )}
+
+              <Col span={24}>
+                <Tabs
+                  activeKey={tab}
+                  className="m-b-lg"
+                  items={tabItems}
+                  onTabClick={handleTabChange}
+                />
+              </Col>
             </Row>
             <DeleteWidgetModal
               afterDeleteAction={handleAlertDelete}
