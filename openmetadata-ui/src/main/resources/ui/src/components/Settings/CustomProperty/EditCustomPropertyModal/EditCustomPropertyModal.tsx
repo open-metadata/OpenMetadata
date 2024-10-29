@@ -100,6 +100,8 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
         const updatedValues = uniq([...value, ...(enumConfig?.values ?? [])]);
         form.setFieldsValue({ customPropertyConfig: updatedValues });
       },
+      open: false,
+      className: 'trim-select',
     },
     rules: [
       {
