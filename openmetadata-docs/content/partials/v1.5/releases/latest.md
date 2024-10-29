@@ -1,4 +1,4 @@
-# 1.5.8 Release 🎉
+# 1.5.9 Release 🎉
 
 {% note noteType="Tip" %}
 **Oct 29th, 2024**
