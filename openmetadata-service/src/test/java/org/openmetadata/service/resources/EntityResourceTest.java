@@ -130,7 +130,6 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
-import org.openmetadata.schema.configuration.ValidityPeriods;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entities.docStore.Document;
@@ -216,6 +215,7 @@ import org.openmetadata.service.resources.teams.*;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -2453,17 +2453,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Create Tag
     TagResourceTest tagResourceTest = new TagResourceTest();
-    Tag firstTag =
+    Tag certificationTag =
         tagResourceTest.createEntity(tagResourceTest.createRequest(test, 0), ADMIN_AUTH_HEADERS);
-    TagLabel firstTagLabel = EntityUtil.toTagLabel(firstTag);
+    TagLabel certificationLabel = EntityUtil.toTagLabel(certificationTag);
 
-    Tag secondTag =
-        tagResourceTest.createEntity(tagResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
-    TagLabel secondTagLabel = EntityUtil.toTagLabel(secondTag);
-
-    // Add lifeCycle using PATCH request
+    // Add certification using PATCH request
     String json = JsonUtils.pojoToJson(entity);
-    AssetCertification certification = new AssetCertification().withTagLabel(firstTagLabel);
+    AssetCertification certification = new AssetCertification().withTagLabel(certificationLabel);
     entity.setCertification(certification);
     try {
       patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
@@ -2473,15 +2469,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Configure Certification Settings
-    ValidityPeriods validityPeriods = new ValidityPeriods();
-    validityPeriods.setAdditionalProperty(firstTagLabel.getTagFQN(), "P30D");
-    validityPeriods.setAdditionalProperty(secondTagLabel.getTagFQN(), "P60D");
+    String[] fqnParts = FullyQualifiedName.split(certificationLabel.getTagFQN());
+    String classification = FullyQualifiedName.getParentFQN(fqnParts);
 
     AssetCertificationSettings certificationSettings =
         new AssetCertificationSettings()
-            .withAllowedClassifications(
-                validityPeriods.getAdditionalProperties().keySet().stream().toList())
-            .withValidityPeriods(validityPeriods);
+                .withAllowedClassification(classification)
+            .withValidityPeriod("P30D");
 
     SystemRepository systemRepository = Entity.getSystemRepository();
     systemRepository.updateSetting(
@@ -2491,7 +2485,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     T patchedEntity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
     assertEquals(
-        patchedEntity.getCertification().getTagLabel().getTagFQN(), firstTagLabel.getTagFQN());
+        patchedEntity.getCertification().getTagLabel().getTagFQN(), certificationLabel.getTagFQN());
     assertEquals(
         patchedEntity.getCertification().getAppliedDate(), System.currentTimeMillis(), 10 * 1000);
     assertEquals(
@@ -2501,22 +2495,40 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         30D * 24 * 60 * 60 * 1000,
         10 * 1000);
 
-    // Change Certification
-    String originalJson = JsonUtils.pojoToJson(entity);
-    AssetCertification newCertification = new AssetCertification().withTagLabel(secondTagLabel);
-    entity.setCertification(newCertification);
-    T updatedEntity = patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    // Create Second Tag
+    Tag newCertificationTag =
+            tagResourceTest.createEntity(tagResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    TagLabel newCertificationLabel = EntityUtil.toTagLabel(newCertificationTag);
 
+    // Configure Certification Settings
+    String[] newFqnParts = FullyQualifiedName.split(newCertificationLabel.getTagFQN());
+    String newClassification = FullyQualifiedName.getParentFQN(newFqnParts);
+
+    AssetCertificationSettings newCertificationSettings =
+            new AssetCertificationSettings()
+                    .withAllowedClassification(newClassification)
+                    .withValidityPeriod("P60D");
+
+    systemRepository.updateSetting(
+            new Settings()
+                    .withConfigType(SettingsType.ASSET_CERTIFICATION_SETTINGS)
+                    .withConfigValue(newCertificationSettings));
+
+    String newJson = JsonUtils.pojoToJson(entity);
+    AssetCertification newCertification = new AssetCertification().withTagLabel(newCertificationLabel);
+    entity.setCertification(newCertification);
+
+    T newPatchedEntity = patchEntity(entity.getId(), newJson, entity, ADMIN_AUTH_HEADERS);
     assertEquals(
-        updatedEntity.getCertification().getTagLabel().getTagFQN(), secondTagLabel.getTagFQN());
+            newPatchedEntity.getCertification().getTagLabel().getTagFQN(), newCertificationLabel.getTagFQN());
     assertEquals(
-        updatedEntity.getCertification().getAppliedDate(), System.currentTimeMillis(), 10 * 1000);
+            newPatchedEntity.getCertification().getAppliedDate(), System.currentTimeMillis(), 10 * 1000);
     assertEquals(
-        (double)
-            (updatedEntity.getCertification().getExpiryDate()
-                - patchedEntity.getCertification().getAppliedDate()),
-        60D * 24 * 60 * 60 * 1000,
-        10 * 1000);
+            (double)
+                    (newPatchedEntity.getCertification().getExpiryDate()
+                            - newPatchedEntity.getCertification().getAppliedDate()),
+            60D * 24 * 60 * 60 * 1000,
+            10 * 1000);
   }
 
   private T updateLifeCycle(
