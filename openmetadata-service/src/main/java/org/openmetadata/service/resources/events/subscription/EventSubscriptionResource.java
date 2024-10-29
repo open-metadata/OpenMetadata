@@ -31,6 +31,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,6 +52,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -627,6 +629,114 @@ public class EventSubscriptionResource
           String expression) {
     authorizer.authorizeAdmin(securityContext);
     AlertUtil.validateExpression(expression, Boolean.class);
+  }
+
+  @GET
+  @Path("id/{id}/listEvents")
+  @Operation(
+      operationId = "getEvents",
+      summary = "Retrieve events based on various filters",
+      description =
+          "Retrieve failed, successfully sent, or unprocessed change events, identified by alert ID, with an optional limit. If status is not provided, retrieves data from all statuses in chronological order.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Events retrieved successfully"),
+        @ApiResponse(responseCode = "404", description = "Entity not found"),
+        @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getEvents(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Status of events to retrieve (failed, successful, unprocessed)",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"failed", "successful", "unprocessed"}))
+          @QueryParam("status")
+          String statusParam,
+      @Parameter(description = "ID of the alert or destination", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Maximum number of events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("100")
+          @Min(0)
+          int limit) {
+
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      List<TypedEvent> combinedEvents = new ArrayList<>();
+      TypedEvent.Status status = null;
+
+      if (statusParam != null && !statusParam.isBlank()) {
+        try {
+          status = TypedEvent.Status.fromValue(statusParam);
+        } catch (IllegalArgumentException e) {
+          throw new WebApplicationException(
+              "Invalid status. Must be 'failed', 'successful', or 'unprocessed'.",
+              Response.Status.BAD_REQUEST);
+        }
+      }
+
+      if (status == null) {
+        combinedEvents.addAll(fetchEvents(TypedEvent.Status.FAILED, id, limit));
+        combinedEvents.addAll(fetchEvents(TypedEvent.Status.SUCCESSFUL, id, limit));
+        combinedEvents.addAll(fetchEvents(TypedEvent.Status.UNPROCESSED, id, limit));
+        // Sort combined events by timestamp in ascending order.
+        combinedEvents.sort(Comparator.comparing(TypedEvent::getTimestamp));
+      } else {
+        combinedEvents.addAll(fetchEvents(status, id, limit));
+      }
+
+      return Response.ok().entity(combinedEvents).build();
+    } catch (EntityNotFoundException e) {
+      LOG.error("Entity not found for ID: {}", id, e);
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(String.format("Entity with ID %s not found.", id))
+          .build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving events for ID: {}", id, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("An error occurred while retrieving events. [%s]", e.getMessage()))
+          .build();
+    }
+  }
+
+  // method to fetch events based on status.
+  private List<TypedEvent> fetchEvents(TypedEvent.Status status, UUID id, int limit) {
+    List<?> events;
+    switch (status) {
+      case FAILED -> events =
+          EventSubscriptionScheduler.getInstance()
+              .getFailedEventsById(id, limit); // FailedEventResponse
+      case SUCCESSFUL -> events =
+          EventSubscriptionScheduler.getInstance()
+              .getSuccessfullySentChangeEventsForAlert(id, limit); // changeEvent
+      case UNPROCESSED -> events =
+          EventSubscriptionScheduler.getInstance().getUnpublishedEvents(id, limit); // changeEvent
+      default -> throw new IllegalArgumentException("Unknown event status: " + status);
+    }
+    return events.stream()
+        .map(
+            event ->
+                new TypedEvent()
+                    .withStatus(status)
+                    .withData(List.of(event))
+                    .withTimestamp(Double.valueOf(extractTimestamp(event))))
+        .toList();
+  }
+
+  private Long extractTimestamp(Object event) {
+    if (event instanceof ChangeEvent changeEvent) {
+      return changeEvent.getTimestamp();
+    } else if (event instanceof FailedEventResponse failedEvent) {
+      return failedEvent.getChangeEvent().getTimestamp();
+    }
+    throw new IllegalArgumentException("Unknown event type: " + event.getClass());
   }
 
   @GET

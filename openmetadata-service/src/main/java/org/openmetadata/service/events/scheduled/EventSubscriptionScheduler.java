@@ -288,6 +288,12 @@ public class EventSubscriptionScheduler {
     }
   }
 
+  public List<FailedEventResponse> getFailedEventsById(UUID subscriptionId, int limit) {
+    return Entity.getCollectionDAO()
+        .changeEventDAO()
+        .listFailedEventsById(subscriptionId.toString(), limit);
+  }
+
   public List<FailedEventResponse> getAllFailedEvents(String source, int limit) {
     if (CommonUtil.nullOrEmpty(source)) {
       return Entity.getCollectionDAO().changeEventDAO().listAllFailedEvents(limit);
