@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import _ from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
@@ -41,6 +41,11 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { getUserCreationErrorMessage } from '../../utils/Users.util';
 
 const CreateUserPage = () => {
+  const {
+    state: { isAdminPage },
+  }: {
+    state: { isAdminPage: boolean };
+  } = useLocation();
   const history = useHistory();
   const { t } = useTranslation();
   const { setInlineAlertDetails } = useApplicationStore();
@@ -169,19 +174,41 @@ const CreateUserPage = () => {
     fetchRoles();
   }, []);
 
+  const BREADCRUMB_DETAILS = useMemo(() => {
+    if (bot) {
+      return {
+        name: t('label.bot'),
+        namePlural: t('label.bot-plural'),
+        url: getBotsPagePath(),
+      };
+    } else if (isAdminPage) {
+      return {
+        namePlural: t('label.admin-plural'),
+        name: t('label.admin'),
+        url: getUsersPagePath(true),
+      };
+    } else {
+      return {
+        name: t('label.user'),
+        namePlural: t('label.user-plural'),
+        url: getUsersPagePath(),
+      };
+    }
+  }, [bot, isAdminPage]);
+
   const slashedBreadcrumbList = useMemo(
     () => [
       {
-        name: bot ? t('label.bot-plural') : t('label.user-plural'),
-        url: bot ? getBotsPagePath() : getUsersPagePath(),
+        name: BREADCRUMB_DETAILS.namePlural,
+        url: BREADCRUMB_DETAILS.url,
       },
       {
-        name: `${t('label.create')} ${bot ? t('label.bot') : t('label.user')}`,
+        name: `${t('label.create')} ${BREADCRUMB_DETAILS.name}`,
         url: '',
         activeTitle: true,
       },
     ],
-    [bot]
+    [BREADCRUMB_DETAILS]
   );
 
   return (

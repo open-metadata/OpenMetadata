@@ -276,7 +276,10 @@ const UserListPageV1 = () => {
   }, [pageSize, isAdminPage]);
 
   const handleAddNewUser = () => {
-    history.push(ROUTES.CREATE_USER);
+    history.push({
+      pathname: ROUTES.CREATE_USER,
+      state: { isAdminPage },
+    });
   };
 
   const handleReactiveUser = async () => {

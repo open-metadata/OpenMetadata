@@ -501,8 +501,10 @@ export const getCreateUserPath = (bot: boolean) => {
   return path;
 };
 
-export const getUsersPagePath = () => {
-  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/users`;
+export const getUsersPagePath = (isAdmin?: boolean) => {
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/${
+    isAdmin ? 'admins' : 'users'
+  }`;
 };
 
 export const getBotsPagePath = () => {
