@@ -13,12 +13,12 @@
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable, Optional, Tuple, Union
+from typing import Dict, Iterable, Optional, Tuple, Union
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
 from pyhive.sqlalchemy_hive import _type_map
-from sqlalchemy import exc, types, util
+from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
@@ -219,18 +219,49 @@ def get_view_names(
 
 
 @reflection.cache
+def get_table_comment_result(
+    self, connection, query, database, table_name, schema=None
+):
+    """
+    Method to fetch comment of all available tables
+    """
+    self.table_comment_result: Dict[Tuple[str, str], str] = {}
+    self.current_db: str = database
+    result = connection.execute(query)
+    self.table_comment_result[(table_name, schema)] = result
+
+
+def get_table_comment_result_wrapper(
+    self, connection, query, database, table_name, schema=None
+):
+    if (
+        not hasattr(self, "table_comment_result")
+        or self.table_comment_result.get((table_name, schema)) is None
+        or self.current_db != database
+    ):
+        self.get_table_comment_result(connection, query, database, table_name, schema)
+    return self.table_comment_result.get((table_name, schema))
+
+
+@reflection.cache
 def get_table_comment(  # pylint: disable=unused-argument
     self, connection, table_name, schema_name, **kw
 ):
     """
     Returns comment of table
     """
-    cursor = connection.execute(
-        DATABRICKS_GET_TABLE_COMMENTS.format(
-            database_name=self.context.get().database,
-            schema_name=schema_name,
-            table_name=table_name,
-        )
+    query = DATABRICKS_GET_TABLE_COMMENTS.format(
+        database_name=self.context.get().database,
+        schema_name=schema_name,
+        table_name=table_name,
+    )
+    cursor = get_table_comment_result_wrapper(
+        self,
+        connection=connection,
+        query=query,
+        database=self.context.get().database,
+        table_name=table_name,
+        schema=schema_name,
     )
     try:
         for result in list(cursor):
@@ -296,7 +327,7 @@ def get_table_names(
             table_name = row[0]
         if schema:
             database = kw.get("db_name")
-            table_type = get_table_type(connection, database, schema, table_name)
+            table_type = get_table_type(self, connection, database, schema, table_name)
             if not table_type or table_type == "FOREIGN":
                 # skip the table if it's foreign table / error in fetching table_type
                 logger.debug(
@@ -311,7 +342,7 @@ def get_table_names(
     return [table for table in tables if table not in views]
 
 
-def get_table_type(connection, database, schema, table):
+def get_table_type(self, connection, database, schema, table):
     """get table type (regular/foreign)"""
     try:
         if database:
@@ -320,7 +351,14 @@ def get_table_type(connection, database, schema, table):
             )
         else:
             query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
-        rows = connection.execute(query)
+        rows = get_table_comment_result_wrapper(
+            self,
+            connection=connection,
+            query=query,
+            database=database,
+            table_name=table,
+            schema=schema,
+        )
         for row in rows:
             row_dict = dict(row)
             if row_dict.get("col_name") == "Type":
@@ -331,6 +369,7 @@ def get_table_type(connection, database, schema, table):
     return
 
 
+DatabricksDialect.get_table_comment_result = get_table_comment_result
 DatabricksDialect.get_table_comment = get_table_comment
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
@@ -677,12 +716,18 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
     ) -> str:
         description = None
         try:
-            cursor = self.connection.execute(
-                DATABRICKS_GET_TABLE_COMMENTS.format(
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                )
+            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+                table_name=table_name,
+            )
+            cursor = get_table_comment_result_wrapper(
+                self,
+                connection=self.connection,
+                query=query,
+                database=self.context.get().database,
+                table_name=table_name,
+                schema=schema_name,
             )
             for result in list(cursor):
                 data = result.values()
@@ -729,7 +774,14 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 schema_name=self.context.get().database_schema,
                 table_name=table_name,
             )
-            result = self.connection.engine.execute(query)
+            result = get_table_comment_result_wrapper(
+                self,
+                connection=self.connection,
+                query=query,
+                database=self.context.get().database,
+                table_name=table_name,
+                schema=self.context.get().database_schema,
+            )
             owner = None
             for row in result:
                 row_dict = dict(row)
