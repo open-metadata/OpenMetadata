@@ -11,30 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Col,
-  Divider,
-  Row,
-  Space,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
-import { isEmpty, isNil, startCase } from 'lodash';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
+import AlertConfigDetails from '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
-import FormCardSection from '../../components/common/FormCardSection/FormCardSection';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
@@ -43,10 +27,8 @@ import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  ArgumentsInput,
   EventSubscription,
   ProviderType,
-  SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import { useFqn } from '../../hooks/useFqn';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
@@ -56,7 +38,6 @@ import {
   getObservabilityAlertsEditPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import searchClassBase from '../../utils/SearchClassBase';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
@@ -69,16 +50,6 @@ function AlertDetailsPage({
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
   const [loading, setLoading] = useState<boolean>(true);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-
-  const { resource, filters, actions, destinations } = useMemo(
-    () => ({
-      resource: alertDetails?.filteringRules?.resources[0],
-      filters: alertDetails?.input?.filters,
-      actions: alertDetails?.input?.actions,
-      destinations: alertDetails?.destinations,
-    }),
-    [alertDetails]
-  );
 
   const fetchAlerts = async () => {
     try {
@@ -140,167 +111,6 @@ function AlertDetailsPage({
         : getObservabilityAlertsEditPath(fqn)
     );
   }, [history]);
-
-  const getFilterDetails = (isFilter: boolean, filters?: ArgumentsInput[]) => (
-    <div className="p-md">
-      {filters?.map((filterDetails, index) => (
-        <Fragment key={filterDetails.name}>
-          <Row data-testid={`filter-${filterDetails.name}`} gutter={[0, 8]}>
-            <Col className="font-medium" span={3}>
-              {t('label.effect')}
-            </Col>
-            <Col span={1}>:</Col>
-            <Col data-testid="effect-value" span={20}>
-              {startCase(filterDetails.effect)}
-            </Col>
-            <Col className="font-medium" span={3}>
-              {t('label.entity-name', {
-                entity: isFilter ? t('label.filter') : t('label.action'),
-              })}
-            </Col>
-            <Col span={1}>:</Col>
-            <Col data-testid="filter-name" span={20}>
-              {startCase(filterDetails.name)}
-            </Col>
-            {!isEmpty(filterDetails.arguments) && (
-              <>
-                <Col className="font-medium" span={3}>
-                  {t('label.argument-plural')}
-                </Col>
-                <Col span={1}>:</Col>
-                <Col
-                  className="border rounded-4 p-sm"
-                  data-testid="arguments-container"
-                  span={20}>
-                  {filterDetails.arguments?.map((argument) => (
-                    <Row
-                      data-testid={`argument-container-${argument.name}`}
-                      gutter={[0, 8]}
-                      key={argument.name}>
-                      <Col className="font-medium" span={24}>
-                        <Typography.Text data-testid="argument-name">
-                          {argument.name}
-                        </Typography.Text>
-                      </Col>
-                      <Col span={24}>
-                        {argument.input?.map((inputItem) => (
-                          <Tooltip key={inputItem} title={inputItem}>
-                            <Tag
-                              className="m-b-xs w-max-full"
-                              data-testid="argument-value">
-                              <Typography.Text ellipsis>
-                                {inputItem}
-                              </Typography.Text>
-                            </Tag>
-                          </Tooltip>
-                        ))}
-                      </Col>
-                    </Row>
-                  ))}
-                </Col>
-              </>
-            )}
-          </Row>
-          {index < filters.length - 1 && <Divider className="m-y-sm" />}
-        </Fragment>
-      ))}
-    </div>
-  );
-
-  const destinationDetails = useMemo(
-    () => (
-      <div className="p-md">
-        <Row gutter={[0, 8]}>
-          <Col className="font-medium" span={3}>
-            {`${t('label.connection-timeout')} (${t('label.second-plural')})`}
-          </Col>
-          <Col span={1}>:</Col>
-          <Col data-testid="connection-timeout" span={20}>
-            {destinations?.[0].timeout}
-          </Col>
-        </Row>
-        <Divider className="m-y-sm" />
-        {destinations?.map((destination, index) => (
-          <Fragment key={`${destination.category}-${destination.type}`}>
-            <Row
-              data-testid={`destination-${destination.category}`}
-              gutter={[0, 8]}>
-              <Col className="font-medium" span={3}>
-                {t('label.category')}
-              </Col>
-              <Col span={1}>:</Col>
-              <Col data-testid="category-value" span={20}>
-                {startCase(destination.category)}
-              </Col>
-              <Col className="font-medium" span={3}>
-                {t('label.type')}
-              </Col>
-              <Col span={1}>:</Col>
-              <Col data-testid="destination-type" span={20}>
-                {startCase(destination.type)}
-              </Col>
-              {destination.type === SubscriptionType.Webhook &&
-                destination.config?.secretKey && (
-                  <>
-                    <Col className="font-medium" span={3}>
-                      {t('label.secret-key')}
-                    </Col>
-                    <Col span={1}>:</Col>
-                    <Col data-testid="secret-key" span={20}>
-                      {destination.config.secretKey}
-                    </Col>
-                  </>
-                )}
-              {!isEmpty(destination.config?.receivers) &&
-                !isNil(destination.config?.receivers) && (
-                  <>
-                    <Col className="font-medium" span={3}>
-                      {t('label.config')}
-                    </Col>
-                    <Col span={1}>:</Col>
-                    <Col className="border rounded-4 p-sm" span={20}>
-                      <Row gutter={[0, 8]}>
-                        {destination.config?.receivers && (
-                          <>
-                            <Col className="font-medium" span={24}>
-                              <Typography.Text>
-                                {t('label.receiver-plural')}
-                              </Typography.Text>
-                            </Col>
-                            <Col data-testid="receivers-value" span={24}>
-                              {destination.config?.receivers?.map(
-                                (receiver) => (
-                                  <Tooltip key={receiver} title={receiver}>
-                                    <Tag
-                                      className="m-b-xs w-max-full"
-                                      data-testid={`receiver-${receiver}`}>
-                                      <Typography.Text ellipsis>
-                                        {receiver}
-                                      </Typography.Text>
-                                    </Tag>
-                                  </Tooltip>
-                                )
-                              )}
-                            </Col>
-                          </>
-                        )}
-                      </Row>
-                    </Col>
-                  </>
-                )}
-            </Row>
-            {index < destinations.length - 1 && <Divider className="m-y-sm" />}
-          </Fragment>
-        ))}
-      </div>
-    ),
-    [destinations]
-  );
-
-  const resourceIcon = useMemo(
-    () => searchClassBase.getEntityIcon(resource ?? ''),
-    [resource]
-  );
 
   useEffect(() => {
     fetchAlerts();
@@ -392,49 +202,9 @@ function AlertDetailsPage({
                   />
                 </Col>
               )}
-              <Col span={24}>
-                <FormCardSection
-                  childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
-                  heading={t('label.source')}
-                  subHeading={t('message.alerts-source-description')}>
-                  <div className="d-flex items-center gap-2 m-l-sm">
-                    {resourceIcon && (
-                      <div className="d-flex h-4 w-4">{resourceIcon}</div>
-                    )}
-                    <span data-testid="resource-name">
-                      {startCase(resource)}
-                    </span>
-                  </div>
-                </FormCardSection>
-              </Col>
-              {!isEmpty(filters) && !isNil(filters) && (
-                <Col span={24}>
-                  <FormCardSection
-                    childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
-                    heading={t('label.filter-plural')}
-                    subHeading={t('message.alerts-filter-description')}>
-                    {getFilterDetails(true, filters)}
-                  </FormCardSection>
-                </Col>
+              {alertDetails && (
+                <AlertConfigDetails alertDetails={alertDetails} />
               )}
-              {!isEmpty(actions) && !isNil(actions) && (
-                <Col span={24}>
-                  <FormCardSection
-                    childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
-                    heading={t('label.trigger')}
-                    subHeading={t('message.alerts-trigger-description')}>
-                    {getFilterDetails(false, actions)}
-                  </FormCardSection>
-                </Col>
-              )}
-              <Col span={24}>
-                <FormCardSection
-                  childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
-                  heading={t('label.destination')}
-                  subHeading={t('message.alerts-destination-description')}>
-                  {destinationDetails}
-                </FormCardSection>
-              </Col>
             </Row>
             <DeleteWidgetModal
               afterDeleteAction={handleAlertDelete}
