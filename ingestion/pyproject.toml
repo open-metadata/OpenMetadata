@@ -139,8 +139,6 @@ ignore-paths = [
     "ingestion/src/metadata/ingestion/source/database/azuresql/connection.py",
     "ingestion/src/metadata/ingestion/source/database/bigquery/connection.py",
     "ingestion/src/metadata/ingestion/source/database/bigquery/incremental_table_processor.py",
-    "ingestion/src/metadata/ingestion/source/database/bigquery/profiler/profiler.py",
-    "ingestion/src/metadata/ingestion/source/database/bigquery/profiler/system.py",
     "ingestion/src/metadata/ingestion/source/database/bigquery/queries.py",
     "ingestion/src/metadata/ingestion/source/database/common_db_source.py",
     "ingestion/src/metadata/ingestion/source/database/couchbase/metadata.py",

@@ -78,6 +78,7 @@ class EmptySystemMetricsSource:
         return []
 
     def get_kwargs(self, **kwargs):
+        """Get kwargs to be used in get_inserts, get_deletes, get_updates"""
         return {}
 
 
@@ -86,11 +87,11 @@ class SystemMetricsComputer(EmptySystemMetricsSource):
         # collaborative constructor that initalizes upstream classes
         super().__init__(*args, **kwargs)
 
-    def get_system_metrics(self, *args, **kwargs) -> List[SystemProfile]:
+    def get_system_metrics(self, **kwargs) -> List[SystemProfile]:
         """Return system metrics for a given table. Actual passed object can be a variety of types based
         on the underlying infrastructure. For example, in the case of SQLalchemy, it can be a Table object
         and in the case of Mongo, it can be a collection object."""
-        kwargs = super().get_kwargs(*args, **kwargs)
+        kwargs = super().get_kwargs(**kwargs)
         return (
             super().get_inserts(**kwargs)
             + super().get_deletes(**kwargs)

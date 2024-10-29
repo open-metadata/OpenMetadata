@@ -1,3 +1,5 @@
+"""BigqQuery Profiler"""
+
 from typing import List, Type
 
 from metadata.generated.schema.entity.data.table import SystemProfile
@@ -20,10 +22,9 @@ class BigQueryProfiler(BigQueryProfilerInterface):
         **kwargs,
     ) -> List[SystemProfile]:
         return self.system_metrics_computer.get_system_metrics(
-            runner.table, self.service_connection_config
+            table=runner.table,
+            usage_location=self.service_connection_config.usageLocation,
         )
 
-    def initialize_system_metrics_computer(
-        self, **kwargs
-    ) -> BigQuerySystemMetricsComputer:
+    def initialize_system_metrics_computer(self, **_) -> BigQuerySystemMetricsComputer:
         return BigQuerySystemMetricsComputer(session=self.session)
