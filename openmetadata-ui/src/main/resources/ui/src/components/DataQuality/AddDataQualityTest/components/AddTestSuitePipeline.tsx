@@ -23,6 +23,7 @@ import {
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
+import { escapeESReservedCharacters } from '../../../../utils/StringsUtils';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
 import { AddTestSuitePipelineProps } from '../AddDataQualityTest.interface';
 import './add-test-suite-pipeline.style.less';
@@ -142,7 +143,9 @@ const AddTestSuitePipeline = ({
               ]}
               valuePropName="selectedTest">
               <AddTestCaseList
-                filters={`testSuite.fullyQualifiedName:${testSuiteFQN ?? fqn}`}
+                filters={`testSuite.fullyQualifiedName:${escapeESReservedCharacters(
+                  testSuiteFQN ?? fqn
+                )}`}
                 showButton={false}
               />
             </Form.Item>

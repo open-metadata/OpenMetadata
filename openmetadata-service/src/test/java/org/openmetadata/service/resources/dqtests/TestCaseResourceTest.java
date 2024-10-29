@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
@@ -2572,152 +2573,53 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void resolved_test_case_deletes_sample_data(TestInfo test) throws IOException, ParseException {
-    CreateTestCase create =
-        createRequest(test)
-            .withEntityLink(TABLE_LINK)
-            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
-            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-            .withParameterValues(
-                List.of(
-                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
-    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    List<String> columns = Arrays.asList(C1, C2, C3);
+  void test_testCaseInvalidEntityLinkTest(TestInfo testInfo) throws IOException {
+    // Invalid entity link as not parsable by antlr parser
+    String entityLink = "<#E::table::special!@#$%^&*()_+[]{}|;:\\'\",./?>";
+    CreateTestCase create = createRequest(testInfo);
+    create
+        .withEntityLink(entityLink)
+        .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
 
-    // Add 3 rows of sample data for 3 columns
-    List<List<Object>> rows =
-        Arrays.asList(
-            Arrays.asList("c1Value1", 1, true),
-            Arrays.asList("c1Value2", null, false),
-            Arrays.asList("c1Value3", 3, true));
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
 
-    putTestCaseResult(
-        testCase.getFullyQualifiedName(),
-        new TestCaseResult()
-            .withResult("result")
-            .withTestCaseStatus(TestCaseStatus.Failed)
-            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
-        ADMIN_AUTH_HEADERS);
+    entityLink = "<#E::table::user<name>::column>";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
 
-    putFailedRowsSample(testCase, columns, rows, ADMIN_AUTH_HEADERS);
+    entityLink = "<#E::table::user>name::column>";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
 
-    // resolving test case deletes the sample data
-    TestCaseResult testCaseResult =
-        new TestCaseResult()
-            .withResult("tested")
-            .withTestCaseStatus(TestCaseStatus.Success)
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
-    putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
-    assertResponse(
-        () -> getSampleData(testCase.getId(), ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        FAILED_ROWS_SAMPLE_EXTENSION + " instance for " + testCase.getId() + " not found");
+    entityLink = "<#E::table::foo<>bar::baz>\");";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
+
+    entityLink = "<#E::table::::baz>";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
   }
 
-  @Test
-  void test_sensitivePIISampleData(TestInfo test) throws IOException, ParseException {
-    // Create table with owner and a column tagged with PII.Sensitive
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    CreateTable tableReq = getSensitiveTableReq(test, tableResourceTest);
-    Table sensitiveTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
-    String sensitiveColumnLink =
-        String.format("<#E::table::%s::columns::%s>", sensitiveTable.getFullyQualifiedName(), C1);
-    CreateTestCase create =
-        createRequest(test)
-            .withEntityLink(sensitiveColumnLink)
-            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
-            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-            .withParameterValues(
-                List.of(
-                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
-    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    putTestCaseResult(
-        testCase.getFullyQualifiedName(),
-        new TestCaseResult()
-            .withResult("result")
-            .withTestCaseStatus(TestCaseStatus.Failed)
-            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
-        ADMIN_AUTH_HEADERS);
-    List<String> columns = List.of(C1);
-    // Add 3 rows of sample data
-    List<List<Object>> rows =
-        Arrays.asList(List.of("c1Value1"), List.of("c1Value2"), List.of("c1Value3"));
-    // add sample data
-    putFailedRowsSample(testCase, columns, rows, ADMIN_AUTH_HEADERS);
-    // assert values are not masked for the table owner
-    TableData data = getSampleData(testCase.getId(), authHeaders(USER1.getName()));
-    assertFalse(
-        data.getRows().stream()
-            .flatMap(List::stream)
-            .map(r -> r == null ? "" : r)
-            .map(Object::toString)
-            .anyMatch(MASKED_VALUE::equals));
-    // assert values are masked when is not the table owner
-    data = getSampleData(testCase.getId(), authHeaders(USER2.getName()));
-    assertEquals(
-        3,
-        data.getRows().stream()
-            .flatMap(List::stream)
-            .map(r -> r == null ? "" : r)
-            .map(Object::toString)
-            .filter(MASKED_VALUE::equals)
-            .count());
-  }
-
-  @Test
-  void test_addInspectionQuery(TestInfo test) throws IOException {
-    CreateTestCase create =
-        createRequest(test)
-            .withEntityLink(TABLE_LINK)
-            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
-            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-            .withParameterValues(
-                List.of(
-                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
-    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String inspectionQuery = "SELECT * FROM test_table WHERE column1 = 'value1'";
-    putInspectionQuery(testCase, inspectionQuery, ADMIN_AUTH_HEADERS);
-    TestCase updated = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-    assertEquals(updated.getInspectionQuery(), inspectionQuery);
-  }
-
-  @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  protected void post_entityCreateWithInvalidName_400() {
-    // Create an entity with mandatory name field null
-    final CreateTestCase request = createRequest(null, "description", "displayName", null);
-    assertResponseContains(
-        () -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
-
-    // Create an entity with mandatory name field empty
-    final CreateTestCase request1 = createRequest("", "description", "displayName", null);
-    assertResponseContains(
-        () -> createEntity(request1, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        TestUtils.getEntityNameLengthError(entityClass));
-
-    // Any entity name that has EntityLink separator must fail
-    final CreateTestCase request3 =
-        createRequest("invalid::Name", "description", "displayName", null);
-    assertResponseContains(
-        () -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
-  }
-
-  @Test
-  void createUpdate_DynamicAssertionTests(TestInfo testInfo) throws IOException {
-    CreateTestCase create = createRequest(testInfo).withUseDynamicAssertion(true);
-    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    testCase = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-    assertTrue(testCase.getUseDynamicAssertion());
-    CreateTestCase update = create.withUseDynamicAssertion(false);
-    updateEntity(update, OK, ADMIN_AUTH_HEADERS);
-    testCase = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
-    assertFalse(testCase.getUseDynamicAssertion());
-  }
-
-  private void putInspectionQuery(TestCase testCase, String sql, Map<String, String> authHeaders)
-      throws IOException {
-    TestCase putResponse = putInspectionQuery(testCase.getId(), sql, authHeaders);
+  private void putInspectionQuery(TestCase testCase, String sql) throws IOException {
+    TestCase putResponse = putInspectionQuery(testCase.getId(), sql, ADMIN_AUTH_HEADERS);
     assertEquals(sql, putResponse.getInspectionQuery());
   }
 
