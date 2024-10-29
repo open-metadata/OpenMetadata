@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../enums/entity.enum';
 import { Table } from '../generated/entity/data/table';
@@ -43,7 +44,7 @@ export interface TableDetailPageTabProps {
 class TableClassBase {
   public getTableDetailPageTabs(
     tableDetailsPageProps: TableDetailPageTabProps
-  ) {
+  ): TabProps[] {
     return getTableDetailPageBaseTabs(tableDetailsPageProps);
   }
 }
