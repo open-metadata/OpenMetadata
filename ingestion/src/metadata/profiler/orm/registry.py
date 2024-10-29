@@ -14,10 +14,11 @@ Custom types' registry for easy access
 without having an import mess
 """
 import math
+from enum import Enum
 
 import sqlalchemy
 from sqlalchemy import Date, DateTime, Integer, Numeric, Time
-from sqlalchemy.sql.sqltypes import Concatenable, Enum
+from sqlalchemy.sql.sqltypes import Concatenable
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
@@ -53,6 +54,8 @@ class Dialects(Enum):
 
     Keep this alphabetically ordered
     """
+
+    # pylint: disable=invalid-name
 
     Athena = "awsathena"
     AzureSQL = "azuresql"
