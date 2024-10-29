@@ -1,4 +1,5 @@
 from typing import Optional
+from urllib.parse import quote_plus
 
 from pydantic import SecretStr
 from sqlalchemy.engine import Engine
@@ -12,17 +13,10 @@ from metadata.generated.schema.entity.services.connections.database.exasolConnec
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
-    get_connection_options_dict,
 )
-from metadata.ingestion.connections.test_connections import (
-    test_query,
-    test_connection_db_schema_sources,
-)
+from metadata.ingestion.connections.test_connections import test_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
-from urllib.parse import quote_plus
-
-from ingestion.src.metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 
 logger = ingestion_logger()
 
@@ -36,7 +30,9 @@ def get_connection_url(connection: ExasolConnection) -> str:
 
     if connection.username:
         url += f"{quote_plus(connection.username)}"
-        connection.password = SecretStr("") if not connection.password else connection.password
+        connection.password = (
+            SecretStr("") if not connection.password else connection.password
+        )
         url += (
             f":{quote_plus(connection.password.get_secret_value())}"
             if connection
@@ -57,7 +53,7 @@ def get_connection_url(connection: ExasolConnection) -> str:
     options = tls_settings[connection.tls.value]
     if options:
         if (hasattr(connection, "database") and not connection.database) or (
-                hasattr(connection, "databaseSchema") and not connection.databaseSchema
+            hasattr(connection, "databaseSchema") and not connection.databaseSchema
         ):
             url += "/"
         params = "&".join(
@@ -79,10 +75,10 @@ def get_connection(connection: ExasolConnection) -> Engine:
 
 
 def test_connection(
-        metadata: OpenMetadata,
-        engine: Engine,
-        service_connection: ExasolConnection,
-        automation_workflow: Optional[AutomationWorkflow] = None,
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: ExasolConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
     """
     Test connection. This can be executed either as part
