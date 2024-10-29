@@ -38,7 +38,7 @@ jobs:
     outputs:
       DEBUG: ${{ env.DEBUG }}
     steps:
-      - run: echo "INPUTS_DEBUG=${{ inputs.debug }}, DEBUG=$DEBUG"
+      - run: echo "INPUTS_DEBUG=${{ inputs.debug }}, DEBUG=$DEBUG, GITHUB_REF=${{ github.ref }}"
 
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
