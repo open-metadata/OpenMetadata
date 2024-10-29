@@ -218,7 +218,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     dateWithCount.forEach((key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
-    int changeInTotalAssets = (int) (currentCount - previousCount);
+    int changeInTotalAssets = (int) Math.abs(currentCount - previousCount);
 
     if (previousCount == 0D) {
       // it should be undefined
@@ -276,7 +276,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentCompletedDescription / currentTotalAssetCount) * 100;
     }
 
-    int changeCount = (int) (currentCompletedDescription - previousCompletedDescription);
+    int changeCount = (int) Math.abs(currentCompletedDescription - previousCompletedDescription);
 
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
@@ -327,7 +327,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentHasOwner / currentTotalAssetCount) * 100;
     }
 
-    int changeCount = (int) (currentHasOwner - previousHasOwner);
+    int changeCount = (int) Math.abs(currentHasOwner - previousHasOwner);
 
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
@@ -376,7 +376,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentHasTier / currentTotalAssetCount) * 100;
     }
 
-    int changeCount = (int) (currentHasTier - previousHasTier);
+    int changeCount = (int) Math.abs(currentHasTier - previousHasTier);
 
     // TODO: Understand if we actually use this tierData for anything.
     Map<String, Double> tierData = new HashMap<>();

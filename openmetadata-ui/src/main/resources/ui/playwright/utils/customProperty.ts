@@ -17,8 +17,8 @@ import {
   ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { clickOutside, descriptionBox, uuid } from './common';
@@ -57,7 +57,7 @@ export interface CustomProperty {
   };
 }
 
-export const fillTextInputDetails = async (
+export const fillTableColumnInputDetails = async (
   page: Page,
   text: string,
   columnName: string
@@ -230,9 +230,9 @@ export const setValueForProperty = async (data: {
       const values = value.split(',');
       await page.locator('[data-testid="add-new-row"]').click();
 
-      await fillTextInputDetails(page, values[0], 'pw-column1');
+      await fillTableColumnInputDetails(page, values[0], 'pw-column1');
 
-      await fillTextInputDetails(page, values[1], 'pw-column2');
+      await fillTableColumnInputDetails(page, values[1], 'pw-column2');
 
       await page.locator('[data-testid="update-table-type-property"]').click();
 
@@ -704,7 +704,11 @@ export const editCreatedProperty = async (
   }
 
   if (type === 'Table') {
-    await expect(page.getByText('Columns:pw-column1pw-column2')).toBeVisible();
+    await expect(
+      page
+        .locator(`[data-row-key="${propertyName}"]`)
+        .getByText('Columns:pw-column1pw-column2')
+    ).toBeVisible();
   }
 
   await editButton.click();

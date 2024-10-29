@@ -52,12 +52,14 @@ import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.statement.UseRowMapper;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
+import org.openmetadata.schema.api.searcg.SearchSettings;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -142,6 +144,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface CollectionDAO {
@@ -704,6 +707,15 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
+    @SqlQuery(
+        "SELECT id, extension, json "
+            + "FROM entity_extension "
+            + "WHERE id IN (<ids>) AND extension LIKE CONCAT(:extensionPrefix, '.%') "
+            + "ORDER BY id, extension")
+    @RegisterRowMapper(ExtensionRecordWithIdMapper.class)
+    List<ExtensionRecordWithId> getExtensionsBatch(
+        @BindList("ids") List<String> ids, @Bind("extensionPrefix") String extensionPrefix);
+
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
@@ -746,10 +758,22 @@ public interface CollectionDAO {
 
   record ExtensionRecord(String extensionName, String extensionJson) {}
 
+  record ExtensionRecordWithId(UUID id, String extensionName, String extensionJson) {}
+
   class ExtensionMapper implements RowMapper<ExtensionRecord> {
     @Override
     public ExtensionRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
       return new ExtensionRecord(rs.getString("extension"), rs.getString("json"));
+    }
+  }
+
+  class ExtensionRecordWithIdMapper implements RowMapper<ExtensionRecordWithId> {
+    @Override
+    public ExtensionRecordWithId map(ResultSet rs, StatementContext ctx) throws SQLException {
+      String id = rs.getString("id");
+      String extensionName = rs.getString("extension");
+      String extensionJson = rs.getString("json");
+      return new ExtensionRecordWithId(UUID.fromString(id), extensionName, extensionJson);
     }
   }
 
@@ -861,6 +885,21 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation = :relation "
+            + "AND fromEntity = :fromEntityType "
+            + "AND toEntity = :toEntityType "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findToBatch(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("relation") int relation,
+        @Bind("fromEntityType") String fromEntityType,
+        @Bind("toEntityType") String toEntityType);
+
+    @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -900,6 +939,42 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE toId IN (<toIds>) "
+            + "AND relation = :relation "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findFromBatch(
+        @BindList("toIds") List<String> toIds, @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE toId IN (<toIds>) "
+            + "AND relation = :relation "
+            + "AND fromEntity = :fromEntityType  "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<CollectionDAO.EntityRelationshipObject> findFromBatch(
+        @BindList("toIds") List<String> toIds,
+        @Bind("relation") int relation,
+        @Bind("fromEntityType") String fromEntityType);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
+            + "FROM entity_relationship "
+            + "WHERE toId IN (<toIds>) "
+            + "AND relation = :relation "
+            + "AND toEntity = :toEntityType "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findFromBatch(
+        @BindList("toIds") List<String> toIds,
+        @Bind("toEntityType") String toEntityType,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
             + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation")
     @RegisterRowMapper(FromRelationshipMapper.class)
@@ -907,6 +982,21 @@ public interface CollectionDAO {
         @BindUUID("toId") UUID toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE toId IN (<toIds>) "
+            + "AND relation = :relation "
+            + "AND fromEntity = :fromEntityType "
+            + "AND toEntity = :toEntityType "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findFromBatch(
+        @BindList("toIds") List<String> toIds,
+        @Bind("relation") int relation,
+        @Bind("fromEntityType") String fromEntityType,
+        @Bind("toEntityType") String toEntityType);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -2882,6 +2972,15 @@ public interface CollectionDAO {
         "SELECT source, tagFQN,  labelType, state FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@BindFQN("targetFQNHash") String targetFQNHash);
 
+    @SqlQuery(
+        "SELECT targetFQNHash, source, tagFQN, labelType, state "
+            + "FROM tag_usage "
+            + "WHERE targetFQNHash IN (<targetFQNHashes>) "
+            + "ORDER BY targetFQNHash, tagFQN")
+    @UseRowMapper(TagLabelWithFQNHashMapper.class)
+    List<TagLabelWithFQNHash> getTagsInternalBatch(
+        @BindListFQN("targetFQNHashes") List<String> targetFQNHashes);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
@@ -3070,6 +3169,40 @@ public interface CollectionDAO {
           throw new IllegalArgumentException("Invalid source type " + source);
         }
         return Pair.of(r.getString("targetFQNHash"), label);
+      }
+    }
+
+    class TagLabelWithFQNHashMapper implements RowMapper<TagLabelWithFQNHash> {
+      @Override
+      public TagLabelWithFQNHash map(ResultSet rs, StatementContext ctx) throws SQLException {
+        TagLabelWithFQNHash tag = new TagLabelWithFQNHash();
+        tag.setTargetFQNHash(rs.getString("targetFQNHash"));
+        tag.setSource(rs.getInt("source"));
+        tag.setTagFQN(rs.getString("tagFQN"));
+        tag.setLabelType(rs.getInt("labelType"));
+        tag.setState(rs.getInt("state"));
+        return tag;
+      }
+    }
+
+    @Getter
+    @Setter
+    class TagLabelWithFQNHash {
+      private String targetFQNHash;
+      private int source;
+      private String tagFQN;
+      private int labelType;
+      private int state;
+
+      // Getters and Setters
+
+      public TagLabel toTagLabel() {
+        TagLabel tagLabel = new TagLabel();
+        tagLabel.setSource(TagLabel.TagSource.values()[this.source]);
+        tagLabel.setTagFQN(this.tagFQN);
+        tagLabel.setLabelType(TagLabel.LabelType.values()[this.labelType]);
+        tagLabel.setState(TagLabel.State.values()[this.state]);
+        return tagLabel;
       }
     }
 
@@ -4636,6 +4769,30 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("incidentStateId") String incidentStateId);
 
+    @SqlQuery(
+        """
+              SELECT dqdts1.json FROM
+              data_quality_data_time_series dqdts1
+              INNER JOIN (
+                  SELECT tc.fqnHash
+                  FROM entity_relationship er
+                  INNER JOIN test_case tc ON er.toId = tc.id
+                  where fromEntity = 'testSuite' AND toEntity = 'testCase' and fromId = :testSuiteId
+              ) ts ON dqdts1.entityFQNHash = ts.fqnHash
+              LEFT JOIN data_quality_data_time_series dqdts2 ON
+                  (dqdts1.entityFQNHash = dqdts2.entityFQNHash and dqdts1.timestamp < dqdts2.timestamp)
+              WHERE dqdts2.entityFQNHash IS NULL""")
+    List<String> listLastTestCaseResultsForTestSuite(@BindMap Map<String, String> params);
+
+    @SqlQuery(
+        """
+            SELECT dqdts1.json FROM
+            data_quality_data_time_series dqdts1
+            LEFT JOIN data_quality_data_time_series dqdts2 ON
+                (dqdts1.entityFQNHash = dqdts2.entityFQNHash and dqdts1.timestamp < dqdts2.timestamp)
+            WHERE dqdts2.entityFQNHash IS NULL AND dqdts1.entityFQNHash = :testCaseFQN""")
+    String listLastTestCaseResult(@BindFQN("testCaseFQN") String testCaseFQN);
+
     default void insert(
         String testCaseFQN,
         String extension,
@@ -4650,6 +4807,10 @@ public interface CollectionDAO {
           jsonSchema,
           json,
           incidentStateId != null ? incidentStateId.toString() : null);
+    }
+
+    default List<String> listLastTestCaseResultsForTestSuite(UUID testSuiteId) {
+      return listLastTestCaseResultsForTestSuite(Map.of("testSuiteId", testSuiteId.toString()));
     }
   }
 
@@ -4802,6 +4963,7 @@ public interface CollectionDAO {
             case SLACK_APP_CONFIGURATION, SLACK_INSTALLER, SLACK_BOT, SLACK_STATE -> JsonUtils
                 .readValue(json, String.class);
             case PROFILER_CONFIGURATION -> JsonUtils.readValue(json, ProfilerConfiguration.class);
+            case SEARCH_SETTINGS -> JsonUtils.readValue(json, SearchSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

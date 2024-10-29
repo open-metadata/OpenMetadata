@@ -11,6 +11,7 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD_KEYWORD;
@@ -66,6 +67,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
@@ -76,6 +78,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
@@ -171,7 +175,6 @@ import os.org.opensearch.index.query.QueryStringQueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
 import os.org.opensearch.index.query.ScriptQueryBuilder;
 import os.org.opensearch.index.query.TermQueryBuilder;
-import os.org.opensearch.index.query.TermsQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
@@ -228,10 +231,9 @@ public class OpenSearchClient implements SearchClient {
           "fqnParts",
           "chart_suggest",
           "field_suggest");
+
   private static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
-      Stream.concat(
-              FIELDS_TO_REMOVE.stream(),
-              Stream.of("schemaDefinition", "testSuite", "customMetrics"))
+      Stream.concat(FIELDS_TO_REMOVE.stream(), Stream.of("schemaDefinition", "customMetrics"))
           .toList();
 
   static {
@@ -357,22 +359,6 @@ public class OpenSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder =
         getSearchSourceBuilder(
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
-
-    // Add Domain filter
-    if (request.isApplyDomainFilter()) {
-      if (!nullOrEmpty(request.getDomains())) {
-        TermsQueryBuilder domainFilter =
-            QueryBuilders.termsQuery("domain.fullyQualifiedName", request.getDomains());
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(domainFilter));
-      } else {
-        // Else condition to list entries where domain field is null
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery()
-                .must(searchSourceBuilder.query())
-                .mustNot(QueryBuilders.existsQuery("domain.fullyQualifiedName")));
-      }
-    }
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
@@ -771,6 +757,123 @@ public class OpenSearchClient implements SearchClient {
     return Response.status(OK).entity(responseMap).build();
   }
 
+  private void getEntityRelationship(
+      String fqn,
+      int depth,
+      Set<Map<String, Object>> edges,
+      Set<Map<String, Object>> nodes,
+      String queryFilter,
+      String direction,
+      boolean deleted)
+      throws IOException {
+    if (depth <= 0) {
+      return;
+    }
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn))));
+    if (CommonUtil.nullOrEmpty(deleted)) {
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery()
+              .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn)))
+              .must(QueryBuilders.termQuery("deleted", deleted)));
+    }
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, queryFilter);
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        BoolQueryBuilder newQuery =
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        searchSourceBuilder.query(newQuery);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+    searchRequest.source(searchSourceBuilder.size(1000));
+    os.org.opensearch.action.search.SearchResponse searchResponse =
+        client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      List<Map<String, Object>> entityRelationship =
+          (List<Map<String, Object>>) hit.getSourceAsMap().get("entityRelationship");
+      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      tempMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
+      nodes.add(tempMap);
+      for (Map<String, Object> er : entityRelationship) {
+        Map<String, String> entity = (HashMap<String, String>) er.get("entity");
+        Map<String, String> relatedEntity = (HashMap<String, String>) er.get("relatedEntity");
+        if (direction.equalsIgnoreCase(ENTITY_RELATIONSHIP_DIRECTION_ENTITY)) {
+          if (!edges.contains(er) && entity.get("fqn").equals(fqn)) {
+            edges.add(er);
+            getEntityRelationship(
+                relatedEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+          }
+        } else {
+          if (!edges.contains(er) && relatedEntity.get("fqn").equals(fqn)) {
+            edges.add(er);
+            getEntityRelationship(
+                entity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+          }
+        }
+      }
+    }
+  }
+
+  public Map<String, Object> searchEntityRelationshipInternal(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    Set<Map<String, Object>> edges = new HashSet<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
+    searchRequest.source(searchSourceBuilder.size(1000));
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+      responseMap.put("entity", tempMap);
+    }
+    getEntityRelationship(
+        fqn,
+        downstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        ENTITY_RELATIONSHIP_DIRECTION_ENTITY,
+        deleted);
+    getEntityRelationship(
+        fqn,
+        upstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY,
+        deleted);
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
+    return responseMap;
+  }
+
+  @Override
+  public Response searchEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap =
+        searchEntityRelationshipInternal(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+    return Response.status(OK).entity(responseMap).build();
+  }
+
   @Override
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
@@ -780,6 +883,78 @@ public class OpenSearchClient implements SearchClient {
     searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
+    return Response.status(OK).entity(responseMap).build();
+  }
+
+  public Map<String, Object> searchSchemaEntityRelationshipInternal(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    Set<Map<String, Object>> edges = new HashSet<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
+    searchRequest.source(searchSourceBuilder.size(1000));
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+      responseMap.put("entity", tempMap);
+    }
+    TableRepository repository = (TableRepository) Entity.getEntityRepository(TABLE);
+    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("databaseSchema", fqn);
+    List<Table> tables =
+        repository.listAll(repository.getFields("tableConstraints, displayName, owners"), filter);
+    for (Table table : tables) {
+      getEntityRelationship(
+          table.getFullyQualifiedName(),
+          downstreamDepth,
+          edges,
+          nodes,
+          queryFilter,
+          ENTITY_RELATIONSHIP_DIRECTION_ENTITY,
+          deleted);
+      getEntityRelationship(
+          table.getFullyQualifiedName(),
+          upstreamDepth,
+          edges,
+          nodes,
+          queryFilter,
+          ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY,
+          deleted);
+    }
+    // Add the remaining tables from the list into the nodes
+    // These will the one's that do not have any entity relationship
+    for (Table table : tables) {
+      boolean tablePresent = false;
+      for (Map<String, Object> node : nodes) {
+        if (table.getId().toString().equals(node.get("id"))) {
+          tablePresent = true;
+          break;
+        }
+      }
+      if (!tablePresent) {
+        HashMap<String, Object> tableMap = new HashMap<>(JsonUtils.getMap(table));
+        tableMap.keySet().removeAll(FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP);
+        tableMap.put("entityType", "table");
+        nodes.add(tableMap);
+      }
+    }
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
+    return responseMap;
+  }
+
+  public Response searchSchemaEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    Map<String, Object> responseMap =
+        searchSchemaEntityRelationshipInternal(
+            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
     return Response.status(OK).entity(responseMap).build();
   }
 
@@ -1858,6 +2033,29 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
+  @Override
+  public void updateEntityRelationship(
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Map<String, Object> entityRelationshipData) {
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      updateByQueryRequest.setQuery(
+          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
+              .operator(Operator.AND));
+      Map<String, Object> params =
+          Collections.singletonMap("entityRelationshipData", entityRelationshipData);
+      Script script =
+          new Script(
+              ScriptType.INLINE,
+              Script.DEFAULT_SCRIPT_LANG,
+              ADD_UPDATE_ENTITY_RELATIONSHIP,
+              params);
+      updateByQueryRequest.setScript(script);
+      updateOpenSearchByQuery(updateByQueryRequest);
+    }
+  }
+
   @SneakyThrows
   private void updateOpenSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
@@ -2387,7 +2585,7 @@ public class OpenSearchClient implements SearchClient {
 
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
-    if (subjectContext != null && !subjectContext.isAdmin()) {
+    if (SearchClient.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQuery != null) {
         searchSourceBuilder.query(

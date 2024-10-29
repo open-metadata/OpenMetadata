@@ -4,7 +4,7 @@
   "title": "TableConfig",
   "description": "Custom property configuration for table-type property where all column data types are strings.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.type.customproperties.TableConfig",
+  "javaType": "org.openmetadata.schema.type.customProperties.TableConfig",
   "properties": {
     "columns": {
       "type": "array",

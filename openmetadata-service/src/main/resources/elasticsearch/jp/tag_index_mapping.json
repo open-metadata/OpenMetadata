@@ -99,6 +99,9 @@
         "deleted": {
           "type": "text"
         },
+        "disabled": {
+          "type": "boolean"
+        },
         "classification": {
           "properties": {
             "id": {

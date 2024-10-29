@@ -238,7 +238,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final boolean supportsEmptyDescription;
 
   // Special characters supported in the entity name
-  protected String supportedNameCharacters = "_'-.&()" + RANDOM_STRING_GENERATOR.generate(1);
+  protected String supportedNameCharacters = "_'-.&()[]" + RANDOM_STRING_GENERATOR.generate(1);
 
   protected final boolean supportsCustomExtension;
 
@@ -252,7 +252,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
 
   public static final String ENTITY_LINK_MATCH_ERROR =
-      "[entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"]";
+      "[entityLink must match \"(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$\"]";
 
   // Random unicode string generator to test entity name accepts all the unicode characters
   protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
@@ -272,6 +272,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference USER2_REF;
   public static User USER_TEAM21;
   public static User BOT_USER;
+  public static EntityReference DEFAULT_BOT_ROLE_REF;
+  public static EntityReference DOMAIN_ONLY_ACCESS_ROLE_REF;
 
   public static Team ORG_TEAM;
   public static Team TEAM1;
@@ -2893,7 +2895,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   /**
    * Helper function to generate JSON PATCH, submit PATCH API request and validate response.
    */
-  protected final T patchEntityAndCheck(
+  public final T patchEntityAndCheck(
       T updated,
       String originalJson,
       Map<String, String> authHeaders,

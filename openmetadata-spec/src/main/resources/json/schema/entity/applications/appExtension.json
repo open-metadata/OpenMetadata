@@ -11,7 +11,8 @@
       "type": "string",
       "enum": [
         "status",
-        "limits"
+        "limits",
+        "custom"
       ]
     }
   },
