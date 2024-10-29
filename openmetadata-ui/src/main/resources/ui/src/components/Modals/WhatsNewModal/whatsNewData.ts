@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_8'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_9'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1097,6 +1097,19 @@ To continue pursuing this objective, the application was completely refactored t
 - **Fix**: Web analytic activity being reset.
 - **Fix**: Quicksight lineage source.
 - **Fix**: Add Azure Token Base Authentication
+`,
+    },
+  },
+  {
+    id: 51,
+    version: 'v1.5.9',
+    description: 'Released on 29th October 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Minor**: Prepare App Framework to handle application limits.
+- **Minor**: Add Query Builder widget.
+- **Fix**: Revamp MetaPilot as Collate AI and add limits ${CollateIconWithLinkMD}
+- **Fix**: Implemented a fix on EntityLink for names with brackets.
 `,
     },
   },

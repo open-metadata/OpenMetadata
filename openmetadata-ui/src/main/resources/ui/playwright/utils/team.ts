@@ -251,11 +251,19 @@ export const removeOrganizationPolicyAndRole = async (
   });
 };
 
-export const searchTeam = async (page: Page, teamName: string) => {
+export const searchTeam = async (
+  page: Page,
+  teamName: string,
+  searchWillBeEmpty?: boolean
+) => {
   const searchResponse = page.waitForResponse('/api/v1/search/query?q=**');
 
   await page.fill('[data-testid="searchbar"]', teamName);
   await searchResponse;
 
-  await expect(page.locator('table')).toContainText(teamName);
+  if (searchWillBeEmpty) {
+    await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+  } else {
+    await expect(page.locator('table')).toContainText(teamName);
+  }
 };

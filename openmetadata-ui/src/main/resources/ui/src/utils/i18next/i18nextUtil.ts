@@ -17,6 +17,7 @@ import deDe from '../../locale/languages/de-de.json';
 import enUS from '../../locale/languages/en-us.json';
 import esES from '../../locale/languages/es-es.json';
 import frFR from '../../locale/languages/fr-fr.json';
+import glES from '../../locale/languages/gl-es.json';
 import heHE from '../../locale/languages/he-he.json';
 import jaJP from '../../locale/languages/ja-jp.json';
 import nlNL from '../../locale/languages/nl-nl.json';
@@ -32,6 +33,7 @@ export enum SupportedLocales {
   日本語 = 'ja-JP',
   Português = 'pt-BR',
   Español = 'es-ES',
+  Galego = 'gl-ES',
   Русский = 'ru-RU',
   Deutsch = 'de-DE',
   Hebrew = 'he-HE',
@@ -55,6 +57,7 @@ export const getInitOptions = (): InitOptions => {
       'ja-JP': { translation: jaJP },
       'pt-BR': { translation: ptBR },
       'es-ES': { translation: esES },
+      'gl-ES': { translation: glES },
       'ru-RU': { translation: ruRU },
       'de-DE': { translation: deDe },
       'he-HE': { translation: heHE },
