@@ -521,3 +521,11 @@ export const getServiceDisplayNameQueryFilter = (displayName: string) => ({
     },
   },
 });
+
+export const getServiceNameQueryFilter = (serviceName: string) => ({
+  query: {
+    match: {
+      'service.name.keyword': serviceName,
+    },
+  },
+});
