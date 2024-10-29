@@ -48,6 +48,7 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   OPEN_METADATA,
   SERVICE_INGESTION_PIPELINE_TYPES,
@@ -113,11 +114,13 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
   getServiceVersionPath,
+  getSettingPath,
 } from '../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
+  getServiceRouteFromServiceType,
   shouldTestConnection,
 } from '../../utils/ServiceUtils';
 import {
@@ -791,8 +794,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.goBack(),
-    [handleToggleDelete]
+      isSoftDelete
+        ? handleToggleDelete(version)
+        : history.push(
+            getSettingPath(
+              GlobalSettingsMenuCategory.SERVICES,
+              getServiceRouteFromServiceType(serviceCategory)
+            )
+          ),
+    [handleToggleDelete, serviceCategory]
   );
 
   const handleRestoreService = useCallback(async () => {
