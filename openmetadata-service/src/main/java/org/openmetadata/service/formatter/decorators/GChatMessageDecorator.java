@@ -18,15 +18,19 @@ import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage.*;
@@ -263,14 +267,62 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
             createWidget(
                 "Name:",
                 String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.NAME, "-"))),
-            createWidget(
-                "Owners:",
-                String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.OWNERS, "-"))),
-            createWidget(
-                "Tags:",
-                String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TAGS, "-"))));
+            createWidget("Owners:", formatOwners(testCaseDetails)),
+            createWidget("Tags:", formatTags(testCaseDetails)));
 
     sections.add(new Section(testCaseDetailsWidgets));
+  }
+
+  @SuppressWarnings("unchecked")
+  private String formatOwners(Map<Enum<?>, Object> testCaseDetails) {
+    List<EntityReference> owners =
+        (List<EntityReference>)
+            testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.OWNERS, Collections.emptyList());
+
+    StringBuilder ownersStringified = new StringBuilder();
+    if (!CommonUtil.nullOrEmpty(owners)) {
+      owners.forEach(
+          owner -> {
+            if (owner != null && owner.getName() != null) {
+              ownersStringified.append(owner.getName()).append(", ");
+            }
+          });
+
+      // Remove the trailing comma and space if there's content
+      if (!ownersStringified.isEmpty()) {
+        ownersStringified.setLength(ownersStringified.length() - 2);
+      }
+    } else {
+      ownersStringified.append("-");
+    }
+
+    return ownersStringified.toString();
+  }
+
+  @SuppressWarnings("unchecked")
+  private String formatTags(Map<Enum<?>, Object> testCaseDetails) {
+    List<TagLabel> tags =
+        (List<TagLabel>)
+            testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TAGS, Collections.emptyList());
+
+    StringBuilder tagsStringified = new StringBuilder();
+    if (!CommonUtil.nullOrEmpty(tags)) {
+      tags.forEach(
+          tag -> {
+            if (tag != null && tag.getName() != null) {
+              tagsStringified.append(tag.getName()).append(", ");
+            }
+          });
+
+      // Remove the trailing comma and space if there's content
+      if (!tagsStringified.isEmpty()) {
+        tagsStringified.setLength(tagsStringified.length() - 2);
+      }
+    } else {
+      tagsStringified.append("-");
+    }
+
+    return tagsStringified.toString();
   }
 
   private void addTestCaseFQNSection(
