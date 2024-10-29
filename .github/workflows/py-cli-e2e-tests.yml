@@ -25,7 +25,7 @@ on:
         default: "default"
 
 env:
-  DEBUG: "${{ ((inputs.debug == 'default' && github.ref != 'refs/heads/main') && 'true') || inputs.debug || 'false' }}"
+  DEBUG: "${{ ((inputs.debug != 'default' && github.ref != 'refs/heads/main') && 'true') || inputs.debug || 'false' }}"
 
 permissions:
   id-token: write
