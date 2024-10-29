@@ -6,7 +6,7 @@ import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 
 public class AzureDatabaseAuthenticationProvider implements DatabaseAuthenticationProvider {
-  public static final String AZURE = "azure";
+  public static final String AZURE = "azure=true";
 
   @Override
   public String authenticate(String jdbcUrl, String username, String password) {
