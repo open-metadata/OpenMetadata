@@ -1,23 +1,32 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { Button, Col, Row } from 'antd';
 import { DataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isNil } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TreeTransfer } from '../../components/common/TreeTransfer/TreeTransfer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
-import { NavigationItem } from '../../generated/system/ui/navigationItem';
-import { Page } from '../../generated/system/ui/page';
-import { UICustomization } from '../../generated/system/ui/uiCustomization';
+import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import { useFqn } from '../../hooks/useFqn';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import {
   filterAndArrangeTreeByKeys,
+  getNavigationItems,
   getNestedKeys,
 } from '../../utils/CustomizaNavigation/CustomizeNavigation';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -31,11 +40,14 @@ const sidebarOptions = leftSidebarClassBase.getSidebarItems().map((item) => ({
 }));
 
 interface Props {
-  onSave: (newPage: Page) => Promise<void>;
-  currentPage: Document;
+  onSave: (navigationList: NavigationItem[]) => Promise<void>;
+  currentNavigation: NavigationItem[];
 }
 
-export const SettingsNavigationPage = ({ onSave, currentPage }: Props) => {
+export const SettingsNavigationPage = ({
+  onSave,
+  currentNavigation,
+}: Props) => {
   const { fqn } = useFqn();
   const [isPersonaLoading, setIsPersonaLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona | null>(null);
@@ -69,10 +81,7 @@ export const SettingsNavigationPage = ({ onSave, currentPage }: Props) => {
   const fetchPersonaDetails = async () => {
     try {
       setIsPersonaLoading(true);
-      const persona = await getPersonaByName(
-        fqn,
-        TabSpecificField.UI_CUSTOMIZATION
-      );
+      const persona = await getPersonaByName(fqn);
 
       setPersonaDetails(persona);
     } catch (error) {
@@ -83,40 +92,16 @@ export const SettingsNavigationPage = ({ onSave, currentPage }: Props) => {
   };
 
   const handleSave = async () => {
-    const navigationItems = filterAndArrangeTreeByKeys(
-      cloneDeep(sidebarOptions),
-      targetKeys
-    ).filter(Boolean);
-
-    const getNavigationItems = (items: DataNode[]) =>
-      items
-        .map((item: DataNode) =>
-          item.children
-            ? ({
-                id: item.key,
-                title: item.title,
-                pageId: item.key,
-                children: getNavigationItems(item.children),
-              } as NavigationItem)
-            : ({
-                id: item.key,
-                title: item.title,
-                pageId: item.key,
-              } as NavigationItem)
-        )
-        .filter(Boolean);
+    const navigationItems = getNavigationItems(
+      filterAndArrangeTreeByKeys(
+        cloneDeep<DataNode[]>(sidebarOptions),
+        targetKeys
+      ).filter((t) => !isNil(t))
+    );
 
     await onSave({
-      ...currentPage,
-      fullyQualifiedName: `persona.${fqn}`,
-      data: {
-        navigation: getNavigationItems(navigationItems),
-        pages: [],
-        id: currentPage.data.id,
-        name: currentPage.data.name,
-      } as UICustomization,
-      entityType: EntityType.POLICY,
-      name: 'Navigation',
+      ...currentNavigation,
+      ...navigationItems,
     });
   };
 

@@ -12,9 +12,10 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomiseDetailPage.enum';
 import {
-  MOCK_GLOSSARY,
   mockedGlossaryTerms,
+  MOCK_GLOSSARY,
 } from '../../../mocks/Glossary.mock';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
@@ -174,6 +175,7 @@ describe('GlossaryHeader component', () => {
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
+        widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
@@ -187,6 +189,7 @@ describe('GlossaryHeader component', () => {
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
+        widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
@@ -212,6 +215,7 @@ describe('GlossaryHeader component', () => {
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
+        widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
@@ -225,6 +229,7 @@ describe('GlossaryHeader component', () => {
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
+        widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
@@ -246,6 +251,7 @@ describe('GlossaryHeader component', () => {
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
+        widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
@@ -261,6 +267,7 @@ describe('GlossaryHeader component', () => {
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
+        widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
@@ -288,6 +295,7 @@ describe('GlossaryHeader component', () => {
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
+        widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
@@ -319,6 +327,7 @@ describe('GlossaryHeader component', () => {
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
+        widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}

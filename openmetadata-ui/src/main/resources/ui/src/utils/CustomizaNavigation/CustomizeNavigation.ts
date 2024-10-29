@@ -1,24 +1,36 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { DataNode } from 'antd/lib/tree';
 import { sortBy } from 'lodash';
+import { NavigationItem } from '../../generated/system/ui/uiCustomization';
+
+interface TreeNode extends Omit<DataNode, 'children'> {
+  children?: TreeNode[];
+}
 
 export const filterAndArrangeTreeByKeys = (
-  tree: DataNode[],
+  tree: TreeNode[],
   keys: Array<string | number>
-) => {
-  //   // Sort nodes according to the keys order
-  //   function sortByKeys(nodeArray: DataNode[]) {
-  //     return nodeArray.sort((a, b) => keys.indexOf(a.key) - keys.indexOf(b.key));
-  //   }
-
+): TreeNode[] => {
   // Helper function to recursively filter and arrange the tree
-  function filterAndArrange(node: DataNode) {
+  function filterAndArrange(node: TreeNode) {
     // If the current node's key is in the keys array, process it
     if (keys.includes(node.key)) {
       // If the node has children, we recursively filter and arrange them
       if (node.children && node.children.length > 0) {
         node.children = node.children
           .map(filterAndArrange) // Recursively filter and arrange children
-          .filter(Boolean); // Remove any undefined children
+          .filter((t): t is TreeNode => t !== null); // Remove any undefined children
 
         // Sort the children according to the order of the keys array
         node.children = sortBy(node.children, 'key');
@@ -31,7 +43,9 @@ export const filterAndArrangeTreeByKeys = (
   }
 
   // Apply the filter and arrange function to the entire tree
-  let filteredTree = tree.map(filterAndArrange).filter(Boolean);
+  let filteredTree = tree
+    .map(filterAndArrange)
+    .filter((t): t is TreeNode => t !== null);
 
   // Sort the filtered tree based on the order of keys at the root level
   filteredTree = sortBy(filteredTree, 'key');
@@ -61,3 +75,21 @@ export const generateTree = (
     disabled: checkedKeys.includes(props.key as string),
     children: generateTree(children, checkedKeys),
   }));
+
+export const getNavigationItems = (items: DataNode[]): NavigationItem[] =>
+  items
+    .map((item) =>
+      item.children
+        ? ({
+            id: item.key,
+            title: item.title,
+            pageId: item.key,
+            children: getNavigationItems(item.children),
+          } as NavigationItem)
+        : ({
+            id: item.key,
+            title: item.title,
+            pageId: item.key,
+          } as NavigationItem)
+    )
+    .filter(Boolean);

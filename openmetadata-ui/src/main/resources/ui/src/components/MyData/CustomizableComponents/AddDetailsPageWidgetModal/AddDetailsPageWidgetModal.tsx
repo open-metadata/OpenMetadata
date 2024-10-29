@@ -14,7 +14,7 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { Modal, Space, Tabs, TabsProps } from 'antd';
 import { isEmpty, toString } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { default as React, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -22,8 +22,8 @@ import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPageUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-
-import AddWidgetTabContent from './AddWidgetTabContent';
+import { WidgetSizeInfo } from '../AddWidgetModal/AddWidgetModal.interface';
+import AddWidgetTabContent from '../AddWidgetModal/AddWidgetTabContent';
 
 interface Props {
   open: boolean;
@@ -100,15 +100,7 @@ function AddDetailsPageWidgetModal({
     [widgetsList, addedWidgetsList, getAddWidgetHandler, maxGridSizeSupport]
   );
 
-  //   useEffect(() => {
-  //     fetchKnowledgePanels();
-  //   }, []);
-
   const widgetsInfo = useMemo(() => {
-    // if (loading) {
-    //   return <Loader />;
-    // }
-
     if (isEmpty(widgetsList)) {
       return (
         <ErrorPlaceHolder

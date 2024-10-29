@@ -200,8 +200,6 @@ function CustomizeMyData({
     });
   };
 
-  console.info('layout', layout);
-
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 

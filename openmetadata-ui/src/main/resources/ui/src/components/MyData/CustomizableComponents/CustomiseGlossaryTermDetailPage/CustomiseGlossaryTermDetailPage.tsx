@@ -13,12 +13,13 @@
 
 import { Modal } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
+import { Page } from '../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../../pages/MyDataPage/my-data.less';
@@ -44,14 +45,12 @@ function CustomizeGlossaryTermDetailPage({
   personaDetails,
   initialPageData,
   onSaveLayout,
-  handlePageDataChange,
-  handleSaveCurrentPageLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(
-      initialPageData.data?.page?.layout ??
+      (initialPageData?.layout as WidgetConfig[]) ??
         customizeGlossaryTermPageClassBase.defaultLayout,
       2,
       4
@@ -145,17 +144,6 @@ function CustomizeGlossaryTermDetailPage({
     ]
   );
 
-  useEffect(() => {
-    handlePageDataChange({
-      ...initialPageData,
-      data: {
-        page: {
-          layout: getUniqueFilteredLayout(layout),
-        },
-      },
-    });
-  }, [layout]);
-
   const handleReset = useCallback(() => {
     // Get default layout with the empty widget added at the end
     const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
@@ -164,17 +152,19 @@ function CustomizeGlossaryTermDetailPage({
       4
     );
     setLayout(newMainPanelLayout);
-    handlePageDataChange({
-      ...initialPageData,
-      data: {
-        page: {
-          layout: getUniqueFilteredLayout(newMainPanelLayout),
-        },
-      },
+    onSaveLayout({
+      ...(initialPageData as Page),
+      layout: getUniqueFilteredLayout(newMainPanelLayout),
     });
-    handleSaveCurrentPageLayout(true);
     setIsResetModalOpen(false);
   }, []);
+
+  const handleSave = async () => {
+    await onSaveLayout({
+      ...(initialPageData as Page),
+      layout: getUniqueFilteredLayout(layout),
+    });
+  };
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
@@ -186,7 +176,7 @@ function CustomizeGlossaryTermDetailPage({
           <CustomizablePageHeader
             personaName={getEntityName(personaDetails)}
             onReset={handleOpenResetModal}
-            onSave={onSaveLayout}
+            onSave={handleSave}
           />
         }
         headerClassName="m-0 p-0"

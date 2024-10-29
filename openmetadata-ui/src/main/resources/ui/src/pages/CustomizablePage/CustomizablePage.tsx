@@ -31,6 +31,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { Page, PageType } from '../../generated/system/ui/page';
+import { UICustomization } from '../../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -40,7 +41,6 @@ import {
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/CommonUtils';
-import { getDefaultLayout } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
@@ -55,11 +55,13 @@ export const CustomizablePage = () => {
   const [isPersonaLoading, setIsPersonaLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
 
-  const pageData = useMemo(
-    () =>
-      page.data?.pages?.find(
+  const { pageData, navigation } = useMemo(
+    () => ({
+      pageData: page.data?.pages?.find(
         (p: Page) => p.pageType === pageFqn
       ) as Page | null,
+      navigation: (page.data as UICustomization)?.navigation ?? [],
+    }),
     [page, pageFqn]
   );
 
@@ -92,7 +94,8 @@ export const CustomizablePage = () => {
             fullyQualifiedName: pageLayoutFQN,
             entityType: EntityType.PAGE,
             data: {
-              page: { layout: getDefaultLayout(pageFqn) },
+              pages: [],
+              navigation: [],
             },
           });
         } else {
@@ -104,7 +107,7 @@ export const CustomizablePage = () => {
     }
   };
 
-  const handleSave = async (newPage: Page) => {
+  const handlePageCustomizeSave = async (newPage: Page) => {
     try {
       let response: Document;
       const newDoc = cloneDeep(page);
@@ -116,6 +119,46 @@ export const CustomizablePage = () => {
       } else {
         newDoc.data.pages.push(newPage);
       }
+
+      if (page.id) {
+        const jsonPatch = compare(page, newDoc);
+
+        response = await updateDocument(page.id ?? '', jsonPatch);
+      } else {
+        response = await createDocument({
+          ...newDoc,
+          domain: newDoc.domain?.fullyQualifiedName,
+        });
+      }
+      setPage(response);
+
+      showSuccessToast(
+        t('server.page-layout-operation-success', {
+          operation: page.id
+            ? t('label.updated-lowercase')
+            : t('label.created-lowercase'),
+        })
+      );
+    } catch {
+      // Error
+      showErrorToast(
+        t('server.page-layout-operation-error', {
+          operation: page.id
+            ? t('label.updating-lowercase')
+            : t('label.creating-lowercase'),
+        })
+      );
+    }
+  };
+
+  const handleNavigationSave = async (
+    uiNavigation: UICustomization['navigation']
+  ) => {
+    try {
+      let response: Document;
+      const newDoc = cloneDeep(page);
+
+      newDoc.data.navigation = uiNavigation;
 
       if (page.id) {
         const jsonPatch = compare(page, newDoc);
@@ -192,14 +235,19 @@ export const CustomizablePage = () => {
 
   switch (pageFqn) {
     case 'navigation':
-      return <SettingsNavigationPage currentPage={page} onSave={handleSave} />;
+      return (
+        <SettingsNavigationPage
+          currentNavigation={navigation}
+          onSave={handleNavigationSave}
+        />
+      );
 
     case PageType.LandingPage:
       return (
         <CustomizeMyData
           initialPageData={pageData}
           personaDetails={personaDetails}
-          onSaveLayout={handleSave}
+          onSaveLayout={handlePageCustomizeSave}
         />
       );
 
@@ -208,7 +256,7 @@ export const CustomizablePage = () => {
         <CustomizeGlossaryTermDetailPage
           initialPageData={pageData}
           personaDetails={personaDetails}
-          onSaveLayout={handleSave}
+          onSaveLayout={handlePageCustomizeSave}
         />
       );
     default:
