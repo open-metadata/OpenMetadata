@@ -15,15 +15,9 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import React, {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import {
   getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -45,6 +39,7 @@ import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import {
   getListTestSuitesBySearch,
   ListTestSuitePramsBySearch,
@@ -64,13 +59,17 @@ import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/U
 import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 import { TestSuiteSearchParams } from '../../DataQuality.interface';
+import { SummaryPanel } from '../../SummaryPannel/SummaryPanel.component';
 
-export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
+export const TestSuites = () => {
   const { t } = useTranslation();
-  const { tab = DataQualityPageTabs.TABLES } =
-    useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
   const location = useCustomLocation();
+  const {
+    isTestCaseSummaryLoading,
+    testCaseSummary,
+    activeTab: tab,
+  } = useDataQualityProvider();
 
   const params = useMemo(() => {
     const search = location.search;
@@ -266,7 +265,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   return (
     <Row
-      className="p-x-lg p-y-md"
+      className="p-x-md"
       data-testid="test-suite-container"
       gutter={[16, 16]}>
       <Col span={24}>
@@ -320,7 +319,12 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         </Row>
       </Col>
 
-      <Col span={24}>{summaryPanel}</Col>
+      <Col span={24}>
+        <SummaryPanel
+          isLoading={isTestCaseSummaryLoading}
+          testSummary={testCaseSummary}
+        />
+      </Col>
       <Col span={24}>
         <Table
           bordered
