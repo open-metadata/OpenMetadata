@@ -133,9 +133,23 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         );
         onTreeUpdate(tree, config);
       } else {
+        const emptyJsonTree: JsonTree = {
+          id: QbUtils.uuid(),
+          type: 'group',
+          properties: {
+            conjunction: 'AND',
+            not: false,
+          },
+          children1: {},
+        };
         const tree = QbUtils.loadFromJsonLogic(JSON.parse(value || ''), config);
         if (tree) {
-          onTreeUpdate(tree, config);
+          const updatedTree = tree.toJS();
+          (emptyJsonTree.children1 as Record<string, JsonTree>)[
+            updatedTree.id
+          ] = updatedTree;
+          const immTree = QbUtils.loadTree(emptyJsonTree);
+          onTreeUpdate(immTree, config);
         }
       }
     }

@@ -33,7 +33,9 @@
       "type": "object",
       "properties": {
         "rules": {
-          "type": "string"
+          "type": "string",
+          "outputType": "jsonlogic",
+          "format": "queryBuilder"
         }
       },
       "additionalProperties": false
