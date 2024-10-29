@@ -19,6 +19,7 @@ from metadata.profiler.metrics.system.system import (
     SQASessionProvider,
     SystemMetricsComputer,
 )
+from metadata.utils.collections import CaseInsensitiveString
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.profiler_utils import get_identifiers_from_string
@@ -223,7 +224,7 @@ def get_snowflake_system_queries(
     """
 
     try:
-        logger.debug(f"Trying to parse query [{query_log_entry.query_id}]")
+        logger.debug(f"Parsing snowflake query [{query_log_entry.query_id}]")
         identifier = _parse_query(query_log_entry.query_text)
         if not identifier:
             raise RuntimeError("Could not identify the table from the query.")
@@ -359,9 +360,17 @@ class SnowflakeSystemMetricsSource(
                 }
                 for q in query_results
                 if getattr(q, rows_affected_field) > 0
-                and q.database_name == db
-                and q.schema_name == schema
-                and q.table_name == table
+                # snowflake SQL identifiers are case insensitive. All identifiers are stored in upper case.
+                and (
+                    CaseInsensitiveString(db),
+                    CaseInsensitiveString(schema),
+                    CaseInsensitiveString(table),
+                )
+                == (
+                    q.database_name,
+                    q.schema_name,
+                    q.table_name,
+                )
             ]
         )
 
