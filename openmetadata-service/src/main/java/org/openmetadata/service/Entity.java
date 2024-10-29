@@ -271,6 +271,7 @@ public final class Entity {
             CLASSIFICATION,
             GLOSSARY,
             DOMAIN,
+            TEST_SUITE,
             TEAM));
   }
 

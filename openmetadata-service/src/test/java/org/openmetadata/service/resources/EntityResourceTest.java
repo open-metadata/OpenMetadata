@@ -1929,10 +1929,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
       if (supportsTags) {
         entity.getTags().add(TIER1_TAG_LABEL);
-        fieldAdded(
-            change,
-            FIELD_TAGS,
-            List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL, TIER1_TAG_LABEL));
+        fieldAdded(change, FIELD_TAGS, List.of(TIER1_TAG_LABEL));
       }
       entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, getChangeType(), change);
 
@@ -1944,7 +1941,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       entity.setTags(null);
       fieldUpdated(change, "description", "description1", "");
       fieldDeleted(change, "displayName", "displayName1");
-      fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
+      if (supportsOwners) {
+        fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
+      }
+      if (supportsTags) {
+        fieldDeleted(change, FIELD_TAGS, List.of(TIER1_TAG_LABEL));
+      }
       patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     }
   }
@@ -2164,21 +2166,33 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
 
-    // PATCH and remove field stringB from the entity extension
-    json = JsonUtils.pojoToJson(entity);
-    jsonNode.remove("stringB");
-    entity.setExtension(jsonNode);
-    change =
-        getChangeDescription(
-            entity, CHANGE_CONSOLIDATED); // PATCH operation update is consolidated into a session
-    fieldDeleted(
-        change,
-        "extension",
-        List.of(
-            JsonUtils.getObjectNode("intA", intAValue),
-            JsonUtils.getObjectNode("stringB", stringBValue)));
-    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, getChangeType(), change);
-    assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
+    if (!isParent()) {
+      // PATCH and remove field stringB from the entity extension
+      json = JsonUtils.pojoToJson(entity);
+      jsonNode.remove("stringB");
+      entity.setExtension(jsonNode);
+      change =
+          getChangeDescription(
+              entity, CHANGE_CONSOLIDATED); // PATCH operation update is consolidated into a session
+      fieldDeleted(
+          change,
+          "extension",
+          List.of(
+              JsonUtils.getObjectNode("intA", intAValue),
+              JsonUtils.getObjectNode("stringB", stringBValue)));
+      entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, getChangeType(), change);
+      assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
+    } else {
+      json = JsonUtils.pojoToJson(entity);
+      jsonNode.remove("stringB");
+      entity.setExtension(jsonNode);
+      change =
+          getChangeDescription(
+              entity, MINOR_UPDATE); // PATCH operation update is consolidated into a session
+      fieldDeleted(change, "extension", List.of(JsonUtils.getObjectNode("stringB", stringBValue)));
+      entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, getChangeType(), change);
+      assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
+    }
 
     // Now set the entity custom property to an invalid value
     jsonNode.set(
