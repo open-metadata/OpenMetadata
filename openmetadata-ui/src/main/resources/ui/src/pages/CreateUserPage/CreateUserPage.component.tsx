@@ -42,12 +42,13 @@ import { getUserCreationErrorMessage } from '../../utils/Users.util';
 
 const CreateUserPage = () => {
   const {
-    state: { isAdminPage },
+    state,
   }: {
-    state: { isAdminPage: boolean };
+    state?: { isAdminPage: boolean };
   } = useLocation();
   const history = useHistory();
   const { t } = useTranslation();
+  const isAdminPage = Boolean(state?.isAdminPage);
   const { setInlineAlertDetails } = useApplicationStore();
   const { getResourceLimit } = useLimitStore();
   const [roles, setRoles] = useState<Array<Role>>([]);

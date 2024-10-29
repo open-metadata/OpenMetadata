@@ -74,12 +74,13 @@ const CreateUser = ({
   forceBot,
 }: CreateUserProps) => {
   const {
-    state: { isAdminPage },
+    state,
   }: {
-    state: { isAdminPage: boolean };
+    state?: { isAdminPage: boolean };
   } = useLocation();
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const isAdminPage = Boolean(state?.isAdminPage);
   const { authConfig, inlineAlertDetails } = useApplicationStore();
   const [isAdmin, setIsAdmin] = useState(isAdminPage);
   const [isBot, setIsBot] = useState(forceBot);
