@@ -25,6 +25,7 @@ import { OperationPermission } from '../context/PermissionProvider/PermissionPro
 import { ProviderType } from '../generated/entity/bot';
 import { Tag } from '../generated/entity/classification/tag';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
+import { getClassificationTagPath } from './RouterUtils';
 import { getDeleteIcon, getUsageCountLink } from './TagsUtils';
 
 export const getDeleteButtonData = (
@@ -60,11 +61,12 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
         {record.style?.iconURL && (
           <img data-testid="tag-icon" src={record.style.iconURL} width={16} />
         )}
-        <Typography.Text
+        <Link
           className="m-b-0"
-          style={{ color: record.style?.color }}>
+          style={{ color: record.style?.color }}
+          to={getClassificationTagPath(record.fullyQualifiedName ?? '')}>
           {record.name}
-        </Typography.Text>
+        </Link>
         {record.disabled ? (
           <Badge
             className="m-l-xs badge-grey"

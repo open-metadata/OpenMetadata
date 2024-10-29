@@ -23,7 +23,10 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
-import { getGlossaryPath, getTagPath } from '../../../utils/RouterUtils';
+import {
+  getClassificationTagPath,
+  getGlossaryPath,
+} from '../../../utils/RouterUtils';
 import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
 import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';
@@ -90,7 +93,7 @@ const TagsV1 = ({
     () =>
       (tagType ?? tag.source) === TagSource.Glossary
         ? getGlossaryPath(tag.tagFQN)
-        : getTagPath(Fqn.split(tag.tagFQN)[0]),
+        : getClassificationTagPath(Fqn.split(tag.tagFQN).join('.')),
     [tagType, tag.source, tag.tagFQN]
   );
 
