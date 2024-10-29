@@ -651,7 +651,7 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Maximum number of unprocessed events returned")
-          @DefaultValue("10")
+          @DefaultValue("100")
           @Min(0)
           @QueryParam("limit")
           int limit,
@@ -703,7 +703,7 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Maximum number of unprocessed events returned")
-          @DefaultValue("10")
+          @DefaultValue("100")
           @Min(0)
           @QueryParam("limit")
           int limit,
@@ -763,7 +763,7 @@ public class EventSubscriptionResource
               description = "Maximum number of failed events to retrieve",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
-          @DefaultValue("10")
+          @DefaultValue("100")
           @Min(0)
           int limit,
       @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
@@ -811,7 +811,7 @@ public class EventSubscriptionResource
               description = "Maximum number of failed events to retrieve",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
-          @DefaultValue("10")
+          @DefaultValue("100")
           @Min(0)
           int limit,
       @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
@@ -864,7 +864,7 @@ public class EventSubscriptionResource
               description = "Maximum number of failed events to retrieve",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
-          @DefaultValue("10")
+          @DefaultValue("100")
           @Min(0)
           int limit,
       @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
