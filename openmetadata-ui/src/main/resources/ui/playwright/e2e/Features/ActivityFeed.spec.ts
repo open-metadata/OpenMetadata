@@ -363,13 +363,15 @@ test.describe('Activity feed', () => {
     await page.getByText('OK').click();
     await resolveTask;
 
-    await toastNotification(page, /Task resolved successfully/);
+    await toastNotification(page, /Task resolved successfully/, 'success');
 
     // Task 1 - Resolved the task
 
+    const resolveTask2 = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
     await page.getByText('Accept Suggestion').click();
+    await resolveTask2;
 
-    await toastNotification(page, /Task resolved successfully/);
+    await toastNotification(page, /Task resolved successfully/, 'success');
 
     await checkTaskCount(page, 0, 2);
   });
