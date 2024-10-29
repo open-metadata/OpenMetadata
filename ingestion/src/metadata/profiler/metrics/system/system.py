@@ -42,6 +42,8 @@ T = TypeVar("T")
 
 
 class CacheProvider(ABC, Generic[T]):
+    """Cache provider class to provide cache for system metrics"""
+
     def __init__(self):
         self.cache = LRUCache[T](LRU_CACHE_SIZE)
 
@@ -63,19 +65,19 @@ class EmptySystemMetricsSource:
     """Empty system metrics source that can be used as a default. Just returns an empty list of system metrics
     for any resource."""
 
-    def get_inserts(self, *args, **kwargs) -> List[SystemProfile]:
+    def get_inserts(self, **kwargs) -> List[SystemProfile]:
         """Get insert queries"""
         return []
 
-    def get_deletes(self, *args, **kwargs) -> List[SystemProfile]:
+    def get_deletes(self, **kwargs) -> List[SystemProfile]:
         """Get delete queries"""
         return []
 
-    def get_updates(self, *args, **kwargs) -> List[SystemProfile]:
+    def get_updates(self, **kwargs) -> List[SystemProfile]:
         """Get update queries"""
         return []
 
-    def get_kwargs(self, *args, **kwargs):
+    def get_kwargs(self, **kwargs):
         return {}
 
 
@@ -97,6 +99,8 @@ class SystemMetricsComputer(EmptySystemMetricsSource):
 
 
 class SQASessionProvider:
+    """SQASessionProvider class to provide session to the system metrics"""
+
     def __init__(self, *args, **kwargs):
         self.session = kwargs.pop("session")
         super().__init__(*args, **kwargs)
