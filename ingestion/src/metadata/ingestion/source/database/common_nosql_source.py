@@ -232,9 +232,19 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         schema_name = self.context.get().database_schema
         try:
             data = self.get_table_columns_dict(schema_name, table_name)
-            df = pd.DataFrame.from_records(list(data))
-            column_parser = DataFrameColumnParser.create(df)
-            columns = column_parser.get_columns()
+            try:
+                df = pd.DataFrame.from_records(list(data))
+                column_parser = DataFrameColumnParser.create(df)
+                columns = column_parser.get_columns()
+            except Exception as exc:
+                logger.error(
+                    f"Failed to parse columns for table "
+                    f"[{self.context.get().database}.{schema_name}.{table_name}]: {exc}"
+                )
+                logger.error(traceback.format_exc())
+                logger.error(f"Type of data: {type(data)}")
+                logger.error(f"Data: {list(data)[:100]}")
+                columns = []
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
@@ -267,7 +277,10 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
             yield Either(
                 left=StackTraceError(
                     name=table_name,
-                    error=f"Unexpected exception to yield table [{table_name}]: {exc}",
+                    error=(
+                        f"Unexpected exception to yield table"
+                        f"[{self.context.get().database}.{schema_name}.{table_name}]: {exc}"
+                    ),
                     stackTrace=traceback.format_exc(),
                 )
             )
