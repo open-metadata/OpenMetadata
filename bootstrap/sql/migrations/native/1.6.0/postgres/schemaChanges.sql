@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS workflow_definition_entity (
     fqnHash VARCHAR(256) NOT NULL COLLATE "C",
     json JSONB NOT NULL,
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS ((json ->> 'updatedBy')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED NOT NULL,
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
