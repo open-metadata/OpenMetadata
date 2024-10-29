@@ -1,3 +1,5 @@
+"""Snowflake system metrics source"""
+
 import hashlib
 import re
 import traceback
@@ -5,7 +7,6 @@ from typing import List, Optional, Tuple
 
 import sqlalchemy.orm
 from pydantic import TypeAdapter
-from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.ingestion.source.database.snowflake.models import (
@@ -67,6 +68,22 @@ def _parse_query(query: str) -> Optional[str]:
 
 
 class SnowflakeTableResovler:
+    """A class the resolves snowflake tables by mimicking snowflake's default resolution logic:
+    https://docs.snowflake.com/en/sql-reference/name-resolution
+
+    This default specification searches in the following order:
+    - The explicitly provided schema
+    - The current schema
+    - The public schema
+
+    This can be altered by changing the SEARCH_PATH session parameter. If the users change
+    this paramter, this resolver will might return wrong values.
+
+    There is no way to extract the SEARCH_PATH from the query after it has been executed. Hence, we can
+    only rely on the default behavior and maybe allow the users to configure the search path
+    at the connection level (TODO).
+    """
+
     def __init__(self, session: sqlalchemy.orm.Session):
         self._cache = LRUCache[bool](LRU_CACHE_SIZE)
         self.session = session
@@ -114,7 +131,8 @@ class SnowflakeTableResovler:
         Returns:
             tuple: Tuple of database, schema and table names
         Raises:
-            RuntimeError: If the table is not found in the metadata or if there are duplicate results (there shouldn't be)
+            RuntimeError: If the table is not found in the metadata or if there are duplicate results
+            (there shouldn't be)
 
         """
         search_paths = []
@@ -129,7 +147,7 @@ class SnowflakeTableResovler:
             search_paths += ".".join([context_database, PUBLIC_SCHEMA, table_name])
             return context_database, PUBLIC_SCHEMA, table_name
         raise RuntimeError(
-            "Could not find the table {search_paths}.".format(
+            "Could not find the table {search_paths}.".format(  # pylint: disable=consider-using-f-string
                 search_paths=" OR ".join(map(lambda x: f"[{x}]", search_paths))
             )
         )
@@ -152,7 +170,8 @@ class SnowflakeTableResovler:
         Args:
             context_database (str): Database name from the query context
             context_schema (Optional[str]): Schema name from the query context
-            identifier (str): Identifier string extracted from a query (can be 'db.schema.table', 'schema.table' or just 'table')
+            identifier (str): Identifier string extracted from a query (can be
+             'db.schema.table', 'schema.table' or just 'table')
         Returns:
             Tuple[Optional[str], Optional[str], Optional[str]]: Tuple of database, schema and table names
         Raises:
@@ -264,22 +283,28 @@ def get_snowflake_system_queries(
 class SnowflakeSystemMetricsSource(
     SQASessionProvider, EmptySystemMetricsSource, CacheProvider[SnowflakeQueryLogEntry]
 ):
+    """Snowflake system metrics source"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.resolver = SnowflakeTableResovler(
             session=super().get_session(),
         )
 
-    def get_kwargs(self, table: DeclarativeMeta, *args, **kwargs):
+    def get_kwargs(self, **kwargs):
+        table = kwargs.get("table")
         return {
             "table": table.__table__.name,
             "database": self.get_session().get_bind().url.database,
             "schema": table.__table__.schema,
         }
 
-    def get_inserts(
-        self, database: str, schema: str, table: str
-    ) -> List[SystemProfile]:
+    def get_inserts(self, **kwargs) -> List[SystemProfile]:
+        database, schema, table = (
+            kwargs.get("database"),
+            kwargs.get("schema"),
+            kwargs.get("table"),
+        )
         return self.get_system_profile(
             database,
             schema,
@@ -297,9 +322,12 @@ class SnowflakeSystemMetricsSource(
             DmlOperationType.INSERT,
         )
 
-    def get_updates(
-        self, database: str, schema: str, table: str
-    ) -> List[SystemProfile]:
+    def get_updates(self, **kwargs) -> List[SystemProfile]:
+        database, schema, table = (
+            kwargs.get("database"),
+            kwargs.get("schema"),
+            kwargs.get("table"),
+        )
         return self.get_system_profile(
             database,
             schema,
@@ -317,9 +345,12 @@ class SnowflakeSystemMetricsSource(
             DmlOperationType.UPDATE,
         )
 
-    def get_deletes(
-        self, database: str, schema: str, table: str
-    ) -> List[SystemProfile]:
+    def get_deletes(self, **kwargs) -> List[SystemProfile]:
+        database, schema, table = (
+            kwargs.get("database"),
+            kwargs.get("schema"),
+            kwargs.get("table"),
+        )
         return self.get_system_profile(
             database,
             schema,

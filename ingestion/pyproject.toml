@@ -182,8 +182,6 @@ ignore-paths = [
     "ingestion/src/metadata/ingestion/source/database/sas/client.py",
     "ingestion/src/metadata/ingestion/source/database/sas/metadata.py",
     "ingestion/src/metadata/ingestion/source/database/snowflake/metadata.py",
-    "ingestion/src/metadata/ingestion/source/database/snowflake/profiler/profiler.py",
-    "ingestion/src/metadata/ingestion/source/database/snowflake/profiler/system.py",
     "ingestion/src/metadata/ingestion/source/database/snowflake/utils.py",
     "ingestion/src/metadata/ingestion/source/database/sql_column_handler.py",
     "ingestion/src/metadata/ingestion/source/database/stored_procedures_mixin.py",

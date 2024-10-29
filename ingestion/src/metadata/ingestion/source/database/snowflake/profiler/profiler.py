@@ -21,7 +21,5 @@ from metadata.profiler.interface.sqlalchemy.snowflake.profiler_interface import 
 
 
 class SnowflakeProfiler(SnowflakeProfilerInterface):
-    def initialize_system_metrics_computer(
-        self, **kwargs
-    ) -> SnowflakeSystemMetricsSource:
+    def initialize_system_metrics_computer(self, **_) -> SnowflakeSystemMetricsSource:
         return SnowflakeSystemMetricsSource(session=self.session)
