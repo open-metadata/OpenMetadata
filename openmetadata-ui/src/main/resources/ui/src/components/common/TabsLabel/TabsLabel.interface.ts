@@ -25,4 +25,5 @@ export interface TabsLabelProps {
   id: string;
   count?: number;
   isActive?: boolean;
+  description?: string;
 }
