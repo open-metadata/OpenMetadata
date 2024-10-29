@@ -85,7 +85,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  public void testAddClassificationTag() throws JsonPatchException, IOException {
+  void testAddClassificationTag() throws JsonPatchException, IOException {
     // Create a patch to add a new Classification tag
     String patchString =
         "[\n"
@@ -116,7 +116,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  public void testRemoveGlossaryTag() throws JsonPatchException, IOException {
+  void testRemoveGlossaryTag() throws JsonPatchException, IOException {
     // Create a patch to remove the Glossary tag
     String patchString =
         "[\n"
@@ -141,7 +141,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  public void testAddClassificationAndRemoveGlossaryTag() throws IOException {
+  void testAddClassificationAndRemoveGlossaryTag() throws IOException {
     // Create a patch to add a Classification tag and remove a Glossary tag
     String patchString =
         "[\n"
@@ -177,7 +177,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  public void testReplaceTierTag() throws JsonPatchException, IOException {
+  void testReplaceTierTag() throws JsonPatchException, IOException {
     // Create a patch to replace the Tier tag
     String patchString =
         "[\n"
@@ -203,7 +203,7 @@ class JsonPatchUtilsTest {
   }
 
   @Test
-  public void testModifyNonTagField() throws JsonPatchException, IOException {
+  void testModifyNonTagField() throws JsonPatchException, IOException {
     // Create a patch to modify a non-tag field (e.g., description)
     String patchString =
         "[\n"
@@ -226,5 +226,53 @@ class JsonPatchUtilsTest {
     // Assertions
     assertTrue(operations.contains(MetadataOperation.EDIT_DESCRIPTION));
     assertEquals(1, operations.size());
+  }
+
+  @Test
+  void testAddClassificationTagAtColumn() throws Exception {
+    // Create a patch to add a new Classification tag
+    String patchString = "[\n" +
+        "  {\n" +
+        "    \"op\": \"add\",\n" +
+        "    \"path\": \"/columns/0/tags/-\",\n" +
+        "    \"value\": {\n" +
+        "      \"tagFQN\": \"PII.Sensitive\",\n" +
+        "      \"name\": \"Sensitive\",\n" +
+        "      \"description\": \"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.\",\n" +
+        "      \"source\": \"Classification\",\n" +
+        "      \"labelType\": \"Manual\",\n" +
+        "      \"state\": \"Confirmed\"\n" +
+        "    }\n" +
+        "  },\n" +
+        "  {\n" +
+        "    \"op\": \"add\",\n" +
+        "    \"path\": \"/columns/0/tags/-\",\n" +
+        "    \"value\": {\n" +
+        "      \"tagFQN\": \"PersonalData.Personal\",\n" +
+        "      \"name\": \"Personal\",\n" +
+        "      \"description\": \"Data that can be used to directly or indirectly identify a person.\",\n" +
+        "      \"source\": \"Classification\",\n" +
+        "      \"labelType\": \"Manual\",\n" +
+        "      \"state\": \"Confirmed\"\n" +
+        "    }\n" +
+        "  }\n" +
+        "]";
+
+    // Parse the patch string into javax.json.JsonPatch
+    JsonPatch patch;
+    try (JsonReader jsonReader = Json.createReader(new StringReader(patchString))) {
+      JsonArray patchArray = jsonReader.readArray();
+      patch = Json.createPatch(patchArray);
+    }
+
+    // Determine MetadataOperations using the overloaded method
+    Set<MetadataOperation> operations = JsonPatchUtils.getMetadataOperations(
+        resourceContextMock, patch);
+
+    // Assertions
+    assertTrue(operations.contains(MetadataOperation.EDIT_TAGS),
+        "MetadataOperations should contain EDIT_TAGS");
+    assertEquals(1, operations.size(),
+        "There should be exactly one MetadataOperation");
   }
 }
