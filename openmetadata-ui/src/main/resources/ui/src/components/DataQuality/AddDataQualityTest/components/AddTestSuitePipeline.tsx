@@ -25,6 +25,7 @@ import {
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
+import { escapeESReservedCharacters } from '../../../../utils/StringsUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
@@ -152,9 +153,9 @@ const AddTestSuitePipeline = ({
                 ]}
                 valuePropName="selectedTest">
                 <AddTestCaseList
-                  filters={`testSuite.fullyQualifiedName:${
+                  filters={`testSuite.fullyQualifiedName:${escapeESReservedCharacters(
                     testSuiteFQN ?? fqn
-                  }`}
+                  )}`}
                   showButton={false}
                 />
               </Form.Item>
