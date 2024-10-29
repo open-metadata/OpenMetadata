@@ -13,15 +13,14 @@
 Profiler for Snowflake
 """
 from metadata.ingestion.source.database.snowflake.profiler.system import (
-    SnowflakeSystemMetricsSource,
+    SnowflakeSystemMetricsComputer,
 )
 from metadata.profiler.interface.sqlalchemy.snowflake.profiler_interface import (
     SnowflakeProfilerInterface,
 )
+from metadata.profiler.metrics.system.system import SystemMetricsComputer
 
 
 class SnowflakeProfiler(SnowflakeProfilerInterface):
-    def initialize_system_metrics_computer(
-        self, **kwargs
-    ) -> SnowflakeSystemMetricsSource:
-        return SnowflakeSystemMetricsSource(session=self.session)
+    def initialize_system_metrics_computer(self, **kwargs) -> SystemMetricsComputer:
+        return SnowflakeSystemMetricsComputer(session=self.session)
