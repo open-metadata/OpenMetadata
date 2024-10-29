@@ -20,6 +20,7 @@ from typing import Union
 
 from sqlalchemy import Column
 
+from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -50,11 +51,8 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             literal_eval,
         )
 
-        match_enum = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "matchEnum",
-            bool,
-            default=False,
+        match_enum = utils.get_bool_test_case_param(
+            self.test_case.parameterValues, "matchEnum"
         )
 
         try:

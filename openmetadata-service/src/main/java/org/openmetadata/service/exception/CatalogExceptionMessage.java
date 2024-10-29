@@ -318,6 +318,11 @@ public final class CatalogExceptionMessage {
         tag1.getTagFQN(), tag2.getTagFQN());
   }
 
+  public static String disabledTag(TagLabel tag) {
+    return String.format(
+        "Tag label %s is disabled and can't be assigned to a data asset.", tag.getTagFQN());
+  }
+
   public static String csvNotSupported(String entityType) {
     return String.format(
         "Upload/download CSV for bulk operations is not supported for entity [%s]", entityType);

@@ -27,6 +27,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 
 class AdvancedSearchClassBase {
   baseConfig = AntdConfig as BasicConfig;
@@ -408,7 +409,9 @@ class AdvancedSearchClassBase {
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
-        renderButton: renderAdvanceSearchButtons,
+        renderButton: isExplorePage
+          ? renderAdvanceSearchButtons
+          : renderQueryBuilderFilterButtons,
       },
     };
 
@@ -448,8 +451,29 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autocomplete({
-            searchIndex: entitySearchIndex ?? [SearchIndex.DATA_ASSET],
+            searchIndex: SearchIndex.DATA_ASSET,
             entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+        operators: [
+          'select_equals',
+          'select_not_equals',
+          'select_any_in',
+          'select_not_any_in',
+          'like',
+          'not_like',
+          'regexp',
+        ],
+      },
+      [EntityFields.NAME_KEYWORD]: {
+        label: t('label.name'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: SearchIndex.DATA_ASSET,
+            entityField: EntityFields.NAME_KEYWORD,
           }),
           useAsyncSearch: true,
         },

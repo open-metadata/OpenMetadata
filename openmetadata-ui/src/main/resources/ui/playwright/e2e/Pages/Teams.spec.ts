@@ -440,6 +440,9 @@ test.describe('Teams Page', () => {
       for (const team of [team1, team2, team3]) {
         await searchTeam(page, team.responseData?.['displayName']);
       }
+
+      // Should not find the organization team and show errorPlaceholder
+      await searchTeam(page, 'Organization', true);
     } finally {
       await team1.delete(apiContext);
       await team2.delete(apiContext);

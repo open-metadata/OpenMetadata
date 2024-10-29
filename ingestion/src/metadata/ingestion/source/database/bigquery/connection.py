@@ -27,6 +27,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.generated.schema.security.credentials.gcpCredentials import (
     GcpCredentialsPath,
 )
@@ -47,6 +50,7 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.logger import ingestion_logger
 
@@ -109,7 +113,8 @@ def test_connection(
     engine: Engine,
     service_connection: BigQueryConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -163,14 +168,15 @@ def test_connection(
             ),
         }
 
-        test_connection_steps(
+        return test_connection_steps(
             metadata=metadata,
             test_fn=test_fn,
             service_type=service_connection.type.value,
             automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
         )
 
-    test_connection_inner(engine)
+    return test_connection_inner(engine)
 
 
 def get_table_view_names(connection, schema=None):

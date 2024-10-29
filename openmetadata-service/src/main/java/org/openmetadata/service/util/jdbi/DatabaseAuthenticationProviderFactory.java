@@ -17,8 +17,9 @@ public class DatabaseAuthenticationProviderFactory {
     // Check
     if (jdbcURL.contains(AwsRdsDatabaseAuthenticationProvider.AWS_REGION)
         && jdbcURL.contains(AwsRdsDatabaseAuthenticationProvider.ALLOW_PUBLIC_KEY_RETRIEVAL)) {
-      // Return AWS RDS Auth provider
       return Optional.of(new AwsRdsDatabaseAuthenticationProvider());
+    } else if (jdbcURL.contains(AzureDatabaseAuthenticationProvider.AZURE)) {
+      return Optional.of(new AzureDatabaseAuthenticationProvider());
     }
 
     // Return empty

@@ -1,7 +1,7 @@
-# 1.5.6 Release 🎉
+# 1.5.8 Release 🎉
 
 {% note noteType="Tip" %}
-**Oct 3rd, 2024**
+**Oct 24th, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,34 +10,27 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.6!
+Learn how to upgrade your OpenMetadata instance to 1.5.8!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.6-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.8-release).
 
 # What's Changed
 
-- Fixed MSTR connector import.
-- Show displayName for database and databaseSchema in explore tree.
-- Allow PowerBI datamodel children in column lineage.
-- Fixed manifest is not parsed correctly on dbt versionless.
-- Fixed lineage & queries in dbt.
-- Added DBT tests with versionless and fixed v7 parsing.
-- Reset displayName to avoid being persisted while editing user display name.
-- Fixed incorrect schema implementations in Swagger annotations.
-- Resolved type null exception on user feed.
-- Addressed missing cast to str.
-- Fixed DI Missing Dashboard Description Status.
-- Fixed SAML redirect leads to 404 page on UI.
-- Fixed General Profiler Bugs.
-- Fixed time format for the created_at of the DBT cloud pipeline status.
-- Fixed role page size from 10 to 50.
-- Fixed Search Indexing.
-- Improved AlationSink connector.
-- Fixed sktime version to fix AUT
-- Fixed Expected ColumnLineage but got dict
-- Improved Collate API with Knowledge Center routes.  ${CollateIconWithLinkMD}
+- Minor: Add location path to a table entity.
+- Minor: Do not include soft deleted assets in the Data Insight.
+- Minor: Supported total unique user count on the Team page.
+- Fix: Add Azure Token Base Authentication
+- Fix: Hive Meta store connection issue.
+- Fix: Issues in zh language search index mapping.
+- Fix: Live index is on test suite creation.
+- Fix: LocationPath Index.
+- Fix: Mode dashboard ingestion API call.
+- Fix: Mode test connection returns data in dict instead of JSON.
+- Fix: Quicksight lineage source.
+- Fix: Task deserialization in Airflow metadata ingestion.
+- Fix: Web analytic activity being reset.
 
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.5-release...1.5.6-release
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.7-release...1.5.8-release

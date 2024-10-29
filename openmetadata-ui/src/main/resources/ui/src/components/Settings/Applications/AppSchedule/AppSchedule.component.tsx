@@ -28,10 +28,10 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import { getWeekCron } from '../../../common/CronEditor/CronEditor.constant';
+import { getCronDefaultValue } from '../../../../utils/SchedularUtils';
 import Loader from '../../../common/Loader/Loader';
-import { TestSuiteIngestionDataType } from '../../../DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
-import TestSuiteScheduler from '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
+import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
+import { WorkflowExtraConfig } from '../../Services/AddIngestion/Steps/ScheduleInterval.interface';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
@@ -103,9 +103,9 @@ const AppSchedule = ({
     setShowModal(false);
   };
 
-  const onDialogSave = async (data: TestSuiteIngestionDataType) => {
+  const onDialogSave = async (data: WorkflowExtraConfig) => {
     setIsSaveLoading(true);
-    await onSave(data.repeatFrequency);
+    await onSave(data.cron ?? '');
     setIsSaveLoading(false);
     setShowModal(false);
   };
@@ -145,13 +145,19 @@ const AppSchedule = ({
     );
   }, [appData, isPipelineDeployed, appRunsHistoryRef]);
 
-  const initialOptions = useMemo(() => {
-    return applicationsClassBase.getScheduleOptionsForApp(
-      appData.name,
-      appData.appType,
-      pipelineSchedules
-    );
-  }, [appData.name, appData.appType, pipelineSchedules]);
+  const { initialOptions, initialData, defaultCron } = useMemo(() => {
+    return {
+      initialOptions: applicationsClassBase.getScheduleOptionsForApp(
+        appData.name,
+        appData.appType,
+        pipelineSchedules
+      ),
+      initialData: {
+        cron: (appData.appSchedule as AppScheduleClass)?.cronExpression,
+      },
+      defaultCron: getCronDefaultValue(appData?.name ?? ''),
+    };
+  }, [appData.name, appData.appType, appData.appSchedule, pipelineSchedules]);
 
   useEffect(() => {
     fetchPipelineDetails();
@@ -245,21 +251,20 @@ const AppSchedule = ({
         maskClosable={false}
         okText={t('label.save')}
         open={showModal}
-        title={t('label.update-entity', { entity: t('label.schedule') })}>
-        <TestSuiteScheduler
+        title={t('label.update-entity', { entity: t('label.schedule') })}
+        width={650}>
+        <ScheduleInterval
+          isEditMode
           buttonProps={{
             cancelText: t('label.cancel'),
             okText: t('label.save'),
           }}
+          defaultSchedule={defaultCron}
           includePeriodOptions={initialOptions}
-          initialData={{
-            repeatFrequency:
-              (appData.appSchedule as AppScheduleClass)?.cronExpression ??
-              getWeekCron({ hour: 0, min: 0, dow: 0 }),
-          }}
-          isLoading={isSaveLoading}
-          onCancel={onDialogCancel}
-          onSubmit={onDialogSave}
+          initialData={initialData}
+          status={isSaveLoading ? 'waiting' : 'initial'}
+          onBack={onDialogCancel}
+          onDeploy={onDialogSave}
         />
       </Modal>
     </>

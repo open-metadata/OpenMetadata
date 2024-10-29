@@ -12,13 +12,15 @@
  */
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { TableTypePropertyValueType } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 
 export type ExtensionDataTypes =
   | string
   | string[]
   | EntityReference
   | EntityReference[]
-  | { start: string; end: string };
+  | { start: number; end: number }
+  | Partial<TableTypePropertyValueType>;
 
 export interface ExtensionDataProps {
   [key: string]: ExtensionDataTypes;

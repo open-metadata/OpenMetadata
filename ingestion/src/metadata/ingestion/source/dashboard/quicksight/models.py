@@ -12,7 +12,7 @@
 Pydantic Model to validate Quick Sight responses
 """
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -21,6 +21,19 @@ class DataSourceResp(BaseModel):
     datasource_arn: str = Field(alias="DataSourceArn")
     schema_name: str = Field(alias="Schema")
     table_name: str = Field(alias="Name")
+    columns: Optional[list] = Field(alias="InputColumns")
+
+
+class DataSourceRespQuery(BaseModel):
+    datasource_arn: str = Field(alias="DataSourceArn")
+    query: str = Field(alias="SqlQuery")
+    table_name: str = Field(alias="Name")
+    columns: Optional[list] = Field(alias="Columns")
+
+
+class DataSourceRespS3(BaseModel):
+    datasource_arn: str = Field(alias="DataSourceArn")
+    columns: Optional[list] = Field(alias="InputColumns")
 
 
 class VersionSheet(BaseModel):
@@ -50,12 +63,17 @@ class DashboardResp(BaseModel):
     RequestId: Optional[str] = None
 
 
-class DataSource(BaseModel):
+class DataSourceModel(BaseModel):
+    Name: str
+    Type: str
     DataSourceId: str
     DataSourceParameters: Optional[dict] = None
+    data_source_resp: Optional[
+        Union[DataSourceRespS3, DataSourceRespQuery, DataSourceResp]
+    ] = None
 
 
 class DescribeDataSourceResponse(BaseModel):
-    DataSource: Optional[DataSource] = None
+    DataSource: Optional[DataSourceModel] = None
     RequestId: Optional[str] = None
     Status: Optional[int] = None

@@ -20,6 +20,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
@@ -28,6 +29,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsOpenSearchProcessor;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
@@ -100,8 +102,15 @@ public class DataAssetsWorkflow {
     entityTypes.forEach(
         entityType -> {
           List<String> fields = List.of("*");
+          ListFilter filter;
+          // data product does not support soft delete
+          if (!entityType.equals("dataProduct")) {
+            filter = new ListFilter();
+          } else {
+            filter = new ListFilter(Include.ALL);
+          }
           PaginatedEntitiesSource source =
-              new PaginatedEntitiesSource(entityType, batchSize, fields)
+              new PaginatedEntitiesSource(entityType, batchSize, fields, filter)
                   .withName(String.format("[DataAssetsWorkflow] %s", entityType));
           sources.add(source);
         });

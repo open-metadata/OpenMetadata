@@ -40,12 +40,12 @@ import org.openmetadata.schema.api.services.CreateStorageService;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.profiler.MetricType;
-import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.ValidationResponse;
@@ -321,13 +321,10 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
             .withIsBot(true)
             .withAuthenticationMechanism(
                 new AuthenticationMechanism()
-                    .withAuthType(AuthenticationMechanism.AuthType.SSO)
+                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
                     .withConfig(
-                        new SSOAuthMechanism()
-                            .withSsoServiceType(SSOAuthMechanism.SsoServiceType.GOOGLE)
-                            .withAuthConfig(
-                                new GoogleSSOClientConfig()
-                                    .withSecretKey("/fake/path/secret.json"))));
+                        new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)));
+
     userResourceTest.createEntity(createUser, ADMIN_AUTH_HEADERS);
 
     int afterUserCount = getEntitiesCount().getUserCount();

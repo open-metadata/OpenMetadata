@@ -13,6 +13,7 @@ from ast import literal_eval
 from typing import List, Optional
 from urllib.parse import urlparse
 
+from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.models import (
     Column,
     TableDiffRuntimeParameters,
@@ -27,6 +28,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils import fqn
+from metadata.utils.collections import CaseInsensitiveList
 
 
 class TableDiffParamsSetter(RuntimeParameterSetter):
@@ -58,6 +60,9 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             DatabaseService, self.table_entity.service.id, nullable=False
         )
         table2_fqn = self.get_parameter(test_case, "table2")
+        case_sensitive_columns: bool = utils.get_bool_test_case_param(
+            test_case.parameterValues, "caseSensitiveColumns"
+        )
         if table2_fqn is None:
             raise ValueError("table2 not set")
         table2: Table = self.ometa_client.get_by_name(
@@ -82,7 +87,10 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
                     override_url=service1_url,
                 ),
                 columns=self.filter_relevant_columns(
-                    self.table_entity.columns, key_columns, extra_columns
+                    self.table_entity.columns,
+                    key_columns,
+                    extra_columns,
+                    case_sensitive=case_sensitive_columns,
                 ),
             ),
             table2=TableParameter(
@@ -94,7 +102,10 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
                     or service2_url,
                 ),
                 columns=self.filter_relevant_columns(
-                    table2.columns, key_columns, extra_columns
+                    table2.columns,
+                    key_columns,
+                    extra_columns,
+                    case_sensitive=case_sensitive_columns,
                 ),
             ),
             keyColumns=key_columns,
@@ -156,9 +167,17 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
 
     @staticmethod
     def filter_relevant_columns(
-        columns: List[Column], key_columns: List[str], extra_columns: List[str]
+        columns: List[Column],
+        key_columns: List[str],
+        extra_columns: List[str],
+        case_sensitive: bool,
     ) -> List[Column]:
-        return [c for c in columns if c.name.root in [*key_columns, *extra_columns]]
+        validated_columns = (
+            [*key_columns, *extra_columns]
+            if case_sensitive
+            else CaseInsensitiveList([*key_columns, *extra_columns])
+        )
+        return [c for c in columns if c.name.root in validated_columns]
 
     @staticmethod
     def get_parameter(test_case: TestCase, key: str, default=None):
@@ -195,7 +214,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         if hasattr(db_service.connection.config, "supportsDatabase"):
             kwargs["path"] = f"/{database}"
         if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake}:
-            kwargs["path"] += f"/{schema}"
+            kwargs["path"] = f"/{database}/{schema}"
         return url._replace(**kwargs).geturl()
 
     @staticmethod
