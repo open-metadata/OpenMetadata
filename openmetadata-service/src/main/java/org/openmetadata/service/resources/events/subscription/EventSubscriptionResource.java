@@ -637,7 +637,7 @@ public class EventSubscriptionResource
       operationId = "getEvents",
       summary = "Retrieve events based on various filters",
       description =
-          "Retrieve failed, successfully sent, or unprocessed change events, identified by alert ID, with an optional limit. If status is not provided, retrieves data from all statuses in chronological order.",
+          "Retrieve failed, successfully sent, or unprocessed change events, identified by alert ID, with an optional limit. If status is not provided, retrieves data from all statuses in ascending timestamp.",
       responses = {
         @ApiResponse(responseCode = "200", description = "Events retrieved successfully"),
         @ApiResponse(responseCode = "404", description = "Entity not found"),
@@ -706,20 +706,19 @@ public class EventSubscriptionResource
     }
   }
 
-  // method to fetch events based on status.
   private List<TypedEvent> fetchEvents(TypedEvent.Status status, UUID id, int limit) {
     List<?> events;
     switch (status) {
       case FAILED -> events =
-          EventSubscriptionScheduler.getInstance()
-              .getFailedEventsById(id, limit); // FailedEventResponse
+          EventSubscriptionScheduler.getInstance().getFailedEventsById(id, limit);
       case SUCCESSFUL -> events =
           EventSubscriptionScheduler.getInstance()
-              .getSuccessfullySentChangeEventsForAlert(id, limit); // changeEvent
+              .getSuccessfullySentChangeEventsForAlert(id, limit);
       case UNPROCESSED -> events =
-          EventSubscriptionScheduler.getInstance().getUnpublishedEvents(id, limit); // changeEvent
+          EventSubscriptionScheduler.getInstance().getUnpublishedEvents(id, limit);
       default -> throw new IllegalArgumentException("Unknown event status: " + status);
     }
+
     return events.stream()
         .map(
             event ->
