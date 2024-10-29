@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS workflow_definition_entity (
   ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Workflow Instance State Time Series
-CREATE TABLE workflow_instance_state_time_series (
+CREATE TABLE IF NOT EXISTS workflow_instance_state_time_series (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.id'))) STORED NOT NULL,
   workflowInstanceId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowInstanceId'))) STORED NOT NULL,
   workflowInstanceExecutionId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.workflowInstanceExecutionId'))) STORED NOT NULL,
@@ -636,7 +636,6 @@ create table ACT_RU_EVENT_SUBSCR (
     SUB_SCOPE_ID_ varchar(64),
     SCOPE_ID_ varchar(64),
     SCOPE_DEFINITION_ID_ varchar(64),
-    SCOPE_DEFINITION_KEY_ varchar(255),
     SCOPE_TYPE_ varchar(64),
     LOCK_TIME_ timestamp(3) NULL,
     LOCK_OWNER_ varchar(255),
@@ -1618,27 +1617,44 @@ INSERT INTO ACT_CO_DATABASECHANGELOG (ID, AUTHOR, FILENAME, DATEEXECUTED, ORDERE
 
 UPDATE ACT_CO_DATABASECHANGELOGLOCK SET `LOCKED` = 0, LOCKEDBY = NULL, LOCKGRANTED = NULL WHERE ID = 1;
 
-update ACT_GE_PROPERTY set VALUE_ = '7.0.1.0' where NAME_ = 'common.schema.version';
+alter table ACT_RU_EVENT_SUBSCR add column SCOPE_DEFINITION_KEY_ varchar(255);
 
+update ACT_GE_PROPERTY set VALUE_ = '7.0.1.1' where NAME_ = 'common.schema.version';
+
+update ACT_GE_PROPERTY set VALUE_ = '7.0.1.1' where NAME_ = 'entitylink.schema.version';
+
+update ACT_GE_PROPERTY set VALUE_ = '7.0.1.1' where NAME_ = 'identitylink.schema.version';
+
+update ACT_GE_PROPERTY set VALUE_ = '7.0.1.1' where NAME_ = 'job.schema.version';
+
+update ACT_GE_PROPERTY set VALUE_ = '7.0.1.1' where NAME_ = 'batch.schema.version';
 
 alter table ACT_RU_TASK add column (
-    STATE_ varchar(255), 
-    IN_PROGRESS_TIME_ datetime(3), 
+    STATE_ varchar(255),
+    IN_PROGRESS_TIME_ datetime(3),
     IN_PROGRESS_STARTED_BY_ varchar(255),
-    CLAIMED_BY_ varchar(255), 
-    SUSPENDED_TIME_ datetime(3), 
-    SUSPENDED_BY_ varchar(255), 
+    CLAIMED_BY_ varchar(255),
+    SUSPENDED_TIME_ datetime(3),
+    SUSPENDED_BY_ varchar(255),
     IN_PROGRESS_DUE_DATE_ datetime(3));
 
 alter table ACT_HI_TASKINST add column (
-    STATE_ varchar(255), 
-    IN_PROGRESS_TIME_ datetime(3), 
+    STATE_ varchar(255),
+    IN_PROGRESS_TIME_ datetime(3),
     IN_PROGRESS_STARTED_BY_ varchar(255),
-    CLAIMED_BY_ varchar(255), 
-    SUSPENDED_TIME_ datetime(3), 
-    SUSPENDED_BY_ varchar(255), 
-    COMPLETED_BY_ varchar(255), 
+    CLAIMED_BY_ varchar(255),
+    SUSPENDED_TIME_ datetime(3),
+    SUSPENDED_BY_ varchar(255),
+    COMPLETED_BY_ varchar(255),
     IN_PROGRESS_DUE_DATE_ datetime(3));
+
+update ACT_GE_PROPERTY set VALUE_ = '7.0.1.1' where NAME_ = 'task.schema.version';
+
+update ACT_GE_PROPERTY set VALUE_ = '7.0.1.1' where NAME_ = 'variable.schema.version';
+
+update ACT_GE_PROPERTY set VALUE_ = '7.0.1.1' where NAME_ = 'schema.version';
+
+update ACT_ID_PROPERTY set VALUE_ = '7.0.1.1' where NAME_ = 'schema.version';
 -- ------------------------------------
 
 -- Extend app extension for limits
