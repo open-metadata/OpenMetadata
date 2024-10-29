@@ -22,6 +22,7 @@ export interface AdvanceSearchProviderProps {
     subTitle?: string;
   };
   updateURL?: boolean;
+  fieldOverrides?: { field: string; type: string }[];
 }
 
 export interface AdvanceSearchContext {

@@ -52,7 +52,7 @@
       "name": "CheckGlossaryTermIsReadyToBeReviewed",
       "displayName": "Check if Glossary Term is Ready to be Reviewed",
       "config": {
-        "rules": "{\"and\":[{\"some\":[{\"var\":\"extension.foo\"},\"bar\"]}]}"
+        "rules": "{\"and\":[{\"==\":[{\"var\":\"extension.foo\"},\"bar\"]}]}"
       }
     },
     {

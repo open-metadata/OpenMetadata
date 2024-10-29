@@ -221,4 +221,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   );
 };
 
-export default withAdvanceSearch(QueryBuilderWidget, { isExplorePage: false });
+export default withAdvanceSearch(QueryBuilderWidget, {
+  isExplorePage: false,
+  fieldOverrides: [{ field: 'extension', type: '!struct' }],
+});

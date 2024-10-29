@@ -53,6 +53,7 @@ export const AdvanceSearchProvider = ({
   isExplorePage = true,
   modalProps,
   updateURL = true,
+  fieldOverrides = [],
 }: AdvanceSearchProviderProps) => {
   const tierOptions = useMemo(getTierOptions, []);
 
@@ -239,6 +240,14 @@ export const AdvanceSearchProvider = ({
       (actualConfig.fields.extension as FieldGroup).subfields =
         extensionSubField;
     }
+
+    // Update field type if field override is provided
+    // For example type of extension is group but it is required as struct in some cases
+    fieldOverrides.map((fieldOverride) => {
+      if (actualConfig.fields[fieldOverride.field]) {
+        actualConfig.fields[fieldOverride.field].type = fieldOverride.type;
+      }
+    });
 
     setConfig(actualConfig);
     setInitialised(true);
