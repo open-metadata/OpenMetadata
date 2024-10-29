@@ -127,12 +127,6 @@ ENTITY_FIELD
     | 'parameterValues'
     | 'retentionPeriod'
     | 'parent'
-    | 'teams'
-    | 'personas'
-    | 'ingestionPipeline'
-    | 'apiCollection'
-    | 'apiEndpoint'
-    | 'apiService'
     ;
 
     
