@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TabsProps } from 'antd';
 import { EntityTags, PagingResponse } from 'Models';
 import { PagingHandlerParams } from '../components/common/NextPrevious/NextPrevious.interface';
+import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { EntityTabs } from '../enums/entity.enum';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Table } from '../generated/entity/data/table';
@@ -56,7 +56,7 @@ export interface DatabaseSchemaPageTabProps {
 class DatabaseSchemaClassBase {
   public getDatabaseSchemaPageTabs(
     databaseSchemaTabData: DatabaseSchemaPageTabProps
-  ): TabsProps['items'] {
+  ): TabProps[] {
     return getDataBaseSchemaPageBaseTabs(databaseSchemaTabData);
   }
 }

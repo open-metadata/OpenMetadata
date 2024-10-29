@@ -84,7 +84,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
               })}>
               <Button
                 className="cursor-pointer hover-cell-icon w-fit-content"
-                data-testid="edit-displayName-button"
+                data-testid="edit-table-constraint-button"
                 style={{
                   color: DE_ACTIVE_COLOR,
                   padding: 0,
@@ -103,7 +103,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
         {hasPermission && supportedConstraints.length === 0 && (
           <TagButton
             className="text-primary cursor-pointer"
-            dataTestId="synonym-add-button"
+            dataTestId="table-constraints-add-button"
             icon={<PlusIcon height={16} name="plus" width={16} />}
             label={t('label.add')}
             tooltip=""

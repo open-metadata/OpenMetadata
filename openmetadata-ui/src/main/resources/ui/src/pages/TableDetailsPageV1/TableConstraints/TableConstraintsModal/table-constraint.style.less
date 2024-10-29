@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,29 @@
  *  limitations under the License.
  */
 
-import { EntityTabs } from '../../../enums/entity.enum';
+@import url('../../../../styles/variables.less');
 
-export interface TabProps {
-  label: JSX.Element;
-  key: EntityTabs;
-  children?: JSX.Element;
-  isHidden?: boolean;
-}
+.table-constraint-form-container {
+  margin-bottom: 20px;
+  position: relative;
+  background: @grey-6;
+  padding: 20px;
+  border-radius: 10px;
+  border: @global-border;
 
-export interface TabsLabelProps {
-  name: string;
-  id: string;
-  count?: number;
-  isActive?: boolean;
+  .ant-form-item {
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .delete-constraint-button {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 }

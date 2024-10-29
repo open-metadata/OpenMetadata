@@ -19,6 +19,7 @@ import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/Acti
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import EntityRightPanel from '../components/Entity/EntityRightPanel/EntityRightPanel';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
@@ -57,7 +58,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
   getEntityFeedCount,
   fetchDatabaseSchemaDetails,
   handleFeedCount,
-}: DatabaseSchemaPageTabProps) => {
+}: DatabaseSchemaPageTabProps): TabProps[] => {
   return [
     {
       label: (
