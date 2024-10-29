@@ -1,7 +1,7 @@
 # 1.5.8 Release 🎉
 
 {% note noteType="Tip" %}
-**Oct 24th, 2024**
+**Oct 29th, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,7 +10,7 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.8!
+Learn how to upgrade your OpenMetadata instance to 1.5.9!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
@@ -18,19 +18,11 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 # What's Changed
 
-- Minor: Add location path to a table entity.
-- Minor: Do not include soft deleted assets in the Data Insight.
-- Minor: Supported total unique user count on the Team page.
-- Fix: Add Azure Token Base Authentication
-- Fix: Hive Meta store connection issue.
-- Fix: Issues in zh language search index mapping.
-- Fix: Live index is on test suite creation.
-- Fix: LocationPath Index.
-- Fix: Mode dashboard ingestion API call.
-- Fix: Mode test connection returns data in dict instead of JSON.
-- Fix: Quicksight lineage source.
-- Fix: Task deserialization in Airflow metadata ingestion.
-- Fix: Web analytic activity being reset.
+- Prepare App Framework to handle application limits
+- Add Query Builder widget
+- Revamp MetaPilot as Collate AI and add limits (Collate only)
+- Fix EntityLink for names with brackets
+- Fix backend database Azure auth
+- Mask Greenplum secrets on the UI
 
-
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.7-release...1.5.8-release
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.8-release...1.5.9-release
