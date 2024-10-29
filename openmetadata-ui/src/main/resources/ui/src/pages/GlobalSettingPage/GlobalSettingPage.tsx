@@ -13,7 +13,7 @@
 
 import { Col, Row } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -41,8 +41,6 @@ const GlobalSettingPage = () => {
   const { isAdminUser } = useAuth();
   const { loading } = useApplicationsProvider();
 
-  const [settings, setSettings] = useState<SettingMenuItem[]>([]);
-
   const settingItems = useMemo(
     () =>
       globalSettingsClassBase
@@ -67,10 +65,6 @@ const GlobalSettingPage = () => {
     history.push(getSettingPath(category));
   }, []);
 
-  useEffect(() => {
-    setSettings(settingItems);
-  }, [settingItems]);
-
   if (isEmpty(settingItems)) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
@@ -84,7 +78,7 @@ const GlobalSettingPage = () => {
 
         <Col span={24}>
           <Row gutter={[20, 20]}>
-            {settings.map((setting) => (
+            {settingItems.map((setting) => (
               <Col key={setting?.key} span={6}>
                 <SettingItemCard
                   data={setting}
