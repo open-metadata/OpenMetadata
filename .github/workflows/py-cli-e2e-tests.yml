@@ -25,7 +25,7 @@ on:
         default: "default"
 
 env:
-  DEBUG: "${{ inputs.debug || ((inputs.debug == 'default' && github.ref != 'refs/heads/main') && 'true') || 'false' }}"
+  DEBUG: "${{ ((inputs.debug == 'default' && github.ref != 'refs/heads/main') && 'true') || inputs.debug || 'false' }}"
 
 permissions:
   id-token: write
@@ -38,7 +38,7 @@ jobs:
     outputs:
       DEBUG: ${{ env.DEBUG }}
     steps:
-      - run: echo "null"
+      - run: echo "DEBUG=$DEBUG"
 
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
