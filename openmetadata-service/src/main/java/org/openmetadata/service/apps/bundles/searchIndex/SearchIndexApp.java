@@ -119,6 +119,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Getter EventPublisherJob jobData;
   private final Object jobDataLock = new Object(); // Dedicated final lock object
   private volatile boolean stopped = false;
+  @Getter private volatile ExecutorService executorService;
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -142,19 +143,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     try {
       initializeJob();
       LOG.info("Executing Reindexing Job with JobData : {}", jobData);
-      // Update Job Status
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
-
-      // Make recreate as false for onDemand
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
-
-      // Schedule Run has re-create set to false
       if (!runType.equals(ON_DEMAND_JOB)) {
         jobData.setRecreateIndex(false);
       }
-
-      // Run ReIndexing
       performReindex(jobExecutionContext);
     } catch (Exception ex) {
       IndexingError indexingError =
@@ -168,7 +162,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
       jobData.setFailure(indexingError);
     } finally {
-      // Send update
       sendUpdates(jobExecutionContext);
     }
   }
@@ -185,11 +178,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void initializeJob() {
     List<Source> paginatedEntityTimeSeriesSources = new ArrayList<>();
-
-    // Remove any Stale Jobs
     cleanUpStaleJobsFromRuns();
 
-    // Initialize New Job
     int totalRecords = getTotalRequestToProcess(jobData.getEntities(), collectionDAO);
     this.jobData.setStats(
         new Stats()
@@ -220,7 +210,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
                 paginatedEntityTimeSeriesSources.add(source);
               }
             });
-    // Add Time Series Sources at the End of the List to Process them last
+
     paginatedSources.addAll(paginatedEntityTimeSeriesSources);
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.entityProcessor = new OpenSearchEntitiesProcessor(totalRecords);
@@ -238,16 +228,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   public void updateRecordToDb(JobExecutionContext jobExecutionContext) {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
 
-    // Update Run Record with Status
     appRecord.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
-
-    // Update Error
     if (jobData.getFailure() != null) {
       appRecord.setFailureContext(
           new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
     }
-
-    // Update Stats
     if (jobData.getStats() != null) {
       appRecord.setSuccessContext(
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
@@ -257,19 +242,18 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void performReindex(JobExecutionContext jobExecutionContext) {
-    // Initialize metrics map if not already initialized
     if (jobData.getStats() == null) {
       jobData.setStats(new Stats());
     }
 
-    // Create a thread pool with a size based on available processors or a fixed size
-    int numThreads = Math.min(paginatedSources.size(), Runtime.getRuntime().availableProcessors());
-    ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
-
-    // List to hold Future objects for task tracking
+    if (executorService == null || executorService.isShutdown() || executorService.isTerminated()) {
+      int numThreads =
+          Math.min(paginatedSources.size(), Runtime.getRuntime().availableProcessors());
+      this.executorService = Executors.newFixedThreadPool(numThreads);
+      LOG.debug("Initialized new ExecutorService with {} threads.", numThreads);
+    }
     List<Future<?>> futures = new ArrayList<>();
 
-    // Submit a task for each Source (entity)
     for (Source paginatedSource : paginatedSources) {
       Future<?> future =
           executorService.submit(
@@ -307,13 +291,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
                           contextData,
                           paginatedSource);
                     }
-
-                    // Update metrics
                     synchronized (jobDataLock) {
                       updateStats(entityType, paginatedSource.getStats());
                     }
-
-                    // Optionally, send immediate updates after each batch
                     sendUpdates(jobExecutionContext);
                   }
 
@@ -343,11 +323,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
       futures.add(future);
     }
 
-    // Shutdown the executor service gracefully
     executorService.shutdown();
 
     try {
-      // Wait for all tasks to complete or timeout after a defined period
       boolean allTasksCompleted = executorService.awaitTermination(1, TimeUnit.HOURS);
       if (!allTasksCompleted) {
         LOG.warn("Reindexing tasks did not complete within the expected time.");
@@ -359,10 +337,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
       Thread.currentThread().interrupt();
     }
 
-    // Optionally, wait for all futures to complete and handle exceptions
     for (Future<?> future : futures) {
       try {
-        future.get(); // This will rethrow any exception that occurred in the task
+        future.get();
       } catch (InterruptedException e) {
         LOG.error("Task was interrupted", e);
         Thread.currentThread().interrupt();
@@ -435,9 +412,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void sendUpdates(JobExecutionContext jobExecutionContext) {
     try {
-      // store job details in Database
       jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
-      // Update Record to db
       updateRecordToDb(jobExecutionContext);
       if (WebSocketManager.getInstance() != null) {
         WebSocketManager.getInstance()
@@ -450,10 +425,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   public void updateStats(String entityType, StepStats currentEntityStats) {
-    // Job Level Stats
     Stats jobDataStats = jobData.getStats();
 
-    // Update Entity Level Stats
     StepStats entityLevelStats = jobDataStats.getEntityStats();
     if (entityLevelStats == null) {
       entityLevelStats =
@@ -461,7 +434,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
     entityLevelStats.withAdditionalProperty(entityType, currentEntityStats);
 
-    // Total Stats
     StepStats stats = jobData.getStats().getJobStats();
     if (stats == null) {
       stats =
@@ -480,7 +452,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
             .mapToInt(StepStats::getFailedRecords)
             .sum());
 
-    // Update for the Job
     jobDataStats.setJobStats(stats);
     jobDataStats.setEntityStats(entityLevelStats);
 
@@ -493,13 +464,31 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
 
     IndexMapping indexType = searchRepository.getIndexMapping(entityType);
-    // Delete index
     searchRepository.deleteIndex(indexType);
-    // Create index
     searchRepository.createIndex(indexType);
   }
 
   public void stopJob() {
+    LOG.info("Stopping reindexing job.");
     stopped = true;
+    if (executorService != null && !executorService.isShutdown()) {
+      List<Runnable> awaitingTasks = executorService.shutdownNow();
+      LOG.info(
+          "ExecutorService has been shutdown. Awaiting termination. {} tasks were awaiting execution.",
+          awaitingTasks.size());
+
+      try {
+        if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+          LOG.warn("ExecutorService did not terminate within the specified timeout.");
+        }
+      } catch (InterruptedException e) {
+        LOG.error("Interrupted while waiting for ExecutorService to terminate.", e);
+        List<Runnable> stillAwaitingTasks = executorService.shutdownNow(); // Force shutdown
+        LOG.info(
+            "Forced shutdown initiated due to interruption. {} tasks were awaiting execution.",
+            stillAwaitingTasks.size());
+        Thread.currentThread().interrupt(); // Restore interrupt status
+      }
+    }
   }
 }
