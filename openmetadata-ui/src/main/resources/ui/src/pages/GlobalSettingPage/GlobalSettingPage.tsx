@@ -69,7 +69,7 @@ const GlobalSettingPage = () => {
 
   useEffect(() => {
     setSettings(settingItems);
-  }, []);
+  }, [settingItems]);
 
   if (isEmpty(settingItems)) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
