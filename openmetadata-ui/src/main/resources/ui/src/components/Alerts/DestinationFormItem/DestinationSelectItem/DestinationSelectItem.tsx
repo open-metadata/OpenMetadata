@@ -30,13 +30,13 @@ import { WHITE_COLOR } from '../../../../constants/constants';
 import { CreateEventSubscription } from '../../../../generated/events/api/createEventSubscription';
 import { SubscriptionCategory } from '../../../../generated/events/eventSubscription';
 import { useFqn } from '../../../../hooks/useFqn';
+import { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import {
   getDestinationConfigField,
   getFilteredDestinationOptions,
   getSubscriptionTypeOptions,
 } from '../../../../utils/Alerts/AlertsUtil';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
-import { ModifiedDestination } from '../../AddObservabilityPage.interface';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
 function DestinationSelectItem({

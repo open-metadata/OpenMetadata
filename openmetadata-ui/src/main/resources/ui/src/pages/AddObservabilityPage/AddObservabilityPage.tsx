@@ -17,6 +17,10 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
+import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
+import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
+import ObservabilityFormTriggerItem from '../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -47,10 +51,6 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from './AddObservabilityPage.interface';
-import { default as AlertFormSourceItem } from './AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from './DestinationFormItem/DestinationFormItem.component';
-import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 
 function AddObservabilityPage() {
   const { t } = useTranslation();
