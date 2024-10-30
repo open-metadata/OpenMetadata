@@ -34,6 +34,7 @@ export enum AdvancedFields {
   FIELD = 'field_suggest',
 }
 
+// This enum contains list of fields that are used in the advanced search for elastic search query
 export enum EntityFields {
   SERVICE_TYPE = 'serviceType',
   DATA_MODEL_TYPE = 'dataModelType',
@@ -62,7 +63,17 @@ export enum EntityFields {
   CHART = 'charts.displayName.keyword',
   TASK = 'tasks.displayName.keyword',
   GLOSSARY_TERM_STATUS = 'status',
-  REVIEWERS = 'reviewers',
   REQUEST_SCHEMA_FIELD = 'requestSchema.schemaFields.name.keyword',
   RESPONSE_SCHEMA_FIELD = 'responseSchema.schemaFields.name.keyword',
+}
+
+// This enum contains list of fields that are there in the object of the entity
+// For example, in Glossary object, there are fields like name, description, parent, etc.
+export enum EntityReferenceFields {
+  REVIEWERS = 'reviewers',
+  DESCRIPTION = 'description',
+  NAME = 'name',
+  DISPLAY_NAME = 'displayName',
+  TAG = 'tags.tagFQN',
+  TIER = 'tier.tagFQN',
 }
