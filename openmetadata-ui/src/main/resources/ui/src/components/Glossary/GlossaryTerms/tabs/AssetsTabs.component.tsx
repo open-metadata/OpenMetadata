@@ -631,6 +631,7 @@ const AssetsTabs = forwardRef(
               <NextPrevious
                 isNumberBased
                 currentPage={currentPage}
+                isLoading={isLoading}
                 pageSize={pageSize}
                 paging={paging}
                 pagingHandler={({ currentPage }: PagingHandlerParams) =>
