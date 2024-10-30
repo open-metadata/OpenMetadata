@@ -749,7 +749,6 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           count={totalFeedCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
@@ -848,9 +847,7 @@ export const getTableDetailPageBaseTabs = ({
         ),
     },
     {
-      label: (
-        <TabsLabel isBeta id={EntityTabs.LINEAGE} name={t('label.lineage')} />
-      ),
+      label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
         <LineageProvider>
