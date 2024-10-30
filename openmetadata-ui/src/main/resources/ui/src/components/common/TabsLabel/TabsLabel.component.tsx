@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Badge } from 'antd';
 import { isNil } from 'lodash';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import './tabs-label.less';
 import { TabsLabelProps } from './TabsLabel.interface';
@@ -22,13 +24,19 @@ const TabsLabel = ({
   isActive,
   id,
   description,
+  isBeta,
 }: TabsLabelProps) => {
+  const { t } = useTranslation();
+
   return (
     <div className="w-full tabs-label-container" data-testid={id}>
       <div className="d-flex justify-between gap-2">
         {name}
         {!isNil(count) && (
           <span data-testid="count">{getCountBadge(count, '', isActive)}</span>
+        )}
+        {isBeta && (
+          <Badge className="service-beta-tag" count={t('label.beta')} />
         )}
       </div>
       {/* Note: add ".custom-menu-with-description" class in Menu component if need description in menu */}

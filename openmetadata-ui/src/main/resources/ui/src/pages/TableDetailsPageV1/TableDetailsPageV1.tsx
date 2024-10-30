@@ -981,7 +981,7 @@ const TableDetailsPageV1: React.FC = () => {
                 ? activeTabForTourDatasetPage
                 : activeTab ?? EntityTabs.SCHEMA
             }
-            className="table-details-page-tabs"
+            className="table-details-page-tabs entity-details-page-tabs"
             data-testid="tabs"
             items={tabs}
             onChange={handleTabChange}
