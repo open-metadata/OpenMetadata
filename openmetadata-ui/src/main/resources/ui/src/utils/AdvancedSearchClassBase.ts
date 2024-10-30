@@ -268,8 +268,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.GLOSSARY_TERM,
-          entityField: EntityFields.REVIEWERS,
+          searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },

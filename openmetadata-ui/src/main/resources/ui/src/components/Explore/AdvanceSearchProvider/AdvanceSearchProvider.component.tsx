@@ -31,6 +31,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import { getTierOptions } from '../../../utils/AdvancedSearchUtils';
@@ -38,7 +39,7 @@ import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFor
 import searchClassBase from '../../../utils/SearchClassBase';
 import Loader from '../../common/Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
-import { UrlParams } from '../ExplorePage.interface';
+import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
 import {
   AdvanceSearchContext,
   AdvanceSearchProviderProps,
@@ -48,6 +49,20 @@ const AdvancedSearchContext = React.createContext<AdvanceSearchContext>(
   {} as AdvanceSearchContext
 );
 
+const getSearchIndexFromTabInfo = (
+  tabsInfo: Record<ExploreSearchIndex, TabsInfoData>,
+  tab: string
+) => {
+  const tabInfo = Object.entries(tabsInfo).find(
+    ([, tabInfo]) => tabInfo.path === tab
+  );
+  if (isNil(tabInfo)) {
+    return SearchIndex.DATA_ASSET;
+  }
+
+  return tabInfo[0] as SearchIndex;
+};
+
 export const AdvanceSearchProvider = ({
   children,
   isExplorePage = true,
@@ -55,30 +70,20 @@ export const AdvanceSearchProvider = ({
   updateURL = true,
   fieldOverrides = [],
 }: AdvanceSearchProviderProps) => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const tierOptions = useMemo(getTierOptions, []);
-
-  const tabsInfo = useMemo(
-    () => searchClassBase.getTabsInfo(),
-    [searchClassBase]
-  );
   const location = useCustomLocation();
   const history = useHistory();
   const { tab } = useParams<UrlParams>();
   const [loading, setLoading] = useState(true);
-  const getSearchIndexFromTabInfo = useCallback(() => {
-    const tabInfo = Object.entries(tabsInfo).find(
-      ([, tabInfo]) => tabInfo.path === tab
-    );
-    if (isNil(tabInfo)) {
-      return SearchIndex.DATA_ASSET;
-    }
-
-    return tabInfo[0] as SearchIndex;
-  }, [tabsInfo, tab]);
+  const [customProps, setCustomProps] = useState<Record<
+    string,
+    ValueField
+  > | null>(null);
 
   const [searchIndex, setSearchIndex] = useState<
     SearchIndex | Array<SearchIndex>
-  >(getSearchIndexFromTabInfo());
+  >(getSearchIndexFromTabInfo(tabsInfo, tab));
 
   const changeSearchIndex = useCallback(
     (index: SearchIndex | Array<SearchIndex>) => {
@@ -234,7 +239,11 @@ export const AdvanceSearchProvider = ({
       isExplorePage
     );
 
-    const extensionSubField = await fetchCustomPropertyType();
+    let extensionSubField = customProps;
+    if (extensionSubField === null) {
+      extensionSubField = await fetchCustomPropertyType();
+      setCustomProps(extensionSubField);
+    }
 
     if (!isEmpty(extensionSubField)) {
       (actualConfig.fields.extension as FieldGroup).subfields =
@@ -243,7 +252,7 @@ export const AdvanceSearchProvider = ({
 
     // Update field type if field override is provided
     // For example type of extension is group but it is required as struct in some cases
-    fieldOverrides.map((fieldOverride) => {
+    fieldOverrides.forEach((fieldOverride: { field: string; type: string }) => {
       if (actualConfig.fields[fieldOverride.field]) {
         actualConfig.fields[fieldOverride.field].type = fieldOverride.type;
       }
@@ -273,8 +282,8 @@ export const AdvanceSearchProvider = ({
   );
 
   useEffect(() => {
-    setSearchIndex(getSearchIndexFromTabInfo());
-  }, [tabsInfo, tab]);
+    setSearchIndex(getSearchIndexFromTabInfo(tabsInfo, tab));
+  }, [tab]);
 
   useEffect(() => {
     loadData();
