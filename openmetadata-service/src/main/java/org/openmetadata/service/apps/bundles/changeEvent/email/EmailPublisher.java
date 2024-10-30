@@ -73,7 +73,9 @@ public class EmailPublisher implements Destination<ChangeEvent> {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
       LOG.error(message);
-      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
     }
   }
 

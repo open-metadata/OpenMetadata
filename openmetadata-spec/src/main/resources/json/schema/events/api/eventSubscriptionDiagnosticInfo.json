@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/events/api/eventSubscriptionDiagnosticInfo.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Event Subscription Status Response",
+  "description": "Schema defining the response for event subscription status, including details about processed and unprocessed events.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo",
+  "properties": {
+    "latestOffset": {
+      "description": "The latest offset of the event in the system.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "currentOffset": {
+      "description": "The current offset of the event subscription.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "hasProcessedAllEvents": {
+      "description": "Indicates whether all events have been processed.",
+      "type": "boolean"
+    },
+    "unprocessedEventsCount": {
+      "description": "The count of unprocessed events.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "unprocessedEventsList": {
+      "description": "The list of unprocessed events.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/changeEvent.json"
+
+      }
+    }
+  },
+  "additionalProperties": false
+}

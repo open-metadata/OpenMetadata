@@ -52,3 +52,6 @@ WHERE serviceType IN ('Athena','BigQuery','Mssql','Mysql','Oracle','Postgres','R
 update dbservice_entity
 set json = JSON_SET(json, '$.connection.config.supportsSystemProfile', true)
 where serviceType in ('Snowflake', 'Redshift', 'BigQuery');
+
+-- Update all rows in the consumers_dlq table to set the source column to 'publisher'
+UPDATE consumers_dlq SET source = 'publisher';

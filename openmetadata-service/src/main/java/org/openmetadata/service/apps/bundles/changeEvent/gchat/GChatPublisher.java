@@ -90,7 +90,9 @@ public class GChatPublisher implements Destination<ChangeEvent> {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT, event, e.getMessage());
       LOG.error(message);
-      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT, e.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
     }
   }
 
