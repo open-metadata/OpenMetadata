@@ -262,18 +262,6 @@ class AdvancedSearchClassBase {
         useAsyncSearch: true,
       },
     },
-    [EntityFields.REVIEWERS]: {
-      label: t('label.reviewer-plural'),
-      type: 'select',
-      mainWidgetProps: this.mainWidgetProps,
-      fieldSettings: {
-        asyncFetch: this.autocomplete({
-          searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
-          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
-        }),
-        useAsyncSearch: true,
-      },
-    },
   };
 
   /**

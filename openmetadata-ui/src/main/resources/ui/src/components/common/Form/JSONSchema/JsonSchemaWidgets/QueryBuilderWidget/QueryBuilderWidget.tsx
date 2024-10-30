@@ -34,8 +34,8 @@ import { getJsonTreeFromQueryFilter } from '../../../../../../utils/QueryBuilder
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './query-builder-widget.less';
-import { QueryBuilderOutputType } from './QueryBuilderWidget.interface';
 
 const QueryBuilderWidget: FC<WidgetProps> = ({
   onChange,
@@ -51,7 +51,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     (props.formContext?.entityType ?? schema?.entityType) || EntityType.ALL;
   const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
   const searchIndex = searchIndexMapping[entityType as string];
-  const outputType = schema?.outputType ?? QueryBuilderOutputType.ELASTICSEARCH;
+  const outputType = schema?.outputType ?? SearchOutputType.ElasticSearch;
 
   const fetchEntityCount = useCallback(
     async (queryFilter: Record<string, unknown>) => {
@@ -92,7 +92,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
 
   const showFilteredResourceCount = useMemo(
     () =>
-      outputType === QueryBuilderOutputType.ELASTICSEARCH &&
+      outputType === SearchOutputType.ElasticSearch &&
       !isUndefined(value) &&
       searchResults !== undefined &&
       !isCountLoading,
@@ -102,7 +102,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
     onTreeUpdate(nTree, nConfig);
 
-    if (outputType === QueryBuilderOutputType.ELASTICSEARCH) {
+    if (outputType === SearchOutputType.ElasticSearch) {
       const data = elasticSearchFormat(nTree, config) ?? {};
       const qFilter = {
         query: data,
@@ -118,13 +118,9 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     }
   };
 
-  useEffect(() => {
-    onChangeSearchIndex(searchIndex);
-  }, [searchIndex]);
-
-  useEffect(() => {
+  const loadDefaultValueInTree = useCallback(() => {
     if (!isEmpty(value)) {
-      if (outputType === QueryBuilderOutputType.ELASTICSEARCH) {
+      if (outputType === SearchOutputType.ElasticSearch) {
         const tree = QbUtils.checkTree(
           QbUtils.loadTree(
             getJsonTreeFromQueryFilter(JSON.parse(value || '')) as JsonTree
@@ -153,6 +149,11 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         }
       }
     }
+  }, [config, value, outputType]);
+
+  useEffect(() => {
+    onChangeSearchIndex(searchIndex);
+    loadDefaultValueInTree();
   }, []);
 
   return (

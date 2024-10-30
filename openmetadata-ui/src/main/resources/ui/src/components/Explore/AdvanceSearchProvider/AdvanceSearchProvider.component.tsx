@@ -20,7 +20,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  Config,
   FieldGroup,
   ImmutableTree,
   JsonTree,
@@ -35,6 +34,7 @@ import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import { getTierOptions } from '../../../utils/AdvancedSearchUtils';
+import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import Loader from '../../common/Loader/Loader';
@@ -43,6 +43,7 @@ import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
 import {
   AdvanceSearchContext,
   AdvanceSearchProviderProps,
+  SearchOutputType,
 } from './AdvanceSearchProvider.interface';
 
 const AdvancedSearchContext = React.createContext<AdvanceSearchContext>(
@@ -69,6 +70,7 @@ export const AdvanceSearchProvider = ({
   modalProps,
   updateURL = true,
   fieldOverrides = [],
+  searchOutputType = SearchOutputType.ElasticSearch,
 }: AdvanceSearchProviderProps) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const tierOptions = useMemo(getTierOptions, []);
@@ -76,6 +78,7 @@ export const AdvanceSearchProvider = ({
   const history = useHistory();
   const { tab } = useParams<UrlParams>();
   const [loading, setLoading] = useState(true);
+
   const [customProps, setCustomProps] = useState<Record<
     string,
     ValueField
@@ -92,13 +95,20 @@ export const AdvanceSearchProvider = ({
     []
   );
 
-  const [config, setConfig] = useState<Config>(
-    advancedSearchClassBase.getQbConfigs(
-      tierOptions,
-      isArray(searchIndex) ? searchIndex : [searchIndex],
-      isExplorePage
-    )
-  );
+  const config = useMemo(() => {
+    return searchOutputType === SearchOutputType.ElasticSearch
+      ? advancedSearchClassBase.getQbConfigs(
+          tierOptions,
+          isArray(searchIndex) ? searchIndex : [searchIndex],
+          isExplorePage
+        )
+      : jsonLogicSearchClassBase.getQbConfigs(
+          tierOptions,
+          isArray(searchIndex) ? searchIndex : [searchIndex],
+          isExplorePage
+        );
+  }, [searchIndex, searchOutputType, isExplorePage]);
+
   const [initialised, setInitialised] = useState(false);
 
   const defaultTree = useMemo(
@@ -147,22 +157,11 @@ export const AdvanceSearchProvider = ({
     treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
   );
 
-  useEffect(() => {
-    setConfig(
-      advancedSearchClassBase.getQbConfigs(
-        tierOptions,
-        isArray(searchIndex) ? searchIndex : [searchIndex],
-        isExplorePage
-      )
-    );
-  }, [searchIndex, isExplorePage]);
-
   const handleChange = useCallback(
-    (nTree, nConfig) => {
-      setConfig(nConfig);
+    (nTree) => {
       setTreeInternal(nTree);
     },
-    [setConfig, setTreeInternal]
+    [setTreeInternal]
   );
 
   const handleTreeUpdate = useCallback(
@@ -188,10 +187,6 @@ export const AdvanceSearchProvider = ({
     setQueryFilter(undefined);
     setSQLQuery('');
   }, [config]);
-
-  const handleConfigUpdate = (updatedConfig: Config) => {
-    setConfig(updatedConfig);
-  };
 
   // Reset all filters, quick filter and query filter
   const handleResetAllFilters = useCallback(() => {
@@ -233,12 +228,6 @@ export const AdvanceSearchProvider = ({
   };
 
   const loadData = async () => {
-    const actualConfig = advancedSearchClassBase.getQbConfigs(
-      tierOptions,
-      isArray(searchIndex) ? searchIndex : [searchIndex],
-      isExplorePage
-    );
-
     let extensionSubField = customProps;
     if (extensionSubField === null) {
       extensionSubField = await fetchCustomPropertyType();
@@ -246,19 +235,17 @@ export const AdvanceSearchProvider = ({
     }
 
     if (!isEmpty(extensionSubField)) {
-      (actualConfig.fields.extension as FieldGroup).subfields =
-        extensionSubField;
+      (config.fields.extension as FieldGroup).subfields = extensionSubField;
     }
 
     // Update field type if field override is provided
     // For example type of extension is group but it is required as struct in some cases
     fieldOverrides.forEach((fieldOverride: { field: string; type: string }) => {
-      if (actualConfig.fields[fieldOverride.field]) {
-        actualConfig.fields[fieldOverride.field].type = fieldOverride.type;
+      if (config.fields[fieldOverride.field]) {
+        config.fields[fieldOverride.field].type = fieldOverride.type;
       }
     });
 
-    setConfig(actualConfig);
     setInitialised(true);
   };
 
@@ -287,7 +274,7 @@ export const AdvanceSearchProvider = ({
 
   useEffect(() => {
     loadData();
-  }, [searchIndex]);
+  }, [searchOutputType, searchIndex]);
 
   useEffect(() => {
     if (!initialised) {
@@ -326,7 +313,6 @@ export const AdvanceSearchProvider = ({
       searchIndex,
       onReset: handleReset,
       onResetAllFilters: handleResetAllFilters,
-      onUpdateConfig: handleConfigUpdate,
       onChangeSearchIndex: changeSearchIndex,
       onSubmit: handleSubmit,
       modalProps,
@@ -341,7 +327,6 @@ export const AdvanceSearchProvider = ({
       searchIndex,
       handleReset,
       handleResetAllFilters,
-      handleConfigUpdate,
       changeSearchIndex,
       handleSubmit,
       modalProps,
