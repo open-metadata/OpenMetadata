@@ -186,6 +186,7 @@ public interface SearchIndex {
             .equalsIgnoreCase(TableConstraint.ConstraintType.FOREIGN_KEY.value())) {
           continue;
         }
+        int columnIndex = 0;
         for (String referredColumn : tableConstraint.getReferredColumns()) {
           String relatedEntityFQN = getParentFQN(referredColumn);
           String destinationIndexName = null;
@@ -213,6 +214,7 @@ public interface SearchIndex {
                   destinationIndexName,
                   relatedEntity,
                   referredColumn,
+                  columnIndex,
                   updateForeignTableIndex);
             } else {
               addNewConstraint(
@@ -223,8 +225,10 @@ public interface SearchIndex {
                   destinationIndexName,
                   relatedEntity,
                   referredColumn,
+                  columnIndex,
                   updateForeignTableIndex);
             }
+            columnIndex++;
           } catch (EntityNotFoundException ex) {
           }
         }
@@ -288,23 +292,22 @@ public interface SearchIndex {
       String destinationIndexName,
       Table relatedEntity,
       String referredColumn,
+      int columnIndex,
       Boolean updateForeignTableIndex) {
-    for (String currentColumn : tableConstraint.getColumns()) {
-      if (currentColumn.equals(FullyQualifiedName.getColumnName(referredColumn))) {
-        String columnFQN = FullyQualifiedName.add(entity.getFullyQualifiedName(), currentColumn);
+    String columnFQN =
+        FullyQualifiedName.add(
+            entity.getFullyQualifiedName(), tableConstraint.getColumns().get(columnIndex));
 
-        Map<String, Object> columnMap = new HashMap<>();
-        columnMap.put("columnFQN", columnFQN);
-        columnMap.put("relatedColumnFQN", referredColumn);
-        columnMap.put("relationshipType", tableConstraint.getRelationshipType());
+    Map<String, Object> columnMap = new HashMap<>();
+    columnMap.put("columnFQN", columnFQN);
+    columnMap.put("relatedColumnFQN", referredColumn);
+    columnMap.put("relationshipType", tableConstraint.getRelationshipType());
 
-        List<Map<String, Object>> presentColumns =
-            (List<Map<String, Object>>) presentConstraint.get("columns");
-        presentColumns.add(columnMap);
-        if (updateForeignTableIndex) {
-          updateRelatedEntityIndex(destinationIndexName, relatedEntity, presentConstraint);
-        }
-      }
+    List<Map<String, Object>> presentColumns =
+        (List<Map<String, Object>>) presentConstraint.get("columns");
+    presentColumns.add(columnMap);
+    if (updateForeignTableIndex) {
+      updateRelatedEntityIndex(destinationIndexName, relatedEntity, presentConstraint);
     }
   }
 
@@ -316,23 +319,22 @@ public interface SearchIndex {
       String destinationIndexName,
       Table relatedEntity,
       String referredColumn,
+      int columnIndex,
       Boolean updateForeignTableIndex) {
-    for (String currentColumn : tableConstraint.getColumns()) {
-      if (currentColumn.equals(FullyQualifiedName.getColumnName(referredColumn))) {
-        List<Map<String, Object>> columns = new ArrayList<>();
-        String columnFQN = FullyQualifiedName.add(entity.getFullyQualifiedName(), currentColumn);
+    List<Map<String, Object>> columns = new ArrayList<>();
+    String columnFQN =
+        FullyQualifiedName.add(
+            entity.getFullyQualifiedName(), tableConstraint.getColumns().get(columnIndex));
 
-        Map<String, Object> columnMap = new HashMap<>();
-        columnMap.put("columnFQN", columnFQN);
-        columnMap.put("relatedColumnFQN", referredColumn);
-        columnMap.put("relationshipType", tableConstraint.getRelationshipType());
-        columns.add(columnMap);
-        relationshipsMap.put("columns", columns);
-        constraints.add(JsonUtils.getMap(relationshipsMap));
-        if (updateForeignTableIndex) {
-          updateRelatedEntityIndex(destinationIndexName, relatedEntity, relationshipsMap);
-        }
-      }
+    Map<String, Object> columnMap = new HashMap<>();
+    columnMap.put("columnFQN", columnFQN);
+    columnMap.put("relatedColumnFQN", referredColumn);
+    columnMap.put("relationshipType", tableConstraint.getRelationshipType());
+    columns.add(columnMap);
+    relationshipsMap.put("columns", columns);
+    constraints.add(JsonUtils.getMap(relationshipsMap));
+    if (updateForeignTableIndex) {
+      updateRelatedEntityIndex(destinationIndexName, relatedEntity, relationshipsMap);
     }
   }
 
