@@ -12,7 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { isEmpty, sortBy } from 'lodash';
+import { debounce, isEmpty, sortBy } from 'lodash';
 import {
   AsyncFetchListValues,
   AsyncFetchListValuesResult,
@@ -115,8 +115,9 @@ class AdvancedSearchClassBase {
     entityField: EntityFields;
     suggestField?: SuggestionField;
   }) => SelectFieldSettings['asyncFetch'] = ({ searchIndex, entityField }) => {
-    return (search) => {
-      return getAggregateFieldOptions(
+    // Wrapping the fetch function in a debounce of 300 ms
+    const debouncedFetch = debounce((search, callback) => {
+      getAggregateFieldOptions(
         searchIndex,
         entityField,
         search ?? '',
@@ -125,13 +126,19 @@ class AdvancedSearchClassBase {
         const buckets =
           response.data.aggregations[`sterms#${entityField}`].buckets;
 
-        return {
+        callback({
           values: buckets.map((bucket) => ({
             value: bucket.key,
             title: bucket.label ?? bucket.key,
           })),
           hasMore: false,
-        };
+        });
+      });
+    }, 300);
+
+    return (search) => {
+      return new Promise((resolve) => {
+        debouncedFetch(search, resolve);
       });
     };
   };
