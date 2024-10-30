@@ -124,7 +124,7 @@ import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
 import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
 import { ReactComponent as IconBoolean } from '../assets/svg/data-type-icon/boolean.svg';
-import { ReactComponent as IconDateTime } from '../assets/svg/data-type-icon/data_time_range.svg';
+import { ReactComponent as IconDateTime } from '../assets/svg/data-type-icon/data-time-range.svg';
 import { ReactComponent as IconDate } from '../assets/svg/data-type-icon/date.svg';
 import { ReactComponent as IconDecimal } from '../assets/svg/data-type-icon/decimal.svg';
 import { ReactComponent as IconDouble } from '../assets/svg/data-type-icon/double.svg';
@@ -144,7 +144,7 @@ import { ReactComponent as IconString } from '../assets/svg/data-type-icon/strin
 import { ReactComponent as IconStruct } from '../assets/svg/data-type-icon/struct.svg';
 import { ReactComponent as IconTime } from '../assets/svg/data-type-icon/time.svg';
 import { ReactComponent as IconTimestamp } from '../assets/svg/data-type-icon/timestamp.svg';
-import { ReactComponent as IconTsQuery } from '../assets/svg/data-type-icon/tsQuery.svg';
+import { ReactComponent as IconTsQuery } from '../assets/svg/data-type-icon/ts-query.svg';
 import { ReactComponent as IconUnion } from '../assets/svg/data-type-icon/union.svg';
 import { ReactComponent as IconUnknown } from '../assets/svg/data-type-icon/unknown.svg';
 import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varchar.svg';
