@@ -13,6 +13,7 @@
 import { Settings } from 'luxon';
 import {
   calculateInterval,
+  convertMillisecondsToHumanReadableFormat,
   customFormatDateTime,
   formatDate,
   formatDateTime,
@@ -127,5 +128,27 @@ describe('calculateInterval', () => {
     const result = calculateInterval(startTimeInSeconds, endTimeInSeconds);
 
     expect(result).toBe('0 Days, 0 Hours');
+  });
+});
+
+describe('convertMillisecondsToHumanReadableFormat', () => {
+  const testCases = [
+    { input: 0, expected: '0s' },
+    { input: 1000, expected: '1s' },
+    { input: 60000, expected: '1m' },
+    { input: 3600000, expected: '1h' },
+    { input: 7265000, expected: '2h 1m 5s' },
+    { input: 59999, expected: '59s' },
+    { input: 61000, expected: '1m 1s' },
+    { input: 3661000, expected: '1h 1m 1s' },
+    { input: 86400000, expected: '1d' },
+    { input: 90061000, expected: '1d 1h 1m 1s' },
+    { input: -1000, expected: '0s' },
+  ];
+
+  testCases.forEach(({ input, expected }) => {
+    it(`should return "${expected}" for ${input} milliseconds`, () => {
+      expect(convertMillisecondsToHumanReadableFormat(input)).toBe(expected);
+    });
   });
 });

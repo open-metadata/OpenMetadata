@@ -10,5 +10,5 @@ from metadata.profiler.metrics.system.system import SystemMetricsComputer
 
 
 class RedshiftProfiler(SQAProfilerInterface):
-    def initialize_system_metrics_computer(self, **__) -> SystemMetricsComputer:
+    def initialize_system_metrics_computer(self) -> SystemMetricsComputer:
         return RedshiftSystemMetricsComputer(session=self.session)

@@ -26,5 +26,5 @@ class BigQueryProfiler(BigQueryProfilerInterface):
             usage_location=self.service_connection_config.usageLocation,
         )
 
-    def initialize_system_metrics_computer(self, **_) -> BigQuerySystemMetricsComputer:
+    def initialize_system_metrics_computer(self) -> BigQuerySystemMetricsComputer:
         return BigQuerySystemMetricsComputer(session=self.session)
