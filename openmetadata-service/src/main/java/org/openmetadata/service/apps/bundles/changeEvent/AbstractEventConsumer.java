@@ -54,9 +54,6 @@ public abstract class AbstractEventConsumer
   public static final String METRICS_EXTENSION = "eventSubscription.metrics";
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
 
-  public static final String SUBSCRIBER = "subscriber";
-  public static final String PUBLISHER = "publisher";
-
   private long offset = -1;
   private AlertMetrics alertMetrics;
 
@@ -81,6 +78,11 @@ public abstract class AbstractEventConsumer
     // To be implemented by the Subclass if needed
   }
 
+  public enum EventSource {
+    SUBSCRIBER,
+    PUBLISHER
+  }
+
   @Override
   public void handleFailedEvent(EventPublisherException ex, boolean errorOnSub) {
     UUID failingSubscriptionId = ex.getChangeEventWithSubscription().getLeft();
@@ -91,7 +93,7 @@ public abstract class AbstractEventConsumer
         failingSubscriptionId,
         changeEvent);
 
-    String source = errorOnSub ? SUBSCRIBER : PUBLISHER;
+    EventSource source = errorOnSub ? EventSource.SUBSCRIBER : EventSource.PUBLISHER;
 
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
@@ -105,7 +107,7 @@ public abstract class AbstractEventConsumer
                     .withRetriesLeft(eventSubscription.getRetries())
                     .withReason(ex.getMessage())
                     .withTimestamp(System.currentTimeMillis())),
-            source);
+            source.toString());
   }
 
   private long loadInitialOffset(JobExecutionContext context) {
