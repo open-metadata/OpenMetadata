@@ -84,4 +84,4 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    test_query(engine, "SELECT 1357;")
+    test_query(engine, "SELECT 1;")
