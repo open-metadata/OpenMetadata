@@ -162,6 +162,7 @@ export const PersonaPage = () => {
           <Col span={24}>
             <NextPrevious
               currentPage={currentPage}
+              isLoading={isLoading}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handlePersonaPageChange}

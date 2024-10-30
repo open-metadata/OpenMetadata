@@ -199,6 +199,7 @@ const ApplicationPage = () => {
               {showPagination && (
                 <NextPrevious
                   currentPage={currentPage}
+                  isLoading={isLoading}
                   pageSize={pageSize}
                   paging={paging}
                   pagingHandler={handleApplicationPageChange}

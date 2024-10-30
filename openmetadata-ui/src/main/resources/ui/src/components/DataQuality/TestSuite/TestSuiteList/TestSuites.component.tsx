@@ -344,6 +344,7 @@ export const TestSuites = () => {
           <NextPrevious
             isNumberBased
             currentPage={currentPage}
+            isLoading={isLoading}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleTestSuitesPageChange}

@@ -176,6 +176,7 @@ function SchemaTablesTab({
         <Col span={24}>
           <NextPrevious
             currentPage={currentTablesPage}
+            isLoading={tableDataLoading}
             pageSize={PAGE_SIZE}
             paging={tableData.paging}
             pagingHandler={tablePaginationHandler}

@@ -27,6 +27,7 @@ interface BasicProps {
   pageSize: number;
   currentPage: number;
   isNumberBased?: boolean;
+  isLoading?: boolean;
 }
 
 export interface PagingProps {

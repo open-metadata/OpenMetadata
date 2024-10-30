@@ -206,6 +206,7 @@ export const DatabaseSchemaTable = ({
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={isLoading}
             isNumberBased={Boolean(searchValue)}
             pageSize={pageSize}
             paging={paging}

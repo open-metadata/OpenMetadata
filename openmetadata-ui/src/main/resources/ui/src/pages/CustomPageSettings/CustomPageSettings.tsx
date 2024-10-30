@@ -211,6 +211,7 @@ export const CustomPageSettings = () => {
           {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={isLoading}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handlePersonaPageChange}

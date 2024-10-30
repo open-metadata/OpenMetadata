@@ -275,6 +275,7 @@ const NotificationListPage = () => {
           {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={loadingCount > 0}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={onPageChange}

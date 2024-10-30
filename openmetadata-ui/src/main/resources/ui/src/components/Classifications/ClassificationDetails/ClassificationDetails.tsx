@@ -521,9 +521,10 @@ const ClassificationDetails = forwardRef(
             size="small"
           />
 
-          {showPagination && !isTagsLoading && (
+          {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={isTagsLoading}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handleTagsPageChange}

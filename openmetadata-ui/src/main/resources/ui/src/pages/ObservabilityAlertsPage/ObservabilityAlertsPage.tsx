@@ -242,6 +242,7 @@ const ObservabilityAlertsPage = () => {
           {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={loading}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={onPageChange}

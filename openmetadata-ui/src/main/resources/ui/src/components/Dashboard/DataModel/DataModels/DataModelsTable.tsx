@@ -183,6 +183,7 @@ const DataModelTable = () => {
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={isLoading}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleDataModelPageChange}
