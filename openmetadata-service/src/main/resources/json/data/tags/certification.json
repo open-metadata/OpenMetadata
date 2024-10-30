@@ -1,0 +1,31 @@
+{
+  "createClassification": {
+    "name": "Certification",
+    "description": "Certifying Data Asset will provide the users with a clear idea of how reliable a Data Asset is.",
+    "provider": "system",
+    "mutuallyExclusive": "true"
+  },
+  "createTags": [
+    {
+      "name": "Bronze",
+      "description": "Bronze certified Data Asset.",
+      "style": {
+        "color": "#CD7F32"
+      }
+    },
+    {
+      "name": "Silver",
+      "description": "Silver certified Data Asset.",
+      "style": {
+        "color": "#C0C0C0"
+      }
+    },
+    {
+      "name": "Gold",
+      "description": "Gold certified Data Asset.",
+      "style": {
+        "color": "#FFD700"
+      }
+    }
+  ]
+}

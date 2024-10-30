@@ -1121,6 +1121,9 @@
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
     },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
     "sourceHash": {
       "description": "Source hash of the entity",
       "type": "string",

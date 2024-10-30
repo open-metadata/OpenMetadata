@@ -9,6 +9,7 @@ import com.slack.api.bolt.model.builtin.DefaultInstaller;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
@@ -16,6 +17,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
@@ -108,6 +110,15 @@ public class SystemRepository {
       LOG.error("Error while trying fetch Settings ", ex);
     }
     return null;
+  }
+
+  public AssetCertificationSettings getAssetCertificationSettings() {
+    Optional<Settings> oAssetCertificationSettings =
+        Optional.ofNullable(getConfigWithKey(SettingsType.ASSET_CERTIFICATION_SETTINGS.value()));
+
+    return oAssetCertificationSettings
+        .map(settings -> (AssetCertificationSettings) settings.getConfigValue())
+        .orElse(null);
   }
 
   public Settings getEmailConfigInternal() {
