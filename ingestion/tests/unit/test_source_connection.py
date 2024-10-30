@@ -1207,7 +1207,7 @@ class SourceConnectionTest(TestCase):
                         "hostPort": host_port,
                         "tls": Tls.validate_certificate,
                     },
-                    expected="exa+websocket://sys:exasol@localhost:8563",
+                    expected="exa+websocket://admin:password@localhost:8563",
                 ),
                 TestData(
                     comment="Testing the manual setting of parameters",
@@ -1231,7 +1231,7 @@ class SourceConnectionTest(TestCase):
                         "hostPort": host_port,
                         "tls": Tls.disable_tls,
                     },
-                    expected="exa+websocket://admin:password@localhost:8563?SSLCertificate=SSL_VERIFY_NONE&ENCRYPTION=NO",
+                    expected="exa+websocket://admin:password@localhost:8563?SSLCertificate=SSL_VERIFY_NONE&ENCRYPTION=no",
                 ),
             )
 
