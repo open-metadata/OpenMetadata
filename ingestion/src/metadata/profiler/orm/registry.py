@@ -46,7 +46,7 @@ class CustomTypes(TypeRegistry):
     UNDETERMINED = UndeterminedType
 
 
-class Dialects(Enum):
+class PythonDialects(Enum):
     """
     Map the service types from DatabaseServiceType
     to the dialect scheme name used for ingesting
@@ -84,6 +84,28 @@ class Dialects(Enum):
     Snowflake = "snowflake"
     Trino = "trino"
     Vertica = "vertica"
+
+
+class EnumAdapter(type):
+    """A hack to use the Dialects string values can be accesses
+    without using the value attribute.
+
+    Example:
+        Dialets.MySQL == "mysql"
+
+    Instead of:
+        Dialects.MySQL.value == "mysql"
+
+    We use this functionality when registring sqlalchemy custom functions. But we should
+    avoid using this pattern as it can be confusing.
+    """
+
+    def __getattr__(cls, item):
+        return PythonDialects[item].value
+
+
+class Dialects(metaclass=EnumAdapter):
+    pass
 
 
 # Sometimes we want to skip certain types for computing metrics.
