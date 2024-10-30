@@ -231,7 +231,10 @@ class GlobalSettingsClassBase {
         key: GlobalSettingsMenuCategory.NOTIFICATIONS,
         icon: NotificationIcon,
         description: t('message.notification-description'),
-        isProtected: Boolean(isAdminUser),
+        isProtected: userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        ),
       },
       {
         category: t('label.team-user-management'),

@@ -11,8 +11,19 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tabs, Tooltip, Typography } from 'antd';
-import { isUndefined } from 'lodash';
+import {
+  Button,
+  Col,
+  Row,
+  Skeleton,
+  Space,
+  Tabs,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { isUndefined, omitBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -20,7 +31,7 @@ import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import AlertConfigDetails from '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
-import NoDataPlaceholder from '../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -30,15 +41,27 @@ import { ExtraInfoLabel } from '../../components/DataAssets/DataAssetsHeader/Dat
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { AlertDetailTabs } from '../../enums/Alerts.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
+  EntityReference,
   EventSubscription,
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { useFqn } from '../../hooks/useFqn';
-import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
+import { updateNotificationAlert } from '../../rest/alertsAPI';
+import {
+  getObservabilityAlertByFQN,
+  updateObservabilityAlert,
+} from '../../rest/observabilityAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getNotificationAlertDetailsPath,
   getNotificationAlertsEditPath,
@@ -47,36 +70,76 @@ import {
   getSettingPath,
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { showErrorToast } from '../../utils/ToastUtils';
+import './alert-details-page.less';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
   isNotificationAlert = false,
 }: Readonly<AlertDetailsPageProps>) {
   const { t } = useTranslation();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab = AlertDetailTabs.CONFIGURATION } =
     useParams<{ tab: AlertDetailTabs }>();
   const { fqn } = useFqn();
   const history = useHistory();
 
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loadingCount, setLoadingCount] = useState(1);
+  const [ownerLoading, setOwnerLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [alertPermission, setAlertPermission] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const {
+    viewPermission,
+    editOwnersPermission,
+    editPermission,
+    deletePermission,
+  } = useMemo(
+    () => ({
+      viewPermission: alertPermission.ViewAll || alertPermission.ViewBasic,
+      editPermission: alertPermission.EditAll,
+      editOwnersPermission:
+        alertPermission.EditAll || alertPermission.EditOwners,
+      deletePermission: alertPermission.Delete,
+    }),
+    [alertPermission]
+  );
+
+  const fetchResourcePermission = useCallback(async () => {
+    try {
+      if (fqn) {
+        const searchIndexPermission = await getEntityPermissionByFqn(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          fqn
+        );
+
+        setAlertPermission(searchIndexPermission);
+      }
+    } finally {
+      setLoadingCount((count) => count - 1);
+    }
+  }, [fqn, getEntityPermissionByFqn]);
 
   const alertIcon = useMemo(
     () => searchClassBase.getEntityIcon(EntityType.ALERT, 'h-9'),
     []
   );
 
-  const fetchAlerts = async () => {
+  const fetchAlertDetails = async () => {
     try {
-      setLoading(true);
-      const observabilityAlert = await getObservabilityAlertByFQN(fqn);
+      setLoadingCount((count) => count + 1);
+      const observabilityAlert = await getObservabilityAlertByFQN(fqn, {
+        fields: 'owners',
+      });
 
       setAlertDetails(observabilityAlert);
     } catch (error) {
       // Error handling
     } finally {
-      setLoading(false);
+      setLoadingCount((count) => count - 1);
     }
   };
 
@@ -128,9 +191,28 @@ function AlertDetailsPage({
     );
   }, [history]);
 
-  const onOwnerUpdate = useCallback(() => {
-    return 'update owner';
-  }, []);
+  const onOwnerUpdate = useCallback(
+    async (owners?: EntityReference[]) => {
+      try {
+        setOwnerLoading(true);
+        const jsonPatch = compare(omitBy(alertDetails, isUndefined), {
+          ...alertDetails,
+          owners,
+        });
+
+        const updatedAlert = await (isNotificationAlert
+          ? updateNotificationAlert(alertDetails?.id ?? '', jsonPatch)
+          : updateObservabilityAlert(alertDetails?.id ?? '', jsonPatch));
+
+        setAlertDetails(updatedAlert);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setOwnerLoading(false);
+      }
+    },
+    [fqn, history, alertDetails]
+  );
 
   const tabItems = useMemo(
     () => [
@@ -138,7 +220,7 @@ function AlertDetailsPage({
         label: t('label.configuration'),
         key: AlertDetailTabs.CONFIGURATION,
         children: isUndefined(alertDetails) ? (
-          <NoDataPlaceholder />
+          <ErrorPlaceHolder className="m-0" />
         ) : (
           <AlertConfigDetails alertDetails={alertDetails} />
         ),
@@ -163,9 +245,24 @@ function AlertDetailsPage({
     [history, fqn]
   );
 
+  // Always keep this useEffect at first
   useEffect(() => {
-    fetchAlerts();
+    fetchResourcePermission();
   }, []);
+
+  useEffect(() => {
+    if (viewPermission) {
+      fetchAlertDetails();
+    }
+  }, [viewPermission]);
+
+  if (!loadingCount && !viewPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
+  if (!loadingCount && isUndefined(alertDetails)) {
+    return <ErrorPlaceHolder className="m-0" />;
+  }
 
   return (
     <ResizablePanels
@@ -173,7 +270,7 @@ function AlertDetailsPage({
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
-        children: loading ? (
+        children: loadingCount ? (
           <Loader />
         ) : (
           <div
@@ -199,11 +296,19 @@ function AlertDetailsPage({
                         />
                       </Col>
                       <Col span={24}>
-                        <div className="d-flex flex-wrap gap-2">
-                          <OwnerLabel
-                            owners={alertDetails?.owners}
-                            onUpdate={onOwnerUpdate}
-                          />
+                        <div className="d-flex items-center flex-wrap gap-2">
+                          {ownerLoading ? (
+                            <Skeleton.Button
+                              active
+                              className="owner-skeleton"
+                            />
+                          ) : (
+                            <OwnerLabel
+                              hasPermission={editOwnersPermission}
+                              owners={alertDetails?.owners}
+                              onUpdate={onOwnerUpdate}
+                            />
+                          )}
                           <ExtraInfoLabel
                             label={t('label.total-entity', {
                               entity: t('label.event-plural'),
@@ -222,34 +327,38 @@ function AlertDetailsPage({
                   </Col>
                   <Col>
                     <Space align="center" size={8}>
-                      <Tooltip
-                        title={t('label.edit-entity', {
-                          entity: t('label.alert'),
-                        })}>
-                        <Button
-                          className="flex flex-center"
-                          data-testid="edit-button"
-                          disabled={
-                            alertDetails?.provider === ProviderType.System
-                          }
-                          icon={<EditIcon height={16} width={16} />}
-                          onClick={handleAlertEdit}
-                        />
-                      </Tooltip>
-                      <Tooltip
-                        title={t('label.delete-entity', {
-                          entity: t('label.alert'),
-                        })}>
-                        <Button
-                          className="flex flex-center"
-                          data-testid="delete-button"
-                          disabled={
-                            alertDetails?.provider === ProviderType.System
-                          }
-                          icon={<DeleteIcon height={16} width={16} />}
-                          onClick={() => setShowDeleteModal(true)}
-                        />
-                      </Tooltip>
+                      {editPermission && (
+                        <Tooltip
+                          title={t('label.edit-entity', {
+                            entity: t('label.alert'),
+                          })}>
+                          <Button
+                            className="flex flex-center"
+                            data-testid="edit-button"
+                            disabled={
+                              alertDetails?.provider === ProviderType.System
+                            }
+                            icon={<EditIcon height={16} width={16} />}
+                            onClick={handleAlertEdit}
+                          />
+                        </Tooltip>
+                      )}
+                      {deletePermission && (
+                        <Tooltip
+                          title={t('label.delete-entity', {
+                            entity: t('label.alert'),
+                          })}>
+                          <Button
+                            className="flex flex-center"
+                            data-testid="delete-button"
+                            disabled={
+                              alertDetails?.provider === ProviderType.System
+                            }
+                            icon={<DeleteIcon height={16} width={16} />}
+                            onClick={() => setShowDeleteModal(true)}
+                          />
+                        </Tooltip>
+                      )}
                     </Space>
                   </Col>
                 </Row>
