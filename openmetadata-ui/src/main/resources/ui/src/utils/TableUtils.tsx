@@ -85,6 +85,7 @@ import { CustomPropertyTable } from '../components/common/CustomPropertyTable/Cu
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
@@ -643,7 +644,7 @@ export const getTableDetailPageBaseTabs = ({
   fetchTableDetails,
   testCaseSummary,
   isViewTableType,
-}: TableDetailPageTabProps) => {
+}: TableDetailPageTabProps): TabProps[] => {
   return [
     {
       label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
