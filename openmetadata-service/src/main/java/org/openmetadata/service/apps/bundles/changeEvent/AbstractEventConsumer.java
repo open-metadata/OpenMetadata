@@ -78,7 +78,7 @@ public abstract class AbstractEventConsumer
     // To be implemented by the Subclass if needed
   }
 
-  public enum EventSource {
+  public enum FailureTowards {
     SUBSCRIBER,
     PUBLISHER
   }
@@ -93,7 +93,7 @@ public abstract class AbstractEventConsumer
         failingSubscriptionId,
         changeEvent);
 
-    EventSource source = errorOnSub ? EventSource.SUBSCRIBER : EventSource.PUBLISHER;
+    FailureTowards source = errorOnSub ? FailureTowards.SUBSCRIBER : FailureTowards.PUBLISHER;
 
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
