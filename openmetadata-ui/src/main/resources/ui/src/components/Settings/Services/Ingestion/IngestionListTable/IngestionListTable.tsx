@@ -362,6 +362,7 @@ function IngestionListTable({
             <Col span={24}>
               <NextPrevious
                 currentPage={ingestionPagingInfo.currentPage}
+                isLoading={isLoading}
                 isNumberBased={isNumberBasedPaging}
                 pageSize={ingestionPagingInfo.pageSize}
                 paging={ingestionPagingInfo.paging}

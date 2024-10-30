@@ -286,6 +286,10 @@ export const DEF_UI_SCHEMA = {
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsUsageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsLineageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsViewLineageExtraction: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
   supportsProfiler: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDatabase: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsQueryComment: { 'ui:widget': 'hidden', 'ui:hideError': true },

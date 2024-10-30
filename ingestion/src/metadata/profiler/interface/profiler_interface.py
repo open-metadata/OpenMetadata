@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from sqlalchemy import Column
 
@@ -60,6 +60,7 @@ from metadata.profiler.api.models import (
 )
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.system.system import System
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.collaborative_super import Root
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
@@ -475,7 +476,7 @@ class ProfilerInterface(Root, ABC):
     @abstractmethod
     def _compute_system_metrics(
         self,
-        metrics: Metrics,
+        metrics: Type[System],
         runner,
         *args,
         **kwargs,

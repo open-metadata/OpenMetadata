@@ -117,8 +117,8 @@ class DatabaseServiceTopology(ServiceTopology):
         # until we have finished ingesting all the metadata from the source.
         post_process=[
             "yield_view_lineage",
-            "yield_procedure_lineage_and_queries",
             "yield_external_table_lineage",
+            "yield_table_constraints",
         ],
     )
     database: Annotated[
@@ -353,7 +353,13 @@ class DatabaseServiceSource(
         """
 
     def update_table_constraints(
-        self, table_constraints: List[TableConstraint], foreign_columns: []
+        self,
+        table_name,
+        schema_name,
+        db_name,
+        table_constraints: List[TableConstraint],
+        foreign_columns: [],
+        columns,
     ) -> List[TableConstraint]:
         """
         process the table constraints of all tables
@@ -539,7 +545,7 @@ class DatabaseServiceSource(
                 self.inspector, "get_table_owner"
             ):
                 owner_name = self.inspector.get_table_owner(
-                    connection=self.connection,  # pylint: disable=no-member.fetchall()
+                    connection=self.connection,  # pylint: disable=no-member
                     table_name=table_name,
                     schema=self.context.get().database_schema,
                 )
@@ -608,6 +614,11 @@ class DatabaseServiceSource(
     def yield_external_table_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
         Process external table lineage
+        """
+
+    def yield_table_constraints(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Process remaining table constraints by patching the table
         """
 
     def test_connection(self) -> None:

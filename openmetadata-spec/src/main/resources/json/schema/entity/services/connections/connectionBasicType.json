@@ -35,6 +35,11 @@
       "type": "boolean",
       "default": true
     },
+    "supportsViewLineageExtraction": {
+      "description": "Supports View Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
     "supportsProfiler": {
       "description": "Supports Profiler",
       "type": "boolean",
