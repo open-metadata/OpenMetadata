@@ -69,6 +69,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         "",
         "");
     supportsSearch = true;
+    fieldFetchers.put("name", this::fetchAndSetService);
   }
 
   @Override
@@ -224,6 +225,17 @@ public class DatabaseRepository extends EntityRepository<Database> {
     daoCollection.entityExtensionDAO().delete(databaseId, DATABASE_PROFILER_CONFIG_EXTENSION);
     clearFieldsInternal(database, Fields.EMPTY_FIELDS);
     return database;
+  }
+
+  private void fetchAndSetService(List<Database> entities, Fields fields) {
+    if (entities == null || entities.isEmpty() || (!fields.contains("name"))) {
+      return;
+    }
+
+    EntityReference service = getContainer(entities.get(0).getId());
+    for (Database database : entities) {
+      database.setService(service);
+    }
   }
 
   public class DatabaseUpdater extends EntityUpdater {
