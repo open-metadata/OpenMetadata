@@ -94,6 +94,7 @@ function ServiceVersionMainTabContent({
                 !isEmpty(data) && (
                   <NextPrevious
                     currentPage={currentPage}
+                    isLoading={isServiceLoading}
                     pageSize={PAGE_SIZE}
                     paging={paging}
                     pagingHandler={pagingHandler}
