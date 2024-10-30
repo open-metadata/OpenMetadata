@@ -65,7 +65,7 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
             .orElse(new Aggregations(new ArrayList<>()))
             .asList();
     List<DataInsightCustomChartResult> results =
-        processAggregations(aggregationList, summaryCard.getFormula(), null, formulas);
+        processAggregations(aggregationList, summaryCard.getFormula(), null, formulas, null);
 
     List<DataInsightCustomChartResult> finalResults = new ArrayList<>();
     for (int i = results.size() - 1; i >= 0; i--) {
