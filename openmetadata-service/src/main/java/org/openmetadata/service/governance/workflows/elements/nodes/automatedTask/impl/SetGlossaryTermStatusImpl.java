@@ -1,5 +1,8 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.RESOLVED_BY_VARIABLE;
+
 import java.util.Optional;
 import javax.json.JsonPatch;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -18,12 +21,12 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
   @Override
   public void execute(DelegateExecution execution) {
     MessageParser.EntityLink entityLink =
-        MessageParser.EntityLink.parse((String) execution.getVariable("relatedEntity"));
+        MessageParser.EntityLink.parse((String) execution.getVariable(RELATED_ENTITY_VARIABLE));
     GlossaryTerm glossaryTerm = Entity.getEntity(entityLink, "*", Include.ALL);
 
     String status = (String) statusExpr.getValue(execution);
     String user =
-        Optional.ofNullable((String) execution.getVariable("resolvedBy"))
+        Optional.ofNullable((String) execution.getVariable(RESOLVED_BY_VARIABLE))
             .orElse(glossaryTerm.getUpdatedBy());
 
     setStatus(glossaryTerm, user, status);

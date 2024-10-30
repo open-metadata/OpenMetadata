@@ -11,9 +11,17 @@ public class Edge {
   public Edge(org.openmetadata.schema.governance.workflows.elements.EdgeDefinition edgeDefinition) {
     SequenceFlow edge = new SequenceFlow(edgeDefinition.getFrom(), edgeDefinition.getTo());
     if (!CommonUtil.nullOrEmpty(edgeDefinition.getCondition())) {
-      edge.setConditionExpression(edgeDefinition.getCondition());
+      edge.setConditionExpression(getFlowableCondition(edgeDefinition.getCondition()));
     }
     this.edge = edge;
+  }
+
+  private String getFlowableCondition(boolean condition) {
+    if (condition) {
+      return "${result}";
+    } else {
+      return "${!result}";
+    }
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {

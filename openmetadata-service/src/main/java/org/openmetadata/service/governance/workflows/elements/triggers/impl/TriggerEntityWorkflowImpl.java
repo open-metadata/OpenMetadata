@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +29,7 @@ public class TriggerEntityWorkflowImpl implements JavaDelegate {
     List<String> excludedFilter =
         JsonUtils.readOrConvertValue(excludedFilterExpr.getValue(execution), List.class);
 
-    String entityLinkStr = (String) execution.getVariable("relatedEntity");
+    String entityLinkStr = (String) execution.getVariable(RELATED_ENTITY_VARIABLE);
 
     if (passesExcludedFilter(entityLinkStr, excludedFilter)) {
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
@@ -65,7 +67,7 @@ public class TriggerEntityWorkflowImpl implements JavaDelegate {
       String entityLinkStr,
       String workflowName) {
     Map<String, Object> variables = new HashMap<>();
-    variables.put("relatedEntity", entityLinkStr);
+    variables.put(RELATED_ENTITY_VARIABLE, entityLinkStr);
     workflowHandler.triggerByKey(workflowName, businessKey, variables);
   }
 }

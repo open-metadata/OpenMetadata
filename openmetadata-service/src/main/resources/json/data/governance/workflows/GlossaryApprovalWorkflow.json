@@ -52,7 +52,7 @@
       "name": "CheckGlossaryTermIsReadyToBeReviewed",
       "displayName": "Check if Glossary Term is Ready to be Reviewed",
       "config": {
-        "rules": "{\"and\":[{\"==\":[{\"var\":\"extension.foo\"},\"bar\"]}]}"
+        "rules": "{\"and\":[{\"some\":[{\"var\":\"extension.foo\"},\"bar\"]}]}"
       }
     },
     {
@@ -111,17 +111,17 @@
     {
       "from": "CheckGlossaryTermHasReviewers",
       "to": "SetGlossaryTermStatusToApproved",
-      "condition": "${!checkPassed}"
+      "condition": false
     },
     {
       "from": "CheckGlossaryTermHasReviewers",
       "to": "CheckGlossaryTermIsReadyToBeReviewed",
-      "condition": "${checkPassed}"
+      "condition": true
     },
     {
       "from": "CheckGlossaryTermIsReadyToBeReviewed",
       "to": "SetGlossaryTermStatusToDraft",
-      "condition": "${!checkPassed}"
+      "condition": false
     },
     {
       "from": "SetGlossaryTermStatusToDraft",
@@ -130,7 +130,7 @@
     {
       "from": "CheckGlossaryTermIsReadyToBeReviewed",
       "to": "SetGlossaryTermStatusToInReview",
-      "condition": "${checkPassed}"
+      "condition": true
     },
     {
       "from": "SetGlossaryTermStatusToInReview",
@@ -139,12 +139,12 @@
     {
       "from": "ApproveGlossaryTerm",
       "to": "SetGlossaryTermStatusToApproved",
-      "condition": "${approved}"
+      "condition": true
     },
     {
       "from": "ApproveGlossaryTerm",
       "to": "SetGlossaryTermStatusToRejected",
-      "condition": "${!approved}"
+      "condition": false
     },
     {
       "from": "SetGlossaryTermStatusToApproved",

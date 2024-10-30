@@ -15,8 +15,8 @@
       "type": "string"
     },
     "condition": {
-      "description": "If this condition is true, the workflow will follow this edge. Otherwise it won't.",
-      "type": "string"
+      "description": "Defines if the edge will follow a path depending on the source node result.",
+      "type": "boolean"
     }
   },
   "required": ["to", "from"],

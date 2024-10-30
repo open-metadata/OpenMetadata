@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.STAGE_INSTANCE_STATE_ID_VARIABLE;
 
 import java.util.ArrayList;
@@ -31,7 +32,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
   public void notify(DelegateTask delegateTask) {
     List<EntityReference> assignees = getAssignees(delegateTask);
     MessageParser.EntityLink entityLink =
-        MessageParser.EntityLink.parse((String) delegateTask.getVariable("relatedEntity"));
+        MessageParser.EntityLink.parse((String) delegateTask.getVariable(RELATED_ENTITY_VARIABLE));
     GlossaryTerm entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
     Thread task = createApprovalTask(entity, assignees);

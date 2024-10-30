@@ -1,5 +1,8 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.RESOLVED_BY_VARIABLE;
+
 import java.util.Optional;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -15,7 +18,7 @@ public class SetEntityCertificationImpl implements JavaDelegate {
   @Override
   public void execute(DelegateExecution execution) {
     MessageParser.EntityLink entityLink =
-        MessageParser.EntityLink.parse((String) execution.getVariable("relatedEntity"));
+        MessageParser.EntityLink.parse((String) execution.getVariable(RELATED_ENTITY_VARIABLE));
     String entityType = entityLink.getEntityType();
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
@@ -24,7 +27,7 @@ public class SetEntityCertificationImpl implements JavaDelegate {
             .map(certificationExpr -> (String) certificationExpr.getValue(execution))
             .orElse(null);
     String user =
-        Optional.ofNullable((String) execution.getVariable("resolvedBy"))
+        Optional.ofNullable((String) execution.getVariable(RESOLVED_BY_VARIABLE))
             .orElse(entity.getUpdatedBy());
 
     setStatus(entity, entityType, user, certification);

@@ -24,6 +24,8 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.governance.workflows.Workflow.RESOLVED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
@@ -75,10 +77,8 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
-import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
-import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.service.Entity;
@@ -88,7 +88,6 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
@@ -604,8 +603,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // TODO: Resolve this outside
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
-      variables.put("approved", resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put("resolvedBy", user);
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
+      variables.put(RESOLVED_BY_VARIABLE, user);
       WorkflowHandler.getInstance().resolveTask(taskId, variables);
       // ---
 
@@ -684,38 +683,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
-  private void createApprovalTask(GlossaryTerm entity, List<EntityReference> parentReviewers) {
-    TaskDetails taskDetails =
-        new TaskDetails()
-            .withAssignees(FeedResource.formatAssignees(parentReviewers))
-            .withType(TaskType.RequestApproval)
-            .withStatus(TaskStatus.Open);
-
-    EntityLink about = new EntityLink(entityType, entity.getFullyQualifiedName());
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withThreadTs(System.currentTimeMillis())
-            .withMessage("Approval required for ")
-            .withCreatedBy(entity.getUpdatedBy())
-            .withAbout(about.getLinkString())
-            .withType(ThreadType.Task)
-            .withTask(taskDetails)
-            .withUpdatedBy(entity.getUpdatedBy())
-            .withUpdatedAt(System.currentTimeMillis());
-    FeedRepository feedRepository = Entity.getFeedRepository();
-    feedRepository.create(thread);
-
-    // Send WebSocket Notification
-    WebsocketNotificationHandler.handleTaskNotification(thread);
-  }
-
   private void closeApprovalTask(GlossaryTerm entity, String comment) {
     EntityLink about = new EntityLink(GLOSSARY_TERM, entity.getFullyQualifiedName());
     FeedRepository feedRepository = Entity.getFeedRepository();
-    Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-    feedRepository.closeTask(
-        taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+    try {
+      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      feedRepository.closeTask(
+          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+    } catch (EntityNotFoundException ex) {
+      LOG.info(
+          "{} Task not found for glossary term {}",
+          TaskType.RequestApproval,
+          entity.getFullyQualifiedName());
+    }
   }
 
   private void updateAssetIndexes(GlossaryTerm original, GlossaryTerm updated) {

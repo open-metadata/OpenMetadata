@@ -51,7 +51,7 @@
     "output": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["checkPassed"],
+      "default": ["result"],
       "additionalItems": false,
       "minItems": 1,
       "maxItems": 1

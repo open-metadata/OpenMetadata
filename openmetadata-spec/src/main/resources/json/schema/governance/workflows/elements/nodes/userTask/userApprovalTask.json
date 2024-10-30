@@ -65,7 +65,7 @@
     "output": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["approved", "resolvedBy"],
+      "default": ["result", "resolvedBy"],
       "additionalItems": false,
       "minItems": 2,
       "maxItems": 2

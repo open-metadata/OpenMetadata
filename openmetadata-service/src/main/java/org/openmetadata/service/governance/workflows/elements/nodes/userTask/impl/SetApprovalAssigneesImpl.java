@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +33,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
 
     if (addReviewers) {
       MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse((String) execution.getVariable("relatedEntity"));
+          MessageParser.EntityLink.parse((String) execution.getVariable(RELATED_ENTITY_VARIABLE));
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
       assignees.addAll(getEntityLinkStringFromEntityReference(entity.getReviewers()));
     }

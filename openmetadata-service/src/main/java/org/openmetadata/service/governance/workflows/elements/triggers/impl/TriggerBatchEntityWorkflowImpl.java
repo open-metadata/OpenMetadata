@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -94,7 +96,7 @@ public class TriggerBatchEntityWorkflowImpl implements JavaDelegate {
       MessageParser.EntityLink entityLink = new MessageParser.EntityLink(entityType, entityFQN);
 
       Map<String, Object> variables = new HashMap<>();
-      variables.put("relatedEntity", entityLink.getLinkString());
+      variables.put(RELATED_ENTITY_VARIABLE, entityLink.getLinkString());
 
       runningProcessInstanceIds.add(
           workflowHandler.triggerByKey(workflowName, businessKey, variables).getId());
