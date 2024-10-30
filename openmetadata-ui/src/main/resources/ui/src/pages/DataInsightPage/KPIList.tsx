@@ -251,6 +251,7 @@ const KPIList = () => {
         <Col span={24}>
           <NextPrevious
             currentPage={kpiPage}
+            isLoading={isLoading}
             pageSize={PAGE_SIZE_MEDIUM}
             paging={kpiPaging}
             pagingHandler={kpiPagingHandler}
