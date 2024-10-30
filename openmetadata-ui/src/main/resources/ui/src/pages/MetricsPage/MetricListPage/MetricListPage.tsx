@@ -291,6 +291,7 @@ const MetricListPage = () => {
           {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={loadingMore}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={onPageChange}
