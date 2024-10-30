@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
@@ -68,6 +69,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         "",
         "");
     supportsSearch = true;
+    fieldFetchers.put("name", this::fetchAndSetService);
   }
 
   @Override
@@ -125,7 +127,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
         (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
     List<DatabaseSchema> schemas =
         repository.listAllForCSV(
-            repository.getFields("owners,tags,domain"), database.getFullyQualifiedName());
+            repository.getFields("owners,tags,domain,extension"), database.getFullyQualifiedName());
+
     schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseCsv(database, user).exportCsv(schemas);
   }
@@ -224,6 +227,17 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return database;
   }
 
+  private void fetchAndSetService(List<Database> entities, Fields fields) {
+    if (entities == null || entities.isEmpty() || (!fields.contains("name"))) {
+      return;
+    }
+
+    EntityReference service = getContainer(entities.get(0).getId());
+    for (Database database : entities) {
+      database.setService(service);
+    }
+  }
+
   public class DatabaseUpdater extends EntityUpdater {
     public DatabaseUpdater(Database original, Database updated, Operation operation) {
       super(original, updated, operation);
@@ -282,7 +296,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withTags(tagLabels)
           .withRetentionPeriod(csvRecord.get(7))
           .withSourceUrl(csvRecord.get(8))
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
+          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 10));
       if (processRecord) {
         createEntity(printer, csvRecord, schema);
       }
@@ -306,6 +321,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
               ? ""
               : entity.getDomain().getFullyQualifiedName();
       addField(recordList, domain);
+      addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
   }
