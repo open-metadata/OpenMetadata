@@ -206,14 +206,6 @@ function CustomizeMyData({
   return (
     <ActivityFeedProvider>
       <PageLayoutV1
-        header={
-          <CustomizablePageHeader
-            personaName={getEntityName(personaDetails)}
-            onReset={handleReset}
-            onSave={handleSave}
-          />
-        }
-        headerClassName="m-0 p-0"
         mainContainerClassName="p-t-0"
         pageContainerStyle={{
           backgroundImage: `url(${gridBgImg})`,
@@ -221,6 +213,11 @@ function CustomizeMyData({
         pageTitle={t('label.customize-entity', {
           entity: t('label.landing-page'),
         })}>
+        <CustomizablePageHeader
+          personaName={getEntityName(personaDetails)}
+          onReset={handleReset}
+          onSave={handleSave}
+        />
         <ReactGridLayout
           className="grid-container"
           cols={4}

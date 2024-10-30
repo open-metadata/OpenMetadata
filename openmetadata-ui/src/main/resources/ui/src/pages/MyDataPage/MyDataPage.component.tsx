@@ -85,7 +85,11 @@ const MyDataPage = () => {
           (p: Page) => p.pageType === PageType.LandingPage
         ) ?? { layout: [], pageType: PageType.LandingPage };
 
-        setLayout(pageData.layout);
+        setLayout(
+          isEmpty(pageData.layout)
+            ? customizePageClassBase.defaultLayout
+            : pageData.layout
+        );
       } else {
         setLayout(customizePageClassBase.defaultLayout);
       }

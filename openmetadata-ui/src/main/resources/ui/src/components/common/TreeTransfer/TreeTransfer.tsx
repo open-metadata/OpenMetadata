@@ -77,18 +77,20 @@ export const TreeTransfer = ({
               defaultExpandAll
               showIcon
               checkedKeys={checkedKeys}
-              switcherIcon={switcherIcon}
-              treeData={generateTree(dataSource, targetKeys)}
+              titleRender={(t) => t.title}
               onCheck={(_, { node: { key } }) => {
                 onItemSelect(key as string, !isChecked(checkedKeys, key));
               }}
               onSelect={(_, { node: { key } }) => {
                 onItemSelect(key as string, !isChecked(checkedKeys, key));
               }}
+              switcherIcon={switcherIcon}
+              //   titleRender={(t) => t.label}
+              treeData={generateTree(dataSource, targetKeys)}
             />
           );
         } else {
-          const data = filterAndArrangeTreeByKeys(
+          const data = filterAndArrangeTreeByKeys<DataNode>(
             cloneDeep(dataSource),
             targetKeys
           );

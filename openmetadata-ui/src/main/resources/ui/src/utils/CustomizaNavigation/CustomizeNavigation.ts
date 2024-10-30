@@ -11,29 +11,31 @@
  *  limitations under the License.
  */
 import { DataNode } from 'antd/lib/tree';
-import { sortBy } from 'lodash';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 
-interface TreeNode extends Omit<DataNode, 'children'> {
-  children?: TreeNode[];
-}
-
-export const filterAndArrangeTreeByKeys = (
-  tree: TreeNode[],
+export const filterAndArrangeTreeByKeys = <
+  T extends { key: string | number; children?: T[] }
+>(
+  tree: T[],
   keys: Array<string | number>
-): TreeNode[] => {
+): T[] => {
+  // Sort nodes according to the keys order
+  function sortByKeys(nodeArray: T[]) {
+    return nodeArray.sort((a, b) => keys.indexOf(a.key) - keys.indexOf(b.key));
+  }
+
   // Helper function to recursively filter and arrange the tree
-  function filterAndArrange(node: TreeNode) {
+  function filterAndArrange(node: T) {
     // If the current node's key is in the keys array, process it
     if (keys.includes(node.key)) {
       // If the node has children, we recursively filter and arrange them
       if (node.children && node.children.length > 0) {
         node.children = node.children
           .map(filterAndArrange) // Recursively filter and arrange children
-          .filter((t): t is TreeNode => t !== null); // Remove any undefined children
+          .filter((t): t is T => t !== null); // Remove any undefined children
 
         // Sort the children according to the order of the keys array
-        node.children = sortBy(node.children, 'key');
+        node.children = sortByKeys(node.children);
       }
 
       return node; // Return the node if it has the required key
@@ -45,18 +47,26 @@ export const filterAndArrangeTreeByKeys = (
   // Apply the filter and arrange function to the entire tree
   let filteredTree = tree
     .map(filterAndArrange)
-    .filter((t): t is TreeNode => t !== null);
+    .filter((t): t is T => t !== null);
 
   // Sort the filtered tree based on the order of keys at the root level
-  filteredTree = sortBy(filteredTree, 'key');
+  filteredTree = sortByKeys(filteredTree);
 
   return filteredTree;
 };
 
-export const getNestedKeys = (data: DataNode[]) =>
-  data.reduce((acc: string[], item: DataNode): string[] => {
+export const getNestedKeys = <
+  T extends { key: string | number; children?: T[] }
+>(
+  data: T[]
+): string[] =>
+  data.reduce((acc: string[], item: T): string[] => {
     if (item.children) {
-      return [...acc, item.key as string, ...getNestedKeys(item.children)];
+      return [
+        ...acc,
+        item.key as string,
+        ...getNestedKeys(item.children ?? []),
+      ];
     }
 
     return [...acc, item.key as string];
@@ -93,3 +103,16 @@ export const getNavigationItems = (items: DataNode[]): NavigationItem[] =>
           } as NavigationItem)
     )
     .filter(Boolean);
+
+export const getNestedKeysFromNavigationItems = (data: NavigationItem[]) =>
+  data.reduce((acc: string[], item: NavigationItem): string[] => {
+    if (item.children) {
+      return [
+        ...acc,
+        item.id as string,
+        ...getNestedKeysFromNavigationItems(item.children),
+      ];
+    }
+
+    return [...acc, item.id as string];
+  }, [] as string[]);

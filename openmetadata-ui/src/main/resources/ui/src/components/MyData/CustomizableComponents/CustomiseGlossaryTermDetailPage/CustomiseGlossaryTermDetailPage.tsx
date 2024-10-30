@@ -49,12 +49,8 @@ function CustomizeGlossaryTermDetailPage({
   const { t } = useTranslation();
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
-    getLayoutWithEmptyWidgetPlaceholder(
-      (initialPageData?.layout as WidgetConfig[]) ??
-        customizeGlossaryTermPageClassBase.defaultLayout,
-      2,
-      4
-    )
+    (initialPageData?.layout as WidgetConfig[]) ??
+      customizeGlossaryTermPageClassBase.defaultLayout
   );
 
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
@@ -172,14 +168,6 @@ function CustomizeGlossaryTermDetailPage({
   return (
     <>
       <PageLayoutV1
-        header={
-          <CustomizablePageHeader
-            personaName={getEntityName(personaDetails)}
-            onReset={handleOpenResetModal}
-            onSave={handleSave}
-          />
-        }
-        headerClassName="m-0 p-0"
         mainContainerClassName="p-t-0"
         pageContainerStyle={{
           backgroundImage: `url(${gridBgImg})`,
@@ -187,6 +175,11 @@ function CustomizeGlossaryTermDetailPage({
         pageTitle={t('label.customize-entity', {
           entity: t('label.landing-page'),
         })}>
+        <CustomizablePageHeader
+          personaName={getEntityName(personaDetails)}
+          onReset={handleOpenResetModal}
+          onSave={handleSave}
+        />
         <ReactGridLayout
           verticalCompact
           className="grid-container"

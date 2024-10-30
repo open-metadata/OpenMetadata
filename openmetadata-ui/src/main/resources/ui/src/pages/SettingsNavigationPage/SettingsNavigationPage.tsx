@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Col, Row } from 'antd';
-import { DataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import { cloneDeep, isNil } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -19,6 +18,8 @@ import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TreeTransfer } from '../../components/common/TreeTransfer/TreeTransfer';
+import { LeftSidebarItem } from '../../components/MyData/LeftSidebar/LeftSidebar.interface';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { Persona } from '../../generated/entity/teams/persona';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
@@ -28,20 +29,17 @@ import {
   filterAndArrangeTreeByKeys,
   getNavigationItems,
   getNestedKeys,
+  getNestedKeysFromNavigationItems,
 } from '../../utils/CustomizaNavigation/CustomizeNavigation';
 import { getEntityName } from '../../utils/EntityUtils';
 import leftSidebarClassBase from '../../utils/LeftSidebarClassBase';
 import { getPersonaDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-const sidebarOptions = leftSidebarClassBase.getSidebarItems().map((item) => ({
-  ...item,
-  title: item.label,
-  children: item.children?.map((i) => ({ ...i, title: i.label })),
-}));
+const sidebarOptions = leftSidebarClassBase.getSidebarItems();
 
 interface Props {
   onSave: (navigationList: NavigationItem[]) => Promise<void>;
-  currentNavigation: NavigationItem[];
+  currentNavigation?: NavigationItem[];
 }
 
 export const SettingsNavigationPage = ({
@@ -52,8 +50,11 @@ export const SettingsNavigationPage = ({
   const [isPersonaLoading, setIsPersonaLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona | null>(null);
   const { t } = useTranslation();
+  const [saving, setSaving] = useState(false);
   const [targetKeys, setTargetKeys] = useState<string[]>(
-    getNestedKeys(sidebarOptions)
+    currentNavigation
+      ? getNestedKeysFromNavigationItems(currentNavigation)
+      : getNestedKeys(sidebarOptions)
   );
 
   const handleChange = (newTargetKeys: string[]) => {
@@ -92,17 +93,16 @@ export const SettingsNavigationPage = ({
   };
 
   const handleSave = async () => {
+    setSaving(true);
     const navigationItems = getNavigationItems(
-      filterAndArrangeTreeByKeys(
-        cloneDeep<DataNode[]>(sidebarOptions),
+      filterAndArrangeTreeByKeys<LeftSidebarItem>(
+        cloneDeep(sidebarOptions),
         targetKeys
       ).filter((t) => !isNil(t))
     );
 
-    await onSave({
-      ...currentNavigation,
-      ...navigationItems,
-    });
+    await onSave(navigationItems);
+    setSaving(false);
   };
 
   useEffect(() => {
@@ -119,8 +119,16 @@ export const SettingsNavigationPage = ({
         <Col span={24}>
           <TitleBreadcrumb titleLinks={titleLinks} />
         </Col>
-        <Col push={1} span={4}>
-          <Button type="primary" onClick={handleSave}>
+        <Col flex="auto">
+          <PageHeader
+            data={{
+              header: 'Settings Navigation Page',
+              subHeader: 'Settings Navigation Page',
+            }}
+          />
+        </Col>
+        <Col flex="80px">
+          <Button loading={saving} type="primary" onClick={handleSave}>
             {t('label.save')}
           </Button>
         </Col>
@@ -128,7 +136,6 @@ export const SettingsNavigationPage = ({
           <TreeTransfer
             oneWay
             dataSource={sidebarOptions}
-            render={(item) => item.title!}
             style={{ marginBottom: 16 }}
             targetKeys={targetKeys}
             onChange={handleChange}

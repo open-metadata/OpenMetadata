@@ -91,10 +91,10 @@ class CustomizeGlossaryTermPageClassBase {
     this.detailPageWidgetDefaultHeights = {
       HEADER: 1,
       DESCRIPTION: 2,
-      TAGS: 1,
+      TAGS: 2,
       DOMAIN: 1,
       CUSTOM_PROPERTIES: 3,
-      TABS: 1,
+      TABS: 10,
       SYNONYMS: 1,
       RELATED_TERMS: 1,
       REFERENCES: 1,
@@ -119,79 +119,6 @@ class CustomizeGlossaryTermPageClassBase {
         x: 0,
         y: 1,
         static: true,
-      },
-      {
-        h: this.detailPageWidgetDefaultHeights.DESCRIPTION,
-        i: GlossaryTermDetailPageWidgetKeys.DESCRIPTION,
-        w: 6,
-        x: 0,
-        y: 2,
-        static: false,
-      },
-      {
-        h: this.detailPageWidgetDefaultHeights.CUSTOM_PROPERTIES,
-        i: GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES,
-        w: 2,
-        x: 6,
-        y: 9,
-        static: false,
-      },
-      {
-        h: this.detailPageWidgetDefaultHeights.DOMAIN,
-        i: GlossaryTermDetailPageWidgetKeys.DOMAIN,
-        w: 2,
-        x: 6,
-        y: 2,
-        static: false,
-      },
-      {
-        h: this.detailPageWidgetDefaultHeights.SYNONYMS,
-        i: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
-        w: 3,
-        x: 0,
-        y: 4,
-        static: false,
-      },
-      {
-        h: this.detailPageWidgetDefaultHeights.RELATED_TERMS,
-        i: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
-        w: 3,
-        x: 3,
-        y: 4,
-        static: false,
-      },
-      {
-        h: this.detailPageWidgetDefaultHeights.REFERENCES,
-        i: GlossaryTermDetailPageWidgetKeys.REFERENCES,
-        w: 3,
-        x: 0,
-        y: 5,
-        static: false,
-      },
-
-      {
-        h: this.detailPageWidgetDefaultHeights.TAGS,
-        i: GlossaryTermDetailPageWidgetKeys.TAGS,
-        w: 3,
-        x: 3,
-        y: 5,
-        static: false,
-      },
-      {
-        h: this.detailPageWidgetDefaultHeights.OWNER,
-        i: GlossaryTermDetailPageWidgetKeys.OWNER,
-        w: 2,
-        x: 6,
-        y: 3,
-        static: false,
-      },
-      {
-        h: this.detailPageWidgetDefaultHeights.REVIEWER,
-        i: GlossaryTermDetailPageWidgetKeys.REVIEWER,
-        w: 2,
-        x: 6,
-        y: 6,
-        static: false,
       },
     ];
 
@@ -237,6 +164,10 @@ class CustomizeGlossaryTermPageClassBase {
         props: {} as WidgetCommonProps,
       },
       [GlossaryTermDetailPageWidgetKeys.REVIEWER]: {
+        component: GenericWidget,
+        props: {} as WidgetCommonProps,
+      },
+      [GlossaryTermDetailPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER]: {
         component: GenericWidget,
         props: {} as WidgetCommonProps,
       },
@@ -330,6 +261,88 @@ class CustomizeGlossaryTermPageClassBase {
       default:
         return this.defaultWidgetHeight;
     }
+  }
+
+  public getDefaultWidgetForTab(tab: string) {
+    if (tab === 'overview') {
+      return [
+        {
+          h: this.detailPageWidgetDefaultHeights.DESCRIPTION,
+          i: GlossaryTermDetailPageWidgetKeys.DESCRIPTION,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: this.detailPageWidgetDefaultHeights.CUSTOM_PROPERTIES,
+          i: GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES,
+          w: 2,
+          x: 6,
+          y: 7,
+          static: false,
+        },
+        {
+          h: this.detailPageWidgetDefaultHeights.DOMAIN,
+          i: GlossaryTermDetailPageWidgetKeys.DOMAIN,
+          w: 2,
+          x: 6,
+          y: 0,
+          static: false,
+        },
+        {
+          h: this.detailPageWidgetDefaultHeights.SYNONYMS,
+          i: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
+          w: 3,
+          x: 0,
+          y: 2,
+          static: false,
+        },
+        {
+          h: this.detailPageWidgetDefaultHeights.RELATED_TERMS,
+          i: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
+          w: 3,
+          x: 3,
+          y: 2,
+          static: false,
+        },
+        {
+          h: this.detailPageWidgetDefaultHeights.REFERENCES,
+          i: GlossaryTermDetailPageWidgetKeys.REFERENCES,
+          w: 3,
+          x: 0,
+          y: 3,
+          static: false,
+        },
+
+        {
+          h: this.detailPageWidgetDefaultHeights.TAGS,
+          i: GlossaryTermDetailPageWidgetKeys.TAGS,
+          w: 3,
+          x: 3,
+          y: 3,
+          static: false,
+        },
+        {
+          h: this.detailPageWidgetDefaultHeights.OWNER,
+          i: GlossaryTermDetailPageWidgetKeys.OWNER,
+          w: 2,
+          x: 6,
+          y: 1,
+          static: false,
+        },
+        {
+          h: this.detailPageWidgetDefaultHeights.REVIEWER,
+          i: GlossaryTermDetailPageWidgetKeys.REVIEWER,
+          w: 2,
+          x: 6,
+          y: 4,
+          static: false,
+        },
+      ];
+    }
+
+    return [];
   }
 }
 

@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TabsProps } from 'antd';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import EmptyWidgetPlaceholder from '../../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../../enums/common.enum';
+import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomiseDetailPage.enum';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
 
@@ -54,34 +54,34 @@ export const getWidgetFromKey = ({
     );
   }
 
-  const tabs: TabsProps['items'] = [
+  const tabs = [
     {
-      key: 'overview',
+      name: 'overview',
       label: 'Overview',
       closable: false,
     },
     {
-      key: 'terms',
+      name: 'terms',
       label: 'Glossary Terms',
-      disabled: true,
+      //   disabled: true,
       closable: false,
     },
     {
-      key: 'assets',
+      name: 'assets',
       label: 'Assets',
-      disabled: true,
+      //   disabled: true,
       closable: false,
     },
     {
-      key: 'feeds-tasks',
+      name: 'feeds-tasks',
       label: 'Feeds & Tasks',
-      disabled: true,
+      //   disabled: true,
       closable: false,
     },
     {
-      key: 'custom-property',
+      name: 'custom-property',
       label: 'Custom Property',
-      disabled: true,
+      //   disabled: true,
       closable: false,
     },
   ];
@@ -92,7 +92,7 @@ export const getWidgetFromKey = ({
 
   const Widget = customizeGlossaryTermPageClassBase.getWidgetsFromKey<
     typeof widgetKey
-  >(widgetConfig.i);
+  >(widgetConfig.i as GlossaryTermDetailPageWidgetKeys);
 
   return (
     <Widget

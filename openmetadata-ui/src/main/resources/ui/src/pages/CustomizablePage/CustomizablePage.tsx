@@ -60,7 +60,7 @@ export const CustomizablePage = () => {
       pageData: page.data?.pages?.find(
         (p: Page) => p.pageType === pageFqn
       ) as Page | null,
-      navigation: (page.data as UICustomization)?.navigation ?? [],
+      navigation: (page.data as UICustomization)?.navigation,
     }),
     [page, pageFqn]
   );
@@ -93,10 +93,7 @@ export const CustomizablePage = () => {
             name: `${personaDetails.name}-${decodedPageFQN}`,
             fullyQualifiedName: pageLayoutFQN,
             entityType: EntityType.PAGE,
-            data: {
-              pages: [],
-              navigation: [],
-            },
+            data: {},
           });
         } else {
           showErrorToast(error as AxiosError);
@@ -117,7 +114,7 @@ export const CustomizablePage = () => {
           p.pageType === pageFqn ? newPage : p
         );
       } else {
-        newDoc.data.pages.push(newPage);
+        newDoc.data.pages = [...newDoc.data.pages, newPage];
       }
 
       if (page.id) {
