@@ -220,7 +220,12 @@ class CouchbaseSource(CommonNoSQLSource):
             documents = collection.get_multi(
                 self._fetch_document_ids(schema_name, table_name)
             )
-            return list(map(lambda x: x.value, documents.results.values()))
+            return list(
+                map(
+                    lambda x: x.value if isinstance(x.value, dict) else {},
+                    documents.results.values(),
+                )
+            )
         except QueryIndexNotFoundException as exp:
             logger.warning(
                 f"Fetching columns failed for [`{database_name}`.`{schema_name}`.`{table_name}`],"
