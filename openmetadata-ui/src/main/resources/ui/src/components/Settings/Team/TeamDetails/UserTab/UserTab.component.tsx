@@ -401,6 +401,7 @@ export const UserTab = ({
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={isLoading}
             isNumberBased={Boolean(searchText)}
             pageSize={pageSize}
             paging={paging}

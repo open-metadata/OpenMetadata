@@ -26,3 +26,31 @@ export interface DataDistributionHistogramProps {
     currentDayData?: ColumnProfile;
   };
 }
+
+export type CustomPieChartData = {
+  name: string;
+  value: number;
+  color: string;
+};
+export interface CustomPieChartProps {
+  name: string;
+  data: CustomPieChartData[];
+  label?: React.ReactNode;
+}
+export type CustomAreaChartData = {
+  timestamp: number;
+  count: number;
+};
+
+export type AreaChartColorScheme = {
+  gradientStartColor?: string;
+  gradientEndColor?: string;
+  strokeColor?: string;
+};
+export interface CustomAreaChartProps {
+  data: CustomAreaChartData[];
+  name: string;
+  height?: number;
+  valueFormatter?: (value: number) => string;
+  colorScheme?: AreaChartColorScheme;
+}

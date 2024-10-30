@@ -185,6 +185,7 @@ function APIEndpointsTab({
         <Col span={24}>
           <NextPrevious
             currentPage={currentEndpointsPage}
+            isLoading={apiEndpointsLoading}
             pageSize={PAGE_SIZE}
             paging={apiEndpoints.paging}
             pagingHandler={endpointPaginationHandler}
