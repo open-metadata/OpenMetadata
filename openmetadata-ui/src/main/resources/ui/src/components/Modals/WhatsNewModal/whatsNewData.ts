@@ -1121,6 +1121,8 @@ To continue pursuing this objective, the application was completely refactored t
     changeLogs: {
       Improvements: `- **Fix**: Encoding issue for teams search query.
 - **Fix**: Disable empty rule for query builder widget.
+- **Fix**: Unable to add more enum values for enum cp.
+- **Fix**: Navigate to listing for deleting a service.
 `,
     },
   },
