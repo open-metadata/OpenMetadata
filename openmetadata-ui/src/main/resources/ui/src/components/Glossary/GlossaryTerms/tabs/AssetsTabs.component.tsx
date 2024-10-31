@@ -206,8 +206,8 @@ const AssetsTabs = forwardRef(
           return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
 
         case AssetsOfEntity.TEAM:
-          return `(owners.fullyQualifiedName:"${escapeESReservedCharacters(
-            fqn
+          return `(owners.fullyQualifiedName:"${getEncodedFqn(
+            escapeESReservedCharacters(fqn)
           )}")`;
 
         case AssetsOfEntity.MY_DATA:
