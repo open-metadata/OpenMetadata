@@ -1,7 +1,6 @@
 ---
 title: Set Up Anomaly Detection in Collate for Data Quality
 slug: /how-to-guides/data-quality-observability/anomaly-detection/setting-up
-collate: true
 ---
 
 # Steps to Set Up Anomaly Detection
