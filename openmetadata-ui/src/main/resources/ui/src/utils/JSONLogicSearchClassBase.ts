@@ -180,28 +180,27 @@ class JSONLogicSearchClassBase {
       },
       [EntityReferenceFields.TAG]: {
         label: t('label.tag-plural'),
-        type: 'select',
+        type: '!group',
         mainWidgetProps: this.mainWidgetProps,
-        fieldSettings: {
-          asyncFetch: advancedSearchClassBase.autocomplete({
-            searchIndex: entitySearchIndex ?? [
-              (SearchIndex.TAG, SearchIndex.GLOSSARY_TERM),
-            ],
-            entityField: EntityFields.TAG,
-          }),
-          useAsyncSearch: true,
+        mode: 'some',
+        subfields: {
+          tagFQN: {
+            label: 'fullyQualifiedName',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            fieldSettings: {
+              asyncFetch: advancedSearchClassBase.autocomplete({
+                searchIndex: entitySearchIndex ?? [
+                  (SearchIndex.TAG, SearchIndex.GLOSSARY_TERM),
+                ],
+                entityField: EntityFields.TAG,
+              }),
+              useAsyncSearch: true,
+            },
+          },
         },
       },
 
-      [EntityReferenceFields.TIER]: {
-        label: t('label.tier'),
-        type: 'select',
-        mainWidgetProps: this.mainWidgetProps,
-        fieldSettings: {
-          asyncFetch: advancedSearchClassBase.autoCompleteTier(tierOptions),
-          useAsyncSearch: true,
-        },
-      },
       extension: {
         label: t('label.custom-property-plural'),
         type: '!group',

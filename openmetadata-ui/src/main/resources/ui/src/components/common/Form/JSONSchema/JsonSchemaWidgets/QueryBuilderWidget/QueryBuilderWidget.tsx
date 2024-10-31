@@ -43,8 +43,14 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   value,
   ...props
 }: WidgetProps) => {
-  const { config, treeInternal, onTreeUpdate, onChangeSearchIndex } =
-    useAdvanceSearch();
+  const {
+    config,
+    treeInternal,
+    onTreeUpdate,
+    onChangeSearchIndex,
+    searchIndex: searchIndexFromContext,
+    isUpdating,
+  } = useAdvanceSearch();
   const [searchResults, setSearchResults] = useState<number | undefined>();
   const [isCountLoading, setIsCountLoading] = useState<boolean>(false);
   const entityType =
@@ -52,6 +58,8 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
   const searchIndex = searchIndexMapping[entityType as string];
   const outputType = schema?.outputType ?? SearchOutputType.ElasticSearch;
+  const isSearchIndexUpdatedInContext = searchIndexFromContext === searchIndex;
+  const [initDone, setInitDone] = useState<boolean>(false);
 
   const fetchEntityCount = useCallback(
     async (queryFilter: Record<string, unknown>) => {
@@ -149,12 +157,22 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         }
       }
     }
+    setInitDone(true);
   }, [config, value, outputType]);
 
   useEffect(() => {
     onChangeSearchIndex(searchIndex);
-    loadDefaultValueInTree();
   }, []);
+
+  useEffect(() => {
+    if (isSearchIndexUpdatedInContext && !isUpdating) {
+      loadDefaultValueInTree();
+    }
+  }, [isSearchIndexUpdatedInContext, isUpdating]);
+
+  if (!initDone) {
+    return <></>;
+  }
 
   return (
     <div
