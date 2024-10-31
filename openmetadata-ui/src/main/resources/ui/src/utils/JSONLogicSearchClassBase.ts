@@ -11,18 +11,21 @@
  *  limitations under the License.
  */
 import { t } from 'i18next';
-import { sortBy } from 'lodash';
+import { get, sortBy } from 'lodash';
 import {
   AsyncFetchListValues,
   BasicConfig,
   Fields,
+  SelectFieldSettings,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
+import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
   EntityFields,
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { searchData } from '../rest/miscAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 
 class JSONLogicSearchClassBase {
@@ -96,6 +99,41 @@ class JSONLogicSearchClassBase {
     },
   };
 
+  public searchAutocomplete: (args: {
+    searchIndex: SearchIndex | SearchIndex[];
+    fieldName: string;
+    fieldLabel: string;
+  }) => SelectFieldSettings['asyncFetch'] = ({
+    searchIndex,
+    fieldName,
+    fieldLabel,
+  }) => {
+    return (search) => {
+      return searchData(
+        search ?? '',
+        1,
+        PAGE_SIZE_BASE,
+        '',
+        '',
+        '',
+        searchIndex ?? SearchIndex.DATA_ASSET,
+        false,
+        false,
+        false
+      ).then((response) => {
+        const data = response.data.hits.hits;
+
+        return {
+          values: data.map((item) => ({
+            value: get(item._source, fieldName, ''),
+            title: get(item._source, fieldLabel, ''),
+          })),
+          hasMore: false,
+        };
+      });
+    };
+  };
+
   mainWidgetProps = {
     fullWidth: true,
     valueLabel: t('label.criteria') + ':',
@@ -104,7 +142,7 @@ class JSONLogicSearchClassBase {
   glossaryEntityFields: Fields = {
     [EntityReferenceFields.REVIEWERS]: {
       label: t('label.reviewer-plural'),
-      type: 'select',
+      type: '!group',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
@@ -116,15 +154,10 @@ class JSONLogicSearchClassBase {
     },
   };
 
-  public getCommonConfig = (args: {
+  public getCommonConfig = (_: {
     entitySearchIndex?: Array<SearchIndex>;
     tierOptions?: Promise<AsyncFetchListValues>;
   }) => {
-    const {
-      entitySearchIndex = [SearchIndex.TABLE],
-      tierOptions = Promise.resolve([]),
-    } = args;
-
     return {
       [EntityReferenceFields.DISPLAY_NAME]: {
         label: t('label.display-name'),
@@ -189,11 +222,10 @@ class JSONLogicSearchClassBase {
             type: 'select',
             mainWidgetProps: this.mainWidgetProps,
             fieldSettings: {
-              asyncFetch: advancedSearchClassBase.autocomplete({
-                searchIndex: entitySearchIndex ?? [
-                  (SearchIndex.TAG, SearchIndex.GLOSSARY_TERM),
-                ],
-                entityField: EntityFields.TAG,
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: SearchIndex.TAG,
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
               }),
               useAsyncSearch: true,
             },
