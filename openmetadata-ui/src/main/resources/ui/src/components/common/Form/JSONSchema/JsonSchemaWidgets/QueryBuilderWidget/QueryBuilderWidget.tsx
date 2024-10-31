@@ -12,7 +12,7 @@
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { WidgetProps } from '@rjsf/utils';
-import { Alert, Button, Col, Typography } from 'antd';
+import { Alert, Button, Card, Col, Row, Skeleton, Typography } from 'antd';
 import { t } from 'i18next';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -21,6 +21,7 @@ import {
   Builder,
   Config,
   ImmutableTree,
+  JsonTree,
   Query,
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
@@ -28,6 +29,8 @@ import { getExplorePath } from '../../../../../../constants/constants';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { searchQuery } from '../../../../../../rest/searchAPI';
+import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
+import { getJsonTreeFromQueryFilter } from '../../../../../../utils/QueryBuilderUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -42,16 +45,18 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
 }: WidgetProps) => {
   const { config, treeInternal, onTreeUpdate, onChangeSearchIndex } =
     useAdvanceSearch();
-  const [searchResults, setSearchResults] = useState<number>(0);
+  const [searchResults, setSearchResults] = useState<number | undefined>();
+  const [isCountLoading, setIsCountLoading] = useState<boolean>(false);
   const entityType =
-    (props.formContext?.entityType ?? props?.entityType) || EntityType.ALL;
+    (props.formContext?.entityType ?? schema?.entityType) || EntityType.ALL;
   const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
   const searchIndex = searchIndexMapping[entityType as string];
-  const outputType = props?.outputType ?? QueryBuilderOutputType.ELASTICSEARCH;
+  const outputType = schema?.outputType ?? QueryBuilderOutputType.ELASTICSEARCH;
 
   const fetchEntityCount = useCallback(
     async (queryFilter: Record<string, unknown>) => {
       try {
+        setIsCountLoading(true);
         const res = await searchQuery({
           query: '',
           pageNumber: 0,
@@ -65,6 +70,8 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         setSearchResults(res.hits.total.value ?? 0);
       } catch (_) {
         // silent fail
+      } finally {
+        setIsCountLoading(false);
       }
     },
     []
@@ -83,11 +90,20 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     return `${getExplorePath({})}${queryFilterString}`;
   }, [treeInternal]);
 
+  const showFilteredResourceCount = useMemo(
+    () =>
+      outputType === QueryBuilderOutputType.ELASTICSEARCH &&
+      !isUndefined(value) &&
+      searchResults !== undefined &&
+      !isCountLoading,
+    [outputType, value, isCountLoading]
+  );
+
   const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
     onTreeUpdate(nTree, nConfig);
 
     if (outputType === QueryBuilderOutputType.ELASTICSEARCH) {
-      const data = QbUtils.elasticSearchFormat(nTree, config) ?? {};
+      const data = elasticSearchFormat(nTree, config) ?? '';
       const qFilter = {
         query: data,
       };
@@ -95,7 +111,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         debouncedFetchEntityCount(qFilter);
       }
 
-      onChange(JSON.stringify(qFilter));
+      onChange(!isEmpty(data) ? JSON.stringify(qFilter) : '');
     } else {
       const data = QbUtils.jsonLogicFormat(nTree, config);
       onChange(JSON.stringify(data.logic ?? '{}'));
@@ -106,54 +122,90 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     onChangeSearchIndex(searchIndex);
   }, [searchIndex]);
 
+  useEffect(() => {
+    if (!isEmpty(value)) {
+      if (outputType === QueryBuilderOutputType.ELASTICSEARCH) {
+        const parsedTree = getJsonTreeFromQueryFilter(
+          JSON.parse(value || '')
+        ) as JsonTree;
+
+        if (Object.keys(parsedTree).length > 0) {
+          const tree = QbUtils.checkTree(QbUtils.loadTree(parsedTree), config);
+          onTreeUpdate(tree, config);
+        }
+      } else {
+        const tree = QbUtils.loadFromJsonLogic(JSON.parse(value || ''), config);
+        if (tree) {
+          onTreeUpdate(tree, config);
+        }
+      }
+    }
+  }, []);
+
   return (
     <div
       className="query-builder-form-field"
       data-testid="query-builder-form-field">
-      <Query
-        {...config}
-        renderBuilder={(props) => (
-          <div className="query-builder-container query-builder qb-lite">
-            <Builder {...props} />
-          </div>
-        )}
-        value={treeInternal}
-        onChange={handleChange}
-      />
-      {outputType === QueryBuilderOutputType.ELASTICSEARCH &&
-        !isUndefined(value) && (
-          <Col span={24}>
-            <Button
-              className="w-full p-0 text-left"
-              data-testid="view-assets-banner-button"
-              disabled={false}
-              href={queryURL}
-              target="_blank"
-              type="link">
-              <Alert
-                closable
-                showIcon
-                icon={<InfoCircleOutlined height={16} />}
-                message={
-                  <>
-                    <Typography.Text>
-                      {t('message.search-entity-count', {
-                        count: searchResults,
-                      })}
-                    </Typography.Text>
+      <Card className="query-builder-card">
+        <Row gutter={[8, 8]}>
+          <Col className="p-t-sm" span={24}>
+            <Query
+              {...config}
+              renderBuilder={(props) => (
+                <div className="query-builder-container query-builder qb-lite">
+                  <Builder {...props} />
+                </div>
+              )}
+              value={treeInternal}
+              onChange={handleChange}
+            />
 
-                    <Typography.Text className="m-l-sm text-xs text-grey-muted">
-                      {t('message.click-here-to-view-assets-on-explore')}
-                    </Typography.Text>
-                  </>
-                }
-                type="info"
+            {isCountLoading && (
+              <Skeleton
+                active
+                className="m-t-sm"
+                loading={isCountLoading}
+                paragraph={false}
+                title={{ style: { height: '32px' } }}
               />
-            </Button>
+            )}
+
+            {showFilteredResourceCount && (
+              <div className="m-t-sm">
+                <Button
+                  className="w-full p-0 text-left h-auto"
+                  data-testid="view-assets-banner-button"
+                  disabled={false}
+                  href={queryURL}
+                  target="_blank"
+                  type="link">
+                  <Alert
+                    closable
+                    showIcon
+                    icon={<InfoCircleOutlined height={16} />}
+                    message={
+                      <div className="d-flex flex-wrap items-center gap-1">
+                        <Typography.Text>
+                          {t('message.search-entity-count', {
+                            count: searchResults,
+                          })}
+                        </Typography.Text>
+
+                        <Typography.Text className="text-xs text-grey-muted">
+                          {t('message.click-here-to-view-assets-on-explore')}
+                        </Typography.Text>
+                      </div>
+                    }
+                    type="info"
+                  />
+                </Button>
+              </div>
+            )}
           </Col>
-        )}
+        </Row>
+      </Card>
     </div>
   );
 };
 
-export default withAdvanceSearch(QueryBuilderWidget);
+export default withAdvanceSearch(QueryBuilderWidget, { isExplorePage: false });

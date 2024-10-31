@@ -122,10 +122,13 @@ public final class Entity {
   public static final String FIELD_STYLE = "style";
 
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
+  public static final String FIELD_CERTIFICATION = "certification";
 
   public static final String FIELD_DISABLED = "disabled";
 
   public static final String FIELD_TEST_SUITES = "testSuites";
+
+  public static final String FIELD_RELATED_TERMS = "relatedTerms";
 
   //
   // Service entities
