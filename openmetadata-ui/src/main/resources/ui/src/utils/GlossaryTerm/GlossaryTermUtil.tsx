@@ -10,13 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isUndefined } from 'lodash';
+import { isUndefined, uniqueId } from 'lodash';
 import React from 'react';
 import EmptyWidgetPlaceholder from '../../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../../enums/common.enum';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomiseDetailPage.enum';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
+import { Document } from '../../generated/entity/docStore/document';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
+import { moveEmptyWidgetToTheEnd } from '../CustomizableLandingPageUtils';
+import customizeMyDataPageClassBase from '../CustomizeMyDataPageClassBase';
 
 export const getWidgetFromKey = ({
   widgetConfig,
@@ -54,38 +58,6 @@ export const getWidgetFromKey = ({
     );
   }
 
-  const tabs = [
-    {
-      name: 'overview',
-      label: 'Overview',
-      closable: false,
-    },
-    {
-      name: 'terms',
-      label: 'Glossary Terms',
-      //   disabled: true,
-      closable: false,
-    },
-    {
-      name: 'assets',
-      label: 'Assets',
-      //   disabled: true,
-      closable: false,
-    },
-    {
-      name: 'feeds-tasks',
-      label: 'Feeds & Tasks',
-      //   disabled: true,
-      closable: false,
-    },
-    {
-      name: 'custom-property',
-      label: 'Custom Property',
-      //   disabled: true,
-      closable: false,
-    },
-  ];
-
   const widgetKey = customizeGlossaryTermPageClassBase.getKeyFromWidgetName(
     widgetConfig.i
   );
@@ -100,7 +72,98 @@ export const getWidgetFromKey = ({
       isEditView={isEditView}
       selectedGridSize={widgetConfig.w}
       widgetKey={widgetConfig.i}
-      {...{ tabs: tabs }}
     />
   );
 };
+
+const getNewWidgetPlacement = (
+  currentLayout: WidgetConfig[],
+  widgetWidth: number
+) => {
+  const lowestWidgetLayout = currentLayout.reduce(
+    (acc, widget) => {
+      if (
+        widget.y >= acc.y &&
+        widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+      ) {
+        if (widget.y === acc.y && widget.x < acc.x) {
+          return acc;
+        }
+
+        return widget;
+      }
+
+      return acc;
+    },
+    { y: 0, x: 0, w: 0 }
+  );
+
+  // Check if there's enough space to place the new widget on the same row
+  if (
+    customizeMyDataPageClassBase.landingPageMaxGridSize -
+      (lowestWidgetLayout.x + lowestWidgetLayout.w) >=
+    widgetWidth
+  ) {
+    return {
+      x: lowestWidgetLayout.x + lowestWidgetLayout.w,
+      y: lowestWidgetLayout.y,
+    };
+  }
+
+  // Otherwise, move to the next row
+  return {
+    x: 0,
+    y: lowestWidgetLayout.y + 1,
+  };
+};
+
+export const getAddWidgetHandler =
+  (
+    newWidgetData: Document,
+    placeholderWidgetKey: string,
+    widgetWidth: number,
+    maxGridSize: number
+  ) =>
+  (currentLayout: Array<WidgetConfig>) => {
+    const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
+    const widgetHeight = customizeMyDataPageClassBase.getWidgetHeight(
+      newWidgetData.name
+    );
+
+    // The widget with key "ExtraWidget.EmptyWidgetPlaceholder" will always remain in the bottom
+    // and is not meant to be replaced hence
+    // if placeholderWidgetKey is "ExtraWidget.EmptyWidgetPlaceholder"
+    // append the new widget in the array
+    // else replace the new widget with other placeholder widgets
+    if (
+      placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+    ) {
+      return [
+        ...moveEmptyWidgetToTheEnd(currentLayout),
+        {
+          w: widgetWidth,
+          h: widgetHeight,
+          i: widgetFQN,
+          static: false,
+          ...getNewWidgetPlacement(currentLayout, widgetWidth),
+        },
+      ];
+    } else {
+      return currentLayout.map((widget: WidgetConfig) => {
+        const widgetX =
+          widget.x + widgetWidth <= maxGridSize
+            ? widget.x
+            : maxGridSize - widgetWidth;
+
+        return widget.i === placeholderWidgetKey
+          ? {
+              ...widget,
+              i: widgetFQN,
+              h: widgetHeight,
+              w: widgetWidth,
+              x: widgetX,
+            }
+          : widget;
+      });
+    }
+  };

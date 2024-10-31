@@ -64,7 +64,9 @@ export const DraggableTabNode = ({
   );
 };
 
-export const DraggableTabs: React.FC<TabsProps> = (props) => {
+export const DraggableTabs: React.FC<
+  TabsProps & { onTabChange?: (newKeys: React.Key[]) => void }
+> = (props) => {
   const { items = [] } = props;
   const [order, setOrder] = useState<React.Key[]>([]);
 
@@ -83,6 +85,7 @@ export const DraggableTabs: React.FC<TabsProps> = (props) => {
     newOrder.splice(dragIndex, 1);
     newOrder.splice(hoverIndex, 0, dragKey);
 
+    props.onTabChange?.(newOrder);
     setOrder(newOrder);
   };
 

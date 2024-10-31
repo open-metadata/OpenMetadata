@@ -11,6 +11,14 @@
       "description": "Name of the tab.",
       "type": "string"
     },
+    "displayName": {
+      "description": "DisplayName of the tab.",
+      "type": "string"
+    },
+    "removable": {
+      "description": "Weather tab can remove by user or not.",
+      "type": "boolean"
+    },
     "layout": {
       "description": "Layout configuration for this tab.",
       "type": "object"
@@ -24,6 +32,6 @@
       "type": "integer"
     }
   },
-  "required": ["id", "name", "layout"],
+  "required": ["id", "name", "layout", "removable"],
   "additionalProperties": false
 }

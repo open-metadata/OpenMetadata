@@ -13,7 +13,11 @@
 
 import { FC } from 'react';
 import { GenericWidget } from '../../components/Glossary/CustomiseWidgets/SynonymsWidget/GenericWidget';
-import { DetailPageWidgetKeys } from '../../enums/CustomiseDetailPage.enum';
+import {
+  DetailPageWidgetKeys,
+  GlossaryTermDetailPageWidgetKeys,
+} from '../../enums/CustomiseDetailPage.enum';
+import { PageType } from '../../generated/system/ui/page';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -172,6 +176,69 @@ class CustomizeDetailPageClassBase {
       default:
         return this.defaultWidgetHeight;
     }
+  }
+
+  public getCommonWidgetList(pageType: PageType) {
+    return [
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.DESCRIPTION,
+        name: 'Description',
+        entityType: pageType,
+        data: {
+          gridSizes: ['small', 'medium', 'large'],
+        },
+      },
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
+        name: 'Synonyms',
+        entityType: pageType,
+        data: {
+          gridSizes: ['small'],
+        },
+      },
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
+        name: 'Related Terms',
+        entityType: pageType,
+        data: { gridSizes: ['small'] },
+      },
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REFERENCES,
+        name: 'References',
+        entityType: pageType,
+        data: { gridSizes: ['small'] },
+      },
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.TAGS,
+        name: 'Tags',
+        entityType: pageType,
+        data: { gridSizes: ['small'] },
+      },
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.DOMAIN,
+        name: 'Domain',
+        entityType: pageType,
+        data: { gridSizes: ['small'] },
+      },
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.OWNER,
+        name: 'Owner',
+        entityType: pageType,
+        data: { gridSizes: ['small'] },
+      },
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REVIEWER,
+        name: 'Reviewer',
+        entityType: pageType,
+        data: { gridSizes: ['small'] },
+      },
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        name: 'Custom Properties',
+        entityType: pageType,
+        data: { gridSizes: ['small'] },
+      },
+    ];
   }
 }
 

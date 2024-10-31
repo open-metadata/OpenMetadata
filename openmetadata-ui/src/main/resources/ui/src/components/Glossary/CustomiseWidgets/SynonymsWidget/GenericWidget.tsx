@@ -28,7 +28,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
       className="h-full"
       title={
         <div className="d-flex justify-between align-center">
-          <span>{props.widgetKey}</span>
+          <span>{props.widgetKey.replace('KnowledgePanel.', '')}</span>
           {props.isEditView && (
             <Space size={8}>
               <DragOutlined

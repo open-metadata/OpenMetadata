@@ -12,30 +12,25 @@
  */
 
 import { Modal } from 'antd';
-import { isEmpty } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
-import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
-import { Document } from '../../../../generated/entity/docStore/document';
 import { Page } from '../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import '../../../../pages/MyDataPage/my-data.less';
 import customizeGlossaryTermPageClassBase from '../../../../utils/CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
 import {
-  getAddWidgetHandler,
   getLayoutUpdateHandler,
   getLayoutWithEmptyWidgetPlaceholder,
-  getRemoveWidgetHandler,
   getUniqueFilteredLayout,
 } from '../../../../utils/CustomizableLandingPageUtils';
-import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
-import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import { CustomizeMyDataProps } from '../CustomizeMyData/CustomizeMyData.interface';
 
@@ -43,48 +38,17 @@ const ReactGridLayout = WidthProvider(RGL);
 
 function CustomizeGlossaryTermDetailPage({
   personaDetails,
-  initialPageData,
   onSaveLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
+  const { currentPage, currentPageType } = useCustomizeStore();
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
-    (initialPageData?.layout as WidgetConfig[]) ??
+    (currentPage?.layout as WidgetConfig[]) ??
       customizeGlossaryTermPageClassBase.defaultLayout
   );
 
-  const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
-    LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-  );
-  const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
-
-  const handlePlaceholderWidgetKey = useCallback((value: string) => {
-    setPlaceholderWidgetKey(value);
-  }, []);
-
-  const handleRemoveWidget = useCallback((widgetKey: string) => {
-    setLayout(getRemoveWidgetHandler(widgetKey, 3, 3.5));
-  }, []);
-
-  const handleMainPanelAddWidget = useCallback(
-    (
-      newWidgetData: Document,
-      placeholderWidgetKey: string,
-      widgetSize: number
-    ) => {
-      setLayout(
-        getAddWidgetHandler(
-          newWidgetData,
-          placeholderWidgetKey,
-          widgetSize,
-          customizeMyDataPageClassBase.landingPageMaxGridSize
-        )
-      );
-      setIsWidgetModalOpen(false);
-    },
-    []
-  );
 
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
@@ -103,41 +67,20 @@ function CustomizeGlossaryTermDetailPage({
     setIsResetModalOpen(false);
   }, []);
 
-  const handleOpenAddWidgetModal = useCallback(() => {
-    setIsWidgetModalOpen(true);
-  }, []);
-
-  const handleCloseAddWidgetModal = useCallback(() => {
-    setIsWidgetModalOpen(false);
-  }, []);
-
-  const addedWidgetsList = useMemo(
-    () =>
-      layout
-        .filter((widget) => widget.i.startsWith('KnowledgePanel'))
-        .map((widget) => widget.i),
-    [layout]
-  );
-
   const widgets = useMemo(
     () =>
       layout.map((widget) => (
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
             widgetConfig: widget,
-            handleOpenAddWidgetModal: handleOpenAddWidgetModal,
-            handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
-            handleRemoveWidget: handleRemoveWidget,
+            handleOpenAddWidgetModal: noop,
+            handlePlaceholderWidgetKey: noop,
+            handleRemoveWidget: noop,
             isEditView: true,
           })}
         </div>
       )),
-    [
-      layout,
-      handleOpenAddWidgetModal,
-      handlePlaceholderWidgetKey,
-      handleRemoveWidget,
-    ]
+    [layout]
   );
 
   const handleReset = useCallback(() => {
@@ -149,7 +92,7 @@ function CustomizeGlossaryTermDetailPage({
     );
     setLayout(newMainPanelLayout);
     onSaveLayout({
-      ...(initialPageData as Page),
+      ...(currentPage as Page),
       layout: getUniqueFilteredLayout(newMainPanelLayout),
     });
     setIsResetModalOpen(false);
@@ -157,7 +100,7 @@ function CustomizeGlossaryTermDetailPage({
 
   const handleSave = async () => {
     await onSaveLayout({
-      ...(initialPageData as Page),
+      ...(currentPage ?? ({ pageType: currentPageType } as Page)),
       layout: getUniqueFilteredLayout(layout),
     });
   };
@@ -196,18 +139,6 @@ function CustomizeGlossaryTermDetailPage({
         </ReactGridLayout>
       </PageLayoutV1>
 
-      {isWidgetModalOpen && (
-        <AddWidgetModal
-          addedWidgetsList={addedWidgetsList}
-          handleAddWidget={handleMainPanelAddWidget}
-          handleCloseAddWidgetModal={handleCloseAddWidgetModal}
-          maxGridSizeSupport={
-            customizeMyDataPageClassBase.landingPageMaxGridSize
-          }
-          open={isWidgetModalOpen}
-          placeholderWidgetKey={placeholderWidgetKey}
-        />
-      )}
       {isResetModalOpen && (
         <Modal
           centered
