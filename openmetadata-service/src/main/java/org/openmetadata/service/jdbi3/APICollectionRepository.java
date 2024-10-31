@@ -39,6 +39,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
         "",
         "");
     supportsSearch = true;
+    parent = true;
   }
 
   @Override

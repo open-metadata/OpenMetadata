@@ -54,6 +54,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
+    parent = true;
   }
 
   @Override

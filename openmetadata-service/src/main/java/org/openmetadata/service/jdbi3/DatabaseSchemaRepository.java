@@ -74,6 +74,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         "",
         "");
     supportsSearch = true;
+    parent = true;
   }
 
   @Override

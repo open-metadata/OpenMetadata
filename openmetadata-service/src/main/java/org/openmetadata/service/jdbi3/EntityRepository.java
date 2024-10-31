@@ -260,6 +260,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final Fields putFields;
 
   protected boolean supportsSearch = false;
+  @Getter protected boolean parent = false;
   protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
 
   protected EntityRepository(
@@ -3276,7 +3277,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private boolean consolidateChanges(T original, T updated, Operation operation) {
       // If user is the same and the new update is with in the user session timeout
-      return original.getVersion() > 0.1 // First update on an entity that
+      return !parent // Parent entity shouldn't consolidate changes, as we need ChangeDescription to
+          // propagate to children
+          && original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
           && !Boolean.TRUE.equals(original.getDeleted()) // Entity is not soft deleted
           && !operation.isDelete() // Operation must be an update
@@ -3285,6 +3288,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .equals(updated.getUpdatedBy()) // Must be updated by the same user
           && updated.getUpdatedAt() - original.getUpdatedAt()
               <= sessionTimeoutMillis; // With in session timeout
+      // changes to children
     }
 
     private T getPreviousVersion(T original) {

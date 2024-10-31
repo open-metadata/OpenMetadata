@@ -173,7 +173,9 @@ test('Classification Page', async ({ page }) => {
       )
     ).not.toBeVisible();
 
-    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+    await expect(page.getByText('No Tags are available')).toBeVisible();
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeDisabled();
 
     // Re-enable the disabled Classification
     await classification.visitPage(page);
@@ -207,6 +209,7 @@ test('Classification Page', async ({ page }) => {
   });
 
   await test.step('Create classification with validation checks', async () => {
+    await classification.visitPage(page);
     await page.click('[data-testid="add-classification"]');
     await page.waitForSelector('.ant-modal-content', {
       state: 'visible',

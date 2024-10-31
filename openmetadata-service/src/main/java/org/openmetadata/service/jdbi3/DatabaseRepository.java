@@ -69,6 +69,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         "",
         "");
     supportsSearch = true;
+    parent = true;
     fieldFetchers.put("name", this::fetchAndSetService);
   }
 
