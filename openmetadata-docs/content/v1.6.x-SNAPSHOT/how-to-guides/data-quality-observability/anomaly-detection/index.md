@@ -1,7 +1,6 @@
 ---
 title: Anomaly Detection in Collate | Automated Data Quality Alerts
 slug: /how-to-guides/data-quality-observability/anomaly-detection
-collate: true
 ---
 
 # Overview
