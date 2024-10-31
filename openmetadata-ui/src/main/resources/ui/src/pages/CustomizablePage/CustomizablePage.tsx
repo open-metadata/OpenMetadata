@@ -14,7 +14,7 @@ import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -52,7 +52,6 @@ export const CustomizablePage = () => {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [isPersonaLoading, setIsPersonaLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const {
     document,
@@ -62,46 +61,6 @@ export const CustomizablePage = () => {
     getPage,
     setCurrentPageType,
   } = useCustomizeStore();
-
-  const fetchPersonaDetails = useCallback(async () => {
-    try {
-      setIsPersonaLoading(true);
-      const response = await getPersonaByName(personaFQN);
-
-      setPersonaDetails(response);
-    } catch {
-      // No error handling needed
-      // No data placeholder will be shown in case of failure
-    } finally {
-      setIsPersonaLoading(false);
-    }
-  }, [personaFQN]);
-
-  const fetchDocument = async () => {
-    if (!isUndefined(personaDetails)) {
-      const pageLayoutFQN = `${EntityType.PERSONA}.${personaFQN}`;
-      try {
-        setIsLoading(true);
-        const pageData = await getDocumentByFQN(pageLayoutFQN);
-
-        setDocument(pageData);
-        setCurrentPageType(pageFqn);
-      } catch (error) {
-        if ((error as AxiosError).response?.status === ClientErrors.NOT_FOUND) {
-          setDocument({
-            name: `${personaDetails.name}-${personaFQN}`,
-            fullyQualifiedName: pageLayoutFQN,
-            entityType: EntityType.PAGE,
-            data: {},
-          });
-        } else {
-          showErrorToast(error as AxiosError);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
 
   const handlePageCustomizeSave = async (newPage: Page) => {
     if (!document) {
@@ -117,7 +76,10 @@ export const CustomizablePage = () => {
           p.pageType === pageFqn ? newPage : p
         );
       } else {
-        newDoc.data.pages = [...newDoc.data.pages, newPage];
+        newDoc.data = {
+          ...newDoc.data,
+          pages: [...(newDoc.data.pages ?? []), newPage],
+        };
       }
 
       if (document.id) {
@@ -139,7 +101,7 @@ export const CustomizablePage = () => {
             : t('label.created-lowercase'),
         })
       );
-    } catch {
+    } catch (error) {
       // Error
       showErrorToast(
         t('server.page-layout-operation-error', {
@@ -194,15 +156,47 @@ export const CustomizablePage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchPersonaDetails();
-  }, [personaFQN, pageFqn]);
+  const initializeCustomizeStore = async () => {
+    setIsLoading(true);
+    const pageLayoutFQN = `${EntityType.PERSONA}.${personaFQN}`;
+    try {
+      const personaDetails = await getPersonaByName(personaFQN);
+      setPersonaDetails(personaDetails);
+
+      if (personaDetails) {
+        try {
+          const pageData = await getDocumentByFQN(pageLayoutFQN);
+
+          setDocument(pageData);
+          setCurrentPageType(pageFqn);
+        } catch (error) {
+          if (
+            (error as AxiosError).response?.status === ClientErrors.NOT_FOUND
+          ) {
+            setDocument({
+              name: `${personaDetails.name}-${personaFQN}`,
+              fullyQualifiedName: pageLayoutFQN,
+              entityType: EntityType.PAGE,
+              data: {},
+            });
+            setCurrentPageType(pageFqn);
+          } else {
+            showErrorToast(error as AxiosError);
+          }
+        }
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchDocument();
-  }, [personaDetails]);
+    initializeCustomizeStore();
+  }, []);
 
-  if (isLoading || isPersonaLoading) {
+  if (isLoading) {
     return <Loader />;
   }
 

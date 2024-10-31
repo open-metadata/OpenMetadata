@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
-import { t } from 'i18next';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -66,6 +66,7 @@ const GlossaryDetailsRightPanel = ({
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
   }, [permissions]);
+  const { t } = useTranslation();
 
   const hasViewAllPermission = useMemo(() => {
     return permissions.ViewAll;

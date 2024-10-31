@@ -579,7 +579,20 @@ const GlossaryHeader = ({
   }, [id, isEditView]);
 
   if (isEditView) {
-    return <>{t('label.header')}</>;
+    return (
+      <div className="p-x-md p-y-sm">
+        <EntityHeader
+          breadcrumb={[
+            { name: 'Glossaries', url: '#', activeTitle: false },
+            { name: 'Glossary Term', url: '#', activeTitle: false },
+          ]}
+          entityData={{ name: 'Glossary Term' }}
+          entityType={EntityType.GLOSSARY_TERM}
+          icon={icon}
+          serviceName=""
+        />
+      </div>
+    );
   }
 
   return (

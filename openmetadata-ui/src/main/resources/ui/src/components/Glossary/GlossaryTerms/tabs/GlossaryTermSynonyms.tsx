@@ -13,6 +13,7 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space, Tooltip, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -24,7 +25,12 @@ import {
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import {
@@ -32,24 +38,40 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import TagButton from '../../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 
 interface GlossaryTermSynonymsProps {
-  isVersionView?: boolean;
-  permissions: OperationPermission;
-  glossaryTerm: GlossaryTerm;
-  onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
+  data: GlossaryTerm;
+  onUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
+  type: EntityType;
 }
 
-const GlossaryTermSynonyms = ({
-  permissions,
-  glossaryTerm,
-  onGlossaryTermUpdate,
-  isVersionView,
-}: GlossaryTermSynonymsProps) => {
+const GlossaryTermSynonyms = () => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [saving, setSaving] = useState<boolean>(false);
+  const { data: glossaryTerm, onUpdate: onGlossaryTermUpdate } =
+    useGenericContext<GlossaryTermSynonymsProps>();
+  const isVersionView = false;
+  const { getEntityPermission } = usePermissionProvider();
+  const [permissions, setPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const fetchGlossaryTermPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.GLOSSARY_TERM,
+        glossaryTerm?.id as string
+      );
+      setPermissions(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const getSynonyms = () => (
     <div className="d-flex flex-wrap">
@@ -176,6 +198,7 @@ const GlossaryTermSynonyms = ({
       // removing empty string
       setSynonyms(glossaryTerm.synonyms.filter((synonym) => !isEmpty(synonym)));
     }
+    fetchGlossaryTermPermission();
   }, [glossaryTerm]);
 
   return (

@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TabsProps } from 'antd';
+import { GlossaryTabs } from '../../enums/GlossaryPage.enum';
 import { PageType } from '../../generated/system/ui/page';
-import { Tab } from '../../generated/system/ui/uiCustomization';
+import { Tab as CustomizeTab } from '../../generated/system/ui/uiCustomization';
 import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
 import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPage';
 import customizeMyDataPageClassBase from '../CustomizeMyDataPageClassBase';
@@ -29,17 +31,17 @@ export const getDefaultLayout = (pageType: string) => {
 };
 
 export const getDefaultTabs = (pageType?: string) => {
-  const commonTabs: Tab[] = [
+  const commonTabs: CustomizeTab[] = [
     {
       displayName: 'Feeds & Tasks',
-      name: 'feeds-tasks',
-      id: 'feeds-tasks',
+      name: GlossaryTabs.ACTIVITY_FEED,
+      id: GlossaryTabs.ACTIVITY_FEED,
       layout: [],
       removable: false,
     },
     {
-      id: 'custom-property',
-      name: 'custom-property',
+      id: GlossaryTabs.CUSTOM_PROPERTIES,
+      name: GlossaryTabs.CUSTOM_PROPERTIES,
       displayName: 'Custom Property',
       layout: [],
       removable: false,
@@ -51,24 +53,26 @@ export const getDefaultTabs = (pageType?: string) => {
       return [
         ...commonTabs,
         {
-          id: 'overview',
+          id: GlossaryTabs.OVERVIEW,
           displayName: 'Overview',
           layout: [],
-          name: 'overview',
+          name: GlossaryTabs.OVERVIEW,
           removable: false,
         },
         {
-          id: 'terms',
+          id: GlossaryTabs.GLOSSARY_TERMS,
           displayName: 'Glossary Terms',
           layout: [],
-          name: 'terms',
+          name: GlossaryTabs.GLOSSARY_TERMS,
           removable: false,
         },
         {
-          id: 'assets',
+          id: GlossaryTabs.ASSETS,
           displayName: 'Assets',
-          layout: [],
-          name: 'assets',
+          layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+            GlossaryTabs.ASSETS
+          ),
+          name: GlossaryTabs.ASSETS,
           removable: false,
         },
       ];
@@ -76,4 +80,26 @@ export const getDefaultTabs = (pageType?: string) => {
     default:
       return commonTabs;
   }
+};
+
+export const sortTabs = (tabs: TabsProps['items'], order: string[]) => {
+  return [...(tabs ?? [])].sort((a, b) => {
+    const orderA = order.indexOf(a.key!);
+    const orderB = order.indexOf(b.key!);
+
+    if (orderA !== -1 && orderB !== -1) {
+      return orderA - orderB;
+    }
+    if (orderA !== -1) {
+      return -1;
+    }
+    if (orderB !== -1) {
+      return 1;
+    }
+
+    const ia = tabs?.indexOf(a) ?? 0;
+    const ib = tabs?.indexOf(b) ?? 0;
+
+    return ia - ib;
+  });
 };

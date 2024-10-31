@@ -26,9 +26,9 @@ import { SidebarItem } from '../../../enums/sidebar.enum';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 
 import { EntityType } from '../../../enums/entity.enum';
-import { NavigationItem } from '../../../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import {
   filterAndArrangeTreeByKeys,
@@ -46,7 +46,13 @@ const LeftSidebar = () => {
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
   const { selectedPersona } = useApplicationStore();
-  const [navigationItems, setNavigationItems] = useState<NavigationItem[]>([]);
+
+  const { currentPersonaDocStore, setCurrentPersonaDocStore } =
+    useCustomizeStore();
+
+  const navigationItems = useMemo(() => {
+    return currentPersonaDocStore?.data?.navigation;
+  }, [currentPersonaDocStore]);
 
   const sideBarItems = isEmpty(navigationItems)
     ? leftSidebarClassBase.getSidebarItems()
@@ -109,7 +115,7 @@ const LeftSidebar = () => {
 
       getDocumentByFQN(pageLayoutFQN)
         .then((response) => {
-          setNavigationItems(response.data?.navigation);
+          setCurrentPersonaDocStore(response);
         })
         .catch((_error) => {
           // silent

@@ -15,6 +15,7 @@ import { Tabs } from 'antd';
 import React, { useRef, useState } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { sortTabs } from '../../../utils/CustomizePage/CustomizePageUtils';
 
 const type = 'DraggableTabNode';
 interface DraggableTabPaneProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -55,10 +56,7 @@ export const DraggableTabNode = ({
   drop(drag(ref));
 
   return (
-    <div
-      className={isOver ? dropClassName : ''}
-      ref={ref}
-      style={{ marginRight: 24 }}>
+    <div className={isOver ? dropClassName : ''} ref={ref}>
       {children}
     </div>
   );
@@ -105,25 +103,7 @@ export const DraggableTabs: React.FC<
     </DefaultTabBar>
   );
 
-  const orderItems = [...items].sort((a, b) => {
-    const orderA = order.indexOf(a.key!);
-    const orderB = order.indexOf(b.key!);
-
-    if (orderA !== -1 && orderB !== -1) {
-      return orderA - orderB;
-    }
-    if (orderA !== -1) {
-      return -1;
-    }
-    if (orderB !== -1) {
-      return 1;
-    }
-
-    const ia = items.indexOf(a);
-    const ib = items.indexOf(b);
-
-    return ia - ib;
-  });
+  const orderItems = sortTabs(items, order);
 
   return (
     <DndProvider backend={HTML5Backend}>

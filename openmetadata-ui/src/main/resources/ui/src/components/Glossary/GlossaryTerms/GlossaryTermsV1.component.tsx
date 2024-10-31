@@ -22,21 +22,27 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomiseDetailPage.enum';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { GlossaryTabs } from '../../../enums/GlossaryPage.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
+import { Page, PageType } from '../../../generated/system/ui/page';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
+import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
+import { sortTabs } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import {
@@ -47,7 +53,6 @@ import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeed
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
-import { GlossaryTabs } from '../GlossaryDetails/GlossaryDetails.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
 import { useGlossaryStore } from '../useGlossary.store';
@@ -80,9 +85,11 @@ const GlossaryTermsV1 = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const { selectedPersona } = useApplicationStore();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { glossaryChildTerms } = useGlossaryStore();
   const childGlossaryTerms = glossaryChildTerms ?? [];
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
 
   const assetPermissions = useMemo(() => {
     const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
@@ -165,11 +172,24 @@ const GlossaryTermsV1 = ({
   };
 
   const tabItems = useMemo(() => {
+    const changedItems = customizedPage?.tabs;
+
+    const getLabel = (tab: GlossaryTabs) => {
+      const item = changedItems?.find((t) => t.id === tab);
+
+      return item?.displayName;
+    };
+
     const items = [
       {
-        label: <div data-testid="overview">{t('label.overview')}</div>,
-        key: 'overview',
+        label: (
+          <div data-testid="overview">
+            {getLabel(GlossaryTabs.OVERVIEW) ?? t('label.overview')}
+          </div>
+        ),
+        key: GlossaryTabs.OVERVIEW,
         children: (
+          //   <EntityDetailProvider values={{ entityData: glossaryTerm }}>
           <GlossaryOverviewTab
             editCustomAttributePermission={
               !isVersionView &&
@@ -183,6 +203,7 @@ const GlossaryTermsV1 = ({
             onThreadLinkSelect={onThreadLinkSelect}
             onUpdate={onTermUpdate}
           />
+          //   </EntityDetailProvider>
         ),
       },
       ...(!isVersionView
@@ -190,7 +211,8 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="terms">
-                  {t('label.glossary-term-plural')}
+                  {getLabel(GlossaryTabs.GLOSSARY_TERMS) ??
+                    t('label.glossary-term-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(
                       childGlossaryTerms.length,
@@ -200,7 +222,7 @@ const GlossaryTermsV1 = ({
                   </span>
                 </div>
               ),
-              key: 'terms',
+              key: GlossaryTabs.GLOSSARY_TERMS,
               children: (
                 <GlossaryTermTab
                   className="p-md glossary-term-table-container"
@@ -216,13 +238,13 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="assets">
-                  {t('label.asset-plural')}
+                  {getLabel(GlossaryTabs.ASSETS) ?? t('label.asset-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
                   </span>
                 </div>
               ),
-              key: 'assets',
+              key: GlossaryTabs.ASSETS,
               children: (
                 <AssetsTabs
                   assetCount={assetCount}
@@ -242,7 +264,10 @@ const GlossaryTermsV1 = ({
                   count={feedCount.totalCount}
                   id={GlossaryTabs.ACTIVITY_FEED}
                   isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
-                  name={t('label.activity-feed-and-task-plural')}
+                  name={
+                    getLabel(GlossaryTabs.ACTIVITY_FEED) ??
+                    t('label.activity-feed-and-task-plural')
+                  }
                 />
               ),
               key: GlossaryTabs.ACTIVITY_FEED,
@@ -260,11 +285,14 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <TabsLabel
-                  id={EntityTabs.CUSTOM_PROPERTIES}
-                  name={t('label.custom-property-plural')}
+                  id={GlossaryTabs.CUSTOM_PROPERTIES}
+                  name={
+                    getLabel(GlossaryTabs.CUSTOM_PROPERTIES) ??
+                    t('label.custom-property-plural')
+                  }
                 />
               ),
-              key: EntityTabs.CUSTOM_PROPERTIES,
+              key: GlossaryTabs.CUSTOM_PROPERTIES,
               children: glossaryTerm && (
                 <div className="m-sm">
                   <CustomPropertyTable<EntityType.GLOSSARY_TERM>
@@ -285,8 +313,11 @@ const GlossaryTermsV1 = ({
         : []),
     ];
 
-    return items;
+    return changedItems
+      ? sortTabs(items, changedItems?.map((t) => t.id) ?? [])
+      : items;
   }, [
+    customizedPage?.tabs,
     glossaryTerm,
     permissions,
     termsLoading,
@@ -308,6 +339,24 @@ const GlossaryTermsV1 = ({
     }, 500);
     getEntityFeedCount();
   }, [glossaryFqn]);
+
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find((p: Page) => p.pageType === PageType.GlossaryTerm)
+      );
+    } catch (error) {
+      // fail silent
+    }
+  }, [selectedPersona.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (selectedPersona && selectedPersona.fullyQualifiedName) {
+      fetchDocument();
+    }
+  }, [selectedPersona]);
 
   //   const name = useMemo(
   //     () =>

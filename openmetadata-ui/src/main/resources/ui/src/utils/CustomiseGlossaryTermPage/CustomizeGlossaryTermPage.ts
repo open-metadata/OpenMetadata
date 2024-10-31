@@ -19,6 +19,7 @@ import { GenericWidget } from '../../components/Glossary/CustomiseWidgets/Synony
 import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomiseDetailPage.enum';
+import { GlossaryTabs } from '../../enums/GlossaryPage.enum';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -278,8 +279,8 @@ class CustomizeGlossaryTermPageClassBase {
     }
   }
 
-  public getDefaultWidgetForTab(tab: string) {
-    if (tab === 'overview') {
+  public getDefaultWidgetForTab(tab: GlossaryTabs) {
+    if (tab === GlossaryTabs.OVERVIEW) {
       return [
         {
           h: this.detailPageWidgetDefaultHeights.DESCRIPTION,

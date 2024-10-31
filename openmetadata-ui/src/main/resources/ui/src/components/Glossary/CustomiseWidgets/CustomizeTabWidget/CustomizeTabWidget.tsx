@@ -16,6 +16,7 @@ import { isEmpty, isNil, toString, uniqueId } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { GlossaryTabs } from '../../../../enums/GlossaryPage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { Page, Tab } from '../../../../generated/system/ui/page';
 import { PageType } from '../../../../generated/system/ui/uiCustomization';
@@ -34,6 +35,7 @@ import {
   getUniqueFilteredLayout,
 } from '../../../../utils/CustomizableLandingPageUtils';
 import { getDefaultTabs } from '../../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DraggableTabs } from '../../../common/DraggableTabs/DraggableTabs';
 import AddWidgetModal from '../../../MyData/CustomizableComponents/AddWidgetModal/AddWidgetModal';
@@ -50,8 +52,8 @@ export const CustomizeTabWidget = () => {
   const [items, setItems] = useState<Tab[]>(
     currentPage?.tabs ?? getDefaultTabs(currentPageType as PageType)
   );
-  const [activeKey, setActiveKey] = useState<string | null>(
-    items[0]?.id ?? null
+  const [activeKey, setActiveKey] = useState<GlossaryTabs | null>(
+    (items[0]?.id as GlossaryTabs) ?? null
   );
 
   const [editableItem, setEditableItem] = useState<Tab | null>(null);
@@ -59,7 +61,7 @@ export const CustomizeTabWidget = () => {
     getLayoutWithEmptyWidgetPlaceholder(
       (items.find((item) => item.id === activeKey)?.layout as WidgetConfig[]) ??
         customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
-          activeKey ?? 'overview'
+          (activeKey as GlossaryTabs) ?? GlossaryTabs.OVERVIEW
         ),
       2,
       3
@@ -69,12 +71,14 @@ export const CustomizeTabWidget = () => {
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>('');
 
   const onChange = (tabKey: string) => {
-    setActiveKey(tabKey);
-    const newTab = items.find((item) => item.id === tabKey);
+    const key = tabKey as GlossaryTabs;
+    setActiveKey(key);
+    const newTab = items.find((item) => item.id === key);
     setTabLayouts(
       getLayoutWithEmptyWidgetPlaceholder(
-        (newTab?.layout as WidgetConfig[]) ??
-          customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tabKey),
+        isEmpty(newTab?.layout)
+          ? customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(key)
+          : (newTab?.layout as WidgetConfig[]),
         2,
         3
       )
@@ -83,14 +87,15 @@ export const CustomizeTabWidget = () => {
 
   const add = () => {
     const newActiveKey = uniqueId(`newTab`);
-    const newPanes = [...items];
-    newPanes.push({
-      name: 'New Tab',
-      layout: [],
-      id: newActiveKey,
-      removable: true,
-    } as Tab);
-    setItems(newPanes);
+    setItems((items) => [
+      ...items,
+      {
+        name: 'New Tab',
+        layout: [],
+        id: newActiveKey,
+        removable: true,
+      } as Tab,
+    ]);
     onChange(newActiveKey);
   };
 
@@ -98,16 +103,16 @@ export const CustomizeTabWidget = () => {
     let newActiveKey = activeKey;
     let lastIndex = -1;
     items.forEach((item, i) => {
-      if (item.name === targetKey) {
+      if (item.id === targetKey) {
         lastIndex = i - 1;
       }
     });
-    const newPanes = items.filter((item) => item.name !== targetKey);
+    const newPanes = items.filter((item) => item.id !== targetKey);
     if (newPanes.length && newActiveKey === targetKey) {
       if (lastIndex >= 0) {
-        newActiveKey = newPanes[lastIndex].name;
+        newActiveKey = newPanes[lastIndex].id;
       } else {
-        newActiveKey = newPanes[0].name;
+        newActiveKey = newPanes[0].id;
       }
     }
     setItems(newPanes);
@@ -126,15 +131,19 @@ export const CustomizeTabWidget = () => {
   };
 
   const handleTabEditClick = (key: string) => {
-    setEditableItem(items.find((item) => item.name === key) || null);
+    setEditableItem(items.find((item) => item.id === key) || null);
   };
 
   const handleRenameSave = () => {
     if (editableItem) {
       const newItems = items.map((item) =>
-        item.name === editableItem.name ? editableItem : item
+        item.id === editableItem.id ? editableItem : item
       );
       setItems(newItems);
+      updateCurrentPage({
+        ...currentPage,
+        tabs: newItems,
+      } as Page);
       setEditableItem(null);
     }
   };
@@ -143,7 +152,7 @@ export const CustomizeTabWidget = () => {
     editableItem &&
       setEditableItem({
         ...editableItem,
-        name: event.target.value ?? '',
+        displayName: event.target.value ?? '',
       });
   };
 
@@ -230,46 +239,48 @@ export const CustomizeTabWidget = () => {
   useGridLayoutDirection();
 
   return (
-    <div className="bg-white">
+    <>
       <DraggableTabs
         activeKey={activeKey ?? undefined}
         items={items.map((item) => ({
           key: item.id,
           label: (
             <>
-              {item.name}
+              {getEntityName(item)}
               <Icon
+                className="m-l-xs"
                 component={EditIcon}
                 onClick={(event) => {
                   event.stopPropagation();
-                  handleTabEditClick(item.name);
+                  handleTabEditClick(item.id);
                 }}
               />
             </>
           ),
-
           closable: item.removable ?? false,
         }))}
+        size="small"
+        tabBarGutter={2}
         type="editable-card"
         onChange={onChange}
         onEdit={onEdit}
         onTabChange={onTabPositionChange}
-        // onTabClick={handleTabClick}
       />
-      <div style={{ position: 'relative' }}>
-        <ReactGridLayout
-          cols={8}
-          draggableHandle=".drag-widget-icon"
-          isResizable={false}
-          margin={[
-            customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
-            customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
-          ]}
-          rowHeight={customizeGlossaryTermPageClassBase.detailPageRowHeight}
-          onLayoutChange={handleLayoutUpdate}>
-          {widgets}
-        </ReactGridLayout>
-      </div>
+
+      <ReactGridLayout
+        className="grid-container"
+        cols={8}
+        draggableHandle=".drag-widget-icon"
+        isResizable={false}
+        margin={[
+          customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
+          customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
+        ]}
+        rowHeight={customizeGlossaryTermPageClassBase.detailPageRowHeight}
+        onLayoutChange={handleLayoutUpdate}>
+        {widgets}
+      </ReactGridLayout>
+
       <AddWidgetModal
         addedWidgetsList={[]}
         handleAddWidget={handleMainPanelAddWidget}
@@ -278,14 +289,19 @@ export const CustomizeTabWidget = () => {
         open={isWidgetModalOpen}
         placeholderWidgetKey={placeholderWidgetKey}
       />
-      <Modal
-        maskClosable
-        open={!isNil(editableItem)}
-        title="Rename tab"
-        onCancel={() => setEditableItem(null)}
-        onOk={handleRenameSave}>
-        <Input value={toString(editableItem?.name)} onChange={handleChange} />
-      </Modal>
-    </div>
+      {editableItem && (
+        <Modal
+          maskClosable
+          open={!isNil(editableItem)}
+          title="Rename tab"
+          onCancel={() => setEditableItem(null)}
+          onOk={handleRenameSave}>
+          <Input
+            value={toString(getEntityName(editableItem))}
+            onChange={handleChange}
+          />
+        </Modal>
+      )}
+    </>
   );
 };

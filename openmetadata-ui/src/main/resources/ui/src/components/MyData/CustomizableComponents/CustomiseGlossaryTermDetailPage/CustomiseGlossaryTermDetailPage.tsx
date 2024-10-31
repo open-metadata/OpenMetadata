@@ -12,11 +12,11 @@
  */
 
 import { Modal } from 'antd';
-import { isEmpty, noop } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
-import RGL, { Layout, WidthProvider } from 'react-grid-layout';
+import { noop } from 'lodash';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
+import { GlossaryTermDetailPageWidgetKeys } from '../../../../enums/CustomiseDetailPage.enum';
 import { Page } from '../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -24,17 +24,15 @@ import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeS
 import '../../../../pages/MyDataPage/my-data.less';
 import customizeGlossaryTermPageClassBase from '../../../../utils/CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
 import {
-  getLayoutUpdateHandler,
   getLayoutWithEmptyWidgetPlaceholder,
   getUniqueFilteredLayout,
 } from '../../../../utils/CustomizableLandingPageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
+import { CustomizeTabWidget } from '../../../Glossary/CustomiseWidgets/CustomizeTabWidget/CustomizeTabWidget';
+import GlossaryHeader from '../../../Glossary/GlossaryHeader/GlossaryHeader.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import { CustomizeMyDataProps } from '../CustomizeMyData/CustomizeMyData.interface';
-
-const ReactGridLayout = WidthProvider(RGL);
 
 function CustomizeGlossaryTermDetailPage({
   personaDetails,
@@ -50,15 +48,6 @@ function CustomizeGlossaryTermDetailPage({
 
   const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
 
-  const handleLayoutUpdate = useCallback(
-    (updatedLayout: Layout[]) => {
-      if (!isEmpty(layout) && !isEmpty(updatedLayout)) {
-        setLayout(getLayoutUpdateHandler(updatedLayout));
-      }
-    },
-    [layout]
-  );
-
   const handleOpenResetModal = useCallback(() => {
     setIsResetModalOpen(true);
   }, []);
@@ -66,22 +55,6 @@ function CustomizeGlossaryTermDetailPage({
   const handleCloseResetModal = useCallback(() => {
     setIsResetModalOpen(false);
   }, []);
-
-  const widgets = useMemo(
-    () =>
-      layout.map((widget) => (
-        <div data-grid={widget} id={widget.i} key={widget.i}>
-          {getWidgetFromKey({
-            widgetConfig: widget,
-            handleOpenAddWidgetModal: noop,
-            handlePlaceholderWidgetKey: noop,
-            handleRemoveWidget: noop,
-            isEditView: true,
-          })}
-        </div>
-      )),
-    [layout]
-  );
 
   const handleReset = useCallback(() => {
     // Get default layout with the empty widget added at the end
@@ -108,6 +81,10 @@ function CustomizeGlossaryTermDetailPage({
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
+  const asyncNoop = async () => {
+    noop();
+  };
+
   return (
     <>
       <PageLayoutV1
@@ -123,20 +100,14 @@ function CustomizeGlossaryTermDetailPage({
           onReset={handleOpenResetModal}
           onSave={handleSave}
         />
-        <ReactGridLayout
-          verticalCompact
-          className="grid-container"
-          cols={8}
-          draggableHandle=".drag-widget-icon"
-          isResizable={false}
-          margin={[
-            customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
-            customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
-          ]}
-          rowHeight={customizeGlossaryTermPageClassBase.detailPageRowHeight}
-          onLayoutChange={handleLayoutUpdate}>
-          {widgets}
-        </ReactGridLayout>
+        <GlossaryHeader
+          isEditView
+          widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
+          onAddGlossaryTerm={noop}
+          onDelete={asyncNoop}
+          onUpdate={asyncNoop}
+        />
+        <CustomizeTabWidget />
       </PageLayoutV1>
 
       {isResetModalOpen && (

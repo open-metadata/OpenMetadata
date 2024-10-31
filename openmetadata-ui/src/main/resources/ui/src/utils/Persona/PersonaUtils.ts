@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AppstoreAddOutlined } from '@ant-design/icons';
 import { camelCase, capitalize, map } from 'lodash';
+import { ReactComponent as GovernIcon } from '../../assets/svg/bank.svg';
 import { ReactComponent as DashboardIcon } from '../../assets/svg/dashboard-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../../assets/svg/database-colored.svg';
+import { ReactComponent as ExploreIcon } from '../../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../../assets/svg/glossary-colored.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../../assets/svg/ic-dashboard-data-model-colored.svg';
 import { ReactComponent as SchemaIcon } from '../../assets/svg/ic-database-schema-colored.svg';
@@ -40,6 +43,9 @@ const ENTITY_ICONS: Record<string, SvgComponent> = {
   [EntityType.SEARCH_INDEX]: SearchIcon,
   [EntityType.STORED_PROCEDURE]: StoredProcedureIcon,
   [EntityType.TOPIC]: MessagingIcon,
+  [EntityType.GOVERN]: GovernIcon,
+  ['Data assets']: ExploreIcon,
+  ['Navigation']: AppstoreAddOutlined as SvgComponent,
   [PageType.LandingPage]: MessagingIcon,
 };
 

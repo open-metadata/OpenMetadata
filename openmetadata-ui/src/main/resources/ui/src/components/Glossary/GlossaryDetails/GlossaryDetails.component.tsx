@@ -23,6 +23,7 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomiseDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { GlossaryTabs } from '../../../enums/GlossaryPage.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -38,10 +39,7 @@ import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
-import {
-  GlossaryDetailsProps,
-  GlossaryTabs,
-} from './GlossaryDetails.interface';
+import { GlossaryDetailsProps } from './GlossaryDetails.interface';
 
 const GlossaryDetails = ({
   permissions,

@@ -1,0 +1,117 @@
+import { Button, Space, Tooltip, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { t } from 'i18next';
+import React, { useEffect, useState } from 'react';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import TagButton from '../../common/TagButton/TagButton.component';
+import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { useGenericContext } from '../../GenericProvider/GenericProvider';
+
+interface OwnerLabelV2Props {
+  data: GlossaryTerm;
+  onUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
+  type: EntityType;
+}
+
+export const OwnerLabelV2 = () => {
+  const { data: glossaryTerm, onUpdate } =
+    useGenericContext<OwnerLabelV2Props>();
+
+  const isVersionView = false;
+  const { getEntityPermission } = usePermissionProvider();
+  const [permissions, setPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const fetchGlossaryTermPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.GLOSSARY_TERM,
+        glossaryTerm?.id as string
+      );
+      setPermissions(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleUpdatedOwner = async (updatedUser: any) => {
+    const updatedGlossaryTerm = { ...glossaryTerm };
+    updatedGlossaryTerm.owners = updatedUser;
+    await onUpdate(updatedGlossaryTerm);
+  };
+
+  useEffect(() => {
+    fetchGlossaryTermPermission();
+  }, [glossaryTerm]);
+
+  return (
+    <div data-testid="glossary-right-panel-owner-link">
+      <div className="d-flex items-center m-b-xs">
+        <Typography.Text className="right-panel-label">
+          {t('label.owner-plural')}
+        </Typography.Text>
+        {(permissions.EditOwners || permissions.EditAll) &&
+          glossaryTerm.owners &&
+          glossaryTerm.owners.length > 0 && (
+            <UserTeamSelectableList
+              hasPermission={permissions.EditOwners || permissions.EditAll}
+              listHeight={200}
+              multiple={{ user: true, team: false }}
+              owner={glossaryTerm.owners}
+              onUpdate={handleUpdatedOwner}>
+              <Tooltip
+                title={t('label.edit-entity', {
+                  entity: t('label.owner-plural'),
+                })}>
+                <Button
+                  className="cursor-pointer flex-center m-l-xss"
+                  data-testid="edit-owner"
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                  size="small"
+                  type="text"
+                />
+              </Tooltip>
+            </UserTeamSelectableList>
+          )}
+      </div>
+      <Space className="m-r-xss" size={4}>
+        {getOwnerVersionLabel(
+          glossaryTerm,
+          isVersionView ?? false,
+          TabSpecificField.OWNERS,
+          permissions.EditOwners || permissions.EditAll
+        )}
+      </Space>
+      {glossaryTerm.owners?.length === 0 &&
+        (permissions.EditOwners || permissions.EditAll) && (
+          <UserTeamSelectableList
+            hasPermission={permissions.EditOwners || permissions.EditAll}
+            listHeight={200}
+            multiple={{ user: true, team: false }}
+            owner={glossaryTerm.owners}
+            onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
+            <TagButton
+              className="text-primary cursor-pointer"
+              dataTestId="add-owner"
+              icon={<PlusIcon height={16} name="plus" width={16} />}
+              label={t('label.add')}
+              tooltip=""
+            />
+          </UserTeamSelectableList>
+        )}
+    </div>
+  );
+};

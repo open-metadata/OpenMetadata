@@ -13,6 +13,7 @@
 
 import { Button, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
+import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isArray, isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -27,7 +28,11 @@ import {
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import {
@@ -44,26 +49,42 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
 import TagButton from '../../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 
 interface RelatedTermsProps {
-  isVersionView?: boolean;
-  permissions: OperationPermission;
-  glossaryTerm: GlossaryTerm;
-  onGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
+  type: EntityType;
+  data: GlossaryTerm;
+  onUpdate: (data: GlossaryTerm) => Promise<void>;
 }
 
-const RelatedTerms = ({
-  isVersionView,
-  glossaryTerm,
-  permissions,
-  onGlossaryTermUpdate,
-}: RelatedTermsProps) => {
+const RelatedTerms = () => {
   const history = useHistory();
+  const { data: glossaryTerm, onUpdate } =
+    useGenericContext<RelatedTermsProps>();
+  const isVersionView = false;
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<EntityReference[]>([]);
+  const { getEntityPermission } = usePermissionProvider();
+  const [permissions, setPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const fetchGlossaryTermPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.GLOSSARY_TERM,
+        glossaryTerm?.id as string
+      );
+      setPermissions(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const initialOptions = useMemo(() => {
     return (
@@ -104,7 +125,7 @@ const RelatedTerms = ({
       relatedTerms: newOptions,
     };
 
-    await onGlossaryTermUpdate(updatedGlossaryTerm);
+    await onUpdate(updatedGlossaryTerm);
     setIsIconVisible(true);
   };
 
@@ -125,6 +146,8 @@ const RelatedTerms = ({
     if (glossaryTerm) {
       setSelectedOption(formatOptions(glossaryTerm.relatedTerms ?? []));
     }
+
+    fetchGlossaryTermPermission();
   }, [glossaryTerm]);
 
   const getRelatedTermElement = useCallback(

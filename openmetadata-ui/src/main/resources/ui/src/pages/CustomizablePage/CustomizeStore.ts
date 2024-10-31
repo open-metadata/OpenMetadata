@@ -21,6 +21,7 @@ interface CustomizePageStore {
   document: Document | null;
   currentPageType: PageType | null;
   currentPage: Page | null;
+  currentPersonaDocStore: Document | null;
   setDocument: (document: Document) => void;
 
   setPage: (page: Page) => void;
@@ -30,12 +31,15 @@ interface CustomizePageStore {
   getNavigation: () => NavigationItem[];
   setCurrentPageType: (pageType: PageType) => void;
   updateCurrentPage: (page: Page) => void;
+  setCurrentPersonaDocStore: (document: Document) => void;
+  resetCurrentPersonaDocStore: () => void;
 }
 
 export const useCustomizeStore = create<CustomizePageStore>()((set, get) => ({
   document: null,
   currentPage: null,
   currentPageType: null,
+  currentPersonaDocStore: null,
   setDocument: (document: Document) => {
     set({ document });
   },
@@ -79,11 +83,18 @@ export const useCustomizeStore = create<CustomizePageStore>()((set, get) => ({
     });
   },
 
+  setCurrentPersonaDocStore: (document: Document) => {
+    set({ currentPersonaDocStore: document });
+  },
+
   reset: () => {
     set({ document: null, currentPage: null });
   },
 
   resetCurrentPage: () => {
     set({ currentPage: null });
+  },
+  resetCurrentPersonaDocStore: () => {
+    set({ currentPersonaDocStore: null });
   },
 }));
