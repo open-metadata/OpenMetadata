@@ -103,7 +103,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     onTreeUpdate(nTree, nConfig);
 
     if (outputType === QueryBuilderOutputType.ELASTICSEARCH) {
-      const data = elasticSearchFormat(nTree, config) ?? {};
+      const data = elasticSearchFormat(nTree, config) ?? '';
       const qFilter = {
         query: data,
       };
@@ -111,7 +111,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         debouncedFetchEntityCount(qFilter);
       }
 
-      onChange(JSON.stringify(qFilter));
+      onChange(!isEmpty(data) ? JSON.stringify(qFilter) : '');
     } else {
       const data = QbUtils.jsonLogicFormat(nTree, config);
       onChange(JSON.stringify(data.logic ?? '{}'));
@@ -125,13 +125,14 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   useEffect(() => {
     if (!isEmpty(value)) {
       if (outputType === QueryBuilderOutputType.ELASTICSEARCH) {
-        const tree = QbUtils.checkTree(
-          QbUtils.loadTree(
-            getJsonTreeFromQueryFilter(JSON.parse(value || '')) as JsonTree
-          ),
-          config
-        );
-        onTreeUpdate(tree, config);
+        const parsedTree = getJsonTreeFromQueryFilter(
+          JSON.parse(value || '')
+        ) as JsonTree;
+
+        if (Object.keys(parsedTree).length > 0) {
+          const tree = QbUtils.checkTree(QbUtils.loadTree(parsedTree), config);
+          onTreeUpdate(tree, config);
+        }
       } else {
         const tree = QbUtils.loadFromJsonLogic(JSON.parse(value || ''), config);
         if (tree) {
