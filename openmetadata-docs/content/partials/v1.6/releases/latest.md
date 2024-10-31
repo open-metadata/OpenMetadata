@@ -1,7 +1,7 @@
-# 1.5.9 Release 🎉
+# 1.5.10 Release 🎉
 
 {% note noteType="Tip" %}
-**Oct 29th, 2024**
+**Oct 31st, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,19 +10,17 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.9!
+Learn how to upgrade your OpenMetadata instance to 1.5.10!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.8-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.10-release).
 
 # What's Changed
 
-- Prepare App Framework to handle application limits
-- Add Query Builder widget
-- Revamp MetaPilot as Collate AI and add limits (Collate only)
-- Fix EntityLink for names with brackets
-- Fix backend database Azure auth
-- Mask Greenplum secrets on the UI
+- Fix encoding issue for teams search query.
+- Fix disable empty rule for query builder widget.
+- Fix unable to add more enum values for enum cp.
+- Fix navigate to listing for deleting a service.
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.8-release...1.5.9-release
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.9-release...1.5.10-release
