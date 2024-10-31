@@ -18,6 +18,10 @@ import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import {
+  Status as TypedEventStatus,
+  TypedEvent,
+} from '../generated/events/api/typedEvent';
+import {
   AlertType,
   EventSubscription,
   Status,
@@ -124,6 +128,23 @@ export const getResourceFunctions = async () => {
   const response = await axiosClient.get<
     PagingResponse<FilterResourceDescriptor[]>
   >(`${BASE_URL}/${AlertType.Notification}/resources`);
+
+  return response.data;
+};
+
+export const getAlertEventsFromId = async ({
+  id,
+  params,
+}: {
+  id: string;
+  params?: { status?: TypedEventStatus; limit?: number };
+}) => {
+  const response = await axiosClient.get<TypedEvent[]>(
+    `${BASE_URL}/id/${id}/listEvents`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };

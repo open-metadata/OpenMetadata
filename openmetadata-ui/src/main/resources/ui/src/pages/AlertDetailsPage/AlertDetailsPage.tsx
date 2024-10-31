@@ -30,6 +30,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import AlertConfigDetails from '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails';
+import AlertRecentEventsTab from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -228,10 +229,10 @@ function AlertDetailsPage({
       {
         label: t('label.recent-event-plural'),
         key: AlertDetailTabs.RECENT_EVENTS,
-        children: 'Recent Events',
+        children: <AlertRecentEventsTab id={alertDetails?.id ?? ''} />,
       },
     ],
-    [alertDetails]
+    [alertDetails, viewPermission]
   );
 
   const handleTabChange = useCallback(

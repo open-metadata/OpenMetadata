@@ -16,10 +16,12 @@ import {
   Col,
   Divider,
   Input,
+  MenuProps,
   Row,
   Select,
   Switch,
   Tooltip,
+  Typography,
 } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
@@ -27,11 +29,15 @@ import { compare, Operation } from 'fast-json-patch';
 import i18next, { t } from 'i18next';
 import { isEqual, isUndefined, map, omitBy, startCase, uniqBy } from 'lodash';
 import React from 'react';
+import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
+import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
+import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
+import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
@@ -42,10 +48,12 @@ import {
   EXTERNAL_CATEGORY_OPTIONS,
 } from '../../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
+import { ChangeEvent, Status } from '../../generated/events/api/typedEvent';
 import {
   EventFilterRule,
   EventSubscription,
@@ -62,6 +70,7 @@ import { handleEntityCreationError } from '../formUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
 import { showSuccessToast } from '../ToastUtils';
+import './alerts-util.less';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -955,3 +964,80 @@ export const getSourceOptionsFromResourceList = (
       value: resource ?? '',
     };
   });
+
+export const getAlertEventsFilterLabels = (status: AlertRecentEventFilters) => {
+  switch (status) {
+    case AlertRecentEventFilters.SUCCESSFUL:
+      return t('label.successful');
+    case AlertRecentEventFilters.FAILED:
+      return t('label.failed');
+    case AlertRecentEventFilters.UNPROCESSED:
+      return t('label.unprocessed');
+    case AlertRecentEventFilters.ALL:
+      return t('label.all');
+    default:
+      return '';
+  }
+};
+
+export const getAlertRecentEventsFilterOptions = () => {
+  const filters: MenuProps['items'] = Object.values(
+    AlertRecentEventFilters
+  ).map((status) => {
+    const label = getAlertEventsFilterLabels(status);
+
+    return {
+      label: <Typography.Text>{label}</Typography.Text>,
+      key: status,
+    };
+  });
+
+  return filters;
+};
+
+export const getAlertStatusIcon = (status: Status): JSX.Element | null => {
+  switch (status) {
+    case Status.Successful:
+      return <CheckIcon className="status-icon successful-icon" />;
+    case Status.Failed:
+      return <AlertIcon className="status-icon failed-icon" />;
+    case Status.Unprocessed:
+      return <ClockIcon className="status-icon unprocessed-icon" />;
+    default:
+      return null;
+  }
+};
+
+export const getLabelsForEventDetails = (
+  prop: keyof AlertEventDetailsToDisplay
+) => {
+  switch (prop) {
+    case 'eventType':
+      return t('label.event-type');
+    case 'entityId':
+      return t('label.entity-id', { entity: t('label.entity') });
+    case 'userName':
+      return t('label.user-name');
+    case 'previousVersion':
+      return t('label.previous-version');
+    case 'currentVersion':
+      return t('label.current-version');
+    default:
+      return '';
+  }
+};
+
+export const getEventDetailsToDisplay = (
+  changeEvent: ChangeEvent
+): AlertEventDetailsToDisplay => {
+  const { eventType, entityId, userName, previousVersion, currentVersion } =
+    changeEvent;
+
+  return {
+    eventType,
+    entityId,
+    userName,
+    previousVersion,
+    currentVersion,
+  };
+};

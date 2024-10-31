@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-export enum AlertDetailTabs {
-  CONFIGURATION = 'configuration',
-  RECENT_EVENTS = 'recentEvents',
+import { ChangeEvent } from '../../../../generated/events/api/typedEvent';
+
+export interface AlertRecentEventsTabProps {
+  id: string;
 }
 
-export enum AlertRecentEventFilters {
-  ALL = 'all',
-  SUCCESSFUL = 'successful',
-  FAILED = 'failed',
-  UNPROCESSED = 'unprocessed',
-}
+export type AlertEventDetailsToDisplay = Pick<
+  ChangeEvent,
+  'eventType' | 'entityId' | 'userName' | 'previousVersion' | 'currentVersion'
+>;

@@ -13,12 +13,22 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
+import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
+import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
+import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import { DESTINATION_DROPDOWN_TABS } from '../../constants/Alerts.constants';
+import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
+import {
+  ChangeEvent,
+  EventType,
+  Status,
+} from '../../generated/events/api/typedEvent';
 import {
   SubscriptionCategory,
   SubscriptionType,
@@ -31,13 +41,18 @@ import {
 import { searchData } from '../../rest/miscAPI';
 import {
   getAlertActionTypeDisplayName,
+  getAlertEventsFilterLabels,
+  getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
+  getAlertStatusIcon,
   getConnectionTimeoutField,
   getDestinationConfigField,
   getDisplayNameForEntities,
+  getEventDetailsToDisplay,
   getFieldByArgumentType,
   getFilteredDestinationOptions,
   getFunctionDisplayName,
+  getLabelsForEventDetails,
   listLengthValidator,
 } from './AlertsUtil';
 
@@ -547,5 +562,248 @@ describe('getFieldByArgumentType tests', () => {
     const input = screen.getByTestId('connection-timeout-input');
 
     expect(input).toHaveValue(10);
+  });
+});
+
+describe('getAlertEventsFilterLabels', () => {
+  it('should return correct filter labels', () => {
+    const allLabel = getAlertEventsFilterLabels(AlertRecentEventFilters.ALL);
+    const successLabel = getAlertEventsFilterLabels(
+      AlertRecentEventFilters.SUCCESSFUL
+    );
+    const failedLabel = getAlertEventsFilterLabels(
+      AlertRecentEventFilters.FAILED
+    );
+    const unprocessedLabel = getAlertEventsFilterLabels(
+      AlertRecentEventFilters.UNPROCESSED
+    );
+
+    expect(allLabel).toStrictEqual('label.all');
+    expect(successLabel).toStrictEqual('label.successful');
+    expect(failedLabel).toStrictEqual('label.failed');
+    expect(unprocessedLabel).toStrictEqual('label.unprocessed');
+  });
+
+  it('should return empty string for unknown filter', () => {
+    const unknownLabel = getAlertEventsFilterLabels(
+      'unknown' as AlertRecentEventFilters
+    );
+
+    expect(unknownLabel).toStrictEqual('');
+  });
+});
+
+describe('getAlertRecentEventsFilterOptions', () => {
+  it('should return correct options', () => {
+    const options = getAlertRecentEventsFilterOptions();
+
+    expect(options).toHaveLength(4);
+    expect(options[0]?.key).toStrictEqual(AlertRecentEventFilters.ALL);
+    expect(options[1]?.key).toStrictEqual(AlertRecentEventFilters.SUCCESSFUL);
+    expect(options[2]?.key).toStrictEqual(AlertRecentEventFilters.FAILED);
+    expect(options[3]?.key).toStrictEqual(AlertRecentEventFilters.UNPROCESSED);
+  });
+});
+
+describe('getAlertStatusIcon', () => {
+  it('should return correct icon for Successful status', () => {
+    const icon = getAlertStatusIcon(Status.Successful);
+
+    expect(icon).toStrictEqual(
+      <CheckIcon className="status-icon successful-icon" />
+    );
+  });
+
+  it('should return correct icon for Failed status', () => {
+    const icon = getAlertStatusIcon(Status.Failed);
+
+    expect(icon).toStrictEqual(
+      <AlertIcon className="status-icon failed-icon" />
+    );
+  });
+
+  it('should return correct icon for Unprocessed status', () => {
+    const icon = getAlertStatusIcon(Status.Unprocessed);
+
+    expect(icon).toStrictEqual(
+      <ClockIcon className="status-icon unprocessed-icon" />
+    );
+  });
+
+  it('should return null for unknown status', () => {
+    const icon = getAlertStatusIcon('unknown' as Status);
+
+    expect(icon).toBeNull();
+  });
+});
+
+describe('getLabelsForEventDetails', () => {
+  it('should return correct label for eventType', () => {
+    const label = getLabelsForEventDetails('eventType');
+
+    expect(label).toBe('label.event-type');
+  });
+
+  it('should return correct label for entityId', () => {
+    const label = getLabelsForEventDetails('entityId');
+
+    expect(label).toBe('label.entity-id');
+  });
+
+  it('should return correct label for userName', () => {
+    const label = getLabelsForEventDetails('userName');
+
+    expect(label).toBe('label.user-name');
+  });
+
+  it('should return correct label for previousVersion', () => {
+    const label = getLabelsForEventDetails('previousVersion');
+
+    expect(label).toBe('label.previous-version');
+  });
+
+  it('should return correct label for currentVersion', () => {
+    const label = getLabelsForEventDetails('currentVersion');
+
+    expect(label).toBe('label.current-version');
+  });
+
+  it('should return empty string for unknown prop', () => {
+    const label = getLabelsForEventDetails(
+      'unknown' as keyof AlertEventDetailsToDisplay
+    );
+
+    expect(label).toBe('');
+  });
+});
+
+describe('getEventDetailsToDisplay', () => {
+  it('should return correct event details for a given change event', () => {
+    const changeEvent: ChangeEvent = {
+      eventType: EventType.EntityCreated,
+      entityId: '123',
+      userName: 'testUser',
+      previousVersion: 1.0,
+      currentVersion: 1.1,
+    };
+
+    const result = getEventDetailsToDisplay(changeEvent);
+
+    expect(result).toStrictEqual({
+      eventType: EventType.EntityCreated,
+      entityId: '123',
+      userName: 'testUser',
+      previousVersion: 1.0,
+      currentVersion: 1.1,
+    });
+  });
+
+  it('should return undefined for missing eventType', () => {
+    const changeEvent: ChangeEvent = {
+      entityId: '123',
+      userName: 'testUser',
+      previousVersion: 1.0,
+      currentVersion: 1.1,
+    };
+
+    const result = getEventDetailsToDisplay(changeEvent);
+
+    expect(result).toStrictEqual({
+      eventType: undefined,
+      entityId: '123',
+      userName: 'testUser',
+      previousVersion: 1.0,
+      currentVersion: 1.1,
+    });
+  });
+
+  it('should return undefined for missing entityId', () => {
+    const changeEvent: ChangeEvent = {
+      eventType: EventType.EntityCreated,
+      userName: 'testUser',
+      previousVersion: 1.0,
+      currentVersion: 1.1,
+    };
+
+    const result = getEventDetailsToDisplay(changeEvent);
+
+    expect(result).toStrictEqual({
+      eventType: EventType.EntityCreated,
+      entityId: undefined,
+      userName: 'testUser',
+      previousVersion: 1.0,
+      currentVersion: 1.1,
+    });
+  });
+
+  it('should return undefined for missing userName', () => {
+    const changeEvent: ChangeEvent = {
+      eventType: EventType.EntityCreated,
+      entityId: '123',
+      previousVersion: 1.0,
+      currentVersion: 1.1,
+    };
+
+    const result = getEventDetailsToDisplay(changeEvent);
+
+    expect(result).toStrictEqual({
+      eventType: EventType.EntityCreated,
+      entityId: '123',
+      userName: undefined,
+      previousVersion: 1.0,
+      currentVersion: 1.1,
+    });
+  });
+
+  it('should return undefined for missing previousVersion', () => {
+    const changeEvent: ChangeEvent = {
+      eventType: EventType.EntityCreated,
+      entityId: '123',
+      userName: 'testUser',
+      currentVersion: 1.1,
+    };
+
+    const result = getEventDetailsToDisplay(changeEvent);
+
+    expect(result).toStrictEqual({
+      eventType: EventType.EntityCreated,
+      entityId: '123',
+      userName: 'testUser',
+      previousVersion: undefined,
+      currentVersion: 1.1,
+    });
+  });
+
+  it('should return undefined for missing currentVersion', () => {
+    const changeEvent: ChangeEvent = {
+      eventType: EventType.EntityCreated,
+      entityId: '123',
+      userName: 'testUser',
+      previousVersion: 1.0,
+    };
+
+    const result = getEventDetailsToDisplay(changeEvent);
+
+    expect(result).toStrictEqual({
+      eventType: EventType.EntityCreated,
+      entityId: '123',
+      userName: 'testUser',
+      previousVersion: 1.0,
+      currentVersion: undefined,
+    });
+  });
+
+  it('should return all undefined for completely missing fields', () => {
+    const changeEvent = {} as ChangeEvent;
+
+    const result = getEventDetailsToDisplay(changeEvent);
+
+    expect(result).toStrictEqual({
+      eventType: undefined,
+      entityId: undefined,
+      userName: undefined,
+      previousVersion: undefined,
+      currentVersion: undefined,
+    });
   });
 });
