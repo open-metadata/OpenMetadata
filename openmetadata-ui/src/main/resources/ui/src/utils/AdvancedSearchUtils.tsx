@@ -18,10 +18,12 @@ import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import {
   AsyncFetchListValues,
+  ListValues,
   RenderSettings,
 } from 'react-awesome-query-builder';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
@@ -47,7 +49,9 @@ import {
 } from '../interface/search.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/CommonUtils';
+import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getEntityName } from './EntityUtils';
+import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
 
 export const getDropDownItems = (index: string) => {
@@ -429,4 +433,28 @@ export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
   } catch (error) {
     return [];
   }
+};
+
+export const getTreeConfig = ({
+  searchOutputType,
+  searchIndex,
+  isExplorePage,
+  tierOptions,
+}: {
+  searchOutputType: SearchOutputType;
+  searchIndex: SearchIndex | SearchIndex[];
+  tierOptions: Promise<ListValues>;
+  isExplorePage: boolean;
+}) => {
+  return searchOutputType === SearchOutputType.ElasticSearch
+    ? advancedSearchClassBase.getQbConfigs(
+        tierOptions,
+        isArray(searchIndex) ? searchIndex : [searchIndex],
+        isExplorePage
+      )
+    : jsonLogicSearchClassBase.getQbConfigs(
+        tierOptions,
+        isArray(searchIndex) ? searchIndex : [searchIndex],
+        isExplorePage
+      );
 };

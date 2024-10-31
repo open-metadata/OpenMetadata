@@ -38,6 +38,7 @@ export interface AdvanceSearchContext {
   toggleModal: (show: boolean) => void;
   treeInternal: ImmutableTree;
   config: Config;
+  isUpdating: boolean;
   onReset: () => void;
   onResetAllFilters: () => void;
   onChangeSearchIndex: (index: SearchIndex | Array<SearchIndex>) => void;
