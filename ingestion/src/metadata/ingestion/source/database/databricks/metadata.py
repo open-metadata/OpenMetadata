@@ -13,7 +13,7 @@
 import re
 import traceback
 from copy import deepcopy
-from typing import Dict, Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
@@ -65,6 +65,8 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_view_definitions,
+    get_table_comment_result_wrapper,
+    get_table_comment_results,
     get_view_definition_wrapper,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -219,31 +221,6 @@ def get_view_names(
 
 
 @reflection.cache
-def get_table_comment_result(
-    self, connection, query, database, table_name, schema=None
-):
-    """
-    Method to fetch comment of all available tables
-    """
-    self.table_comment_result: Dict[Tuple[str, str], str] = {}
-    self.current_db: str = database
-    result = connection.execute(query)
-    self.table_comment_result[(table_name, schema)] = result
-
-
-def get_table_comment_result_wrapper(
-    self, connection, query, database, table_name, schema=None
-):
-    if (
-        not hasattr(self, "table_comment_result")
-        or self.table_comment_result.get((table_name, schema)) is None
-        or self.current_db != database
-    ):
-        self.get_table_comment_result(connection, query, database, table_name, schema)
-    return self.table_comment_result.get((table_name, schema))
-
-
-@reflection.cache
 def get_table_comment(  # pylint: disable=unused-argument
     self, connection, table_name, schema_name, **kw
 ):
@@ -255,7 +232,7 @@ def get_table_comment(  # pylint: disable=unused-argument
         schema_name=schema_name,
         table_name=table_name,
     )
-    cursor = get_table_comment_result_wrapper(
+    cursor = self.get_table_comment_result(
         self,
         connection=connection,
         query=query,
@@ -287,6 +264,26 @@ def get_view_definition(
             query=DATABRICKS_VIEW_DEFINITIONS,
         )
     return None
+
+
+@reflection.cache
+def get_table_comment_result(
+    self,
+    connection,
+    query,
+    database,
+    table_name,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
+):
+    return get_table_comment_result_wrapper(
+        self,
+        connection,
+        query=query,
+        database=database,
+        table_name=table_name,
+        schema=schema,
+    )
 
 
 @reflection.cache
@@ -351,7 +348,7 @@ def get_table_type(self, connection, database, schema, table):
             )
         else:
             query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
-        rows = get_table_comment_result_wrapper(
+        rows = get_table_comment_result(
             self,
             connection=connection,
             query=query,
@@ -369,7 +366,6 @@ def get_table_type(self, connection, database, schema, table):
     return
 
 
-DatabricksDialect.get_table_comment_result = get_table_comment_result
 DatabricksDialect.get_table_comment = get_table_comment
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
@@ -377,6 +373,8 @@ DatabricksDialect.get_schema_names = get_schema_names
 DatabricksDialect.get_view_definition = get_view_definition
 DatabricksDialect.get_table_names = get_table_names
 DatabricksDialect.get_all_view_definitions = get_all_view_definitions
+DatabricksDialect.get_table_comment_results = get_table_comment_results
+DatabricksDialect.get_table_comment_result = get_table_comment_result
 reflection.Inspector.get_schema_names = get_schema_names_reflection
 reflection.Inspector.get_table_ddl = get_table_ddl
 
@@ -721,8 +719,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 schema_name=schema_name,
                 table_name=table_name,
             )
-            cursor = get_table_comment_result_wrapper(
-                self,
+            cursor = inspector.dialect.get_table_comment_result(
                 connection=self.connection,
                 query=query,
                 database=self.context.get().database,
@@ -774,8 +771,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 schema_name=self.context.get().database_schema,
                 table_name=table_name,
             )
-            result = get_table_comment_result_wrapper(
-                self,
+            result = self.inspector.dialect.get_table_comment_result(
                 connection=self.connection,
                 query=query,
                 database=self.context.get().database,
