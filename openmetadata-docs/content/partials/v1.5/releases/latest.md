@@ -1,7 +1,7 @@
-# 1.5.6 Release 🎉
+# 1.5.9 Release 🎉
 
 {% note noteType="Tip" %}
-**Oct 3rd, 2024**
+**Oct 29th, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,34 +10,19 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.6!
+Learn how to upgrade your OpenMetadata instance to 1.5.9!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.6-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.8-release).
 
 # What's Changed
 
-- Fixed MSTR connector import.
-- Show displayName for database and databaseSchema in explore tree.
-- Allow PowerBI datamodel children in column lineage.
-- Fixed manifest is not parsed correctly on dbt versionless.
-- Fixed lineage & queries in dbt.
-- Added DBT tests with versionless and fixed v7 parsing.
-- Reset displayName to avoid being persisted while editing user display name.
-- Fixed incorrect schema implementations in Swagger annotations.
-- Resolved type null exception on user feed.
-- Addressed missing cast to str.
-- Fixed DI Missing Dashboard Description Status.
-- Fixed SAML redirect leads to 404 page on UI.
-- Fixed General Profiler Bugs.
-- Fixed time format for the created_at of the DBT cloud pipeline status.
-- Fixed role page size from 10 to 50.
-- Fixed Search Indexing.
-- Improved AlationSink connector.
-- Fixed sktime version to fix AUT
-- Fixed Expected ColumnLineage but got dict
-- Improved Collate API with Knowledge Center routes.  ${CollateIconWithLinkMD}
+- Prepare App Framework to handle application limits
+- Add Query Builder widget
+- Revamp MetaPilot as Collate AI and add limits (Collate only)
+- Fix EntityLink for names with brackets
+- Fix backend database Azure auth
+- Mask Greenplum secrets on the UI
 
-
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.5-release...1.5.6-release
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.8-release...1.5.9-release

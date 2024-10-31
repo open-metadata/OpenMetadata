@@ -338,6 +338,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.PROFILER_CONFIGURATION}`,
             icon: ProfilerConfigIcon,
           },
+          {
+            label: t('label.search'),
+            description: t('message.page-sub-header-for-search-setting'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
+            icon: PoliciesIcon,
+          },
         ],
       },
       {

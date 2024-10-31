@@ -35,6 +35,11 @@
       "type": "boolean",
       "default": true
     },
+    "supportsViewLineageExtraction": {
+      "description": "Supports View Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
     "supportsProfiler": {
       "description": "Supports Profiler",
       "type": "boolean",
@@ -49,6 +54,11 @@
       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
       "type": "boolean",
       "default": true
+    },
+    "supportsSystemProfile": {
+      "description": "The source database supports system profiles for tables such as last update.",
+      "type": "boolean",
+      "default": false
     },
     "supportsDataInsightExtraction": {
       "description": "Support Metadata To Elastic Search",
