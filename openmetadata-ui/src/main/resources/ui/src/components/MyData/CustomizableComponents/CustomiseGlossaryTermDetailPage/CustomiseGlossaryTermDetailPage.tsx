@@ -12,7 +12,6 @@
  */
 
 import { Modal } from 'antd';
-import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
@@ -29,7 +28,7 @@ import {
 } from '../../../../utils/CustomizableLandingPageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { CustomizeTabWidget } from '../../../Glossary/CustomiseWidgets/CustomizeTabWidget/CustomizeTabWidget';
-import GlossaryHeader from '../../../Glossary/GlossaryHeader/GlossaryHeader.component';
+import { GlossaryHeaderWidget } from '../../../Glossary/GlossaryHeader/GlossaryHeaderWidget';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import { CustomizeMyDataProps } from '../CustomizeMyData/CustomizeMyData.interface';
@@ -81,10 +80,6 @@ function CustomizeGlossaryTermDetailPage({
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
-  const asyncNoop = async () => {
-    noop();
-  };
-
   return (
     <>
       <PageLayoutV1
@@ -100,12 +95,8 @@ function CustomizeGlossaryTermDetailPage({
           onReset={handleOpenResetModal}
           onSave={handleSave}
         />
-        <GlossaryHeader
-          isEditView
+        <GlossaryHeaderWidget
           widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
-          onAddGlossaryTerm={noop}
-          onDelete={asyncNoop}
-          onUpdate={asyncNoop}
         />
         <CustomizeTabWidget />
       </PageLayoutV1>

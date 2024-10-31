@@ -47,7 +47,7 @@ import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNaviga
 import { useCustomizeStore } from './CustomizeStore';
 
 export const CustomizablePage = () => {
-  const { pageFqn } = useParams<{ pageFqn: PageType }>();
+  const { pageFqn } = useParams<{ pageFqn: string }>();
   const { fqn: personaFQN } = useFqn();
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -168,7 +168,7 @@ export const CustomizablePage = () => {
           const pageData = await getDocumentByFQN(pageLayoutFQN);
 
           setDocument(pageData);
-          setCurrentPageType(pageFqn);
+          setCurrentPageType(pageFqn as PageType);
         } catch (error) {
           if (
             (error as AxiosError).response?.status === ClientErrors.NOT_FOUND
@@ -179,7 +179,7 @@ export const CustomizablePage = () => {
               entityType: EntityType.PAGE,
               data: {},
             });
-            setCurrentPageType(pageFqn);
+            setCurrentPageType(pageFqn as PageType);
           } else {
             showErrorToast(error as AxiosError);
           }

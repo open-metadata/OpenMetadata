@@ -21,7 +21,6 @@ import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
-import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomiseDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTabs } from '../../../enums/GlossaryPage.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
@@ -278,7 +277,6 @@ const GlossaryDetails = ({
         <GlossaryHeader
           isVersionView={isVersionView}
           updateVote={updateVote}
-          widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
           onUpdate={handleGlossaryUpdate}

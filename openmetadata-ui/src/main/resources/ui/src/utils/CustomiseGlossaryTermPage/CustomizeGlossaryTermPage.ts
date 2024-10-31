@@ -18,6 +18,7 @@ import {
 import { GenericWidget } from '../../components/Glossary/CustomiseWidgets/SynonymsWidget/GenericWidget';
 import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
+import { GlossaryHeaderWidget } from '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomiseDetailPage.enum';
 import { GlossaryTabs } from '../../enums/GlossaryPage.enum';
 import {
@@ -234,7 +235,7 @@ class CustomizeGlossaryTermPageClassBase {
     widgetKey: T
   ) {
     if (widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.HEADER)) {
-      return GlossaryHeader;
+      return GlossaryHeaderWidget;
     } else if (widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TABS)) {
       return CustomizeTabWidget;
     } else if (

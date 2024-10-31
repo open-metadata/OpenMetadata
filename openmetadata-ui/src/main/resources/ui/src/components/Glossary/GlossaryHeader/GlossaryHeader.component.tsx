@@ -51,7 +51,6 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
-import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import {
   exportGlossaryInCSVFormat,
   getGlossariesById,
@@ -86,8 +85,7 @@ const GlossaryHeader = ({
   onAddGlossaryTerm,
   updateVote,
   isVersionView,
-  isEditView,
-}: GlossaryHeaderProps & WidgetCommonProps) => {
+}: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useFqn();
@@ -577,23 +575,6 @@ const GlossaryHeader = ({
     }
     fetchGlossaryPermission();
   }, [id, isEditView]);
-
-  if (isEditView) {
-    return (
-      <div className="p-x-md p-y-sm">
-        <EntityHeader
-          breadcrumb={[
-            { name: 'Glossaries', url: '#', activeTitle: false },
-            { name: 'Glossary Term', url: '#', activeTitle: false },
-          ]}
-          entityData={{ name: 'Glossary Term' }}
-          entityType={EntityType.GLOSSARY_TERM}
-          icon={icon}
-          serviceName=""
-        />
-      </div>
-    );
-  }
 
   return (
     <>

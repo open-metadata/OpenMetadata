@@ -25,7 +25,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomiseDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTabs } from '../../../enums/GlossaryPage.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -391,7 +390,6 @@ const GlossaryTermsV1 = ({
           <GlossaryHeader
             isVersionView={isVersionView}
             updateVote={updateVote}
-            widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModalVisible(true)}
             onDelete={handleGlossaryTermDelete}

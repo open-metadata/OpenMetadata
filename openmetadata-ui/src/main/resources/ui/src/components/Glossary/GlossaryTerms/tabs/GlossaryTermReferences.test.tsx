@@ -12,25 +12,11 @@
  */
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
-import {
-  MOCKED_GLOSSARY_TERMS,
-  MOCK_PERMISSIONS,
-} from '../../../../mocks/Glossary.mock';
 import GlossaryTermReferences from './GlossaryTermReferences';
-
-const mockOnGlossaryTermUpdate = jest.fn();
 
 describe('GlossaryTermReferences', () => {
   it('renders glossary term references', async () => {
-    const mockGlossaryTerm = MOCKED_GLOSSARY_TERMS[1];
-    const mockPermissions = MOCK_PERMISSIONS;
-    const { getByText, getByTestId } = render(
-      <GlossaryTermReferences
-        glossaryTerm={mockGlossaryTerm}
-        permissions={mockPermissions}
-        onGlossaryTermUpdate={mockOnGlossaryTermUpdate}
-      />
-    );
+    const { getByText, getByTestId } = render(<GlossaryTermReferences />);
 
     const sectionTitle = getByTestId('section-label.reference-plural');
     const editBtn = getByTestId('edit-button');
@@ -53,29 +39,13 @@ describe('GlossaryTermReferences', () => {
   });
 
   it('renders add button', async () => {
-    const mockGlossaryTerm = MOCKED_GLOSSARY_TERMS[0];
-    const mockPermissions = MOCK_PERMISSIONS;
-    const { getByTestId } = render(
-      <GlossaryTermReferences
-        glossaryTerm={mockGlossaryTerm}
-        permissions={mockPermissions}
-        onGlossaryTermUpdate={mockOnGlossaryTermUpdate}
-      />
-    );
+    const { getByTestId } = render(<GlossaryTermReferences />);
 
     expect(getByTestId('term-references-add-button')).toBeInTheDocument();
   });
 
   it('should not render add button if no permission', async () => {
-    const mockGlossaryTerm = MOCKED_GLOSSARY_TERMS[0];
-    const mockPermissions = { ...MOCK_PERMISSIONS, EditAll: false };
-    const { queryByTestId, findByText } = render(
-      <GlossaryTermReferences
-        glossaryTerm={mockGlossaryTerm}
-        permissions={mockPermissions}
-        onGlossaryTermUpdate={mockOnGlossaryTermUpdate}
-      />
-    );
+    const { queryByTestId, findByText } = render(<GlossaryTermReferences />);
 
     expect(queryByTestId('term-references-add-button')).toBeNull();
 
@@ -85,15 +55,7 @@ describe('GlossaryTermReferences', () => {
   });
 
   it('should not render edit button if no permission', async () => {
-    const mockGlossaryTerm = MOCKED_GLOSSARY_TERMS[1];
-    const mockPermissions = { ...MOCK_PERMISSIONS, EditAll: false };
-    const { queryByTestId } = render(
-      <GlossaryTermReferences
-        glossaryTerm={mockGlossaryTerm}
-        permissions={mockPermissions}
-        onGlossaryTermUpdate={mockOnGlossaryTermUpdate}
-      />
-    );
+    const { queryByTestId } = render(<GlossaryTermReferences />);
 
     expect(queryByTestId('edit-button')).toBeNull();
   });
