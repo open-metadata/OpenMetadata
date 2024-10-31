@@ -32,6 +32,7 @@ import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
+  EventSubscription,
   ProviderType,
   SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
@@ -42,7 +43,7 @@ import {
   createObservabilityAlert,
   getObservabilityAlertByFQN,
   getResourceFunctions,
-  updateObservabilityAlertWithPut,
+  updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
 import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
@@ -64,6 +65,7 @@ function AddObservabilityPage() {
   >([]);
 
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
+  const [initialData, setInitialData] = useState<EventSubscription>();
   const [fetching, setFetching] = useState<number>(0);
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -91,6 +93,7 @@ function AddObservabilityPage() {
         }),
       };
 
+      setInitialData(observabilityAlert);
       setAlert(modifiedAlertData);
     } catch (error) {
       // Error handling
@@ -150,8 +153,9 @@ function AddObservabilityPage() {
         await handleAlertSave({
           data,
           fqn,
+          initialData,
           createAlertAPI: createObservabilityAlert,
-          updateAlertAPI: updateObservabilityAlertWithPut,
+          updateAlertAPI: updateObservabilityAlert,
           afterSaveAction: async () => {
             !fqn && (await getResourceLimit('eventsubscription', true, true));
             history.push(getObservabilityAlertDetailsPath(data.name));
@@ -164,7 +168,7 @@ function AddObservabilityPage() {
         setSaving(false);
       }
     },
-    [fqn, history]
+    [fqn, history, initialData]
   );
 
   const [selectedTrigger] =

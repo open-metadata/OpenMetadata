@@ -45,7 +45,7 @@ import {
   createNotificationAlert,
   getAlertsFromName,
   getResourceFunctions,
-  updateNotificationAlertWithPut,
+  updateNotificationAlert,
 } from '../../rest/alertsAPI';
 import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
 import {
@@ -72,6 +72,7 @@ const AddNotificationPage = () => {
   >([]);
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
+  const [initialData, setInitialData] = useState<EventSubscription>();
 
   const isSystemProvider = useMemo(
     () => alert?.provider === ProviderType.System,
@@ -119,6 +120,7 @@ const AddNotificationPage = () => {
         }),
       };
 
+      setInitialData(response);
       setAlert(modifiedAlertData);
     } catch {
       showErrorToast(
@@ -164,8 +166,9 @@ const AddNotificationPage = () => {
         await handleAlertSave({
           data,
           fqn,
+          initialData,
           createAlertAPI: createNotificationAlert,
-          updateAlertAPI: updateNotificationAlertWithPut,
+          updateAlertAPI: updateNotificationAlert,
           afterSaveAction: async () => {
             !fqn && (await getResourceLimit('eventsubscription', true, true));
             history.push(getNotificationAlertDetailsPath(data.name));
@@ -178,7 +181,7 @@ const AddNotificationPage = () => {
         setIsButtonLoading(false);
       }
     },
-    [fqn, history]
+    [fqn, history, initialData]
   );
 
   const [selectedTrigger] =

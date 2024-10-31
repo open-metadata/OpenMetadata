@@ -23,8 +23,9 @@ import {
 } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
+import { compare, Operation } from 'fast-json-patch';
 import i18next, { t } from 'i18next';
-import { isEqual, isUndefined, map, startCase, uniqBy } from 'lodash';
+import { isEqual, isUndefined, map, omitBy, startCase, uniqBy } from 'lodash';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
@@ -804,59 +805,60 @@ export const getConditionalField = (
 export const handleAlertSave = async ({
   data,
   fqn,
+  initialData,
   createAlertAPI,
   updateAlertAPI,
   afterSaveAction,
   setInlineAlertDetails,
 }: {
+  initialData?: EventSubscription;
   data: ModifiedCreateEventSubscription;
   createAlertAPI: (
     alert: CreateEventSubscription
   ) => Promise<EventSubscription>;
-  updateAlertAPI: (
-    alert: CreateEventSubscription
-  ) => Promise<EventSubscription>;
+  updateAlertAPI: (id: string, data: Operation[]) => Promise<EventSubscription>;
   afterSaveAction: () => Promise<void>;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
   fqn?: string;
 }) => {
   try {
-    const destinations = data.destinations?.map((d) => ({
-      type: d.type,
-      config: d.config,
-      category: d.category,
-      timeout: data.timeout,
-    }));
+    const destinations = data.destinations?.map((d) => {
+      const initialDestination = initialData?.destinations?.find(
+        (destination) => destination.type === d.type
+      );
 
-    if (fqn && !isUndefined(alert)) {
-      const {
-        alertType,
+      return {
+        ...(initialDestination ?? {}),
+        type: d.type,
+        config: d.config,
+        category: d.category,
+        timeout: data.timeout,
+      };
+    });
+
+    if (fqn && !isUndefined(initialData)) {
+      const { description, displayName, input, name, owners, resources } = data;
+
+      const newAlertData: EventSubscription = {
+        ...initialData,
         description,
         displayName,
-        enabled,
-        input,
         name,
+        input: {
+          actions: input?.actions ?? [],
+          filters: input?.filters ?? [],
+        },
         owners,
-        provider,
-        resources,
-        trigger,
-      } = data;
-
-      const newData = {
-        alertType,
-        description,
-        destinations,
-        displayName,
-        enabled,
-        input,
-        name,
-        owners,
-        provider,
-        resources,
-        trigger,
+        filteringRules: {
+          ...initialData.filteringRules,
+          resources: resources ?? [],
+        },
+        destinations: destinations ?? [],
       };
 
-      await updateAlertAPI(newData);
+      const jsonPatch = compare(omitBy(initialData, isUndefined), newAlertData);
+
+      await updateAlertAPI(initialData.id, jsonPatch);
     } else {
       // Remove timeout from alert object since it's only for UI
       const { timeout, ...finalData } = data;

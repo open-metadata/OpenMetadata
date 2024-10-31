@@ -108,14 +108,6 @@ export const updateNotificationAlert = async (
   return response.data;
 };
 
-export const updateNotificationAlertWithPut = async (
-  alert: CreateEventSubscription
-) => {
-  const response = await axiosClient.put<EventSubscription>(BASE_URL, alert);
-
-  return response.data;
-};
-
 export const deleteAlert = async (id: string) => {
   const response = await axiosClient.delete(`${BASE_URL}/${id}`);
 
