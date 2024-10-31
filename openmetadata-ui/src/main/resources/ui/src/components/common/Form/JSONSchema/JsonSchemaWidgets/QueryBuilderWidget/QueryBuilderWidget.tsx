@@ -110,8 +110,8 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
     onTreeUpdate(nTree, nConfig);
 
-    if (outputType === SearchOutputType.ElasticSearch) {
-      const data = elasticSearchFormat(nTree, config) ?? {};
+    if (outputType === QueryBuilderOutputType.ELASTICSEARCH) {
+      const data = elasticSearchFormat(nTree, config) ?? '';
       const qFilter = {
         query: data,
       };
@@ -119,7 +119,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         debouncedFetchEntityCount(qFilter);
       }
 
-      onChange(JSON.stringify(qFilter));
+      onChange(!isEmpty(data) ? JSON.stringify(qFilter) : '');
     } else {
       const data = QbUtils.jsonLogicFormat(nTree, config);
       onChange(JSON.stringify(data.logic ?? '{}'));
@@ -128,14 +128,15 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
 
   const loadDefaultValueInTree = useCallback(() => {
     if (!isEmpty(value)) {
-      if (outputType === SearchOutputType.ElasticSearch) {
-        const tree = QbUtils.checkTree(
-          QbUtils.loadTree(
-            getJsonTreeFromQueryFilter(JSON.parse(value || '')) as JsonTree
-          ),
-          config
-        );
-        onTreeUpdate(tree, config);
+      if (outputType === QueryBuilderOutputType.ELASTICSEARCH) {
+        const parsedTree = getJsonTreeFromQueryFilter(
+          JSON.parse(value || '')
+        ) as JsonTree;
+
+        if (Object.keys(parsedTree).length > 0) {
+          const tree = QbUtils.checkTree(QbUtils.loadTree(parsedTree), config);
+          onTreeUpdate(tree, config);
+        }
       } else {
         const emptyJsonTree: JsonTree = {
           id: QbUtils.uuid(),

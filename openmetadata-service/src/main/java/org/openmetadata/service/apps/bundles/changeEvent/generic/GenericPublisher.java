@@ -125,7 +125,9 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     String message =
         CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
     LOG.error(message);
-    throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+    throw new EventPublisherException(
+        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage()),
+        Pair.of(subscriptionDestination.getId(), event));
   }
 
   private void handleException(long attemptTime, Exception ex) throws EventPublisherException {
