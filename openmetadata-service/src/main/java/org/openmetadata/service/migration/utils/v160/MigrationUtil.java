@@ -105,7 +105,7 @@ public class MigrationUtil {
                 JsonUtils.pojoToJson(organizationPolicy));
       }
     } catch (EntityNotFoundException ex) {
-      LOG.warn("OrganizationPolicy not found", ex);
+      LOG.warn("OrganizationPolicy not found, skipping adding view all rule");
     }
   }
 

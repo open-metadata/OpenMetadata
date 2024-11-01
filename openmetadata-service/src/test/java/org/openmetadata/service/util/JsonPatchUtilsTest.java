@@ -231,32 +231,33 @@ class JsonPatchUtilsTest {
   @Test
   void testAddClassificationTagAtColumn() throws Exception {
     // Create a patch to add a new Classification tag
-    String patchString = "[\n" +
-        "  {\n" +
-        "    \"op\": \"add\",\n" +
-        "    \"path\": \"/columns/0/tags/-\",\n" +
-        "    \"value\": {\n" +
-        "      \"tagFQN\": \"PII.Sensitive\",\n" +
-        "      \"name\": \"Sensitive\",\n" +
-        "      \"description\": \"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.\",\n" +
-        "      \"source\": \"Classification\",\n" +
-        "      \"labelType\": \"Manual\",\n" +
-        "      \"state\": \"Confirmed\"\n" +
-        "    }\n" +
-        "  },\n" +
-        "  {\n" +
-        "    \"op\": \"add\",\n" +
-        "    \"path\": \"/columns/0/tags/-\",\n" +
-        "    \"value\": {\n" +
-        "      \"tagFQN\": \"PersonalData.Personal\",\n" +
-        "      \"name\": \"Personal\",\n" +
-        "      \"description\": \"Data that can be used to directly or indirectly identify a person.\",\n" +
-        "      \"source\": \"Classification\",\n" +
-        "      \"labelType\": \"Manual\",\n" +
-        "      \"state\": \"Confirmed\"\n" +
-        "    }\n" +
-        "  }\n" +
-        "]";
+    String patchString =
+        "[\n"
+            + "  {\n"
+            + "    \"op\": \"add\",\n"
+            + "    \"path\": \"/columns/0/tags/-\",\n"
+            + "    \"value\": {\n"
+            + "      \"tagFQN\": \"PII.Sensitive\",\n"
+            + "      \"name\": \"Sensitive\",\n"
+            + "      \"description\": \"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.\",\n"
+            + "      \"source\": \"Classification\",\n"
+            + "      \"labelType\": \"Manual\",\n"
+            + "      \"state\": \"Confirmed\"\n"
+            + "    }\n"
+            + "  },\n"
+            + "  {\n"
+            + "    \"op\": \"add\",\n"
+            + "    \"path\": \"/columns/0/tags/-\",\n"
+            + "    \"value\": {\n"
+            + "      \"tagFQN\": \"PersonalData.Personal\",\n"
+            + "      \"name\": \"Personal\",\n"
+            + "      \"description\": \"Data that can be used to directly or indirectly identify a person.\",\n"
+            + "      \"source\": \"Classification\",\n"
+            + "      \"labelType\": \"Manual\",\n"
+            + "      \"state\": \"Confirmed\"\n"
+            + "    }\n"
+            + "  }\n"
+            + "]";
 
     // Parse the patch string into javax.json.JsonPatch
     JsonPatch patch;
@@ -266,13 +267,13 @@ class JsonPatchUtilsTest {
     }
 
     // Determine MetadataOperations using the overloaded method
-    Set<MetadataOperation> operations = JsonPatchUtils.getMetadataOperations(
-        resourceContextMock, patch);
+    Set<MetadataOperation> operations =
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, patch);
 
     // Assertions
-    assertTrue(operations.contains(MetadataOperation.EDIT_TAGS),
+    assertTrue(
+        operations.contains(MetadataOperation.EDIT_TAGS),
         "MetadataOperations should contain EDIT_TAGS");
-    assertEquals(1, operations.size(),
-        "There should be exactly one MetadataOperation");
+    assertEquals(1, operations.size(), "There should be exactly one MetadataOperation");
   }
 }
