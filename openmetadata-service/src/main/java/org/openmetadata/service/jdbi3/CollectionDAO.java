@@ -2120,7 +2120,7 @@ public interface CollectionDAO {
                 + "  WHERE JSON_UNQUOTE(JSON_EXTRACT(ce.json, '$.id')) = "
                 + "    JSON_UNQUOTE(JSON_EXTRACT(cd.json, '$.changeEvent.id')) "
                 + ") "
-                + "LIMIT :limit",
+                + "LIMIT :limit OFFSET :paginationOffset",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
