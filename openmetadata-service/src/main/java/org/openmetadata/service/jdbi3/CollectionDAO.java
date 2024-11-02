@@ -2107,6 +2107,34 @@ public interface CollectionDAO {
         @Bind("extension") String extension,
         @Bind("json") String json,
         @Bind("source") String source);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT ce.json "
+                + "FROM change_event ce "
+                + "WHERE ce.offset BETWEEN :offsetStart AND :offsetEnd "
+                + "AND NOT EXISTS ( "
+                + "  SELECT 1 FROM consumers_dlq cd "
+                + "  WHERE JSON_UNQUOTE(JSON_EXTRACT(ce.json, '$.id')) = "
+                + "    JSON_UNQUOTE(JSON_EXTRACT(cd.json, '$.changeEvent.id')) "
+                + ") "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT ce.json "
+                + "FROM change_event ce "
+                + "WHERE ce.offset BETWEEN :offsetStart AND :offsetEnd "
+                + "AND NOT EXISTS ( "
+                + "  SELECT 1 FROM consumers_dlq cd "
+                + "  WHERE ce.json ->> 'id' = cd.json ->> 'changeEvent' ->> 'id' "
+                + ") "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> getSuccessfullySentChangeEvents(
+        @Bind("offsetStart") long offsetStart,
+        @Bind("offsetEnd") long offsetEnd,
+        @Bind("limit") int limit);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {

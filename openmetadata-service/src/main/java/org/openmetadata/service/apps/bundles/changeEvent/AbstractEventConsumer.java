@@ -55,6 +55,8 @@ public abstract class AbstractEventConsumer
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
 
   private long offset = -1;
+  private long startingOffset = -1;
+
   private AlertMetrics alertMetrics;
 
   @Getter @Setter private JobDetail jobDetail;
@@ -68,7 +70,8 @@ public abstract class AbstractEventConsumer
         (EventSubscription) context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
     this.jobDetail = context.getJobDetail();
     this.eventSubscription = sub;
-    this.offset = loadInitialOffset(context);
+    this.offset = loadInitialOffset(context).getCurrentOffset();
+    this.startingOffset = loadInitialOffset(context).getStartingOffset();
     this.alertMetrics = loadInitialMetrics();
     this.destinationMap = loadDestinationsMap(context);
     this.doInit(context);
@@ -110,18 +113,18 @@ public abstract class AbstractEventConsumer
             source.toString());
   }
 
-  private long loadInitialOffset(JobExecutionContext context) {
+  private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
     EventSubscriptionOffset jobStoredOffset =
         (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
     // If the Job Data Map has the latest offset, use it
     if (jobStoredOffset != null) {
-      return jobStoredOffset.getOffset();
+      return jobStoredOffset;
     } else {
       EventSubscriptionOffset eventSubscriptionOffset =
           getStartingOffset(eventSubscription.getId());
       // Update the Job Data Map with the latest offset
       context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
-      return eventSubscriptionOffset.getOffset();
+      return eventSubscriptionOffset;
     }
   }
 
@@ -185,7 +188,10 @@ public abstract class AbstractEventConsumer
     long currentTime = System.currentTimeMillis();
     // Upsert Offset
     EventSubscriptionOffset eventSubscriptionOffset =
-        new EventSubscriptionOffset().withOffset(offset).withTimestamp(currentTime);
+        new EventSubscriptionOffset()
+            .withCurrentOffset(offset)
+            .withStartingOffset(startingOffset)
+            .withTimestamp(currentTime);
 
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()

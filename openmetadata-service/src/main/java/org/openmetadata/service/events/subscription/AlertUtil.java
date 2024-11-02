@@ -203,7 +203,8 @@ public final class AlertUtil {
   }
 
   public static EventSubscriptionOffset getStartingOffset(UUID eventSubscriptionId) {
-    long eventSubscriptionOffset;
+    long startingOffset;
+    long currentOffset;
     String json =
         Entity.getCollectionDAO()
             .eventSubscriptionDAO()
@@ -211,11 +212,15 @@ public final class AlertUtil {
     if (json != null) {
       EventSubscriptionOffset offsetFromDb =
           JsonUtils.readValue(json, EventSubscriptionOffset.class);
-      eventSubscriptionOffset = offsetFromDb.getOffset();
+      startingOffset = offsetFromDb.getStartingOffset();
+      currentOffset = offsetFromDb.getCurrentOffset();
     } else {
-      eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+      currentOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+      startingOffset = currentOffset;
     }
-    return new EventSubscriptionOffset().withOffset(eventSubscriptionOffset);
+    return new EventSubscriptionOffset()
+        .withCurrentOffset(currentOffset)
+        .withStartingOffset(startingOffset);
   }
 
   public static FilteringRules validateAndBuildFilteringConditions(

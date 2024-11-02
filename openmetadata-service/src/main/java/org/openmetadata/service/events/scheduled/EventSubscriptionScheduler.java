@@ -224,7 +224,7 @@ public class EventSubscriptionScheduler {
 
     long currentOffset =
         getEventSubscriptionOffset(subscriptionId)
-            .map(EventSubscriptionOffset::getOffset)
+            .map(EventSubscriptionOffset::getCurrentOffset)
             .orElse(0L);
 
     long unpublishedEventCount = getUnpublishedEventCount(subscriptionId);
@@ -233,7 +233,7 @@ public class EventSubscriptionScheduler {
             .orElse(Collections.emptyList());
 
     return new EventSubscriptionDiagnosticInfo()
-        .withLatestOffset(latestOffset.getOffset())
+        .withLatestOffset(latestOffset.getCurrentOffset())
         .withCurrentOffset(currentOffset)
         .withHasProcessedAllEvents(isAllEventsPublished)
         .withUnprocessedEventsCount(unpublishedEventCount)
@@ -242,14 +242,14 @@ public class EventSubscriptionScheduler {
 
   public static EventSubscriptionOffset getLatestOffset() {
     return new EventSubscriptionOffset()
-        .withOffset(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
+        .withCurrentOffset(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
   }
 
   public boolean checkIfPublisherPublishedAllEvents(UUID subscriptionID) {
     long countOfEvents = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
 
     return getEventSubscriptionOffset(subscriptionID)
-        .map(offset -> offset.getOffset() == countOfEvents)
+        .map(offset -> offset.getCurrentOffset() == countOfEvents)
         .orElse(false);
   }
 
@@ -257,14 +257,14 @@ public class EventSubscriptionScheduler {
     long countOfEvents = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
 
     return getEventSubscriptionOffset(subscriptionID)
-        .map(offset -> Math.abs(countOfEvents - offset.getOffset()))
+        .map(offset -> Math.abs(countOfEvents - offset.getCurrentOffset()))
         .orElse(countOfEvents);
   }
 
   public List<ChangeEvent> getUnpublishedEvents(UUID subscriptionId, int limit) {
     long offset =
         getEventSubscriptionOffset(subscriptionId)
-            .map(EventSubscriptionOffset::getOffset)
+            .map(EventSubscriptionOffset::getCurrentOffset)
             .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
 
     List<String> unprocessedEventJsonList =
@@ -304,20 +304,21 @@ public class EventSubscriptionScheduler {
 
   public List<ChangeEvent> getSuccessfullySentChangeEventsForAlert(UUID id, int limit) {
     Optional<EventSubscriptionOffset> eventSubscriptionOffset = getEventSubscriptionOffset(id);
+    if (eventSubscriptionOffset.isEmpty()) {
+      return Collections.emptyList();
+    }
 
-    return eventSubscriptionOffset
-        .map(
-            offset -> {
-              List<String> jsonEvents =
-                  Entity.getCollectionDAO()
-                      .changeEventDAO()
-                      .listChangeEventsBeforeOffset(limit, offset.getOffset());
+    List<String> successfullySentChangeEvents =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getSuccessfullySentChangeEvents(
+                eventSubscriptionOffset.get().getStartingOffset(),
+                eventSubscriptionOffset.get().getCurrentOffset(),
+                limit);
 
-              return jsonEvents.stream()
-                  .map(json -> JsonUtils.readValue(json, ChangeEvent.class))
-                  .collect(Collectors.toList());
-            })
-        .orElse(Collections.emptyList());
+    return successfullySentChangeEvents.stream()
+        .map(e -> JsonUtils.readValue(e, ChangeEvent.class))
+        .collect(Collectors.toList());
   }
 
   public Optional<EventSubscription> getEventSubscriptionFromScheduledJob(UUID id) {
