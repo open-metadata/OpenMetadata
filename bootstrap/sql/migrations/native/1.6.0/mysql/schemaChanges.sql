@@ -13,3 +13,13 @@ ALTER TABLE consumers_dlq ADD COLUMN source VARCHAR(255);
 
 -- Create an index on the source column in the consumers_dlq table
 CREATE INDEX idx_consumers_dlq_source ON consumers_dlq (source);
+
+-- Rename 'offset' to 'currentOffset' and add 'startingOffset'
+UPDATE change_event_consumers
+SET json = JSON_SET(
+    JSON_REMOVE(json, '$.offset'),
+    '$.currentOffset', JSON_EXTRACT(json, '$.offset'),
+    '$.startingOffset', JSON_EXTRACT(json, '$.offset')
+)
+WHERE JSON_EXTRACT(json, '$.offset') IS NOT NULL
+  AND jsonSchema = 'eventSubscriptionOffset';
