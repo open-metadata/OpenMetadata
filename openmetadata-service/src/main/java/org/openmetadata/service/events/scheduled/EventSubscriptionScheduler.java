@@ -221,12 +221,15 @@ public class EventSubscriptionScheduler {
   public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(
       UUID subscriptionId, int limit, int paginationOffset) {
     boolean isAllEventsPublished = checkIfPublisherPublishedAllEvents(subscriptionId);
-    EventSubscriptionOffset latestOffset = getLatestOffset();
+
+    Optional<EventSubscriptionOffset> eventSubscriptionOffsetOptional =
+        getEventSubscriptionOffset(subscriptionId);
 
     long currentOffset =
-        getEventSubscriptionOffset(subscriptionId)
-            .map(EventSubscriptionOffset::getCurrentOffset)
-            .orElse(0L);
+        eventSubscriptionOffsetOptional.map(EventSubscriptionOffset::getCurrentOffset).orElse(0L);
+
+    long startingOffset =
+        eventSubscriptionOffsetOptional.map(EventSubscriptionOffset::getStartingOffset).orElse(0L);
 
     long unpublishedEventCount = getUnpublishedEventCount(subscriptionId);
     List<ChangeEvent> unprocessedEvents =
@@ -234,16 +237,12 @@ public class EventSubscriptionScheduler {
             .orElse(Collections.emptyList());
 
     return new EventSubscriptionDiagnosticInfo()
-        .withLatestOffset(latestOffset.getCurrentOffset())
+        .withLatestOffset(Entity.getCollectionDAO().changeEventDAO().getLatestOffset())
         .withCurrentOffset(currentOffset)
+        .withStartingOffset(startingOffset)
         .withHasProcessedAllEvents(isAllEventsPublished)
         .withUnprocessedEventsCount(unpublishedEventCount)
         .withUnprocessedEventsList(unprocessedEvents);
-  }
-
-  public static EventSubscriptionOffset getLatestOffset() {
-    return new EventSubscriptionOffset()
-        .withCurrentOffset(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
   }
 
   public boolean checkIfPublisherPublishedAllEvents(UUID subscriptionID) {
