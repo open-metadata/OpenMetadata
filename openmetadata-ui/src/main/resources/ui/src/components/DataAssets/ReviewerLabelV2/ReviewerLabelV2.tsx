@@ -33,7 +33,7 @@ import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/User
 import { useGenericContext } from '../../GenericProvider/GenericProvider';
 
 export const ReviewerLabelV2 = () => {
-  const { data: glossaryTerm, onUpdate } = useGenericContext<GlossaryTerm>();
+  const { data, onUpdate, type } = useGenericContext<GlossaryTerm>();
 
   const isVersionView = false;
   const { getEntityPermission } = usePermissionProvider();
@@ -41,11 +41,11 @@ export const ReviewerLabelV2 = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const fetchGlossaryTermPermission = async () => {
+  const fetchEntityPermission = async () => {
     try {
       const response = await getEntityPermission(
-        ResourceEntity.GLOSSARY_TERM,
-        glossaryTerm?.id as string
+        type as unknown as ResourceEntity,
+        data?.id as string
       );
       setPermissions(response);
     } catch (error) {
@@ -54,29 +54,29 @@ export const ReviewerLabelV2 = () => {
   };
 
   const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
-    const updatedGlossaryTerm = { ...glossaryTerm };
-    updatedGlossaryTerm.owners = updatedUser;
-    await onUpdate(updatedGlossaryTerm);
+    const updatedEntity = { ...data };
+    updatedEntity.owners = updatedUser;
+    await onUpdate(updatedEntity);
   };
 
   useEffect(() => {
-    fetchGlossaryTermPermission();
-  }, [glossaryTerm]);
+    fetchEntityPermission();
+  }, [data, type]);
 
   return (
-    <div data-testid="glossary-right-panel-owner-link">
+    <div data-testid="reviewer-link">
       <div className="d-flex items-center m-b-xs">
         <Typography.Text className="right-panel-label">
           {t('label.reviewer-plural')}
         </Typography.Text>
         {(permissions.EditOwners || permissions.EditAll) &&
-          glossaryTerm.owners &&
-          glossaryTerm.owners.length > 0 && (
+          data.owners &&
+          data.owners.length > 0 && (
             <UserTeamSelectableList
               hasPermission={permissions.EditOwners || permissions.EditAll}
               listHeight={200}
               multiple={{ user: true, team: false }}
-              owner={glossaryTerm.owners}
+              owner={data.owners}
               onUpdate={handleUpdatedOwner}>
               <Tooltip
                 title={t('label.edit-entity', {
@@ -95,19 +95,19 @@ export const ReviewerLabelV2 = () => {
       </div>
       <Space className="m-r-xss" size={4}>
         {getOwnerVersionLabel(
-          glossaryTerm,
+          data,
           isVersionView ?? false,
           TabSpecificField.OWNERS,
           permissions.EditOwners || permissions.EditAll
         )}
       </Space>
-      {glossaryTerm.owners?.length === 0 &&
+      {data.owners?.length === 0 &&
         (permissions.EditOwners || permissions.EditAll) && (
           <UserTeamSelectableList
             hasPermission={permissions.EditOwners || permissions.EditAll}
             listHeight={200}
             multiple={{ user: true, team: false }}
-            owner={glossaryTerm.owners}
+            owner={data.owners}
             onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
             <TagButton
               className="text-primary cursor-pointer"

@@ -34,7 +34,7 @@ import { useGenericContext } from '../../GenericProvider/GenericProvider';
 export const OwnerLabelV2 = <
   T extends { owners?: EntityReference[]; id: string }
 >() => {
-  const { data, onUpdate } = useGenericContext<T>();
+  const { data, onUpdate, type } = useGenericContext<T>();
 
   const isVersionView = false;
   const { getEntityPermission } = usePermissionProvider();
@@ -42,10 +42,10 @@ export const OwnerLabelV2 = <
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const fetchGlossaryTermPermission = async () => {
+  const fetchEntityPermission = async () => {
     try {
       const response = await getEntityPermission(
-        ResourceEntity.GLOSSARY_TERM,
+        type as unknown as ResourceEntity,
         data?.id as string
       );
       setPermissions(response);
@@ -55,17 +55,17 @@ export const OwnerLabelV2 = <
   };
 
   const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
-    const updatedGlossaryTerm = { ...data };
-    updatedGlossaryTerm.owners = updatedUser;
-    await onUpdate(updatedGlossaryTerm);
+    const updatedEntity = { ...data };
+    updatedEntity.owners = updatedUser;
+    await onUpdate(updatedEntity);
   };
 
   useEffect(() => {
-    fetchGlossaryTermPermission();
-  }, [data]);
+    fetchEntityPermission();
+  }, [data, type]);
 
   return (
-    <div data-testid="glossary-right-panel-owner-link">
+    <div data-testid="owner-link">
       <div className="d-flex items-center m-b-xs">
         <Typography.Text className="right-panel-label">
           {t('label.owner-plural')}
