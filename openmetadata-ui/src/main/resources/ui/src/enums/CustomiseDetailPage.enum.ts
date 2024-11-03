@@ -46,4 +46,5 @@ export enum GlossaryTermDetailPageWidgetKeys {
   CUSTOM_PROPERTIES = 'KnowledgePanel.CustomProperties',
   EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
   NO_CUSTOMIZED_WIDGET = 'ExtraWidget.NoCustomizedWidget',
+  TERMS_TABLE = 'KnowledgePanel.TermsTable',
 }
