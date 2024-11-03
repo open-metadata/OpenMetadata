@@ -16,7 +16,7 @@ import { isEmpty, isNil, toString, uniqueId } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { GlossaryTabs } from '../../../../enums/GlossaryPage.enum';
+import { EntityTabs } from '../../../../enums/entity.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { Page, Tab } from '../../../../generated/system/ui/page';
 import { PageType } from '../../../../generated/system/ui/uiCustomization';
@@ -53,7 +53,7 @@ export const CustomizeTabWidget = () => {
     currentPage?.tabs ?? getDefaultTabs(currentPageType as PageType)
   );
   const [activeKey, setActiveKey] = useState<string | null>(
-    (items[0]?.id as GlossaryTabs) ?? null
+    (items[0]?.id as EntityTabs) ?? null
   );
 
   const [editableItem, setEditableItem] = useState<Tab | null>(null);
@@ -61,7 +61,7 @@ export const CustomizeTabWidget = () => {
     getLayoutWithEmptyWidgetPlaceholder(
       (items.find((item) => item.id === activeKey)?.layout as WidgetConfig[]) ??
         customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
-          (activeKey as GlossaryTabs) ?? GlossaryTabs.OVERVIEW
+          (activeKey as EntityTabs) ?? EntityTabs.OVERVIEW
         ),
       2,
       3
@@ -71,7 +71,7 @@ export const CustomizeTabWidget = () => {
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>('');
 
   const onChange = (tabKey: string) => {
-    const key = tabKey as GlossaryTabs;
+    const key = tabKey as EntityTabs;
     setActiveKey(key);
     const newTab = items.find((item) => item.id === key);
     setTabLayouts(
@@ -110,13 +110,13 @@ export const CustomizeTabWidget = () => {
     const newPanes = items.filter((item) => item.id !== targetKey);
     if (newPanes.length && newActiveKey === targetKey) {
       if (lastIndex >= 0) {
-        newActiveKey = newPanes[lastIndex].id as GlossaryTabs;
+        newActiveKey = newPanes[lastIndex].id as EntityTabs;
       } else {
-        newActiveKey = newPanes[0].id as GlossaryTabs;
+        newActiveKey = newPanes[0].id as EntityTabs;
       }
     }
     setItems(newPanes);
-    onChange(newActiveKey ?? 'overview');
+    onChange(newActiveKey ?? EntityTabs.OVERVIEW);
   };
 
   const onEdit = (

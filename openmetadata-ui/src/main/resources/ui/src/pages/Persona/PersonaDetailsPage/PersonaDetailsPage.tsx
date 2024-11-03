@@ -165,12 +165,7 @@ export const PersonaDetailsPage = () => {
   );
 
   const handleAfterDeleteAction = () => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.MEMBERS,
-        GlobalSettingOptions.PERSONA
-      )
-    );
+    history.push(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
   };
 
   if (isLoading) {

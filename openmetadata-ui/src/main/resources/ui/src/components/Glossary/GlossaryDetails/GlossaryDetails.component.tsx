@@ -21,8 +21,7 @@ import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
-import { EntityType } from '../../../enums/entity.enum';
-import { GlossaryTabs } from '../../../enums/GlossaryPage.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -33,6 +32,7 @@ import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeed
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import GlossaryDetailsRightPanel from '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
@@ -92,44 +92,37 @@ const GlossaryDetails = ({
     }
   };
 
-  const description = useMemo(
-    () =>
-      isVersionView
-        ? getEntityVersionByField(
-            glossary.changeDescription as ChangeDescription,
-            EntityField.DESCRIPTION,
-            glossary.description
-          )
-        : glossary.description,
+  const updatedGlossary = useMemo(() => {
+    const updatedDescription = isVersionView
+      ? getEntityVersionByField(
+          glossary.changeDescription as ChangeDescription,
+          EntityField.DESCRIPTION,
+          glossary.description
+        )
+      : glossary.description;
 
-    [glossary, isVersionView]
-  );
+    const updatedName = isVersionView
+      ? getEntityVersionByField(
+          glossary.changeDescription as ChangeDescription,
+          EntityField.NAME,
+          glossary.name
+        )
+      : glossary.name;
+    const updatedDisplayName = isVersionView
+      ? getEntityVersionByField(
+          glossary.changeDescription as ChangeDescription,
+          EntityField.DISPLAYNAME,
+          glossary.displayName
+        )
+      : glossary.displayName;
 
-  //   const name = useMemo(
-  //     () =>
-  //       isVersionView
-  //         ? getEntityVersionByField(
-  //             glossary.changeDescription as ChangeDescription,
-  //             EntityField.NAME,
-  //             glossary.name
-  //           )
-  //         : glossary.name,
-
-  //     [glossary, isVersionView]
-  //   );
-
-  //   const displayName = useMemo(
-  //     () =>
-  //       isVersionView
-  //         ? getEntityVersionByField(
-  //             glossary.changeDescription as ChangeDescription,
-  //             EntityField.DISPLAYNAME,
-  //             glossary.displayName
-  //           )
-  //         : glossary.displayName,
-
-  //     [glossary, isVersionView]
-  //   );
+    return {
+      ...glossary,
+      description: updatedDescription,
+      name: updatedName,
+      displayName: updatedDisplayName,
+    };
+  }, [glossary, isVersionView]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -150,7 +143,7 @@ const GlossaryDetails = ({
                 <div className="p-y-md p-x-md glossary-content-container">
                   <Space className="w-full" direction="vertical" size={24}>
                     <DescriptionV1
-                      description={description}
+                      description={updatedGlossary.description}
                       entityFqn={glossary.fullyQualifiedName}
                       entityName={getEntityName(glossary)}
                       entityType={EntityType.GLOSSARY}
@@ -195,26 +188,19 @@ const GlossaryDetails = ({
         </Col>
       </Row>
     );
-  }, [
-    isVersionView,
-    permissions,
-    glossary,
-    termsLoading,
-    description,
-    isDescriptionEditable,
-  ]);
+  }, [permissions, glossary, termsLoading, isDescriptionEditable]);
 
   const tabs = useMemo(() => {
     return [
       {
         label: (
           <TabsLabel
-            id={GlossaryTabs.TERMS}
-            isActive={activeTab === GlossaryTabs.TERMS}
+            id={EntityTabs.TERMS}
+            isActive={activeTab === EntityTabs.TERMS}
             name={t('label.term-plural')}
           />
         ),
-        key: GlossaryTabs.TERMS,
+        key: EntityTabs.TERMS,
         children: detailsContent,
       },
       ...(!isVersionView
@@ -223,12 +209,12 @@ const GlossaryDetails = ({
               label: (
                 <TabsLabel
                   count={feedCount.totalCount}
-                  id={GlossaryTabs.ACTIVITY_FEED}
-                  isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
+                  id={EntityTabs.ACTIVITY_FEED}
+                  isActive={activeTab === EntityTabs.ACTIVITY_FEED}
                   name={t('label.activity-feed-and-task-plural')}
                 />
               ),
-              key: GlossaryTabs.ACTIVITY_FEED,
+              key: EntityTabs.ACTIVITY_FEED,
               children: (
                 <ActivityFeedTab
                   refetchFeed
@@ -259,31 +245,38 @@ const GlossaryDetails = ({
   }, [glossary.fullyQualifiedName]);
 
   return (
-    <Row
-      className="glossary-details"
-      data-testid="glossary-details"
-      gutter={[0, 16]}>
-      <Col
-        className={classNames('p-x-md', {
-          'p-l-xl': !isVersionView,
-        })}
-        span={24}>
-        <GlossaryHeader
-          updateVote={updateVote}
-          onAddGlossaryTerm={onAddGlossaryTerm}
-          onDelete={handleGlossaryDelete}
-        />
-      </Col>
-      <Col span={24}>
-        <Tabs
-          activeKey={activeTab ?? GlossaryTabs.TERMS}
-          className="glossary-details-page-tabs"
-          data-testid="tabs"
-          items={tabs}
-          onChange={handleTabChange}
-        />
-      </Col>
-    </Row>
+    <GenericProvider<Glossary>
+      data={updatedGlossary}
+      isVersionView={isVersionView}
+      permissions={permissions}
+      type={EntityType.GLOSSARY}
+      onUpdate={handleGlossaryUpdate}>
+      <Row
+        className="glossary-details"
+        data-testid="glossary-details"
+        gutter={[0, 16]}>
+        <Col
+          className={classNames('p-x-md', {
+            'p-l-xl': !isVersionView,
+          })}
+          span={24}>
+          <GlossaryHeader
+            updateVote={updateVote}
+            onAddGlossaryTerm={onAddGlossaryTerm}
+            onDelete={handleGlossaryDelete}
+          />
+        </Col>
+        <Col span={24}>
+          <Tabs
+            activeKey={activeTab ?? EntityTabs.TERMS}
+            className="glossary-details-page-tabs"
+            data-testid="tabs"
+            items={tabs}
+            onChange={handleTabChange}
+          />
+        </Col>
+      </Row>
+    </GenericProvider>
   );
 };
 

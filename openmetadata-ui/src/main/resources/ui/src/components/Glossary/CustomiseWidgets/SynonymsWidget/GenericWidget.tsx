@@ -12,6 +12,7 @@
  */
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Card, Space } from 'antd';
+import { capitalize } from 'lodash';
 import React from 'react';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 
@@ -22,13 +23,15 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     }
   };
 
+  const widgetName = capitalize(props.widgetKey.replace('KnowledgePanel.', ''));
+
   return (
     <Card
       bodyStyle={{ height: '100%' }}
       className="h-full"
       title={
         <div className="d-flex justify-between align-center">
-          <span>{props.widgetKey.replace('KnowledgePanel.', '')}</span>
+          <span>{widgetName}</span>
           {props.isEditView && (
             <Space size={8}>
               <DragOutlined
@@ -45,7 +48,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           )}
         </div>
       }>
-      {props.widgetKey}
+      {widgetName}
     </Card>
   );
 };

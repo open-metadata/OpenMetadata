@@ -20,7 +20,7 @@ import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHea
 import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
 import { GlossaryHeaderWidget } from '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomiseDetailPage.enum';
-import { GlossaryTabs } from '../../enums/GlossaryPage.enum';
+import { EntityTabs } from '../../enums/entity.enum';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -280,8 +280,8 @@ class CustomizeGlossaryTermPageClassBase {
     }
   }
 
-  public getDefaultWidgetForTab(tab: GlossaryTabs) {
-    if (tab === GlossaryTabs.OVERVIEW) {
+  public getDefaultWidgetForTab(tab: EntityTabs) {
+    if (tab === EntityTabs.OVERVIEW) {
       return [
         {
           h: this.detailPageWidgetDefaultHeights.DESCRIPTION,

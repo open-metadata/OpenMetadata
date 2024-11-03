@@ -25,7 +25,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityAction } from '../../enums/entity.enum';
+import { EntityAction, EntityTabs } from '../../enums/entity.enum';
 import {
   CreateThread,
   ThreadType,
@@ -246,7 +246,7 @@ const GlossaryV1 = ({
       history.push(
         getGlossaryTermDetailsPath(
           selectedData.fullyQualifiedName || '',
-          'terms'
+          EntityTabs.TERMS
         )
       );
     }

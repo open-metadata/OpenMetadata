@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
-import { GlossaryTabs } from '../../enums/GlossaryPage.enum';
+import { EntityTabs } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
 import { Tab as CustomizeTab } from '../../generated/system/ui/uiCustomization';
 import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
@@ -34,16 +34,20 @@ export const getDefaultTabs = (pageType?: string) => {
   const commonTabs: CustomizeTab[] = [
     {
       displayName: 'Feeds & Tasks',
-      name: GlossaryTabs.ACTIVITY_FEED,
-      id: GlossaryTabs.ACTIVITY_FEED,
-      layout: [],
+      name: EntityTabs.ACTIVITY_FEED,
+      id: EntityTabs.ACTIVITY_FEED,
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.ACTIVITY_FEED
+      ),
       removable: false,
     },
     {
-      id: GlossaryTabs.CUSTOM_PROPERTIES,
-      name: GlossaryTabs.CUSTOM_PROPERTIES,
+      id: EntityTabs.CUSTOM_PROPERTIES,
+      name: EntityTabs.CUSTOM_PROPERTIES,
       displayName: 'Custom Property',
-      layout: [],
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.CUSTOM_PROPERTIES
+      ),
       removable: false,
     },
   ];
@@ -53,26 +57,30 @@ export const getDefaultTabs = (pageType?: string) => {
       return [
         ...commonTabs,
         {
-          id: GlossaryTabs.OVERVIEW,
+          id: EntityTabs.OVERVIEW,
           displayName: 'Overview',
-          layout: [],
-          name: GlossaryTabs.OVERVIEW,
+          layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+            EntityTabs.OVERVIEW
+          ),
+          name: EntityTabs.OVERVIEW,
           removable: false,
         },
         {
-          id: GlossaryTabs.GLOSSARY_TERMS,
+          id: EntityTabs.GLOSSARY_TERMS,
           displayName: 'Glossary Terms',
-          layout: [],
-          name: GlossaryTabs.GLOSSARY_TERMS,
+          layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+            EntityTabs.GLOSSARY_TERMS
+          ),
+          name: EntityTabs.GLOSSARY_TERMS,
           removable: false,
         },
         {
-          id: GlossaryTabs.ASSETS,
+          id: EntityTabs.ASSETS,
           displayName: 'Assets',
           layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
-            GlossaryTabs.ASSETS
+            EntityTabs.ASSETS
           ),
-          name: GlossaryTabs.ASSETS,
+          name: EntityTabs.ASSETS,
           removable: false,
         },
       ];

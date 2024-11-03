@@ -26,8 +26,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { EntityType } from '../../../enums/entity.enum';
-import { GlossaryTabs } from '../../../enums/GlossaryPage.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   ChangeDescription,
@@ -45,7 +44,7 @@ import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
-import { sortTabs } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
@@ -105,7 +104,7 @@ const GlossaryTermsV1 = ({
   }, [glossaryTerm, permissions]);
 
   const activeTab = useMemo(() => {
-    return tab ?? 'overview';
+    return tab ?? EntityTabs.OVERVIEW;
   }, [tab]);
 
   const activeTabHandler = (tab: string) => {
@@ -179,7 +178,7 @@ const GlossaryTermsV1 = ({
   const tabItems = useMemo(() => {
     const changedItems = customizedPage?.tabs;
 
-    const getLabel = (tab: GlossaryTabs) => {
+    const getLabel = (tab: EntityTabs) => {
       const item = changedItems?.find((t) => t.id === tab);
 
       return item?.displayName;
@@ -189,10 +188,10 @@ const GlossaryTermsV1 = ({
       {
         label: (
           <div data-testid="overview">
-            {getLabel(GlossaryTabs.OVERVIEW) ?? t('label.overview')}
+            {getLabel(EntityTabs.OVERVIEW) ?? t('label.overview')}
           </div>
         ),
-        key: GlossaryTabs.OVERVIEW,
+        key: EntityTabs.OVERVIEW,
         children: (
           <GlossaryOverviewTab
             editCustomAttributePermission={
@@ -209,7 +208,7 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="terms">
-                  {getLabel(GlossaryTabs.GLOSSARY_TERMS) ??
+                  {getLabel(EntityTabs.GLOSSARY_TERMS) ??
                     t('label.glossary-term-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(
@@ -220,7 +219,7 @@ const GlossaryTermsV1 = ({
                   </span>
                 </div>
               ),
-              key: GlossaryTabs.GLOSSARY_TERMS,
+              key: EntityTabs.GLOSSARY_TERMS,
               children: (
                 <GlossaryTermTab
                   className="p-md glossary-term-table-container"
@@ -236,13 +235,13 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="assets">
-                  {getLabel(GlossaryTabs.ASSETS) ?? t('label.asset-plural')}
+                  {getLabel(EntityTabs.ASSETS) ?? t('label.asset-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
                   </span>
                 </div>
               ),
-              key: GlossaryTabs.ASSETS,
+              key: EntityTabs.ASSETS,
               children: (
                 <AssetsTabs
                   assetCount={assetCount}
@@ -260,15 +259,15 @@ const GlossaryTermsV1 = ({
               label: (
                 <TabsLabel
                   count={feedCount.totalCount}
-                  id={GlossaryTabs.ACTIVITY_FEED}
-                  isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
+                  id={EntityTabs.ACTIVITY_FEED}
+                  isActive={activeTab === EntityTabs.ACTIVITY_FEED}
                   name={
-                    getLabel(GlossaryTabs.ACTIVITY_FEED) ??
+                    getLabel(EntityTabs.ACTIVITY_FEED) ??
                     t('label.activity-feed-and-task-plural')
                   }
                 />
               ),
-              key: GlossaryTabs.ACTIVITY_FEED,
+              key: EntityTabs.ACTIVITY_FEED,
               children: (
                 <ActivityFeedTab
                   entityType={EntityType.GLOSSARY_TERM}
@@ -283,14 +282,14 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <TabsLabel
-                  id={GlossaryTabs.CUSTOM_PROPERTIES}
+                  id={EntityTabs.CUSTOM_PROPERTIES}
                   name={
-                    getLabel(GlossaryTabs.CUSTOM_PROPERTIES) ??
+                    getLabel(EntityTabs.CUSTOM_PROPERTIES) ??
                     t('label.custom-property-plural')
                   }
                 />
               ),
-              key: GlossaryTabs.CUSTOM_PROPERTIES,
+              key: EntityTabs.CUSTOM_PROPERTIES,
               children: glossaryTerm && (
                 <div className="m-sm">
                   <CustomPropertyTable<EntityType.GLOSSARY_TERM>
@@ -311,9 +310,29 @@ const GlossaryTermsV1 = ({
         : []),
     ];
 
-    return changedItems
-      ? sortTabs(items, changedItems?.map((t) => t.id) ?? [])
-      : items;
+    const newTabs =
+      changedItems?.map((t) => {
+        const tabItemDetails = items.find((i) => i.key === t.id);
+
+        return (
+          tabItemDetails ?? {
+            label: getEntityName(t),
+            key: t.id,
+            children: (
+              <GlossaryOverviewTab
+                editCustomAttributePermission={
+                  !isVersionView &&
+                  (permissions.EditAll || permissions.EditCustomFields)
+                }
+                onExtensionUpdate={onExtensionUpdate}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
+            ),
+          }
+        );
+      }) ?? items;
+
+    return newTabs;
   }, [
     customizedPage?.tabs,
     glossaryTerm,

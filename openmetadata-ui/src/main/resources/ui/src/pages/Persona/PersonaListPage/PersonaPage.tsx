@@ -88,7 +88,7 @@ export const PersonaPage = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <Col className="mt-24 text-center" span={24}>
+      <Col className="h-full text-center" span={24}>
         <ErrorPlaceHolder
           heading={t('label.persona')}
           permission={isAdminUser}
@@ -118,6 +118,21 @@ export const PersonaPage = () => {
       fetchPersonas({ [cursorType]: paging[cursorType] });
     }
   };
+
+  if (isEmpty(persona) && !isLoading) {
+    return (
+      <>
+        {errorPlaceHolder}
+        {Boolean(addEditPersona) && (
+          <AddEditPersonaForm
+            persona={addEditPersona}
+            onCancel={handlePersonalAddEditCancel}
+            onSave={handlePersonaAddEditSave}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <PageLayoutV1 pageTitle={t('label.persona-plural')}>
@@ -156,8 +171,6 @@ export const PersonaPage = () => {
               </Col>
             ))}
 
-        {isEmpty(persona) && !isLoading && errorPlaceHolder}
-
         {showPagination && (
           <Col span={24}>
             <NextPrevious
@@ -169,7 +182,6 @@ export const PersonaPage = () => {
             />
           </Col>
         )}
-
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
             persona={addEditPersona}

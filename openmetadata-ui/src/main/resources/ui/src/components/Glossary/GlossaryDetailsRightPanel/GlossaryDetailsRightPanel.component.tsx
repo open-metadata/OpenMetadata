@@ -49,7 +49,6 @@ type Props = {
 const GlossaryDetailsRightPanel = ({
   onThreadLinkSelect,
   refreshGlossaryTerms,
-
   editCustomAttributePermission,
   onExtensionUpdate,
 }: Props) => {

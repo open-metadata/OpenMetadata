@@ -15,8 +15,7 @@ import React, { useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../../enums/CustomiseDetailPage.enum';
-import { EntityType } from '../../../../enums/entity.enum';
-import { GlossaryTabs } from '../../../../enums/GlossaryPage.enum';
+import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { Glossary } from '../../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
@@ -75,7 +74,7 @@ const GlossaryOverviewTab = ({
   const layout = useMemo(() => {
     if (!currentPersonaDocStore) {
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
-        GlossaryTabs.OVERVIEW
+        EntityTabs.OVERVIEW
       );
     }
     const pageType = isGlossary ? PageType.Glossary : PageType.GlossaryTerm;
@@ -84,10 +83,10 @@ const GlossaryOverviewTab = ({
     );
 
     if (page) {
-      return page.tabs.find((t: Tab) => t.id === GlossaryTabs.OVERVIEW)?.layout;
+      return page.tabs.find((t: Tab) => t.id === EntityTabs.OVERVIEW)?.layout;
     } else {
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
-        GlossaryTabs.OVERVIEW
+        EntityTabs.OVERVIEW
       );
     }
   }, [currentPersonaDocStore, isGlossary]);
@@ -149,6 +148,88 @@ const GlossaryOverviewTab = ({
     }
   };
 
+  const descriptionWidget = useMemo(() => {
+    return (
+      <DescriptionV1
+        description={glossaryDescription}
+        entityFqn={selectedData.fullyQualifiedName}
+        entityName={getEntityName(selectedData)}
+        entityType={EntityType.GLOSSARY_TERM}
+        hasEditAccess={permissions.EditDescription || permissions.EditAll}
+        isEdit={isDescriptionEditable}
+        owner={selectedData?.owners}
+        showActions={!selectedData.deleted}
+        onCancel={() => setIsDescriptionEditable(false)}
+        onDescriptionEdit={() => setIsDescriptionEditable(true)}
+        onDescriptionUpdate={onDescriptionUpdate}
+        onThreadLinkSelect={onThreadLinkSelect}
+      />
+    );
+  }, [
+    glossaryDescription,
+    isDescriptionEditable,
+    selectedData,
+    onDescriptionUpdate,
+    onThreadLinkSelect,
+    permissions,
+  ]);
+
+  const tagsWidget = useMemo(() => {
+    return (
+      <TagsContainerV2
+        displayType={DisplayType.READ_MORE}
+        entityFqn={selectedData.fullyQualifiedName}
+        entityType={EntityType.GLOSSARY_TERM}
+        permission={hasEditTagsPermissions}
+        selectedTags={tags ?? []}
+        tagType={TagSource.Classification}
+        onSelectionChange={handleTagsUpdate}
+        onThreadLinkSelect={onThreadLinkSelect}
+      />
+    );
+  }, [
+    tags,
+    selectedData.fullyQualifiedName,
+    hasEditTagsPermissions,
+    onThreadLinkSelect,
+  ]);
+
+  const domainWidget = useMemo(() => {
+    return (
+      <DomainLabel
+        showDomainHeading
+        domain={selectedData.domain}
+        entityFqn={selectedData.fullyQualifiedName ?? ''}
+        entityId={selectedData.id ?? ''}
+        entityType={isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
+        // Only allow domain selection at glossary level. Glossary Term will inherit
+        hasPermission={isGlossary ? permissions.EditAll : false}
+      />
+    );
+  }, [
+    selectedData.domain,
+    selectedData.fullyQualifiedName,
+    selectedData.id,
+    permissions.EditAll,
+    isGlossary,
+  ]);
+
+  const customPropertyWidget = useMemo(() => {
+    return (
+      <CustomPropertyTable
+        isRenderedInRightPanel
+        entityDetails={selectedData as GlossaryTerm}
+        entityType={EntityType.GLOSSARY_TERM}
+        handleExtensionUpdate={async (updatedTable) => {
+          await onExtensionUpdate?.(updatedTable as GlossaryTerm);
+        }}
+        hasEditAccess={Boolean(editCustomAttributePermission)}
+        hasPermission={hasViewAllPermission}
+        maxDataCap={5}
+      />
+    );
+  }, [selectedData, editCustomAttributePermission, hasViewAllPermission]);
+
   const widgets = useMemo(() => {
     const getWidgetFromKeyInternal = (widgetConfig: WidgetConfig) => {
       if (
@@ -164,18 +245,7 @@ const GlossaryOverviewTab = ({
       } else if (
         widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.TAGS)
       ) {
-        return (
-          <TagsContainerV2
-            displayType={DisplayType.READ_MORE}
-            entityFqn={selectedData.fullyQualifiedName}
-            entityType={EntityType.GLOSSARY_TERM}
-            permission={hasEditTagsPermissions}
-            selectedTags={tags ?? []}
-            tagType={TagSource.Classification}
-            onSelectionChange={handleTagsUpdate}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
-        );
+        return tagsWidget;
       } else if (
         widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REFERENCES)
       ) {
@@ -183,22 +253,7 @@ const GlossaryOverviewTab = ({
       } else if (
         widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.DESCRIPTION)
       ) {
-        return (
-          <DescriptionV1
-            description={glossaryDescription}
-            entityFqn={selectedData.fullyQualifiedName}
-            entityName={getEntityName(selectedData)}
-            entityType={EntityType.GLOSSARY_TERM}
-            hasEditAccess={permissions.EditDescription || permissions.EditAll}
-            isEdit={isDescriptionEditable}
-            owner={selectedData?.owners}
-            showActions={!selectedData.deleted}
-            onCancel={() => setIsDescriptionEditable(false)}
-            onDescriptionEdit={() => setIsDescriptionEditable(true)}
-            onDescriptionUpdate={onDescriptionUpdate}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
-        );
+        return descriptionWidget;
       } else if (
         widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.OWNER)
       ) {
@@ -206,19 +261,7 @@ const GlossaryOverviewTab = ({
       } else if (
         widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.DOMAIN)
       ) {
-        return (
-          <DomainLabel
-            showDomainHeading
-            domain={selectedData.domain}
-            entityFqn={selectedData.fullyQualifiedName ?? ''}
-            entityId={selectedData.id ?? ''}
-            entityType={
-              isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
-            }
-            // Only allow domain selection at glossary level. Glossary Term will inherit
-            hasPermission={isGlossary ? permissions.EditAll : false}
-          />
-        );
+        return domainWidget;
       } else if (
         widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
       ) {
@@ -229,19 +272,7 @@ const GlossaryOverviewTab = ({
         ) &&
         !isGlossary
       ) {
-        return (
-          <CustomPropertyTable
-            isRenderedInRightPanel
-            entityDetails={selectedData as GlossaryTerm}
-            entityType={EntityType.GLOSSARY_TERM}
-            handleExtensionUpdate={async (updatedTable) => {
-              await onExtensionUpdate?.(updatedTable as GlossaryTerm);
-            }}
-            hasEditAccess={Boolean(editCustomAttributePermission)}
-            hasPermission={hasViewAllPermission}
-            maxDataCap={5}
-          />
-        );
+        return customPropertyWidget;
       }
 
       return getWidgetFromKey({
@@ -254,11 +285,22 @@ const GlossaryOverviewTab = ({
     };
 
     return layout.map((widget: WidgetConfig) => (
-      <div data-grid={widget} id={widget.i} key={widget.i}>
+      <div
+        data-grid={widget}
+        id={widget.i}
+        key={widget.i}
+        style={{ overflow: 'scroll' }}>
         {getWidgetFromKeyInternal(widget)}
       </div>
     ));
-  }, [layout, hasEditTagsPermissions, isDescriptionEditable]);
+  }, [
+    layout,
+    descriptionWidget,
+    tagsWidget,
+    domainWidget,
+    customPropertyWidget,
+    isGlossary,
+  ]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
