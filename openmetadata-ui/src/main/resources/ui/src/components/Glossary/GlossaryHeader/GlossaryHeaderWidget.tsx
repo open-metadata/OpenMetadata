@@ -15,12 +15,13 @@ import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 
-export const GlossaryHeaderWidget = ({ isEditView }: WidgetCommonProps) => {
-  const isGlossary = false;
-
+export const GlossaryHeaderWidget = ({
+  isGlossary = true,
+}: {
+  isGlossary?: boolean;
+}) => {
   const icon = useMemo(() => {
     if (isGlossary) {
       return (
@@ -44,10 +45,6 @@ export const GlossaryHeaderWidget = ({ isEditView }: WidgetCommonProps) => {
       />
     );
   }, [isGlossary]);
-
-  if (!isEditView) {
-    return null;
-  }
 
   return (
     <div className="p-x-md p-y-sm">

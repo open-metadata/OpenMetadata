@@ -11,22 +11,14 @@
  *  limitations under the License.
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useGenericContext } from '../../GenericProvider/GenericProvider';
@@ -34,35 +26,13 @@ import { useGenericContext } from '../../GenericProvider/GenericProvider';
 export const OwnerLabelV2 = <
   T extends { owners?: EntityReference[]; id: string }
 >() => {
-  const { data, onUpdate, type } = useGenericContext<T>();
-
-  const isVersionView = false;
-  const { getEntityPermission } = usePermissionProvider();
-  const [permissions, setPermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
-
-  const fetchEntityPermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        type as unknown as ResourceEntity,
-        data?.id as string
-      );
-      setPermissions(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
 
   const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
     const updatedEntity = { ...data };
     updatedEntity.owners = updatedUser;
     await onUpdate(updatedEntity);
   };
-
-  useEffect(() => {
-    fetchEntityPermission();
-  }, [data, type]);
 
   return (
     <div data-testid="owner-link">

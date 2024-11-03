@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Space, Tag, Tooltip, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
@@ -31,11 +30,6 @@ import {
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   GlossaryTerm,
   TermReference,
@@ -47,8 +41,6 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
@@ -56,26 +48,12 @@ import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.componen
 const GlossaryTermReferences = () => {
   const [references, setReferences] = useState<TermReference[]>([]);
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
-  const { data: glossaryTerm, onUpdate: onGlossaryTermUpdate } =
-    useGenericContext<GlossaryTerm>();
-
-  const isVersionView = false;
-  const { getEntityPermission } = usePermissionProvider();
-  const [permissions, setPermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
-
-  const fetchGlossaryTermPermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.GLOSSARY_TERM,
-        glossaryTerm?.id as string
-      );
-      setPermissions(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const {
+    data: glossaryTerm,
+    onUpdate: onGlossaryTermUpdate,
+    isVersionView,
+    permissions,
+  } = useGenericContext<GlossaryTerm>();
 
   const handleReferencesSave = async (
     newReferences: TermReference[],
@@ -106,10 +84,6 @@ const GlossaryTermReferences = () => {
   useEffect(() => {
     setReferences(glossaryTerm.references ? glossaryTerm.references : []);
   }, [glossaryTerm.references]);
-
-  useEffect(() => {
-    fetchGlossaryTermPermission();
-  }, []);
 
   const getReferenceElement = useCallback(
     (ref: TermReference, versionStatus?: VersionStatus) => {

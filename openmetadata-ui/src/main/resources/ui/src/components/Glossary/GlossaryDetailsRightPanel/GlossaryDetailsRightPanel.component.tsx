@@ -18,7 +18,6 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Glossary, TagSource } from '../../../generated/entity/data/glossary';
 import {
@@ -35,34 +34,34 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import { ExtentionEntitiesKeys } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import TagButton from '../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
 type Props = {
-  isVersionView?: boolean;
-  permissions: OperationPermission;
-  selectedData: Glossary | GlossaryTerm;
-  isGlossary: boolean;
-  onUpdate: (data: GlossaryTerm | Glossary) => void | Promise<void>;
   onThreadLinkSelect: (value: string) => void;
-  entityType: EntityType;
+
   refreshGlossaryTerms?: () => void;
   editCustomAttributePermission?: boolean;
   onExtensionUpdate?: (updatedTable: GlossaryTerm) => Promise<void>;
 };
 
 const GlossaryDetailsRightPanel = ({
-  permissions,
-  selectedData,
-  isGlossary,
-  onUpdate,
-  isVersionView,
   onThreadLinkSelect,
   refreshGlossaryTerms,
-  entityType,
+
   editCustomAttributePermission,
   onExtensionUpdate,
 }: Props) => {
+  const {
+    data: selectedData,
+    onUpdate,
+    permissions,
+    isVersionView,
+    type: entityType,
+  } = useGenericContext<GlossaryTerm | Glossary>();
+  const isGlossary = entityType === EntityType.GLOSSARY;
+
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
   }, [permissions]);

@@ -10,114 +10,117 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Tooltip, Typography } from 'antd';
-import { AxiosError } from 'axios';
+import { Button, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useGenericContext } from '../../GenericProvider/GenericProvider';
 
 export const ReviewerLabelV2 = () => {
-  const { data, onUpdate, type } = useGenericContext<GlossaryTerm>();
+  const { data, onUpdate, permissions, isVersionView } = useGenericContext<
+    GlossaryTerm | Glossary
+  >();
 
-  const isVersionView = false;
-  const { getEntityPermission } = usePermissionProvider();
-  const [permissions, setPermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
+  const hasEditReviewerAccess = useMemo(() => {
+    return permissions.EditAll || permissions.EditReviewers;
+  }, [permissions]);
 
-  const fetchEntityPermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        type as unknown as ResourceEntity,
-        data?.id as string
-      );
-      setPermissions(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const { assignedReviewers, hasReviewers } = useMemo(() => {
+    const inheritedReviewers: EntityReference[] = [];
+    const assignedReviewers: EntityReference[] = [];
 
-  const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
+    data.reviewers?.forEach((item) => {
+      if (item.inherited) {
+        inheritedReviewers.push(item);
+      } else {
+        assignedReviewers.push(item);
+      }
+    });
+
+    return {
+      inheritedReviewers,
+      assignedReviewers,
+      hasReviewers: data.reviewers && data.reviewers.length > 0,
+    };
+  }, [data.reviewers]);
+
+  const handleReviewerSave = async (updatedReviewers?: EntityReference[]) => {
     const updatedEntity = { ...data };
-    updatedEntity.owners = updatedUser;
+    updatedEntity.reviewers = updatedReviewers;
     await onUpdate(updatedEntity);
   };
 
-  useEffect(() => {
-    fetchEntityPermission();
-  }, [data, type]);
-
   return (
-    <div data-testid="reviewer-link">
-      <div className="d-flex items-center m-b-xs">
-        <Typography.Text className="right-panel-label">
+    <div data-testid="reviewer">
+      <div className={`d-flex items-center ${hasReviewers ? 'm-b-xss' : ''}`}>
+        <Typography.Text
+          className="right-panel-label"
+          data-testid="heading-name">
           {t('label.reviewer-plural')}
         </Typography.Text>
-        {(permissions.EditOwners || permissions.EditAll) &&
-          data.owners &&
-          data.owners.length > 0 && (
-            <UserTeamSelectableList
-              hasPermission={permissions.EditOwners || permissions.EditAll}
-              listHeight={200}
-              multiple={{ user: true, team: false }}
-              owner={data.owners}
-              onUpdate={handleUpdatedOwner}>
-              <Tooltip
-                title={t('label.edit-entity', {
-                  entity: t('label.owner-plural'),
-                })}>
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-owner"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                />
-              </Tooltip>
-            </UserTeamSelectableList>
-          )}
-      </div>
-      <Space className="m-r-xss" size={4}>
-        {getOwnerVersionLabel(
-          data,
-          isVersionView ?? false,
-          TabSpecificField.OWNERS,
-          permissions.EditOwners || permissions.EditAll
-        )}
-      </Space>
-      {data.owners?.length === 0 &&
-        (permissions.EditOwners || permissions.EditAll) && (
+        {hasEditReviewerAccess && hasReviewers && (
           <UserTeamSelectableList
-            hasPermission={permissions.EditOwners || permissions.EditAll}
+            previewSelected
+            hasPermission={hasEditReviewerAccess}
+            label={t('label.reviewer-plural')}
             listHeight={200}
             multiple={{ user: true, team: false }}
-            owner={data.owners}
-            onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
+            owner={assignedReviewers ?? []}
+            popoverProps={{ placement: 'topLeft' }}
+            onUpdate={handleReviewerSave}>
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.reviewer-plural'),
+              })}>
+              <Button
+                className="cursor-pointer flex-center m-l-xss"
+                data-testid="edit-reviewer-button"
+                icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                size="small"
+                type="text"
+              />
+            </Tooltip>
+          </UserTeamSelectableList>
+        )}
+      </div>
+      <div>
+        <div data-testid="reviewer-name">
+          {getOwnerVersionLabel(
+            data,
+            isVersionView ?? false,
+            TabSpecificField.REVIEWERS,
+            hasEditReviewerAccess
+          )}
+        </div>
+
+        {hasEditReviewerAccess && !hasReviewers && (
+          <UserTeamSelectableList
+            previewSelected
+            hasPermission={hasEditReviewerAccess}
+            label={t('label.reviewer-plural')}
+            listHeight={200}
+            multiple={{ user: true, team: false }}
+            owner={assignedReviewers ?? []}
+            popoverProps={{ placement: 'topLeft' }}
+            onUpdate={handleReviewerSave}>
             <TagButton
               className="text-primary cursor-pointer"
-              dataTestId="add-owner"
               icon={<PlusIcon height={16} name="plus" width={16} />}
               label={t('label.add')}
               tooltip=""
             />
           </UserTeamSelectableList>
         )}
+      </div>
     </div>
   );
 };

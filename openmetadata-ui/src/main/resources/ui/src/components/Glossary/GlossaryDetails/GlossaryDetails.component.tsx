@@ -183,14 +183,8 @@ const GlossaryDetails = ({
             secondPanel={{
               children: (
                 <GlossaryDetailsRightPanel
-                  isGlossary
-                  entityType={EntityType.GLOSSARY_TERM}
-                  isVersionView={isVersionView}
-                  permissions={permissions}
                   refreshGlossaryTerms={refreshGlossaryTerms}
-                  selectedData={glossary}
                   onThreadLinkSelect={onThreadLinkSelect}
-                  onUpdate={handleGlossaryUpdate}
                 />
               ),
               ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
@@ -275,11 +269,9 @@ const GlossaryDetails = ({
         })}
         span={24}>
         <GlossaryHeader
-          isVersionView={isVersionView}
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
-          onUpdate={handleGlossaryUpdate}
         />
       </Col>
       <Col span={24}>

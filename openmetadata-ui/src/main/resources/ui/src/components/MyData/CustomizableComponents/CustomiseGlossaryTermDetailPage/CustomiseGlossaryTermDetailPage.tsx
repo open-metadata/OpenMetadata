@@ -15,7 +15,6 @@ import { Modal } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
-import { GlossaryTermDetailPageWidgetKeys } from '../../../../enums/CustomiseDetailPage.enum';
 import { Page } from '../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -95,9 +94,7 @@ function CustomizeGlossaryTermDetailPage({
           onReset={handleOpenResetModal}
           onSave={handleSave}
         />
-        <GlossaryHeaderWidget
-          widgetKey={GlossaryTermDetailPageWidgetKeys.HEADER}
-        />
+        <GlossaryHeaderWidget isGlossary={false} />
         <CustomizeTabWidget />
       </PageLayoutV1>
 

@@ -12,6 +12,7 @@
  */
 import { once } from 'lodash';
 import React, { useContext, useMemo } from 'react';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 
 interface GenericProviderProps<T extends unknown> {
@@ -19,12 +20,16 @@ interface GenericProviderProps<T extends unknown> {
   data: T;
   type: EntityType;
   onUpdate: (updatedData: T) => Promise<void>;
+  isVersionView?: boolean;
+  permissions: OperationPermission;
 }
 
 interface GenericContextType<T> {
   data: T;
   type: EntityType;
   onUpdate: (updatedData: T) => Promise<void>;
+  isVersionView?: boolean;
+  permissions: OperationPermission;
 }
 
 const createGenericContext = once(<T,>() =>
@@ -36,13 +41,15 @@ export const GenericProvider = <T extends unknown>({
   data,
   type,
   onUpdate,
+  isVersionView,
+  permissions,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
 
   const typedData = data as T;
   const values = useMemo(
-    () => ({ data: typedData, type, onUpdate }),
-    [typedData, type, onUpdate]
+    () => ({ data: typedData, type, onUpdate, isVersionView, permissions }),
+    [typedData, type, onUpdate, isVersionView, permissions]
   );
 
   return (

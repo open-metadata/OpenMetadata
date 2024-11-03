@@ -43,7 +43,6 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
-  EntityReference,
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
@@ -60,10 +59,7 @@ import {
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
-import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
-} from '../../../utils/PermissionsUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
@@ -73,25 +69,29 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Voting from '../../Entity/Voting/Voting.component';
+import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
-import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 
 const GlossaryHeader = ({
-  onUpdate,
   onDelete,
   onAssetAdd,
   onAddGlossaryTerm,
   updateVote,
-  isVersionView,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useFqn();
-  const { activeGlossary: selectedData } = useGlossaryStore();
   const { currentUser } = useApplicationStore();
+  const {
+    onUpdate,
+    data: selectedData,
+    isVersionView,
+    permissions,
+    type: entityType,
+  } = useGenericContext<GlossaryTerm>();
 
   const { version } = useParams<{
     version: string;
@@ -110,10 +110,8 @@ const GlossaryHeader = ({
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [openChangeParentHierarchyModal, setOpenChangeParentHierarchyModal] =
     useState(false);
-  const isGlossary = useMemo(() => 'glossary' in selectedData, [selectedData]);
-  const { permissions: globalPermissions, getEntityPermission } =
-    usePermissionProvider();
-  const [permissions, setPermissions] = useState(DEFAULT_ENTITY_PERMISSION);
+  const isGlossary = entityType === EntityType.GLOSSARY;
+  const { permissions: globalPermissions } = usePermissionProvider();
 
   const createGlossaryTermPermission = useMemo(
     () =>
@@ -139,18 +137,6 @@ const GlossaryHeader = ({
       ),
     [globalPermissions]
   );
-
-  const fetchGlossaryPermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.GLOSSARY,
-        selectedData?.id as string
-      );
-      setPermissions(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
 
   // To fetch the latest glossary data
   // necessary to handle back click functionality to work properly in version page
@@ -256,7 +242,7 @@ const GlossaryHeader = ({
     setIsDelete(false);
   };
 
-  const onNameSave = async (obj: { name: string; displayName: string }) => {
+  const onNameSave = async (obj: { name: string; displayName?: string }) => {
     const { name, displayName } = obj;
     let updatedDetails = cloneDeep(selectedData);
 
@@ -566,7 +552,6 @@ const GlossaryHeader = ({
     if (isVersionView) {
       fetchCurrentGlossaryInfo();
     }
-    fetchGlossaryPermission();
   }, [id]);
 
   return (
@@ -672,9 +657,9 @@ const GlossaryHeader = ({
         />
       )}
 
-      <EntityNameModal
+      <EntityNameModal<GlossaryTerm>
         allowRename
-        entity={selectedData as EntityReference}
+        entity={selectedData}
         nameValidationRules={[
           {
             min: 1,

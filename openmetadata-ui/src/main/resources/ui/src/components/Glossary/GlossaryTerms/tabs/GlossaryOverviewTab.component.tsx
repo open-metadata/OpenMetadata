@@ -14,7 +14,6 @@ import { noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { EntityField } from '../../../../constants/Feeds.constants';
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../../enums/CustomiseDetailPage.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { GlossaryTabs } from '../../../../enums/GlossaryPage.enum';
@@ -38,7 +37,7 @@ import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import { OwnerLabelV2 } from '../../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../../../DataAssets/ReviewerLabelV2/ReviewerLabelV2';
-import { GenericProvider } from '../../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import { GlossaryUpdateConfirmationModal } from '../../GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
@@ -49,30 +48,29 @@ import RelatedTerms from './RelatedTerms';
 const ReactGridLayout = WidthProvider(RGL);
 
 type Props = {
-  selectedData: Glossary | GlossaryTerm;
-  permissions: OperationPermission;
-  onUpdate: (data: GlossaryTerm | Glossary) => Promise<void>;
-  isGlossary: boolean;
-  isVersionView?: boolean;
   onThreadLinkSelect: (value: string) => void;
   editCustomAttributePermission: boolean;
   onExtensionUpdate: (updatedTable: GlossaryTerm) => Promise<void>;
 };
 
 const GlossaryOverviewTab = ({
-  selectedData,
-  permissions,
-  onUpdate,
-  isGlossary,
-  isVersionView,
   onThreadLinkSelect,
   editCustomAttributePermission,
   onExtensionUpdate,
 }: Props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
-  const [tagsUpdatating, setTagsUpdating] = useState<TagLabel[]>();
+  const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
   const { currentPersonaDocStore } = useCustomizeStore();
+  const {
+    data: selectedData,
+    permissions,
+    onUpdate,
+    isVersionView,
+    type: entityType,
+  } = useGenericContext<GlossaryTerm | Glossary>();
+
+  const isGlossary = entityType === EntityType.GLOSSARY;
 
   const layout = useMemo(() => {
     if (!currentPersonaDocStore) {
@@ -146,7 +144,7 @@ const GlossaryOverviewTab = ({
     if (selectedData) {
       await onUpdate({
         ...selectedData,
-        tags: tagsUpdatating,
+        tags: tagsUpdating,
       });
     }
   };
@@ -260,16 +258,13 @@ const GlossaryOverviewTab = ({
         {getWidgetFromKeyInternal(widget)}
       </div>
     ));
-  }, [layout]);
+  }, [layout, hasEditTagsPermissions, isDescriptionEditable]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
   return (
-    <GenericProvider<GlossaryTerm>
-      data={selectedData as GlossaryTerm}
-      type={EntityType.GLOSSARY_TERM}
-      onUpdate={onUpdate}>
+    <>
       <ReactGridLayout
         className="grid-container"
         cols={8}
@@ -282,15 +277,15 @@ const GlossaryOverviewTab = ({
         rowHeight={customizeGlossaryTermPageClassBase.detailPageRowHeight}>
         {widgets}
       </ReactGridLayout>
-      {tagsUpdatating && (
+      {tagsUpdating && (
         <GlossaryUpdateConfirmationModal
           glossaryTerm={selectedData as GlossaryTerm}
-          updatedTags={tagsUpdatating}
+          updatedTags={tagsUpdating}
           onCancel={() => setTagsUpdating(undefined)}
           onValidationSuccess={handleGlossaryTagUpdateValidationConfirm}
         />
       )}
-    </GenericProvider>
+    </>
   );
 };
 

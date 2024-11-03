@@ -25,10 +25,14 @@ import { useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTabs } from '../../../enums/GlossaryPage.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { Glossary } from '../../../generated/entity/data/glossary';
+import {
+  ChangeDescription,
+  Glossary,
+} from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
   Status,
@@ -42,6 +46,7 @@ import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import { sortTabs } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import {
@@ -52,6 +57,7 @@ import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeed
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
 import { useGlossaryStore } from '../useGlossary.store';
@@ -188,21 +194,14 @@ const GlossaryTermsV1 = ({
         ),
         key: GlossaryTabs.OVERVIEW,
         children: (
-          //   <EntityDetailProvider values={{ entityData: glossaryTerm }}>
           <GlossaryOverviewTab
             editCustomAttributePermission={
               !isVersionView &&
               (permissions.EditAll || permissions.EditCustomFields)
             }
-            isGlossary={false}
-            isVersionView={isVersionView}
-            permissions={permissions}
-            selectedData={glossaryTerm}
             onExtensionUpdate={onExtensionUpdate}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={onTermUpdate}
           />
-          //   </EntityDetailProvider>
         ),
       },
       ...(!isVersionView
@@ -357,43 +356,43 @@ const GlossaryTermsV1 = ({
     }
   }, [selectedPersona]);
 
-  //   const name = useMemo(
-  //     () =>
-  //       isVersionView
-  //         ? getEntityVersionByField(
-  //             glossaryTerm.changeDescription as ChangeDescription,
-  //             EntityField.NAME,
-  //             glossaryTerm.name
-  //           )
-  //         : glossaryTerm.name,
+  const updatedGlossaryTerm = useMemo(() => {
+    const name = isVersionView
+      ? getEntityVersionByField(
+          glossaryTerm.changeDescription as ChangeDescription,
+          EntityField.NAME,
+          glossaryTerm.name
+        )
+      : glossaryTerm.name;
 
-  //     [glossaryTerm, isVersionView]
-  //   );
+    const displayName = isVersionView
+      ? getEntityVersionByField(
+          glossaryTerm.changeDescription as ChangeDescription,
+          EntityField.DISPLAYNAME,
+          glossaryTerm.displayName
+        )
+      : glossaryTerm.displayName;
 
-  //   const displayName = useMemo(
-  //     () =>
-  //       isVersionView
-  //         ? getEntityVersionByField(
-  //             glossaryTerm.changeDescription as ChangeDescription,
-  //             EntityField.DISPLAYNAME,
-  //             glossaryTerm.displayName
-  //           )
-  //         : glossaryTerm.displayName,
-
-  //     [glossaryTerm, isVersionView]
-  //   );
+    return {
+      ...glossaryTerm,
+      name,
+      displayName,
+    };
+  }, [glossaryTerm, isVersionView]);
 
   return (
-    <>
+    <GenericProvider
+      data={updatedGlossaryTerm}
+      permissions={permissions}
+      type={EntityType.GLOSSARY_TERM}
+      onUpdate={onTermUpdate}>
       <Row data-testid="glossary-term" gutter={[0, 8]}>
         <Col className="p-x-md" span={24}>
           <GlossaryHeader
-            isVersionView={isVersionView}
             updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModalVisible(true)}
             onDelete={handleGlossaryTermDelete}
-            onUpdate={onTermUpdate}
           />
         </Col>
 
@@ -419,7 +418,7 @@ const GlossaryTermsV1 = ({
           onSave={handleAssetSave}
         />
       )}
-    </>
+    </GenericProvider>
   );
 };
 

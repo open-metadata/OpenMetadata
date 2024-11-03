@@ -13,33 +13,7 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
-import { mockedGlossaries } from '../../../mocks/Glossary.mock';
 import GlossaryDetailsRightPanel from './GlossaryDetailsRightPanel.component';
-
-const mockPermissions = {
-  Create: true,
-  Delete: true,
-  EditAll: true,
-  EditCustomFields: true,
-  EditDataProfile: true,
-  EditDescription: true,
-  EditDisplayName: true,
-  EditLineage: true,
-  EditOwners: true,
-  EditQueries: true,
-  EditSampleData: true,
-  EditTags: true,
-  EditTests: true,
-  EditTier: true,
-  ViewAll: true,
-  ViewDataProfile: true,
-  ViewQueries: true,
-  ViewSampleData: true,
-  ViewTests: true,
-  ViewUsage: true,
-} as OperationPermission;
 
 jest.mock(
   '../../../components/common/UserSelectableList/UserSelectableList.component',
@@ -66,14 +40,7 @@ describe('GlossaryDetailsRightPanel', () => {
   it('should render the GlossaryDetailsRightPanel component', () => {
     const { getByTestId } = render(
       <BrowserRouter>
-        <GlossaryDetailsRightPanel
-          isGlossary
-          entityType={EntityType.GLOSSARY_TERM}
-          permissions={mockPermissions}
-          selectedData={mockedGlossaries[0]}
-          onThreadLinkSelect={jest.fn()}
-          onUpdate={jest.fn()}
-        />
+        <GlossaryDetailsRightPanel onThreadLinkSelect={jest.fn()} />
       </BrowserRouter>
     );
 

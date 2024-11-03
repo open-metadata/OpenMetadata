@@ -13,8 +13,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import {
-  MOCK_GLOSSARY,
   mockedGlossaryTerms,
+  MOCK_GLOSSARY,
 } from '../../../mocks/Glossary.mock';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
@@ -165,7 +165,6 @@ jest.mock('../../../rest/glossaryAPI', () => ({
   patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-const mockOnUpdate = jest.fn();
 const mockOnDelete = jest.fn();
 const mockOnUpdateVote = jest.fn();
 
@@ -176,7 +175,6 @@ describe('GlossaryHeader component', () => {
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -189,7 +187,6 @@ describe('GlossaryHeader component', () => {
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -214,7 +211,6 @@ describe('GlossaryHeader component', () => {
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -227,7 +223,6 @@ describe('GlossaryHeader component', () => {
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -248,7 +243,6 @@ describe('GlossaryHeader component', () => {
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -263,7 +257,6 @@ describe('GlossaryHeader component', () => {
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -290,7 +283,6 @@ describe('GlossaryHeader component', () => {
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -321,7 +313,6 @@ describe('GlossaryHeader component', () => {
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
