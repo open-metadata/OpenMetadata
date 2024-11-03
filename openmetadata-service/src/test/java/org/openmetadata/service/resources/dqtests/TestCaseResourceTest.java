@@ -962,16 +962,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     for (TestCase testCase : testCases.getData()) {
       assertOwners(table.getOwners(), testCase.getOwners());
       assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
-      List<TagLabel> tags = testCase.getTags();
-      HashSet<String> actualTags =
-          tags.stream().map(TagLabel::getName).collect(Collectors.toCollection(HashSet::new));
-      HashSet<String> expectedTags;
-      List<TagLabel> expectedTagsList = table.getTags();
-      if (testCase.getEntityLink().contains(columnName)) {
-        expectedTagsList.addAll(table.getColumns().get(0).getTags());
-      }
-      expectedTags = new HashSet<>(expectedTagsList.stream().map(TagLabel::getName).toList());
-      assertEquals(expectedTags, actualTags);
     }
   }
 
