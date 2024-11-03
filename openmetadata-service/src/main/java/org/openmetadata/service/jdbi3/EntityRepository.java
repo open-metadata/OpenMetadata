@@ -29,6 +29,7 @@ import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_CHILDREN;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
@@ -78,8 +79,11 @@ import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
 import java.io.IOException;
 import java.net.URI;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Period;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
@@ -121,12 +125,14 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -235,6 +241,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsOwners;
   @Getter protected final boolean supportsStyle;
   @Getter protected final boolean supportsLifeCycle;
+  @Getter protected final boolean supportsCertification;
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
@@ -253,6 +260,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final Fields putFields;
 
   protected boolean supportsSearch = false;
+  @Getter protected boolean parent = false;
   protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
 
   protected EntityRepository(
@@ -327,6 +335,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (supportsLifeCycle) {
       this.patchFields.addField(allowedFields, FIELD_LIFE_CYCLE);
       this.putFields.addField(allowedFields, FIELD_LIFE_CYCLE);
+    }
+    this.supportsCertification = allowedFields.contains(FIELD_CERTIFICATION);
+    if (supportsCertification) {
+      this.patchFields.addField(allowedFields, FIELD_CERTIFICATION);
+      this.putFields.addField(allowedFields, FIELD_CERTIFICATION);
     }
 
     Map<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> fieldSupportMap = new HashMap<>();
@@ -2627,6 +2640,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateReviewers();
         updateStyle();
         updateLifeCycle();
+        updateCertification();
         entitySpecificUpdate();
       }
     }
@@ -2929,6 +2943,53 @@ public abstract class EntityRepository<T extends EntityInterface> {
       recordChange(FIELD_LIFE_CYCLE, origLifeCycle, updatedLifeCycle, true);
     }
 
+    private void updateCertification() {
+      if (!supportsCertification) {
+        return;
+      }
+      AssetCertification origCertification = original.getCertification();
+      AssetCertification updatedCertification = updated.getCertification();
+
+      if (origCertification == updatedCertification || updatedCertification == null) return;
+
+      SystemRepository systemRepository = Entity.getSystemRepository();
+      AssetCertificationSettings assetCertificationSettings =
+          systemRepository.getAssetCertificationSettings();
+
+      String certificationLabel = updatedCertification.getTagLabel().getTagFQN();
+
+      validateCertification(certificationLabel, assetCertificationSettings);
+
+      long certificationDate = System.currentTimeMillis();
+      updatedCertification.setAppliedDate(certificationDate);
+
+      LocalDateTime nowDateTime =
+          LocalDateTime.ofInstant(Instant.ofEpochMilli(certificationDate), ZoneOffset.UTC);
+      Period datePeriod = Period.parse(assetCertificationSettings.getValidityPeriod());
+      LocalDateTime targetDateTime = nowDateTime.plus(datePeriod);
+      updatedCertification.setExpiryDate(targetDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+
+      recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
+    }
+
+    private void validateCertification(
+        String certificationLabel, AssetCertificationSettings assetCertificationSettings) {
+      if (Optional.ofNullable(assetCertificationSettings).isEmpty()) {
+        throw new IllegalArgumentException(
+            "Certification is not configured. Please configure the Classification used for Certification in the Settings.");
+      } else {
+        String allowedClassification = assetCertificationSettings.getAllowedClassification();
+        String[] fqnParts = FullyQualifiedName.split(certificationLabel);
+        String parentFqn = FullyQualifiedName.getParentFQN(fqnParts);
+        if (!allowedClassification.equals(parentFqn)) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Invalid Classification: %s is not valid for Certification.",
+                  certificationLabel));
+        }
+      }
+    }
+
     public final boolean updateVersion(Double oldVersion) {
       Double newVersion = oldVersion;
       if (majorVersionChange) {
@@ -3216,7 +3277,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private boolean consolidateChanges(T original, T updated, Operation operation) {
       // If user is the same and the new update is with in the user session timeout
-      return original.getVersion() > 0.1 // First update on an entity that
+      return !parent // Parent entity shouldn't consolidate changes, as we need ChangeDescription to
+          // propagate to children
+          && original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
           && !Boolean.TRUE.equals(original.getDeleted()) // Entity is not soft deleted
           && !operation.isDelete() // Operation must be an update
@@ -3225,6 +3288,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .equals(updated.getUpdatedBy()) // Must be updated by the same user
           && updated.getUpdatedAt() - original.getUpdatedAt()
               <= sessionTimeoutMillis; // With in session timeout
+      // changes to children
     }
 
     private T getPreviousVersion(T original) {

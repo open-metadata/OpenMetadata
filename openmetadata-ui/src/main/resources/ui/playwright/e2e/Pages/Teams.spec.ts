@@ -13,6 +13,7 @@
 import test, { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { TableClass } from '../../support/entity/TableClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
@@ -26,10 +27,12 @@ import {
 import { addMultiOwner } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 import {
+  addTeamOwnerToEntity,
   createTeam,
   hardDeleteTeam,
   searchTeam,
   softDeleteTeam,
+  verifyAssetsInTeamsPage,
 } from '../../utils/team';
 
 // use the admin user to login
@@ -491,6 +494,72 @@ test.describe('Teams Page', () => {
       await download.saveAs('downloads/' + download.suggestedFilename());
     } finally {
       await team.delete(apiContext);
+    }
+  });
+
+  test('Team assets should', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const id = uuid();
+
+    const table1 = new TableClass();
+    const table2 = new TableClass();
+    const table3 = new TableClass();
+    const table4 = new TableClass();
+
+    const team1 = new TeamClass({
+      name: `pw%percent-${id}`,
+      displayName: `pw team percent ${id}`,
+      description: 'playwright team with percent description',
+      teamType: 'Group',
+    });
+    const team2 = new TeamClass({
+      name: `pw&amp-${id}`,
+      displayName: `pw team ampersand ${id}`,
+      description: 'playwright team with ampersand description',
+      teamType: 'Group',
+    });
+    const team3 = new TeamClass({
+      name: `pw.team.dot-${id}`,
+      displayName: `pw.team.dot ${id}`,
+      description: 'playwright team with dot description',
+      teamType: 'Group',
+    });
+    const team4 = new TeamClass({
+      name: `pw team space-${id}`,
+      displayName: `pw team space ${id}`,
+      description: 'playwright team with space description',
+      teamType: 'Group',
+    });
+
+    await table1.create(apiContext);
+    await table2.create(apiContext);
+    await table3.create(apiContext);
+    await table4.create(apiContext);
+    await team1.create(apiContext);
+    await team2.create(apiContext);
+    await team3.create(apiContext);
+    await team4.create(apiContext);
+
+    try {
+      await addTeamOwnerToEntity(page, table1, team1);
+      await addTeamOwnerToEntity(page, table2, team2);
+      await addTeamOwnerToEntity(page, table3, team3);
+      await addTeamOwnerToEntity(page, table4, team4);
+
+      await verifyAssetsInTeamsPage(page, table1, team1, 1);
+      await verifyAssetsInTeamsPage(page, table2, team2, 1);
+      await verifyAssetsInTeamsPage(page, table3, team3, 1);
+      await verifyAssetsInTeamsPage(page, table4, team4, 1);
+    } finally {
+      await table1.delete(apiContext);
+      await table2.delete(apiContext);
+      await table3.delete(apiContext);
+      await table4.delete(apiContext);
+      await team1.delete(apiContext);
+      await team2.delete(apiContext);
+      await team3.delete(apiContext);
+      await team4.delete(apiContext);
+      await afterAction();
     }
   });
 });
