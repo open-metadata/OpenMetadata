@@ -13,7 +13,6 @@
 import { TabsProps } from 'antd';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
-import { Tab as CustomizeTab } from '../../generated/system/ui/uiCustomization';
 import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
 import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPage';
 import customizeMyDataPageClassBase from '../CustomizeMyDataPageClassBase';
@@ -30,10 +29,37 @@ export const getDefaultLayout = (pageType: string) => {
   }
 };
 
-export const getDefaultTabs = (pageType?: string) => {
-  const commonTabs: CustomizeTab[] = [
+export const getGlossaryTermDefaultTabs = () => {
+  return [
     {
-      displayName: 'Feeds & Tasks',
+      id: EntityTabs.OVERVIEW,
+      displayName: 'Overview',
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.OVERVIEW
+      ),
+      name: EntityTabs.OVERVIEW,
+      removable: false,
+    },
+    {
+      id: EntityTabs.GLOSSARY_TERMS,
+      displayName: 'Glossary Terms',
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.GLOSSARY_TERMS
+      ),
+      name: EntityTabs.GLOSSARY_TERMS,
+      removable: false,
+    },
+    {
+      id: EntityTabs.ASSETS,
+      displayName: 'Assets',
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.ASSETS
+      ),
+      name: EntityTabs.ASSETS,
+      removable: false,
+    },
+    {
+      displayName: 'Activity Feeds & Tasks',
       name: EntityTabs.ACTIVITY_FEED,
       id: EntityTabs.ACTIVITY_FEED,
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
@@ -51,42 +77,50 @@ export const getDefaultTabs = (pageType?: string) => {
       removable: false,
     },
   ];
+};
 
+export const getGlossaryDefaultTabs = () => {
+  return [
+    {
+      id: EntityTabs.TERMS,
+      name: EntityTabs.TERMS,
+      displayName: 'Terms',
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.TERMS
+      ),
+      removable: false,
+    },
+    {
+      displayName: 'Activity Feeds & Tasks',
+      name: EntityTabs.ACTIVITY_FEED,
+      id: EntityTabs.ACTIVITY_FEED,
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.ACTIVITY_FEED
+      ),
+      removable: false,
+    },
+  ];
+};
+
+export const getDefaultTabs = (pageType?: string) => {
   switch (pageType) {
     case PageType.GlossaryTerm:
+      return getGlossaryTermDefaultTabs();
+    case PageType.Glossary:
+      return getGlossaryDefaultTabs();
+    case PageType.Table:
+    default:
       return [
-        ...commonTabs,
         {
-          id: EntityTabs.OVERVIEW,
-          displayName: 'Overview',
+          id: EntityTabs.CUSTOM_PROPERTIES,
+          name: EntityTabs.CUSTOM_PROPERTIES,
+          displayName: 'Custom Property',
           layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
-            EntityTabs.OVERVIEW
+            EntityTabs.CUSTOM_PROPERTIES
           ),
-          name: EntityTabs.OVERVIEW,
-          removable: false,
-        },
-        {
-          id: EntityTabs.GLOSSARY_TERMS,
-          displayName: 'Glossary Terms',
-          layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
-            EntityTabs.GLOSSARY_TERMS
-          ),
-          name: EntityTabs.GLOSSARY_TERMS,
-          removable: false,
-        },
-        {
-          id: EntityTabs.ASSETS,
-          displayName: 'Assets',
-          layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
-            EntityTabs.ASSETS
-          ),
-          name: EntityTabs.ASSETS,
           removable: false,
         },
       ];
-    case PageType.Table:
-    default:
-      return commonTabs;
   }
 };
 

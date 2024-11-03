@@ -17,6 +17,7 @@ import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -24,10 +25,17 @@ import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
+import { Page, PageType } from '../../../generated/system/ui/page';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../interface/feed.interface';
+import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import {
+  getGlossaryTermDetailTabs,
+  getTabLabelMap,
+} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -59,8 +67,10 @@ const GlossaryDetails = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const { selectedPersona } = useApplicationStore();
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -191,13 +201,15 @@ const GlossaryDetails = ({
   }, [permissions, glossary, termsLoading, isDescriptionEditable]);
 
   const tabs = useMemo(() => {
-    return [
+    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+
+    const items = [
       {
         label: (
           <TabsLabel
             id={EntityTabs.TERMS}
             isActive={activeTab === EntityTabs.TERMS}
-            name={t('label.term-plural')}
+            name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}
           />
         ),
         key: EntityTabs.TERMS,
@@ -211,7 +223,10 @@ const GlossaryDetails = ({
                   count={feedCount.totalCount}
                   id={EntityTabs.ACTIVITY_FEED}
                   isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-                  name={t('label.activity-feed-and-task-plural')}
+                  name={
+                    tabLabelMap[EntityTabs.ACTIVITY_FEED] ??
+                    t('label.activity-feed-and-task-plural')
+                  }
                 />
               ),
               key: EntityTabs.ACTIVITY_FEED,
@@ -231,6 +246,8 @@ const GlossaryDetails = ({
           ]
         : []),
     ];
+
+    return getGlossaryTermDetailTabs(items, customizedPage?.tabs);
   }, [
     detailsContent,
     glossary.fullyQualifiedName,
@@ -243,6 +260,24 @@ const GlossaryDetails = ({
   useEffect(() => {
     getEntityFeedCount();
   }, [glossary.fullyQualifiedName]);
+
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find((p: Page) => p.pageType === PageType.Glossary)
+      );
+    } catch (error) {
+      // fail silent
+    }
+  }, [selectedPersona.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (selectedPersona && selectedPersona.fullyQualifiedName) {
+      fetchDocument();
+    }
+  }, [selectedPersona]);
 
   return (
     <GenericProvider<Glossary>

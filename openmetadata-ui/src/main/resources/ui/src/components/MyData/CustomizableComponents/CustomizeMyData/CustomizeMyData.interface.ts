@@ -16,6 +16,7 @@ import { Page } from '../../../../generated/system/ui/page';
 
 export interface CustomizeMyDataProps {
   personaDetails?: Persona;
+  isGlossary?: boolean;
   initialPageData: Page | null;
   onSaveLayout: (page: Page) => Promise<void>;
 }

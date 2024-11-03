@@ -248,10 +248,12 @@ export const CustomizablePage = () => {
         />
       );
 
+    case PageType.Glossary:
     case PageType.GlossaryTerm:
       return (
         <CustomizeGlossaryTermDetailPage
           initialPageData={currentPage}
+          isGlossary={pageFqn === PageType.Glossary}
           personaDetails={personaDetails}
           onSaveLayout={handlePageCustomizeSave}
         />

@@ -35,6 +35,7 @@ import { CustomizeMyDataProps } from '../CustomizeMyData/CustomizeMyData.interfa
 function CustomizeGlossaryTermDetailPage({
   personaDetails,
   onSaveLayout,
+  isGlossary,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
   const { currentPage, currentPageType } = useCustomizeStore();
@@ -94,7 +95,7 @@ function CustomizeGlossaryTermDetailPage({
           onReset={handleOpenResetModal}
           onSave={handleSave}
         />
-        <GlossaryHeaderWidget isGlossary={false} />
+        <GlossaryHeaderWidget isGlossary={isGlossary} />
         <CustomizeTabWidget />
       </PageLayoutV1>
 

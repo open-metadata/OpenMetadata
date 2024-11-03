@@ -13,6 +13,7 @@
 import { noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
+import { useParams } from 'react-router-dom';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../../enums/CustomiseDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
@@ -61,6 +62,8 @@ const GlossaryOverviewTab = ({
     useState<boolean>(false);
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
   const { currentPersonaDocStore } = useCustomizeStore();
+  // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
+  const { tab = EntityTabs.OVERVIEW } = useParams<{ tab: EntityTabs }>();
   const {
     data: selectedData,
     permissions,
@@ -73,9 +76,7 @@ const GlossaryOverviewTab = ({
 
   const layout = useMemo(() => {
     if (!currentPersonaDocStore) {
-      return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
-        EntityTabs.OVERVIEW
-      );
+      return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
     }
     const pageType = isGlossary ? PageType.Glossary : PageType.GlossaryTerm;
     const page = currentPersonaDocStore?.data?.pages.find(
@@ -83,13 +84,11 @@ const GlossaryOverviewTab = ({
     );
 
     if (page) {
-      return page.tabs.find((t: Tab) => t.id === EntityTabs.OVERVIEW)?.layout;
+      return page.tabs.find((t: Tab) => t.id === tab)?.layout;
     } else {
-      return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
-        EntityTabs.OVERVIEW
-      );
+      return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
     }
-  }, [currentPersonaDocStore, isGlossary]);
+  }, [currentPersonaDocStore, isGlossary, tab]);
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (selectedData.description !== updatedHTML) {

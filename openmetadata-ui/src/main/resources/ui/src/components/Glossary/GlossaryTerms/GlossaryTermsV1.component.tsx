@@ -44,8 +44,11 @@ import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import {
+  getGlossaryTermDetailTabs,
+  getTabLabelMap,
+} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import {
@@ -176,19 +179,13 @@ const GlossaryTermsV1 = ({
   };
 
   const tabItems = useMemo(() => {
-    const changedItems = customizedPage?.tabs;
-
-    const getLabel = (tab: EntityTabs) => {
-      const item = changedItems?.find((t) => t.id === tab);
-
-      return item?.displayName;
-    };
+    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
 
     const items = [
       {
         label: (
           <div data-testid="overview">
-            {getLabel(EntityTabs.OVERVIEW) ?? t('label.overview')}
+            {tabLabelMap[EntityTabs.OVERVIEW] ?? t('label.overview')}
           </div>
         ),
         key: EntityTabs.OVERVIEW,
@@ -208,7 +205,7 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="terms">
-                  {getLabel(EntityTabs.GLOSSARY_TERMS) ??
+                  {tabLabelMap[EntityTabs.GLOSSARY_TERMS] ??
                     t('label.glossary-term-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(
@@ -235,7 +232,7 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="assets">
-                  {getLabel(EntityTabs.ASSETS) ?? t('label.asset-plural')}
+                  {tabLabelMap[EntityTabs.ASSETS] ?? t('label.asset-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
                   </span>
@@ -262,7 +259,7 @@ const GlossaryTermsV1 = ({
                   id={EntityTabs.ACTIVITY_FEED}
                   isActive={activeTab === EntityTabs.ACTIVITY_FEED}
                   name={
-                    getLabel(EntityTabs.ACTIVITY_FEED) ??
+                    tabLabelMap[EntityTabs.ACTIVITY_FEED] ??
                     t('label.activity-feed-and-task-plural')
                   }
                 />
@@ -284,7 +281,7 @@ const GlossaryTermsV1 = ({
                 <TabsLabel
                   id={EntityTabs.CUSTOM_PROPERTIES}
                   name={
-                    getLabel(EntityTabs.CUSTOM_PROPERTIES) ??
+                    tabLabelMap[EntityTabs.CUSTOM_PROPERTIES] ??
                     t('label.custom-property-plural')
                   }
                 />
@@ -310,29 +307,7 @@ const GlossaryTermsV1 = ({
         : []),
     ];
 
-    const newTabs =
-      changedItems?.map((t) => {
-        const tabItemDetails = items.find((i) => i.key === t.id);
-
-        return (
-          tabItemDetails ?? {
-            label: getEntityName(t),
-            key: t.id,
-            children: (
-              <GlossaryOverviewTab
-                editCustomAttributePermission={
-                  !isVersionView &&
-                  (permissions.EditAll || permissions.EditCustomFields)
-                }
-                onExtensionUpdate={onExtensionUpdate}
-                onThreadLinkSelect={onThreadLinkSelect}
-              />
-            ),
-          }
-        );
-      }) ?? items;
-
-    return newTabs;
+    return getGlossaryTermDetailTabs(items, customizedPage?.tabs ?? []);
   }, [
     customizedPage?.tabs,
     glossaryTerm,
@@ -402,6 +377,7 @@ const GlossaryTermsV1 = ({
   return (
     <GenericProvider
       data={updatedGlossaryTerm}
+      isVersionView={isVersionView}
       permissions={permissions}
       type={EntityType.GLOSSARY_TERM}
       onUpdate={onTermUpdate}>
