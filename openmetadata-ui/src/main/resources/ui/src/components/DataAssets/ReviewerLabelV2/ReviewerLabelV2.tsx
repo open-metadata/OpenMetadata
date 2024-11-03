@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
@@ -10,8 +22,9 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -19,15 +32,8 @@ import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useGenericContext } from '../../GenericProvider/GenericProvider';
 
-interface ReviewerLabelV2Props {
-  data: GlossaryTerm;
-  onUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
-  type: EntityType;
-}
-
 export const ReviewerLabelV2 = () => {
-  const { data: glossaryTerm, onUpdate } =
-    useGenericContext<ReviewerLabelV2Props>();
+  const { data: glossaryTerm, onUpdate } = useGenericContext<GlossaryTerm>();
 
   const isVersionView = false;
   const { getEntityPermission } = usePermissionProvider();
@@ -47,7 +53,7 @@ export const ReviewerLabelV2 = () => {
     }
   };
 
-  const handleUpdatedOwner = async (updatedUser: any) => {
+  const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
     const updatedGlossaryTerm = { ...glossaryTerm };
     updatedGlossaryTerm.owners = updatedUser;
     await onUpdate(updatedGlossaryTerm);

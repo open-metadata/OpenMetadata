@@ -56,16 +56,9 @@ import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.in
 import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 
-interface RelatedTermsProps {
-  type: EntityType;
-  data: GlossaryTerm;
-  onUpdate: (data: GlossaryTerm) => Promise<void>;
-}
-
 const RelatedTerms = () => {
   const history = useHistory();
-  const { data: glossaryTerm, onUpdate } =
-    useGenericContext<RelatedTermsProps>();
+  const { data: glossaryTerm, onUpdate } = useGenericContext<GlossaryTerm>();
   const isVersionView = false;
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<EntityReference[]>([]);

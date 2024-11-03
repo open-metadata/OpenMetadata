@@ -1,30 +1,44 @@
-import React, { useMemo } from 'react';
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { once } from 'lodash';
+import React, { useContext, useMemo } from 'react';
 import { EntityType } from '../../enums/entity.enum';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 
-interface GenericProviderProps<T extends GlossaryTerm> {
+interface GenericProviderProps<T extends unknown> {
   children?: React.ReactNode;
   data: T;
   type: EntityType;
   onUpdate: (updatedData: T) => Promise<void>;
 }
 
-interface GenericContextType {
-  data: unknown;
+interface GenericContextType<T> {
+  data: T;
   type: EntityType;
-  onUpdate: (updatedData: unknown) => Promise<void>;
+  onUpdate: (updatedData: T) => Promise<void>;
 }
 
-const GenericContext = React.createContext<GenericContextType | undefined>(
-  {} as GenericContextType
+const createGenericContext = once(<T,>() =>
+  React.createContext({} as GenericContextType<T>)
 );
 
-export const GenericProvider = <T extends GlossaryTerm>({
+export const GenericProvider = <T extends unknown>({
   children,
   data,
   type,
   onUpdate,
 }: GenericProviderProps<T>) => {
+  const GenericContext = createGenericContext<T>();
+
   const typedData = data as T;
   const values = useMemo(
     () => ({ data: typedData, type, onUpdate }),
@@ -36,6 +50,5 @@ export const GenericProvider = <T extends GlossaryTerm>({
   );
 };
 
-export const useGenericContext = <
-  T extends { data: unknown; type: EntityType }
->() => React.useContext<T>(GenericContext);
+export const useGenericContext = <T,>() =>
+  useContext(createGenericContext<T>());

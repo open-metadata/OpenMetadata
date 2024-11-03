@@ -103,7 +103,7 @@ export const DraggableTabs: React.FC<
     </DefaultTabBar>
   );
 
-  const orderItems = sortTabs(items, order);
+  const orderItems = sortTabs(items, order as string[]);
 
   return (
     <DndProvider backend={HTML5Backend}>

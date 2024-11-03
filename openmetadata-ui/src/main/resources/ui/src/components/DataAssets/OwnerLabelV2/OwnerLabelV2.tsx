@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
@@ -10,8 +22,8 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -19,15 +31,10 @@ import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useGenericContext } from '../../GenericProvider/GenericProvider';
 
-interface OwnerLabelV2Props {
-  data: GlossaryTerm;
-  onUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
-  type: EntityType;
-}
-
-export const OwnerLabelV2 = () => {
-  const { data: glossaryTerm, onUpdate } =
-    useGenericContext<OwnerLabelV2Props>();
+export const OwnerLabelV2 = <
+  T extends { owners?: EntityReference[]; id: string }
+>() => {
+  const { data, onUpdate } = useGenericContext<T>();
 
   const isVersionView = false;
   const { getEntityPermission } = usePermissionProvider();
@@ -39,7 +46,7 @@ export const OwnerLabelV2 = () => {
     try {
       const response = await getEntityPermission(
         ResourceEntity.GLOSSARY_TERM,
-        glossaryTerm?.id as string
+        data?.id as string
       );
       setPermissions(response);
     } catch (error) {
@@ -47,15 +54,15 @@ export const OwnerLabelV2 = () => {
     }
   };
 
-  const handleUpdatedOwner = async (updatedUser: any) => {
-    const updatedGlossaryTerm = { ...glossaryTerm };
+  const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
+    const updatedGlossaryTerm = { ...data };
     updatedGlossaryTerm.owners = updatedUser;
     await onUpdate(updatedGlossaryTerm);
   };
 
   useEffect(() => {
     fetchGlossaryTermPermission();
-  }, [glossaryTerm]);
+  }, [data]);
 
   return (
     <div data-testid="glossary-right-panel-owner-link">
@@ -64,13 +71,13 @@ export const OwnerLabelV2 = () => {
           {t('label.owner-plural')}
         </Typography.Text>
         {(permissions.EditOwners || permissions.EditAll) &&
-          glossaryTerm.owners &&
-          glossaryTerm.owners.length > 0 && (
+          data.owners &&
+          data.owners.length > 0 && (
             <UserTeamSelectableList
               hasPermission={permissions.EditOwners || permissions.EditAll}
               listHeight={200}
               multiple={{ user: true, team: false }}
-              owner={glossaryTerm.owners}
+              owner={data.owners}
               onUpdate={handleUpdatedOwner}>
               <Tooltip
                 title={t('label.edit-entity', {
@@ -89,19 +96,19 @@ export const OwnerLabelV2 = () => {
       </div>
       <Space className="m-r-xss" size={4}>
         {getOwnerVersionLabel(
-          glossaryTerm,
+          data,
           isVersionView ?? false,
           TabSpecificField.OWNERS,
           permissions.EditOwners || permissions.EditAll
         )}
       </Space>
-      {glossaryTerm.owners?.length === 0 &&
+      {data.owners?.length === 0 &&
         (permissions.EditOwners || permissions.EditAll) && (
           <UserTeamSelectableList
             hasPermission={permissions.EditOwners || permissions.EditAll}
             listHeight={200}
             multiple={{ user: true, team: false }}
-            owner={glossaryTerm.owners}
+            owner={data.owners}
             onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
             <TagButton
               className="text-primary cursor-pointer"

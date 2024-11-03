@@ -33,6 +33,7 @@ import {
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
 import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
+import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import { OwnerLabelV2 } from '../../../DataAssets/OwnerLabelV2/OwnerLabelV2';
@@ -40,6 +41,7 @@ import { ReviewerLabelV2 } from '../../../DataAssets/ReviewerLabelV2/ReviewerLab
 import { GenericProvider } from '../../../GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
+import { GlossaryUpdateConfirmationModal } from '../../GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import GlossaryTermReferences from './GlossaryTermReferences';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 import RelatedTerms from './RelatedTerms';
@@ -107,6 +109,10 @@ const GlossaryOverviewTab = ({
 
   const hasEditTagsPermissions = useMemo(() => {
     return permissions.EditAll || permissions.EditTags;
+  }, [permissions]);
+
+  const hasViewAllPermission = useMemo(() => {
+    return permissions.ViewAll;
   }, [permissions]);
 
   const glossaryDescription = useMemo(() => {
@@ -219,6 +225,25 @@ const GlossaryOverviewTab = ({
         widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
       ) {
         return <ReviewerLabelV2 />;
+      } else if (
+        widgetConfig.i.startsWith(
+          GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES
+        ) &&
+        !isGlossary
+      ) {
+        return (
+          <CustomPropertyTable
+            isRenderedInRightPanel
+            entityDetails={selectedData as GlossaryTerm}
+            entityType={EntityType.GLOSSARY_TERM}
+            handleExtensionUpdate={async (updatedTable) => {
+              await onExtensionUpdate?.(updatedTable as GlossaryTerm);
+            }}
+            hasEditAccess={Boolean(editCustomAttributePermission)}
+            hasPermission={hasViewAllPermission}
+            maxDataCap={5}
+          />
+        );
       }
 
       return getWidgetFromKey({
@@ -241,7 +266,7 @@ const GlossaryOverviewTab = ({
   useGridLayoutDirection();
 
   return (
-    <GenericProvider
+    <GenericProvider<GlossaryTerm>
       data={selectedData as GlossaryTerm}
       type={EntityType.GLOSSARY_TERM}
       onUpdate={onUpdate}>
@@ -257,6 +282,14 @@ const GlossaryOverviewTab = ({
         rowHeight={customizeGlossaryTermPageClassBase.detailPageRowHeight}>
         {widgets}
       </ReactGridLayout>
+      {tagsUpdatating && (
+        <GlossaryUpdateConfirmationModal
+          glossaryTerm={selectedData as GlossaryTerm}
+          updatedTags={tagsUpdatating}
+          onCancel={() => setTagsUpdating(undefined)}
+          onValidationSuccess={handleGlossaryTagUpdateValidationConfirm}
+        />
+      )}
     </GenericProvider>
   );
 };

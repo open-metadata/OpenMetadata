@@ -52,7 +52,7 @@ export const CustomizeTabWidget = () => {
   const [items, setItems] = useState<Tab[]>(
     currentPage?.tabs ?? getDefaultTabs(currentPageType as PageType)
   );
-  const [activeKey, setActiveKey] = useState<GlossaryTabs | null>(
+  const [activeKey, setActiveKey] = useState<string | null>(
     (items[0]?.id as GlossaryTabs) ?? null
   );
 
@@ -110,9 +110,9 @@ export const CustomizeTabWidget = () => {
     const newPanes = items.filter((item) => item.id !== targetKey);
     if (newPanes.length && newActiveKey === targetKey) {
       if (lastIndex >= 0) {
-        newActiveKey = newPanes[lastIndex].id;
+        newActiveKey = newPanes[lastIndex].id as GlossaryTabs;
       } else {
-        newActiveKey = newPanes[0].id;
+        newActiveKey = newPanes[0].id as GlossaryTabs;
       }
     }
     setItems(newPanes);

@@ -30,7 +30,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import {
@@ -43,18 +42,12 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 
-interface GlossaryTermSynonymsProps {
-  data: GlossaryTerm;
-  onUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
-  type: EntityType;
-}
-
 const GlossaryTermSynonyms = () => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [saving, setSaving] = useState<boolean>(false);
   const { data: glossaryTerm, onUpdate: onGlossaryTermUpdate } =
-    useGenericContext<GlossaryTermSynonymsProps>();
+    useGenericContext<GlossaryTerm>();
   const isVersionView = false;
   const { getEntityPermission } = usePermissionProvider();
   const [permissions, setPermissions] = useState<OperationPermission>(

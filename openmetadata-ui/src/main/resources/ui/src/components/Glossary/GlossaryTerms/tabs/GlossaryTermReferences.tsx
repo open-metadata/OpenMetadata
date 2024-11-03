@@ -36,7 +36,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../../enums/entity.enum';
 import {
   GlossaryTerm,
   TermReference,
@@ -54,17 +53,11 @@ import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
-interface GlossaryTermReferencesProps {
-  data: GlossaryTerm;
-  onUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
-  type: EntityType;
-}
-
 const GlossaryTermReferences = () => {
   const [references, setReferences] = useState<TermReference[]>([]);
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const { data: glossaryTerm, onUpdate: onGlossaryTermUpdate } =
-    useGenericContext<GlossaryTermReferencesProps>();
+    useGenericContext<GlossaryTerm>();
 
   const isVersionView = false;
   const { getEntityPermission } = usePermissionProvider();

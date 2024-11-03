@@ -76,10 +76,11 @@ import Voting from '../../Entity/Voting/Voting.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
-import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
+import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 
 const GlossaryHeader = ({
+  onUpdate,
   onDelete,
   onAssetAdd,
   onAddGlossaryTerm,
@@ -109,7 +110,7 @@ const GlossaryHeader = ({
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [openChangeParentHierarchyModal, setOpenChangeParentHierarchyModal] =
     useState(false);
-  const isGlossary = useMemo(() => Fqn.split(fqn).length === 1, [fqn]);
+  const isGlossary = useMemo(() => 'glossary' in selectedData, [selectedData]);
   const { permissions: globalPermissions, getEntityPermission } =
     usePermissionProvider();
   const [permissions, setPermissions] = useState(DEFAULT_ENTITY_PERMISSION);
@@ -255,11 +256,6 @@ const GlossaryHeader = ({
     setIsDelete(false);
   };
 
-  const handleGlossaryPatch = async (glossary: ModifiedGlossary) => {
-    // handle glossary patch
-    // Console.log(glossary);
-  };
-
   const onNameSave = async (obj: { name: string; displayName: string }) => {
     const { name, displayName } = obj;
     let updatedDetails = cloneDeep(selectedData);
@@ -270,7 +266,7 @@ const GlossaryHeader = ({
       displayName: displayName?.trim(),
     };
 
-    await handleGlossaryPatch(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsNameEditing(false);
   };
 
@@ -285,7 +281,7 @@ const GlossaryHeader = ({
       style,
     };
 
-    await handleGlossaryPatch(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsStyleEditing(false);
   };
 
@@ -567,14 +563,11 @@ const GlossaryHeader = ({
   }, [selectedData]);
 
   useEffect(() => {
-    if (isEditView) {
-      return;
-    }
     if (isVersionView) {
       fetchCurrentGlossaryInfo();
     }
     fetchGlossaryPermission();
-  }, [id, isEditView]);
+  }, [id]);
 
   return (
     <>
