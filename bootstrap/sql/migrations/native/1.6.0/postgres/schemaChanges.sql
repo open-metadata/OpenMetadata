@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS workflow_instance_state_time_series (
   jsonSchema varchar(256) NOT NULL,
   json jsonb NOT NULL,
   entityFQNHash varchar(768) COLLATE "C" DEFAULT NULL,
-  CONSTRAINT workflow_instance_time_series_unique_constraint UNIQUE (id, entityFQNHash),
+  CONSTRAINT workflow_instance_state_time_series_unique_constraint UNIQUE (id, entityFQNHash),
   PRIMARY KEY (id)
 );
 CREATE INDEX ON workflow_instance_state_time_series(workflowDefinitionId);
