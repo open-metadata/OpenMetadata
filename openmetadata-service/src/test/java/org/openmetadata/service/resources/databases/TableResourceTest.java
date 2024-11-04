@@ -2527,7 +2527,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             String.format(
                 "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
-        "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
+        "{\"size\": 1000,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
     response = searchClient.performRequest(request);
     searchClient.close();
