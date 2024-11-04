@@ -11,6 +11,14 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
+import {
+  CommonWidgetType,
+  CUSTOM_PROPERTIES_WIDGET,
+  DESCRIPTION_WIDGET,
+  DOMAIN_WIDGET,
+  GLOSSARY_TERMS_WIDGET,
+  TAGS_WIDGET,
+} from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
 import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
@@ -40,6 +48,7 @@ export const getGlossaryTermDefaultTabs = () => {
       ),
       name: EntityTabs.OVERVIEW,
       removable: false,
+      editable: true,
     },
     {
       id: EntityTabs.GLOSSARY_TERMS,
@@ -49,6 +58,7 @@ export const getGlossaryTermDefaultTabs = () => {
       ),
       name: EntityTabs.GLOSSARY_TERMS,
       removable: false,
+      editable: false,
     },
     {
       id: EntityTabs.ASSETS,
@@ -58,6 +68,7 @@ export const getGlossaryTermDefaultTabs = () => {
       ),
       name: EntityTabs.ASSETS,
       removable: false,
+      editable: false,
     },
     {
       displayName: 'Activity Feeds & Tasks',
@@ -67,6 +78,7 @@ export const getGlossaryTermDefaultTabs = () => {
         EntityTabs.ACTIVITY_FEED
       ),
       removable: false,
+      editable: false,
     },
     {
       id: EntityTabs.CUSTOM_PROPERTIES,
@@ -76,6 +88,7 @@ export const getGlossaryTermDefaultTabs = () => {
         EntityTabs.CUSTOM_PROPERTIES
       ),
       removable: false,
+      editable: false,
     },
   ];
 };
@@ -90,6 +103,7 @@ export const getGlossaryDefaultTabs = () => {
         EntityTabs.TERMS
       ),
       removable: false,
+      editable: true,
     },
     {
       displayName: 'Activity Feeds & Tasks',
@@ -99,6 +113,7 @@ export const getGlossaryDefaultTabs = () => {
         EntityTabs.ACTIVITY_FEED
       ),
       removable: false,
+      editable: false,
     },
   ];
 };
@@ -145,4 +160,26 @@ export const sortTabs = (tabs: TabsProps['items'], order: string[]) => {
 
     return ia - ib;
   });
+};
+
+export const getCustomizableWidgetByPage = (
+  pageType: PageType
+): CommonWidgetType[] => {
+  switch (pageType) {
+    case PageType.GlossaryTerm:
+    case PageType.Glossary:
+      return customizeGlossaryTermPageClassBase.getCommonWidgetList();
+
+    case PageType.Table:
+      return [
+        DESCRIPTION_WIDGET,
+        CUSTOM_PROPERTIES_WIDGET,
+        DOMAIN_WIDGET,
+        TAGS_WIDGET,
+        GLOSSARY_TERMS_WIDGET,
+      ];
+    case PageType.LandingPage:
+    default:
+      return [];
+  }
 };

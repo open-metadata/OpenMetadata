@@ -14,10 +14,13 @@
 import { FC } from 'react';
 import { GenericWidget } from '../../components/Glossary/CustomiseWidgets/SynonymsWidget/GenericWidget';
 import {
-  DetailPageWidgetKeys,
-  GlossaryTermDetailPageWidgetKeys,
-} from '../../enums/CustomiseDetailPage.enum';
-import { PageType } from '../../generated/system/ui/page';
+  CUSTOM_PROPERTIES_WIDGET,
+  DESCRIPTION_WIDGET,
+  DOMAIN_WIDGET,
+  OWNER_WIDGET,
+  TAGS_WIDGET,
+} from '../../constants/CustomizeWidgets.constants';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -178,66 +181,13 @@ class CustomizeDetailPageClassBase {
     }
   }
 
-  public getCommonWidgetList(pageType: PageType) {
+  public getCommonWidgetList() {
     return [
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.DESCRIPTION,
-        name: 'Description',
-        entityType: pageType,
-        data: {
-          gridSizes: ['small', 'medium', 'large'],
-        },
-      },
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
-        name: 'Synonyms',
-        entityType: pageType,
-        data: {
-          gridSizes: ['small'],
-        },
-      },
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
-        name: 'Related Terms',
-        entityType: pageType,
-        data: { gridSizes: ['small'] },
-      },
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REFERENCES,
-        name: 'References',
-        entityType: pageType,
-        data: { gridSizes: ['small'] },
-      },
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.TAGS,
-        name: 'Tags',
-        entityType: pageType,
-        data: { gridSizes: ['small'] },
-      },
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.DOMAIN,
-        name: 'Domain',
-        entityType: pageType,
-        data: { gridSizes: ['small'] },
-      },
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.OWNER,
-        name: 'Owner',
-        entityType: pageType,
-        data: { gridSizes: ['small'] },
-      },
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REVIEWER,
-        name: 'Reviewer',
-        entityType: pageType,
-        data: { gridSizes: ['small'] },
-      },
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES,
-        name: 'Custom Properties',
-        entityType: pageType,
-        data: { gridSizes: ['small'] },
-      },
+      DESCRIPTION_WIDGET,
+      TAGS_WIDGET,
+      DOMAIN_WIDGET,
+      OWNER_WIDGET,
+      CUSTOM_PROPERTIES_WIDGET,
     ];
   }
 }

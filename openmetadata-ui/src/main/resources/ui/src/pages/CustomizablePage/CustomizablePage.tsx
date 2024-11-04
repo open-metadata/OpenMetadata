@@ -240,6 +240,7 @@ export const CustomizablePage = () => {
       );
 
     case PageType.LandingPage:
+    case 'homepage':
       return (
         <CustomizeMyData
           initialPageData={currentPage}

@@ -13,17 +13,22 @@
 
 import { CheckOutlined } from '@ant-design/icons';
 import { Modal, Space, Tabs, TabsProps } from 'antd';
+import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
+import {
+  LIGHT_GREEN_COLOR,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
-import { PageType } from '../../../../generated/system/ui/page';
+import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPageUtils';
-import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPage';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../common/Loader/Loader';
 import './add-widget-modal.less';
 import {
   AddWidgetModalProps,
@@ -40,9 +45,24 @@ function AddWidgetModal({
   placeholderWidgetKey,
 }: Readonly<AddWidgetModalProps>) {
   const { t } = useTranslation();
-  const [widgetsList] = useState<Array<Document>>(
-    customizeDetailPageClassBase.getCommonWidgetList(PageType.GlossaryTerm)
-  );
+  const [widgetsList, setWidgetsList] = useState<Array<Document>>();
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const fetchKnowledgePanels = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getAllKnowledgePanels({
+        fqnPrefix: 'KnowledgePanel',
+        limit: PAGE_SIZE_MEDIUM,
+      });
+
+      setWidgetsList(response.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const getAddWidgetHandler = useCallback(
     (widget: Document, widgetSize: number) => () =>
@@ -94,7 +114,15 @@ function AddWidgetModal({
     [widgetsList, addedWidgetsList, getAddWidgetHandler, maxGridSizeSupport]
   );
 
+  useEffect(() => {
+    fetchKnowledgePanels();
+  }, []);
+
   const widgetsInfo = useMemo(() => {
+    if (loading) {
+      return <Loader />;
+    }
+
     if (isEmpty(widgetsList)) {
       return (
         <ErrorPlaceHolder
@@ -113,7 +141,7 @@ function AddWidgetModal({
         tabPosition="left"
       />
     );
-  }, [widgetsList, tabItems]);
+  }, [loading, widgetsList, tabItems]);
 
   return (
     <Modal

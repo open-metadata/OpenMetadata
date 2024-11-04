@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Input, Modal } from 'antd';
+import { Input, Modal, Tooltip } from 'antd';
 import { isEmpty, isNil, toString, uniqueId } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { CommonWidgetType } from '../../../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../../../enums/entity.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { Page, Tab } from '../../../../generated/system/ui/page';
@@ -34,11 +36,14 @@ import {
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
 } from '../../../../utils/CustomizableLandingPageUtils';
-import { getDefaultTabs } from '../../../../utils/CustomizePage/CustomizePageUtils';
+import {
+  getCustomizableWidgetByPage,
+  getDefaultTabs,
+} from '../../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DraggableTabs } from '../../../common/DraggableTabs/DraggableTabs';
-import AddWidgetModal from '../../../MyData/CustomizableComponents/AddWidgetModal/AddWidgetModal';
+import AddDetailsPageWidgetModal from '../../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal';
 
 const ReactGridLayout = WidthProvider(RGL);
 
@@ -55,6 +60,7 @@ export const CustomizeTabWidget = () => {
   const [activeKey, setActiveKey] = useState<string | null>(
     (items[0]?.id as EntityTabs) ?? null
   );
+  const { t } = useTranslation();
 
   const [editableItem, setEditableItem] = useState<Tab | null>(null);
   const [tabLayouts, setTabLayouts] = useState<WidgetConfig[]>(
@@ -94,6 +100,7 @@ export const CustomizeTabWidget = () => {
         layout: [],
         id: newActiveKey,
         removable: true,
+        editable: true,
       } as Tab,
     ]);
     onChange(newActiveKey);
@@ -203,13 +210,13 @@ export const CustomizeTabWidget = () => {
 
   const handleMainPanelAddWidget = useCallback(
     (
-      newWidgetData: Document,
+      newWidgetData: CommonWidgetType,
       placeholderWidgetKey: string,
       widgetSize: number
     ) => {
       setTabLayouts(
         getAddWidgetHandler(
-          newWidgetData,
+          newWidgetData as unknown as Document,
           placeholderWidgetKey,
           widgetSize,
           customizeGlossaryTermPageClassBase.detailPageMaxGridSize
@@ -245,19 +252,23 @@ export const CustomizeTabWidget = () => {
         items={items.map((item) => ({
           key: item.id,
           label: (
-            <>
+            <Tooltip
+              title={
+                item.editable ? '' : t('message.no-customization-available')
+              }>
               {getEntityName(item)}
               <Icon
-                className="m-l-xs"
+                className="m-l-xs "
                 component={EditIcon}
                 onClick={(event) => {
                   event.stopPropagation();
                   handleTabEditClick(item.id);
                 }}
               />
-            </>
+            </Tooltip>
           ),
           closable: item.removable ?? false,
+          disabled: !item.editable,
         }))}
         size="small"
         tabBarGutter={2}
@@ -271,7 +282,6 @@ export const CustomizeTabWidget = () => {
         className="grid-container"
         cols={8}
         draggableHandle=".drag-widget-icon"
-        isResizable={false}
         margin={[
           customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
           customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
@@ -281,14 +291,17 @@ export const CustomizeTabWidget = () => {
         {widgets}
       </ReactGridLayout>
 
-      <AddWidgetModal
-        addedWidgetsList={[]}
-        handleAddWidget={handleMainPanelAddWidget}
-        handleCloseAddWidgetModal={() => setIsWidgetModalOpen(false)}
-        maxGridSizeSupport={8}
-        open={isWidgetModalOpen}
-        placeholderWidgetKey={placeholderWidgetKey}
-      />
+      {currentPageType && (
+        <AddDetailsPageWidgetModal
+          addedWidgetsList={[]}
+          handleAddWidget={handleMainPanelAddWidget}
+          handleCloseAddWidgetModal={() => setIsWidgetModalOpen(false)}
+          maxGridSizeSupport={8}
+          open={isWidgetModalOpen}
+          placeholderWidgetKey={placeholderWidgetKey}
+          widgetsList={getCustomizableWidgetByPage(currentPageType)}
+        />
+      )}
       {editableItem && (
         <Modal
           maskClosable

@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { Button, Col, Modal, Space, Typography } from 'antd';
+import { startCase } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
 
@@ -30,6 +32,7 @@ export const CustomizablePageHeader = ({
 }) => {
   const { t } = useTranslation();
   const { fqn: personaFqn } = useFqn();
+  const { currentPageType } = useCustomizeStore();
   const history = useHistory();
   const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -60,6 +63,7 @@ export const CustomizablePageHeader = ({
   const i18Values = useMemo(
     () => ({
       persona: personaName,
+      pageName: startCase(currentPageType as string) ?? t('label.landing-page'),
     }),
     [personaName]
   );

@@ -19,7 +19,12 @@ import { GenericWidget } from '../../components/Glossary/CustomiseWidgets/Synony
 import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
 import { GlossaryHeaderWidget } from '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget';
-import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomiseDetailPage.enum';
+import {
+  CommonWidgetType,
+  CUSTOM_PROPERTIES_WIDGET,
+  DESCRIPTION_WIDGET,
+} from '../../constants/CustomizeWidgets.constants';
+import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import {
   WidgetCommonProps,
@@ -369,6 +374,35 @@ class CustomizeGlossaryTermPageClassBase {
         y: 0,
         static: false,
       },
+    ];
+  }
+
+  public getCommonWidgetList(): CommonWidgetType[] {
+    return [
+      DESCRIPTION_WIDGET,
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
+        name: 'Synonyms',
+        data: {
+          gridSizes: ['small'],
+        },
+      },
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
+        name: 'Related Terms',
+        data: { gridSizes: ['small'] },
+      },
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REFERENCES,
+        name: 'References',
+        data: { gridSizes: ['small'] },
+      },
+      {
+        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REVIEWER,
+        name: 'Reviewer',
+        data: { gridSizes: ['small'] },
+      },
+      CUSTOM_PROPERTIES_WIDGET,
     ];
   }
 }

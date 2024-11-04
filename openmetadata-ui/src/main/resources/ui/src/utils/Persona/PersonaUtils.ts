@@ -28,6 +28,7 @@ import { ReactComponent as TableIcon } from '../../assets/svg/table-colored.svg'
 import { EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { SettingMenuItem } from '../GlobalSettingsUtils';
+import i18n from '../i18next/LocalUtil';
 
 const ENTITY_ICONS: Record<string, SvgComponent> = {
   [EntityType.TABLE]: TableIcon,
@@ -53,15 +54,21 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
   return [
     {
       key: 'navigation',
-      label: 'Navigation',
+      label: i18n.t('label.navigation'),
       description: 'Navigation',
       icon: ENTITY_ICONS[camelCase('Navigation')],
     },
     {
-      key: 'govern',
-      label: 'Govern',
-      description: 'Govern',
-      icon: ENTITY_ICONS[camelCase('Govern')],
+      key: 'homepage',
+      label: i18n.t('label.homepage'),
+      description: 'Homepage',
+      icon: ENTITY_ICONS[camelCase('Homepage')],
+    },
+    {
+      key: 'governance',
+      label: i18n.t('label.governance'),
+      description: 'Governance',
+      icon: ENTITY_ICONS[camelCase('GOVERN')],
     },
     {
       key: 'data-assets',
@@ -78,7 +85,7 @@ export const getCustomizePageOptions = (
   const list = map(PageType);
 
   switch (category) {
-    case 'govern':
+    case 'governance':
       return list
         .filter((item) =>
           [PageType.Glossary, PageType.GlossaryTerm, PageType.Domain].includes(
@@ -99,6 +106,7 @@ export const getCustomizePageOptions = (
               PageType.Glossary,
               PageType.GlossaryTerm,
               PageType.Domain,
+              PageType.LandingPage,
             ].includes(item)
         )
         .map((item) => ({

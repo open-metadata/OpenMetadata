@@ -23,13 +23,13 @@
       "description": "Layout configuration for this tab.",
       "type": "object"
     },
+    "editable": {
+      "description": "Weather tab can be edit by the user or not.",
+      "type": "boolean"
+    },
     "knowledgePanels": {
       "description": "KnowledgePanels that are part of this Tab.",
       "$ref": "../../type/entityReferenceList.json"
-    },
-    "order": {
-      "description": "Order of the tab within the page.",
-      "type": "integer"
     }
   },
   "required": ["id", "name", "layout", "removable"],

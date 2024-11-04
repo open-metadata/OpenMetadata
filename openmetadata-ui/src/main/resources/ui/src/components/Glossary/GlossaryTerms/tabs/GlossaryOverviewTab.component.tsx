@@ -15,7 +15,7 @@ import React, { useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useParams } from 'react-router-dom';
 import { EntityField } from '../../../../constants/Feeds.constants';
-import { GlossaryTermDetailPageWidgetKeys } from '../../../../enums/CustomiseDetailPage.enum';
+import { GlossaryTermDetailPageWidgetKeys } from '../../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { Glossary } from '../../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';

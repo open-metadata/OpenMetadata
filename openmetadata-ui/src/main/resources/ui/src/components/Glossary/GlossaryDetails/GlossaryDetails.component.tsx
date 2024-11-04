@@ -22,7 +22,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomiseDetailPage.enum';
+import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';

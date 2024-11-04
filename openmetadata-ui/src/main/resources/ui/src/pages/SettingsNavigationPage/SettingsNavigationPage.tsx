@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -10,14 +11,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
+import Icon from '@ant-design/icons';
+import { Button, Col, Row, Tree, TreeDataNode, TreeProps } from 'antd';
+import { DataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import { cloneDeep, isNil } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DeleteIcon } from '../../assets/svg/delete-white.svg';
+import { ReactComponent as IconDown } from '../../assets/svg/ic-arrow-down.svg';
+import { ReactComponent as IconRight } from '../../assets/svg/ic-arrow-right.svg';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TreeTransfer } from '../../components/common/TreeTransfer/TreeTransfer';
 import { LeftSidebarItem } from '../../components/MyData/LeftSidebar/LeftSidebar.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -55,6 +60,11 @@ export const SettingsNavigationPage = ({
     currentNavigation
       ? getNestedKeysFromNavigationItems(currentNavigation)
       : getNestedKeys(sidebarOptions)
+  );
+
+  const treeData = filterAndArrangeTreeByKeys<DataNode>(
+    cloneDeep(sidebarOptions),
+    targetKeys
   );
 
   const handleChange = (newTargetKeys: string[]) => {
@@ -105,6 +115,74 @@ export const SettingsNavigationPage = ({
     setSaving(false);
   };
 
+  const onDrop: TreeProps['onDrop'] = (info) => {
+    const dropKey = info.node.key;
+    const dragKey = info.dragNode.key;
+    const dropPos = info.node.pos.split('-');
+    const dropPosition =
+      info.dropPosition - Number(dropPos[dropPos.length - 1]); // the drop position relative to the drop node, inside 0, top -1, bottom 1
+
+    const loop = (
+      data: TreeDataNode[],
+      key: React.Key,
+      callback: (node: TreeDataNode, i: number, data: TreeDataNode[]) => void
+    ) => {
+      for (let i = 0; i < data.length; i++) {
+        if (data[i].key === key) {
+          return callback(data[i], i, data);
+        }
+        if (data[i].children) {
+          loop(data[i].children!, key, callback);
+        }
+      }
+    };
+    const tempData = cloneDeep(treeData);
+
+    // Find dragObject
+    let dragObj: TreeDataNode;
+    loop(tempData, dragKey, (item, index, arr) => {
+      arr.splice(index, 1);
+      dragObj = item;
+    });
+
+    if (!info.dropToGap) {
+      // Drop on the content
+      loop(tempData, dropKey, (item) => {
+        item.children = item.children || [];
+        // where to insert. New item was inserted to the start of the array in this example, but can be anywhere
+        item.children.unshift(dragObj);
+      });
+    } else {
+      let ar: TreeDataNode[] = [];
+      let i: number;
+      loop(tempData, dropKey, (_item, index, arr) => {
+        ar = arr;
+        i = index;
+      });
+      if (dropPosition === -1) {
+        // Drop on the top of the drop node
+        ar.splice(i!, 0, dragObj!);
+      } else {
+        // Drop on the bottom of the drop node
+        ar.splice(i! + 1, 0, dragObj!);
+      }
+    }
+
+    handleChange(getNestedKeys(tempData));
+  };
+
+  const handleRemove = (key: string) => {
+    setTargetKeys(targetKeys.filter((k) => k !== key));
+  };
+
+  const switcherIcon = useCallback(({ expanded }) => {
+    return expanded ? <IconDown /> : <IconRight />;
+  }, []);
+
+  const handleReset = () => {
+    handleChange(getNestedKeys(sidebarOptions));
+  };
+
   useEffect(() => {
     fetchPersonaDetails();
   }, [fqn]);
@@ -127,18 +205,38 @@ export const SettingsNavigationPage = ({
             }}
           />
         </Col>
-        <Col flex="80px">
-          <Button loading={saving} type="primary" onClick={handleSave}>
+        <Col flex="180px">
+          <Button className="m-r-sm" size="small" onClick={handleReset}>
+            {t('label.reset')}
+          </Button>
+          <Button
+            loading={saving}
+            size="small"
+            type="primary"
+            onClick={handleSave}>
             {t('label.save')}
           </Button>
         </Col>
         <Col span={24}>
-          <TreeTransfer
-            oneWay
-            dataSource={sidebarOptions}
-            style={{ marginBottom: 16 }}
-            targetKeys={targetKeys}
-            onChange={handleChange}
+          <Tree
+            autoExpandParent
+            blockNode
+            defaultExpandAll
+            draggable
+            showIcon
+            switcherIcon={switcherIcon}
+            titleRender={(node) => (
+              <div className="space-between">
+                {node.title}{' '}
+                <Icon
+                  component={DeleteIcon}
+                  style={{ cursor: 'pointer', fontSize: '18px' }}
+                  onClick={() => handleRemove(node.key as string)}
+                />
+              </div>
+            )}
+            treeData={treeData}
+            onDrop={onDrop}
           />
         </Col>
       </Row>

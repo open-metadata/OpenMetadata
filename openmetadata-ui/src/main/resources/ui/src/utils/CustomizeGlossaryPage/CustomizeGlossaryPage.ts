@@ -19,7 +19,7 @@ import { GenericWidget } from '../../components/Glossary/CustomiseWidgets/Synony
 import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
 import { GlossaryHeaderWidget } from '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget';
-import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomiseDetailPage.enum';
+import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import {
   WidgetCommonProps,

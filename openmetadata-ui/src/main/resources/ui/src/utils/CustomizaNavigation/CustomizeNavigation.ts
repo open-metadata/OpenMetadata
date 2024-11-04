@@ -72,20 +72,6 @@ export const getNestedKeys = <
     return [...acc, item.key as string];
   }, [] as string[]);
 
-// Customize Table Transfer
-export const isChecked = (selectedKeys: React.Key[], eventKey: React.Key) =>
-  selectedKeys.includes(eventKey);
-
-export const generateTree = (
-  treeNodes: DataNode[] = [],
-  checkedKeys: string[] = []
-): DataNode[] =>
-  treeNodes.map(({ children, ...props }) => ({
-    ...props,
-    disabled: checkedKeys.includes(props.key as string),
-    children: generateTree(children, checkedKeys),
-  }));
-
 export const getNavigationItems = (items: DataNode[]): NavigationItem[] =>
   items
     .map((item) =>
