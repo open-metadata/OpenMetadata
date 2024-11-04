@@ -174,12 +174,13 @@ export const getAddWidgetHandler =
 
 export const getGlossaryTermDetailTabs = (
   defaultTabs: TabsProps['items'],
-  customizedTabs?: Tab[]
+  customizedTabs?: Tab[],
+  defaultTabId: EntityTabs = EntityTabs.OVERVIEW
 ) => {
   if (!customizedTabs) {
     return defaultTabs;
   }
-  const overviewTab = defaultTabs?.find((t) => t.key === EntityTabs.OVERVIEW);
+  const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
 
   const newTabs =
     customizedTabs?.map((t) => {

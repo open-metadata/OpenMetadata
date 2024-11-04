@@ -15,6 +15,7 @@ import { EntityTabs } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
 import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
 import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPage';
+import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeMyDataPageClassBase from '../CustomizeMyDataPageClassBase';
 
 export const getDefaultLayout = (pageType: string) => {
@@ -85,7 +86,7 @@ export const getGlossaryDefaultTabs = () => {
       id: EntityTabs.TERMS,
       name: EntityTabs.TERMS,
       displayName: 'Terms',
-      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+      layout: customizeGlossaryPageClassBase.getDefaultWidgetForTab(
         EntityTabs.TERMS
       ),
       removable: false,

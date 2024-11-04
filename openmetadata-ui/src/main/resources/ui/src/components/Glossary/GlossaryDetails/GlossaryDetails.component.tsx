@@ -270,7 +270,7 @@ const GlossaryDetails = ({
         {getWidgetFromKeyInternal(widget)}
       </div>
     ));
-  }, [tagsWidget]);
+  }, [tagsWidget, layout]);
 
   const detailsContent = useMemo(() => {
     return (
@@ -287,7 +287,7 @@ const GlossaryDetails = ({
         {widgets}
       </ReactGridLayout>
     );
-  }, [permissions, glossary, termsLoading, isDescriptionEditable]);
+  }, [permissions, glossary, termsLoading, isDescriptionEditable, widgets]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
@@ -336,9 +336,14 @@ const GlossaryDetails = ({
         : []),
     ];
 
-    return getGlossaryTermDetailTabs(items, customizedPage?.tabs);
+    return getGlossaryTermDetailTabs(
+      items,
+      customizedPage?.tabs,
+      EntityTabs.TERMS
+    );
   }, [
     detailsContent,
+    customizedPage?.tabs,
     glossary.fullyQualifiedName,
     feedCount.conversationCount,
     feedCount.totalTasksCount,
