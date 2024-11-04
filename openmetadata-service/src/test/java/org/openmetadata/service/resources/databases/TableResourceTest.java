@@ -2472,6 +2472,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity without column description
     CreateTable createWithNullColumnDescription =
         createRequest(test, 1)
+            .withName("tableWithNullColumnDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("description")
             .withColumns(listOf(columnWithNullDescription))
@@ -2481,6 +2482,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity with empty column description
     CreateTable createWithEmptyColumnDescription =
         createRequest(test, 2)
+            .withName("tableWithEmptyColumnDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("description")
             .withColumns(listOf(columnWithEmptyDescription))
@@ -2490,6 +2492,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity with null description but with column description
     CreateTable createWithNullDescription =
         createRequest(test, 6)
+            .withName("tableWithNullDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription(null)
             .withColumns(listOf(columnWithDescription))
@@ -2498,6 +2501,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity with description complete
     CreateTable createWithDescription =
         createRequest(test, 4)
+            .withName("tableWithDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("description")
             .withColumns(listOf(columnWithDescription))
