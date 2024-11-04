@@ -12,11 +12,14 @@
  */
 import { Form, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
+import { isString } from 'lodash';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
+  CSVExportJob,
+  CSVExportWebsocketResponse,
   EntityExportModalContextProps,
   ExportData,
 } from './EntityExportModalProvider.interface';
@@ -35,6 +38,9 @@ export const EntityExportModalProvider = ({
   const { t } = useTranslation();
   const [exportData, setExportData] = useState<ExportData | null>(null);
   const [downloading, setDownloading] = useState<boolean>(false);
+
+  const [csvExportJobs, setCSVExportJobs] = useState<CSVExportJob[]>([]);
+
   const handleCancel = () => {
     setExportData(null);
   };
@@ -70,13 +76,32 @@ export const EntityExportModalProvider = ({
       setDownloading(true);
       const data = await exportData.onExport(exportData.name);
 
-      handleDownload(data, fileName);
+      if (isString(data)) {
+        handleDownload(data, fileName);
+      } else {
+        showSuccessToast(t('message.export-initiated-successfully'));
+
+        setCSVExportJobs((prev) => [
+          ...prev,
+          { jobId: data.jobId, fileName: fileName },
+        ]);
+      }
+
       handleCancel();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setDownloading(false);
     }
+  };
+
+  const handleCSVExportJobUpdate = (
+    jobId: string,
+    response: Partial<CSVExportWebsocketResponse>
+  ) => {
+    setCSVExportJobs((prev) =>
+      prev.map((job) => (job.jobId === jobId ? { ...job, ...response } : job))
+    );
   };
 
   useEffect(() => {
@@ -88,7 +113,15 @@ export const EntityExportModalProvider = ({
     }
   }, [exportData]);
 
-  const providerValue = useMemo(() => ({ showModal }), []);
+  const providerValue = useMemo(
+    () => ({
+      showModal,
+      onDownload: handleDownload,
+      csvExportJobs,
+      onUpdateCSVExportJob: handleCSVExportJobUpdate,
+    }),
+    [csvExportJobs]
+  );
 
   return (
     <EntityExportModalContext.Provider value={providerValue}>

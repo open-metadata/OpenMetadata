@@ -13,6 +13,7 @@
 
 import Icon from '@ant-design/icons';
 import React from 'react';
+import { ReactComponent as IconExport } from '../../assets/svg/ic-export.svg';
 import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -41,6 +42,18 @@ export const tabsInfo = [
     icon: (
       <Icon
         component={IconMentions}
+        style={{
+          marginRight: '8px',
+        }}
+      />
+    ),
+  },
+  {
+    name: NotificationTabsName.EXPORT_DATA_ASSETS,
+    key: NotificationTabsKey.EXPORT_DATA_ASSETS,
+    icon: (
+      <Icon
+        component={IconExport}
         style={{
           marginRight: '8px',
         }}

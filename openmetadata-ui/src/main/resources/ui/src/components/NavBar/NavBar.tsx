@@ -56,6 +56,7 @@ import {
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { NotificationTabsKey } from '../../enums/notification.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
@@ -90,6 +91,8 @@ import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTa
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
+import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
@@ -110,6 +113,7 @@ const NavBar = ({
   handleOnClick,
   handleClear,
 }: NavBarProps) => {
+  const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
@@ -131,6 +135,9 @@ const NavBar = ({
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
   const [hasMentionNotification, setHasMentionNotification] =
+    useState<boolean>(false);
+
+  const [hasExportAssetNotification, setHasExportAssetNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
@@ -217,6 +224,10 @@ const NavBar = ({
     setHasMentionNotification(false);
   };
 
+  const handleExportAssetNotificationRead = () => {
+    setHasExportAssetNotification(false);
+  };
+
   const handleBellClick = useCallback(
     (visible: boolean) => {
       if (visible) {
@@ -236,10 +247,23 @@ const NavBar = ({
               }, NOTIFICATION_READ_TIMER);
 
             break;
+
+          case NotificationTabsKey.EXPORT_DATA_ASSETS:
+            hasExportAssetNotification &&
+              setTimeout(() => {
+                handleExportAssetNotificationRead();
+              }, NOTIFICATION_READ_TIMER);
+
+            break;
         }
       }
     },
-    [hasTaskNotification]
+    [
+      hasTaskNotification,
+      hasMentionNotification,
+      activeTab,
+      hasExportAssetNotification,
+    ]
   );
 
   const handleActiveTab = (key: string) => {
@@ -277,6 +301,13 @@ const NavBar = ({
           user: createdBy,
         });
         path = prepareFeedLink(entityType as string, entityFQN as string);
+
+        break;
+
+      case NotificationTabsKey.EXPORT_DATA_ASSETS: {
+        // TODO: Need to update the `entity` to the actual entity name once we have entity data in response from backend
+        body = t('message.export-completed-for-entity', { entity: 'entity' });
+      }
     }
     const notification = new Notification('Notification From OpenMetadata', {
       body: body,
@@ -349,11 +380,29 @@ const NavBar = ({
           );
         }
       });
+
+      socket.on(SOCKET_EVENTS.CSV_EXPORT_CHANNEL, (exportResponse) => {
+        if (exportResponse) {
+          const exportResponseData = JSON.parse(
+            exportResponse
+          ) as CSVExportWebsocketResponse;
+
+          onUpdateCSVExportJob(exportResponseData.jobId, exportResponseData);
+
+          setHasExportAssetNotification(true);
+          showBrowserNotification(
+            '',
+            '',
+            NotificationTabsKey.EXPORT_DATA_ASSETS
+          );
+        }
+      });
     }
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
     };
   }, [socket]);
 
@@ -550,8 +599,12 @@ const NavBar = ({
             className="cursor-pointer"
             dropdownRender={() => (
               <NotificationBox
+                hasExportAssetNotification={hasExportAssetNotification}
                 hasMentionNotification={hasMentionNotification}
                 hasTaskNotification={hasTaskNotification}
+                onMarkExportAssetNotificationRead={
+                  handleExportAssetNotificationRead
+                }
                 onMarkMentionsNotificationRead={handleMentionsNotificationRead}
                 onMarkTaskNotificationRead={handleTaskNotificationRead}
                 onTabChange={handleActiveTab}
@@ -566,7 +619,12 @@ const NavBar = ({
             trigger={['click']}
             onOpenChange={handleBellClick}>
             <Tooltip placement="top" title={t('label.notification-plural')}>
-              <Badge dot={hasTaskNotification || hasMentionNotification}>
+              <Badge
+                dot={
+                  hasTaskNotification ||
+                  hasMentionNotification ||
+                  hasExportAssetNotification
+                }>
                 <Icon
                   className="align-middle"
                   component={IconBell}

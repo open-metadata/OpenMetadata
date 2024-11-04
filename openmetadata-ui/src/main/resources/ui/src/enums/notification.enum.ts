@@ -14,9 +14,11 @@
 export enum NotificationTabsName {
   TASK = 'Tasks',
   MENTION = 'Mentions',
+  EXPORT_DATA_ASSETS = 'Data Assets Export',
 }
 
 export enum NotificationTabsKey {
   TASK = 'Task',
   CONVERSATION = 'Conversation',
+  EXPORT_DATA_ASSETS = 'ExportDataAssets',
 }
