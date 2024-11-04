@@ -17,7 +17,6 @@ import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
-import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
@@ -95,6 +94,10 @@ class GlobalSettingsClassBase {
       name: t('label.application-plural'),
       url: GlobalSettingsMenuCategory.APPLICATIONS,
     },
+    [GlobalSettingsMenuCategory.PERSONA]: {
+      name: t('label.persona'),
+      url: GlobalSettingsMenuCategory.PERSONA,
+    },
   };
 
   protected updateSettingCategories(
@@ -117,6 +120,16 @@ class GlobalSettingsClassBase {
         icon: ServiceIcon,
         description: t('message.service-description'),
         items: [
+          {
+            label: t('label.api-uppercase-plural'),
+            description: t('message.page-sub-header-for-apis'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.API_SERVICE,
+              permissions
+            ),
+            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
+            icon: IconAPI,
+          },
           {
             label: t('label.database-plural'),
             description: t('message.page-sub-header-for-databases'),
@@ -198,17 +211,6 @@ class GlobalSettingsClassBase {
             icon: OpenMetadataIcon,
           },
           {
-            label: t('label.api-uppercase-plural'),
-            description: t('message.page-sub-header-for-apis'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.API_SERVICE,
-              permissions
-            ),
-            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
-            icon: IconAPI,
-            isBeta: true,
-          },
-          {
             label: t('label.data-observability'),
             description: t('message.page-sub-header-for-data-observability'),
             isProtected: true,
@@ -267,14 +269,6 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ADMINS}`,
             icon: AdminIcon,
           },
-
-          {
-            label: t('label.persona-plural'),
-            description: t('message.page-sub-header-for-persona'),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.PERSONA}`,
-            icon: PersonasIcon,
-          },
         ],
       },
       {
@@ -313,17 +307,6 @@ class GlobalSettingsClassBase {
             icon: AppearanceIcon,
           },
           {
-            label: t('label.customize-entity', {
-              entity: t('label.landing-page'),
-            }),
-            description: t(
-              'message.page-sub-header-for-customize-landing-page'
-            ),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
-            icon: CustomDashboardLogoIcon,
-          },
-          {
             label: t('label.email'),
             description: t('message.email-configuration-message'),
             isProtected: Boolean(isAdminUser),
@@ -354,6 +337,13 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.PROFILER_CONFIGURATION}`,
             icon: ProfilerConfigIcon,
+          },
+          {
+            label: t('label.search'),
+            description: t('message.page-sub-header-for-search-setting'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
+            icon: PoliciesIcon,
           },
         ],
       },
@@ -515,6 +505,13 @@ class GlobalSettingsClassBase {
         isProtected: Boolean(isAdminUser),
         key: GlobalSettingOptions.BOTS,
         icon: BotIcon,
+      },
+      {
+        category: t('label.persona-plural'),
+        description: t('message.page-sub-header-for-persona'),
+        isProtected: Boolean(isAdminUser),
+        key: GlobalSettingOptions.PERSONA,
+        icon: PersonasIcon,
       },
     ];
   }

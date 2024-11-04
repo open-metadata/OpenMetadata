@@ -107,10 +107,12 @@ export const ExtraInfoLink = ({
   label,
   value,
   href,
+  newTab = false,
 }: {
   label: string;
   value: string | number;
   href: string;
+  newTab?: boolean;
 }) => (
   <>
     <Divider className="self-center" type="vertical" />
@@ -118,7 +120,11 @@ export const ExtraInfoLink = ({
       {!isEmpty(label) && (
         <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
       )}
-      <Typography.Link href={href} style={{ fontSize: '12px' }}>
+      <Typography.Link
+        href={href}
+        rel={newTab ? 'noopener noreferrer' : undefined}
+        style={{ fontSize: '12px' }}
+        target={newTab ? '_blank' : undefined}>
         {value}{' '}
       </Typography.Link>
       <Icon

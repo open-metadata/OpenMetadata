@@ -98,9 +98,12 @@ public record TableIndex(Table table) implements ColumnIndex {
     doc.put("schema_suggest", schemaSuggest);
     doc.put("database_suggest", databaseSuggest);
     doc.put("serviceType", table.getServiceType());
+    doc.put("locationPath", table.getLocationPath());
+    doc.put("schemaDefinition", table.getSchemaDefinition());
     doc.put("service", getEntityWithDisplayName(table.getService()));
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
     doc.put("lineage", SearchIndex.getLineageData(table.getEntityReference()));
+    doc.put("entityRelationship", SearchIndex.populateEntityRelationshipData(table));
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
     return doc;
   }

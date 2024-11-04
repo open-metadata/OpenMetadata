@@ -47,6 +47,10 @@
   },
   "mappings": {
     "properties": {
+      "originEntityFQN": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "id": {
         "type": "text"
       },
@@ -193,7 +197,8 @@
         "type": "nested",
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"

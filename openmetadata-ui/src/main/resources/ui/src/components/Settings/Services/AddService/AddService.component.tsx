@@ -243,13 +243,10 @@ const AddService = ({
 
         {activeServiceStep > 3 && (
           <SuccessScreen
+            showIngestionButton
             handleIngestionClick={() => handleAddIngestion(true)}
             handleViewServiceClick={handleViewServiceClick}
             name={serviceConfig.serviceName}
-            // API Service does not support ingestion workflows
-            showIngestionButton={
-              serviceCategory !== ServiceCategory.API_SERVICES
-            }
             state={FormSubmitType.ADD}
             suffix={getServiceCreatedLabel(serviceCategory)}
           />

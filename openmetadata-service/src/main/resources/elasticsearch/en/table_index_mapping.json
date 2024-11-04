@@ -101,6 +101,9 @@
       "href": {
         "type": "text"
       },
+      "schemaDefinition": {
+        "type": "text"
+      },
       "sourceUrl": {
         "type": "keyword"
       },
@@ -146,7 +149,8 @@
           "tags": {
             "properties": {
               "tagFQN": {
-                "type": "keyword"
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
               },
               "labelType": {
                 "type": "keyword"
@@ -499,6 +503,9 @@
           }
         }
       },
+      "locationPath": {
+        "type": "keyword"
+      },
       "usageSummary": {
         "properties": {
           "dailyStats": {
@@ -579,6 +586,9 @@
         }
       },
       "lineage": {
+        "type" : "object"
+      },
+      "entityRelationship": {
         "type" : "object"
       },
       "serviceType": {

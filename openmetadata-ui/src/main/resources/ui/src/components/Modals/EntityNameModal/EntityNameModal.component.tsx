@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, Input, Modal, Typography } from 'antd';
+import { Button, Form, FormProps, Input, Modal, Typography } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
@@ -25,12 +25,14 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
   // re-name will update actual name of the entity, it will impact across application
   // By default its disabled, send allowRename true to get the functionality
   allowRename = false,
+  nameValidationRules = [],
+  additionalFields,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<{ name: string; displayName: string }>();
+  const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSave = async (obj: { name: string; displayName: string }) => {
+  const handleSave: FormProps['onFinish'] = async (obj) => {
     setIsLoading(true);
     await form.validateFields();
     // Error must be handled by the parent component
@@ -39,7 +41,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
   };
 
   useEffect(() => {
-    form.setFieldsValue({ name: entity.name, displayName: entity.displayName });
+    form.setFieldsValue(entity);
   }, [visible]);
 
   return (
@@ -83,6 +85,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
               pattern: ENTITY_NAME_REGEX,
               message: t('message.entity-name-validation'),
             },
+            ...nameValidationRules,
           ]}>
           <Input
             disabled={!allowRename}
@@ -94,6 +97,8 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
         <Form.Item label={t('label.display-name')} name="displayName">
           <Input placeholder={t('message.enter-display-name')} />
         </Form.Item>
+
+        {additionalFields}
       </Form>
     </Modal>
   );

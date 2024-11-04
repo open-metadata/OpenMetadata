@@ -29,7 +29,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -408,12 +410,12 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     setExcludeSearchFields(searchListFilter);
     String aggregationPath = "$.sterms#byTerms.buckets";
     String aggregationStr =
-        "{\"aggregations\":{\"byTerms\":{\"terms\": {\"field\":\"%s\",\"size\":100},\"aggs\":{\"latest\":"
-            + "{\"top_hits\":{\"size\":1,\"sort_field\":\"timestamp\",\"sort_order\":\"desc\"}}}}}}";
+        "bucketName=byTerms:aggType=terms:field=%s&size=100,"
+            + "bucketName=latest:aggType=top_hits:size=1&sort_field=timestamp&sort_order=desc";
     aggregationStr = String.format(aggregationStr, groupBy);
-    JsonObject aggregation = JsonUtils.readJson(aggregationStr).asJsonObject();
+    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
     JsonObject jsonObjResults =
-        searchRepository.aggregate(q, entityType, aggregation, searchListFilter);
+        searchRepository.aggregate(q, entityType, searchAggregation, searchListFilter);
 
     Optional<List> jsonObjects =
         JsonUtils.readJsonAtPath(jsonObjResults.toString(), aggregationPath, List.class);

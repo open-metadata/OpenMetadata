@@ -23,7 +23,7 @@ type EntityFields = {
 
 export const FIELDS: EntityFields[] = [
   {
-    id: 'Owner',
+    id: 'Owners',
     name: 'owners.displayName.keyword',
     localSearch: false,
   },
@@ -44,12 +44,12 @@ export const FIELDS: EntityFields[] = [
   },
   {
     id: 'Database',
-    name: 'database.displayName',
+    name: 'database.displayName.keyword',
     localSearch: false,
   },
   {
     id: 'Database Schema',
-    name: 'databaseSchema.displayName',
+    name: 'databaseSchema.displayName.keyword',
     localSearch: false,
   },
   {
@@ -123,7 +123,7 @@ export const showAdvancedSearchDialog = async (page: Page) => {
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 };
 
-const selectOption = async (
+export const selectOption = async (
   page: Page,
   dropdownLocator: Locator,
   optionTitle: string

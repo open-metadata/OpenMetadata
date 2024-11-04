@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
@@ -108,6 +109,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
@@ -3082,10 +3084,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Test aggregation
     String aggregationQuery =
         "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=1d,bucketName=dimesion:aggType=terms:field=testDefinition.dataQualityDimension";
-    Map<String, Object> aggregationString =
-        SearchIndexUtils.buildAggregationString(aggregationQuery);
+    SearchAggregation aggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
     DataQualityReport dataQualityReport =
-        searchRepository.genericAggregation(null, "testCaseResult", aggregationString);
+        searchRepository.genericAggregation(null, "testCaseResult", aggregation);
     assertNotNull(dataQualityReport.getData());
   }
 
@@ -3186,6 +3187,52 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               TestCase tc = Entity.getEntity(TEST_CASE, testCase.getId(), "", Include.ALL);
               assertTrue(tc.getEntityLink().contains("columns"));
             });
+  }
+
+  @Test
+  void test_testCaseInvalidEntityLinkTest(TestInfo testInfo) throws IOException {
+    // Invalid entity link as not parsable by antlr parser
+    String entityLink = "<#E::table::special!@#$%^&*()_+[]{}|;:\\'\",./?>";
+    CreateTestCase create = createRequest(testInfo);
+    create
+        .withEntityLink(entityLink)
+        .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
+
+    entityLink = "<#E::table::user<name>::column>";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
+
+    entityLink = "<#E::table::user>name::column>";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
+
+    entityLink = "<#E::table::foo<>bar::baz>\");";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
+
+    entityLink = "<#E::table::::baz>";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
   }
 
   private void putInspectionQuery(TestCase testCase, String sql) throws IOException {

@@ -102,7 +102,7 @@ def test_source_config(parameters, expected, monkeypatch):
     )
 
     source = TestSuiteSource(
-        OpenMetadataWorkflowConfig.parse_obj(workflow_config), mock_metadata
+        OpenMetadataWorkflowConfig.model_validate(workflow_config), mock_metadata
     )
     test_cases = list(source._iter())[0].right.test_cases
     assert [t.name.root for t in test_cases] == expected

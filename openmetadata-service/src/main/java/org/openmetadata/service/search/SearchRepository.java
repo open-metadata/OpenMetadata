@@ -449,7 +449,7 @@ public class SearchRepository {
     Map<String, Object> fieldData = new HashMap<>();
 
     if (changeDescription != null) {
-      for (FieldChange field : changeDescription.getFieldsAdded()) {
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
@@ -458,24 +458,21 @@ public class SearchRepository {
               for (EntityReference inheritedOwner : inheritedOwners) {
                 inheritedOwner.setInherited(true);
               }
-              fieldData.put("updatedOwners", inheritedOwners);
-              scriptTxt.append(ADD_OWNERS_SCRIPT);
+              fieldData.put("deletedOwners", inheritedOwners);
+              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
-                  JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
               scriptTxt.append(
                   String.format(
-                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
-                      field.getName(),
-                      field.getName(),
+                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
                       field.getName(),
                       field.getName(),
                       field.getName()));
-              fieldData.put(field.getName(), entityReference);
+              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
             }
           } catch (UnhandledServerException e) {
-            scriptTxt.append(
-                String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
           }
         }
       }
@@ -507,7 +504,7 @@ public class SearchRepository {
           }
         }
       }
-      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
@@ -516,21 +513,24 @@ public class SearchRepository {
               for (EntityReference inheritedOwner : inheritedOwners) {
                 inheritedOwner.setInherited(true);
               }
-              fieldData.put("deletedOwners", inheritedOwners);
-              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
+              fieldData.put("updatedOwners", inheritedOwners);
+              scriptTxt.append(ADD_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
-                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+                  JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
               scriptTxt.append(
                   String.format(
-                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      field.getName(),
+                      field.getName(),
                       field.getName(),
                       field.getName(),
                       field.getName()));
-              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
+              fieldData.put(field.getName(), entityReference);
             }
           } catch (UnhandledServerException e) {
-            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
+            scriptTxt.append(
+                String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
           }
         }
       }
@@ -544,7 +544,7 @@ public class SearchRepository {
       searchClient.deleteByScript(indexMapping.getIndexName(clusterAlias), scriptTxt, params);
     } catch (Exception ie) {
       LOG.error(
-          "Issue in Creating new search document for entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          "Issue in deleting  search document for entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
           entityType,
           ie.getMessage(),
           ie.getCause(),
@@ -564,6 +564,25 @@ public class SearchRepository {
         LOG.error(
             "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
             entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
+      }
+    }
+  }
+
+  public void deleteEntityByFQNPrefix(EntityInterface entity) {
+    if (entity != null) {
+      String entityType = entity.getEntityReference().getType();
+      String fqn = entity.getFullyQualifiedName();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      try {
+        searchClient.deleteEntityByFQNPrefix(indexMapping.getIndexName(clusterAlias), fqn);
+      } catch (Exception ie) {
+        LOG.error(
+            "Issue in Deleting the search document for entityFQN [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            fqn,
             entityType,
             ie.getMessage(),
             ie.getCause(),
@@ -634,6 +653,16 @@ public class SearchRepository {
           new ImmutablePair<>(
               REMOVE_TAGS_CHILDREN_SCRIPT,
               Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+      case Entity.DASHBOARD -> {
+        String scriptTxt =
+            String.format(
+                "if (ctx._source.dashboards.size() == 1) { ctx._source.put('deleted', '%s') }",
+                true);
+        searchClient.softDeleteOrRestoreChildren(
+            indexMapping.getChildAliases(clusterAlias),
+            scriptTxt,
+            List.of(new ImmutablePair<>("dashboards.id", docId)));
+      }
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
@@ -682,6 +711,16 @@ public class SearchRepository {
           indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
           List.of(new ImmutablePair<>("service.id", docId)));
+      case Entity.DASHBOARD -> {
+        scriptTxt =
+            String.format(
+                "if (ctx._source.dashboards.size() == 1) { ctx._source.put('deleted', '%s') }",
+                delete);
+        searchClient.softDeleteOrRestoreChildren(
+            indexMapping.getChildAliases(clusterAlias),
+            scriptTxt,
+            List.of(new ImmutablePair<>("dashboards.id", docId)));
+      }
       default -> searchClient.softDeleteOrRestoreChildren(
           indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
@@ -798,9 +837,23 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
+  public Response searchEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchClient.searchEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
     return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+  }
+
+  public Response searchSchemaEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchClient.searchSchemaEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
   public Map<String, Object> searchLineageForExport(
@@ -826,14 +879,14 @@ public class SearchRepository {
   }
 
   public JsonObject aggregate(
-      String query, String entityType, JsonObject aggregationJson, SearchListFilter filter)
+      String query, String entityType, SearchAggregation searchAggregation, SearchListFilter filter)
       throws IOException {
     return searchClient.aggregate(
-        query, entityType, aggregationJson, filter.getCondition(entityType));
+        query, entityType, searchAggregation, filter.getCondition(entityType));
   }
 
   public DataQualityReport genericAggregation(
-      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
   }
 

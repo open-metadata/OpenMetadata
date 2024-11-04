@@ -39,10 +39,6 @@ import {
 import React, { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -60,7 +56,6 @@ import {
 } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
-import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { FeedCounts } from '../interface/feed.interface';
@@ -517,52 +512,51 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
  * @param onDataFetched - callback function which return FeedCounts object
  */
 
-export const getFeedCounts = (
+export const getFeedCounts = async (
   entityType: string,
   entityFQN: string,
   feedCountCallback: (countValue: FeedCounts) => void
 ) => {
-  getFeedCount(getEntityFeedLink(entityType, entityFQN))
-    .then((res) => {
-      if (res) {
-        const {
-          conversationCount,
-          openTaskCount,
-          closedTaskCount,
-          totalTasksCount,
-          totalCount,
-          mentionCount,
-        } = res.reduce((acc, item) => {
-          const conversationCount =
-            acc.conversationCount + (item.conversationCount || 0);
-          const totalTasksCount =
-            acc.totalTasksCount + (item.totalTaskCount || 0);
+  try {
+    const res = await getFeedCount(getEntityFeedLink(entityType, entityFQN));
+    if (res) {
+      const {
+        conversationCount,
+        openTaskCount,
+        closedTaskCount,
+        totalTasksCount,
+        totalCount,
+        mentionCount,
+      } = res.reduce((acc, item) => {
+        const conversationCount =
+          acc.conversationCount + (item.conversationCount || 0);
+        const totalTasksCount =
+          acc.totalTasksCount + (item.totalTaskCount || 0);
 
-          return {
-            conversationCount,
-            totalTasksCount,
-            openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
-            closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
-            totalCount: conversationCount + totalTasksCount,
-            mentionCount: acc.mentionCount + (item.mentionCount || 0),
-          };
-        }, FEED_COUNT_INITIAL_DATA);
-
-        feedCountCallback({
+        return {
           conversationCount,
           totalTasksCount,
-          openTaskCount,
-          closedTaskCount,
-          totalCount,
-          mentionCount,
-        });
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
+          openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
+          closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
+          totalCount: conversationCount + totalTasksCount,
+          mentionCount: acc.mentionCount + (item.mentionCount || 0),
+        };
+      }, FEED_COUNT_INITIAL_DATA);
+
+      feedCountCallback({
+        conversationCount,
+        totalTasksCount,
+        openTaskCount,
+        closedTaskCount,
+        totalCount,
+        mentionCount,
+      });
+    } else {
+      throw t('server.entity-feed-fetch-error');
+    }
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
 };
 
 /**
@@ -681,23 +675,6 @@ export const getOwnerValue = (owner?: EntityReference) => {
       return getUserPath(owner?.fullyQualifiedName ?? '');
     default:
       return '';
-  }
-};
-
-export const getIngestionFrequency = (pipelineType: PipelineType) => {
-  const value = {
-    min: 0,
-    hour: 0,
-  };
-
-  switch (pipelineType) {
-    case PipelineType.TestSuite:
-    case PipelineType.Metadata:
-    case PipelineType.Application:
-      return getHourCron(value);
-
-    default:
-      return getDayCron(value);
   }
 };
 

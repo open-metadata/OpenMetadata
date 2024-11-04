@@ -79,10 +79,16 @@ export type TimeIntervalType = {
   end: number;
 };
 
+export type TableTypePropertyValueType = {
+  columns: string[];
+  rows: Record<string, string>[];
+};
+
 export type PropertyValueType =
   | string
   | number
   | string[]
   | EntityReference
   | EntityReference[]
-  | TimeIntervalType;
+  | TimeIntervalType
+  | TableTypePropertyValueType;

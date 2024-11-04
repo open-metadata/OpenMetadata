@@ -33,5 +33,6 @@ public class PipelineServiceRepository
         "",
         ServiceType.PIPELINE);
     supportsSearch = true;
+    parent = true;
   }
 }

@@ -21,9 +21,13 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.dashboard.modeConnection import (
     ModeConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.mode.client import ModeApiClient
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: ModeConnection) -> ModeApiClient:
@@ -38,7 +42,8 @@ def test_connection(
     client: ModeApiClient,
     service_connection: ModeConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -46,13 +51,14 @@ def test_connection(
 
     test_fn = {
         "CheckDashboards": partial(
-            client.fetch_all_reports, service_connection.workspaceName
+            client.get_workspace, service_connection.workspaceName
         )
     }
 
-    test_connection_steps(
+    return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

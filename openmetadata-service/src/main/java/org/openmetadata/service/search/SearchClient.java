@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.security.KeyStoreException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.json.JsonArray;
@@ -14,14 +15,18 @@ import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.SSLUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
@@ -73,6 +78,12 @@ public interface SearchClient {
 
   String ADD_UPDATE_LINEAGE =
       "boolean docIdExists = false; for (int i = 0; i < ctx._source.lineage.size(); i++) { if (ctx._source.lineage[i].doc_id.equalsIgnoreCase(params.lineageData.doc_id)) { ctx._source.lineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.lineage.add(params.lineageData);}";
+
+  // The script is used for updating the entityRelationship attribute of the entity in ES
+  // It checks if any duplicate entry is present based on the doc_id and updates only if it is not
+  // present
+  String ADD_UPDATE_ENTITY_RELATIONSHIP =
+      "boolean docIdExists = false; for (int i = 0; i < ctx._source.entityRelationship.size(); i++) { if (ctx._source.entityRelationship[i].doc_id.equalsIgnoreCase(params.entityRelationshipData.doc_id)) { ctx._source.entityRelationship[i] = params.entityRelationshipData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.entityRelationship.add(params.entityRelationshipData);}";
   String UPDATE_ADDED_DELETE_GLOSSARY_TAGS =
       "if (ctx._source.tags != null) { for (int i = ctx._source.tags.size() - 1; i >= 0; i--) { if (params.tagDeleted != null) { for (int j = 0; j < params.tagDeleted.size(); j++) { if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) { ctx._source.tags.remove(i); } } } } } if (ctx._source.tags == null) { ctx._source.tags = []; } if (params.tagAdded != null) { ctx._source.tags.addAll(params.tagAdded); } ctx._source.tags = ctx._source.tags .stream() .distinct() .sorted((o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN)) .collect(Collectors.toList());";
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
@@ -93,6 +104,37 @@ public interface SearchClient {
           + "}";
 
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
+
+  String ENTITY_RELATIONSHIP_DIRECTION_ENTITY = "entityRelationship.entity.fqnHash.keyword";
+
+  String ENTITY_RELATIONSHIP_DIRECTION_RELATED_ENTITY =
+      "entityRelationship.relatedEntity.fqnHash.keyword";
+
+  Set<String> FIELDS_TO_REMOVE_ENTITY_RELATIONSHIP =
+      Set.of(
+          "suggest",
+          "service_suggest",
+          "column_suggest",
+          "schema_suggest",
+          "database_suggest",
+          "lifeCycle",
+          "fqnParts",
+          "chart_suggest",
+          "field_suggest",
+          "lineage",
+          "entityRelationship",
+          "customMetrics",
+          "descriptionStatus",
+          "columnNames",
+          "totalVotes",
+          "usageSummary",
+          "dataProducts",
+          "tags",
+          "followers",
+          "domain",
+          "votes",
+          "tier",
+          "changeDescription");
 
   boolean isClientAvailable();
 
@@ -138,8 +180,16 @@ public interface SearchClient {
       String entityType)
       throws IOException;
 
+  Response searchEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException;
+
   Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException;
+
+  Response searchSchemaEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException;
 
   /*
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
@@ -163,11 +213,12 @@ public interface SearchClient {
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
-  JsonObject aggregate(String query, String index, JsonObject aggregationJson, String filters)
+  JsonObject aggregate(
+      String query, String index, SearchAggregation searchAggregation, String filters)
       throws IOException;
 
   DataQualityReport genericAggregation(
-      String query, String index, Map<String, Object> aggregationMetadata) throws IOException;
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
   Response suggest(SearchRequest request) throws IOException;
 
@@ -186,6 +237,8 @@ public interface SearchClient {
 
   void deleteEntityByFields(List<String> indexName, List<Pair<String, String>> fieldAndValue);
 
+  void deleteEntityByFQNPrefix(String indexName, String fqnPrefix);
+
   void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
 
   void softDeleteOrRestoreChildren(
@@ -203,6 +256,11 @@ public interface SearchClient {
 
   void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData);
+
+  void updateEntityRelationship(
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Map<String, Object> entityRelationshipData);
 
   Response listDataInsightChartResult(
       Long startTs,
@@ -277,4 +335,15 @@ public interface SearchClient {
   }
 
   Object getLowLevelClient();
+
+  static boolean shouldApplyRbacConditions(
+      SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
+    return Boolean.TRUE.equals(
+            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
+                .getEnableAccessControl())
+        && subjectContext != null
+        && !subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && rbacConditionEvaluator != null;
+  }
 }

@@ -35,15 +35,9 @@ import {
   uniq,
 } from 'lodash';
 import QueryString from 'qs';
-import React, {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -53,22 +47,27 @@ import {
   TIER_CATEGORY,
 } from '../../../constants/constants';
 import {
+  DEFAULT_SORT_ORDER,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import {
+  getListTestCaseBySearch,
+  ListTestCaseParamsBySearch,
+} from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
@@ -80,20 +79,27 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { TestCaseSearchParams } from '../DataQuality.interface';
+import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
-export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
+export const TestCases = () => {
   const [form] = useForm();
   const history = useHistory();
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: DataQualityPageTabs }>();
   const { permissions } = usePermissionProvider();
+  const {
+    isTestCaseSummaryLoading,
+    testCaseSummary,
+    activeTab: tab,
+  } = useDataQualityProvider();
   const { testCase: testCasePermission } = permissions;
   const [tableOptions, setTableOptions] = useState<DefaultOptionType[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
   const [tagOptions, setTagOptions] = useState<DefaultOptionType[]>([]);
   const [tierOptions, setTierOptions] = useState<DefaultOptionType[]>([]);
   const [serviceOptions, setServiceOptions] = useState<DefaultOptionType[]>([]);
+  const [sortOptions, setSortOptions] =
+    useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
 
   const params = useMemo(() => {
     const search = location.search;
@@ -146,7 +152,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const fetchTestCases = async (
     currentPage = INITIAL_PAGING_VALUE,
-    filters?: string[]
+    filters?: string[],
+    apiParams?: ListTestCaseParamsBySearch
   ) => {
     const updatedParams = getTestCaseFiltersValue(
       params,
@@ -157,6 +164,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     try {
       const { data, paging } = await getListTestCaseBySearch({
         ...updatedParams,
+        ...sortOptions,
+        ...apiParams,
         testCaseStatus: isEmpty(params?.testCaseStatus)
           ? undefined
           : params?.testCaseStatus,
@@ -169,8 +178,6 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         ],
         q: searchValue ? `*${searchValue}*` : undefined,
         offset: (currentPage - 1) * pageSize,
-        sortType: SORT_ORDER.DESC,
-        sortField: 'testCaseResult.timestamp',
       });
       setTestCase(data);
       handlePagingChange(paging);
@@ -180,6 +187,16 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const sortTestCase = async (apiParams?: TestCaseSearchParams) => {
+    const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
+    await fetchTestCases(
+      INITIAL_PAGING_VALUE,
+      updatedValue,
+      apiParams ?? DEFAULT_SORT_ORDER
+    );
+    setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
   };
 
   const handleStatusSubmit = (testCase: TestCase) => {
@@ -457,10 +474,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   }
 
   return (
-    <Row
-      className="p-x-lg p-t-md"
-      data-testid="test-case-container"
-      gutter={[16, 16]}>
+    <Row className="p-x-md" data-testid="test-case-container" gutter={[16, 16]}>
       <Col span={24}>
         <Form<TestCaseSearchParams>
           form={form}
@@ -610,7 +624,12 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           </Space>
         </Form>
       </Col>
-      <Col span={24}>{summaryPanel}</Col>
+      <Col span={24}>
+        <SummaryPanel
+          isLoading={isTestCaseSummaryLoading}
+          testSummary={testCaseSummary}
+        />
+      </Col>
       <Col span={24}>
         <DataQualityTab
           afterDeleteAction={fetchTestCases}
@@ -620,6 +639,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
             },
           ]}
+          fetchTestCases={sortTestCase}
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}

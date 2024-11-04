@@ -14,7 +14,7 @@ Snowflake source module
 import json
 import traceback
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT
@@ -80,7 +80,6 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_EXTERNAL_LOCATIONS,
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
-    SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES,
     SNOWFLAKE_GET_STORED_PROCEDURES,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
     SNOWFLAKE_SESSION_TAG_QUERY,
@@ -102,13 +101,8 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_view_names_reflection,
     normalize_names,
 )
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments, get_all_table_ddls
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -145,7 +139,6 @@ SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
 class SnowflakeSource(
-    StoredProcedureMixin,
     ExternalTableLineageMixin,
     CommonDbSourceService,
     MultiDBSource,
@@ -711,22 +704,6 @@ class SnowflakeSource(
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-        )
-
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict
 
     def mark_tables_as_deleted(self):
         """

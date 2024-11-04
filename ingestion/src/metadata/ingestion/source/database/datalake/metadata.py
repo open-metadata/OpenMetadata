@@ -240,7 +240,7 @@ class DatalakeSource(DatabaseServiceSource):
                 verbose=False,
             )
             content = json.loads(metadata_config_response)
-            metadata_entry = StorageContainerConfig.parse_obj(content)
+            metadata_entry = StorageContainerConfig.model_validate(content)
         except ReadException:
             metadata_entry = None
         if self.source_config.includeTables:

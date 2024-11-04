@@ -280,10 +280,7 @@ const GlossaryPage = () => {
         return;
       }
       try {
-        const response = await patchGlossaryTerm(
-          activeGlossary?.id as string,
-          jsonPatch
-        );
+        const response = await patchGlossaryTerm(activeGlossary?.id, jsonPatch);
         if (response) {
           setActiveGlossary(response as ModifiedGlossary);
           if (activeGlossary?.name !== updatedData.name) {

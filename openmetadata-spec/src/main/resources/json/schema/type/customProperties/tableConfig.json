@@ -1,0 +1,33 @@
+{
+  "$id": "https://open-metadata.org/schema/type/customProperties/tableConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TableConfig",
+  "description": "Custom property configuration for table-type property where all column data types are strings.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.customProperties.TableConfig",
+  "properties": {
+    "columns": {
+      "type": "array",
+      "description": "List of column names defined at the entity type level.",
+      "items": {
+        "type": "string",
+        "description": "The name of the column."
+      },
+      "minItems": 1,
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "minColumns": {
+      "type": "integer",
+      "default": 1,
+      "$comment": "For internal use only: Minimum number of columns."
+    },
+    "maxColumns": {
+      "type": "integer",
+      "default": 3,
+      "$comment": "For internal use only: Maximum number of columns."
+    }
+  },
+  "required": ["columns"],
+  "additionalProperties": false
+}

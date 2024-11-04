@@ -210,6 +210,15 @@
             "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
           },
           "default": null
+        },
+        "relationshipType": {
+          "type": "string",
+          "enum": [
+            "ONE_TO_ONE",
+            "ONE_TO_MANY",
+            "MANY_TO_ONE",
+            "MANY_TO_MANY"
+          ]
         }
       },
       "additionalProperties": false
@@ -1010,6 +1019,11 @@
       "description": "Reference to the Location that contains this table.",
       "$ref": "../../type/entityReference.json"
     },
+    "locationPath": {
+      "description": "Full storage path in case of external and managed tables.",
+      "type": "string",
+      "default": null
+    },
     "schemaDefinition": {
       "description": "DDL for Tables and Views",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
@@ -1106,6 +1120,9 @@
     "lifeCycle": {
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

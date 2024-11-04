@@ -21,7 +21,10 @@ import {
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
-import { ListTestCaseParams } from '../../../../rest/testAPI';
+import {
+  ListTestCaseParams,
+  ListTestCaseParamsBySearch,
+} from '../../../../rest/testAPI';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
@@ -115,6 +118,7 @@ export interface DataQualityTabProps {
   };
   showPagination?: boolean;
   breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
+  fetchTestCases?: (params?: ListTestCaseParamsBySearch) => Promise<void>;
 }
 
 export interface TestSummaryProps {

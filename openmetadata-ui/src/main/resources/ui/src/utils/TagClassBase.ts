@@ -13,11 +13,14 @@
 import { PAGE_SIZE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { searchQuery } from '../rest/searchAPI';
+import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
 
 class TagClassBase {
   public async getTags(searchText: string, page: number) {
+    // this is to esacpe and encode any chars which is known by ES search internally
+    const encodedValue = getEncodedFqn(escapeESReservedCharacters(searchText));
     const res = await searchQuery({
-      query: `*${searchText}*`,
+      query: `*${encodedValue}*`,
       filters: 'disabled:false',
       pageNumber: page,
       pageSize: PAGE_SIZE,
