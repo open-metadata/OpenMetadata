@@ -24,6 +24,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
@@ -31,8 +32,9 @@ import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import Loader from '../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import StatusBadge from '../../components/common/StatusBadge/StatusBadge.component';
+import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -42,7 +44,7 @@ import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityD
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../components/Modals/StyleModal/StyleModal.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ROUTES } from '../../constants/constants';
+import { DE_ACTIVE_COLOR, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -56,7 +58,6 @@ import { searchData } from '../../rest/miscAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getQueryFilterToExcludeTerm } from '../../utils/GlossaryUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -73,11 +74,10 @@ const TagPage = () => {
   const { t } = useTranslation();
   const { fqn: tagFqn } = useFqn();
   const history = useHistory();
-  const { tab = TagTabs.OVERVIEW } = useParams<{ tab?: string }>();
+  const { tab: activeTab = TagTabs.OVERVIEW } = useParams<{ tab?: string }>();
   const { permissions } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(false);
   const [tagItem, setTagItem] = useState<Tag>();
-  const [assetModalVisible, setAssetModalVisible] = useState(false);
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
@@ -110,14 +110,14 @@ const TagPage = () => {
       : [];
   }, [tagItem]);
 
-  const activeTab = tab;
-
   const handleAssetClick = useCallback(
     (asset?: EntityDetailsObjectInterface) => {
       setPreviewAsset(asset);
     },
     []
   );
+
+  const hasEditPermission = useMemo(() => !tagItem?.disabled, [tagItem]);
 
   const onDescriptionUpdate = async (updatedHTML?: string) => {
     if (tagItem) {
@@ -294,7 +294,7 @@ const TagPage = () => {
   const handleAssetSave = useCallback(() => {
     fetchClassificationTagAssets();
     assetTabRef.current?.refreshAssets();
-    tab !== TagTabs.ASSETS && activeTabHandler(TagTabs.ASSETS);
+    activeTab !== TagTabs.ASSETS && activeTabHandler(TagTabs.ASSETS);
   }, [assetTabRef]);
 
   const manageButtonContent: ItemType[] = [
@@ -368,8 +368,8 @@ const TagPage = () => {
                 entityFqn={tagItem?.fullyQualifiedName}
                 entityName={getEntityName(tagItem)}
                 entityType={EntityType.TAG}
-                hasEditAccess={editDescriptionPermission}
-                isEdit={isDescriptionEditable}
+                hasEditAccess={hasEditPermission && editDescriptionPermission}
+                isEdit={hasEditPermission && isDescriptionEditable}
                 showActions={!tagItem?.deleted}
                 showCommentsIcon={false}
                 onCancel={() => setIsDescriptionEditable(false)}
@@ -397,7 +397,6 @@ const TagPage = () => {
             isSummaryPanelOpen={Boolean(previewAsset)}
             permissions={MOCK_GLOSSARY_NO_PERMISSIONS}
             ref={assetTabRef}
-            onAddAsset={() => setAssetModalVisible(true)}
             onAssetClick={handleAssetClick}
             onRemoveAsset={handleAssetSave}
           />
@@ -429,7 +428,7 @@ const TagPage = () => {
       );
     }
 
-    return;
+    return <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />;
   }, [tagItem]);
 
   useEffect(() => {
@@ -453,6 +452,15 @@ const TagPage = () => {
                     gutter={[0, 12]}>
                     <Col className="p-x-md" flex="auto">
                       <EntityHeader
+                        badge={
+                          !hasEditPermission && (
+                            <StatusBadge
+                              dataTestId="disabled"
+                              label="Disabled"
+                              status={StatusType.Stopped}
+                            />
+                          )
+                        }
                         breadcrumb={breadcrumb}
                         entityData={tagItem}
                         entityType={EntityType.TAG}
@@ -461,47 +469,41 @@ const TagPage = () => {
                         titleColor={tagItem.style?.color ?? 'black'}
                       />
                     </Col>
-                    <Col className="p-x-md">
-                      <div style={{ textAlign: 'right' }}>
-                        <Button
-                          data-testid="data-classification-add-button"
-                          type="primary"
-                          onClick={() => setAssetModalVisible(true)}>
-                          {t('label.add-entity', {
-                            entity: t('label.asset-plural'),
-                          })}
-                        </Button>
-                        {manageButtonContent.length > 0 && (
-                          <Dropdown
-                            align={{ targetOffset: [-12, 0] }}
-                            className="m-l-xs"
-                            menu={{
-                              items: manageButtonContent,
-                            }}
-                            open={showActions}
-                            overlayClassName="glossary-manage-dropdown-list-container"
-                            overlayStyle={{ width: '350px' }}
-                            placement="bottomRight"
-                            trigger={['click']}
-                            onOpenChange={setShowActions}>
-                            <Tooltip
-                              placement="topRight"
-                              title={t('label.manage-entity', {
-                                entity: t('label.tag-lowercase'),
-                              })}>
-                              <Button
-                                className="glossary-manage-dropdown-button tw-px-1.5"
-                                data-testid="manage-button"
-                                icon={
-                                  <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                                }
-                                onClick={() => setShowActions(true)}
-                              />
-                            </Tooltip>
-                          </Dropdown>
-                        )}
-                      </div>
-                    </Col>
+                    {hasEditPermission && (
+                      <Col className="p-x-md">
+                        <div style={{ textAlign: 'right' }}>
+                          {manageButtonContent.length > 0 && (
+                            <Dropdown
+                              align={{ targetOffset: [-12, 0] }}
+                              className="m-l-xs"
+                              menu={{
+                                items: manageButtonContent,
+                              }}
+                              open={showActions}
+                              overlayClassName="glossary-manage-dropdown-list-container"
+                              overlayStyle={{ width: '350px' }}
+                              placement="bottomRight"
+                              trigger={['click']}
+                              onOpenChange={setShowActions}>
+                              <Tooltip
+                                placement="topRight"
+                                title={t('label.manage-entity', {
+                                  entity: t('label.tag-lowercase'),
+                                })}>
+                                <Button
+                                  className="glossary-manage-dropdown-button tw-px-1.5"
+                                  data-testid="manage-button"
+                                  icon={
+                                    <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                                  }
+                                  onClick={() => setShowActions(true)}
+                                />
+                              </Tooltip>
+                            </Dropdown>
+                          )}
+                        </div>
+                      </Col>
+                    )}
                   </Row>
                 </>
               </Col>
@@ -555,17 +557,6 @@ const TagPage = () => {
               onCancel={() => setIsStyleEditing(false)}
               onSubmit={onStyleSave}
             />
-            {tagItem.fullyQualifiedName && assetModalVisible && (
-              <AssetSelectionModal
-                entityFqn={tagItem.fullyQualifiedName}
-                open={assetModalVisible}
-                queryFilter={getQueryFilterToExcludeTerm(
-                  tagItem.fullyQualifiedName
-                )}
-                onCancel={() => setAssetModalVisible(false)}
-                onSave={handleAssetSave}
-              />
-            )}
           </PageLayoutV1>
         )
       )}
