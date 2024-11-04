@@ -145,7 +145,7 @@ public class MigrationUtil {
     if (postgresql) {
       query =
           "UPDATE field_relationship "
-              + "SET json = jsonb_set(json, '{displayName}', jsonb_path_query_first(json, '$.name'), false) "
+              + "SET json = jsonb_set(json, '{displayName}', json->'name', true) "
               + "WHERE fromType = :fromType AND toType = :toType AND relation = :relation";
     } else {
       query =
