@@ -27,6 +27,7 @@
     <pac4j.version>5.7.0</pac4j.version>
     <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+    <socket.io-client.version>2.1.1</socket.io-client.version>
   </properties>
 
   <dependencyManagement>
@@ -364,6 +365,13 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-compress</artifactId>
       <version>1.27.1</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>io.socket</groupId>
+      <artifactId>socket.io-client</artifactId>
+      <version>${socket.io-client.version}</version>
       <scope>test</scope>
     </dependency>
 
