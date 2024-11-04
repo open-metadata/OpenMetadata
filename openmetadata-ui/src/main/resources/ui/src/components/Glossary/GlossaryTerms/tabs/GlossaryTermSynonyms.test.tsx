@@ -12,10 +12,28 @@
  */
 import { render } from '@testing-library/react';
 import React from 'react';
+import {
+  MOCKED_GLOSSARY_TERMS,
+  MOCK_PERMISSIONS,
+} from '../../../../mocks/Glossary.mock';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
+
+const [mockGlossaryTerm1, mockGlossaryTerm2] = MOCKED_GLOSSARY_TERMS;
+
+const mockContext = {
+  data: mockGlossaryTerm1,
+  onUpdate: jest.fn(),
+  isVersionView: false,
+  permissions: MOCK_PERMISSIONS,
+};
+
+jest.mock('../../../GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => mockContext),
+}));
 
 describe('GlossaryTermSynonyms', () => {
   it('renders synonyms and edit button', () => {
+    mockContext.data = mockGlossaryTerm2;
     const { getByTestId, getByText } = render(<GlossaryTermSynonyms />);
     const synonymsContainer = getByTestId('synonyms-container');
     const synonymItem = getByText('accessory');
@@ -27,6 +45,7 @@ describe('GlossaryTermSynonyms', () => {
   });
 
   it('renders add button', () => {
+    mockContext.data = mockGlossaryTerm1;
     const { getByTestId } = render(<GlossaryTermSynonyms />);
     const synonymsContainer = getByTestId('synonyms-container');
     const synonymAddBtn = getByTestId('synonym-add-button');
@@ -36,6 +55,8 @@ describe('GlossaryTermSynonyms', () => {
   });
 
   it('should not render add button if no permission', async () => {
+    mockContext.data = mockGlossaryTerm1;
+    mockContext.permissions = { ...MOCK_PERMISSIONS, EditAll: false };
     const { getByTestId, queryByTestId, findByText } = render(
       <GlossaryTermSynonyms />
     );
@@ -51,6 +72,8 @@ describe('GlossaryTermSynonyms', () => {
   });
 
   it('should not render edit button if no permission', () => {
+    mockContext.data = mockGlossaryTerm2;
+    mockContext.permissions = { ...MOCK_PERMISSIONS, EditAll: false };
     const { getByTestId, queryByTestId } = render(<GlossaryTermSynonyms />);
     const synonymsContainer = getByTestId('synonyms-container');
     const editBtn = queryByTestId('edit-button');

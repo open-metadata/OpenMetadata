@@ -17,6 +17,10 @@ import { isEmpty, toString } from 'lodash';
 import { default as React, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
+import {
+  CommonWidgetType,
+  GridSizes,
+} from '../../../../constants/CustomizeWidgets.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
@@ -32,11 +36,11 @@ interface Props {
   addedWidgetsList: Array<string>;
   handleCloseAddWidgetModal: () => void;
   handleAddWidget: (
-    widget: Document,
+    widget: CommonWidgetType,
     widgetKey: string,
     widgetSize: number
   ) => void;
-  widgetsList: Array<Document>;
+  widgetsList: Array<CommonWidgetType>;
 }
 
 function AddDetailsPageWidgetModal({
@@ -52,7 +56,11 @@ function AddDetailsPageWidgetModal({
 
   const getAddWidgetHandler = useCallback(
     (widget: Document, widgetSize: number) => () =>
-      handleAddWidget(widget, placeholderWidgetKey, widgetSize),
+      handleAddWidget(
+        widget as unknown as CommonWidgetType,
+        placeholderWidgetKey,
+        widgetSize
+      ),
     [handleAddWidget, placeholderWidgetKey]
   );
 
@@ -60,7 +68,7 @@ function AddDetailsPageWidgetModal({
     () =>
       widgetsList?.map((widget) => {
         const widgetSizeOptions: Array<WidgetSizeInfo> =
-          widget.data.gridSizes.map((size: WidgetWidths) => ({
+          widget.data.gridSizes.map((size: GridSizes) => ({
             label: (
               <span data-testid={`${size}-size-selector`}>
                 {getWidgetWidthLabelFromKey(toString(size))}
@@ -91,7 +99,7 @@ function AddDetailsPageWidgetModal({
             <AddWidgetTabContent
               getAddWidgetHandler={getAddWidgetHandler}
               maxGridSizeSupport={maxGridSizeSupport}
-              widget={widget}
+              widget={widget as unknown as Document}
               widgetSizeOptions={widgetSizeOptions}
             />
           ),

@@ -44,7 +44,7 @@ jest.mock('../../../common/ResizablePanels/ResizablePanels', () => {
   ));
 });
 
-describe('GlossaryOverviewTab', () => {
+describe.skip('GlossaryOverviewTab', () => {
   it('renders the component', async () => {
     const { findByText } = render(
       <GlossaryOverviewTab

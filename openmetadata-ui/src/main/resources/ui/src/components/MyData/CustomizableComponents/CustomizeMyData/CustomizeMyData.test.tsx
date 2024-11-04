@@ -28,7 +28,7 @@ import { CustomizeMyDataProps } from './CustomizeMyData.interface';
 const mockPush = jest.fn();
 
 const mockProps: CustomizeMyDataProps = {
-  initialPageData: mockDocumentData.data.page,
+  initialPageData: mockDocumentData.data.pages[0],
   onSaveLayout: jest.fn(),
 };
 
@@ -64,7 +64,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../../../utils/CustomizePageClassBase', () => {
+jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => {
   return mockCustomizePageClassBase;
 });
 
@@ -161,9 +161,7 @@ describe('CustomizeMyData component', () => {
 
     await act(async () => userEvent.click(cancelButton));
 
-    expect(mockPush).toHaveBeenCalledWith(
-      '/settings/preferences/customizeLandingPage'
-    );
+    expect(mockPush).toHaveBeenCalledWith('/settings/persona/testPersona');
   });
 
   it('CustomizeMyData should display reset layout confirmation modal on click of reset button', async () => {

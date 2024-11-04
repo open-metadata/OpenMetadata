@@ -51,7 +51,7 @@ export const CustomizablePage = () => {
   const { fqn: personaFQN } = useFqn();
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const {
     document,

@@ -12,13 +12,22 @@
  */
 import { render } from '@testing-library/react';
 import React from 'react';
+import {
+  MOCKED_GLOSSARY_TERMS,
+  MOCK_PERMISSIONS,
+} from '../../../../mocks/Glossary.mock';
 import RelatedTerms from './RelatedTerms';
 
-// const glossaryTerm = MOCKED_GLOSSARY_TERMS[2];
+const mockContext = {
+  data: MOCKED_GLOSSARY_TERMS[2],
+  onUpdate: jest.fn(),
+  isVersionView: false,
+  permissions: MOCK_PERMISSIONS,
+};
 
-// const permissions = MOCK_PERMISSIONS;
-
-// const onGlossaryTermUpdate = jest.fn();
+jest.mock('../../../GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => mockContext),
+}));
 
 describe('RelatedTerms', () => {
   it('should render the component', () => {
@@ -34,12 +43,14 @@ describe('RelatedTerms', () => {
   });
 
   it('should show the add button if there are no related terms and the user has edit permissions', () => {
+    mockContext.data = { ...mockContext.data, relatedTerms: [] };
     const { getByTestId } = render(<RelatedTerms />);
 
     expect(getByTestId('related-term-add-button')).toBeInTheDocument();
   });
 
   it('should not show the add button if there are no related terms and the user does not have edit permissions', async () => {
+    mockContext.permissions = { ...mockContext.permissions, EditAll: false };
     const { queryByTestId, findByText } = render(<RelatedTerms />);
 
     expect(queryByTestId('related-term-add-button')).toBeNull();
@@ -50,12 +61,15 @@ describe('RelatedTerms', () => {
   });
 
   it('should show the edit button if there are related terms and the user has edit permissions', () => {
+    mockContext.permissions = MOCK_PERMISSIONS;
+    mockContext.data = { ...MOCKED_GLOSSARY_TERMS[2] };
     const { getByTestId } = render(<RelatedTerms />);
 
     expect(getByTestId('edit-button')).toBeInTheDocument();
   });
 
   it('should not show the edit button if there are no related terms and the user has edit permissions', () => {
+    mockContext.data = { ...MOCKED_GLOSSARY_TERMS[2], relatedTerms: [] };
     const { queryByTestId } = render(<RelatedTerms />);
 
     expect(queryByTestId('edit-button')).toBeNull();
