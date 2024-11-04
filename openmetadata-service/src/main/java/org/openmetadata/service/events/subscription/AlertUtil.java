@@ -185,7 +185,7 @@ public final class AlertUtil {
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
-  private static boolean checkIfChangeEventIsAllowed(
+  public static boolean checkIfChangeEventIsAllowed(
       ChangeEvent event, FilteringRules filteringRules) {
     boolean triggerChangeEvent = AlertUtil.shouldTriggerAlert(event, filteringRules);
 

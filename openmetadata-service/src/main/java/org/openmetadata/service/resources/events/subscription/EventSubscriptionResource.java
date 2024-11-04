@@ -692,7 +692,7 @@ public class EventSubscriptionResource
       if (status == null) {
         combinedEvents.addAll(fetchEvents(id, limit, paginationOffset));
       } else {
-        combinedEvents.addAll(fetchEvents(status, id, limit, paginationOffset));
+        combinedEvents.addAll(fetchEvents(id, limit, paginationOffset, status));
       }
 
       return Response.ok().entity(combinedEvents).build();
@@ -710,7 +710,7 @@ public class EventSubscriptionResource
   }
 
   private List<TypedEvent> fetchEvents(
-      TypedEvent.Status status, UUID id, int limit, int paginationOffset) {
+      UUID id, int limit, int paginationOffset, TypedEvent.Status status) {
     List<?> events;
     switch (status) {
       case FAILED -> events =

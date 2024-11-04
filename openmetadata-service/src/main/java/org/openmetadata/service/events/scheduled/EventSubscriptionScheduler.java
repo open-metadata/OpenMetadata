@@ -19,6 +19,7 @@ import static org.openmetadata.service.events.subscription.AlertUtil.getStarting
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -36,7 +37,9 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobBuilder;
@@ -279,14 +282,20 @@ public class EventSubscriptionScheduler {
             .map(EventSubscriptionOffset::getCurrentOffset)
             .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
 
-    List<String> unprocessedEventJsonList =
-        Entity.getCollectionDAO()
-            .changeEventDAO()
-            .listUnprocessedEvents(offset, limit, paginationOffset);
-
-    return unprocessedEventJsonList.stream()
-        .map(eventJson -> JsonUtils.readValue(eventJson, ChangeEvent.class))
-        .collect(Collectors.toList());
+    return Entity.getCollectionDAO()
+        .changeEventDAO()
+        .listUnprocessedEvents(offset, limit, paginationOffset)
+        .parallelStream()
+        .map(
+            eventJson -> {
+              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
+              return AlertUtil.checkIfChangeEventIsAllowed(
+                      event, getEventSubscription(subscriptionId).getFilteringRules())
+                  ? event
+                  : null;
+            })
+        .filter(Objects::nonNull) // Remove null entries (events that did not pass filtering)
+        .toList();
   }
 
   public List<FailedEventResponse> getFailedEventsByIdAndSource(
@@ -310,13 +319,38 @@ public class EventSubscriptionScheduler {
       return Collections.emptyList();
     }
 
-    return Entity.getCollectionDAO()
-        .changeEventDAO()
-        .listAllEventsWithStatuses(
-            subscriptionId.toString(),
-            eventSubscriptionOffset.get().getCurrentOffset(),
-            limit,
-            offset);
+    List<TypedEvent> typedEvents =
+        Entity.getCollectionDAO()
+            .changeEventDAO()
+            .listAllEventsWithStatuses(
+                subscriptionId.toString(),
+                eventSubscriptionOffset.get().getCurrentOffset(),
+                limit,
+                offset);
+
+    EventSubscription eventSubscription = getEventSubscription(subscriptionId);
+
+    return typedEvents.parallelStream()
+        .filter(
+            event -> {
+              if (TypedEvent.Status.UNPROCESSED.equals(event.getStatus())
+                  && !CommonUtil.nullOrEmpty(event.getData())) {
+                for (Object eventData : event.getData()) {
+                  if (eventData instanceof ChangeEvent changeEvent) {
+                    return AlertUtil.checkIfChangeEventIsAllowed(
+                        changeEvent, eventSubscription.getFilteringRules());
+                  }
+                }
+              }
+              return true; // Keep FAILED and SUCCESSFUL records
+            })
+        .toList();
+  }
+
+  private EventSubscription getEventSubscription(UUID eventSubscriptionId) {
+    EventSubscriptionRepository repository =
+        (EventSubscriptionRepository) Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
+    return repository.get(null, eventSubscriptionId, repository.getFields("*"));
   }
 
   public List<FailedEventResponse> getFailedEventsById(UUID subscriptionId, int limit, int offset) {
