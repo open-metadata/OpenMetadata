@@ -113,6 +113,15 @@ public abstract class AbstractEventConsumer
             source.toString());
   }
 
+  private void recordSuccessfulChangeEvent(UUID eventSubscriptionId, ChangeEvent event) {
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .insertSuccessfulChangeEvent(
+            UUID.randomUUID().toString(),
+            eventSubscriptionId.toString(),
+            JsonUtils.pojoToJson(event));
+  }
+
   private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
     EventSubscriptionOffset jobStoredOffset =
         (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
@@ -174,6 +183,7 @@ public abstract class AbstractEventConsumer
       for (UUID receiverId : eventWithReceivers.getValue()) {
         try {
           sendAlert(receiverId, eventWithReceivers.getKey());
+          recordSuccessfulChangeEvent(eventSubscription.getId(), eventWithReceivers.getKey());
           alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
         } catch (EventPublisherException e) {
           alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);

@@ -2110,34 +2110,28 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("source") String source);
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT ce.json "
-                + "FROM change_event ce "
-                + "WHERE ce.offset BETWEEN :offsetStart AND :offsetEnd "
-                + "AND NOT EXISTS ( "
-                + "  SELECT 1 FROM consumers_dlq cd "
-                + "  WHERE JSON_UNQUOTE(JSON_EXTRACT(ce.json, '$.id')) = "
-                + "    JSON_UNQUOTE(JSON_EXTRACT(cd.json, '$.changeEvent.id')) "
-                + ") "
-                + "LIMIT :limit OFFSET :paginationOffset",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT ce.json "
-                + "FROM change_event ce "
-                + "WHERE ce.offset BETWEEN :offsetStart AND :offsetEnd "
-                + "AND NOT EXISTS ( "
-                + "  SELECT 1 FROM consumers_dlq cd "
-                + "  WHERE ce.json ->> 'id' = cd.json ->> 'changeEvent' ->> 'id' "
-                + ") "
-                + "LIMIT :limit OFFSET :paginationOffset",
-        connectionType = POSTGRES)
-    List<String> getSuccessfullySentChangeEvents(
-        @Bind("offsetStart") long offsetStart,
-        @Bind("offsetEnd") long offsetEnd,
+    @SqlUpdate(
+        "INSERT INTO successful_sent_change_events (id, event_subscription_id, json) VALUES (:id, :eventSubscriptionId, :json)")
+    void insertSuccessfulChangeEvent(
+        @Bind("id") String id,
+        @Bind("eventSubscriptionId") String eventSubscriptionId,
+        @Bind("json") String json);
+
+    @SqlQuery(
+        "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId LIMIT :limit OFFSET :paginationOffset")
+    List<String> getSuccessfulChangeEventBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId,
         @Bind("limit") int limit,
-        @Bind("paginationOffset") int paginationOffset);
+        @Bind("paginationOffset") long paginationOffset);
+
+    @SqlUpdate(
+        "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
+    void deleteSuccessfulChangeEventBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @SqlUpdate("DELETE FROM consumers_dlq WHERE id = :eventSubscriptionId")
+    void deleteFailedRecordsBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -3987,14 +3981,8 @@ public interface CollectionDAO {
                 + "    SELECT json, 'FAILED' AS status, timestamp "
                 + "    FROM consumers_dlq WHERE id = :id "
                 + "    UNION ALL "
-                + "    SELECT ce.json, 'SUCCESSFUL' AS status, ce.eventTime AS timestamp "
-                + "    FROM change_event ce "
-                + "    WHERE ce.offset BETWEEN :startingOffset AND :currentOffset "
-                + "    AND NOT EXISTS ( "
-                + "        SELECT 1 FROM consumers_dlq cd "
-                + "        WHERE JSON_UNQUOTE(JSON_EXTRACT(ce.json, '$.id')) = "
-                + "              JSON_UNQUOTE(JSON_EXTRACT(cd.json, '$.changeEvent.id')) "
-                + "    ) "
+                + "    SELECT json, 'SUCCESSFUL' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
                 + "    UNION ALL "
                 + "    SELECT ce.json, 'UNPROCESSED' AS status, ce.eventTime AS timestamp "
                 + "    FROM change_event ce WHERE ce.offset > :currentOffset "
@@ -4009,13 +3997,8 @@ public interface CollectionDAO {
                 + "    SELECT json, 'failed' AS status, timestamp "
                 + "    FROM consumers_dlq WHERE id = :id "
                 + "    UNION ALL "
-                + "    SELECT ce.json, 'successful' AS status, ce.eventTime AS timestamp "
-                + "    FROM change_event ce "
-                + "    WHERE ce.offset BETWEEN :startingOffset AND :currentOffset "
-                + "    AND NOT EXISTS ( "
-                + "        SELECT 1 FROM consumers_dlq cd "
-                + "        WHERE ce.json->>'id' = cd.json->'changeEvent'->>'id' "
-                + "    ) "
+                + "    SELECT json, 'successful' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
                 + "    UNION ALL "
                 + "    SELECT ce.json, 'unprocessed' AS status, ce.eventTime AS timestamp "
                 + "    FROM change_event ce WHERE ce.offset > :currentOffset "
@@ -4026,7 +4009,6 @@ public interface CollectionDAO {
     @RegisterRowMapper(EventResponseMapper.class)
     List<TypedEvent> listAllEventsWithStatuses(
         @Bind("id") String id,
-        @Bind("startingOffset") long startingOffset,
         @Bind("currentOffset") long currentOffset,
         @Bind("limit") int limit,
         @Bind("paginationOffset") long paginationOffset);

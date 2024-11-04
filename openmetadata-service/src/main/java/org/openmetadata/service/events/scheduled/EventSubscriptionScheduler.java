@@ -164,6 +164,17 @@ public class EventSubscriptionScheduler {
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
   }
 
+  @Transaction
+  public void deleteSuccessfulAndFailedEventsRecordByAlert(UUID id) {
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .deleteSuccessfulChangeEventBySubscriptionId(id.toString());
+
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .deleteFailedRecordsBySubscriptionId(id.toString());
+  }
+
   public SubscriptionStatus getStatusForEventSubscription(UUID subscriptionId, UUID destinationId) {
     Optional<EventSubscription> eventSubscriptionOpt =
         getEventSubscriptionFromScheduledJob(subscriptionId);
@@ -303,7 +314,6 @@ public class EventSubscriptionScheduler {
         .changeEventDAO()
         .listAllEventsWithStatuses(
             subscriptionId.toString(),
-            eventSubscriptionOffset.get().getStartingOffset(),
             eventSubscriptionOffset.get().getCurrentOffset(),
             limit,
             offset);
@@ -338,11 +348,7 @@ public class EventSubscriptionScheduler {
     List<String> successfullySentChangeEvents =
         Entity.getCollectionDAO()
             .eventSubscriptionDAO()
-            .getSuccessfullySentChangeEvents(
-                eventSubscriptionOffset.get().getStartingOffset(),
-                eventSubscriptionOffset.get().getCurrentOffset(),
-                limit,
-                paginationOffset);
+            .getSuccessfulChangeEventBySubscriptionId(id.toString(), limit, paginationOffset);
 
     return successfullySentChangeEvents.stream()
         .map(e -> JsonUtils.readValue(e, ChangeEvent.class))

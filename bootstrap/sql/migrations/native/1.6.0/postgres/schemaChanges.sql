@@ -22,3 +22,17 @@ SET json = jsonb_set(
 )
 WHERE json -> 'offset' IS NOT NULL
   AND jsonSchema = 'eventSubscriptionOffset';
+
+
+-- Create table successful_sent_change_events for storing successfully sent events per alert
+CREATE TABLE IF NOT EXISTS successful_sent_change_events (
+    id UUID NOT NULL,
+    change_event_id UUID GENERATED ALWAYS AS (json ->> 'id')::UUID NOT NULL,
+    event_subscription_id UUID NOT NULL,
+    json JSONB NOT NULL,
+    timestamp BIGINT NOT NULL GENERATED ALWAYS AS (json ->> 'timestamp')::BIGINT NOT NULL,
+    PRIMARY KEY (id)
+);
+
+-- Create an index on the event_subscription_id column in the successful_sent_change_events table
+CREATE INDEX idx_event_subscription_id ON successful_sent_change_events (event_subscription_id);

@@ -501,6 +501,7 @@ public class EventSubscriptionResource
       throws SchedulerException {
     EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
+    EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
     return delete(uriInfo, securityContext, id, true, true);
   }
 
@@ -524,6 +525,8 @@ public class EventSubscriptionResource
     EventSubscription eventSubscription =
         repository.getByName(null, name, repository.getFields("id"));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
+    EventSubscriptionScheduler.getInstance()
+        .deleteSuccessfulAndFailedEventsRecordByAlert(eventSubscription.getId());
     return deleteByName(uriInfo, securityContext, name, true, true);
   }
 
