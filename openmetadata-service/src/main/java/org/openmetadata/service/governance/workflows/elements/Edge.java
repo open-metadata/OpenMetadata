@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements;
 
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
@@ -18,9 +20,9 @@ public class Edge {
 
   private String getFlowableCondition(boolean condition) {
     if (condition) {
-      return "${result}";
+      return String.format("${%s}", RESULT_VARIABLE);
     } else {
-      return "${!result}";
+      return String.format("${!%s}", RESULT_VARIABLE);
     }
   }
 

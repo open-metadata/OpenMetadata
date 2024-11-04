@@ -1,7 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.governance.workflows.Stage;
@@ -10,7 +8,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowInstanceStateResource;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 
 public class WorkflowInstanceStateRepository
     extends EntityTimeSeriesRepository<WorkflowInstanceState> {
@@ -20,22 +17,6 @@ public class WorkflowInstanceStateRepository
         Entity.getCollectionDAO().workflowInstanceStateTimeSeriesDAO(),
         WorkflowInstanceState.class,
         Entity.WORKFLOW_INSTANCE_STATE);
-  }
-
-  public ResultList<WorkflowInstanceState> listWorkflowInstanceStatesForWorkflowInstanceId(
-      String entityFQNHash) {
-    List<WorkflowInstanceState> workflowInstanceStates = new ArrayList<>();
-    List<String> jsons =
-        ((CollectionDAO.WorkflowInstanceStateTimeSeriesDAO) timeSeriesDao)
-            .listWorkflowInstanceStatesForWorkflowInstanceId(entityFQNHash);
-
-    for (String json : jsons) {
-      WorkflowInstanceState workflowInstanceState =
-          JsonUtils.readValue(json, WorkflowInstanceState.class);
-      setInheritedFields(workflowInstanceState);
-      workflowInstanceStates.add(workflowInstanceState);
-    }
-    return getResultList(workflowInstanceStates, null, null, workflowInstanceStates.size());
   }
 
   public WorkflowInstanceState createNewRecord(

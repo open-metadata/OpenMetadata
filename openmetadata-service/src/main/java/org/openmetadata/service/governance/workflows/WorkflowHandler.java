@@ -220,4 +220,18 @@ public class WorkflowHandler {
 
     return hasFinished;
   }
+
+  public boolean isActivityWithVariableExecuting(
+      String activityName, String variableName, Object expectedValue) {
+    List<Execution> executions =
+        runtimeService.createExecutionQuery().activityId(activityName).list();
+
+    for (Execution execution : executions) {
+      Object variableValue = runtimeService.getVariable(execution.getId(), variableName);
+      if (expectedValue.equals(variableValue)) {
+        return true;
+      }
+    }
+    return false;
+  }
 }

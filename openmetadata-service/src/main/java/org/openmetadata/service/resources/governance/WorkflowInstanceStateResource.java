@@ -137,13 +137,49 @@ public class WorkflowInstanceStateResource
           String workflowDefinitionName,
       @Parameter(description = "Workflow Instance ID", schema = @Schema(type = "UUID"))
           @PathParam("workflowInstanceId")
-          UUID workflowInstanceId) {
+          UUID workflowInstanceId,
+      @Parameter(
+              description =
+                  "Limit the number of Workflow Instance States returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000000)
+          int limitParam,
+      @Parameter(
+              description = "Returns list of Workflow Instance States at the offset",
+              schema = @Schema(type = "string"))
+          @QueryParam("offset")
+          String offset,
+      @Parameter(
+              description = "Filter Workflow Instance States after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @NonNull
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter Workflow Instance States before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @NonNull
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(
+              description = "Only list the latest Workflow Instance States",
+              schema = @Schema(type = "Boolean"))
+          @DefaultValue("false")
+          @QueryParam("latest")
+          Boolean latest) {
     OperationContext operationContext =
         new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listWorkflowInstanceStatesForWorkflowInstanceId(
+
+    ListFilter filter = new ListFilter(null);
+    filter.addQueryParam(
+        "entityFQNHash",
         FullyQualifiedName.buildHash(workflowDefinitionName, workflowInstanceId.toString()));
+
+    return repository.list(offset, startTs, endTs, limitParam, filter, latest);
   }
 
   @GET

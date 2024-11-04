@@ -597,9 +597,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     @Override
     public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      // NOTE: GlossaryTerm Approval Workflow is a bit weird
-      // Clicking on Approve calls resolve with newValue = approved
-      // Clicking on Reject calls close with a comment.
       // TODO: Resolve this outside
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
