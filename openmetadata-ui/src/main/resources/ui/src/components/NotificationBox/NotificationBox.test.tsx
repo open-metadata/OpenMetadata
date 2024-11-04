@@ -67,8 +67,6 @@ const mockProps = {
   onMarkMentionsNotificationRead: jest.fn(),
   onMarkTaskNotificationRead: mockOnMarkTaskNotificationRead,
   onTabChange: jest.fn(),
-  hasExportAssetNotification: true,
-  onMarkExportAssetNotificationRead: jest.fn(),
 };
 
 jest.mock('../../rest/feedsAPI', () => ({

@@ -23,9 +23,9 @@ export type CSVExportWebsocketResponse = {
 };
 
 export type CSVExportJob = {
-  jobId: string;
   fileName: string;
-} & Partial<CSVExportWebsocketResponse>;
+} & Partial<CSVExportWebsocketResponse> &
+  CSVExportResponse;
 
 export type ExportData = {
   name: string;
@@ -34,10 +34,5 @@ export type ExportData = {
 };
 export interface EntityExportModalContextProps {
   showModal: (data: ExportData) => void;
-  csvExportJobs: CSVExportJob[];
-  onDownload: (data: string, fileName: string) => void;
-  onUpdateCSVExportJob: (
-    jobId: string,
-    data: Partial<CSVExportWebsocketResponse>
-  ) => void;
+  onUpdateCSVExportJob: (data: Partial<CSVExportWebsocketResponse>) => void;
 }

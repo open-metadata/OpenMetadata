@@ -17,7 +17,6 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconExport } from '../../assets/svg/ic-export.svg';
 import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -35,7 +34,6 @@ import { getFeedsWithFilter } from '../../rest/feedsAPI';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
-import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';
 import { getFilters, tabsInfo } from './NotificationBox.utils';
@@ -47,11 +45,7 @@ const NotificationBox = ({
   onMarkTaskNotificationRead,
   onMarkMentionsNotificationRead,
   onTabChange,
-  hasExportAssetNotification,
-  onMarkExportAssetNotificationRead,
 }: NotificationBoxProp) => {
-  const { csvExportJobs, onDownload } = useEntityExportModalProvider();
-
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [notifications, setNotifications] = useState<Thread[]>([]);
@@ -115,20 +109,6 @@ const NotificationBox = ({
   const updateActiveTab = useCallback(
     (key: string) => {
       onTabChange(key);
-
-      // if the tab is export data assets and has export asset notification then mark it as read
-      if (key === NotificationTabsKey.EXPORT_DATA_ASSETS) {
-        setNotifications([]);
-        if (hasExportAssetNotification) {
-          setTimeout(
-            onMarkExportAssetNotificationRead,
-            NOTIFICATION_READ_TIMER
-          );
-        }
-
-        return;
-      }
-
       const { threadType, feedFilter } = getFilters(key as ThreadType);
 
       getNotificationData(threadType, feedFilter);
@@ -151,13 +131,7 @@ const NotificationBox = ({
         }, NOTIFICATION_READ_TIMER);
       }
     },
-    [
-      onTabChange,
-      currentUser,
-      hasTaskNotification,
-      hasMentionNotification,
-      hasExportAssetNotification,
-    ]
+    [onTabChange, currentUser, hasTaskNotification, hasMentionNotification]
   );
 
   useEffect(() => {
@@ -165,41 +139,18 @@ const NotificationBox = ({
   }, []);
 
   const getTabTitle = (name: string, key: string) => {
-    let hasNotification = false;
-    let iconComponent;
-
-    switch (key) {
-      case NotificationTabsKey.TASK: {
-        hasNotification = hasTaskNotification;
-        iconComponent = IconTask;
-
-        break;
-      }
-
-      case NotificationTabsKey.CONVERSATION: {
-        hasNotification = hasMentionNotification;
-        iconComponent = IconMentions;
-
-        break;
-      }
-
-      case NotificationTabsKey.EXPORT_DATA_ASSETS: {
-        hasNotification = hasExportAssetNotification;
-        iconComponent = IconExport;
-
-        break;
-      }
-
-      default:
-        break;
-    }
-
     return (
-      <Badge dot={hasNotification} offset={[5, 0]}>
+      <Badge
+        dot={
+          key === NotificationTabsKey.TASK
+            ? hasTaskNotification
+            : hasMentionNotification
+        }
+        offset={[5, 0]}>
         <Icon
           alt="notification-icon"
           className="align-middle m-r-xs"
-          component={iconComponent}
+          component={key === NotificationTabsKey.TASK ? IconTask : IconMentions}
           style={{ fontSize: '16px' }}
         />
         {name}
@@ -207,63 +158,17 @@ const NotificationBox = ({
     );
   };
 
-  const getNotificationList = (key: NotificationTabsKey) => {
-    const isExportDataAssetsTab =
-      key === NotificationTabsKey.EXPORT_DATA_ASSETS;
-
-    const activeCSVExportJobs = csvExportJobs.filter((job) => job.status);
-
-    const hasActiveNotifications = isExportDataAssetsTab
-      ? !isEmpty(activeCSVExportJobs)
-      : !isEmpty(notifications);
-
-    if (!hasActiveNotifications) {
-      return (
+  const notificationList = useMemo(
+    () =>
+      isEmpty(notifications) ? (
         <div className="h-64 flex-center">
           <p>{t('message.no-notification-found')}</p>
         </div>
-      );
-    }
-
-    const csvExportNotifications = activeCSVExportJobs.map((job) => {
-      const isCompleted = job.status === 'COMPLETED';
-
-      return (
-        <List.Item.Meta
-          className="m-0"
-          description={
-            <Typography>
-              {isCompleted ? (
-                <Typography.Text>
-                  {`Export completed for ${job.fileName}`}{' '}
-                  <Button
-                    type="link"
-                    onClick={() => onDownload(job.data ?? '', job.fileName)}>
-                    {t('label.download')}
-                  </Button>
-                </Typography.Text>
-              ) : (
-                <Typography.Text type="danger">
-                  {`Export failed for ${job.fileName}. ${job.error}`}
-                </Typography.Text>
-              )}
-            </Typography>
-          }
-          key={job.jobId}
-        />
-      );
-    });
-
-    return (
-      <List
-        className="notification-content-container"
-        dataSource={
-          isExportDataAssetsTab
-            ? csvExportNotifications
-            : notificationDropDownList
-        }
-        footer={
-          !isExportDataAssetsTab ? (
+      ) : (
+        <List
+          className="notification-content-container"
+          dataSource={notificationDropDownList}
+          footer={
             <Button block href={viewAllPath} type="link">
               <span>
                 {t('label.view-entity', {
@@ -271,18 +176,18 @@ const NotificationBox = ({
                 })}
               </span>
             </Button>
-          ) : null
-        }
-        itemLayout="vertical"
-        renderItem={(item) => (
-          <List.Item className="notification-dropdown-list-btn cursor-pointer">
-            {item}
-          </List.Item>
-        )}
-        size="small"
-      />
-    );
-  };
+          }
+          itemLayout="vertical"
+          renderItem={(item) => (
+            <List.Item className="notification-dropdown-list-btn cursor-pointer">
+              {item}
+            </List.Item>
+          )}
+          size="small"
+        />
+      ),
+    [notifications, notificationDropDownList, viewAllPath]
+  );
 
   return (
     <div className="notification-box">
@@ -310,7 +215,7 @@ const NotificationBox = ({
                 <Loader size="small" />
               </div>
             ) : (
-              <>{getNotificationList(key)}</>
+              notificationList
             )}
           </Tabs.TabPane>
         ))}

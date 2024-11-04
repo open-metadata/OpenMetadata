@@ -13,7 +13,7 @@
 import { Form, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
-import React, { ReactNode, useEffect, useMemo, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -39,7 +39,7 @@ export const EntityExportModalProvider = ({
   const [exportData, setExportData] = useState<ExportData | null>(null);
   const [downloading, setDownloading] = useState<boolean>(false);
 
-  const [csvExportJobs, setCSVExportJobs] = useState<CSVExportJob[]>([]);
+  const csvExportJob = useRef<Partial<CSVExportJob>>();
 
   const handleCancel = () => {
     setExportData(null);
@@ -78,30 +78,55 @@ export const EntityExportModalProvider = ({
 
       if (isString(data)) {
         handleDownload(data, fileName);
+        handleCancel();
+        setDownloading(false);
       } else {
-        showSuccessToast(t('message.export-initiated-successfully'));
-
-        setCSVExportJobs((prev) => [
-          ...prev,
-          { jobId: data.jobId, fileName: fileName },
-        ]);
+        showSuccessToast(data.message);
+        csvExportJob.current = {
+          jobId: data.jobId,
+          fileName: fileName,
+          message: data.message,
+        };
       }
-
-      handleCancel();
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
       setDownloading(false);
     }
   };
 
+  const handleCSVExportSuccess = (data: string, fileName?: string) => {
+    handleDownload(
+      data,
+      fileName ?? `${exportData?.name}_${getCurrentISODate()}`
+    );
+    setDownloading(false);
+    handleCancel();
+  };
+
+  const handleCSVExportError = (error?: string | null) => {
+    setDownloading(false);
+    showErrorToast(error ?? 'Error in exporting data');
+    handleCancel();
+  };
+
   const handleCSVExportJobUpdate = (
-    jobId: string,
     response: Partial<CSVExportWebsocketResponse>
   ) => {
-    setCSVExportJobs((prev) =>
-      prev.map((job) => (job.jobId === jobId ? { ...job, ...response } : job))
-    );
+    const updatedCSVExportJob: Partial<CSVExportJob> = {
+      ...response,
+      ...csvExportJob.current,
+    };
+
+    csvExportJob.current = updatedCSVExportJob;
+
+    if (response.status === 'COMPLETED' && response.data) {
+      handleCSVExportSuccess(
+        response.data ?? '',
+        csvExportJob.current?.fileName
+      );
+    } else {
+      handleCSVExportError(response.error);
+    }
   };
 
   useEffect(() => {
@@ -116,11 +141,9 @@ export const EntityExportModalProvider = ({
   const providerValue = useMemo(
     () => ({
       showModal,
-      onDownload: handleDownload,
-      csvExportJobs,
       onUpdateCSVExportJob: handleCSVExportJobUpdate,
     }),
-    [csvExportJobs]
+    []
   );
 
   return (
