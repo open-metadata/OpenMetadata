@@ -12,7 +12,7 @@
 """
 Test Bigquery connector with CLI
 """
-from typing import List
+from typing import List, Tuple
 
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.generated.schema.type.basic import Timestamp
