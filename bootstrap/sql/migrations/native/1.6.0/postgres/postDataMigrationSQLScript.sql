@@ -68,3 +68,6 @@ WHERE serviceType IN ('Athena','BigQuery','Mssql','Mysql','Oracle','Postgres','R
 UPDATE dbservice_entity
 SET json = jsonb_set(json::jsonb, '{connection,config,supportsSystemProfile}', 'true'::jsonb)
 WHERE serviceType IN ('Snowflake', 'Redshift', 'BigQuery');
+
+-- Update all rows in the consumers_dlq table to set the source column to 'publisher'
+UPDATE consumers_dlq SET source = 'publisher';

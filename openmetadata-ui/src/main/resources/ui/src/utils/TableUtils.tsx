@@ -120,6 +120,37 @@ import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
+import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
+import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
+import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
+import { ReactComponent as IconBoolean } from '../assets/svg/data-type-icon/boolean.svg';
+import { ReactComponent as IconDateTime } from '../assets/svg/data-type-icon/data-time-range.svg';
+import { ReactComponent as IconDate } from '../assets/svg/data-type-icon/date.svg';
+import { ReactComponent as IconDecimal } from '../assets/svg/data-type-icon/decimal.svg';
+import { ReactComponent as IconDouble } from '../assets/svg/data-type-icon/double.svg';
+import { ReactComponent as IconEnum } from '../assets/svg/data-type-icon/enum.svg';
+import { ReactComponent as IconError } from '../assets/svg/data-type-icon/error.svg';
+import { ReactComponent as IconGeometry } from '../assets/svg/data-type-icon/geometry.svg';
+import { ReactComponent as IconInteger } from '../assets/svg/data-type-icon/integer.svg';
+import { ReactComponent as IconIpVersion } from '../assets/svg/data-type-icon/ipv6.svg';
+import { ReactComponent as IconJson } from '../assets/svg/data-type-icon/json.svg';
+import { ReactComponent as IconMap } from '../assets/svg/data-type-icon/map.svg';
+import { ReactComponent as IconMoney } from '../assets/svg/data-type-icon/money.svg';
+import { ReactComponent as IconNull } from '../assets/svg/data-type-icon/null.svg';
+import { ReactComponent as IconNumeric } from '../assets/svg/data-type-icon/numeric.svg';
+import { ReactComponent as IconPolygon } from '../assets/svg/data-type-icon/polygon.svg';
+import { ReactComponent as IconRecord } from '../assets/svg/data-type-icon/record.svg';
+import { ReactComponent as IconString } from '../assets/svg/data-type-icon/string.svg';
+import { ReactComponent as IconStruct } from '../assets/svg/data-type-icon/struct.svg';
+import { ReactComponent as IconTime } from '../assets/svg/data-type-icon/time.svg';
+import { ReactComponent as IconTimestamp } from '../assets/svg/data-type-icon/timestamp.svg';
+import { ReactComponent as IconTsQuery } from '../assets/svg/data-type-icon/ts-query.svg';
+import { ReactComponent as IconUnion } from '../assets/svg/data-type-icon/union.svg';
+import { ReactComponent as IconUnknown } from '../assets/svg/data-type-icon/unknown.svg';
+import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varchar.svg';
+import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
+import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
+
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
   const ordinalPercentile = ordinalize(percentile);
@@ -211,6 +242,70 @@ export const getConstraintIcon = ({
       />
     </Tooltip>
   );
+};
+
+export const getColumnDataTypeIcon = ({
+  dataType,
+  width = '16px',
+}: {
+  dataType: DataType;
+  width?: string;
+}) => {
+  const dataTypeIcons = {
+    [DataType.Array]: IconArray,
+    [DataType.Bit]: IconBinary,
+    [DataType.Binary]: IconBinary,
+    [DataType.Bitmap]: IconBitmap,
+    [DataType.Image]: IconBitmap,
+    [DataType.Boolean]: IconBoolean,
+    [DataType.Date]: IconDate,
+    [DataType.Year]: IconDate,
+    [DataType.Datetime]: IconDateTime,
+    [DataType.Datetimerange]: IconDateTime,
+    [DataType.Double]: IconDouble,
+    [DataType.Float]: IconDouble,
+    [DataType.Number]: IconDouble,
+    [DataType.Decimal]: IconDecimal,
+    [DataType.Enum]: IconEnum,
+    [DataType.Error]: IconError,
+    [DataType.Map]: IconMap,
+    [DataType.Geography]: IconMap,
+    [DataType.Geometry]: IconGeometry,
+    [DataType.Ipv4]: IconIpVersion,
+    [DataType.Ipv6]: IconIpVersion,
+    [DataType.JSON]: IconJson,
+    [DataType.Numeric]: IconNumeric,
+    [DataType.Long]: IconNumeric,
+    [DataType.Money]: IconMoney,
+    [DataType.Char]: IconVarchar,
+    [DataType.Text]: IconVarchar,
+    [DataType.Ntext]: IconVarchar,
+    [DataType.Mediumtext]: IconVarchar,
+    [DataType.Varchar]: IconVarchar,
+    [DataType.Int]: IconInteger,
+    [DataType.Bigint]: IconInteger,
+    [DataType.Largeint]: IconInteger,
+    [DataType.Smallint]: IconInteger,
+    [DataType.Tinyint]: IconInteger,
+    [DataType.Polygon]: IconPolygon,
+    [DataType.Null]: IconNull,
+    [DataType.Record]: IconRecord,
+    [DataType.Table]: IconRecord,
+    [DataType.String]: IconString,
+    [DataType.Struct]: IconStruct,
+    [DataType.Time]: IconTime,
+    [DataType.Timestamp]: IconTimestamp,
+    [DataType.Timestampz]: IconTimestamp,
+    [DataType.Tsquery]: IconTsQuery,
+    [DataType.Union]: IconUnion,
+    [DataType.Unknown]: IconUnknown,
+    [DataType.Variant]: IconVariant,
+    [DataType.XML]: IconXML,
+  };
+
+  const icon = dataTypeIcons[dataType as keyof typeof dataTypeIcons] || null;
+
+  return <Icon alt={dataType} component={icon} style={{ fontSize: width }} />;
 };
 
 export const getEntityIcon = (
