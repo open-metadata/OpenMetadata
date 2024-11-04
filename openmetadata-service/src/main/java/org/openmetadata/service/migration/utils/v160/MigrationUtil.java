@@ -8,6 +8,7 @@ import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -136,6 +137,32 @@ public class MigrationUtil {
       handle.execute(query);
     } catch (Exception e) {
       LOG.error("Error updating", e);
+    }
+  }
+
+  public static void addDisplayNameToCustomProperty(Handle handle, boolean postgresql) {
+    String query;
+    if (postgresql) {
+      query =
+          "UPDATE field_relationship "
+              + "SET json = jsonb_set(json, '{displayName}', jsonb_path_query_first(json, '$.name'), false) "
+              + "WHERE fromType = :fromType AND toType = :toType AND relation = :relation";
+    } else {
+      query =
+          "UPDATE field_relationship "
+              + "SET json = JSON_SET(json, '$.displayName', JSON_EXTRACT(json, '$.name')) "
+              + "WHERE fromType = :fromType AND toType = :toType AND relation = :relation";
+    }
+
+    try {
+      handle
+          .createUpdate(query)
+          .bind("fromType", Entity.TYPE)
+          .bind("toType", Entity.TYPE)
+          .bind("relation", Relationship.HAS.ordinal())
+          .execute();
+    } catch (Exception e) {
+      LOG.error("Error updating displayName of custom properties", e);
     }
   }
 }
