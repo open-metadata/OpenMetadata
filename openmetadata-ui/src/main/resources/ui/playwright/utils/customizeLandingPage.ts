@@ -26,9 +26,7 @@ export const navigateToCustomizeLandingPage = async (
   await getPersonas;
 
   const getCustomPageDataResponse = page.waitForResponse(
-    `/api/v1/docStore/name/persona.${encodeURIComponent(
-      personaName
-    )}.Page.LandingPage`
+    `/api/v1/docStore/name/persona.${encodeURIComponent(personaName)}`
   );
 
   // Navigate to the customize landing page
@@ -36,7 +34,7 @@ export const navigateToCustomizeLandingPage = async (
 
   await page.getByRole('tab', { name: 'Customize UI' }).click();
 
-  await page.getByTestId('LandingPage').click();
+  await page.getByTestId('homepage').click();
 
   expect((await getCustomPageDataResponse).status()).toBe(
     customPageDataResponse
