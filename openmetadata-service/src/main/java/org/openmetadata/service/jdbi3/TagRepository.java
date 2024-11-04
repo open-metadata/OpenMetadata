@@ -173,7 +173,7 @@ public class TagRepository extends EntityRepository<Tag> {
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
       }
       // Validate and Store Tags
-      if (!dryRun && CommonUtil.nullOrEmpty(result.getFailedRequest())) {
+      if (CommonUtil.nullOrEmpty(result.getFailedRequest())) {
         List<TagLabel> tempList = new ArrayList<>(asset.getTags());
         tempList.add(tagLabel);
         // Apply Tags to Entities
