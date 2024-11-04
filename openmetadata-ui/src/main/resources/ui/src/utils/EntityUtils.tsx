@@ -122,6 +122,7 @@ import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
   getApplicationDetailsPath,
+  getClassificationTagPath,
   getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
@@ -1524,6 +1525,7 @@ export const getEntityLinkFromType = (
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermDetailsPath(fullyQualifiedName);
     case EntityType.TAG:
+      return getClassificationTagPath(fullyQualifiedName);
     case EntityType.CLASSIFICATION:
       return getTagsDetailsPath(fullyQualifiedName);
 
@@ -1892,18 +1894,18 @@ export const getEntityBreadcrumbs = (
           ),
         })),
       ];
-    case EntityType.TAG:
-      // eslint-disable-next-line no-case-declarations
+    case EntityType.TAG: {
       const fqnTagList = entity.fullyQualifiedName
         ? Fqn.split(entity.fullyQualifiedName)
         : [];
 
-      return [
-        ...fqnTagList.map((fqn) => ({
-          name: fqn,
-          url: getTagsDetailsPath(entity?.fullyQualifiedName ?? ''),
-        })),
-      ];
+      const urlFunctions = [getTagsDetailsPath, getClassificationTagPath];
+
+      return fqnTagList.map((name, index) => ({
+        name,
+        url: urlFunctions[index](entity?.fullyQualifiedName ?? ''),
+      }));
+    }
 
     case EntityType.CLASSIFICATION:
       return [

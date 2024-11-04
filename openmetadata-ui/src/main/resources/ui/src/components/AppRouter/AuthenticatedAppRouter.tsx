@@ -501,7 +501,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         exact
         component={TagPage}
-        // hasPermission={tagCategoryPermission}
         path={[ROUTES.TAG_ITEM, ROUTES.TAG_ITEM_WITH_TAB]}
       />
       <Route

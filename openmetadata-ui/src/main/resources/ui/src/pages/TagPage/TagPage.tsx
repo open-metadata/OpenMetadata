@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Tabs } from 'antd';
+import { Button, Col, Dropdown, Row, Tabs, Tooltip } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { cloneDeep } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -19,9 +23,14 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
+import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import Loader from '../../components/common/Loader/Loader';
+import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
@@ -29,18 +38,26 @@ import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePa
 import AssetsTabs, {
   AssetsTabRef,
 } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
+import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
+import StyleModal from '../../components/Modals/StyleModal/StyleModal.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { ROUTES } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
+import { Operation } from '../../generated/entity/policies/policy';
+import { Style } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../mocks/Glossary.mock';
 import { searchData } from '../../rest/miscAPI';
-import { getTagByFqn } from '../../rest/tagAPI';
-import { getCountBadge } from '../../utils/CommonUtils';
+import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
+import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import Fqn from '../../utils/Fqn';
 import { getQueryFilterToExcludeTerm } from '../../utils/GlossaryUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationTagPath,
@@ -49,28 +66,51 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringsUtils';
-import './tagpage.less';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { TagTabs } from './TagPage.inteface';
 
 const TagPage = () => {
   const { t } = useTranslation();
-  const { pathname } = useLocation();
+  const { fqn: tagFqn } = useFqn();
   const history = useHistory();
-  const { tab } = useParams<{ tab: string }>();
-  const tagFqn = pathname.split('/').find((path) => path.includes('.'));
+  const { tab = TagTabs.OVERVIEW } = useParams<{ tab?: string }>();
+  const { permissions } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(false);
   const [tagItem, setTagItem] = useState<Tag>();
   const [assetModalVisible, setAssetModalVisible] = useState(false);
+  const [isDescriptionEditable, setIsDescriptionEditable] =
+    useState<boolean>(false);
+  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [isStyleEditing, setIsStyleEditing] = useState(false);
+  const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [showActions, setShowActions] = useState(false);
   const [assetCount, setAssetCount] = useState<number>(0);
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
-  const [breadcrumb, setBreadcrumb] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
+  const resourceType = ResourceEntity.TAG;
+  const breadcrumb: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
+    return tagItem
+      ? [
+          {
+            name: 'Classifications',
+            url: ROUTES.TAGS,
+            activeTitle: false,
+          },
+          {
+            name: tagItem.classification?.name ?? '',
+            url: tagItem.classification?.fullyQualifiedName
+              ? getClassificationDetailsPath(
+                  tagItem.classification.fullyQualifiedName
+                )
+              : '',
+            activeTitle: false,
+          },
+        ]
+      : [];
+  }, [tagItem]);
 
-  const activeTab = useMemo(() => {
-    return tab ?? 'overview';
-  }, [tab]);
+  const activeTab = tab;
 
   const handleAssetClick = useCallback(
     (asset?: EntityDetailsObjectInterface) => {
@@ -78,6 +118,34 @@ const TagPage = () => {
     },
     []
   );
+
+  const onDescriptionUpdate = async (updatedHTML?: string) => {
+    if (tagItem) {
+      if (tagItem.description !== updatedHTML) {
+        const updatedTableDetails = {
+          ...tagItem,
+          description: updatedHTML,
+        };
+        const jsonPatch = compare(tagItem, updatedTableDetails);
+        try {
+          const response = await patchTag(tagItem.id ?? '', jsonPatch);
+
+          setTagItem(response);
+
+          if (tagItem?.name !== updatedTableDetails.name) {
+            history.push(
+              getClassificationTagPath(response.fullyQualifiedName ?? '')
+            );
+          }
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
+        setIsDescriptionEditable(false);
+      } else {
+        setIsDescriptionEditable(false);
+      }
+    }
+  };
 
   const getTagData = async () => {
     try {
@@ -87,37 +155,12 @@ const TagPage = () => {
         setTagItem(response);
       }
     } catch (e) {
-      // handle error
+      if (e instanceof AxiosError) {
+        showErrorToast(e);
+      }
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleBreadcrumb = (fqn: string) => {
-    if (!fqn) {
-      return;
-    }
-
-    const arr = Fqn.split(fqn);
-    const dataFQN: Array<string> = [];
-    const newData = [
-      {
-        name: 'Classifications',
-        url: getClassificationDetailsPath(arr[0]),
-        activeTitle: false,
-      },
-      ...arr.slice(0, -1).map((d) => {
-        dataFQN.push(d);
-
-        return {
-          name: d,
-          url: getClassificationDetailsPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
-          activeTitle: false,
-        };
-      }),
-    ];
-
-    setBreadcrumb(newData);
   };
 
   const activeTabHandler = (tab: string) => {
@@ -128,6 +171,104 @@ const TagPage = () => {
           tab
         ),
       });
+    }
+  };
+
+  const editDescriptionPermission = useMemo(() => {
+    const editDescription = checkPermission(
+      Operation.EditDescription,
+      resourceType,
+      permissions
+    );
+
+    return editDescription;
+  }, [permissions, resourceType]);
+
+  const updateTag = async (updatedData: Tag) => {
+    if (tagItem) {
+      const jsonPatch = compare(tagItem, updatedData);
+
+      try {
+        const response = await patchTag(tagItem.id ?? '', jsonPatch);
+
+        setTagItem(response);
+
+        if (tagItem?.name !== updatedData.name) {
+          history.push(
+            getClassificationTagPath(response.fullyQualifiedName ?? '')
+          );
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
+  const onNameSave = async (obj: { name: string; displayName: string }) => {
+    if (tagItem) {
+      const { name, displayName } = obj;
+      let updatedDetails = cloneDeep(tagItem);
+
+      updatedDetails = {
+        ...tagItem,
+        name: name?.trim() || tagItem.name,
+        displayName: displayName?.trim(),
+      };
+
+      await updateTag(updatedDetails);
+      setIsNameEditing(false);
+    }
+  };
+
+  const onStyleSave = async (data: Style) => {
+    if (tagItem) {
+      const style: Style = {
+        color: data.color || undefined,
+        iconURL: data.iconURL || undefined,
+      };
+
+      const updatedDetails = {
+        ...tagItem,
+        style,
+        description: tagItem.description ?? '',
+      };
+
+      await updateTag(updatedDetails);
+      setIsStyleEditing(false);
+    }
+  };
+
+  const handleTagDelete = async (id: string) => {
+    try {
+      await deleteTag(id);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: t('label.tag-lowercase'),
+        })
+      );
+      setIsLoading(true);
+
+      if (tagItem?.classification?.fullyQualifiedName) {
+        history.push(
+          getClassificationDetailsPath(
+            tagItem.classification.fullyQualifiedName
+          )
+        );
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', {
+          entity: t('label.glossary'),
+        })
+      );
+    }
+  };
+
+  const handleDelete = async () => {
+    if (tagItem?.id) {
+      await handleTagDelete(tagItem.id);
+      setIsDelete(false);
     }
   };
 
@@ -153,8 +294,65 @@ const TagPage = () => {
   const handleAssetSave = useCallback(() => {
     fetchClassificationTagAssets();
     assetTabRef.current?.refreshAssets();
-    tab !== 'assets' && activeTabHandler('assets');
+    tab !== TagTabs.ASSETS && activeTabHandler(TagTabs.ASSETS);
   }, [assetTabRef]);
+
+  const manageButtonContent: ItemType[] = [
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.rename-entity', {
+            entity: t('label.tag-lowercase'),
+          })}
+          icon={EditIcon}
+          id="rename-button"
+          name={t('label.rename')}
+        />
+      ),
+      key: 'rename-button',
+      onClick: (e) => {
+        e.domEvent.stopPropagation();
+        setIsNameEditing(true);
+        setShowActions(false);
+      },
+    },
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.edit-entity-style-description', {
+            entity: t('label.tag-lowercase'),
+          })}
+          icon={StyleIcon}
+          id="rename-button"
+          name={t('label.style')}
+        />
+      ),
+      key: 'edit-style-button',
+      onClick: (e) => {
+        e.domEvent.stopPropagation();
+        setIsStyleEditing(true);
+        setShowActions(false);
+      },
+    },
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.delete-entity-type-action-description', {
+            entityType: t('label.tag-lowercase'),
+          })}
+          icon={IconDelete}
+          id="delete-button"
+          name={t('label.delete')}
+        />
+      ),
+      key: 'delete-button',
+      onClick: (e) => {
+        e.domEvent.stopPropagation();
+        setIsDelete(true);
+        setShowActions(false);
+      },
+    },
+  ];
 
   const tabItems = useMemo(() => {
     const items = [
@@ -162,14 +360,21 @@ const TagPage = () => {
         label: <div data-testid="overview">{t('label.overview')}</div>,
         key: 'overview',
         children: (
-          <Row>
-            <Col className="description-content" span={24}>
+          <Row className="p-md">
+            <Col span={24}>
               <DescriptionV1
+                removeBlur
                 description={tagItem?.description}
                 entityFqn={tagItem?.fullyQualifiedName}
                 entityName={getEntityName(tagItem)}
-                entityType={EntityType.GLOSSARY_TERM}
+                entityType={EntityType.TAG}
+                hasEditAccess={editDescriptionPermission}
+                isEdit={isDescriptionEditable}
                 showActions={!tagItem?.deleted}
+                showCommentsIcon={false}
+                onCancel={() => setIsDescriptionEditable(false)}
+                onDescriptionEdit={() => setIsDescriptionEditable(true)}
+                onDescriptionUpdate={onDescriptionUpdate}
               />
             </Col>
           </Row>
@@ -201,7 +406,15 @@ const TagPage = () => {
     ];
 
     return items;
-  }, [tagItem, activeTab, assetCount, handleAssetSave]);
+  }, [
+    tagItem,
+    activeTab,
+    assetCount,
+    assetTabRef,
+    handleAssetSave,
+    isDescriptionEditable,
+    editDescriptionPermission,
+  ]);
 
   const icon = useMemo(() => {
     if (tagItem?.style && (tagItem as Tag).style?.iconURL) {
@@ -224,14 +437,6 @@ const TagPage = () => {
     fetchClassificationTagAssets();
   }, []);
 
-  useEffect(() => {
-    if (tagItem) {
-      handleBreadcrumb(
-        tagItem.fullyQualifiedName ? tagItem.fullyQualifiedName : tagItem.name
-      );
-    }
-  }, [tagItem]);
-
   return (
     <>
       {isLoading ? (
@@ -239,7 +444,7 @@ const TagPage = () => {
       ) : (
         tagItem && (
           <PageLayoutV1 pageTitle={tagItem.name}>
-            <Row>
+            <Row gutter={[0, 8]}>
               <Col span={24}>
                 <>
                   <Row
@@ -253,12 +458,10 @@ const TagPage = () => {
                         entityType={EntityType.TAG}
                         icon={icon}
                         serviceName=""
-                        titleColor={
-                          tagItem.style?.color ? tagItem.style.color : 'black'
-                        }
+                        titleColor={tagItem.style?.color ?? 'black'}
                       />
                     </Col>
-                    <Col className="p-x-md" flex="320px">
+                    <Col className="p-x-md">
                       <div style={{ textAlign: 'right' }}>
                         <Button
                           data-testid="data-classification-add-button"
@@ -268,6 +471,35 @@ const TagPage = () => {
                             entity: t('label.asset-plural'),
                           })}
                         </Button>
+                        {manageButtonContent.length > 0 && (
+                          <Dropdown
+                            align={{ targetOffset: [-12, 0] }}
+                            className="m-l-xs"
+                            menu={{
+                              items: manageButtonContent,
+                            }}
+                            open={showActions}
+                            overlayClassName="glossary-manage-dropdown-list-container"
+                            overlayStyle={{ width: '350px' }}
+                            placement="bottomRight"
+                            trigger={['click']}
+                            onOpenChange={setShowActions}>
+                            <Tooltip
+                              placement="topRight"
+                              title={t('label.manage-entity', {
+                                entity: t('label.tag-lowercase'),
+                              })}>
+                              <Button
+                                className="glossary-manage-dropdown-button tw-px-1.5"
+                                data-testid="manage-button"
+                                icon={
+                                  <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                                }
+                                onClick={() => setShowActions(true)}
+                              />
+                            </Tooltip>
+                          </Dropdown>
+                        )}
                       </div>
                     </Col>
                   </Row>
@@ -284,6 +516,45 @@ const TagPage = () => {
                 />
               </Col>
             </Row>
+
+            {tagItem && (
+              <EntityDeleteModal
+                bodyText={getEntityDeleteMessage(tagItem.name, '')}
+                entityName={tagItem.name}
+                entityType="Tag"
+                visible={isDelete}
+                onCancel={() => setIsDelete(false)}
+                onConfirm={handleDelete}
+              />
+            )}
+
+            <EntityNameModal
+              allowRename
+              entity={tagItem}
+              nameValidationRules={[
+                {
+                  min: 1,
+                  max: 128,
+                  message: t('message.entity-size-in-between', {
+                    entity: t('label.name'),
+                    min: 1,
+                    max: 128,
+                  }),
+                },
+              ]}
+              title={t('label.edit-entity', {
+                entity: t('label.name'),
+              })}
+              visible={isNameEditing}
+              onCancel={() => setIsNameEditing(false)}
+              onSave={onNameSave}
+            />
+            <StyleModal
+              open={isStyleEditing}
+              style={tagItem.style}
+              onCancel={() => setIsStyleEditing(false)}
+              onSubmit={onStyleSave}
+            />
             {tagItem.fullyQualifiedName && assetModalVisible && (
               <AssetSelectionModal
                 entityFqn={tagItem.fullyQualifiedName}

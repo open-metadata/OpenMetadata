@@ -22,7 +22,6 @@ import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import Fqn from '../../../utils/Fqn';
 import {
   getClassificationTagPath,
   getGlossaryPath,
@@ -93,7 +92,7 @@ const TagsV1 = ({
     () =>
       (tagType ?? tag.source) === TagSource.Glossary
         ? getGlossaryPath(tag.tagFQN)
-        : getClassificationTagPath(Fqn.split(tag.tagFQN).join('.')),
+        : getClassificationTagPath(tag.tagFQN),
     [tagType, tag.source, tag.tagFQN]
   );
 
