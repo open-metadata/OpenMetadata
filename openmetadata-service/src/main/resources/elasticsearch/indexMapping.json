@@ -11,7 +11,7 @@
     "indexMappingFile": "/elasticsearch/%s/stored_procedure_index_mapping.json",
     "alias": "storedProcedure",
     "parentAliases": ["database", "databaseSchema", "databaseService", "all", "dataAsset"],
-    "childAliases": ["testSuite", "testCase"]
+    "childAliases": []
   },
   "databaseSchema": {
     "indexName": "database_schema_search_index",
