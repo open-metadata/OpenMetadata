@@ -579,7 +579,7 @@ export const checkDataConsumerPermissions = async (page: Page) => {
     ).not.toBeVisible();
   }
 
-  await page.click('[data-testid="lineage"] > .ant-space-item');
+  await page.click('[data-testid="lineage"]');
 
   await expect(page.locator('[data-testid="edit-lineage"]')).toBeDisabled();
 };
@@ -658,7 +658,7 @@ export const checkStewardPermissions = async (page: Page) => {
   await expect(page.locator('[data-testid="manage-button"]')).toBeVisible();
 
   // Click on lineage item
-  await page.click('[data-testid="lineage"] > .ant-space-item');
+  await page.click('[data-testid="lineage"]');
 
   // Check if edit lineage button is enabled
   await expect(page.locator('[data-testid="edit-lineage"]')).toBeEnabled();

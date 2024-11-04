@@ -185,6 +185,8 @@ site_menu:
 
   - category: Deployment / How to enable AWS RDS IAM Auth
     url: /deployment/rds-iam-auth
+  - category: Deployment / How to enable Azure Auth
+    url: /deployment/azure-auth
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
   - category: Deployment / Database Connection Pooling
@@ -370,6 +372,12 @@ site_menu:
     url: /connectors/database/sap-hana
   - category: Connectors / Database / SAP Hana / Run Externally
     url: /connectors/database/sap-hana/yaml
+  - category: Connectors / Database / SAP ERP
+    url: /connectors/database/sap-erp
+  - category: Connectors / Database / SAP ERP / Run Externally
+    url: /connectors/database/sap-erp/yaml
+  - category: Connectors / Database / SAP ERP / Setup SAP ERP APIs
+    url: /connectors/database/sap-erp/setup-sap-apis
   - category: Connectors / Database / SAS
     url: /connectors/database/sas
   - category: Connectors / Database / SAS / Run Externally
@@ -933,6 +941,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.7 Release
+    url: /releases/all-releases/#1.5.7-release
   - category: Releases / All Releases / 1.5.6 Release
     url: /releases/all-releases/#1.5.6-release
   - category: Releases / All Releases / 1.5.5 Release
