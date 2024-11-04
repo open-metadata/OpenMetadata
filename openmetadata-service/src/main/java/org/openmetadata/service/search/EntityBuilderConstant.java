@@ -28,6 +28,7 @@ public class EntityBuilderConstant {
   public static final String POST_TAG = "</span>";
   public static final Integer MAX_AGGREGATE_SIZE = 10000;
   public static final Integer MAX_RESULT_HITS = 10000;
+  public static final Integer MAX_ANALYZED_OFFSET = 1000;
   public static final String QUERY = "query";
   public static final String QUERY_NGRAM = "query.ngram";
 
