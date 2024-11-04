@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS workflow_definition_entity (
 );
 
 -- Create Workflow Instance Time Series
-CREATE TABLE IF NOT EXISTS  (
+CREATE TABLE IF NOT EXISTS workflow_instance_time_series (
   id varchar(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
   workflowDefinitionId varchar(36) GENERATED ALWAYS AS (json ->> 'workflowDefinitionId') STORED NOT NULL,
   jsonSchema varchar(256) NOT NULL,
