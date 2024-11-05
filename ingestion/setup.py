@@ -141,6 +141,7 @@ base_requirements = {
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
+    "shapely",
 }
 
 plugins: Dict[str, Set[str]] = {
@@ -418,6 +419,7 @@ def filter_requirements(filtered: Set[str]) -> List[str]:
 
 setup(
     install_requires=list(base_requirements),
+    include_package_data=True,
     extras_require={
         "base": list(base_requirements),
         "dev": list(dev),
