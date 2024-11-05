@@ -129,8 +129,10 @@ public abstract class AbstractEventConsumer
         .eventSubscriptionDAO()
         .insertSuccessfulChangeEvent(
             UUID.randomUUID().toString(),
+            event.getId().toString(),
             eventSubscriptionId.toString(),
-            JsonUtils.pojoToJson(event));
+            JsonUtils.pojoToJson(event),
+            event.getTimestamp().toString());
   }
 
   private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
