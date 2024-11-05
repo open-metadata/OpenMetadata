@@ -453,14 +453,7 @@ const TagPage = () => {
         tagItem && (
           <PageLayoutV1 pageTitle={tagItem.name}>
             <Row gutter={[0, 8]}>
-              <Col
-                span={24}
-                style={{
-                  position: 'sticky',
-                  top: '0px',
-                  zIndex: 1,
-                  background: 'white',
-                }}>
+              <Col span={24}>
                 <>
                   <Row
                     className="data-classification"
