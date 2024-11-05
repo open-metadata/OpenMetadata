@@ -106,6 +106,8 @@ export const EntityExportModalProvider = ({
     );
     setDownloading(false);
     handleCancel();
+    setCSVExportJob(undefined);
+    csvExportJobRef.current = undefined;
   };
 
   const handleCSVExportJobUpdate = (
