@@ -30,6 +30,7 @@
         "EditDescription",
         "EditDisplayName",
         "EditLineage",
+        "EditEntityRelationship",
         "EditPolicy",
         "EditOwners",
         "EditQueries",

@@ -59,12 +59,14 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
-import org.openmetadata.schema.api.searcg.SearchSettings;
+import org.openmetadata.schema.api.lineage.LineageSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
@@ -99,6 +101,8 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.FailedEvent;
+import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -2088,18 +2092,22 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO consumers_dlq(id, extension, json) "
-                + "VALUES (:id, :extension, :json)"
-                + "ON DUPLICATE KEY UPDATE json = :json",
+            "INSERT INTO consumers_dlq(id, extension, json, source) "
+                + "VALUES (:id, :extension, :json, :source) "
+                + "ON DUPLICATE KEY UPDATE json = :json, source = :source",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO consumers_dlq(id, extension, json) "
-                + "VALUES (:id, :extension, (:json :: jsonb)) ON CONFLICT (id, extension) "
-                + "DO UPDATE SET json = EXCLUDED.json",
+            "INSERT INTO consumers_dlq(id, extension, json, source) "
+                + "VALUES (:id, :extension, (:json :: jsonb), :source) "
+                + "ON CONFLICT (id, extension) "
+                + "DO UPDATE SET json = EXCLUDED.json, source = EXCLUDED.source",
         connectionType = POSTGRES)
     void upsertFailedEvent(
-        @Bind("id") String id, @Bind("extension") String extension, @Bind("json") String json);
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("json") String json,
+        @Bind("source") String source);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -3905,6 +3913,40 @@ public interface CollectionDAO {
   }
 
   interface ChangeEventDAO {
+    @SqlQuery(
+        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit")
+    List<String> listUnprocessedEvents(@Bind("offset") long offset, @Bind("limit") long limit);
+
+    @SqlQuery(
+        "SELECT json, source FROM consumers_dlq WHERE id = :id ORDER BY timestamp ASC LIMIT :limit")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listFailedEventsById(
+        @Bind("id") String id, @Bind("limit") long limit);
+
+    @SqlQuery(
+        "SELECT json, source FROM consumers_dlq WHERE id = :id AND source = :source ORDER BY timestamp ASC LIMIT :limit")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listFailedEventsByIdAndSource(
+        @Bind("id") String id, @Bind("source") String source, @Bind("limit") long limit);
+
+    @SqlQuery("SELECT json, source FROM consumers_dlq LIMIT :limit")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listAllFailedEvents(@Bind("limit") long limit);
+
+    @SqlQuery("SELECT json, source FROM consumers_dlq WHERE source = :source LIMIT :limit")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listAllFailedEventsBySource(
+        @Bind("source") String source, @Bind("limit") long limit);
+
+    @SqlQuery(
+        "SELECT json FROM change_event ce where ce.offset < :offset ORDER BY ce.eventTime ASC LIMIT :limit")
+    List<String> listChangeEventsBeforeOffset(
+        @Bind("limit") long limit, @Bind("offset") long offset);
+
+    @SqlQuery(
+        "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
+    int recordExists(@Bind("id") String id);
+
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json)",
         connectionType = MYSQL)
@@ -3951,6 +3993,20 @@ public interface CollectionDAO {
         value = "SELECT MAX(\"offset\") FROM change_event",
         connectionType = POSTGRES)
     long getLatestOffset();
+  }
+
+  class FailedEventResponseMapper implements RowMapper<FailedEventResponse> {
+    @Override
+    public FailedEventResponse map(ResultSet rs, StatementContext ctx) throws SQLException {
+      FailedEventResponse response = new FailedEventResponse();
+      FailedEvent failedEvent = JsonUtils.readValue(rs.getString("json"), FailedEvent.class);
+      response.setFailingSubscriptionId(failedEvent.getFailingSubscriptionId());
+      response.setChangeEvent(failedEvent.getChangeEvent());
+      response.setReason(failedEvent.getReason());
+      response.setSource(rs.getString("source"));
+      response.setTimestamp(failedEvent.getTimestamp());
+      return response;
+    }
   }
 
   interface TypeEntityDAO extends EntityDAO<Type> {
@@ -4910,6 +4966,9 @@ public interface CollectionDAO {
                 .readValue(json, String.class);
             case PROFILER_CONFIGURATION -> JsonUtils.readValue(json, ProfilerConfiguration.class);
             case SEARCH_SETTINGS -> JsonUtils.readValue(json, SearchSettings.class);
+            case ASSET_CERTIFICATION_SETTINGS -> JsonUtils.readValue(
+                json, AssetCertificationSettings.class);
+            case LINEAGE_SETTINGS -> JsonUtils.readValue(json, LineageSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

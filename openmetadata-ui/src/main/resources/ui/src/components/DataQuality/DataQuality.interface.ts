@@ -1,7 +1,10 @@
 import { DateRangeObject } from 'Models';
 import { TestCaseStatus } from '../../generated/tests/testCase';
+import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { TestPlatform } from '../../generated/tests/testDefinition';
+import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
 import { TestCaseType } from '../../rest/testAPI';
+import { AreaChartColorScheme } from '../Visualisations/Chart/Chart.interface';
 
 /*
  *  Copyright 2023 Collate.
@@ -15,6 +18,12 @@ import { TestCaseType } from '../../rest/testAPI';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+export enum IncidentTimeMetricsType {
+  TIME_TO_RESPONSE = 'timeToResponse',
+  TIME_TO_RESOLUTION = 'timeToResolution',
+}
+
 export type TestSuiteSearchParams = {
   searchValue: string;
   status: string;
@@ -33,3 +42,28 @@ export type TestCaseSearchParams = {
   tags?: string;
   serviceName?: string;
 };
+
+export interface IncidentTypeAreaChartWidgetProps {
+  title: string;
+  incidentStatusType: TestCaseResolutionStatusTypes;
+  name: string;
+  chartFilter?: DataQualityDashboardChartFilters;
+}
+
+export interface IncidentTimeChartWidgetProps {
+  title: string;
+  incidentMetricType: IncidentTimeMetricsType;
+  name: string;
+  chartFilter?: DataQualityDashboardChartFilters;
+}
+export interface TestCaseStatusAreaChartWidgetProps {
+  title: string;
+  testCaseStatus: TestCaseStatus;
+  name: string;
+  chartColorScheme?: AreaChartColorScheme;
+  chartFilter?: DataQualityDashboardChartFilters;
+}
+
+export interface PieChartWidgetCommonProps {
+  chartFilter?: DataQualityDashboardChartFilters;
+}

@@ -42,3 +42,10 @@ export interface EditColumnTag {
   column: Column;
   index: number;
 }
+
+export interface UpdatedColumnFieldData {
+  fqn: string;
+  field: keyof Column;
+  value?: string;
+  columns: Column[];
+}

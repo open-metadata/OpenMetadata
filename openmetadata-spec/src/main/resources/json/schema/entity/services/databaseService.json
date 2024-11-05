@@ -57,7 +57,8 @@
         "Iceberg",
         "Teradata",
         "SapErp",
-        "Synapse"
+        "Synapse",
+        "Exasol"
       ],
       "javaEnums": [
         {
@@ -188,6 +189,9 @@
         },
         {
           "name": "Synapse"
+        },
+        {
+          "name": "Exasol"
         }
       ]
     },
@@ -323,6 +327,9 @@
             },
             {
               "$ref": "./connections/database/synapseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/exasolConnection.json"
             }
           ]
         }
