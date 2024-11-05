@@ -110,7 +110,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
     onTreeUpdate(nTree, nConfig);
 
-    if (outputType === QueryBuilderOutputType.ELASTICSEARCH) {
+    if (outputType === SearchOutputType.ElasticSearch) {
       const data = elasticSearchFormat(nTree, config) ?? '';
       const qFilter = {
         query: data,
@@ -128,7 +128,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
 
   const loadDefaultValueInTree = useCallback(() => {
     if (!isEmpty(value)) {
-      if (outputType === QueryBuilderOutputType.ELASTICSEARCH) {
+      if (outputType === SearchOutputType.ElasticSearch) {
         const parsedTree = getJsonTreeFromQueryFilter(
           JSON.parse(value || '')
         ) as JsonTree;
