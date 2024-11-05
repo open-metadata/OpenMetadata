@@ -307,7 +307,7 @@ const GlossaryTermsV1 = ({
         : []),
     ];
 
-    return getGlossaryTermDetailTabs(items, customizedPage?.tabs ?? []);
+    return getGlossaryTermDetailTabs(items, customizedPage?.tabs);
   }, [
     customizedPage?.tabs,
     glossaryTerm,

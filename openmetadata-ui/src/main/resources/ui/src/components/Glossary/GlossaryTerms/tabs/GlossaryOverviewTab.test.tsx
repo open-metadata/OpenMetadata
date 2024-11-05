@@ -29,13 +29,6 @@ jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock(
-  '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component',
-  () => {
-    return jest.fn().mockImplementation(() => <>testGlossaryRightPanel</>);
-  }
-);
-
 jest.mock('../../../common/ResizablePanels/ResizablePanels', () => {
   return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <div>

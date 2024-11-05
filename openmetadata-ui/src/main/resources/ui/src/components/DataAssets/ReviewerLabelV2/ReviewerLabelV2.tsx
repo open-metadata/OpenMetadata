@@ -93,7 +93,7 @@ export const ReviewerLabelV2 = () => {
         )}
       </div>
       <div>
-        <div data-testid="reviewer-name">
+        <div data-testid="glossary-reviewer-name">
           {getOwnerVersionLabel(
             data,
             isVersionView ?? false,
