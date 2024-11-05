@@ -7,7 +7,7 @@ slug: /connectors/database/glue
 name="Glue"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "dbt", "Lineage"]
+availableFeatures=["Metadata", "dbt", "External Table Lineage"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Profiler", "Data Quality", "Column-level Lineage"]
 / %}
 
