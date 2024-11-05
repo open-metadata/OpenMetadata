@@ -47,6 +47,10 @@ class TableClassBase {
   ): TabProps[] {
     return getTableDetailPageBaseTabs(tableDetailsPageProps);
   }
+
+  public getAlertEnableStatus() {
+    return false;
+  }
 }
 
 const tableClassBase = new TableClassBase();

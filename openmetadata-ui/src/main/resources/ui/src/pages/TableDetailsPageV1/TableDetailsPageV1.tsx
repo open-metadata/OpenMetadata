@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Space, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -20,7 +20,8 @@ import { isEmpty, isEqual, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
@@ -75,6 +76,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
+import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
   addFollower,
@@ -131,6 +133,7 @@ const TableDetailsPageV1: React.FC = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
+  const [dqFailureCount, setDqFailureCount] = useState(0);
 
   const tableFqn = useMemo(
     () =>
@@ -141,6 +144,21 @@ const TableDetailsPageV1: React.FC = () => {
       ),
     [datasetFQN]
   );
+
+  const alertBadge = useMemo(() => {
+    return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (
+      <Tooltip placement="right" title={t('label.check-data-quality-failure')}>
+        <Link
+          to={getEntityDetailsPath(
+            EntityType.TABLE,
+            tableFqn,
+            EntityTabs.PROFILER
+          )}>
+          <RedAlertIcon height={24} width={24} />
+        </Link>
+      </Tooltip>
+    ) : undefined;
+  }, [dqFailureCount, tableFqn]);
 
   const extraDropdownContent = useMemo(
     () =>
@@ -198,16 +216,48 @@ const TableDetailsPageV1: React.FC = () => {
     }
   }, [tableFqn, viewUsagePermission]);
 
-  const fetchTestCaseSummary = async () => {
-    if (isUndefined(tableDetails?.testSuite?.id)) {
-      return;
+  const fetchDQFailureCount = async () => {
+    if (!tableClassBase.getAlertEnableStatus()) {
+      setDqFailureCount(0);
     }
 
     try {
+      const data = await getDataQualityLineage(datasetFQN, {
+        upstreamDepth: 3,
+      });
+      setDqFailureCount(
+        data.nodes && data.nodes.length ? data.nodes.length : 0
+      );
+    } catch (error) {
+      setDqFailureCount(0);
+    }
+  };
+
+  const fetchTestCaseSummary = async () => {
+    try {
+      if (isUndefined(tableDetails?.testSuite?.id)) {
+        await fetchDQFailureCount();
+
+        return;
+      }
+
       const response = await getTestCaseExecutionSummary(
         tableDetails?.testSuite?.id
       );
       setTestCaseSummary(response);
+
+      const failureCount =
+        response.columnTestSummary?.reduce((acc, curr) => {
+          return acc + (curr.failed ?? 0);
+        }, response.failed ?? 0) ??
+        response.failed ??
+        0;
+
+      if (failureCount === 0) {
+        await fetchDQFailureCount();
+      } else {
+        setDqFailureCount(failureCount);
+      }
     } catch (error) {
       setTestCaseSummary(undefined);
     }
@@ -958,6 +1008,7 @@ const TableDetailsPageV1: React.FC = () => {
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateTableDetailsState}
+            badge={alertBadge}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             extraDropdownContent={extraDropdownContent}
