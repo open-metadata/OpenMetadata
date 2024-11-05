@@ -716,10 +716,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     ResultList<TestCase> allEntities =
         listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(testCasesNum, allEntities.getData().size());
-    queryParams.put("q", "test_getSimpleListFromSearchc");
+    queryParams.put("q", "test_getSimpleListFromSearchb");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(1, allEntities.getData().size());
-    assertThat(allEntities.getData().get(0).getName()).contains("test_getSimpleListFromSearchc");
+    assertThat(allEntities.getData().get(0).getName()).contains("test_getSimpleListFromSearchb");
 
     queryParams.clear();
     queryParams.put("entityLink", testCaseForEL.getEntityLink());
