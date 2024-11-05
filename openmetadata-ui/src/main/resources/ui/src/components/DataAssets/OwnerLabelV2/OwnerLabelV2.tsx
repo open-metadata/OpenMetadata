@@ -35,7 +35,7 @@ export const OwnerLabelV2 = <
   };
 
   return (
-    <div data-testid="owner-link">
+    <div data-testid="glossary-right-panel-owner-link">
       <div className="d-flex items-center m-b-xs">
         <Typography.Text className="right-panel-label">
           {t('label.owner-plural')}

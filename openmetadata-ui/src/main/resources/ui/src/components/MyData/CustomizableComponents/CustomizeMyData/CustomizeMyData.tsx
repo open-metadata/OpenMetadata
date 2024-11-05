@@ -184,6 +184,7 @@ function CustomizeMyData({
       4
     );
     setLayout(newMainPanelLayout);
+    onSaveLayout();
   }, []);
 
   useEffect(() => {

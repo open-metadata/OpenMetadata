@@ -59,7 +59,7 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
       icon: ENTITY_ICONS[camelCase('Navigation')],
     },
     {
-      key: 'homepage',
+      key: PageType.LandingPage,
       label: i18n.t('label.homepage'),
       description: 'Homepage',
       icon: ENTITY_ICONS[camelCase('Homepage')],

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Modal } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
@@ -45,17 +44,7 @@ function CustomizeGlossaryTermDetailPage({
       customizeGlossaryTermPageClassBase.defaultLayout
   );
 
-  const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
-
-  const handleOpenResetModal = useCallback(() => {
-    setIsResetModalOpen(true);
-  }, []);
-
-  const handleCloseResetModal = useCallback(() => {
-    setIsResetModalOpen(false);
-  }, []);
-
-  const handleReset = useCallback(() => {
+  const handleReset = useCallback(async () => {
     // Get default layout with the empty widget added at the end
     const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
       customizeGlossaryTermPageClassBase.defaultLayout,
@@ -63,11 +52,7 @@ function CustomizeGlossaryTermDetailPage({
       4
     );
     setLayout(newMainPanelLayout);
-    onSaveLayout({
-      ...(currentPage as Page),
-      layout: getUniqueFilteredLayout(newMainPanelLayout),
-    });
-    setIsResetModalOpen(false);
+    await onSaveLayout();
   }, []);
 
   const handleSave = async () => {
@@ -92,26 +77,12 @@ function CustomizeGlossaryTermDetailPage({
         })}>
         <CustomizablePageHeader
           personaName={getEntityName(personaDetails)}
-          onReset={handleOpenResetModal}
+          onReset={handleReset}
           onSave={handleSave}
         />
         <GlossaryHeaderWidget isGlossary={isGlossary} />
         <CustomizeTabWidget />
       </PageLayoutV1>
-
-      {isResetModalOpen && (
-        <Modal
-          centered
-          cancelText={t('label.no')}
-          data-testid="reset-layout-modal"
-          okText={t('label.yes')}
-          open={isResetModalOpen}
-          title={t('label.reset-default-layout')}
-          onCancel={handleCloseResetModal}
-          onOk={handleReset}>
-          {t('message.reset-layout-confirmation')}
-        </Modal>
-      )}
     </>
   );
 }

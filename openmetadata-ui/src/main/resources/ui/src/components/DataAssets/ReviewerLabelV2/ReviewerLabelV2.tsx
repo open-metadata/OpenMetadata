@@ -60,7 +60,7 @@ export const ReviewerLabelV2 = () => {
   };
 
   return (
-    <div data-testid="reviewer">
+    <div data-testid="glossary-reviewer">
       <div className={`d-flex items-center ${hasReviewers ? 'm-b-xss' : ''}`}>
         <Typography.Text
           className="right-panel-label"

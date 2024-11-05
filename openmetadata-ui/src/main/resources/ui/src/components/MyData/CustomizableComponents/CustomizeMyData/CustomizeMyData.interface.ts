@@ -18,5 +18,5 @@ export interface CustomizeMyDataProps {
   personaDetails?: Persona;
   isGlossary?: boolean;
   initialPageData: Page | null;
-  onSaveLayout: (page: Page) => Promise<void>;
+  onSaveLayout: (page?: Page) => Promise<void>;
 }

@@ -62,7 +62,7 @@ export const CustomizablePage = () => {
     setCurrentPageType,
   } = useCustomizeStore();
 
-  const handlePageCustomizeSave = async (newPage: Page) => {
+  const handlePageCustomizeSave = async (newPage?: Page) => {
     if (!document) {
       return;
     }
@@ -72,9 +72,11 @@ export const CustomizablePage = () => {
       const pageData = getPage(pageFqn);
 
       if (pageData) {
-        newDoc.data.pages = newDoc.data?.pages?.map((p: Page) =>
-          p.pageType === pageFqn ? newPage : p
-        );
+        newDoc.data.pages = newPage
+          ? newDoc.data?.pages?.map((p: Page) =>
+              p.pageType === pageFqn ? newPage : p
+            )
+          : newDoc.data?.pages.filter((p: Page) => p.pageType !== pageFqn);
       } else {
         newDoc.data = {
           ...newDoc.data,

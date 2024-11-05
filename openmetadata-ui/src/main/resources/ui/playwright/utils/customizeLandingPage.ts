@@ -34,7 +34,7 @@ export const navigateToCustomizeLandingPage = async (
 
   await page.getByRole('tab', { name: 'Customize UI' }).click();
 
-  await page.getByTestId('homepage').click();
+  await page.getByTestId('LandingPage').click();
 
   expect((await getCustomPageDataResponse).status()).toBe(
     customPageDataResponse
