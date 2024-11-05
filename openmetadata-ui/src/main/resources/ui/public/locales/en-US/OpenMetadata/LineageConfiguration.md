@@ -6,14 +6,14 @@ $$section
 
 ### Upstream Depth $(id="upstreamDepth")
 
-Display up to 3 nodes of upstream lineage to identify the source (parent levels).
+Display up to 5 nodes of upstream lineage to identify the source (parent levels).
 $$
 
 $$section
 
 ### Downstream Depth $(id="downstreamDepth")
 
-Display up to 3 nodes of downstream lineage to identify the target (child levels).
+Display up to 5 nodes of downstream lineage to identify the target (child levels).
 $$
 
 $$section

@@ -35,7 +35,7 @@ import {
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
-  getSearchSettings,
+  getSettingsByType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -54,7 +54,7 @@ const LineageConfigPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
-        t('label.lineage-config')
+        t('label.lineage')
       ),
     []
   );
@@ -63,7 +63,7 @@ const LineageConfigPage = () => {
     try {
       setIsLoading(true);
 
-      const config = await getSearchSettings(SettingType.LineageSettings);
+      const config = await getSettingsByType(SettingType.LineageSettings);
       setLineageConfig(config as LineageSettings);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -134,7 +134,7 @@ const LineageConfigPage = () => {
                   className="m-b-0"
                   data-testid="heading"
                   level={5}>
-                  {t('label.lineage-config')}
+                  {t('label.lineage')}
                 </Typography.Title>
               </Col>
               <Col span={24}>
@@ -157,7 +157,7 @@ const LineageConfigPage = () => {
                     ]}>
                     <Input
                       data-testid="field-upstream"
-                      max={3}
+                      max={5}
                       min={1}
                       type="number"
                     />
@@ -176,7 +176,7 @@ const LineageConfigPage = () => {
                     ]}>
                     <Input
                       data-testid="field-downstream"
-                      max={3}
+                      max={5}
                       min={1}
                       type="number"
                     />
@@ -200,7 +200,7 @@ const LineageConfigPage = () => {
                     </Select>
                   </Form.Item>
                 </Form>
-                <Row justify="end">
+                <Row className="m-b-xl" justify="end">
                   <Col className="d-flex justify-end gap-2" span={24}>
                     <Button
                       data-testid="cancel-button"

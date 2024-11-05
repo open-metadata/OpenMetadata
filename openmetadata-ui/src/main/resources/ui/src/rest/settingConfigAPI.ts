@@ -62,7 +62,7 @@ export const testEmailConnection = async (data: { email: string }) => {
   return response;
 };
 
-export const getSearchSettings = async (
+export const getSettingsByType = async (
   settingType: SettingType
 ): Promise<SearchSettings | LineageSettings> => {
   const response = await axiosClient.get<Settings>(

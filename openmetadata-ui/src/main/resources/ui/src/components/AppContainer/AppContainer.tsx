@@ -20,7 +20,7 @@ import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
-import { getSearchSettings } from '../../rest/settingConfigAPI';
+import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
@@ -43,7 +43,7 @@ const AppContainer = () => {
     try {
       const [response, lineageConfig] = await Promise.all([
         getLimitConfig(),
-        getSearchSettings(SettingType.LineageSettings),
+        getSettingsByType(SettingType.LineageSettings),
       ]);
 
       setConfig(response);
