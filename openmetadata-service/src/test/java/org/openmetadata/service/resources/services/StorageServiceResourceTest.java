@@ -106,7 +106,10 @@ public class StorageServiceResourceTest
     // Update StorageService description and connection
 
     CreateStorageService update =
-        createRequest(test).withDescription("description1").withConnection(connection2);
+        createRequest(test)
+            .withDescription("description1")
+            .withConnection(connection2)
+            .withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");

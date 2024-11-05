@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -34,11 +35,15 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -50,6 +55,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.teams.TeamResourceTest;
+import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -315,6 +322,17 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   @Test
   void post_createLogicalTestSuiteAndAddTests_200(TestInfo test) throws IOException {
+
+    UserResourceTest userResourceTest = new UserResourceTest();
+    CreateUser createUser1 =
+        userResourceTest.createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
+    User user1 = userResourceTest.createEntity(createUser1, ADMIN_AUTH_HEADERS);
+    EntityReference user1Ref = user1.getEntityReference();
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam = teamResourceTest.createRequest(test, 1).withTeamType(GROUP);
+    Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    EntityReference teamRef = team.getEntityReference();
+
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable tableReq =
@@ -329,7 +347,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDataLength(10)));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
-    createExecutableTestSuite.withOwners(List.of(USER1_REF));
+    createExecutableTestSuite.withOwners(List.of(user1Ref));
     TestSuite executableTestSuite =
         createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     List<EntityReference> testCases1 = new ArrayList<>();
@@ -347,7 +365,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
     // We'll create a logical test suite and associate the test cases to it
     CreateTestSuite createTestSuite = createRequest(test);
-    createTestSuite.withOwners(List.of(TEAM11_REF));
+    createTestSuite.withOwners(List.of(teamRef));
     TestSuite testSuite = createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
     addTestCasesToLogicalTestSuite(
         testSuite, testCases1.stream().map(EntityReference::getId).collect(Collectors.toList()));
@@ -436,23 +454,23 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // 8. List test suites with owner
     // 8.1 Team owner
     queryParams.clear();
-    queryParams.put("owner", TEAM11_REF.getFullyQualifiedName());
+    queryParams.put("owner", teamRef.getFullyQualifiedName());
     queryParams.put("fields", "owners");
     ResultList<TestSuite> teamOwnerTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
     Assertions.assertTrue(
         teamOwnerTestSuites.getData().stream()
-            .allMatch(ts -> ts.getOwners().get(0).getId().equals(TEAM11_REF.getId())));
+            .allMatch(ts -> ts.getOwners().get(0).getId().equals(teamRef.getId())));
 
     // 8.2 User owner
     queryParams.clear();
-    queryParams.put("owner", USER1_REF.getFullyQualifiedName());
+    queryParams.put("owner", user1Ref.getFullyQualifiedName());
     queryParams.put("fields", "owners");
     ResultList<TestSuite> userOwnerTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
     Assertions.assertTrue(
         userOwnerTestSuites.getData().stream()
-            .allMatch(ts -> ts.getOwners().get(0).getId().equals(USER1_REF.getId())));
+            .allMatch(ts -> ts.getOwners().get(0).getId().equals(user1Ref.getId())));
   }
 
   @Test

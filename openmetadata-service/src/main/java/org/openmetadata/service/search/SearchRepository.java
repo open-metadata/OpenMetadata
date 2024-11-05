@@ -460,6 +460,7 @@ public class SearchRepository {
               }
               fieldData.put("deletedOwners", inheritedOwners);
               scriptTxt.append(REMOVE_OWNERS_SCRIPT);
+              scriptTxt.append(" ");
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
@@ -470,6 +471,7 @@ public class SearchRepository {
                       field.getName(),
                       field.getName()));
               fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
+              scriptTxt.append(" ");
             }
           } catch (UnhandledServerException e) {
             scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
@@ -502,6 +504,7 @@ public class SearchRepository {
                   String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
             }
           }
+          scriptTxt.append(" ");
         }
       }
       for (FieldChange field : changeDescription.getFieldsAdded()) {
@@ -528,9 +531,11 @@ public class SearchRepository {
                       field.getName()));
               fieldData.put(field.getName(), entityReference);
             }
+            scriptTxt.append(" ");
           } catch (UnhandledServerException e) {
             scriptTxt.append(
                 String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+            scriptTxt.append(" ");
           }
         }
       }

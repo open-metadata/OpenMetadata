@@ -151,9 +151,9 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   @Test
   void post_same_query_forSameEntityType_409(TestInfo test) throws HttpResponseException {
     CreateQuery create = createRequest(getEntityName(test));
-    createEntity(create, ADMIN_AUTH_HEADERS);
+    Query query = createEntity(create, ADMIN_AUTH_HEADERS);
 
-    CreateQuery create1 = createRequest(getEntityName(test));
+    CreateQuery create1 = createRequest(query.getName());
 
     assertResponse(
         () -> createEntity(create1, ADMIN_AUTH_HEADERS),
