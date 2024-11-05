@@ -1506,6 +1506,7 @@ Accuracy
 ### Column Values To Be At Expected Location
 Validate the reference value for a column is a the expected geographic location
 > Data will be temporarely stored in memory while the test case is running to validate the location. Not data will be permanently stored.
+> France is the only supported location at this time. To add any additional location please reach out to the team in our slack support channel
 
 **Dimension**:
 Accuracy
