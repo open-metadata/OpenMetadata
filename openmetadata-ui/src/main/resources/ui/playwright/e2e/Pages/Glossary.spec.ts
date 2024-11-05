@@ -247,7 +247,7 @@ test.describe('Glossary tests', () => {
           page,
           'PersonalData.Personal',
           'Add',
-          'tabs'
+          'glossary-term'
         );
       });
     } finally {

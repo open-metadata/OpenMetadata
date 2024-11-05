@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AppstoreAddOutlined } from '@ant-design/icons';
-import { camelCase, capitalize, map } from 'lodash';
+import { camelCase, map, startCase } from 'lodash';
 import { ReactComponent as GovernIcon } from '../../assets/svg/bank.svg';
 import { ReactComponent as DashboardIcon } from '../../assets/svg/dashboard-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../../assets/svg/database-colored.svg';
@@ -94,7 +94,7 @@ export const getCustomizePageOptions = (
         )
         .map((item) => ({
           key: item,
-          label: capitalize(item),
+          label: startCase(item),
           description: item,
           icon: ENTITY_ICONS[camelCase(item)],
         }));
@@ -111,8 +111,8 @@ export const getCustomizePageOptions = (
         )
         .map((item) => ({
           key: item,
-          label: capitalize(item),
-          description: item,
+          label: startCase(item),
+          description: startCase(item),
           icon: ENTITY_ICONS[camelCase(item)],
         }));
     default:
