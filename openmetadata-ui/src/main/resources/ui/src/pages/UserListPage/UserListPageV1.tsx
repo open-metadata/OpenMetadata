@@ -483,6 +483,7 @@ const UserListPageV1 = () => {
           {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={isDataLoading}
               isNumberBased={Boolean(searchValue)}
               pageSize={pageSize}
               paging={paging}

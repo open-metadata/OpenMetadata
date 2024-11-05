@@ -7,3 +7,9 @@ CREATE TABLE IF NOT EXISTS apps_data_store (
     type VARCHAR(256) NOT NULL,   
     json JSON NOT NULL
 );
+
+-- Add the source column to the consumers_dlq table
+ALTER TABLE consumers_dlq ADD COLUMN source VARCHAR(255);
+
+-- Create an index on the source column in the consumers_dlq table
+CREATE INDEX idx_consumers_dlq_source ON consumers_dlq (source);
