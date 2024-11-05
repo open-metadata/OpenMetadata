@@ -13,6 +13,7 @@
 import { CloseOutlined } from '@ant-design/icons';
 import {
   Button,
+  Empty,
   Form,
   Select,
   SelectProps,
@@ -187,6 +188,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
           <Button
             className="update-btn"
             data-testid="saveAssociatedTag"
+            disabled={isEmpty(tagOptions)}
             htmlType="submit"
             loading={isSubmitLoading}
             size="small"
@@ -302,7 +304,18 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       dropdownRender={dropdownRender}
       filterOption={false}
       mode={mode}
-      notFoundContent={isLoading ? <Loader size="small" /> : null}
+      notFoundContent={
+        isLoading ? (
+          <Loader size="small" />
+        ) : (
+          <Empty
+            description={t('label.no-entity-available', {
+              entity: t('label.tag-plural'),
+            })}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        )
+      }
       optionLabelProp="label"
       style={{ width: '100%' }}
       tagRender={customTagRender}
