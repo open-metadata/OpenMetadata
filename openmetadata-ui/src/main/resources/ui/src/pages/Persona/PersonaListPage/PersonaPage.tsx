@@ -90,6 +90,7 @@ export const PersonaPage = () => {
     () => (
       <Col className="h-full text-center" span={24}>
         <ErrorPlaceHolder
+          buttonId="add-persona-button"
           heading={t('label.persona')}
           permission={isAdminUser}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}

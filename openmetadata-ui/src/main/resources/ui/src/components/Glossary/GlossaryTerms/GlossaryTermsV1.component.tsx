@@ -345,7 +345,7 @@ const GlossaryTermsV1 = ({
   }, [selectedPersona.fullyQualifiedName]);
 
   useEffect(() => {
-    if (selectedPersona && selectedPersona.fullyQualifiedName) {
+    if (selectedPersona?.fullyQualifiedName) {
       fetchDocument();
     }
   }, [selectedPersona]);

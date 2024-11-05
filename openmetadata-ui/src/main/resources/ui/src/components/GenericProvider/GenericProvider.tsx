@@ -15,7 +15,7 @@ import React, { useContext, useMemo } from 'react';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 
-interface GenericProviderProps<T extends unknown> {
+interface GenericProviderProps<T> {
   children?: React.ReactNode;
   data: T;
   type: EntityType;
@@ -36,7 +36,7 @@ const createGenericContext = once(<T,>() =>
   React.createContext({} as GenericContextType<T>)
 );
 
-export const GenericProvider = <T extends unknown>({
+export const GenericProvider = <T,>({
   children,
   data,
   type,

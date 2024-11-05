@@ -154,7 +154,7 @@ const GlossaryHeader = ({
 
   const glossaryTermStatus: Status | null = useMemo(() => {
     if (!isGlossary) {
-      return (selectedData as GlossaryTerm).status ?? Status.Approved;
+      return selectedData.status ?? Status.Approved;
     }
 
     return null;
@@ -182,13 +182,13 @@ const GlossaryHeader = ({
       );
     }
 
-    if ((selectedData as GlossaryTerm).style?.iconURL) {
+    if (selectedData.style?.iconURL) {
       return (
         <img
           className="align-middle object-contain"
           data-testid="icon"
           height={36}
-          src={(selectedData as GlossaryTerm).style?.iconURL}
+          src={selectedData.style?.iconURL}
           width={32}
         />
       );
@@ -206,7 +206,7 @@ const GlossaryHeader = ({
   }, [selectedData, isGlossary]);
 
   const handleAddGlossaryTermClick = useCallback(() => {
-    onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
+    onAddGlossaryTerm(!isGlossary ? selectedData : undefined);
   }, [fqn]);
 
   const handleGlossaryImport = () =>
@@ -459,8 +459,7 @@ const GlossaryHeader = ({
 
   const statusBadge = useMemo(() => {
     if (!isGlossary) {
-      const entityStatus =
-        (selectedData as GlossaryTerm).status ?? Status.Approved;
+      const entityStatus = selectedData.status ?? Status.Approved;
 
       return <GlossaryStatusBadge status={entityStatus} />;
     }
@@ -565,11 +564,7 @@ const GlossaryHeader = ({
             entityType={EntityType.GLOSSARY_TERM}
             icon={icon}
             serviceName=""
-            titleColor={
-              isGlossary
-                ? undefined
-                : (selectedData as GlossaryTerm).style?.color
-            }
+            titleColor={isGlossary ? undefined : selectedData.style?.color}
           />
         </Col>
         <Col flex="360px">
@@ -681,14 +676,14 @@ const GlossaryHeader = ({
 
       <StyleModal
         open={isStyleEditing}
-        style={(selectedData as GlossaryTerm).style}
+        style={selectedData.style}
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
       />
 
       {openChangeParentHierarchyModal && (
         <ChangeParentHierarchy
-          selectedData={selectedData as GlossaryTerm}
+          selectedData={selectedData}
           onCancel={() => setOpenChangeParentHierarchyModal(false)}
           onSubmit={onChangeParentSave}
         />

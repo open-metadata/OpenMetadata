@@ -220,7 +220,7 @@ const GlossaryOverviewTab = ({
         entityDetails={selectedData as GlossaryTerm}
         entityType={EntityType.GLOSSARY_TERM}
         handleExtensionUpdate={async (updatedTable) => {
-          await onExtensionUpdate?.(updatedTable as GlossaryTerm);
+          await onExtensionUpdate?.(updatedTable);
         }}
         hasEditAccess={Boolean(editCustomAttributePermission)}
         hasPermission={hasViewAllPermission}

@@ -95,10 +95,10 @@ export const getNestedKeysFromNavigationItems = (data: NavigationItem[]) =>
     if (item.children) {
       return [
         ...acc,
-        item.id as string,
+        item.id,
         ...getNestedKeysFromNavigationItems(item.children),
       ];
     }
 
-    return [...acc, item.id as string];
+    return [...acc, item.id];
   }, [] as string[]);

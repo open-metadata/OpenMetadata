@@ -66,24 +66,22 @@ function CustomizeGlossaryTermDetailPage({
   useGridLayoutDirection();
 
   return (
-    <>
-      <PageLayoutV1
-        mainContainerClassName="p-t-0"
-        pageContainerStyle={{
-          backgroundImage: `url(${gridBgImg})`,
-        }}
-        pageTitle={t('label.customize-entity', {
-          entity: t('label.landing-page'),
-        })}>
-        <CustomizablePageHeader
-          personaName={getEntityName(personaDetails)}
-          onReset={handleReset}
-          onSave={handleSave}
-        />
-        <GlossaryHeaderWidget isGlossary={isGlossary} />
-        <CustomizeTabWidget />
-      </PageLayoutV1>
-    </>
+    <PageLayoutV1
+      mainContainerClassName="p-t-0"
+      pageContainerStyle={{
+        backgroundImage: `url(${gridBgImg})`,
+      }}
+      pageTitle={t('label.customize-entity', {
+        entity: t('label.landing-page'),
+      })}>
+      <CustomizablePageHeader
+        personaName={getEntityName(personaDetails)}
+        onReset={handleReset}
+        onSave={handleSave}
+      />
+      <GlossaryHeaderWidget isGlossary={isGlossary} />
+      <CustomizeTabWidget />
+    </PageLayoutV1>
   );
 }
 

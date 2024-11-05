@@ -183,6 +183,17 @@ export const SettingsNavigationPage = ({
     handleChange(getNestedKeys(sidebarOptions));
   };
 
+  const titleRenderer = (node: TreeDataNode) => (
+    <div className="space-between">
+      {node.title}{' '}
+      <Icon
+        component={DeleteIcon}
+        style={{ cursor: 'pointer', fontSize: '18px' }}
+        onClick={() => handleRemove(node.key as string)}
+      />
+    </div>
+  );
+
   useEffect(() => {
     fetchPersonaDetails();
   }, [fqn]);
@@ -225,16 +236,7 @@ export const SettingsNavigationPage = ({
             draggable
             showIcon
             switcherIcon={switcherIcon}
-            titleRender={(node) => (
-              <div className="space-between">
-                {node.title}{' '}
-                <Icon
-                  component={DeleteIcon}
-                  style={{ cursor: 'pointer', fontSize: '18px' }}
-                  onClick={() => handleRemove(node.key as string)}
-                />
-              </div>
-            )}
+            titleRender={titleRenderer}
             treeData={treeData}
             onDrop={onDrop}
           />

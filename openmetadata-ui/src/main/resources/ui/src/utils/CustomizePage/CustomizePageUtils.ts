@@ -142,8 +142,8 @@ export const getDefaultTabs = (pageType?: string) => {
 
 export const sortTabs = (tabs: TabsProps['items'], order: string[]) => {
   return [...(tabs ?? [])].sort((a, b) => {
-    const orderA = order.indexOf(a.key!);
-    const orderB = order.indexOf(b.key!);
+    const orderA = order.indexOf(a.key);
+    const orderB = order.indexOf(b.key);
 
     if (orderA !== -1 && orderB !== -1) {
       return orderA - orderB;
