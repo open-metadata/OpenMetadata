@@ -364,7 +364,7 @@ export const assignTag = async (
 
   await expect(
     page
-      .getByTestId('entity-right-panel')
+      .getByTestId(parentId)
       .getByTestId('tags-container')
       .getByTestId(`tag-${tag}`)
   ).toBeVisible();
