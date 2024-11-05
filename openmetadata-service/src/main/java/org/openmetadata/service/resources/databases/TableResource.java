@@ -468,7 +468,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                     mediaType = "application/json",
                     schema = @Schema(implementation = String.class)))
       })
-  public String exportCsv(
+  public Response exportCsv(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("name")

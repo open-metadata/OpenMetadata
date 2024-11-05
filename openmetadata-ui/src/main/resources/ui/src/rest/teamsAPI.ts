@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
+import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
@@ -90,7 +91,7 @@ export const restoreTeam = async (id: string) => {
 };
 
 export const exportTeam = async (teamName: string) => {
-  const response = await APIClient.get<string>(
+  const response = await APIClient.get<CSVExportResponse>(
     `/teams/name/${getEncodedFqn(teamName)}/export`
   );
 
@@ -98,7 +99,7 @@ export const exportTeam = async (teamName: string) => {
 };
 
 export const exportUserOfTeam = async (team: string) => {
-  const response = await APIClient.get<string>(`/users/export`, {
+  const response = await APIClient.get<CSVExportResponse>(`/users/export`, {
     params: { team },
   });
 

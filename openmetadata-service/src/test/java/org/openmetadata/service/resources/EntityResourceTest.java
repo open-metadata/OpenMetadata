@@ -76,6 +76,8 @@ import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.ParseField;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.json.JsonXContent;
+import io.socket.client.IO;
+import io.socket.client.Socket;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -91,6 +93,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
@@ -214,6 +217,8 @@ import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.CSVExportMessage;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -3967,9 +3972,91 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
   }
 
-  protected String exportCsv(String entityName) throws HttpResponseException {
+  private String receiveCsvViaSocketIO(String entityName) throws Exception {
+    UUID userId = getAdminUserId();
+    String uri = String.format("http://localhost:%d", APP.getLocalPort());
+
+    IO.Options options = new IO.Options();
+    options.path = "/api/v1/push/feed";
+    options.query = "userId=" + userId.toString();
+    options.transports = new String[] {"websocket"};
+    options.reconnection = false;
+    options.timeout = 10000; // 10 seconds
+
+    Socket socket = IO.socket(uri, options);
+
+    CountDownLatch connectLatch = new CountDownLatch(1);
+    CountDownLatch messageLatch = new CountDownLatch(1);
+    final String[] receivedMessage = new String[1];
+
+    socket
+        .on(
+            Socket.EVENT_CONNECT,
+            args -> {
+              System.out.println("Connected to Socket.IO server");
+              connectLatch.countDown();
+            })
+        .on(
+            "csvExportChannel",
+            args -> {
+              receivedMessage[0] = (String) args[0];
+              System.out.println("Received message: " + receivedMessage[0]);
+              messageLatch.countDown();
+              socket.disconnect();
+            })
+        .on(
+            Socket.EVENT_CONNECT_ERROR,
+            args -> {
+              System.err.println("Socket.IO connect error: " + args[0]);
+              connectLatch.countDown();
+              messageLatch.countDown();
+            })
+        .on(
+            Socket.EVENT_DISCONNECT,
+            args -> {
+              System.out.println("Disconnected from Socket.IO server");
+            });
+
+    socket.connect();
+    if (!connectLatch.await(10, TimeUnit.SECONDS)) {
+      fail("Could not connect to Socket.IO server");
+    }
+
+    // Initiate the export after connection is established
+    String jobId = initiateExport(entityName);
+
+    if (!messageLatch.await(30, TimeUnit.SECONDS)) {
+      fail("Did not receive CSV data via Socket.IO within the expected time.");
+    }
+
+    String receivedJson = receivedMessage[0];
+    if (receivedJson == null) {
+      fail("Received message is null.");
+    }
+
+    CSVExportMessage csvExportMessage = JsonUtils.readValue(receivedJson, CSVExportMessage.class);
+    if ("COMPLETED".equals(csvExportMessage.getStatus())) {
+      return csvExportMessage.getData();
+    } else if ("FAILED".equals(csvExportMessage.getStatus())) {
+      fail("CSV export failed: " + csvExportMessage.getError());
+    } else {
+      fail("Unknown status received: " + csvExportMessage.getStatus());
+    }
+    return null;
+  }
+
+  private UUID getAdminUserId() throws HttpResponseException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User adminUser = userResourceTest.getEntityByName("admin", ADMIN_AUTH_HEADERS);
+    return adminUser.getId();
+  }
+
+  protected String initiateExport(String entityName) throws IOException {
     WebTarget target = getResourceByName(entityName + "/export");
-    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+    CSVExportResponse response =
+        TestUtils.getWithResponse(
+            target, CSVExportResponse.class, ADMIN_AUTH_HEADERS, Status.ACCEPTED.getStatusCode());
+    return response.getJobId();
   }
 
   @SneakyThrows
@@ -4001,7 +4088,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(dryRunResult.withDryRun(false), result);
 
     // Finally, export CSV and ensure the exported CSV is same as imported CSV
-    String exportedCsv = exportCsv(entityName);
+    String exportedCsv = receiveCsvViaSocketIO(entityName);
     CsvUtilTest.assertCsv(csv, exportedCsv);
   }
 

@@ -71,6 +71,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -606,10 +607,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = String.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class)))
       })
-  public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name)
-      throws IOException {
+  public Response exportCsv(
+      @Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
     return exportCsvInternal(securityContext, name);
   }
 

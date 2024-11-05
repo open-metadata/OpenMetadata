@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { ES_MAX_PAGE_SIZE, PAGE_SIZE_MEDIUM } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
@@ -172,7 +173,7 @@ export const deleteGlossaryTerm = (id: string) => {
 };
 
 export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
-  const response = await APIClient.get<string>(
+  const response = await APIClient.get<CSVExportResponse>(
     `/glossaries/name/${getEncodedFqn(glossaryName)}/export`
   );
 
