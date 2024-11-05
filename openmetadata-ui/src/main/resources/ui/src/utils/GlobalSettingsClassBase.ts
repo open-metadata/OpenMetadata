@@ -345,6 +345,15 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
             icon: PoliciesIcon,
           },
+          {
+            label: t('label.lineage-config'),
+            description: t(
+              'message.page-sub-header-for-lineage-config-setting'
+            ),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LINEAGE_CONFIG}`,
+            icon: PoliciesIcon,
+          },
         ],
       },
       {

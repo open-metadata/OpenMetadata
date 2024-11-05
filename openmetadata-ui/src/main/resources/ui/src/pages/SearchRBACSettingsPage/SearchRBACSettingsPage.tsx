@@ -53,9 +53,9 @@ const SearchRBACSettingsPage = () => {
     try {
       setIsLoading(true);
 
-      const loginConfig = await getSearchSettings();
+      const loginConfig = await getSearchSettings(SettingType.SearchSettings);
 
-      setSearchConfig(loginConfig);
+      setSearchConfig(loginConfig as SearchSettings);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
