@@ -15,8 +15,8 @@ from datetime import datetime
 from typing import Dict, Iterator
 from unittest.mock import patch
 
-from metadata.data_quality.validations.column.sqlalchemy.columnValueToBeAtExpectedLocation import (
-    ColumnValueToBeAtExpectedLocationValidator,
+from metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeAtExpectedLocation import (
+    ColumnValuesToBeAtExpectedLocationValidator,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.type.basic import Timestamp
@@ -36,13 +36,13 @@ def test_column_value_to_be_at_expected_location(
     test_case_column_values_to_be_at_expected_location,
 ):
     """Test column value to be at expected location validation."""
-    validator = ColumnValueToBeAtExpectedLocationValidator(
+    validator = ColumnValuesToBeAtExpectedLocationValidator(
         None,
         test_case_column_values_to_be_at_expected_location,
         Timestamp(root=int(datetime.strptime("2021-07-03", "%Y-%m-%d").timestamp())),
     )
     with patch(
-        "metadata.data_quality.validations.column.sqlalchemy.columnValueToBeAtExpectedLocation.ColumnValueToBeAtExpectedLocationValidator._fetch_data",
+        "metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeAtExpectedLocation.ColumnValuesToBeAtExpectedLocationValidator._fetch_data",
         return_value=_fetch_data(),
     ):
         result: TestCaseResult = validator.run_validation()

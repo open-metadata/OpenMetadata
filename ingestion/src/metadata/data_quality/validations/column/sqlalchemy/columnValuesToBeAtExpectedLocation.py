@@ -17,8 +17,8 @@ from typing import Iterator, List, cast
 
 from sqlalchemy import Column, inspect
 
-from metadata.data_quality.validations.column.base.columnValueToBeAtExpectedLocation import (
-    BaseColumnValueToBeAtExpectedLocationValidator,
+from metadata.data_quality.validations.column.base.columnValuesToBeAtExpectedLocation import (
+    BaseColumnValuesToBeAtExpectedLocationValidator,
 )
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -30,8 +30,8 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class ColumnValueToBeAtExpectedLocationValidator(
-    BaseColumnValueToBeAtExpectedLocationValidator, SQAValidatorMixin
+class ColumnValuesToBeAtExpectedLocationValidator(
+    BaseColumnValuesToBeAtExpectedLocationValidator, SQAValidatorMixin
 ):
     """Validator for column value to be at expected location test case"""
 

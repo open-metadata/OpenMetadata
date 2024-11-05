@@ -15,8 +15,8 @@ Pandas validator for column value to be at expected location test case
 
 from typing import List, cast
 
-from metadata.data_quality.validations.column.base.columnValueToBeAtExpectedLocation import (
-    BaseColumnValueToBeAtExpectedLocationValidator,
+from metadata.data_quality.validations.column.base.columnValuesToBeAtExpectedLocation import (
+    BaseColumnValuesToBeAtExpectedLocationValidator,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
@@ -26,8 +26,8 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class ColumnValueToBeAtExpectedLocationValidator(
-    BaseColumnValueToBeAtExpectedLocationValidator, PandasValidatorMixin
+class ColumnValuesToBeAtExpectedLocationValidator(
+    BaseColumnValuesToBeAtExpectedLocationValidator, PandasValidatorMixin
 ):
     """Validator for column value to be at expected location test case"""
 

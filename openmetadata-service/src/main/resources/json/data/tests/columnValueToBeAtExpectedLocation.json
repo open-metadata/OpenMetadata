@@ -1,8 +1,8 @@
 {
-    "name": "columnValueToBeAtExpectedLocation",
-    "fullyQualifiedName": "columnValueToBeAtExpectedLocation",
-    "displayName": "Column Value To Be At Expected Location",
-    "description": "This schema defines the test ColumnValueToBeAtExpectedLocation. Test the lat/long values in a column to be at the specified location in the reference column.",
+    "name": "columnValuesToBeAtExpectedLocation",
+    "fullyQualifiedName": "columnValuesToBeAtExpectedLocation",
+    "displayName": "Column Values To Be At Expected Location",
+    "description": "This schema defines the test ColumnValuesToBeAtExpectedLocation. Test the lat/long values in a column to be at the specified location in the reference column.",
     "entityType": "COLUMN",
     "testPlatforms": ["OpenMetadata"],
     "supportedDataTypes": ["BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR","NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT"],

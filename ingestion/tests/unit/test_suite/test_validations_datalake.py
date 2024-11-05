@@ -504,7 +504,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
         ),
         (
             "test_case_column_values_to_be_at_expected_location",
-            "columnValueToBeAtExpectedLocation",
+            "columnValuesToBeAtExpectedLocation",
             "COLUMN",
             (
                 TestCaseResult,

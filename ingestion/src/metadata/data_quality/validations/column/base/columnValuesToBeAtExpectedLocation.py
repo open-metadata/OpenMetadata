@@ -34,7 +34,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class BaseColumnValueToBeAtExpectedLocationValidator(BaseTestValidator):
+class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
     """Validator for column value to be at expected location test case"""
 
     def run_validation(self) -> TestCaseResult:

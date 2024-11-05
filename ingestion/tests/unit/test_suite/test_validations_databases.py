@@ -418,7 +418,7 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
         ),
         (
             "test_case_column_values_to_be_at_expected_location",
-            "columnValueToBeAtExpectedLocation",
+            "columnValuesToBeAtExpectedLocation",
             "COLUMN",
             (
                 TestCaseResult,
