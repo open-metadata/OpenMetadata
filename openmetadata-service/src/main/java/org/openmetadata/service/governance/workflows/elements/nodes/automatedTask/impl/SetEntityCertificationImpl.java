@@ -4,13 +4,19 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.RESOLVED_BY_VARIABLE;
 
 import java.util.Optional;
+import javax.json.JsonPatch;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonUtils;
 
 public class SetEntityCertificationImpl implements JavaDelegate {
   private Expression certificationExpr;
@@ -35,15 +41,23 @@ public class SetEntityCertificationImpl implements JavaDelegate {
 
   private void setStatus(
       EntityInterface entity, String entityType, String user, String certification) {
-    System.out.printf("Set Entity Certification to '%s'%n", certification);
-    //        String originalJson = JsonUtils.pojoToJson(entity);
-    //
-    //        entity.setCertification(certification);
-    //        String updatedJson = JsonUtils.pojoToJson(entity);
-    //
-    //        JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-    //
-    //        EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    //        entityRepository.patch(null, entity.getId(), user, patch);
+    String originalJson = JsonUtils.pojoToJson(entity);
+
+    Optional<String> oCertification = Optional.ofNullable(certification);
+
+    if (oCertification.isEmpty()) {
+      entity.setCertification(null);
+    } else {
+      AssetCertification assetCertification =
+          new AssetCertification()
+              .withTagLabel(EntityUtil.toTagLabel(TagLabelUtil.getTag(certification)));
+      entity.setCertification(assetCertification);
+    }
+
+    String updatedJson = JsonUtils.pojoToJson(entity);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
+
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    entityRepository.patch(null, entity.getId(), user, patch);
   }
 }
