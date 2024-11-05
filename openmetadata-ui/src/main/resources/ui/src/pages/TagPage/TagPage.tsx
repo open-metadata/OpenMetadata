@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Dropdown, Row, Tabs, Tooltip } from 'antd';
+import {
+  Button,
+  Col,
+  Divider,
+  Dropdown,
+  Row,
+  Space,
+  Tabs,
+  Tooltip,
+} from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -444,7 +453,14 @@ const TagPage = () => {
         tagItem && (
           <PageLayoutV1 pageTitle={tagItem.name}>
             <Row gutter={[0, 8]}>
-              <Col span={24}>
+              <Col
+                span={24}
+                style={{
+                  position: 'sticky',
+                  top: '0px',
+                  zIndex: 1,
+                  background: 'white',
+                }}>
                 <>
                   <Row
                     className="data-classification"
@@ -454,11 +470,14 @@ const TagPage = () => {
                       <EntityHeader
                         badge={
                           !hasEditPermission && (
-                            <StatusBadge
-                              dataTestId="disabled"
-                              label="Disabled"
-                              status={StatusType.Stopped}
-                            />
+                            <Space>
+                              <Divider className="m-x-xs h-6" type="vertical" />
+                              <StatusBadge
+                                dataTestId="disabled"
+                                label="Disabled"
+                                status={StatusType.Stopped}
+                              />
+                            </Space>
                           )
                         }
                         breadcrumb={breadcrumb}
@@ -508,7 +527,7 @@ const TagPage = () => {
                 </>
               </Col>
 
-              <Col span={24}>
+              <Col span={24} style={{ overflowY: 'auto' }}>
                 <Tabs
                   destroyInactiveTabPane
                   activeKey={activeTab}
