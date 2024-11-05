@@ -16,7 +16,8 @@ import { isString } from 'lodash';
 import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import Banner, { BannerProps } from '../../common/Banner/Banner';
 import {
   CSVExportJob,
   CSVExportWebsocketResponse,
@@ -39,7 +40,9 @@ export const EntityExportModalProvider = ({
   const [exportData, setExportData] = useState<ExportData | null>(null);
   const [downloading, setDownloading] = useState<boolean>(false);
 
-  const csvExportJob = useRef<Partial<CSVExportJob>>();
+  const csvExportJobRef = useRef<Partial<CSVExportJob>>();
+
+  const [csvExportJob, setCSVExportJob] = useState<Partial<CSVExportJob>>();
 
   const handleCancel = () => {
     setExportData(null);
@@ -81,12 +84,14 @@ export const EntityExportModalProvider = ({
         handleCancel();
         setDownloading(false);
       } else {
-        showSuccessToast(data.message);
-        csvExportJob.current = {
+        const jobData = {
           jobId: data.jobId,
           fileName: fileName,
           message: data.message,
         };
+
+        setCSVExportJob(jobData);
+        csvExportJobRef.current = jobData;
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -103,29 +108,25 @@ export const EntityExportModalProvider = ({
     handleCancel();
   };
 
-  const handleCSVExportError = (error?: string | null) => {
-    setDownloading(false);
-    showErrorToast(error ?? 'Error in exporting data');
-    handleCancel();
-  };
-
   const handleCSVExportJobUpdate = (
     response: Partial<CSVExportWebsocketResponse>
   ) => {
     const updatedCSVExportJob: Partial<CSVExportJob> = {
       ...response,
-      ...csvExportJob.current,
+      ...csvExportJobRef.current,
     };
 
-    csvExportJob.current = updatedCSVExportJob;
+    setCSVExportJob(updatedCSVExportJob);
+
+    csvExportJobRef.current = updatedCSVExportJob;
 
     if (response.status === 'COMPLETED' && response.data) {
       handleCSVExportSuccess(
         response.data ?? '',
-        csvExportJob.current?.fileName
+        csvExportJobRef.current?.fileName
       );
     } else {
-      handleCSVExportError(response.error);
+      setDownloading(false);
     }
   };
 
@@ -145,6 +146,16 @@ export const EntityExportModalProvider = ({
     }),
     []
   );
+
+  const bannerConfig = useMemo(() => {
+    const isCompleted = csvExportJob?.status === 'COMPLETED';
+
+    return {
+      type: isCompleted ? 'success' : 'error',
+      message: isCompleted ? csvExportJob?.message : csvExportJob?.error,
+      hasJobId: !!csvExportJob?.jobId,
+    };
+  }, [csvExportJob]);
 
   return (
     <EntityExportModalContext.Provider value={providerValue}>
@@ -180,6 +191,14 @@ export const EntityExportModalProvider = ({
                 <Input addonAfter=".csv" data-testid="file-name-input" />
               </Form.Item>
             </Form>
+
+            {bannerConfig.hasJobId && bannerConfig.message && (
+              <Banner
+                className="border-radius"
+                message={bannerConfig.message}
+                type={bannerConfig.type as BannerProps['type']}
+              />
+            )}
           </Modal>
         )}
       </>
