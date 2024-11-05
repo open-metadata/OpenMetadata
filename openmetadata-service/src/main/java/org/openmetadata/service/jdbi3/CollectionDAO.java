@@ -2117,11 +2117,14 @@ public interface CollectionDAO {
         @Bind("eventSubscriptionId") String eventSubscriptionId,
         @Bind("json") String json);
 
-    @SqlQuery("SELECT COUNT(*) FROM successful_sent_change_events")
-    int getRecordCount();
+    @SqlQuery(
+        "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
+    int getRecordCount(@Bind("eventSubscriptionId") String eventSubscriptionId);
 
-    @SqlUpdate("DELETE FROM successful_sent_change_events ORDER BY timestamp ASC LIMIT :limit")
-    void deleteOldRecords(@Bind("limit") int limit);
+    @SqlUpdate(
+        "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp ASC LIMIT :limit")
+    void deleteOldRecords(
+        @Bind("eventSubscriptionId") String eventSubscriptionId, @Bind("limit") int limit);
 
     @SqlQuery(
         "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId LIMIT :limit OFFSET :paginationOffset")

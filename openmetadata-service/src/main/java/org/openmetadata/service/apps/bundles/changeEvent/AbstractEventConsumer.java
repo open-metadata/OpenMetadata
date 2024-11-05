@@ -114,10 +114,15 @@ public abstract class AbstractEventConsumer
   }
 
   private void recordSuccessfulChangeEvent(UUID eventSubscriptionId, ChangeEvent event) {
-    int count = Entity.getCollectionDAO().eventSubscriptionDAO().getRecordCount();
+    int count =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getRecordCount(eventSubscriptionId.toString());
     if (count >= 100) {
       // delete 30 oldest records
-      Entity.getCollectionDAO().eventSubscriptionDAO().deleteOldRecords(30);
+      Entity.getCollectionDAO()
+          .eventSubscriptionDAO()
+          .deleteOldRecords(eventSubscriptionId.toString(), 30);
     }
 
     Entity.getCollectionDAO()
