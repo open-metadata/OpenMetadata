@@ -419,7 +419,6 @@ def filter_requirements(filtered: Set[str]) -> List[str]:
 
 setup(
     install_requires=list(base_requirements),
-    include_package_data=True,
     extras_require={
         "base": list(base_requirements),
         "dev": list(dev),
