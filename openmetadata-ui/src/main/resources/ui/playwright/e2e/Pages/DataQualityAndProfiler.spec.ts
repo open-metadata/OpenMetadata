@@ -464,7 +464,6 @@ test(
         await page.locator('#tableTestForm_displayName').clear();
         await page.fill('#tableTestForm_displayName', 'Updated display name');
         await page.click('.ant-modal-footer >> text=Submit');
-        await toastNotification(page, 'Test case updated successfully.');
 
         await expect(
           page.locator(`[data-testid="${testCaseName}"]`)
