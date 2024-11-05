@@ -27,6 +27,7 @@ public class WebSocketManager {
   public static final String JOB_STATUS_BROADCAST_CHANNEL = "jobStatus";
   public static final String MENTION_CHANNEL = "mentionChannel";
   public static final String ANNOUNCEMENT_CHANNEL = "announcementChannel";
+  public static final String CSV_EXPORT_CHANNEL = "csvExportChannel";
 
   @Getter
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints =
