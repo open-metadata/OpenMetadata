@@ -709,6 +709,17 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> deleted = new ArrayList<>();
       recordListChange(
           TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
+
+      // Update users and userCount in team search index
+      TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
+
+      updatedTeams.forEach(
+          teamRef -> {
+            Team team =
+                teamRepository.get(
+                    null, teamRef.getId(), teamRepository.getFields("id,users,userCount"));
+            teamRepository.postUpdate(team);
+          });
     }
 
     private void updatePersonas(User original, User updated) {
