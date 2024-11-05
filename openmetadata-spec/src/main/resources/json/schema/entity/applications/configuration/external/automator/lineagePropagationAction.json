@@ -19,51 +19,39 @@
       "$ref": "#/definitions/lineagePropagationActionType",
       "default": "LineagePropagationAction"
     },
-    "propagateChildrenDescription": {
-      "title": "Propagate Column Description",
+    "propagateDescription": {
+      "title": "Propagate Description",
       "description": "Propagate description through lineage",
       "type": "boolean",
       "default": true
     },
-    "propagateChildrenTags": {
-      "title": "Propagate Column Tags",
+    "propagateTags": {
+      "title": "Propagate Tags",
       "description": "Propagate tags through lineage",
       "type": "boolean",
       "default": true
     },
-    "propagateChildrenGlossaryTerms": {
-      "title": "Propagate Column Glossary Terms",
+    "propagateGlossaryTerms": {
+      "title": "Propagate Glossary Terms",
       "description": "Propagate glossary terms through lineage",
       "type": "boolean",
       "default": true
     },
-    "propagateParentDescription": {
-      "title": "Propagate Parent Description",
-      "description": "Propagate description from the parent",
-      "type": "boolean",
-      "default": true
-    },
-    "propagateParentTags": {
-      "title": "Propagate Parent Tags",
-      "description": "Propagate tags from parent",
-      "type": "boolean",
-      "default": true
-    },
-    "propagateParentGlossaryTerms": {
-      "title": "Propagate Parent Glossary Terms",
-      "description": "Propagate glossary terms from the parent",
-      "type": "boolean",
-      "default": true
-    },
-    "propagateParentTier": {
+    "propagateTier": {
       "title": "Propagate Tier",
       "description": "Propagate tier from the parent",
       "type": "boolean",
       "default": true
     },
-    "propagateParentOwner": {
+    "propagateOwner": {
       "title": "Propagate Owner",
       "description": "Propagate owner from the parent",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateColumnLevel": {
+      "title": "Propagate Column Level",
+      "description": "Propagate the metadata to columns via column-level lineage.",
       "type": "boolean",
       "default": true
     },
