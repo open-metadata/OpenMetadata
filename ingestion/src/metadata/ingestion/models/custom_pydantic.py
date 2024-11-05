@@ -20,7 +20,7 @@ import logging
 from typing import Any, Dict, Literal, Optional, Union
 
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import PlainSerializer
+from pydantic import PlainSerializer, model_validator
 from pydantic.main import IncEx
 from pydantic.types import SecretStr
 from typing_extensions import Annotated
@@ -30,12 +30,90 @@ logger = logging.getLogger("metadata")
 SECRET = "secret:"
 JSON_ENCODERS = "json_encoders"
 
+RESTRICTED_KEYWORDS = ["::", ">"]
+RESERVED_COLON_KEYWORD = "__reserved__colon__"
+RESERVED_ARROW_KEYWORD = "__reserved__arrow__"
+
 
 class BaseModel(PydanticBaseModel):
     """
     Base model for OpenMetadata generated models.
     Specified as `--base-class BASE_CLASS` in the generator.
     """
+
+    @model_validator(mode="after")
+    @classmethod
+    def parse_name(cls, values):
+        """
+        Parse the name field to ensure it is not empty.
+        """
+
+        def process_name_and_display_name(
+            obj: Union["CreateTableRequest", "Column", "Table"]
+        ) -> None:
+            name_value: Optional[str] = obj.name.root
+            if (
+                name_value
+                and RESERVED_COLON_KEYWORD in name_value
+                or RESERVED_ARROW_KEYWORD in name_value
+            ):
+                obj.name.root = revert_separators(value=name_value)
+                # if hasattr(obj, "fullyQualifiedName"):
+                # obj.fullyQualifiedName.root = revert_separators(obj.fullyQualifiedName.root)
+                return
+            if name_value and "::" in name_value:
+                obj.name.root = replace_separators(name_value)
+                if not obj.displayName:
+                    obj.displayName = name_value
+                return
+            return
+
+        def revert_separators(value):
+            return value.replace(RESERVED_COLON_KEYWORD, "::").replace(
+                RESERVED_ARROW_KEYWORD, ">"
+            )
+
+        def replace_separators(value):
+            return value.replace("::", RESERVED_COLON_KEYWORD).replace(
+                ">", RESERVED_ARROW_KEYWORD
+            )
+
+        def process_table_and_columns(values):
+            # Table Level
+            process_name_and_display_name(values)
+            # Column level
+            columns = values.columns
+            if columns:
+                for column in columns:
+                    process_name_and_display_name(column)
+
+        from metadata.generated.schema.api.data.createTable import CreateTableRequest
+        from metadata.generated.schema.entity.data.table import Column, Table
+        from metadata.profiler.source.metadata import ProfilerSourceAndEntity
+
+        if values:
+            if isinstance(values, (CreateTableRequest, Table)):
+                process_table_and_columns(values)
+            if isinstance(values, Column):
+                process_name_and_display_name(values)
+            if isinstance(values, ProfilerSourceAndEntity):
+                process_table_and_columns(values.entity)
+
+            # # Constraint Level
+            # table_constraints: Optional[List[Dict[str, Any]]] = values.get(
+            #     "tableConstraints"
+            # )
+            # if table_constraints:
+            #     for constraint in table_constraints:
+            #         constraint_columns: Optional[List[str]] = constraint.get("columns")
+            #         if constraint_columns:
+            #             for index, constraint_column in enumerate(constraint_columns):
+            #                 if "::" in constraint_column:
+            #                     constraint_columns[index] = replace_separators(
+            #                         constraint_column
+            #                     )
+
+        return values
 
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
