@@ -59,6 +59,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
             .withDeleted(testCase.getDeleted())
             .withDomain(testCase.getDomain())
             .withTags(testCase.getTags())
+            .withEntityFQN(testCase.getEntityFQN())
             .withOwners(testCase.getOwners());
     doc.put("testCase", testCase);
     TestSuite testSuite = Entity.getEntityOrNull(testCase.getTestSuite(), "", Include.ALL);

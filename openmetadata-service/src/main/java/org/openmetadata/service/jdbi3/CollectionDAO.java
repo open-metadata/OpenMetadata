@@ -59,7 +59,8 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
-import org.openmetadata.schema.api.searcg.SearchSettings;
+import org.openmetadata.schema.api.lineage.LineageSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -4967,6 +4968,7 @@ public interface CollectionDAO {
             case SEARCH_SETTINGS -> JsonUtils.readValue(json, SearchSettings.class);
             case ASSET_CERTIFICATION_SETTINGS -> JsonUtils.readValue(
                 json, AssetCertificationSettings.class);
+            case LINEAGE_SETTINGS -> JsonUtils.readValue(json, LineageSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
