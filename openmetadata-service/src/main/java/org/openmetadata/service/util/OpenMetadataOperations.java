@@ -543,8 +543,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     String user = dataSourceFactory.getUser();
     String password = dataSourceFactory.getPassword();
     LOG.info("JDBC URL: {}", jdbcUrl);
-    LOG.info("User: {}", user);
-    LOG.info("Password: {}", password);
     assert user != null && password != null;
 
     String flywayRootPath = config.getMigrationConfiguration().getFlywayPath();
