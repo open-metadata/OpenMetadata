@@ -76,7 +76,14 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 });
 
 jest.mock('../../components/common/Table/Table', () => {
-  return jest.fn().mockImplementation(() => <table>mockTable</table>);
+  return jest.fn().mockImplementation(({ columns }) => (
+    <div>
+      {columns.map((column: Record<string, string>) => (
+        <span key={column.key}>{column.title}</span>
+      ))}
+      <table>mockTable</table>
+    </div>
+  ));
 });
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -142,5 +149,21 @@ describe('Test UserListPage component', () => {
     const searchBar = await findByTestId('search-bar-container');
 
     expect(searchBar).toBeInTheDocument();
+  });
+
+  it('should be render roles column for user listing page', async () => {
+    const { findByText } = render(<UserListPageV1 />);
+
+    expect(await findByText('label.role-plural')).toBeInTheDocument();
+  });
+
+  it('should not render roles column for admin listing page', async () => {
+    mockParam.tab = GlobalSettingOptions.ADMINS;
+    const { queryByText } = render(<UserListPageV1 />);
+
+    expect(queryByText('label.role-plural')).not.toBeInTheDocument();
+
+    // reset mockParam
+    mockParam.tab = GlobalSettingOptions.USERS;
   });
 });
