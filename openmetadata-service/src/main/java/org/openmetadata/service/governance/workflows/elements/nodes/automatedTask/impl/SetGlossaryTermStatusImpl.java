@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESOLVED_BY_VARIABLE;
 
+import java.util.Objects;
 import java.util.Optional;
 import javax.json.JsonPatch;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -33,15 +34,17 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
   }
 
   private void setStatus(GlossaryTerm glossaryTerm, String user, String status) {
-    String originalJson = JsonUtils.pojoToJson(glossaryTerm);
+    if (!Objects.equals(status, glossaryTerm.getStatus().value())) {
+      String originalJson = JsonUtils.pojoToJson(glossaryTerm);
 
-    glossaryTerm.setStatus(GlossaryTerm.Status.fromValue(status));
-    String updatedJson = JsonUtils.pojoToJson(glossaryTerm);
+      glossaryTerm.setStatus(GlossaryTerm.Status.fromValue(status));
+      String updatedJson = JsonUtils.pojoToJson(glossaryTerm);
 
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
+      JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
 
-    GlossaryTermRepository entityRepository =
-        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-    entityRepository.patch(null, glossaryTerm.getId(), user, patch);
+      GlossaryTermRepository entityRepository =
+          (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+      entityRepository.patch(null, glossaryTerm.getId(), user, patch);
+    }
   }
 }

@@ -719,6 +719,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void get_entityListWithPagination_200(TestInfo test) throws IOException {
+    //    if (test.getTestClass().isPresent()) {
+    //      if (test.getTestClass().get().getSimpleName().equals("GlossaryTermResourceTest")) {
+    //        WorkflowHandler.getInstance().suspendWorkflow("GlossaryTermApprovalWorkflow");
+    //      }
+    //    }
     // Create a number of entities between 5 and 20 inclusive
     Random rand = new Random();
     int maxEntities = rand.nextInt(16) + 5;
@@ -833,6 +838,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         }
       }
     }
+
+    //    if (test.getTestClass().isPresent()) {
+    //      if (test.getTestClass().get().getSimpleName().equals("GlossaryTermResourceTest")) {
+    //        WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
+    //      }
+    //    }
   }
 
   protected void validateEntityListFromSearchWithPagination(
@@ -1011,6 +1022,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               userResourceTest.createRequest(test, 1), USER_WITH_CREATE_HEADERS);
       addFollower(entity.getId(), user1.getId(), OK, TEST_AUTH_HEADERS);
     }
+    if (supportsReviewers) {
+      String origJson = JsonUtils.pojoToJson(entity);
+      entity.setReviewers(List.of(USER1_REF));
+      entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
+    }
+
     entity = validateGetWithDifferentFields(entity, false);
     validateGetCommonFields(entity);
 

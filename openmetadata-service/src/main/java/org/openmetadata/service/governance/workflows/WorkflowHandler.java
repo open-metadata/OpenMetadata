@@ -234,4 +234,13 @@ public class WorkflowHandler {
     }
     return false;
   }
+
+  public void suspendWorkflow(String workflowName) {
+    repositoryService.suspendProcessDefinitionByKey(getTriggerWorkflowId(workflowName), true, null);
+  }
+
+  public void resumeWorkflow(String workflowName) {
+    repositoryService.activateProcessDefinitionByKey(
+        getTriggerWorkflowId(workflowName), true, null);
+  }
 }
