@@ -311,8 +311,12 @@ const UserListPageV1 = () => {
   };
 
   const columns: ColumnsType<User> = useMemo(() => {
+    const commonFields = isAdminPage
+      ? commonUserDetailColumns().filter((col) => col.key !== 'roles')
+      : commonUserDetailColumns();
+
     return [
-      ...commonUserDetailColumns(),
+      ...commonFields,
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',
