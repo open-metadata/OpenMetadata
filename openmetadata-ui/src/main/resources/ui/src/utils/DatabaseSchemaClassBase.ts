@@ -33,6 +33,7 @@ export interface DatabaseSchemaPageTabProps {
   tableDataLoading: boolean;
   editCustomAttributePermission: boolean;
   editTagsPermission: boolean;
+  editGlossaryTermsPermission: boolean;
   decodedDatabaseSchemaFQN: string;
   tags: any[];
   viewAllPermission: boolean;
