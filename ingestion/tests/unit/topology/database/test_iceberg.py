@@ -464,6 +464,7 @@ MOCK_DYNAMO_CONFIG = {
                     "connection": {
                         "tableName": "table",
                         "awsConfig": {
+                            "endPointURL": "http://example.com",
                             "awsAccessKeyId": "access_key",
                             "awsSecretAccessKey": "secret",
                             "awsRegion": "us-east-2",
