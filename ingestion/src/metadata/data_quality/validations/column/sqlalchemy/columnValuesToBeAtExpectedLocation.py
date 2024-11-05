@@ -24,7 +24,6 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.utils.helpers import Column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()

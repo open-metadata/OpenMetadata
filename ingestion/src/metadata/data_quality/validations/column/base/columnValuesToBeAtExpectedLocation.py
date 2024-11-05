@@ -8,7 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
 Validator for column value to be at expected location test case
 """
@@ -37,6 +36,7 @@ logger = test_suite_logger()
 class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
     """Validator for column value to be at expected location test case"""
 
+    #  pylint: disable=too-many-locals
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case
 
@@ -117,7 +117,10 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
         return self.get_test_case_result_object(
             self.execution_date,
             self.get_test_case_status(valid),
-            f"Found validLocation={valid_count}, invalidLocation={invalid_count}, unknownLocation={unknown_count} vs. expected 0 invalidLocation.",
+            (
+                f"Found validLocation={valid_count}, invalidLocation={invalid_count},"
+                f"unknownLocation={unknown_count} vs. expected 0 invalidLocation."
+            ),
             [
                 TestResultValue(
                     name="validLocation", value=str(valid_count), predictedValue=None
@@ -152,6 +155,7 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
             List[Dict]
         """
         geojson_property = "libgeo" if ref_type == "CITY" else "codgeo"
+        # pylint: disable=deprecated-method
         with resources.open_text("metadata.data_quality.data", "fr-cities.json") as f:
             data = json.load(f)
 
