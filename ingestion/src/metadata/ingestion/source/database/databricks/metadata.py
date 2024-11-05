@@ -18,7 +18,7 @@ from typing import Iterable, Optional, Tuple, Union
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
 from pyhive.sqlalchemy_hive import _type_map
-from sqlalchemy import types, util
+from sqlalchemy import exc, types, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
@@ -112,11 +112,50 @@ _type_map.update(
     }
 )
 
+# This method is from hive dialect originally but 
+# is overridden to optimize DESCRIBE query execution
+def _get_table_columns(self, connection, table_name, schema, db_name):
+    full_table = table_name
+    if schema:
+        full_table = schema + "." + table_name
+    # TODO using TGetColumnsReq hangs after sending TFetchResultsReq.
+    # Using DESCRIBE works but is uglier.
+    try:
+        # This needs the table name to be unescaped (no backticks).
+        query = DATABRICKS_GET_TABLE_COMMENTS.format(
+            database_name=db_name, schema_name=schema, table_name=table_name
+        )
+        cursor = get_table_comment_result(
+            self,
+            connection=connection,
+            query=query,
+            database=db_name,
+            table_name=table_name,
+            schema=schema,
+        )
 
-def _get_column_rows(self, connection, table_name, schema):
+        rows = cursor.fetchall()
+
+    except exc.OperationalError as e:
+        # Does the table exist?
+        regex_fmt = r"TExecuteStatementResp.*SemanticException.*Table not found {}"
+        regex = regex_fmt.format(re.escape(full_table))
+        if re.search(regex, e.args[0]):
+            raise exc.NoSuchTableError(full_table)
+        else:
+            raise
+    else:
+        # Hive is stupid: this is what I get from DESCRIBE some_schema.does_not_exist
+        regex = r"Table .* does not exist"
+        if len(rows) == 1 and re.match(regex, rows[0].col_name):
+            raise exc.NoSuchTableError(full_table)
+        return rows
+
+
+def _get_column_rows(self, connection, table_name, schema, db_name):
     # get columns and strip whitespace
-    table_columns = self._get_table_columns(  # pylint: disable=protected-access
-        connection, table_name, schema
+    table_columns = _get_table_columns(  # pylint: disable=protected-access
+        self, connection, table_name, schema, db_name
     )
     column_rows = [
         [col.strip() if col else None for col in row] for row in table_columns
@@ -136,7 +175,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     Databricks ingest config file.
     """
 
-    rows = _get_column_rows(self, connection, table_name, schema)
+    rows = _get_column_rows(self, connection, table_name, schema, kw.get("db_name"))
     result = []
     for col_name, col_type, _comment in rows:
         # Handle both oss hive and Databricks' hive partition header, respectively
@@ -144,6 +183,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "# Partition Information",
             "# Partitioning",
             "# Clustering Information",
+            "# Delta Statistics Columns",
+            "# Detailed Table Information",
         ):
             break
         # Take out the more detailed type information
