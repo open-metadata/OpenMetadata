@@ -1007,6 +1007,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         createRequest(
             getEntityName(test), "description", "displayName", Lists.newArrayList(USER1_REF));
 
+    if (supportsReviewers) {
+      create.setReviewers(List.of(USER1_REF));
+    }
+
     T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     if (supportsTags) {
       String origJson = JsonUtils.pojoToJson(entity);
@@ -1021,11 +1025,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           userResourceTest.createEntity(
               userResourceTest.createRequest(test, 1), USER_WITH_CREATE_HEADERS);
       addFollower(entity.getId(), user1.getId(), OK, TEST_AUTH_HEADERS);
-    }
-    if (supportsReviewers) {
-      String origJson = JsonUtils.pojoToJson(entity);
-      entity.setReviewers(List.of(USER1_REF));
-      entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
     }
 
     entity = validateGetWithDifferentFields(entity, false);
