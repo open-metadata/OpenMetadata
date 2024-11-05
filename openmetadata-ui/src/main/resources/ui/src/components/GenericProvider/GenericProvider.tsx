@@ -46,10 +46,9 @@ export const GenericProvider = <T,>({
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
 
-  const typedData = data as T;
   const values = useMemo(
-    () => ({ data: typedData, type, onUpdate, isVersionView, permissions }),
-    [typedData, type, onUpdate, isVersionView, permissions]
+    () => ({ data, type, onUpdate, isVersionView, permissions }),
+    [data, type, onUpdate, isVersionView, permissions]
   );
 
   return (
