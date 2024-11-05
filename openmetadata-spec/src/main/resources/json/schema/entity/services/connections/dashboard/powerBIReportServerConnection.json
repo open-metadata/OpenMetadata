@@ -4,7 +4,7 @@
     "title": "PowerBIReportServerConnection",
     "description": "PowerBIReportServer Connection Config",
     "type": "object",
-    "javaType": "org.openmetadata.schema.services.connections.dashboard.PowerBIConnection",
+    "javaType": "org.openmetadata.schema.services.connections.dashboard.PowerBIReportServerConnection",
     "definitions": {
         "powerBIReportServerType": {
             "description": "PowerBIReportServer service type",
