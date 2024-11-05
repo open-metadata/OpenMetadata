@@ -62,6 +62,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -512,9 +513,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = String.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class)))
       })
-  public String exportCsv(
+  public Response exportCsv(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
           @PathParam("name")

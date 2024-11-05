@@ -291,6 +291,7 @@ export const SOCKET_EVENTS = {
   TASK_CHANNEL: 'taskChannel',
   MENTION_CHANNEL: 'mentionChannel',
   JOB_STATUS: 'jobStatus',
+  CSV_EXPORT_CHANNEL: 'csvExportChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

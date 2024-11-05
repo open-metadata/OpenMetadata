@@ -61,6 +61,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databaseSchemas")
@@ -394,7 +395,7 @@ public class DatabaseSchemaResource
 
   @GET
   @Path("/name/{name}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
       operationId = "exportDatabaseSchema",
@@ -406,9 +407,9 @@ public class DatabaseSchemaResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = String.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class)))
       })
-  public String exportCsv(
+  public Response exportCsv(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database schema", schema = @Schema(type = "string"))
           @PathParam("name")
