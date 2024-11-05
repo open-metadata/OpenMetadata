@@ -4057,7 +4057,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   private String initiateExport(String entityName) throws IOException {
-    WebTarget target = getResourceByName(entityName + "/export");
+    WebTarget target = getResourceByName(entityName + "/exportAsync");
     CSVExportResponse response =
         TestUtils.getWithResponse(
             target, CSVExportResponse.class, ADMIN_AUTH_HEADERS, Status.ACCEPTED.getStatusCode());
@@ -4093,8 +4093,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(dryRunResult.withDryRun(false), result);
 
     // Finally, export CSV and ensure the exported CSV is same as imported CSV
-    String exportedCsv = receiveCsvViaSocketIO(entityName);
-    CsvUtilTest.assertCsv(csv, exportedCsv);
+    String exportedCsvAsync = receiveCsvViaSocketIO(entityName);
+    CsvUtilTest.assertCsv(csv, exportedCsvAsync);
+    String exportedCsvSync = exportCsv(entityName);
+    CsvUtilTest.assertCsv(csv, exportedCsvSync);
   }
 
   protected void testImportExport(
