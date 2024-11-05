@@ -328,10 +328,6 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         userResourceTest.createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
     User user1 = userResourceTest.createEntity(createUser1, ADMIN_AUTH_HEADERS);
     EntityReference user1Ref = user1.getEntityReference();
-    CreateUser createUser2 =
-        userResourceTest.createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
-    User user2 = userResourceTest.createEntity(createUser2, ADMIN_AUTH_HEADERS);
-    EntityReference user2Ref = user2.getEntityReference();
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam = teamResourceTest.createRequest(test, 1).withTeamType(GROUP);
     Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
