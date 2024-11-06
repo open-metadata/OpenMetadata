@@ -198,6 +198,39 @@ public class TagRepository extends EntityRepository<Tag> {
     return result;
   }
 
+  public BulkOperationResult bulkRemoveTagToAssets(
+      UUID classificationTagId, AddTagToAssetsRequest request) {
+    Tag tag = this.get(null, classificationTagId, getFields("id"));
+
+    BulkOperationResult result =
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+    List<BulkResponse> success = new ArrayList<>();
+
+    // Validation for entityReferences
+    EntityUtil.populateEntityReferences(request.getAssets());
+
+    for (EntityReference ref : request.getAssets()) {
+      // Update Result Processed
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
+      EntityInterface asset =
+          entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
+
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagsByTagAndTargetEntity(
+              tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      success.add(new BulkResponse().withRequest(ref));
+      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+
+      // Update ES
+      searchRepository.updateEntity(ref);
+    }
+
+    return result.withSuccessRequest(success);
+  }
+
   @Override
   public EntityRepository<Tag>.EntityUpdater getUpdater(
       Tag original, Tag updated, Operation operation) {

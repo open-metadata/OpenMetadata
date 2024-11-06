@@ -56,6 +56,7 @@ import org.openmetadata.schema.api.classification.LoadTags;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -528,6 +529,31 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           UUID id,
       @Valid AddTagToAssetsRequest request) {
     return Response.ok().entity(repository.bulkAddAndValidateTagToAssets(id, request)).build();
+  }
+
+  @PUT
+  @Path("/{id}/assets/remove")
+  @Operation(
+      operationId = "bulkRemoveTagFromAssets",
+      summary = "Bulk Remove Tag from Assets",
+      description = "Bulk Remove Tag from Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkRemoveTagFromAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Valid AddTagToAssetsRequest request) {
+    return Response.ok().entity(repository.bulkRemoveTagToAssets(id, request)).build();
   }
 
   @Override
