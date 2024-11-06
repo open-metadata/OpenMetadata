@@ -43,6 +43,7 @@ def test_compile_and_clauses(elements, expected):
         (
             TableDiffRuntimeParameters.model_construct(
                 **{
+                    "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
                         profileSampleType=ProfileSampleType.PERCENTAGE,
                         profileSample=10,
@@ -63,6 +64,7 @@ def test_compile_and_clauses(elements, expected):
         (
             TableDiffRuntimeParameters.model_construct(
                 **{
+                    "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
                         profileSampleType=ProfileSampleType.PERCENTAGE,
                         profileSample=20,
@@ -83,6 +85,7 @@ def test_compile_and_clauses(elements, expected):
         (
             TableDiffRuntimeParameters.model_construct(
                 **{
+                    "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
                         profileSampleType=ProfileSampleType.PERCENTAGE,
                         profileSample=10,
@@ -103,6 +106,7 @@ def test_compile_and_clauses(elements, expected):
         (
             TableDiffRuntimeParameters.model_construct(
                 **{
+                    "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
                         profileSampleType=ProfileSampleType.ROWS,
                         profileSample=20,
@@ -123,6 +127,7 @@ def test_compile_and_clauses(elements, expected):
         (
             TableDiffRuntimeParameters.model_construct(
                 **{
+                    
                     "table_profile_config": None,
                     "table1": TableParameter.model_construct(
                         **{

@@ -77,6 +77,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         key_columns = self.get_key_columns(test_case)
         extra_columns = self.get_extra_columns(key_columns, test_case)
         return TableDiffRuntimeParameters(
+            database_service_type=service1.serviceType,
             table_profile_config=self.table_entity.tableProfilerConfig,
             table1=TableParameter(
                 path=self.get_data_diff_table_path(
@@ -119,8 +120,10 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         param_where_clause = self.get_parameter(test_case, "where", None)
         partition_where_clause = (
             None
-            if not self.sampler._partition_details
-            or not self.sampler._partition_details.enablePartitioning
+            if not (
+                self.sampler._partition_details
+                and self.sampler._partition_details.enablePartitioning
+            )
             else self.sampler.get_partitioned_query().whereclause.compile(
                 compile_kwargs={"literal_binds": True}
             )
