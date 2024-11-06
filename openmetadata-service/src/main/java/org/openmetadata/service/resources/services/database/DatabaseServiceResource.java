@@ -456,7 +456,7 @@ public class DatabaseServiceResource
                     mediaType = "application/json",
                     schema = @Schema(implementation = String.class)))
       })
-  public String exportCsv(
+  public Response exportCsv(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database Service", schema = @Schema(type = "string"))
           @PathParam("name")
