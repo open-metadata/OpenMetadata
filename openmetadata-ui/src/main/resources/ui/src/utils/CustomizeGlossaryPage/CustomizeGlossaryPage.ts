@@ -101,7 +101,6 @@ class CustomizeGlossaryPageClassBase {
       REVIEWER: 1,
       TERMS_TABLE: 6,
       EMPTY_WIDGET_PLACEHOLDER: 3,
-      NO_CUSTOMIZED_WIDGET: 6,
     };
 
     this.defaultLayout = [
@@ -236,12 +235,6 @@ class CustomizeGlossaryPageClassBase {
       return GlossaryHeaderWidget;
     } else if (widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TABS)) {
       return CustomizeTabWidget;
-    } else if (
-      widgetKey.startsWith(
-        GlossaryTermDetailPageWidgetKeys.NO_CUSTOMIZED_WIDGET
-      )
-    ) {
-      return GenericWidget;
     } else {
       return GenericWidget;
     }
@@ -271,8 +264,6 @@ class CustomizeGlossaryPageClassBase {
         return this.defaultHeights.OWNER;
       case 'REVIEWER':
         return this.defaultHeights.REVIEWER;
-      case 'NO_CUSTOMIZED_WIDGET':
-        return this.defaultHeights.NO_CUSTOMIZED_WIDGET;
       default:
         return this.defaultWidgetHeight;
     }
@@ -332,16 +323,7 @@ class CustomizeGlossaryPageClassBase {
       ];
     }
 
-    return [
-      {
-        h: this.defaultHeights.NO_CUSTOMIZED_WIDGET,
-        i: GlossaryTermDetailPageWidgetKeys.NO_CUSTOMIZED_WIDGET,
-        w: 8,
-        x: 0,
-        y: 0,
-        static: false,
-      },
-    ];
+    return [];
   }
 }
 

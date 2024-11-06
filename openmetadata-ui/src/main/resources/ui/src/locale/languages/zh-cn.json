@@ -1454,7 +1454,7 @@
     "custom-properties-description": " 获取自定义元数据, 通过扩展属性来丰富数据资产",
     "custom-property-is-set-to-message": "{{fieldName}}设置为",
     "custom-property-name-validation": "命名首字母必须是小写字母不能为空格、下划线或点号",
-    "customize-landing-page-header": "为用户角色\"<0>{{persona}}</0>\"自定义登陆页面",
+    "customize-landing-page-header": "Customize {{pageName}} for Persona \"<0>{{persona}}</0>\"",
     "customize-open-metadata-description": "自定义 OpenMetadata, 以满足您的组织和团队需求",
     "data-asset-has-been-action-type": "数据资产已{{actionType}}",
     "data-insight-alert-destination-description": "发送通知邮件给管理员或团队",

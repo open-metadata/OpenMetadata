@@ -25,6 +25,8 @@ import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/Cus
 import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPage';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeMyDataPageClassBase from '../CustomizeMyDataPageClassBase';
+import i18n from '../i18next/LocalUtil';
+import tableClassBase from '../TableClassBase';
 
 export const getDefaultLayout = (pageType: string) => {
   switch (pageType) {
@@ -47,7 +49,6 @@ export const getGlossaryTermDefaultTabs = () => {
         EntityTabs.OVERVIEW
       ),
       name: EntityTabs.OVERVIEW,
-      removable: false,
       editable: true,
     },
     {
@@ -57,7 +58,6 @@ export const getGlossaryTermDefaultTabs = () => {
         EntityTabs.GLOSSARY_TERMS
       ),
       name: EntityTabs.GLOSSARY_TERMS,
-      removable: false,
       editable: false,
     },
     {
@@ -67,7 +67,6 @@ export const getGlossaryTermDefaultTabs = () => {
         EntityTabs.ASSETS
       ),
       name: EntityTabs.ASSETS,
-      removable: false,
       editable: false,
     },
     {
@@ -77,7 +76,6 @@ export const getGlossaryTermDefaultTabs = () => {
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.ACTIVITY_FEED
       ),
-      removable: false,
       editable: false,
     },
     {
@@ -87,7 +85,6 @@ export const getGlossaryTermDefaultTabs = () => {
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.CUSTOM_PROPERTIES
       ),
-      removable: false,
       editable: false,
     },
   ];
@@ -102,7 +99,6 @@ export const getGlossaryDefaultTabs = () => {
       layout: customizeGlossaryPageClassBase.getDefaultWidgetForTab(
         EntityTabs.TERMS
       ),
-      removable: false,
       editable: true,
     },
     {
@@ -112,10 +108,62 @@ export const getGlossaryDefaultTabs = () => {
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.ACTIVITY_FEED
       ),
-      removable: false,
       editable: false,
     },
   ];
+};
+
+export const getTabLabelFromId = (tab: EntityTabs) => {
+  switch (tab) {
+    case EntityTabs.OVERVIEW:
+      return i18n.t('label.overview');
+    case EntityTabs.GLOSSARY_TERMS:
+      return i18n.t('label.glossary-terms');
+    case EntityTabs.ASSETS:
+      return i18n.t('label.assets');
+    case EntityTabs.ACTIVITY_FEED:
+      return i18n.t('label.activity-feed-and-task-plural');
+    case EntityTabs.CUSTOM_PROPERTIES:
+      return i18n.t('label.custom-property-plural');
+    case EntityTabs.TERMS:
+      return i18n.t('label.terms');
+    case EntityTabs.SCHEMA:
+      return i18n.t('label.schema');
+    case EntityTabs.SAMPLE_DATA:
+      return i18n.t('label.sample-data');
+    case EntityTabs.TABLE_QUERIES:
+      return i18n.t('label.query-plural');
+    case EntityTabs.PROFILER:
+      return i18n.t('label.profiler-amp-data-quality');
+    case EntityTabs.INCIDENTS:
+      return i18n.t('label.incident-plural');
+    case EntityTabs.LINEAGE:
+      return i18n.t('label.lineage');
+    case EntityTabs.VIEW_DEFINITION:
+      return i18n.t('label.view-definition');
+    case EntityTabs.DBT:
+      return i18n.t('label.dbt-lowercase');
+    default:
+      return '';
+  }
+};
+
+const getCustomizeTabObject = (tab: EntityTabs) => ({
+  id: tab,
+  name: tab,
+  displayName: getTabLabelFromId(tab),
+  layout: tableClassBase.getDefaultLayout(tab),
+  editable: [EntityTabs.SCHEMA, EntityTabs.OVERVIEW, EntityTabs.TERMS].includes(
+    tab
+  ),
+});
+
+export const getTableDefaultTabs = () => {
+  const tabs = tableClassBase
+    .getTableDetailPageTabsIds()
+    .map(getCustomizeTabObject);
+
+  return tabs;
 };
 
 export const getDefaultTabs = (pageType?: string) => {
@@ -125,6 +173,8 @@ export const getDefaultTabs = (pageType?: string) => {
     case PageType.Glossary:
       return getGlossaryDefaultTabs();
     case PageType.Table:
+      return getTableDefaultTabs();
+    case PageType.Container:
     default:
       return [
         {
@@ -134,9 +184,20 @@ export const getDefaultTabs = (pageType?: string) => {
           layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
             EntityTabs.CUSTOM_PROPERTIES
           ),
-          removable: false,
         },
       ];
+  }
+};
+
+export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
+  switch (pageType) {
+    case PageType.GlossaryTerm:
+    case PageType.Glossary:
+      return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
+    case PageType.Table:
+      return tableClassBase.getDefaultLayout(tab);
+    default:
+      return [];
   }
 };
 

@@ -106,20 +106,20 @@ const LeftSidebar = () => {
     setIsSidebarCollapsed(true);
   }, []);
 
-  useEffect(() => {
-    if (
-      selectedPersona.fullyQualifiedName &&
-      selectedPersona.fullyQualifiedName !== 'default'
-    ) {
-      const pageLayoutFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
+  const fetchCustomizedDocStore = useCallback(async (personaFqn: string) => {
+    try {
+      const pageLayoutFQN = `${EntityType.PERSONA}.${personaFqn}`;
 
-      getDocumentByFQN(pageLayoutFQN)
-        .then((response) => {
-          setCurrentPersonaDocStore(response);
-        })
-        .catch((_error) => {
-          // silent
-        });
+      const document = await getDocumentByFQN(pageLayoutFQN);
+      setCurrentPersonaDocStore(document);
+    } catch (error) {
+      // silent error
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedPersona.fullyQualifiedName) {
+      fetchCustomizedDocStore(selectedPersona.fullyQualifiedName);
     }
   }, [selectedPersona]);
 

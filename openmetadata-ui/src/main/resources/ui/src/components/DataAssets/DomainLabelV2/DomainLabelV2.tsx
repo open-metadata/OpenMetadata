@@ -14,7 +14,7 @@ import { Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { get, isEmpty } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -35,6 +35,7 @@ import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
+import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
 
 export const DomainLabelV2 = <
   T extends {
@@ -78,8 +79,8 @@ export const DomainLabelV2 = <
             // update the domain details here
             setActiveDomain(isEmpty(entityDomains) ? [] : [entityDomains]);
           }
-          //   !isUndefined(afterDomainUpdateAction) &&
-          //     afterDomainUpdateAction(res as DataAssetWithDomains);
+          !isUndefined(props.afterDomainUpdateAction) &&
+            props.afterDomainUpdateAction(res as DataAssetWithDomains);
         }
       } catch (err) {
         // Handle errors as needed
@@ -135,9 +136,9 @@ export const DomainLabelV2 = <
       return (
         <Typography.Text
           className={classNames(
-            'domain-link'
-            // { 'font-medium text-xs': !showDomainHeading },
-            // textClassName
+            'domain-link',
+            { 'font-medium text-xs': !props.showDomainHeading },
+            props.textClassName
           )}
           data-testid="no-domain-text">
           {t('label.no-entity', { entity: t('label.domain') })}

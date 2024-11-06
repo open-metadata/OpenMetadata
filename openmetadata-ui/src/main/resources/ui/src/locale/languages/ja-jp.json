@@ -1454,7 +1454,7 @@
     "custom-properties-description": " Capture custom metadata to enrich your data assets by extending the attributes.",
     "custom-property-is-set-to-message": "{{fieldName}} is set to",
     "custom-property-name-validation": "Name must start with lower case with no space, underscore, or dots.",
-    "customize-landing-page-header": "Customize Landing Page for Persona \"<0>{{persona}}</0>\"",
+    "customize-landing-page-header": "Customize {{pageName}} for Persona \"<0>{{persona}}</0>\"",
     "customize-open-metadata-description": "Tailor the OpenMetadata UX to suit your organizational and team needs.",
     "data-asset-has-been-action-type": "データアセットが{{actionType}}されました",
     "data-insight-alert-destination-description": "Send email notifications to admins or teams.",

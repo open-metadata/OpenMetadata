@@ -1454,7 +1454,7 @@
     "custom-properties-description": "متادیتای سفارشی را برای غنی‌سازی دارایی‌های داده‌ای خود با افزودن ویژگی‌های اضافی ضبط کنید.",
     "custom-property-is-set-to-message": "{{fieldName}} به مقدار",
     "custom-property-name-validation": "نام باید با حرف کوچک شروع شود و هیچ فاصله، زیرخط یا نقطه‌ای نداشته باشد.",
-    "customize-landing-page-header": "سفارشی‌سازی صفحه اصلی برای نقش \"<0>{{persona}}</0>\"",
+    "customize-landing-page-header": "Customize {{pageName}} for Persona \"<0>{{persona}}</0>\"",
     "customize-open-metadata-description": "تجربه کاربری OpenMetadata را برای نیازهای سازمانی و تیمی خود تنظیم کنید.",
     "data-asset-has-been-action-type": "دارایی داده‌ای {{actionType}} شده است",
     "data-insight-alert-destination-description": "اعلان‌های ایمیلی را به مدیران یا تیم‌ها ارسال کنید.",

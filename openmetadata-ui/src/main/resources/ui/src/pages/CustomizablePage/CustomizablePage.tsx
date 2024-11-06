@@ -43,6 +43,7 @@ import { getPersonaByName } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { CustomizeTableDetailPage } from '../CustomizeTableDetailPage/CustomizeTableDetailPage';
 import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
 import { useCustomizeStore } from './CustomizeStore';
 
@@ -257,6 +258,15 @@ export const CustomizablePage = () => {
         <CustomizeGlossaryTermDetailPage
           initialPageData={currentPage}
           isGlossary={pageFqn === PageType.Glossary}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+    case PageType.Table:
+      return (
+        <CustomizeTableDetailPage
+          initialPageData={currentPage}
+          isGlossary={false}
           personaDetails={personaDetails}
           onSaveLayout={handlePageCustomizeSave}
         />

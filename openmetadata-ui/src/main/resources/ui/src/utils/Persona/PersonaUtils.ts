@@ -10,21 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AppstoreAddOutlined } from '@ant-design/icons';
 import { camelCase, map, startCase } from 'lodash';
-import { ReactComponent as GovernIcon } from '../../assets/svg/bank.svg';
 import { ReactComponent as DashboardIcon } from '../../assets/svg/dashboard-colored.svg';
+import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-assets.svg';
 import { ReactComponent as DatabaseIcon } from '../../assets/svg/database-colored.svg';
-import { ReactComponent as ExploreIcon } from '../../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../../assets/svg/glossary-colored.svg';
+import { ReactComponent as GovernIcon } from '../../assets/svg/governance.svg';
+import { ReactComponent as HomepageIcon } from '../../assets/svg/homepage.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../../assets/svg/ic-dashboard-data-model-colored.svg';
 import { ReactComponent as SchemaIcon } from '../../assets/svg/ic-database-schema-colored.svg';
 import { ReactComponent as MessagingIcon } from '../../assets/svg/messaging-colored.svg';
+import { ReactComponent as NavigationIcon } from '../../assets/svg/navigation.svg';
 import { ReactComponent as PipelineIcon } from '../../assets/svg/pipeline-colored.svg';
 import { ReactComponent as SearchIcon } from '../../assets/svg/search-colored.svg';
 import { ReactComponent as StorageIcon } from '../../assets/svg/storage-colored.svg';
 import { ReactComponent as StoredProcedureIcon } from '../../assets/svg/stored-procedure-colored.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/table-colored.svg';
+
 import { EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { SettingMenuItem } from '../GlobalSettingsUtils';
@@ -45,8 +47,10 @@ const ENTITY_ICONS: Record<string, SvgComponent> = {
   [EntityType.STORED_PROCEDURE]: StoredProcedureIcon,
   [EntityType.TOPIC]: MessagingIcon,
   [EntityType.GOVERN]: GovernIcon,
-  ['Data assets']: ExploreIcon,
-  ['Navigation']: AppstoreAddOutlined as SvgComponent,
+  ['dataAssets']: DataAssetsIcon,
+  ['homepage']: HomepageIcon,
+  ['navigation']: NavigationIcon,
+  ['governance']: GovernIcon,
   [PageType.LandingPage]: MessagingIcon,
 };
 
@@ -72,12 +76,19 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
     },
     {
       key: 'data-assets',
-      label: 'Data assets',
+      label: i18n.t('label.data-asset-plural'),
       description: 'Data assets',
-      icon: ENTITY_ICONS[camelCase('Data assets')],
+      icon: ENTITY_ICONS[camelCase('data-assets')],
     },
   ];
 };
+
+const generateSettingItems = (pageType: PageType): SettingMenuItem => ({
+  key: pageType,
+  label: startCase(pageType),
+  description: pageType,
+  icon: ENTITY_ICONS[camelCase(pageType)],
+});
 
 export const getCustomizePageOptions = (
   category: string
@@ -86,35 +97,32 @@ export const getCustomizePageOptions = (
 
   switch (category) {
     case 'governance':
-      return list
-        .filter((item) =>
+      return list.reduce((acc, item) => {
+        if (
           [PageType.Glossary, PageType.GlossaryTerm, PageType.Domain].includes(
             item
           )
-        )
-        .map((item) => ({
-          key: item,
-          label: startCase(item),
-          description: item,
-          icon: ENTITY_ICONS[camelCase(item)],
-        }));
+        ) {
+          acc.push(generateSettingItems(item));
+        }
+
+        return acc;
+      }, [] as SettingMenuItem[]);
     case 'data-assets':
-      return list
-        .filter(
-          (item) =>
-            ![
-              PageType.Glossary,
-              PageType.GlossaryTerm,
-              PageType.Domain,
-              PageType.LandingPage,
-            ].includes(item)
-        )
-        .map((item) => ({
-          key: item,
-          label: startCase(item),
-          description: startCase(item),
-          icon: ENTITY_ICONS[camelCase(item)],
-        }));
+      return list.reduce((acc, item) => {
+        if (
+          ![
+            PageType.Glossary,
+            PageType.GlossaryTerm,
+            PageType.Domain,
+            PageType.LandingPage,
+          ].includes(item)
+        ) {
+          acc.push(generateSettingItems(item));
+        }
+
+        return acc;
+      }, [] as SettingMenuItem[]);
     default:
       return [];
   }

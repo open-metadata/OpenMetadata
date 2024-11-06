@@ -92,7 +92,7 @@ describe.skip('Test Glossary-term component', () => {
     const glossaryTerm = screen.getByTestId('glossary-term');
     const tabs = await screen.findAllByRole('tab');
 
-    // expect(await screen.findByText('GlossaryTermTab')).toBeInTheDocument();
+    expect(await screen.findByText('GlossaryTermTab')).toBeInTheDocument();
     expect(glossaryTerm).toBeInTheDocument();
     expect(tabs).toHaveLength(5);
     expect(tabs.map((tab) => tab.textContent)).toStrictEqual([

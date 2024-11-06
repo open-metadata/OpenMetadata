@@ -15,10 +15,6 @@
       "description": "DisplayName of the tab.",
       "type": "string"
     },
-    "removable": {
-      "description": "Weather tab can remove by user or not.",
-      "type": "boolean"
-    },
     "layout": {
       "description": "Layout configuration for this tab.",
       "type": "object"
@@ -32,6 +28,6 @@
       "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["id", "name", "layout", "removable"],
+  "required": ["id", "name", "layout"],
   "additionalProperties": false
 }

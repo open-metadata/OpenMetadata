@@ -39,6 +39,7 @@ import {
 import {
   getCustomizableWidgetByPage,
   getDefaultTabs,
+  getDefaultWidgetForTab,
 } from '../../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
@@ -66,7 +67,8 @@ export const CustomizeTabWidget = () => {
   const [tabLayouts, setTabLayouts] = useState<WidgetConfig[]>(
     getLayoutWithEmptyWidgetPlaceholder(
       (items.find((item) => item.id === activeKey)?.layout as WidgetConfig[]) ??
-        customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        getDefaultWidgetForTab(
+          currentPageType as PageType,
           (activeKey as EntityTabs) ?? EntityTabs.OVERVIEW
         ),
       2,
@@ -83,7 +85,7 @@ export const CustomizeTabWidget = () => {
     setTabLayouts(
       getLayoutWithEmptyWidgetPlaceholder(
         isEmpty(newTab?.layout)
-          ? customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(key)
+          ? getDefaultWidgetForTab(currentPageType as PageType, key)
           : (newTab?.layout as WidgetConfig[]),
         2,
         3
@@ -99,7 +101,6 @@ export const CustomizeTabWidget = () => {
         name: 'New Tab',
         layout: [],
         id: newActiveKey,
-        removable: true,
         editable: true,
       } as Tab,
     ]);
@@ -252,23 +253,28 @@ export const CustomizeTabWidget = () => {
         items={items.map((item) => ({
           key: item.id,
           label: (
-            <Tooltip
-              title={
-                item.editable ? '' : t('message.no-customization-available')
-              }>
-              {getEntityName(item)}
-              <Icon
-                className="m-l-xs "
-                component={EditIcon}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleTabEditClick(item.id);
-                }}
-              />
-            </Tooltip>
+            <span
+              onClick={(event) => {
+                event.stopPropagation();
+                item.editable && onChange(item.id);
+              }}>
+              <Tooltip
+                title={
+                  item.editable ? '' : t('message.no-customization-available')
+                }>
+                {getEntityName(item)}
+                <Icon
+                  className="m-l-xs "
+                  component={EditIcon}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleTabEditClick(item.id);
+                  }}
+                />
+              </Tooltip>
+            </span>
           ),
-          closable: item.removable ?? false,
-          disabled: !item.editable,
+          closable: true,
         }))}
         size="small"
         tabBarGutter={2}

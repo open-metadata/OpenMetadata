@@ -26,10 +26,10 @@ export enum DetailPageWidgetKeys {
   FREQUENTLY_JOINED_TABLES = 'KnowledgePanel.FrequentlyJoinedTables',
   DATA_PRODUCTS = 'KnowledgePanel.DataProducts',
   TAGS = 'KnowledgePanel.Tags',
+  DOMAIN = 'KnowledgePanel.Domain',
   GLOSSARY_TERMS = 'KnowledgePanel.GlossaryTerms',
   CUSTOM_PROPERTIES = 'KnowledgePanel.CustomProperties',
   EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
-  NO_CUSTOMIZED_WIDGET = 'ExtraWidget.NoCustomizedWidget',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {
@@ -45,6 +45,5 @@ export enum GlossaryTermDetailPageWidgetKeys {
   REVIEWER = 'KnowledgePanel.Reviewer',
   CUSTOM_PROPERTIES = 'KnowledgePanel.CustomProperties',
   EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
-  NO_CUSTOMIZED_WIDGET = 'ExtraWidget.NoCustomizedWidget',
   TERMS_TABLE = 'KnowledgePanel.TermsTable',
 }

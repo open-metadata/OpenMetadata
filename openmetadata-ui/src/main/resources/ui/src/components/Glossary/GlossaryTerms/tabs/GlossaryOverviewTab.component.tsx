@@ -309,7 +309,7 @@ const GlossaryOverviewTab = ({
       <ReactGridLayout
         className="grid-container"
         cols={8}
-        draggableHandle=".drag-widget-icon"
+        isDraggable={false}
         isResizable={false}
         margin={[
           customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
