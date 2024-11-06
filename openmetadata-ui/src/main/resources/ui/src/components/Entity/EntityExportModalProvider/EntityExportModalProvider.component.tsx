@@ -12,6 +12,7 @@
  */
 import { Form, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isString } from 'lodash';
 import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -159,13 +160,13 @@ export const EntityExportModalProvider = ({
             open
             cancelText={t('label.cancel')}
             closable={false}
-            confirmLoading={downloading}
             data-testid="export-entity-modal"
             maskClosable={false}
             okButtonProps={{
               form: 'export-form',
               htmlType: 'submit',
               id: 'submit-button',
+              disabled: downloading,
             }}
             okText={t('label.export')}
             title={exportData.title ?? t('label.export')}
@@ -176,6 +177,7 @@ export const EntityExportModalProvider = ({
               layout="vertical"
               onFinish={handleExport}>
               <Form.Item
+                className={classNames({ 'mb-0': !csvExportJob?.jobId })}
                 label={`${t('label.entity-name', {
                   entity: t('label.file'),
                 })}:`}
@@ -187,6 +189,7 @@ export const EntityExportModalProvider = ({
             {csvExportJob?.jobId && (
               <Banner
                 className="border-radius"
+                isLoading={downloading}
                 message={csvExportJob.error ?? csvExportJob.message ?? ''}
                 type={csvExportJob.error ? 'error' : 'success'}
               />
