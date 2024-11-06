@@ -350,8 +350,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         # implementaiton. We can use this as default and add database specific implementations as the
         # need arises.
         salt = "".join(
-            random.choices(string.printable, k=5)
-        )  # 1 / ~100^5 should be enough entropy
+            random.choices(string.ascii_letters + string.digits, k=5)
+        )  # 1 / ~62^5 should be enough entropy. Use letters and digits to avoid messing with SQL syntax
         sql_alchemy_columns = [
             build_orm_col(
                 i, c, self.runtime_params.database_service_type
