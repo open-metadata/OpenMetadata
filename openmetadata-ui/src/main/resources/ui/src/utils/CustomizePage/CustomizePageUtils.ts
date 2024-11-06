@@ -244,3 +244,14 @@ export const getCustomizableWidgetByPage = (
       return [];
   }
 };
+
+export const getDummyDataByPage = (pageType: PageType) => {
+  switch (pageType) {
+    case PageType.Table:
+      return tableClassBase.getDummyData();
+
+    case PageType.LandingPage:
+    default:
+      return {};
+  }
+};

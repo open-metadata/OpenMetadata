@@ -216,22 +216,26 @@ export const SettingsNavigationPage = ({
             }}
           />
         </Col>
-        <Col flex="180px">
-          <Button className="m-r-sm" size="small" onClick={handleReset}>
-            {t('label.reset')}
-          </Button>
+        <Col className="m-auto" flex="180px">
           <Button
+            className="float-right"
             loading={saving}
             size="small"
             type="primary"
             onClick={handleSave}>
             {t('label.save')}
           </Button>
+          <Button
+            className="float-right m-r-sm"
+            size="small"
+            onClick={handleReset}>
+            {t('label.reset')}
+          </Button>
         </Col>
         <Col span={24}>
           <Tree
             autoExpandParent
-            blockNode
+            // blockNode
             defaultExpandAll
             draggable
             showIcon

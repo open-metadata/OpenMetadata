@@ -23,13 +23,17 @@ import { DataType, Table } from '../../../../generated/entity/data/table';
 import { EntityReference } from '../../../../generated/tests/testCase';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { FrequentlyJoinedTables } from '../../../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
+import tableClassBase from '../../../../utils/TableClassBase';
+import { getJoinsFromTableJoins } from '../../../../utils/TableUtils';
 import { ExtensionTable } from '../../../common/CustomPropertyTable/ExtensionTable';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import SchemaTable from '../../../Database/SchemaTable/SchemaTable.component';
+import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsViewer from '../../../Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 
@@ -54,9 +58,24 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           tagType={TagSource.Glossary}
           tags={[
             {
-              tagFQN: 'tagFQN',
-              source: 'source',
-              name: 'Annual Percentage Yield',
+              tagFQN: 'BusinessGlossary.Purchase',
+              source: TagSource.Glossary,
+              name: 'Purchase',
+            },
+            {
+              tagFQN: 'Person.BankNumber',
+              source: TagSource.Glossary,
+              name: 'BankNumber',
+            },
+            {
+              tagFQN: 'Hospitality.Guest Type',
+              source: TagSource.Glossary,
+              name: 'Guest Type',
+            },
+            {
+              tagFQN: 'Financial Services',
+              source: TagSource.Glossary,
+              name: 'Auto Loan',
             },
           ]}
         />
@@ -119,6 +138,21 @@ export const GenericWidget = (props: WidgetCommonProps) => {
               source: TagSource.Classification,
               name: 'DriverLicense',
             },
+            {
+              tagFQN: 'PII.Sensitive',
+              source: TagSource.Classification,
+              name: 'Sensitive',
+            },
+            {
+              tagFQN: 'Tier.Tier1',
+              source: TagSource.Classification,
+              name: 'Tier1',
+            },
+            {
+              tagFQN: 'PersonalData.SpecialCategory',
+              source: TagSource.Classification,
+              name: 'SpecialCategory',
+            },
           ]}
         />
       );
@@ -154,6 +188,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
             email: 'customproperty@OpenMetadata.com',
             name: 'OpenMetadata',
           }}
+          tableClassName="m-0"
         />
       );
     } else if (
@@ -321,6 +356,24 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           }
           onThreadLinkSelect={noop}
           onUpdate={async () => noop()}
+        />
+      );
+    } else if (
+      props.widgetKey.startsWith(DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES)
+    ) {
+      return (
+        <FrequentlyJoinedTables
+          joinedTables={getJoinsFromTableJoins(
+            tableClassBase.getDummyData().joins
+          )}
+        />
+      );
+    } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
+      return (
+        <DataProductsContainer
+          dataProducts={tableClassBase.getDummyData().dataProducts ?? []}
+          hasPermission={false}
+          showHeader={false}
         />
       );
     }
