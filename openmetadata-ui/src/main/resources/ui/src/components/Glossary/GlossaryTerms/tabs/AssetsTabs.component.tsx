@@ -52,6 +52,7 @@ import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { Tag } from '../../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
@@ -72,6 +73,7 @@ import {
   removeAssetsFromGlossaryTerm,
 } from '../../../../rest/glossaryAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import {
@@ -164,7 +166,7 @@ const AssetsTabs = forwardRef(
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<SourceType>();
     const [activeEntity, setActiveEntity] = useState<
-      Domain | DataProduct | GlossaryTerm
+      Domain | DataProduct | GlossaryTerm | Tag
     >();
 
     const [selectedItems, setSelectedItems] = useState<
@@ -182,6 +184,8 @@ const AssetsTabs = forwardRef(
         ? t('label.glossary-term-lowercase')
         : type === AssetsOfEntity.DOMAIN
         ? t('label.domain-lowercase')
+        : type === AssetsOfEntity.TAG
+        ? t('label.tag-lowercase')
         : t('label.data-product-lowercase');
 
     const handleMenuClick = ({ key }: { key: string }) => {
@@ -312,6 +316,11 @@ const AssetsTabs = forwardRef(
           data = await getGlossaryTermByFQN(fqn);
 
           break;
+
+        case AssetsOfEntity.TAG:
+          data = await getTagByFqn(fqn);
+
+          break;
         default:
           break;
       }
@@ -414,6 +423,11 @@ const AssetsTabs = forwardRef(
                 activeEntity as GlossaryTerm,
                 entities
               );
+
+              break;
+
+            case AssetsOfEntity.TAG:
+              await removeAssetsFromTags(activeEntity.id ?? '', entities);
 
               break;
 
@@ -900,7 +914,7 @@ const AssetsTabs = forwardRef(
         {!(isLoading || isCountLoading) && (
           <div
             className={classNames('asset-tab-delete-notification', {
-              visible: selectedItems.size > 1,
+              visible: selectedItems.size > 0,
             })}>
             <div className="d-flex items-center justify-between">
               <Typography.Text className="text-white">

@@ -456,7 +456,7 @@ const TagPage = () => {
   ]);
 
   const icon = useMemo(() => {
-    if (tagItem?.style && tagItem.style?.iconURL) {
+    if (tagItem?.style?.iconURL) {
       return (
         <img
           alt={tagItem.name ?? 'Tag Icon'}

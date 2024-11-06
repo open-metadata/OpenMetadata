@@ -75,6 +75,23 @@ export const addAssetsToTags = async (
   return response.data;
 };
 
+export const removeAssetsFromTags = async (
+  tagId: string,
+  assets: EntityReference[]
+) => {
+  const data = {
+    assets: assets,
+    dryRun: false,
+  };
+
+  const response = await APIClient.put<
+    AddTagToAssetsRequest,
+    AxiosResponse<Tag>
+  >(`/tags/${tagId}/assets/remove`, data);
+
+  return response.data;
+};
+
 export const getClassificationByName = async (
   name: string,
   params?: ListParams
