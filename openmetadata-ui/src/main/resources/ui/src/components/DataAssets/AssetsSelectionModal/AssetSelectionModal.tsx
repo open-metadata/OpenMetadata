@@ -44,6 +44,7 @@ import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filte
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
@@ -64,6 +65,7 @@ import {
   getGlossaryTermByFQN,
 } from '../../../rest/glossaryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
@@ -104,7 +106,9 @@ export const AssetSelectionModal = ({
   const [activeFilter, setActiveFilter] = useState<SearchIndex>(
     type === AssetsOfEntity.GLOSSARY ? SearchIndex.DATA_ASSET : SearchIndex.ALL
   );
-  const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
+  const [activeEntity, setActiveEntity] = useState<
+    Domain | DataProduct | Tag
+  >();
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -170,20 +174,40 @@ export const AssetSelectionModal = ({
   );
 
   const fetchCurrentEntity = useCallback(async () => {
-    if (type === AssetsOfEntity.DOMAIN) {
-      const data = await getDomainByName(entityFqn);
-      setActiveEntity(data);
-    } else if (type === AssetsOfEntity.DATA_PRODUCT) {
-      const data = await getDataProductByName(entityFqn, {
-        fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
-      });
-      setActiveEntity(data);
-    } else if (type === AssetsOfEntity.GLOSSARY) {
-      const data = await getGlossaryTermByFQN(entityFqn, {
-        fields: TabSpecificField.TAGS,
-      });
-      setActiveEntity(data);
+    let data: GlossaryTerm | Tag | Domain | DataProduct | undefined;
+
+    switch (type) {
+      case AssetsOfEntity.DOMAIN:
+        data = await getDomainByName(entityFqn);
+
+        break;
+
+      case AssetsOfEntity.DATA_PRODUCT:
+        data = await getDataProductByName(entityFqn, {
+          fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
+        });
+
+        break;
+
+      case AssetsOfEntity.GLOSSARY:
+        data = await getGlossaryTermByFQN(entityFqn, {
+          fields: TabSpecificField.TAGS,
+        });
+
+        break;
+
+      case AssetsOfEntity.TAG:
+        data = await getTagByFqn(entityFqn);
+
+        break;
+
+      default:
+        data = undefined;
+
+        break;
     }
+
+    setActiveEntity(data);
   }, [type, entityFqn]);
 
   useEffect(() => {
@@ -272,6 +296,11 @@ export const AssetSelectionModal = ({
             activeEntity as GlossaryTerm,
             entities
           );
+
+          break;
+
+        case AssetsOfEntity.TAG:
+          res = await addAssetsToTags(activeEntity.id ?? '', entities);
 
           break;
         case AssetsOfEntity.DOMAIN:
