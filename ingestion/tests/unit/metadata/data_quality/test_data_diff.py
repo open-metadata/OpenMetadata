@@ -127,7 +127,6 @@ def test_compile_and_clauses(elements, expected):
         (
             TableDiffRuntimeParameters.model_construct(
                 **{
-                    
                     "table_profile_config": None,
                     "table1": TableParameter.model_construct(
                         **{

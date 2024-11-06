@@ -15,9 +15,7 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     PartitionIntervalTypes,
     PartitionProfilerConfig,
-    ProfileSampleType,
     Table,
-    TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,

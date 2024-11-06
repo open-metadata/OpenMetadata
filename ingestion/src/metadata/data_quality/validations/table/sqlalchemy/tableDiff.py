@@ -25,7 +25,7 @@ from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
 from sqlalchemy import Column as SAColumn
-from sqlalchemy import func, literal, select
+from sqlalchemy import literal, select
 
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -44,6 +44,7 @@ from metadata.generated.schema.tests.basic import (
 )
 from metadata.profiler.orm.converter.base import build_orm_col
 from metadata.profiler.orm.functions.md5 import MD5
+from metadata.profiler.orm.functions.substr import Substr
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils.logger import test_suite_logger
 
@@ -365,7 +366,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             (
                 select()
                 .filter(
-                    func.substr(
+                    Substr(
                         MD5(reduced_concat),
                         1,
                         8,
@@ -603,5 +604,5 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
 
     def get_row_count(self) -> Optional[int]:
-        self.runner._sample = None
+        self.runner._sample = None  # pylint: disable=protected-access
         return self._compute_row_count(self.runner, None)
