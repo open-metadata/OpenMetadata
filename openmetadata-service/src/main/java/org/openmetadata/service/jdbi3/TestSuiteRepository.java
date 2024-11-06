@@ -37,7 +37,6 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.EntityUtil;

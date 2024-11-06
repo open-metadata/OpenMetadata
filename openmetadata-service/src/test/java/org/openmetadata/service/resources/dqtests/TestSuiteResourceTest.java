@@ -14,10 +14,10 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
-import es.org.elasticsearch.search.aggregations.AggregationBuilder;
-import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RestClient;
+import es.org.elasticsearch.search.aggregations.AggregationBuilder;
+import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;

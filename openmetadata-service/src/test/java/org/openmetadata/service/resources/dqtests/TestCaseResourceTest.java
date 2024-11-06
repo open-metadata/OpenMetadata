@@ -33,7 +33,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.permiss
 import static org.openmetadata.service.jdbi3.TestCaseRepository.FAILED_ROWS_SAMPLE_EXTENSION;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
-import static org.openmetadata.service.security.mask.PIIMasker.MASKED_VALUE;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -61,8 +60,6 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
