@@ -23,6 +23,7 @@ import {
 } from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
+import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
@@ -37,6 +38,10 @@ export interface HelperFunctions {
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
   trySilentSignIn: (forceLogout?: boolean) => Promise<void>;
+}
+
+export interface AppPreferences {
+  lineageConfig?: LineageSettings;
 }
 
 export interface ApplicationStore
@@ -56,9 +61,11 @@ export interface ApplicationStore
   theme: UIThemePreference['customTheme'];
   inlineAlertDetails?: InlineAlertProps;
   applications: string[];
+  appPreferences: AppPreferences;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
+  setAppPreferences: (preferences: AppPreferences) => void;
   setCurrentUser: (user: User) => void;
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;
   setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;

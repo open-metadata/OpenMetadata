@@ -295,6 +295,7 @@ export const SOCKET_EVENTS = {
   TASK_CHANNEL: 'taskChannel',
   MENTION_CHANNEL: 'mentionChannel',
   JOB_STATUS: 'jobStatus',
+  CSV_EXPORT_CHANNEL: 'csvExportChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -501,8 +502,10 @@ export const getCreateUserPath = (bot: boolean) => {
   return path;
 };
 
-export const getUsersPagePath = () => {
-  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/users`;
+export const getUsersPagePath = (isAdmin?: boolean) => {
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/${
+    isAdmin ? 'admins' : 'users'
+  }`;
 };
 
 export const getBotsPagePath = () => {
