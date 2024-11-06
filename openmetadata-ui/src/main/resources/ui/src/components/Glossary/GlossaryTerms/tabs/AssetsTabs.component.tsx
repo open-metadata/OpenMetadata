@@ -179,14 +179,21 @@ const AssetsTabs = forwardRef(
     >([]);
     const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
     const [searchValue, setSearchValue] = useState('');
-    const entityTypeString =
-      type === AssetsOfEntity.GLOSSARY
-        ? t('label.glossary-term-lowercase')
-        : type === AssetsOfEntity.DOMAIN
-        ? t('label.domain-lowercase')
-        : type === AssetsOfEntity.TAG
-        ? t('label.tag-lowercase')
-        : t('label.data-product-lowercase');
+
+    function getEntityTypeString(type: string) {
+      switch (type) {
+        case AssetsOfEntity.GLOSSARY:
+          return t('label.glossary-term-lowercase');
+        case AssetsOfEntity.DOMAIN:
+          return t('label.domain-lowercase');
+        case AssetsOfEntity.TAG:
+          return t('label.tag-lowercase');
+        default:
+          return t('label.data-product-lowercase');
+      }
+    }
+
+    const entityTypeString = getEntityTypeString(type);
 
     const handleMenuClick = ({ key }: { key: string }) => {
       setSelectedFilter((prevSelected) => [...prevSelected, key]);
