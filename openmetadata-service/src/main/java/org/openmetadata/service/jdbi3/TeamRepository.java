@@ -798,6 +798,8 @@ public class TeamRepository extends EntityRepository<Team> {
           origUsers,
           updatedUsers,
           false);
+
+      updatedTeam.setUserCount(updatedUsers.size());
     }
 
     private void updateDefaultRoles(Team origTeam, Team updatedTeam) {

@@ -188,6 +188,9 @@
           }
         }
       },
+      "userCount" : {
+        "type" : "long"
+      },
       "parents": {
         "properties": {
           "id": {
