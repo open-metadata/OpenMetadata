@@ -41,13 +41,13 @@
       "title": "Propagate Tier",
       "description": "Propagate tier from the parent",
       "type": "boolean",
-      "default": true
+      "default": false
     },
     "propagateOwner": {
       "title": "Propagate Owner",
       "description": "Propagate owner from the parent",
       "type": "boolean",
-      "default": true
+      "default": false
     },
     "propagateColumnLevel": {
       "title": "Propagate Column Level",
