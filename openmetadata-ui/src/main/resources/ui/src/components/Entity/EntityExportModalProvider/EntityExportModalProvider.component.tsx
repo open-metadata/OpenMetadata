@@ -12,12 +12,13 @@
  */
 import { Form, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isString } from 'lodash';
 import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Banner, { BannerProps } from '../../common/Banner/Banner';
+import Banner from '../../common/Banner/Banner';
 import {
   CSVExportJob,
   CSVExportWebsocketResponse,
@@ -149,16 +150,6 @@ export const EntityExportModalProvider = ({
     []
   );
 
-  const bannerConfig = useMemo(() => {
-    const isCompleted = csvExportJob?.status === 'COMPLETED';
-
-    return {
-      type: isCompleted ? 'success' : 'error',
-      message: isCompleted ? csvExportJob?.message : csvExportJob?.error,
-      hasJobId: !!csvExportJob?.jobId,
-    };
-  }, [csvExportJob]);
-
   return (
     <EntityExportModalContext.Provider value={providerValue}>
       <>
@@ -169,13 +160,13 @@ export const EntityExportModalProvider = ({
             open
             cancelText={t('label.cancel')}
             closable={false}
-            confirmLoading={downloading}
             data-testid="export-entity-modal"
             maskClosable={false}
             okButtonProps={{
               form: 'export-form',
               htmlType: 'submit',
               id: 'submit-button',
+              disabled: downloading,
             }}
             okText={t('label.export')}
             title={exportData.title ?? t('label.export')}
@@ -186,6 +177,7 @@ export const EntityExportModalProvider = ({
               layout="vertical"
               onFinish={handleExport}>
               <Form.Item
+                className={classNames({ 'mb-0': !csvExportJob?.jobId })}
                 label={`${t('label.entity-name', {
                   entity: t('label.file'),
                 })}:`}
@@ -194,11 +186,12 @@ export const EntityExportModalProvider = ({
               </Form.Item>
             </Form>
 
-            {bannerConfig.hasJobId && bannerConfig.message && (
+            {csvExportJob?.jobId && (
               <Banner
                 className="border-radius"
-                message={bannerConfig.message}
-                type={bannerConfig.type as BannerProps['type']}
+                isLoading={downloading}
+                message={csvExportJob.error ?? csvExportJob.message ?? ''}
+                type={csvExportJob.error ? 'error' : 'success'}
               />
             )}
           </Modal>
