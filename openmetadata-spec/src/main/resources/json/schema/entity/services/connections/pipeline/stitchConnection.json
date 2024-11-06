@@ -38,5 +38,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["token"]
+  "required": ["hostPort", "token"]
 }

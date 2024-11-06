@@ -4,11 +4,18 @@
   "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
   "steps": [
       {
-          "name": "CheckAccess",
-          "description":  "Check if the instance is reachable to fetch the pipeline details.",
-          "errorMessage": "Failed to connect to Stitch, please validate the credentials",
-          "shortCircuit": true,
-          "mandatory": true
+        "name": "GetSources",
+        "description": "Get pipeline sources",
+        "errorMessage": "Failed to get all the sources for pipeline",
+        "shortCircuit": true,
+        "mandatory": true
+      },
+      {
+        "name": "GetDestinations",
+        "description":  "Get pipeline destinations",
+        "errorMessage": "Failed to get all the destinations for pipeline",
+        "shortCircuit": true,
+        "mandatory": true
       }
   ]
 }
