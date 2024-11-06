@@ -102,6 +102,7 @@ public class TeamRepository extends EntityRepository<Team> {
         TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = true;
+    parent = true;
   }
 
   @Override

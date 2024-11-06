@@ -27,7 +27,7 @@ import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getEntityNodeIcon } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -40,10 +40,12 @@ import './node-suggestion.less';
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
   entityType: string;
+  queryFilter?: Record<string, unknown>;
 }
 
 const NodeSuggestions: FC<EntitySuggestionProps> = ({
   entityType,
+  queryFilter,
   onSelectHandler,
 }) => {
   const { t } = useTranslation();
@@ -67,16 +69,15 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
 
   const getSearchResults = async (value: string) => {
     try {
-      const data = await searchData<ExploreSearchIndex>(
-        value,
-        1,
-        PAGE_SIZE,
-        '',
-        '',
-        '',
-        (entityType as ExploreSearchIndex) ?? SearchIndex.TABLE
-      );
-      const sources = data.data.hits.hits.map((hit) => hit._source);
+      const data = await searchQuery({
+        query: value,
+        searchIndex: (entityType as ExploreSearchIndex) ?? SearchIndex.TABLE,
+        queryFilter: queryFilter,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE,
+        includeDeleted: false,
+      });
+      const sources = data.hits.hits.map((hit) => hit._source);
       setData(sources);
     } catch (error) {
       showErrorToast(
