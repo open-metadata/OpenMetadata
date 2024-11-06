@@ -17,7 +17,7 @@ import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Banner, { BannerProps } from '../../common/Banner/Banner';
+import Banner from '../../common/Banner/Banner';
 import {
   CSVExportJob,
   CSVExportWebsocketResponse,
@@ -149,16 +149,6 @@ export const EntityExportModalProvider = ({
     []
   );
 
-  const bannerConfig = useMemo(() => {
-    const isCompleted = csvExportJob?.status === 'COMPLETED';
-
-    return {
-      type: isCompleted ? 'success' : 'error',
-      message: isCompleted ? csvExportJob?.message : csvExportJob?.error,
-      hasJobId: !!csvExportJob?.jobId,
-    };
-  }, [csvExportJob]);
-
   return (
     <EntityExportModalContext.Provider value={providerValue}>
       <>
@@ -194,11 +184,11 @@ export const EntityExportModalProvider = ({
               </Form.Item>
             </Form>
 
-            {bannerConfig.hasJobId && bannerConfig.message && (
+            {csvExportJob?.jobId && (
               <Banner
                 className="border-radius"
-                message={bannerConfig.message}
-                type={bannerConfig.type as BannerProps['type']}
+                message={csvExportJob.error ?? csvExportJob.message ?? ''}
+                type={csvExportJob.error ? 'error' : 'success'}
               />
             )}
           </Modal>
