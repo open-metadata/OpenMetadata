@@ -55,6 +55,12 @@
       "type": "boolean",
       "default": true
     },
+    "propagateParent": {
+      "title": "Propagate Parent",
+      "description": "Propagate the metadata to the parents (e.g., tables) via lineage.",
+      "type": "boolean",
+      "default": false
+    },
     "overwriteMetadata": {
       "title": "Overwrite Metadata",
       "description": "Update descriptions, tags and Glossary Terms via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset, and incoming tags are merged with the existing ones.",
