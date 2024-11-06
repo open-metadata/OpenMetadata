@@ -3,6 +3,7 @@ package org.openmetadata.service.resources.system;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.configuration.ConfigurationException;
@@ -482,7 +483,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     updateSystemConfig(updatedLineageSettings);
 
     // Retrieve the updated settings
-    Settings updatedSettings = getSystemConfig(SettingsType.LINEAGE_SETTINGS);
+    Settings updatedSettings = getSystemConfigAsUser(SettingsType.LINEAGE_SETTINGS);
     LineageSettings updatedLineageConfig =
         JsonUtils.convertValue(updatedSettings.getConfigValue(), LineageSettings.class);
 
@@ -555,6 +556,12 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   private static Settings getSystemConfig(SettingsType settingsType) throws HttpResponseException {
     WebTarget target = getResource(String.format("system/settings/%s", settingsType.value()));
     return TestUtils.get(target, Settings.class, ADMIN_AUTH_HEADERS);
+  }
+
+  private static Settings getSystemConfigAsUser(SettingsType settingsType)
+      throws HttpResponseException {
+    WebTarget target = getResource(String.format("system/settings/%s", settingsType.value()));
+    return TestUtils.get(target, Settings.class, TEST_AUTH_HEADERS);
   }
 
   private static Settings getProfilerConfig() throws HttpResponseException {
