@@ -112,7 +112,7 @@ _type_map.update(
     }
 )
 
-# This method is from hive dialect originally but 
+# This method is from hive dialect originally but
 # is overridden to optimize DESCRIBE query execution
 def _get_table_columns(self, connection, table_name, schema, db_name):
     full_table = table_name
