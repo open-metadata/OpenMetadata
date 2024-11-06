@@ -1074,7 +1074,7 @@ const TeamDetailsV1 = ({
 
   const tabs = useMemo(
     () =>
-      getTabs(currentTeam, isGroupType, teamCount, assetsCount).map((tab) => ({
+      getTabs(currentTeam, isGroupType, isOrganization, teamCount, assetsCount).map((tab) => ({
         ...tab,
         label: (
           <TabsLabel
@@ -1089,6 +1089,7 @@ const TeamDetailsV1 = ({
     [
       currentTeam,
       searchTerm,
+      isOrganization,
       teamCount,
       currentTab,
       assetsCount,
