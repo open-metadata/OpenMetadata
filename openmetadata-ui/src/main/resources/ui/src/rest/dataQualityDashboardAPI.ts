@@ -122,6 +122,14 @@ export const fetchTestCaseSummary = (
     );
   }
 
+  if (filters?.entityFQN) {
+    mustFilter.push({
+      term: {
+        entityFQN: filters.entityFQN,
+      },
+    });
+  }
+
   return getDataQualityReport({
     q: JSON.stringify({
       query: {
@@ -274,6 +282,13 @@ export const fetchTestCaseStatusMetricsByDays = (
         true
       )
     );
+  }
+  if (filters?.entityFQN) {
+    mustFilter.push({
+      term: {
+        'testCase.entityFQN': filters.entityFQN,
+      },
+    });
   }
 
   return getDataQualityReport({

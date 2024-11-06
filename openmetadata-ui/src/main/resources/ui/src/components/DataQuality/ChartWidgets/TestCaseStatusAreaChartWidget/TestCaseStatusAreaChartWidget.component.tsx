@@ -26,6 +26,7 @@ const TestCaseStatusAreaChartWidget = ({
   title,
   chartColorScheme,
   chartFilter,
+  height,
 }: TestCaseStatusAreaChartWidgetProps) => {
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(true);
@@ -82,6 +83,7 @@ const TestCaseStatusAreaChartWidget = ({
       <CustomAreaChart
         colorScheme={chartColorScheme}
         data={chartData}
+        height={height}
         name={name}
       />
     </Card>

@@ -24,6 +24,7 @@ const IncidentTimeChartWidget = ({
   name,
   title,
   chartFilter,
+  height,
 }: IncidentTimeChartWidgetProps) => {
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(true);
@@ -86,6 +87,7 @@ const IncidentTimeChartWidget = ({
 
       <CustomAreaChart
         data={chartData}
+        height={height}
         name={name}
         valueFormatter={convertMillisecondsToHumanReadableFormat}
       />
