@@ -221,13 +221,15 @@ const TableDetailsPageV1: React.FC = () => {
       setDqFailureCount(0);
     }
 
+    // Todo: Remove this once we have support for count in API
     try {
-      const data = await getDataQualityLineage(datasetFQN, {
+      const data = await getDataQualityLineage(tableFqn, {
         upstreamDepth: 3,
       });
-      setDqFailureCount(
-        data.nodes && data.nodes.length ? data.nodes.length : 0
-      );
+      const updatedNodes =
+        data.nodes?.filter((node) => node.fullyQualifiedName !== tableFqn) ??
+        [];
+      setDqFailureCount(updatedNodes.length);
     } catch (error) {
       setDqFailureCount(0);
     }
