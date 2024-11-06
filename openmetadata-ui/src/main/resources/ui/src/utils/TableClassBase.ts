@@ -128,6 +128,9 @@ class TableClassBase {
       default:
         return [];
     }
+    
+  public getAlertEnableStatus() {
+    return false;
   }
 }
 
