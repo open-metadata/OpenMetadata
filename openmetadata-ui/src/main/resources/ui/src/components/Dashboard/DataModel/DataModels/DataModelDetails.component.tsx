@@ -201,7 +201,7 @@ const DataModelDetails = ({
         !deleted,
       editGlossaryTermsPermission:
         (dataModelPermissions.EditGlossaryTerms ||
-          dataModelPermissions.EditDescription) &&
+          dataModelPermissions.EditAll) &&
         !deleted,
       editTagsPermission:
         (dataModelPermissions.EditAll || dataModelPermissions.EditTags) &&
