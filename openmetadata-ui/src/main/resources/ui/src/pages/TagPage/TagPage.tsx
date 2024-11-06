@@ -251,8 +251,8 @@ const TagPage = () => {
   const onStyleSave = async (data: Style) => {
     if (tagItem) {
       const style: Style = {
-        color: data.color || undefined,
-        iconURL: data.iconURL || undefined,
+        color: data.color ?? '',
+        iconURL: data.iconURL ?? '',
       };
 
       const updatedDetails = {
@@ -456,13 +456,14 @@ const TagPage = () => {
   ]);
 
   const icon = useMemo(() => {
-    if (tagItem?.style && (tagItem as Tag).style?.iconURL) {
+    if (tagItem?.style && tagItem.style?.iconURL) {
       return (
         <img
+          alt={tagItem.name ?? 'Tag Icon'}
           className="align-middle object-contain"
           data-testid="icon"
           height={36}
-          src={(tagItem as Tag).style?.iconURL}
+          src={tagItem.style?.iconURL}
           width={32}
         />
       );
@@ -494,77 +495,75 @@ const TagPage = () => {
     <PageLayoutV1 pageTitle={tagItem.name}>
       <Row gutter={[0, 8]}>
         <Col span={24}>
-          <>
-            <Row
-              className="data-classification"
-              data-testid="data-classification"
-              gutter={[0, 12]}>
-              <Col className="p-x-md" flex="auto">
-                <EntityHeader
-                  badge={
-                    !hasEditPermission && (
-                      <Space>
-                        <Divider className="m-x-xs h-6" type="vertical" />
-                        <StatusBadge
-                          dataTestId="disabled"
-                          label="Disabled"
-                          status={StatusType.Stopped}
+          <Row
+            className="data-classification"
+            data-testid="data-classification"
+            gutter={[0, 12]}>
+            <Col className="p-x-md" flex="auto">
+              <EntityHeader
+                badge={
+                  !hasEditPermission && (
+                    <Space>
+                      <Divider className="m-x-xs h-6" type="vertical" />
+                      <StatusBadge
+                        dataTestId="disabled"
+                        label="Disabled"
+                        status={StatusType.Stopped}
+                      />
+                    </Space>
+                  )
+                }
+                breadcrumb={breadcrumb}
+                entityData={tagItem}
+                entityType={EntityType.TAG}
+                icon={icon}
+                serviceName=""
+                titleColor={tagItem.style?.color ?? 'black'}
+              />
+            </Col>
+            {hasEditPermission && (
+              <Col className="p-x-md">
+                <div style={{ textAlign: 'right', display: 'flex' }}>
+                  <Button
+                    data-testid="data-classification-add-button"
+                    type="primary"
+                    onClick={() => setAssetModalVisible(true)}>
+                    {t('label.add-entity', {
+                      entity: t('label.asset-plural'),
+                    })}
+                  </Button>
+                  {manageButtonContent.length > 0 && (
+                    <Dropdown
+                      align={{ targetOffset: [-12, 0] }}
+                      className="m-l-xs"
+                      menu={{
+                        items: manageButtonContent,
+                      }}
+                      open={showActions}
+                      overlayStyle={{ width: '350px' }}
+                      placement="bottomRight"
+                      trigger={['click']}
+                      onOpenChange={setShowActions}>
+                      <Tooltip
+                        placement="topRight"
+                        title={t('label.manage-entity', {
+                          entity: t('label.tag-lowercase'),
+                        })}>
+                        <Button
+                          className="flex-center"
+                          data-testid="manage-button"
+                          icon={
+                            <IconDropdown className="manage-dropdown-icon" />
+                          }
+                          onClick={() => setShowActions(true)}
                         />
-                      </Space>
-                    )
-                  }
-                  breadcrumb={breadcrumb}
-                  entityData={tagItem}
-                  entityType={EntityType.TAG}
-                  icon={icon}
-                  serviceName=""
-                  titleColor={tagItem.style?.color ?? 'black'}
-                />
+                      </Tooltip>
+                    </Dropdown>
+                  )}
+                </div>
               </Col>
-              {hasEditPermission && (
-                <Col className="p-x-md">
-                  <div style={{ textAlign: 'right', display: 'flex' }}>
-                    <Button
-                      data-testid="data-classification-add-button"
-                      type="primary"
-                      onClick={() => setAssetModalVisible(true)}>
-                      {t('label.add-entity', {
-                        entity: t('label.asset-plural'),
-                      })}
-                    </Button>
-                    {manageButtonContent.length > 0 && (
-                      <Dropdown
-                        align={{ targetOffset: [-12, 0] }}
-                        className="m-l-xs"
-                        menu={{
-                          items: manageButtonContent,
-                        }}
-                        open={showActions}
-                        overlayStyle={{ width: '350px' }}
-                        placement="bottomRight"
-                        trigger={['click']}
-                        onOpenChange={setShowActions}>
-                        <Tooltip
-                          placement="topRight"
-                          title={t('label.manage-entity', {
-                            entity: t('label.tag-lowercase'),
-                          })}>
-                          <Button
-                            className="flex-center"
-                            data-testid="manage-button"
-                            icon={
-                              <IconDropdown className="manage-dropdown-icon" />
-                            }
-                            onClick={() => setShowActions(true)}
-                          />
-                        </Tooltip>
-                      </Dropdown>
-                    )}
-                  </div>
-                </Col>
-              )}
-            </Row>
-          </>
+            )}
+          </Row>
         </Col>
 
         <Col span={24} style={{ overflowY: 'auto' }}>
