@@ -145,13 +145,22 @@ public class MigrationUtil {
     if (postgresql) {
       query =
           "UPDATE field_relationship "
-              + "SET json = jsonb_set(json, '{displayName}', json->'name', true) "
-              + "WHERE fromType = :fromType AND toType = :toType AND relation = :relation";
+              + "SET json = CASE "
+              + "              WHEN json->>'displayName' IS NULL OR json->'displayName' = '\"\"' "
+              + "              THEN jsonb_set(json, '{displayName}', json->'name', true) "
+              + "              ELSE json "
+              + "           END "
+              + "WHERE fromType = :fromType AND toType = :toType AND relation = :relation;";
     } else {
       query =
           "UPDATE field_relationship "
-              + "SET json = JSON_SET(json, '$.displayName', JSON_EXTRACT(json, '$.name')) "
-              + "WHERE fromType = :fromType AND toType = :toType AND relation = :relation";
+              + "SET json = CASE "
+              + "              WHEN JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) IS NULL "
+              + "                   OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) = '' "
+              + "              THEN JSON_SET(json, '$.displayName', JSON_EXTRACT(json, '$.name')) "
+              + "              ELSE json "
+              + "           END "
+              + "WHERE fromType = :fromType AND toType = :toType AND relation = :relation;";
     }
 
     try {
