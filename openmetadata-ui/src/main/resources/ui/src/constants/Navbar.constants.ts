@@ -48,7 +48,6 @@ export const HELP_ITEMS = [
     key: HELP_ITEMS_ENUM.TOUR,
     label: i18n.t('label.tour'),
     icon: IconTour,
-    link: ROUTES.TOUR,
     isExternal: false,
   },
   {

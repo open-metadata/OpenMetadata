@@ -385,16 +385,6 @@ const UserListPageV1 = () => {
     () => (
       <PageLayoutV1 pageTitle={t('label.user-plural')}>
         <Row className="page-container">
-          <Col className="w-full d-flex justify-end">
-            <span>
-              <Switch
-                checked={showDeletedUser}
-                data-testid="show-deleted"
-                onClick={handleShowDeletedUserChange}
-              />
-              <span className="m-l-xs">{t('label.deleted')}</span>
-            </span>
-          </Col>
           <Col className="mt-24" span={24}>
             <ErrorPlaceHolder
               heading={t('label.user')}
@@ -442,6 +432,7 @@ const UserListPageV1 = () => {
               <LimitWrapper resource="user">
                 <Button
                   data-testid="add-user"
+                  id="add-new-user"
                   type="primary"
                   onClick={handleAddNewUser}>
                   {t('label.add-entity', {
