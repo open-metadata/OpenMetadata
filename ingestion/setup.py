@@ -140,18 +140,16 @@ base_requirements = {
     "collate-sqllineage~=1.4.0",
     "tabulate==0.9.0",
     "typing-inspect",
-    "protobuf<5",
     "packaging",  # For version parsing
     "shapely",
 }
 
 plugins: Dict[str, Set[str]] = {
     "airflow": {
-        VERSIONS["airflow"],
-        "opentelemetry-api==1.27.0",  # internal dependency of airflow, need to restrict version
-        "opentelemetry-exporter-otlp-proto-grpc==1.27.0",
+        "opentelemetry-exporter-otlp==1.27.0",
         "protobuf<5",
         "attrs",
+        VERSIONS["airflow"],
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {"pyathena~=3.0"},
