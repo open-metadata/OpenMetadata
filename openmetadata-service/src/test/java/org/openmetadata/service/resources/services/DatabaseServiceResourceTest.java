@@ -149,7 +149,8 @@ public class DatabaseServiceResourceTest
         createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
     // Update database description and ingestion service that are null
-    CreateDatabaseService update = createRequest(test).withDescription("description1");
+    CreateDatabaseService update =
+        createRequest(test).withDescription("description1").withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
@@ -201,19 +202,18 @@ public class DatabaseServiceResourceTest
     RedshiftConnection redshiftConnection =
         new RedshiftConnection().withHostPort("localhost:3300").withUsername("test");
     DatabaseConnection dbConn = new DatabaseConnection().withConfig(redshiftConnection);
+    CreateDatabaseService create = createRequest(test).withConnection(dbConn);
     assertResponseContains(
-        () ->
-            createEntity(
-                createRequest(test).withDescription(null).withConnection(dbConn),
-                ADMIN_AUTH_HEADERS),
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         String.format(
             "Failed to convert [%s] to type [Snowflake]. Review the connection.",
-            getEntityName(test)));
+            create.getName()));
     DatabaseService service =
         createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
     // Update database description and ingestion service that are null
-    CreateDatabaseService update = createRequest(test).withDescription("description1");
+    CreateDatabaseService update =
+        createRequest(test).withDescription("description1").withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
@@ -244,7 +244,8 @@ public class DatabaseServiceResourceTest
         new DatabaseConnection().withConfig(snowflakeConnection);
 
     // Update database connection to a new connection
-    CreateDatabaseService update = createRequest(test).withConnection(databaseConnection);
+    CreateDatabaseService update =
+        createRequest(test).withConnection(databaseConnection).withName(service.getName());
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", oldDatabaseConnection, databaseConnection);
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
