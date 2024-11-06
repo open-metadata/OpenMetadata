@@ -146,7 +146,7 @@ base_requirements = {
 plugins: Dict[str, Set[str]] = {
     "airflow": {
         VERSIONS["airflow"],
-        "opentelemetry-api==1.27.0", # internal dependency of airflow, need to restrict version
+        "opentelemetry-api==1.27.0",  # internal dependency of airflow, need to restrict version
         "opentelemetry-exporter-otlp-proto-grpc==1.27.0",
         "protobuf<5",
         "attrs",
