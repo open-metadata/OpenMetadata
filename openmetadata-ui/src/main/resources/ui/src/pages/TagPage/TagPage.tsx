@@ -63,7 +63,7 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { Tag } from '../../generated/entity/classification/tag';
+import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { Style } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { MOCK_TAG_PERMISSIONS } from '../../mocks/Tags.mock';
@@ -82,6 +82,7 @@ import {
 } from '../../utils/StringsUtils';
 import { getQueryFilterToExcludeTerms } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import './tag-page.less';
 import { TagTabs } from './TagPage.inteface';
 
 const TagPage = () => {
@@ -365,7 +366,7 @@ const TagPage = () => {
           },
         ]
       : []),
-    ...(tagItem?.provider !== 'system'
+    ...(tagItem?.provider !== ProviderType.System && tagPermissions.EditAll
       ? [
           {
             label: (
@@ -398,24 +399,26 @@ const TagPage = () => {
         label: <div data-testid="overview">{t('label.overview')}</div>,
         key: 'overview',
         children: (
-          <Row className="p-md">
-            <Col span={24}>
-              <DescriptionV1
-                removeBlur
-                description={tagItem?.description}
-                entityFqn={tagItem?.fullyQualifiedName}
-                entityName={getEntityName(tagItem)}
-                entityType={EntityType.TAG}
-                hasEditAccess={editDescriptionPermission}
-                isEdit={isDescriptionEditable}
-                showActions={!tagItem?.deleted}
-                showCommentsIcon={false}
-                onCancel={() => setIsDescriptionEditable(false)}
-                onDescriptionEdit={() => setIsDescriptionEditable(true)}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-            </Col>
-          </Row>
+          <div className="tag-overview-tab">
+            <Row className="p-md">
+              <Col span={24}>
+                <DescriptionV1
+                  removeBlur
+                  description={tagItem?.description}
+                  entityFqn={tagItem?.fullyQualifiedName}
+                  entityName={getEntityName(tagItem)}
+                  entityType={EntityType.TAG}
+                  hasEditAccess={editDescriptionPermission}
+                  isEdit={isDescriptionEditable}
+                  showActions={!tagItem?.deleted}
+                  showCommentsIcon={false}
+                  onCancel={() => setIsDescriptionEditable(false)}
+                  onDescriptionEdit={() => setIsDescriptionEditable(true)}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                />
+              </Col>
+            </Row>
+          </div>
         ),
       },
       {
@@ -570,7 +573,7 @@ const TagPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="classification-tabs tag-tab-spacing"
+            className="tag-tabs tag-tab-spacing"
             items={tabItems}
             onChange={activeTabHandler}
           />
