@@ -54,4 +54,5 @@ SET
       )
       as demo) ) ) 
    WHERE
-      JSON_EXTRACT(json, '$.chartDetails.type') = 'LineChart';
+      JSON_EXTRACT(json, '$.chartDetails.type') = 'LineChart'
+      and JSON_EXTRACT(json, '$.chartDetails.metrics') is NULL;
