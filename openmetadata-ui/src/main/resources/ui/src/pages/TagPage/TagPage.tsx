@@ -182,12 +182,6 @@ const TagPage = () => {
           const response = await patchTag(tagItem.id ?? '', jsonPatch);
 
           setTagItem(response);
-
-          if (tagItem?.name !== updatedTableDetails.name) {
-            history.push(
-              getClassificationTagPath(response.fullyQualifiedName ?? '')
-            );
-          }
         } catch (error) {
           showErrorToast(error as AxiosError);
         }
@@ -233,26 +227,19 @@ const TagPage = () => {
         const response = await patchTag(tagItem.id ?? '', jsonPatch);
 
         setTagItem(response);
-
-        if (tagItem?.name !== updatedData.name) {
-          history.push(
-            getClassificationTagPath(response.fullyQualifiedName ?? '')
-          );
-        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     }
   };
 
-  const onNameSave = async (obj: { name: string; displayName: string }) => {
+  const onNameSave = async (obj: { displayName: string }) => {
     if (tagItem) {
-      const { name, displayName } = obj;
+      const { displayName } = obj;
       let updatedDetails = cloneDeep(tagItem);
 
       updatedDetails = {
         ...tagItem,
-        name: name?.trim() || tagItem.name,
         displayName: displayName?.trim(),
       };
 
@@ -271,7 +258,6 @@ const TagPage = () => {
       const updatedDetails = {
         ...tagItem,
         style,
-        description: tagItem.description ?? '',
       };
 
       await updateTag(updatedDetails);
@@ -496,153 +482,149 @@ const TagPage = () => {
     }
   }, [tagItem]);
 
-  return (
-    <>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        tagItem && (
-          <PageLayoutV1 pageTitle={tagItem.name}>
-            <Row gutter={[0, 8]}>
-              <Col span={24}>
-                <>
-                  <Row
-                    className="data-classification"
-                    data-testid="data-classification"
-                    gutter={[0, 12]}>
-                    <Col className="p-x-md" flex="auto">
-                      <EntityHeader
-                        badge={
-                          !hasEditPermission && (
-                            <Space>
-                              <Divider className="m-x-xs h-6" type="vertical" />
-                              <StatusBadge
-                                dataTestId="disabled"
-                                label="Disabled"
-                                status={StatusType.Stopped}
-                              />
-                            </Space>
-                          )
-                        }
-                        breadcrumb={breadcrumb}
-                        entityData={tagItem}
-                        entityType={EntityType.TAG}
-                        icon={icon}
-                        serviceName=""
-                        titleColor={tagItem.style?.color ?? 'black'}
-                      />
-                    </Col>
-                    {hasEditPermission && (
-                      <Col className="p-x-md">
-                        <div style={{ textAlign: 'right', display: 'flex' }}>
-                          <Button
-                            data-testid="data-classification-add-button"
-                            type="primary"
-                            onClick={() => setAssetModalVisible(true)}>
-                            {t('label.add-entity', {
-                              entity: t('label.asset-plural'),
-                            })}
-                          </Button>
-                          {manageButtonContent.length > 0 && (
-                            <Dropdown
-                              align={{ targetOffset: [-12, 0] }}
-                              className="m-l-xs"
-                              menu={{
-                                items: manageButtonContent,
-                              }}
-                              open={showActions}
-                              overlayStyle={{ width: '350px' }}
-                              placement="bottomRight"
-                              trigger={['click']}
-                              onOpenChange={setShowActions}>
-                              <Tooltip
-                                placement="topRight"
-                                title={t('label.manage-entity', {
-                                  entity: t('label.tag-lowercase'),
-                                })}>
-                                <Button
-                                  className="flex-center"
-                                  data-testid="manage-button"
-                                  icon={
-                                    <IconDropdown className="manage-dropdown-icon" />
-                                  }
-                                  onClick={() => setShowActions(true)}
-                                />
-                              </Tooltip>
-                            </Dropdown>
-                          )}
-                        </div>
-                      </Col>
-                    )}
-                  </Row>
-                </>
-              </Col>
+  if (isLoading) {
+    return <Loader />;
+  }
 
-              <Col span={24} style={{ overflowY: 'auto' }}>
-                <Tabs
-                  destroyInactiveTabPane
-                  activeKey={activeTab}
-                  className="classification-tabs custom-tab-spacing"
-                  items={tabItems}
-                  onChange={activeTabHandler}
+  if (!tagItem) {
+    return null;
+  }
+
+  return (
+    <PageLayoutV1 pageTitle={tagItem.name}>
+      <Row gutter={[0, 8]}>
+        <Col span={24}>
+          <>
+            <Row
+              className="data-classification"
+              data-testid="data-classification"
+              gutter={[0, 12]}>
+              <Col className="p-x-md" flex="auto">
+                <EntityHeader
+                  badge={
+                    !hasEditPermission && (
+                      <Space>
+                        <Divider className="m-x-xs h-6" type="vertical" />
+                        <StatusBadge
+                          dataTestId="disabled"
+                          label="Disabled"
+                          status={StatusType.Stopped}
+                        />
+                      </Space>
+                    )
+                  }
+                  breadcrumb={breadcrumb}
+                  entityData={tagItem}
+                  entityType={EntityType.TAG}
+                  icon={icon}
+                  serviceName=""
+                  titleColor={tagItem.style?.color ?? 'black'}
                 />
               </Col>
+              {hasEditPermission && (
+                <Col className="p-x-md">
+                  <div style={{ textAlign: 'right', display: 'flex' }}>
+                    <Button
+                      data-testid="data-classification-add-button"
+                      type="primary"
+                      onClick={() => setAssetModalVisible(true)}>
+                      {t('label.add-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
+                    </Button>
+                    {manageButtonContent.length > 0 && (
+                      <Dropdown
+                        align={{ targetOffset: [-12, 0] }}
+                        className="m-l-xs"
+                        menu={{
+                          items: manageButtonContent,
+                        }}
+                        open={showActions}
+                        overlayStyle={{ width: '350px' }}
+                        placement="bottomRight"
+                        trigger={['click']}
+                        onOpenChange={setShowActions}>
+                        <Tooltip
+                          placement="topRight"
+                          title={t('label.manage-entity', {
+                            entity: t('label.tag-lowercase'),
+                          })}>
+                          <Button
+                            className="flex-center"
+                            data-testid="manage-button"
+                            icon={
+                              <IconDropdown className="manage-dropdown-icon" />
+                            }
+                            onClick={() => setShowActions(true)}
+                          />
+                        </Tooltip>
+                      </Dropdown>
+                    )}
+                  </div>
+                </Col>
+              )}
             </Row>
+          </>
+        </Col>
 
-            {tagItem && (
-              <EntityDeleteModal
-                bodyText={getEntityDeleteMessage(tagItem.name, '')}
-                entityName={tagItem.name}
-                entityType="Tag"
-                visible={isDelete}
-                onCancel={() => setIsDelete(false)}
-                onConfirm={handleDelete}
-              />
-            )}
+        <Col span={24} style={{ overflowY: 'auto' }}>
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={activeTab}
+            className="classification-tabs tag-tab-spacing"
+            items={tabItems}
+            onChange={activeTabHandler}
+          />
+        </Col>
+      </Row>
 
-            <EntityNameModal
-              allowRename
-              entity={tagItem}
-              nameValidationRules={[
-                {
-                  min: 1,
-                  max: 128,
-                  message: t('message.entity-size-in-between', {
-                    entity: t('label.name'),
-                    min: 1,
-                    max: 128,
-                  }),
-                },
-              ]}
-              title={t('label.edit-entity', {
-                entity: t('label.name'),
-              })}
-              visible={isNameEditing}
-              onCancel={() => setIsNameEditing(false)}
-              onSave={onNameSave}
-            />
-            <StyleModal
-              open={isStyleEditing}
-              style={tagItem.style}
-              onCancel={() => setIsStyleEditing(false)}
-              onSubmit={onStyleSave}
-            />
-            {tagItem.fullyQualifiedName && assetModalVisible && (
-              <AssetSelectionModal
-                entityFqn={tagItem.fullyQualifiedName}
-                open={assetModalVisible}
-                queryFilter={getQueryFilterToExcludeTerms(
-                  tagItem.fullyQualifiedName
-                )}
-                type={AssetsOfEntity.TAG}
-                onCancel={() => setAssetModalVisible(false)}
-                onSave={handleAssetSave}
-              />
-            )}
-          </PageLayoutV1>
-        )
+      <EntityDeleteModal
+        bodyText={getEntityDeleteMessage(tagItem.name, '')}
+        entityName={tagItem.name}
+        entityType="Tag"
+        visible={isDelete}
+        onCancel={() => setIsDelete(false)}
+        onConfirm={handleDelete}
+      />
+
+      <EntityNameModal
+        allowRename
+        entity={tagItem}
+        nameValidationRules={[
+          {
+            min: 1,
+            max: 128,
+            message: t('message.entity-size-in-between', {
+              entity: t('label.name'),
+              min: 1,
+              max: 128,
+            }),
+          },
+        ]}
+        title={t('label.edit-entity', {
+          entity: t('label.name'),
+        })}
+        visible={isNameEditing}
+        onCancel={() => setIsNameEditing(false)}
+        onSave={onNameSave}
+      />
+      <StyleModal
+        open={isStyleEditing}
+        style={tagItem.style}
+        onCancel={() => setIsStyleEditing(false)}
+        onSubmit={onStyleSave}
+      />
+      {tagItem.fullyQualifiedName && assetModalVisible && (
+        <AssetSelectionModal
+          entityFqn={tagItem.fullyQualifiedName}
+          open={assetModalVisible}
+          queryFilter={getQueryFilterToExcludeTerms(tagItem.fullyQualifiedName)}
+          type={AssetsOfEntity.TAG}
+          onCancel={() => setAssetModalVisible(false)}
+          onSave={handleAssetSave}
+        />
       )}
-    </>
+    </PageLayoutV1>
   );
 };
 

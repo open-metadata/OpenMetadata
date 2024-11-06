@@ -68,6 +68,7 @@ import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Classification } from '../generated/entity/classification/classification';
+import { Tag } from '../generated/entity/classification/tag';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
@@ -1895,16 +1896,18 @@ export const getEntityBreadcrumbs = (
         })),
       ];
     case EntityType.TAG: {
-      const fqnTagList = entity.fullyQualifiedName
-        ? Fqn.split(entity.fullyQualifiedName)
-        : [];
-
-      const urlFunctions = [getTagsDetailsPath, getClassificationTagPath];
-
-      return fqnTagList.map((name, index) => ({
-        name,
-        url: urlFunctions[index](entity?.fullyQualifiedName ?? ''),
-      }));
+      return [
+        {
+          name: getEntityName((entity as Tag).classification),
+          url: getTagsDetailsPath(
+            (entity as Tag).classification?.fullyQualifiedName ?? ''
+          ),
+        },
+        {
+          name: entity.name,
+          url: getClassificationTagPath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
     }
 
     case EntityType.CLASSIFICATION:

@@ -27,7 +27,7 @@ export enum AssetsOfEntity {
 }
 
 export interface AssetsTabsProps {
-  onAddAsset?: () => void;
+  onAddAsset: () => void;
   onRemoveAsset?: () => void;
   entityFqn?: string;
   permissions: OperationPermission;
