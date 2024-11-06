@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -128,7 +129,9 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    authorizer.authorizeAdmin(securityContext);
+    if (!name.equalsIgnoreCase(LINEAGE_SETTINGS.toString())) {
+      authorizer.authorizeAdmin(securityContext);
+    }
     return systemRepository.getConfigWithKey(name);
   }
 
