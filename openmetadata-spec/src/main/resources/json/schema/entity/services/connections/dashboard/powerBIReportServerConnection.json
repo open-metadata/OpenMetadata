@@ -1,0 +1,60 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/powerBIReportServerConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "PowerBIReportServerConnection",
+    "description": "PowerBIReportServer Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.dashboard.PowerBIReportServerConnection",
+    "definitions": {
+        "powerBIReportServerType": {
+            "description": "PowerBIReportServer service type",
+            "type": "string",
+            "enum": [
+                "PowerBIReportServer"
+            ],
+            "default": "PowerBIReportServer"
+        }
+    },
+    "properties": {
+        "type": {
+            "title": "Service Type",
+            "description": "Service Type",
+            "$ref": "#/definitions/powerBIReportServerType",
+            "default": "PowerBIReportServer"
+        },
+        "hostPort": {
+            "expose": true,
+            "title": "Host and Port",
+            "description": "Dashboard URL for PowerBI Report Server.",
+            "type": "string",
+            "format": "uri"
+        },
+        "username": {
+            "title": "Username",
+            "description": "Username to connect to PowerBI report server.",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Password to connect to PowerBI report server.",
+            "type": "string",
+            "format": "password"
+        },
+        "webPortalVirtualDirectory": {
+            "title": "Web Portal Virtual Directory Name",
+            "description": "Web Portal Virtual Directory Name.",
+            "type": "string",
+            "default": "Reports"
+        },
+        "supportsMetadataExtraction": {
+            "title": "Supports Metadata Extraction",
+            "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "hostPort",
+        "username",
+        "password"
+    ]
+}
