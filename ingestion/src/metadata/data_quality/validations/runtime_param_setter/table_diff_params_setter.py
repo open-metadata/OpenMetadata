@@ -77,6 +77,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         key_columns = self.get_key_columns(test_case)
         extra_columns = self.get_extra_columns(key_columns, test_case)
         return TableDiffRuntimeParameters(
+            table_profile_config=self.table_entity.tableProfilerConfig,
             table1=TableParameter(
                 path=self.get_data_diff_table_path(
                     self.table_entity.fullyQualifiedName.root

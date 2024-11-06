@@ -15,7 +15,9 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     PartitionIntervalTypes,
     PartitionProfilerConfig,
+    ProfileSampleType,
     Table,
+    TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -138,6 +140,54 @@ def test_get_data_diff_url(input, expected):
     ],
 )
 def test_partitioned_where_clause(input, expected):
+    engine = create_engine("sqlite://")
+    session = create_and_bind_session(engine)
+    metadata_obj = MetaData()
+    Base = declarative_base(metadata=metadata_obj)
+
+    class MyTable(Base):
+        __tablename__ = "customer"
+        id = SAColumn(String(30), primary_key=True)
+        my_column = SAColumn(String(30))
+
+    metadata_obj.create_all(engine)
+    mock_sampler = SQASampler(session, MyTable, Mock())
+    mock_sampler._partition_details = input
+    setter = TableDiffParamsSetter(None, None, MOCK_TABLE, mock_sampler)
+    test_case = TestCase(
+        name="test",
+        testDefinition=EntityReference(id=uuid4(), type="testDefinition"),
+        testSuite=EntityReference(id=uuid4(), type="testSuite"),
+        entityLink=EntityLink(
+            root="<#E::table::POSTGRES_SERVICE.dvdrental.public.customer>"
+        ),
+        parameterValues=[
+            TestCaseParameterValue(
+                name="run",
+                value="y",
+            )
+        ],
+    )
+    assert setter.build_where_clause(test_case) == expected
+
+
+@pytest.mark.parametrize(
+    "input,expected",
+    [
+        (
+            TableProfilerConfig(),
+            "",
+        ),
+        (
+            TableProfilerConfig(
+                profileSampleType=ProfileSampleType.PERCENTAGE,
+                profileSample=10,
+            ),
+            "random() < 0.1",
+        ),
+    ],
+)
+def test_sampled_where_clause(input, expected):
     engine = create_engine("sqlite://")
     session = create_and_bind_session(engine)
     metadata_obj = MetaData()

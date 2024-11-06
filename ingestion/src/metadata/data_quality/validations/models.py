@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.table import Column, TableProfilerConfig
 
 
 class TableParameter(BaseModel):
@@ -19,3 +19,4 @@ class TableDiffRuntimeParameters(BaseModel):
     keyColumns: List[str]
     extraColumns: List[str]
     whereClause: Optional[str]
+    table_profile_config: Optional[TableProfilerConfig]
