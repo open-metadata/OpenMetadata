@@ -146,6 +146,7 @@ base_requirements = {
 plugins: Dict[str, Set[str]] = {
     "airflow": {
         VERSIONS["airflow"],
+        "opentelemetry-api==1.27.0" # internal dependency of airflow, need to restrict version
         "attrs",
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
