@@ -140,6 +140,7 @@ base_requirements = {
     "collate-sqllineage~=1.4.0",
     "tabulate==0.9.0",
     "typing-inspect",
+    "protobuf<5",
     "packaging",  # For version parsing
     "shapely",
 }
