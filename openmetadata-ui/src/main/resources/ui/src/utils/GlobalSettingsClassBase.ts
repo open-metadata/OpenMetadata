@@ -27,6 +27,7 @@ import { ReactComponent as IconAPI } from '../assets/svg/ic-api-service.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/ic-dashboard-data-model-colored.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product-colored.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-database-schema-colored.svg';
+import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage-config.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
@@ -344,6 +345,15 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
             icon: PoliciesIcon,
+          },
+          {
+            label: t('label.lineage'),
+            description: t(
+              'message.page-sub-header-for-lineage-config-setting'
+            ),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LINEAGE_CONFIG}`,
+            icon: LineageIcon,
           },
         ],
       },

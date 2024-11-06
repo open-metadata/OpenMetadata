@@ -27,7 +27,7 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { SearchSettings } from '../../generated/configuration/searchSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import {
-  getSearchSettings,
+  getSettingsByType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -53,9 +53,9 @@ const SearchRBACSettingsPage = () => {
     try {
       setIsLoading(true);
 
-      const loginConfig = await getSearchSettings();
+      const loginConfig = await getSettingsByType(SettingType.SearchSettings);
 
-      setSearchConfig(loginConfig);
+      setSearchConfig(loginConfig as SearchSettings);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
