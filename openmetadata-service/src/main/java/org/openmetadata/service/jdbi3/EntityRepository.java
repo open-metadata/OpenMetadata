@@ -934,6 +934,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @SuppressWarnings("unused")
+  protected void postUpdate(T updated) {
+    if (supportsSearch) {
+      searchRepository.updateEntity(updated);
+    }
+  }
+
   @Transaction
   public final PutResponse<T> update(UriInfo uriInfo, T original, T updated) {
     // Get all the fields in the original entity that can be updated during PUT operation
