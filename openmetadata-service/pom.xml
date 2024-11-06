@@ -364,7 +364,6 @@
       <groupId>io.socket</groupId>
       <artifactId>socket.io-client</artifactId>
       <version>${socket.io-client.version}</version>
-      <scope>test</scope>
     </dependency>
 
     <dependency>
