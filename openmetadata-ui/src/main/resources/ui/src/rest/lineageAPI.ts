@@ -46,6 +46,25 @@ export const getLineageDataByFQN = async (
   return response.data;
 };
 
+export const getDataQualityLineage = async (
+  fqn: string,
+  config?: Partial<LineageConfig>
+) => {
+  const { upstreamDepth = 1 } = config ?? {};
+  const response = await APIClient.get<EntityLineageResponse>(
+    `lineage/getDataQualityLineage`,
+    {
+      params: {
+        fqn,
+        upstreamDepth,
+        includeDeleted: false,
+      },
+    }
+  );
+
+  return response.data;
+};
+
 export const exportLineage = async (
   fqn: string,
   entityType: string,
