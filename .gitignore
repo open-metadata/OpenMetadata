@@ -22,7 +22,7 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
-
+.run
 catalog-services/catalog-services.iml
 
 # local docker volume

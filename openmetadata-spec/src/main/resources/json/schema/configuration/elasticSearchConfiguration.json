@@ -91,6 +91,11 @@
     "searchIndexFactoryClassName": {
       "description": "Index factory name",
       "type": "string"
+    },
+    "numThreads": {
+      "description": "Number of threads to use for indexing",
+      "type": "integer",
+      "default": 1
     }
   },
   "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],

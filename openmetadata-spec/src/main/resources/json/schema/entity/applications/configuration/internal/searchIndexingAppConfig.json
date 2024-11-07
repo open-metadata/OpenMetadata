@@ -44,6 +44,12 @@
       "existingJavaType": "java.lang.Long",
       "default": 104857600
     },
+    "numOfThreads": {
+      "description": "No.of Threads to Parallelize the Indexing",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "default": 1
+    },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
       "$ref": "../../../../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"

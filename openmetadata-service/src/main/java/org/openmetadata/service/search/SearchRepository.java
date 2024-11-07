@@ -100,6 +100,7 @@ public class SearchRepository {
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
 
   @Getter private final String clusterAlias;
+  @Getter private final int numThreads;
 
   @Getter
   public final List<String> dataInsightReports =
@@ -122,6 +123,7 @@ public class SearchRepository {
             : "en";
     clusterAlias = config != null ? config.getClusterAlias() : "";
     loadIndexMappings();
+    numThreads = elasticSearchConfiguration.getNumThreads();
   }
 
   private void loadIndexMappings() {
