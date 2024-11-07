@@ -19,6 +19,7 @@ from typing import List, Optional
 
 from azure.mgmt.datafactory import DataFactoryManagementClient
 from azure.mgmt.datafactory.models import (
+    DatasetResource,
     PipelineResource,
     PipelineRun,
     RunFilterParameters,
@@ -134,6 +135,25 @@ class DataFactoryClient:
             return pipeline_url
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get pipeline run info :{exc}")
+            logger.warning(f"Unable to get pipeline url :{exc}")
+
+        return None
+
+    def get_dataset_info(
+        self, dataset_reference: str
+    ) -> Optional[List[DatasetResource]]:
+        """
+        Retrieves dataset info in the Data Factory.
+        """
+        try:
+            dataset = self.client.datasets.get(
+                self.config.resource_group_name,
+                self.config.factory_name,
+                dataset_reference,
+            )
+            return dataset.properties
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get dataset info :{exc}")
 
         return None
