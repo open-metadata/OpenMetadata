@@ -34,4 +34,4 @@ SET
   ) 
 WHERE 
   json -> 'chartDetails' -> 'type' = '"LineChart"'
-  and  json -> 'chartDetails' -> 'metric' is null;
+  and  json -> 'chartDetails' -> 'metrics' is null;
