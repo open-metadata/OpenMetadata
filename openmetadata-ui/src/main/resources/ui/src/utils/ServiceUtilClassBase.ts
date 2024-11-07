@@ -32,7 +32,6 @@ import {
   DASHBOARD_DEFAULT,
   DATABASE_DEFAULT,
   DATABRICK,
-  DATAFACTORY,
   DATALAKE,
   DBT,
   DEFAULT_SERVICE,
@@ -146,6 +145,7 @@ class ServiceUtilClassBase {
     APIServiceType.Webhook,
     MlModelServiceType.VertexAI,
     PipelineServiceType.Matillion,
+    PipelineServiceType.DataFactory,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -431,9 +431,6 @@ class ServiceUtilClassBase {
 
       case this.PipelineServiceTypeSmallCase.DBTCloud:
         return DBT;
-
-      case this.PipelineServiceTypeSmallCase.DataFactory:
-        return DATAFACTORY;
 
       case this.PipelineServiceTypeSmallCase.GluePipeline:
         return GLUE;
