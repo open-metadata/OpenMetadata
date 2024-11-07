@@ -24,7 +24,6 @@ export const withAdvanceSearch =
     providerProps?: Omit<AdvanceSearchProviderProps, 'children'>
   ) =>
   (props: P) => {
-    // console.log('providerProps', props);
     const searchOutputType = get(
       props,
       'schema.outputType',
