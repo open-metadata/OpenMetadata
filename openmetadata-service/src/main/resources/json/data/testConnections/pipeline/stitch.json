@@ -1,0 +1,21 @@
+{
+  "name": "Stitch",
+  "displayName": "Stitch Test Connection",
+  "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
+  "steps": [
+      {
+        "name": "GetSources",
+        "description": "Get pipeline sources",
+        "errorMessage": "Failed to get all the sources for pipeline",
+        "shortCircuit": true,
+        "mandatory": true
+      },
+      {
+        "name": "GetDestinations",
+        "description":  "Get pipeline destinations",
+        "errorMessage": "Failed to get all the destinations for pipeline",
+        "shortCircuit": true,
+        "mandatory": true
+      }
+  ]
+}
