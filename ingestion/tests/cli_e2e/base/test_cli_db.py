@@ -429,7 +429,8 @@ class CliDBBase(TestCase):
                     profile_type=SystemProfile,
                 ).entities
                 actual_profiles = sorted(
-                    actual_profiles, key=lambda x: (-x.timestamp.root, x.operation.value)
+                    actual_profiles,
+                    key=lambda x: (-x.timestamp.root, x.operation.value),
                 )
                 expected_profile = sorted(
                     expected_profile,
