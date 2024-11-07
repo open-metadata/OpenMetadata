@@ -33,7 +33,7 @@
         "KafkaConnect",
         "DBTCloud",
         "Matillion",
-        "DataFactory",
+        "DataFactory"
       ],
       "javaEnums": [
         {
@@ -85,8 +85,10 @@
           "name": "Matillion"
         },
         {
-          "name": "DataFactory",
-          "name": "Stitch",
+          "name": "DataFactory"
+        },
+        {
+          "name": "Stitch"
         }
       ]
     },
