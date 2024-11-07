@@ -12,6 +12,7 @@
  */
 import test from '@playwright/test';
 import { get } from 'lodash';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -33,13 +34,16 @@ import {
   connectEdgeBetweenNodes,
   deleteEdge,
   deleteNode,
+  fillLineageConfigForm,
   performZoomOut,
   removeColumnLineage,
   setupEntitiesForLineage,
+  verifyColumnLayerActive,
   verifyColumnLayerInactive,
   verifyNodePresent,
   visitLineageTab,
 } from '../../utils/lineage';
+import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -275,4 +279,149 @@ test('Verify column lineage between table and api endpoint', async ({
   await apiEndpoint.delete(apiContext);
 
   await afterAction();
+});
+
+test('Verify function data in edge drawer', async ({ browser }) => {
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table1 = new TableClass();
+  const table2 = new TableClass();
+
+  try {
+    await table1.create(apiContext);
+    await table2.create(apiContext);
+    const sourceTableFqn = get(table1, 'entityResponseData.fullyQualifiedName');
+    const sourceColName = `${sourceTableFqn}.${get(
+      table1,
+      'entityResponseData.columns[0].name'
+    )}`;
+
+    const targetTableFqn = get(table2, 'entityResponseData.fullyQualifiedName');
+    const targetColName = `${targetTableFqn}.${get(
+      table2,
+      'entityResponseData.columns[0].name'
+    )}`;
+
+    await addPipelineBetweenNodes(page, table1, table2);
+    await activateColumnLayer(page);
+    await addColumnLineage(page, sourceColName, targetColName);
+
+    const lineageReq = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    await page.reload();
+    const lineageRes = await lineageReq;
+    const jsonRes = await lineageRes.json();
+    const edge = jsonRes.edges[0];
+    const columnData = edge.columns[0];
+
+    const newEdge = {
+      edge: {
+        fromEntity: {
+          id: edge.fromEntity.id,
+          type: edge.fromEntity.type,
+        },
+        toEntity: {
+          id: edge.toEntity.id,
+          type: edge.toEntity.type,
+        },
+        lineageDetails: {
+          columnsLineage: [
+            {
+              fromColumns: [columnData.fromColumns[0]],
+              function: 'count',
+              toColumn: columnData.toColumn,
+            },
+          ],
+          description: 'test',
+        },
+      },
+    };
+    await apiContext.put(`/api/v1/lineage`, {
+      data: newEdge,
+    });
+    const lineageReq1 = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    await page.reload();
+    await lineageReq1;
+
+    await activateColumnLayer(page);
+    await page
+      .locator(
+        `[data-testid="column-edge-${btoa(sourceColName)}-${btoa(
+          targetColName
+        )}"]`
+      )
+      .dispatchEvent('click');
+
+    await page.locator('.edge-info-drawer').isVisible();
+
+    await expect(await page.locator('[data-testid="Function"]')).toContainText(
+      'count'
+    );
+  } finally {
+    await table1.delete(apiContext);
+    await table2.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Verify global lineage config', async ({ browser }) => {
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+  const topic = new TopicClass();
+  const dashboard = new DashboardClass();
+  const mlModel = new MlModelClass();
+
+  try {
+    await table.create(apiContext);
+    await topic.create(apiContext);
+    await dashboard.create(apiContext);
+    await mlModel.create(apiContext);
+
+    await addPipelineBetweenNodes(page, table, topic);
+    await addPipelineBetweenNodes(page, topic, dashboard);
+    await addPipelineBetweenNodes(page, dashboard, mlModel);
+
+    await topic.visitEntityPage(page);
+    await visitLineageTab(page);
+
+    await verifyNodePresent(page, table);
+    await verifyNodePresent(page, dashboard);
+    await verifyNodePresent(page, mlModel);
+
+    await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+    await fillLineageConfigForm(page, {
+      upstreamDepth: 1,
+      downstreamDepth: 1,
+      layer: 'Column Level Lineage',
+    });
+
+    await topic.visitEntityPage(page);
+    await visitLineageTab(page);
+
+    await verifyNodePresent(page, table);
+    await verifyNodePresent(page, dashboard);
+
+    const mlModelFqn = get(mlModel, 'entityResponseData.fullyQualifiedName');
+    const mlModelNode = page.locator(
+      `[data-testid="lineage-node-${mlModelFqn}"]`
+    );
+
+    await expect(mlModelNode).not.toBeVisible();
+
+    await verifyColumnLayerActive(page);
+
+    await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+    await fillLineageConfigForm(page, {
+      upstreamDepth: 2,
+      downstreamDepth: 2,
+      layer: 'Entity Lineage',
+    });
+  } finally {
+    await table.delete(apiContext);
+    await topic.delete(apiContext);
+    await dashboard.delete(apiContext);
+    await mlModel.delete(apiContext);
+
+    await afterAction();
+  }
 });

@@ -75,6 +75,8 @@ export enum GlobalSettingOptions {
   API_COLLECTIONS = 'apiCollections',
   API_ENDPOINTS = 'apiEndpoints',
   DATA_PRODUCT = 'dataProducts',
+  METRICS = 'metrics',
+  LINEAGE_CONFIG = 'lineageConfig',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

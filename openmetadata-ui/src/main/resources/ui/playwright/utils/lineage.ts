@@ -21,7 +21,11 @@ import { PipelineClass } from '../support/entity/PipelineClass';
 import { SearchIndexClass } from '../support/entity/SearchIndexClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
-import { getApiContext, getEntityTypeSearchIndexMapping } from './common';
+import {
+  getApiContext,
+  getEntityTypeSearchIndexMapping,
+  toastNotification,
+} from './common';
 
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
@@ -394,4 +398,30 @@ export const visitLineageTab = async (page: Page) => {
   const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
   await lineageRes;
+};
+
+export const fillLineageConfigForm = async (
+  page: Page,
+  config: { upstreamDepth: number; downstreamDepth: number; layer: string }
+) => {
+  await page
+    .getByTestId('field-upstream')
+    .fill(config.upstreamDepth.toString());
+  await page
+    .getByTestId('field-downstream')
+    .fill(config.downstreamDepth.toString());
+  await page.getByTestId('field-lineage-layer').click();
+  await page.locator(`.ant-select-item[title="${config.layer}"]`).click();
+
+  const saveRes = page.waitForResponse('/api/v1/system/settings');
+  await page.getByTestId('save-button').click();
+  await saveRes;
+
+  await toastNotification(page, /Lineage Config updated successfully/);
+};
+
+export const verifyColumnLayerActive = async (page: Page) => {
+  await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
+  await page.waitForSelector('[data-testid="lineage-layer-column-btn"].active');
+  await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
 };

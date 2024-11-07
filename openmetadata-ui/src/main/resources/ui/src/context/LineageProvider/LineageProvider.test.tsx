@@ -23,6 +23,20 @@ const mockLocation = {
   pathname: '/lineage',
 };
 
+const mockData = {
+  lineageConfig: {
+    upstreamDepth: 1,
+    downstreamDepth: 1,
+    lineageLayer: 'EntityLineage',
+  },
+};
+
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    appPreferences: mockData,
+  })),
+}));
+
 const DummyChildrenComponent = () => {
   const {
     loadChildNodesHandler,
@@ -56,6 +70,7 @@ const DummyChildrenComponent = () => {
       },
     },
   };
+
   const handleButtonClick = () => {
     // Trigger the loadChildNodesHandler method when the button is clicked
     loadChildNodesHandler(nodeData, EdgeTypeEnum.DOWN_STREAM);
@@ -84,6 +99,10 @@ const DummyChildrenComponent = () => {
     </div>
   );
 };
+
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ ...mockLocation }));
+});
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
@@ -141,7 +160,7 @@ describe('LineageProvider', () => {
       );
     });
 
-    const loadButton = await screen.getByTestId('load-nodes');
+    const loadButton = screen.getByTestId('load-nodes');
     fireEvent.click(loadButton);
 
     expect(getLineageDataByFQN).toHaveBeenCalled();
@@ -156,7 +175,7 @@ describe('LineageProvider', () => {
       );
     });
 
-    const loadButton = await screen.getByTestId('editLineage');
+    const loadButton = screen.getByTestId('editLineage');
     fireEvent.click(loadButton);
 
     const edgeDrawer = screen.getByText('Entity Lineage Sidebar');
@@ -173,7 +192,7 @@ describe('LineageProvider', () => {
       );
     });
 
-    const edgeClick = await screen.getByTestId('edge-click');
+    const edgeClick = screen.getByTestId('edge-click');
     fireEvent.click(edgeClick);
 
     const edgeDrawer = screen.getByText('Edge Info Drawer');
