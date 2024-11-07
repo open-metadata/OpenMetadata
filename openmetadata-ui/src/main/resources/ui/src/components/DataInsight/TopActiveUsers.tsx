@@ -33,6 +33,7 @@ import Table from '../common/Table/Table';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import { getColumnSorter } from '../../utils/EntityUtils';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -73,6 +74,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         title: t('label.user'),
         dataIndex: 'userName',
         key: 'userName',
+        sorter: getColumnSorter<MostActiveUsers, 'userName'>('userName'),
         render: (userName: string) => (
           <Space>
             <ProfilePicture name={userName} width="24" />
