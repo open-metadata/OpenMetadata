@@ -35,9 +35,9 @@ import { FrequentlyJoinedTables } from '../../../pages/TableDetailsPageV1/Freque
 import { PartitionedKeys } from '../../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import TableConstraints from '../../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import { postThread } from '../../../rest/feedsAPI';
-import customizeGlossaryTermPageClassBase from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
+import tableClassBase from '../../../utils/TableClassBase';
 import {
   getJoinsFromTableJoins,
   getTagsWithoutTier,
@@ -81,7 +81,7 @@ export const TableSchemaTab = () => {
 
   const layout = useMemo(() => {
     if (!currentPersonaDocStore) {
-      return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
+      return tableClassBase.getDefaultLayout(tab);
     }
 
     const page = currentPersonaDocStore?.data?.pages?.find(
@@ -91,7 +91,7 @@ export const TableSchemaTab = () => {
     if (page) {
       return page.tabs.find((t: Tab) => t.id === tab)?.layout;
     } else {
-      return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
+      return tableClassBase.getDefaultLayout(tab);
     }
   }, [currentPersonaDocStore, tab]);
   const {
