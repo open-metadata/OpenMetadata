@@ -260,6 +260,7 @@ def test_all_definition_exists(metadata, run_data_quality_workflow, db_service):
         "columnValuesToBeNotInSet",
         "columnValueMeanToBeBetween",
         "columnValuesToBeBetween",
+        "columnValuesToBeAtExpectedLocation",
         "tableDiff",
     }
     missing = set()

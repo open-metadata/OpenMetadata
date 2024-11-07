@@ -59,7 +59,8 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
-import org.openmetadata.schema.api.searcg.SearchSettings;
+import org.openmetadata.schema.api.lineage.LineageSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -2620,6 +2621,25 @@ public interface CollectionDAO {
       return listAfter(
           getTableName(), filter.getQueryParams(), condition, condition, limit, afterName, afterId);
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM table_entity "
+                + "WHERE JSON_SEARCH(JSON_EXTRACT(json, '$.tableConstraints[*].referredColumns'), "
+                + "'one', :fqn) IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json "
+                + "FROM table_entity "
+                + "WHERE EXISTS ("
+                + "    SELECT 1"
+                + "    FROM jsonb_array_elements(json->'tableConstraints') AS constraints"
+                + "    CROSS JOIN jsonb_array_elements_text(constraints->'referredColumns') AS referredColumn "
+                + "    WHERE referredColumn LIKE :fqn"
+                + ")",
+        connectionType = POSTGRES)
+    List<String> findRelatedTables(@Bind("fqn") String fqn);
   }
 
   interface StoredProcedureDAO extends EntityDAO<StoredProcedure> {
@@ -4967,6 +4987,7 @@ public interface CollectionDAO {
             case SEARCH_SETTINGS -> JsonUtils.readValue(json, SearchSettings.class);
             case ASSET_CERTIFICATION_SETTINGS -> JsonUtils.readValue(
                 json, AssetCertificationSettings.class);
+            case LINEAGE_SETTINGS -> JsonUtils.readValue(json, LineageSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
