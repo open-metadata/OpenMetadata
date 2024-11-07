@@ -69,6 +69,9 @@ COMMONS = {
         # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
         # Using this as an alternative
         "cramjam~=2.7",
+        # TODO decouple datalake dependencies
+        "azure-storage-blob",
+        "google-cloud-storage",
     },
     "hive": {
         "presto-types-parser>=0.0.2",
@@ -218,7 +221,7 @@ plugins: Dict[str, Set[str]] = {
         "delta-spark<=2.3.0",
         "deltalake~=0.17,<0.20",
     },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
-    "deltalake-storage": {"deltalake~=0.17"},
+    "deltalake-storage": {"deltalake~=0.17,<0.20"},
     "deltalake-spark": {"delta-spark<=2.3.0"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {"pydoris==1.0.2"},
@@ -335,6 +338,9 @@ dev = {
     "pre-commit",
     "pycln",
     "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
+    "nox",
+    "coverage",
+    "basedpyright",
     # For publishing
     "twine",
     "build",
@@ -357,43 +363,16 @@ test = {
     # install dbt dependency
     "dbt-artifacts-parser",
     "freezegun",
-    VERSIONS["sqlalchemy-databricks"],
-    VERSIONS["databricks-sdk"],
-    VERSIONS["scikit-learn"],
-    VERSIONS["pyarrow"],
-    VERSIONS["trino"],
-    VERSIONS["spacy"],
-    VERSIONS["pydomo"],
-    VERSIONS["looker-sdk"],
-    VERSIONS["lkml"],
-    VERSIONS["tableau"],
-    VERSIONS["pyhive"],
-    VERSIONS["mongo"],
-    VERSIONS["redshift"],
-    VERSIONS["snowflake"],
-    VERSIONS["elasticsearch8"],
-    VERSIONS["giturlparse"],
-    VERSIONS["avro"],  # Sample Data
-    VERSIONS["grpc-tools"],
-    VERSIONS["neo4j"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",
     "minio==7.2.5",
-    *plugins["mlflow"],
-    *plugins["datalake-s3"],
-    *plugins["kafka"],
     "kafka-python==2.0.2",
-    *plugins["pii-processor"],
     "requests==2.31.0",
-    f"{DATA_DIFF['mysql']}",
-    *plugins["deltalake"],
-    *plugins["datalake-gcs"],
-    *plugins["pgspider"],
-    *plugins["clickhouse"],
-    *plugins["mssql"],
-    *plugins["dagster"],
-    *plugins["oracle"],
-    *plugins["mssql"],
+    "tenacity",
+    VERSIONS["elasticsearch8"],
+    VERSIONS["spacy"],
+    VERSIONS["scikit-learn"],
+    VERSIONS["grpc-tools"],
 }
 
 e2e_test = {

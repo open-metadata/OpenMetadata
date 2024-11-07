@@ -1,5 +1,6 @@
 DIRECTORY_NAME := $(notdir $(CURDIR))
 PY_SOURCE ?= ./src
+NOX_FLAGS :=
 
 ifeq (ingestion,$(DIRECTORY_NAME))
     INGESTION_DIR := .
@@ -56,22 +57,15 @@ py_format_check:  ## Check if Python sources are correctly formatted
 	black --check --diff $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" pylint --rcfile=$(INGESTION_DIR)/pyproject.toml --fail-under=10 $(PY_SOURCE)/metadata || (echo "PyLint error code $$?"; exit 1)
 
-.PHONY: unit_ingestion
-unit_ingestion:  ## Run Python unit tests
-	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml $(INGESTION_DIR)/tests/unit
-
-## Ingestion tests & QA
-.PHONY: run_ometa_integration_tests
-run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
+.PHONE: run_py_e2e_tests
+run_py_e2e_tests:
+	nox -f $(INGESTION_DIR)/noxfile.py -k $(E2E_TEST) -t e2e --report nox-e2e-$(E2E_TEST).json
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
 	coverage erase
 	$(MAKE) static-checks
-	$(MAKE) unit_ingestion
-	$(MAKE) run_ometa_integration_tests
-	coverage report --rcfile $(INGESTION_DIR)/pyproject.toml || true
+	nox -f $(INGESTION_DIR)/noxfile.py $(NOX_FLAGS) --report nox-all.json
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
@@ -101,3 +95,6 @@ coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
 	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
 	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" $(INGESTION_DIR)/coverage.xml >> $(INGESTION_DIR)/ci-coverage.xml
+
+clean:
+	rm -r $(INGESTION_DIR)/build $(INGESTION_DIR)/src/*.egg-info $(INGESTION_DIR)/coverage $(INGESTION_DIR)/junit $(INGESTION_DIR)/.nox || true
