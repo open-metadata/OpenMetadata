@@ -33,6 +33,7 @@
         "KafkaConnect",
         "DBTCloud",
         "Matillion",
+        "Stitch",
         "DataFactory"
       ],
       "javaEnums": [
