@@ -28,6 +28,16 @@ src="/images/v1.5/how-to-guides/teams-and-users/teams.png"
 alt="team-structure"
 caption="Team Hierarchy in OpenMetadata"
 /%}
+{% image
+src="/images/v1.5/how-to-guides/teams-and-users/teams1.1.png"
+alt="team-structure"
+caption="Team Hierarchy in OpenMetadata"
+/%}
+{% image
+src="/images/v1.5/how-to-guides/teams-and-users/teams1.2.png"
+alt="team-structure"
+caption="Team Hierarchy in OpenMetadata"
+/%}
 
 {%inlineCallout
   color="violet-70"

@@ -18,15 +18,15 @@ import React from 'react';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
 import { ReactComponent as Layers } from '../../../../assets/svg/ic-layers.svg';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
+import { LineageLayer } from '../../../../generated/settings/settings';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import './lineage-layers.less';
 
 const LineageLayers = () => {
   const { activeLayer, onUpdateLayerView, isEditMode } = useLineageProvider();
 
-  const onButtonClick = (value: LineageLayerView) => {
+  const onButtonClick = (value: LineageLayer) => {
     const index = activeLayer.indexOf(value);
     if (index === -1) {
       onUpdateLayerView([...activeLayer, value]);
@@ -41,10 +41,10 @@ const LineageLayers = () => {
         <ButtonGroup>
           <Button
             className={classNames('lineage-layer-button h-15', {
-              active: activeLayer.includes(LineageLayerView.COLUMN),
+              active: activeLayer.includes(LineageLayer.ColumnLevelLineage),
             })}
             data-testid="lineage-layer-column-btn"
-            onClick={() => onButtonClick(LineageLayerView.COLUMN)}>
+            onClick={() => onButtonClick(LineageLayer.ColumnLevelLineage)}>
             <div className="lineage-layer-btn">
               <div className="layer-icon">
                 {searchClassBase.getEntityIcon(EntityType.TABLE)}
@@ -56,14 +56,10 @@ const LineageLayers = () => {
           </Button>
           <Button
             className={classNames('lineage-layer-button h-15', {
-              active: activeLayer.includes(
-                LineageLayerView.DATA_OBSERVARABILITY
-              ),
+              active: activeLayer.includes(LineageLayer.DataObservability),
             })}
             data-testid="lineage-layer-observability-btn"
-            onClick={() =>
-              onButtonClick(LineageLayerView.DATA_OBSERVARABILITY)
-            }>
+            onClick={() => onButtonClick(LineageLayer.DataObservability)}>
             <div className="lineage-layer-btn">
               <div className="layer-icon">
                 <DataQualityIcon />

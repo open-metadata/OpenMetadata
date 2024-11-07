@@ -21,9 +21,9 @@ import {
   LINEAGE_COLUMN_NODE_SUPPORTED,
 } from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Column, Table } from '../../../../generated/entity/data/table';
+import { LineageLayer } from '../../../../generated/settings/settings';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -50,9 +50,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
 
   const { showColumns, showDataObservability } = useMemo(() => {
     return {
-      showColumns: activeLayer.includes(LineageLayerView.COLUMN),
+      showColumns: activeLayer.includes(LineageLayer.ColumnLevelLineage),
       showDataObservability: activeLayer.includes(
-        LineageLayerView.DATA_OBSERVARABILITY
+        LineageLayer.DataObservability
       ),
     };
   }, [activeLayer]);
