@@ -32,6 +32,7 @@ import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -63,9 +64,11 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import Table from '../../common/Table/Table';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
+import ClassificationDetailsRightPanel from './ClassificationDetailsRightPanel.component';
 
 const ClassificationDetails = forwardRef(
   (
@@ -386,7 +389,7 @@ const ClassificationDetails = forwardRef(
         }
       },
     }));
-
+    /*
     return (
       <div className="p-t-sm p-x-md" data-testid="tags-container">
         {currentClassification && (
@@ -496,7 +499,15 @@ const ClassificationDetails = forwardRef(
             onDescriptionUpdate={handleUpdateDescription}
           />
         </div>
-
+        <ClassificationDetailsRightPanel
+          permissions={classificationPermissions}
+          selectedData={currentClassification!}
+          isClassification={true} // 根据需要设置
+          onUpdate={handleUpdateClassification || (() => Promise.resolve())} // Provide a default function
+          onThreadLinkSelect={() => {}} // 根据需要实现
+          entityType={EntityType.CLASSIFICATION}
+          refreshGlossaryTerms={() => {}} // 根据需要实现
+        />
         <Space className="w-full m-b-md" direction="vertical" size="large">
           <Table
             bordered
@@ -532,6 +543,208 @@ const ClassificationDetails = forwardRef(
             />
           )}
         </Space>
+      </div>
+    );
+  }
+);
+*/
+
+    return (
+      <div className="classification-details">
+        {/* Header 部分 */}
+        <div className="classification-header p-t-sm p-x-md">
+          {currentClassification && (
+            <>
+              <Row className="p-l-lg" data-testid="header" wrap={false}>
+                <Col flex="auto">
+                  <EntityHeaderTitle
+                    badge={
+                      <div className="d-flex gap-1">
+                        {headerBadge}
+                        {currentClassification?.mutuallyExclusive && (
+                          <div data-testid="mutually-exclusive-container">
+                            <AppBadge
+                              bgColor={theme.primaryColor}
+                              label={t('label.mutually-exclusive')}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    }
+                    className={classNames({
+                      'opacity-60': isClassificationDisabled,
+                    })}
+                    displayName={displayName}
+                    icon={
+                      <IconTag
+                        className="h-9"
+                        style={{ color: DE_ACTIVE_COLOR }}
+                      />
+                    }
+                    isDisabled={isClassificationDisabled}
+                    name={name ?? currentClassification.name}
+                    serviceName="classification"
+                  />
+                </Col>
+
+                <Col className="d-flex justify-end items-start" flex="270px">
+                  <Space>
+                    {createPermission && (
+                      <Tooltip title={addTagButtonToolTip}>
+                        <Button
+                          data-testid="add-new-tag-button"
+                          disabled={isClassificationDisabled}
+                          type="primary"
+                          onClick={handleAddNewTagClick}>
+                          {t('label.add-entity', {
+                            entity: t('label.tag'),
+                          })}
+                        </Button>
+                      </Tooltip>
+                    )}
+
+                    <ButtonGroup size="small">
+                      <Tooltip
+                        title={t(
+                          `label.${
+                            isVersionView
+                              ? 'exit-version-history'
+                              : 'version-plural-history'
+                          }`
+                        )}>
+                        <Button
+                          className="w-16 p-0"
+                          data-testid="version-button"
+                          icon={<Icon component={VersionIcon} />}
+                          onClick={versionHandler}>
+                          <Typography.Text>{currentVersion}</Typography.Text>
+                        </Button>
+                      </Tooltip>
+                      {showManageButton && (
+                        <ManageButton
+                          isRecursiveDelete
+                          afterDeleteAction={handleAfterDeleteAction}
+                          allowRename={!isSystemClassification}
+                          allowSoftDelete={false}
+                          canDelete={
+                            deletePermission && !isClassificationDisabled
+                          }
+                          displayName={
+                            currentClassification.displayName ??
+                            currentClassification.name
+                          }
+                          editDisplayNamePermission={
+                            editDisplayNamePermission &&
+                            !isClassificationDisabled
+                          }
+                          entityFQN={currentClassification.fullyQualifiedName}
+                          entityId={currentClassification.id}
+                          entityName={currentClassification.name}
+                          entityType={EntityType.CLASSIFICATION}
+                          extraDropdownContent={extraDropdownContent}
+                          onEditDisplayName={handleUpdateDisplayName}
+                        />
+                      )}
+                    </ButtonGroup>
+                  </Space>
+                </Col>
+              </Row>
+
+              {/* DescriptionV1 部分 */}
+              <div
+                className="m-b-sm m-t-xs"
+                data-testid="description-container">
+                <DescriptionV1
+                  className={classNames({
+                    'opacity-60': isClassificationDisabled,
+                  })}
+                  description={description}
+                  entityName={getEntityName(currentClassification)}
+                  entityType={EntityType.CLASSIFICATION}
+                  hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(tags)}
+                  isEdit={isEditClassification}
+                  showCommentsIcon={false}
+                  onCancel={handleCancelEditDescription}
+                  onDescriptionEdit={handleEditDescriptionClick}
+                  onDescriptionUpdate={handleUpdateDescription}
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Resizable Panels 部分 */}
+        <Row className="h-full" gutter={[0, 16]}>
+          <Col span={24}>
+            <ResizablePanels
+              firstPanel={{
+                className: 'classification-resizable-panel-container',
+                children: (
+                  <div className="p-y-md p-x-md classification-content-container">
+                    <Space className="w-full" direction="vertical" size={24}>
+                      {/* 表格部分 */}
+                      <Table
+                        bordered
+                        className={classNames({
+                          'opacity-60': isClassificationDisabled,
+                        })}
+                        columns={tableColumn}
+                        data-testid="table"
+                        dataSource={tags}
+                        loading={isTagsLoading}
+                        locale={{
+                          emptyText: (
+                            <ErrorPlaceHolder
+                              className="m-y-md"
+                              placeholderText={t('message.no-tags-description')}
+                            />
+                          ),
+                        }}
+                        pagination={false}
+                        rowClassName={(record) =>
+                          record.disabled ? 'opacity-60' : ''
+                        }
+                        rowKey="id"
+                        size="small"
+                      />
+
+                      {showPagination && (
+                        <NextPrevious
+                          currentPage={currentPage}
+                          isLoading={isTagsLoading}
+                          pageSize={pageSize}
+                          paging={paging}
+                          pagingHandler={handleTagsPageChange}
+                          onShowSizeChange={handlePageSizeChange}
+                        />
+                      )}
+                    </Space>
+                  </div>
+                ),
+                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+              }}
+              secondPanel={{
+                children: (
+                  <ClassificationDetailsRightPanel
+                    isClassification
+                    entityType={EntityType.CLASSIFICATION}
+                    permissions={classificationPermissions}
+                    selectedData={currentClassification!}
+                    onUpdate={
+                      handleUpdateClassification || (() => Promise.resolve())
+                    }
+                    // onThreadLinkSelect={() => {}} // 根據需要實現
+                    // refreshClassificationTags={() => {}} // 根據需要實現
+                  />
+                ),
+                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+                className:
+                  'entity-resizable-right-panel-container classification-resizable-panel-container',
+              }}
+            />
+          </Col>
+        </Row>
       </div>
     );
   }

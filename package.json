@@ -11,6 +11,8 @@
     "url": "https://github.com/open-metadata/OpenMetadata.git"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/moment": "^2.13.0",
     "quicktype": "20.0.27"
   },
   "scripts": {

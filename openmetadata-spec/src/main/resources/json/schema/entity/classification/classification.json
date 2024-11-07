@@ -47,6 +47,10 @@
       "description": "Link to the resource corresponding to the classification.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
+    "owners": {
+      "description": "Owners of this classification.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "usageCount": {
       "description": "Count of how many times the tags from this classification are used.",
       "type": "integer"

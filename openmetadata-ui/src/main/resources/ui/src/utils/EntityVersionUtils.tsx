@@ -44,6 +44,7 @@ import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
+import { Classification } from '../generated/entity/classification/classification';
 import { Column as ContainerColumn } from '../generated/entity/data/container';
 import { Column as DataModelColumn } from '../generated/entity/data/dashboardDataModel';
 import { Glossary } from '../generated/entity/data/glossary';
@@ -1034,7 +1035,7 @@ export const getOwnerDiff = (
 };
 
 export const getOwnerVersionLabel = (
-  entity: Glossary | GlossaryTerm,
+  entity: Glossary | GlossaryTerm | Classification,
   isVersionView: boolean,
   ownerField = TabSpecificField.OWNERS, // Can be owners, experts, reviewers all are OwnerLabels
   hasPermission = true

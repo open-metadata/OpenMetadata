@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
+import { Classification } from '../../../generated/entity/classification/classification';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
@@ -73,7 +75,9 @@ export type AssetsUnion =
   | EntityType.API_SERVICE
   | EntityType.API_COLLECTION
   | EntityType.API_ENDPOINT
-  | EntityType.METRIC;
+  | EntityType.METRIC
+  | EntityType.CLASSIFICATION
+  | EntityType.TAG;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
@@ -102,4 +106,6 @@ export type MapPatchAPIResponse = {
   [EntityType.API_COLLECTION]: APICollection;
   [EntityType.API_ENDPOINT]: APIEndpoint;
   [EntityType.METRIC]: Metric;
+  [EntityType.CLASSIFICATION]: Classification;
+  [EntityType.TAG]: Tag;
 };

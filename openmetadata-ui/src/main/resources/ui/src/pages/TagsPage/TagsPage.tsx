@@ -142,7 +142,12 @@ const TagsPage = () => {
 
     try {
       const response = await getAllClassifications({
-        fields: TabSpecificField.TERM_COUNT,
+        fields: [
+          TabSpecificField.TERM_COUNT,
+          TabSpecificField.OWNERS,
+          TabSpecificField.REVIEWERS,
+          TabSpecificField.DOMAIN,
+        ],
         limit: 1000,
       });
       setClassifications(response.data);
@@ -164,13 +169,23 @@ const TagsPage = () => {
       setIsLoading(false);
     }
   };
-
+  /*
+  useEffect(() => {
+    fetchClassifications();
+  }, []);
+*/
   const fetchCurrentClassification = async (fqn: string, update?: boolean) => {
     if (currentClassification?.fullyQualifiedName !== fqn || update) {
       setIsLoading(true);
       try {
         const currentClassification = await getClassificationByName(fqn, {
-          fields: [TabSpecificField.USAGE_COUNT, TabSpecificField.TERM_COUNT],
+          fields: [
+            TabSpecificField.USAGE_COUNT,
+            TabSpecificField.TERM_COUNT,
+            TabSpecificField.OWNERS,
+            TabSpecificField.REVIEWERS,
+            TabSpecificField.DOMAIN,
+          ],
         });
         if (currentClassification) {
           setClassifications((prevClassifications) =>
