@@ -37,7 +37,7 @@ const DataStatisticWidget = ({
         {title}
       </Typography.Paragraph>
 
-      <div className="d-flex gap-2 items-center m-b-sm">
+      <div className="d-flex gap-2 items-center m-b-xss">
         <Icon height={22} width={22} />
         <Typography.Paragraph
           className="font-medium text-xl m-b-0"
