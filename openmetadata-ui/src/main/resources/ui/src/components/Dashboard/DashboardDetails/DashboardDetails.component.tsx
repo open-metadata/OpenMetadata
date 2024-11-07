@@ -44,7 +44,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getAllTags,
@@ -439,6 +439,7 @@ const DashboardDetails = ({
         key: 'chartName',
         width: 220,
         fixed: 'left',
+        sorter: getColumnSorter<ChartType, 'name'>('name'),
         render: (_, record) => {
           const chartName = getEntityName(record);
 
