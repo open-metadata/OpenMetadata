@@ -14,9 +14,9 @@ import { Button, Form, FormProps, Input, Modal, Typography } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
-import { EntityNameModalProps } from './EntityNameModal.interface';
+import { EntityName, EntityNameModalProps } from './EntityNameModal.interface';
 
-const EntityNameModal: React.FC<EntityNameModalProps> = ({
+const EntityNameModal = <T extends EntityName>({
   visible,
   entity,
   onCancel,
@@ -27,7 +27,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
   allowRename = false,
   nameValidationRules = [],
   additionalFields,
-}) => {
+}: EntityNameModalProps<T>) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
