@@ -223,7 +223,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       this.searchIndexSink =
           new ElasticSearchIndexSink(searchRepository, totalRecords, jobData.getPayLoadSize());
     }
-
   }
 
   public void updateRecordToDb(JobExecutionContext jobExecutionContext) {
@@ -249,7 +248,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     if (executorService == null || executorService.isShutdown() || executorService.isTerminated()) {
       this.executorService = Executors.newFixedThreadPool(searchRepository.getNumThreads());
-      LOG.debug("Initialized new ExecutorService with {} threads.", searchRepository.getNumThreads());
+      LOG.debug(
+          "Initialized new ExecutorService with {} threads.", searchRepository.getNumThreads());
     }
     List<Future<?>> futures = new ArrayList<>();
 
