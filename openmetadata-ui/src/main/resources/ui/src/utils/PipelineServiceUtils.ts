@@ -19,7 +19,6 @@ import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/a
 import customPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/customPipelineConnection.json';
 import dagsterConnection from '../jsons/connectionSchemas/connections/pipeline/dagsterConnection.json';
 import databricksPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/databricksPipelineConnection.json';
-import datafactoryConnection from '../jsons/connectionSchemas/connections/pipeline/datafactoryConnection.json';
 import dbtCloudConnection from '../jsons/connectionSchemas/connections/pipeline/dbtCloudConnection.json';
 import domoPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/domoPipelineConnection.json';
 import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
@@ -62,11 +61,6 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.Dagster: {
       schema = dagsterConnection;
-
-      break;
-    }
-    case PipelineServiceType.DataFactory: {
-      schema = datafactoryConnection;
 
       break;
     }
