@@ -2261,22 +2261,34 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public List<Map<String, String>> fetchDIChartFields() throws IOException {
-    // This function is being used for creating custom charts in Data Insights
-    List<Map<String, String>> fields = new ArrayList<>();
-    GetMappingsRequest request =
-        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+  public Map<String, List<Map<String, String>>> fetchDIChartFields() throws IOException {
+    Map<String, List<Map<String, String>>> result = new HashMap<>();
+    for (String type : DataInsightSystemChartRepository.dataAssetTypes) {
+      // This function is being used for creating custom charts in Data Insights
+      try {
+        List<Map<String, String>> fields = new ArrayList<>();
+        GetMappingsRequest request =
+            new GetMappingsRequest()
+                .indices(
+                    DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX
+                        + "-"
+                        + type.toLowerCase());
 
-    // Execute request
-    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
+        // Execute request
+        GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
 
-    // Get mappings for the index
-    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
-      // Get fields for the index
-      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
+        // Get mappings for the index
+        for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
+          // Get fields for the index
+          Map<String, Object> indexFields = entry.getValue().sourceAsMap();
+          getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
+        }
+        result.put(type, fields);
+      } catch (Exception exception) {
+        LOG.error(exception.getMessage());
+      }
     }
-    return fields;
+    return result;
   }
 
   void getFieldNames(

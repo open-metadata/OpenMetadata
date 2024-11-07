@@ -330,7 +330,7 @@ public interface SearchClient {
     return null;
   }
 
-  default List<Map<String, String>> fetchDIChartFields() throws IOException {
+  default Map<String, List<Map<String, String>>> fetchDIChartFields() throws IOException {
     return null;
   }
 
