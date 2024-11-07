@@ -31,4 +31,5 @@ export type DataQualityDashboardChartFilters = {
   tier?: string[];
   startTs?: number;
   endTs?: number;
+  entityFQN?: string;
 };

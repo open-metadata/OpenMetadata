@@ -370,15 +370,13 @@
               }
             ],
             "Location": "s3://athena-postgres/map-test",
-            "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
-            "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+            "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
             "Compressed": false,
             "NumberOfBuckets": -1,
             "SerdeInfo": {
-              "SerializationLibrary": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
-              "Parameters": {
-                "serialization.format": "1"
-              }
+              "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
+              "Parameters": {}
             },
             "BucketColumns": [],
             "SortColumns": [],

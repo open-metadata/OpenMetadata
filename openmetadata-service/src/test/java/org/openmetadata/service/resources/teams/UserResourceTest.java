@@ -139,6 +139,7 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
@@ -1560,9 +1561,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Override
-  protected String exportCsv(String teamName) throws HttpResponseException {
+  protected String initiateExport(String teamName) throws HttpResponseException {
     WebTarget target = getCollection().path("/export");
     target = target.queryParam("team", teamName);
-    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+    CSVExportResponse response =
+        TestUtils.getWithResponse(
+            target, CSVExportResponse.class, ADMIN_AUTH_HEADERS, Status.ACCEPTED.getStatusCode());
+    return response.getJobId();
   }
 }

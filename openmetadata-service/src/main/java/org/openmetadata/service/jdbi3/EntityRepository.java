@@ -971,6 +971,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @SuppressWarnings("unused")
+  protected void postUpdate(T updated) {
+    if (supportsSearch) {
+      searchRepository.updateEntity(updated);
+    }
+  }
+
   @Transaction
   public final PutResponse<T> update(UriInfo uriInfo, T original, T updated) {
     // Get all the fields in the original entity that can be updated during PUT operation
@@ -1202,9 +1209,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               searchListFilter, limit, offset, entityType, searchSortFilter, q);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
-        T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
-        setInheritedFields(entity, fields);
-        clearFieldsInternal(entity, fields);
+        T entity = JsonUtils.readOrConvertValue(json, entityClass);
         entityList.add(withHref(uriInfo, entity));
       }
       return new ResultList<>(entityList, offset, limit, total.intValue());
