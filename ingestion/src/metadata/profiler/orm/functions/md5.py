@@ -18,6 +18,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE
+from metadata.profiler.orm.registry import Dialects
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -30,3 +31,9 @@ class MD5(FunctionElement):
 @compiles(MD5)
 def _(element, compiler, **kw):
     return f"MD5({compiler.process(element.clauses, **kw)})"
+
+
+@compiles(MD5, Dialects.MSSQL)
+def _(element, compiler, **kw):
+    # TODO requires separate where clauses for each table
+    return f"CONVERT(VARCHAR(8), HashBytes('MD5', {compiler.process(element.clauses, **kw)}), 2)"

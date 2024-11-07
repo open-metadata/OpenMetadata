@@ -14,6 +14,7 @@ class TableParameter(BaseModel):
     serviceUrl: str
     path: str
     columns: List[Column]
+    database_service_type: DatabaseServiceType
 
 
 class TableDiffRuntimeParameters(BaseModel):
@@ -23,4 +24,3 @@ class TableDiffRuntimeParameters(BaseModel):
     extraColumns: List[str]
     whereClause: Optional[str]
     table_profile_config: Optional[TableProfilerConfig]
-    database_service_type: DatabaseServiceType

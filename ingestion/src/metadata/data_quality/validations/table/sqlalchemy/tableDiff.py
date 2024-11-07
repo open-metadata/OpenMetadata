@@ -37,6 +37,9 @@ from metadata.generated.schema.entity.data.table import Column, ProfileSampleTyp
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaScheme,
 )
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -341,6 +344,15 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             or self.runtime_params.table_profile_config.profileSample is None
         ):
             return None
+        if DatabaseServiceType.Mssql in [
+            self.runtime_params.table1.database_service_type,
+            self.runtime_params.table2.database_service_type,
+        ]:
+            raise ValueError(
+                "MSSQL does not support sampling in data diff.\n"
+                "You can request this feature here:\n"
+                "https://github.com/open-metadata/OpenMetadata/issues/new?labels=enhancement&projects=&template=feature_request.md"  # pylint: disable=line-too-long
+            )
         nounce = self.calculate_nounce()
         # SQL MD5 returns a 32 character hex string even with leading zeros so we need to
         # pad the nounce to 8 characters in preserve lexical order.
@@ -354,7 +366,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )  # 1 / ~62^5 should be enough entropy. Use letters and digits to avoid messing with SQL syntax
         sql_alchemy_columns = [
             build_orm_col(
-                i, c, self.runtime_params.database_service_type
+                i, c, self.runtime_params.table1.database_service_type
             )  # TODO: get from runtime params
             for i, c in enumerate(self.runtime_params.table1.columns)
             if c.name.root in self.runtime_params.keyColumns
