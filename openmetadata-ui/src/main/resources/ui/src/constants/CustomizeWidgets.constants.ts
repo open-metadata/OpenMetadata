@@ -67,7 +67,7 @@ export const OWNER_WIDGET: CommonWidgetType = {
 
 export const TERMS_TABLE_WIDGET: CommonWidgetType = {
   fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.TERMS_TABLE,
-  name: i18n.t('label.terms'),
+  name: i18n.t('label.term-plural'),
   data: { gridSizes: ['large'] },
 };
 

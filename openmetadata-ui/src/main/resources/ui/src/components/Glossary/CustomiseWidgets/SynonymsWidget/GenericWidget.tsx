@@ -24,6 +24,7 @@ import { EntityReference } from '../../../../generated/tests/testCase';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { FrequentlyJoinedTables } from '../../../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import TableConstraints from '../../../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import tableClassBase from '../../../../utils/TableClassBase';
@@ -38,6 +39,8 @@ import DataProductsContainer from '../../../DataProducts/DataProductsContainer/D
 import { GenericProvider } from '../../../GenericProvider/GenericProvider';
 import TagsViewer from '../../../Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
+import GlossaryTermTab from '../../GlossaryTermTab/GlossaryTermTab.component';
+import { ModifiedGlossary, useGlossaryStore } from '../../useGlossary.store';
 
 export const GenericWidget = (props: WidgetCommonProps) => {
   const handleRemoveClick = () => {
@@ -45,6 +48,170 @@ export const GenericWidget = (props: WidgetCommonProps) => {
       props.handleRemoveWidget(props.widgetKey);
     }
   };
+
+  const { setGlossaryChildTerms } = useGlossaryStore();
+
+  useMemo(() => {
+    if (
+      props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)
+    ) {
+      setGlossaryChildTerms([
+        {
+          id: 'ea7c8380-34a9-4ea9-93ea-a812c0e838d6',
+          name: 'Finance',
+          displayName: 'Finance',
+          description:
+            'A finance department is the unit of a business responsible for obtaining and handling any monies on behalf of the organization',
+
+          fullyQualifiedName: 'Business Department.Finance',
+
+          glossary: {
+            id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
+            type: 'glossary',
+            name: 'Business Department',
+            fullyQualifiedName: 'Business Department',
+            description:
+              'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
+            displayName: 'Business Department',
+            deleted: false,
+          },
+          references: [],
+          version: 0.9,
+          updatedAt: 1727894458563,
+          updatedBy: 'anandbhandari',
+          href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaryTerms/ea7c8380-34a9-4ea9-93ea-a812c0e838d6',
+          owners: [],
+
+          status: 'Approved',
+          deleted: false,
+
+          mutuallyExclusive: false,
+          childrenCount: 1,
+        },
+        {
+          id: 'a8409ff4-b540-4ab0-9332-73f34125651c',
+          name: 'FOO',
+          displayName: '',
+          description: 'VCASCAS',
+
+          fullyQualifiedName: 'Business Department.FOO',
+          synonyms: [],
+          glossary: {
+            id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
+            type: 'glossary',
+            name: 'Business Department',
+            fullyQualifiedName: 'Business Department',
+            description:
+              'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
+            displayName: 'Business Department',
+            deleted: false,
+          },
+          references: [],
+          version: 0.1,
+          updatedAt: 1724662513442,
+          updatedBy: 'teddy',
+          owners: [],
+          status: 'Approved',
+          deleted: false,
+          mutuallyExclusive: false,
+          childrenCount: 0,
+        },
+        {
+          id: '5c415db9-0927-4815-b31b-ae8247ea6b0a',
+          name: 'Human resources',
+          displayName: 'Human resources',
+          description:
+            'Human resources (HR) is the department in a company that handles all things related to employees.',
+
+          fullyQualifiedName: 'Business Department.Human resources',
+          synonyms: ['Manpower', 'Human capital'],
+          glossary: {
+            id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
+            type: 'glossary',
+            name: 'Business Department',
+            fullyQualifiedName: 'Business Department',
+            description:
+              'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
+            displayName: 'Business Department',
+            deleted: false,
+            href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaries/dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
+          },
+          references: [],
+          version: 0.2,
+          updatedAt: 1701067069097,
+          updatedBy: 'sonal.w',
+          href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaryTerms/5c415db9-0927-4815-b31b-ae8247ea6b0a',
+          owners: [],
+          changeDescription: {
+            fieldsAdded: [],
+            fieldsUpdated: [
+              {
+                name: 'status',
+                oldValue: 'Draft',
+                newValue: 'Approved',
+              },
+            ],
+            fieldsDeleted: [],
+            previousVersion: 0.1,
+          },
+          status: 'Approved',
+          deleted: false,
+
+          mutuallyExclusive: false,
+          childrenCount: 0,
+        },
+        {
+          id: 'e866ee75-711a-4649-968d-3ea889bd75b8',
+          name: 'Marketing',
+          displayName: 'Marketing',
+          description:
+            'A marketing department is a division within a business that helps to promote its brand, products and services.',
+          style: {},
+          fullyQualifiedName: 'Business Department.Marketing',
+          synonyms: ['Sell', 'Retails'],
+          glossary: {
+            id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
+            type: 'glossary',
+            name: 'Business Department',
+            fullyQualifiedName: 'Business Department',
+            description:
+              'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
+            displayName: 'Business Department',
+            deleted: false,
+            href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaries/dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
+          },
+          references: [],
+          version: 0.2,
+          updatedAt: 1700558309238,
+          updatedBy: 'shailesh',
+          href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaryTerms/e866ee75-711a-4649-968d-3ea889bd75b8',
+          owners: [],
+
+          status: 'Rejected',
+          deleted: false,
+
+          mutuallyExclusive: false,
+          childrenCount: 1,
+        },
+        {
+          id: '288cfb46-a4c2-45a4-9dc0-321eac165812',
+          name: 'test_business_term',
+          displayName: 'Test Business Term',
+          description: 'this is test_business_term',
+          fullyQualifiedName: 'Business Department.test_business_term',
+          version: 0.2,
+          updatedAt: 1728547870161,
+          updatedBy: 'karan',
+          href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaryTerms/288cfb46-a4c2-45a4-9dc0-321eac165812',
+          owners: [],
+          deleted: false,
+          mutuallyExclusive: false,
+        },
+      ] as ModifiedGlossary[]);
+    }
+
+    return () => setGlossaryChildTerms([]);
+  }, [props.widgetKey]);
 
   const widgetName = startCase(props.widgetKey.replace('KnowledgePanel.', ''));
 
@@ -380,6 +547,29 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           dataProducts={tableClassBase.getDummyData().dataProducts ?? []}
           hasPermission={false}
           showHeader={false}
+        />
+      );
+    } else if (
+      props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)
+    ) {
+      return (
+        <GlossaryTermTab
+          isGlossary
+          permissions={DEFAULT_ENTITY_PERMISSION}
+          refreshGlossaryTerms={noop}
+          termsLoading={false}
+          onAddGlossaryTerm={noop}
+          onEditGlossaryTerm={noop}
+        />
+      );
+    } else if (
+      props.widgetKey.startsWith(DetailPageWidgetKeys.TABLE_CONSTRAINTS)
+    ) {
+      return (
+        <TableConstraints
+          hasPermission={false}
+          tableDetails={tableClassBase.getDummyData()}
+          onUpdate={async () => noop()}
         />
       );
     }

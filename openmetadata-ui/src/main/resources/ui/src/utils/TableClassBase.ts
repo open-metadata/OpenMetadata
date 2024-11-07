@@ -24,8 +24,10 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import {
   Constraint,
+  ConstraintType,
   DatabaseServiceType,
   DataType,
+  RelationshipType,
   Table,
   TableType,
 } from '../generated/entity/data/table';
@@ -131,11 +133,19 @@ class TableClassBase {
             static: false,
           },
           {
+            h: 3,
+            i: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
+            w: 2,
+            x: 6,
+            y: 4,
+            static: false,
+          },
+          {
             h: 4,
             i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
             w: 2,
             x: 6,
-            y: 4,
+            y: 6,
             static: false,
           },
         ];
@@ -250,6 +260,20 @@ class TableClassBase {
         fullyQualifiedName: 'sample_data',
         deleted: false,
       },
+      tableConstraints: [
+        {
+          constraintType: ConstraintType.ForeignKey,
+          columns: ['post_id'],
+          referredColumns: ['mysql_sample.default.posts_db.Posts.post_id'],
+          relationshipType: RelationshipType.ManyToOne,
+        },
+        {
+          constraintType: ConstraintType.ForeignKey,
+          columns: ['user_id'],
+          referredColumns: ['mysql_sample.default.posts_db.Users.user_id'],
+          relationshipType: RelationshipType.ManyToOne,
+        },
+      ],
       serviceType: DatabaseServiceType.BigQuery,
       tags: [],
       followers: [],
