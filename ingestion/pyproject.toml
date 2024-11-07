@@ -157,6 +157,8 @@ ignore-paths = [
     "ingestion/src/metadata/ingestion/source/database/deltalake/connection.py",
     "ingestion/src/metadata/ingestion/source/database/deltalake/metadata.py",
     "ingestion/src/metadata/ingestion/source/database/doris/utils.py",
+    "ingestion/src/metadata/ingestion/source/database/exasol/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/exasol/connection.py",
     "ingestion/src/metadata/ingestion/source/database/external_table_lineage_mixin.py",
     "ingestion/src/metadata/ingestion/source/database/hive/metadata.py",
     "ingestion/src/metadata/ingestion/source/database/lineage_source.py",
