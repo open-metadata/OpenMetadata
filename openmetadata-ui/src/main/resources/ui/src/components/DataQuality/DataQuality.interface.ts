@@ -55,6 +55,7 @@ export interface IncidentTimeChartWidgetProps {
   incidentMetricType: IncidentTimeMetricsType;
   name: string;
   chartFilter?: DataQualityDashboardChartFilters;
+  height?: number;
 }
 export interface TestCaseStatusAreaChartWidgetProps {
   title: string;
@@ -62,8 +63,20 @@ export interface TestCaseStatusAreaChartWidgetProps {
   name: string;
   chartColorScheme?: AreaChartColorScheme;
   chartFilter?: DataQualityDashboardChartFilters;
+  height?: number;
 }
 
 export interface PieChartWidgetCommonProps {
   chartFilter?: DataQualityDashboardChartFilters;
+}
+
+export interface DataStatisticWidgetProps {
+  name: string;
+  title: string;
+  icon: SvgComponent;
+  dataLabel: string;
+  countValue: number;
+  redirectPath: string;
+  linkLabel: string;
+  isLoading?: boolean;
 }

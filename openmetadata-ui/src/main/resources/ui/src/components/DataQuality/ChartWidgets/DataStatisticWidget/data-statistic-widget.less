@@ -10,30 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
+@import (reference) url('../../../../styles/variables.less');
 
-.message-banner-wrapper {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  backdrop-filter: blur(500px);
-  padding: 8px 16px;
-
-  &.border-radius {
-    border-radius: 4px;
-  }
-
-  &.success {
-    background-color: @success-bg-color;
-    color: @success-color;
-  }
-
-  &.error {
-    background-color: @error-bg-color;
-    color: @error-color;
-  }
-
-  .loading-spinner-success {
-    color: @success-color;
+.data-statistic-widget-title {
+  div&.ant-typography {
+    margin-bottom: @margin-xlg;
   }
 }
