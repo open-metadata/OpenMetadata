@@ -47,6 +47,7 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 
 import java.io.IOException;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -61,6 +62,7 @@ import java.util.function.Predicate;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -921,6 +923,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       // List all entities and use it for checking pagination
       ResultList<GlossaryTerm> allEntities =
           listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(1))
+          .until(() -> !allEntities.getData().isEmpty());
+
       int totalRecords = allEntities.getData().size();
 
       // List entity with "limit" set from 1 to numEntities size with fixed steps
