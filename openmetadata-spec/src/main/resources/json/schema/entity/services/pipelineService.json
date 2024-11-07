@@ -32,7 +32,8 @@
         "OpenLineage",
         "KafkaConnect",
         "DBTCloud",
-        "Matillion"
+        "Matillion",
+        "DataFactory"
       ],
       "javaEnums": [
         {
@@ -82,6 +83,9 @@
         },
         {
           "name": "Matillion"
+        },
+        {
+          "name": "DataFactory"
         }
       ]
     },
@@ -143,6 +147,9 @@
             },
             {
               "$ref": "./connections/pipeline/matillionConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/datafactoryConnection.json"
             }
           ]
         }

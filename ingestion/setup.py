@@ -194,6 +194,10 @@ plugins: Dict[str, Set[str]] = {
         # databricks has a dependency on pyhive for metadata as well as profiler
         VERSIONS["pyhive"],
     },
+    "datafactory": {
+        VERSIONS["azure-identity"],
+        "azure-mgmt-datafactory",
+    },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
