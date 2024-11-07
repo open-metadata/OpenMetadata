@@ -14,8 +14,9 @@ import { t } from 'i18next';
 import { get, sortBy } from 'lodash';
 import {
   AsyncFetchListValues,
-  BasicConfig,
+  Config,
   Fields,
+  Operators,
   SelectFieldSettings,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
@@ -27,10 +28,11 @@ import {
 import { SearchIndex } from '../enums/search.enum';
 import { searchData } from '../rest/miscAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
+import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {
-  baseConfig = AntdConfig as BasicConfig;
-  configTypes: BasicConfig['types'] = {
+  baseConfig = AntdConfig as Config;
+  configTypes: Config['types'] = {
     ...this.baseConfig.types,
     multiselect: {
       ...this.baseConfig.types.multiselect,
@@ -59,7 +61,7 @@ class JSONLogicSearchClassBase {
       valueSources: ['value'],
     },
   };
-  configWidgets: BasicConfig['widgets'] = {
+  configWidgets: Config['widgets'] = {
     ...this.baseConfig.widgets,
     multiselect: {
       ...this.baseConfig.widgets.multiselect,
@@ -92,10 +94,15 @@ class JSONLogicSearchClassBase {
       elasticSearchQueryType: 'wildcard',
     },
     regexp: {
+      ...this.baseConfig.operators.regexp,
       label: t('label.regular-expression'),
       labelForFormat: t('label.regular-expression'),
       elasticSearchQueryType: 'regexp',
       valueSources: ['value'],
+    },
+    some: {
+      ...this.baseConfig.operators.some,
+      label: t('label.where'),
     },
   };
 
@@ -142,7 +149,7 @@ class JSONLogicSearchClassBase {
   glossaryEntityFields: Fields = {
     [EntityReferenceFields.REVIEWERS]: {
       label: t('label.reviewer-plural'),
-      type: '!group',
+      type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
@@ -277,13 +284,39 @@ class JSONLogicSearchClassBase {
     return Object.fromEntries(sortedFieldsConfig);
   };
 
+  /**
+   * Overriding default configurations.
+   * Basic attributes that fields inherit from.
+   */
+  public getInitialConfigWithoutFields = (isExplorePage = true) => {
+    const initialConfigWithoutFields: Config = {
+      ...this.baseConfig,
+      types: this.configTypes,
+      widgets: this.configWidgets,
+      operators: this.configOperators as Operators,
+      settings: {
+        ...this.baseConfig.settings,
+        showLabels: isExplorePage,
+        canReorder: false,
+        renderSize: 'medium',
+        fieldLabel: t('label.field-plural') + ':',
+        operatorLabel: t('label.condition') + ':',
+        showNot: false,
+        valueLabel: t('label.criteria') + ':',
+        renderButton: renderQueryBuilderFilterButtons,
+      },
+    };
+
+    return initialConfigWithoutFields;
+  };
+
   public getQbConfigs: (
     tierOptions: Promise<AsyncFetchListValues>,
     entitySearchIndex?: Array<SearchIndex>,
     isExplorePage?: boolean
-  ) => BasicConfig = (tierOptions, entitySearchIndex, isExplorePage) => {
+  ) => Config = (tierOptions, entitySearchIndex, isExplorePage) => {
     return {
-      ...advancedSearchClassBase.getInitialConfigWithoutFields(isExplorePage),
+      ...this.getInitialConfigWithoutFields(isExplorePage),
       fields: {
         ...this.getQueryBuilderFields({
           entitySearchIndex,

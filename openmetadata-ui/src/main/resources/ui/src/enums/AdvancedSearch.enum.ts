@@ -74,6 +74,6 @@ export enum EntityReferenceFields {
   DESCRIPTION = 'description',
   NAME = 'name',
   DISPLAY_NAME = 'displayName',
-  TAG = 'tags.tagFQN',
-  TIER = 'tier.tagFQN',
+  TAG = 'tags',
+  TIER = 'tier',
 }
