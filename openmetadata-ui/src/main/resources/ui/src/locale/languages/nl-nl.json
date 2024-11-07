@@ -150,7 +150,7 @@
     "chart-entity": "Chart {{entity}}",
     "chart-plural": "Charts",
     "chart-type": "Chart type",
-    "check-data-quality-failure": "Check data quality failure",
+    "check-active-data-quality-incident-plural": "Check active data quality incidents",
     "check-status": "Status controleren",
     "children": "Kinderen",
     "children-lowercase": "kinderen",

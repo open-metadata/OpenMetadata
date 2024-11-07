@@ -146,7 +146,9 @@ const TableDetailsPageV1: React.FC = () => {
 
   const alertBadge = useMemo(() => {
     return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (
-      <Tooltip placement="right" title={t('label.check-data-quality-failure')}>
+      <Tooltip
+        placement="right"
+        title={t('label.check-active-data-quality-incident-plural')}>
         <Link
           to={getEntityDetailsPath(
             EntityType.TABLE,
