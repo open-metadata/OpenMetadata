@@ -43,7 +43,7 @@ import {
   WidgetConfig,
 } from '../pages/CustomizablePage/CustomizablePage.interface';
 
-class CustomizePageClassBase {
+class CustomizeMyDataPageClassBase {
   defaultWidgetHeight = 3;
   landingPageWidgetMargin = 16;
   landingPageRowHeight = 100;
@@ -246,7 +246,7 @@ class CustomizePageClassBase {
   }
 }
 
-const customizePageClassBase = new CustomizePageClassBase();
+const customizeMyDataPageClassBase = new CustomizeMyDataPageClassBase();
 
-export default customizePageClassBase;
-export { CustomizePageClassBase };
+export default customizeMyDataPageClassBase;
+export { CustomizeMyDataPageClassBase };
