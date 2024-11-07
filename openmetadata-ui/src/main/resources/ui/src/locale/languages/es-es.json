@@ -1759,6 +1759,7 @@
     "password-error-message": "La contraseña debe tener como mínimo 8 y como máximo 56 caracteres, con al menos una letra mayúscula, una letra minúscula, un número y un carácter especial (como !, %, @ o #)",
     "password-pattern-error": "La contraseña debe tener como mínimo 8 y como máximo 56 caracteres, con al menos una letra mayúscula, una letra minúscula, un número y un carácter especial (como !, %, @ o #)",
     "path-of-the-dbt-files-stored": "Ruta de la carpeta donde se almacenan los archivos dbt",
+    "permanently-delete-ingestion-pipeline": "Permanently deleting this <0>{{entityName}}</0> will result in loss of pipeline configuration, and it cannot be recovered.",
     "permanently-delete-metadata": "Al eliminar permanentemente este <0>{{entityName}}</0>, se eliminarán sus metadatos de OpenMetadata permanentemente.",
     "permanently-delete-metadata-and-dependents": "Al eliminar permanentemente este {{entityName}}, se eliminarán sus metadatos, así como los metadatos de {{dependents}} de OpenMetadata permanentemente.",
     "personal-access-token": "Token de Acceso Personal",

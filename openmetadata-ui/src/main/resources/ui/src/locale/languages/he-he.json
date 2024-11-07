@@ -1759,6 +1759,7 @@
     "password-error-message": "יש להזין סיסמה באורך של 8 עד 15 תווים ולכלול לפחות אות גדולה אחת (A-Z), אות קטנה אחת (a-z), מספר אחד ותו מיוחד (כמו !, %, @, או #)",
     "password-pattern-error": "יש להזין סיסמה באורך של 8 עד 56 תווים, עם תו מיוחד אחד, אות גדולה אחת ואות קטנה אחת",
     "path-of-the-dbt-files-stored": "נתיב לתיקייה בה נשמרים קבצי ה-dbt",
+    "permanently-delete-ingestion-pipeline": "Permanently deleting this <0>{{entityName}}</0> will result in loss of pipeline configuration, and it cannot be recovered.",
     "permanently-delete-metadata": "מחיקה של {{entityName}} תסיר את המטה-דאטה שלו מ-OpenMetadata לצמיתות.",
     "permanently-delete-metadata-and-dependents": "מחיקה של {{entityName}} תסיר את המטה-דאטה שלו, כמו גם את המטה-דאטה של {{dependents}} מ-OpenMetadata לצמיתות.",
     "personal-access-token": "Personal Access Token",
