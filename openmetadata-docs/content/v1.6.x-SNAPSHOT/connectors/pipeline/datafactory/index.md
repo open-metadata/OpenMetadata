@@ -1,12 +1,13 @@
 ---
 title: Data Factory
 slug: /connectors/pipeline/datafactory
+collate: true
 ---
 
 {% connectorDetailsHeader
 name="DataFactory"
 stage="PROD"
-platform="OpenMetadata"
+platform="Collate"
 availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
 unavailableFeatures=["Owners", "Tags"]
 / %}

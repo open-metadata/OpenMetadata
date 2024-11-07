@@ -525,10 +525,6 @@ site_menu:
     url: /connectors/pipeline/dbtcloud
   - category: Connectors / Pipeline / dbt Cloud / Run Externally
     url: /connectors/pipeline/dbtcloud/yaml
-  - category: Connectors / Pipeline / DataFactory
-    url: /connectors/pipeline/datafactory
-  - category: Connectors / Pipeline /DataFactory / Run Externally
-    url: /connectors/pipeline/datafactory
   - category: Connectors / Pipeline / KafkaConnect
     url: /connectors/pipeline/kafkaconnect
   - category: Connectors / Pipeline / KafkaConnect / Run Externally

@@ -1,12 +1,13 @@
 ---
 title: Run the Data Factory Connector Externally
 slug: /connectors/pipeline/datafactory/yaml
+collate: true
 ---
 
 {% connectorDetailsHeader
 name="DataFactory"
 stage="PROD"
-platform="OpenMetadata"
+platform="Collate"
 availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
