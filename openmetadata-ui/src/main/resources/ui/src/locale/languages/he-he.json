@@ -150,7 +150,7 @@
     "chart-entity": "תרשים {{entity}}",
     "chart-plural": "תרשימים",
     "chart-type": "Chart type",
-    "check-data-quality-failure": "Check data quality failure",
+    "check-active-data-quality-incident-plural": "Check active data quality incidents",
     "check-status": "בדוק סטטוס",
     "children": "ילדים",
     "children-lowercase": "ילדים",
