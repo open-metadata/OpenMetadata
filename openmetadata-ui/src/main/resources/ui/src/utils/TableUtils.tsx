@@ -902,9 +902,7 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       isHidden: isUndefined(tableDetails?.schemaDefinition),
-      key: isViewTableType
-        ? EntityTabs.VIEW_DEFINITION
-        : EntityTabs.SCHEMA_DEFINITION,
+      key: EntityTabs.VIEW_DEFINITION,
       children: <QueryViewer sqlQuery={tableDetails?.schemaDefinition ?? ''} />,
     },
     {

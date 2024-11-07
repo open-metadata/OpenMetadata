@@ -11,34 +11,13 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
-import {
-  CommonWidgetType,
-  CUSTOM_PROPERTIES_WIDGET,
-  DESCRIPTION_WIDGET,
-  DOMAIN_WIDGET,
-  GLOSSARY_TERMS_WIDGET,
-  TAGS_WIDGET,
-} from '../../constants/CustomizeWidgets.constants';
+import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
-import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
-import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPage';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
-import customizeMyDataPageClassBase from '../CustomizeMyDataPageClassBase';
+import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import i18n from '../i18next/LocalUtil';
 import tableClassBase from '../TableClassBase';
-
-export const getDefaultLayout = (pageType: string) => {
-  switch (pageType) {
-    case PageType.GlossaryTerm:
-      return customizeGlossaryTermPageClassBase.defaultLayout;
-    case PageType.Table:
-      return customizeDetailPageClassBase.defaultLayout;
-    case PageType.LandingPage:
-    default:
-      return customizeMyDataPageClassBase.defaultLayout;
-  }
-};
 
 export const getGlossaryTermDefaultTabs = () => {
   return [
@@ -229,16 +208,12 @@ export const getCustomizableWidgetByPage = (
   switch (pageType) {
     case PageType.GlossaryTerm:
     case PageType.Glossary:
-      return customizeGlossaryTermPageClassBase.getCommonWidgetList();
+      return customizeGlossaryTermPageClassBase.getCommonWidgetList(
+        pageType === PageType.Glossary
+      );
 
     case PageType.Table:
-      return [
-        DESCRIPTION_WIDGET,
-        CUSTOM_PROPERTIES_WIDGET,
-        DOMAIN_WIDGET,
-        TAGS_WIDGET,
-        GLOSSARY_TERMS_WIDGET,
-      ];
+      return tableClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];

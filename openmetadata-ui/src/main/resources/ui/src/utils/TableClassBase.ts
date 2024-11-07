@@ -11,6 +11,14 @@
  *  limitations under the License.
  */
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import {
+  CUSTOM_PROPERTIES_WIDGET,
+  DATA_PRODUCTS_WIDGET,
+  DESCRIPTION_WIDGET,
+  GLOSSARY_TERMS_WIDGET,
+  GridSizes,
+  TAGS_WIDGET,
+} from '../constants/CustomizeWidgets.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
@@ -23,6 +31,7 @@ import {
 } from '../generated/entity/data/table';
 import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
+import i18n from './i18next/LocalUtil';
 import { getTableDetailPageBaseTabs } from './TableUtils';
 
 export interface TableDetailPageTabProps {
@@ -258,6 +267,37 @@ class TableClassBase {
       },
       deleted: false,
     };
+  }
+
+  public getCommonWidgetList() {
+    return [
+      DESCRIPTION_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_SCHEMA,
+        name: i18n.t('label.schema'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      DATA_PRODUCTS_WIDGET,
+      TAGS_WIDGET,
+      GLOSSARY_TERMS_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
+        name: i18n.t('label.frequently-joined-table-plural'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
+        name: i18n.t('label.table-constraints'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
+      CUSTOM_PROPERTIES_WIDGET,
+    ];
   }
 }
 

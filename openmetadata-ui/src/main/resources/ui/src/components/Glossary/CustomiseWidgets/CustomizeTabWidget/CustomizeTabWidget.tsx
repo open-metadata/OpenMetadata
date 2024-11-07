@@ -28,7 +28,6 @@ import {
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
-import customizeGlossaryTermPageClassBase from '../../../../utils/CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
 import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
@@ -36,6 +35,7 @@ import {
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
 } from '../../../../utils/CustomizableLandingPageUtils';
+
 import {
   getCustomizableWidgetByPage,
   getDefaultTabs,
@@ -220,7 +220,7 @@ export const CustomizeTabWidget = () => {
           newWidgetData as unknown as Document,
           placeholderWidgetKey,
           widgetSize,
-          customizeGlossaryTermPageClassBase.detailPageMaxGridSize
+          8
         )
       );
       setIsWidgetModalOpen(false);
@@ -288,18 +288,14 @@ export const CustomizeTabWidget = () => {
         className="grid-container"
         cols={8}
         draggableHandle=".drag-widget-icon"
-        margin={[
-          customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
-          customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
-        ]}
-        rowHeight={customizeGlossaryTermPageClassBase.detailPageRowHeight}
+        margin={[16, 16]}
+        rowHeight={100}
         onLayoutChange={handleLayoutUpdate}>
         {widgets}
       </ReactGridLayout>
 
       {currentPageType && (
         <AddDetailsPageWidgetModal
-          addedWidgetsList={[]}
           handleAddWidget={handleMainPanelAddWidget}
           handleCloseAddWidgetModal={() => setIsWidgetModalOpen(false)}
           maxGridSizeSupport={8}

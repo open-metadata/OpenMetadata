@@ -17,6 +17,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import EntityTableV1 from './SchemaTable.component';
 import { SchemaTableProps } from './SchemaTable.interface';
 
@@ -29,7 +30,7 @@ const mockTableConstraints = [
     columns: ['address_id', 'shop_id'],
   },
 ] as Table['tableConstraints'];
-const columns = [
+const mockColumns = [
   {
     name: 'comments',
     dataType: 'STRING',
@@ -74,8 +75,22 @@ const mockEntityTableProp: SchemaTableProps = {
   hasTagEditAccess: true,
   onThreadLinkSelect,
   onUpdate,
-  table: { ...MOCK_TABLE, columns, tableConstraints: mockTableConstraints },
 };
+
+const mockGenericContextProps = {
+  data: {
+    ...MOCK_TABLE,
+    columns: mockColumns,
+    tableConstraints: mockTableConstraints,
+  } as Table,
+  permissions: DEFAULT_ENTITY_PERMISSION,
+};
+
+jest.mock('../../GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest
+    .fn()
+    .mockImplementation(() => mockGenericContextProps),
+}));
 
 const columnsWithDisplayName = [
   {
@@ -166,6 +181,10 @@ jest.mock('../../../constants/Table.constants', () => ({
   },
 }));
 
+jest.mock('../../../rest/testAPI', () => ({
+  getTestCaseExecutionSummary: jest.fn().mockResolvedValue({}),
+}));
+
 describe('Test EntityTable Component', () => {
   it('Initially, Table should load', async () => {
     render(<EntityTableV1 {...mockEntityTableProp} />, {
@@ -184,7 +203,7 @@ describe('Test EntityTable Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const tableTags = screen.getAllByText('TableTags');
+    const tableTags = await screen.findAllByText('TableTags');
 
     expect(tableTags).toHaveLength(6);
 
@@ -194,15 +213,10 @@ describe('Test EntityTable Component', () => {
   });
 
   it('Table should load empty when no data present', async () => {
-    render(
-      <EntityTableV1
-        {...mockEntityTableProp}
-        table={{ ...MOCK_TABLE, columns: [] }}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockGenericContextProps.data = { ...MOCK_TABLE, columns: [] } as Table;
+    render(<EntityTableV1 {...mockEntityTableProp} />, {
+      wrapper: MemoryRouter,
+    });
 
     const entityTable = await screen.findByTestId('entity-table');
 
@@ -214,6 +228,10 @@ describe('Test EntityTable Component', () => {
   });
 
   it('should render column name only if displayName is not present', async () => {
+    mockGenericContextProps.data = {
+      ...MOCK_TABLE,
+      columns: mockColumns,
+    } as Table;
     render(<EntityTableV1 {...mockEntityTableProp} />, {
       wrapper: MemoryRouter,
     });
@@ -228,15 +246,13 @@ describe('Test EntityTable Component', () => {
   });
 
   it('should render column name & displayName for column if both presents', async () => {
-    render(
-      <EntityTableV1
-        {...mockEntityTableProp}
-        table={{ ...MOCK_TABLE, columns: columnsWithDisplayName }}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockGenericContextProps.data = {
+      ...MOCK_TABLE,
+      columns: columnsWithDisplayName,
+    } as Table;
+    render(<EntityTableV1 {...mockEntityTableProp} />, {
+      wrapper: MemoryRouter,
+    });
 
     const columnDisplayName = await screen.findAllByTestId(
       'column-display-name'
@@ -251,16 +267,13 @@ describe('Test EntityTable Component', () => {
   });
 
   it('should not render edit displayName button is table is deleted', async () => {
-    render(
-      <EntityTableV1
-        {...mockEntityTableProp}
-        isReadOnly
-        table={{ ...MOCK_TABLE, columns: columnsWithDisplayName }}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockGenericContextProps.data = {
+      ...MOCK_TABLE,
+      columns: columnsWithDisplayName,
+    } as Table;
+    render(<EntityTableV1 {...mockEntityTableProp} isReadOnly />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(
       screen.queryByTestId('edit-displayName-button')

@@ -25,6 +25,7 @@ import { TagSource } from '../../../../generated/type/tagLabel';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { FrequentlyJoinedTables } from '../../../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import tableClassBase from '../../../../utils/TableClassBase';
 import { getJoinsFromTableJoins } from '../../../../utils/TableUtils';
 import { ExtensionTable } from '../../../common/CustomPropertyTable/ExtensionTable';
@@ -34,6 +35,7 @@ import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEdit
 import TagButton from '../../../common/TagButton/TagButton.component';
 import SchemaTable from '../../../Database/SchemaTable/SchemaTable.component';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import { GenericProvider } from '../../../GenericProvider/GenericProvider';
 import TagsViewer from '../../../Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 
@@ -221,142 +223,146 @@ export const GenericWidget = (props: WidgetCommonProps) => {
       );
     } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
       return (
-        <SchemaTable
-          hasDescriptionEditAccess={false}
-          hasTagEditAccess={false}
-          table={
-            {
-              columns: [
-                {
-                  name: 'address_id',
-                  dataType: DataType.Numeric,
-                  dataTypeDisplay: 'numeric',
-                  description: 'Unique identifier for the address.',
-                  fullyQualifiedName:
-                    'sample_data.ecommerce_db.shopify.dim_address_clean.address_id',
-                  tags: [],
-                  ordinalPosition: 1,
-                },
-                {
-                  name: 'shop_id',
-                  dataType: DataType.Numeric,
-                  dataTypeDisplay: 'numeric',
-                  description:
-                    'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
-                  fullyQualifiedName:
-                    'sample_data.ecommerce_db.shopify.dim_address_clean.shop_id',
-                  tags: [],
-                  ordinalPosition: 2,
-                },
-                {
-                  name: 'first_name',
-                  dataType: DataType.Varchar,
-                  dataLength: 100,
-                  dataTypeDisplay: 'varchar',
-                  description: 'First name of the customer.',
-                  fullyQualifiedName:
-                    'sample_data.ecommerce_db.shopify.dim_address_clean.first_name',
-                  tags: [],
-                  ordinalPosition: 3,
-                },
-                {
-                  name: 'last_name',
-                  dataType: DataType.Varchar,
-                  dataLength: 100,
-                  dataTypeDisplay: 'varchar',
-                  description: 'Last name of the customer.',
-                  fullyQualifiedName:
-                    'sample_data.ecommerce_db.shopify.dim_address_clean.last_name',
-                  tags: [],
-                  ordinalPosition: 4,
-                },
-                {
-                  name: 'address',
-                  dataType: DataType.Varchar,
-                  dataLength: 500,
-                  dataTypeDisplay: 'varchar',
-                  description: 'Clean address test',
-                  fullyQualifiedName:
-                    'sample_data.ecommerce_db.shopify.dim_address_clean.address',
-                  tags: [],
-                  ordinalPosition: 5,
-                },
-                {
-                  name: 'company',
-                  dataType: DataType.Varchar,
-                  dataLength: 100,
-                  dataTypeDisplay: 'varchar',
-                  description:
-                    "The name of the customer's business, if one exists.",
-                  fullyQualifiedName:
-                    'sample_data.ecommerce_db.shopify.dim_address_clean.company',
-                  tags: [],
-                  ordinalPosition: 7,
-                },
-                {
-                  name: 'city',
-                  dataType: DataType.Varchar,
-                  dataLength: 100,
-                  dataTypeDisplay: 'varchar',
-                  description: 'The name of the city. For example, Palo Alto.',
-                  fullyQualifiedName:
-                    'sample_data.ecommerce_db.shopify.dim_address_clean.city',
-                  tags: [],
-                  ordinalPosition: 8,
-                },
-                {
-                  name: 'region',
-                  dataType: DataType.Varchar,
-                  dataLength: 512,
-                  dataTypeDisplay: 'varchar',
-                  description:
-                    // eslint-disable-next-line max-len
-                    'The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.',
-                  fullyQualifiedName:
-                    'sample_data.ecommerce_db.shopify.dim_address_clean.region',
-                  tags: [],
-                  ordinalPosition: 9,
-                },
-                {
-                  name: 'zip',
-                  dataType: DataType.Varchar,
-                  dataLength: 10,
-                  dataTypeDisplay: 'varchar',
-                  description: 'The ZIP or postal code. For example, 90210.',
-                  fullyQualifiedName:
-                    'sample_data.ecommerce_db.shopify.dim_address_clean.zip',
-                  tags: [],
-                  ordinalPosition: 10,
-                },
-                {
-                  name: 'country',
-                  dataType: DataType.Varchar,
-                  dataLength: 50,
-                  dataTypeDisplay: 'varchar',
-                  description:
-                    'The full name of the country. For example, Canada.',
-                  fullyQualifiedName:
-                    'sample_data.ecommerce_db.shopify.dim_address_clean.country',
-                  tags: [],
-                  ordinalPosition: 11,
-                },
-                {
-                  name: 'phone',
-                  dataType: DataType.Varchar,
-                  dataLength: 15,
-                  dataTypeDisplay: 'varchar',
-                  description: 'The phone number of the customer.',
-                  fullyQualifiedName:
-                    'sample_data.ecommerce_db.shopify.dim_address_clean.phone',
-                  tags: [],
-                  ordinalPosition: 12,
-                },
-              ],
-            } as unknown as Table
-          }
-          onThreadLinkSelect={noop}
-          onUpdate={async () => noop()}
-        />
+        <GenericProvider<Table>
+          data={{
+            ...tableClassBase.getDummyData(),
+            columns: [
+              {
+                name: 'address_id',
+                dataType: DataType.Numeric,
+                dataTypeDisplay: 'numeric',
+                description: 'Unique identifier for the address.',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.dim_address_clean.address_id',
+                tags: [],
+                ordinalPosition: 1,
+              },
+              {
+                name: 'shop_id',
+                dataType: DataType.Numeric,
+                dataTypeDisplay: 'numeric',
+                description:
+                  'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.dim_address_clean.shop_id',
+                tags: [],
+                ordinalPosition: 2,
+              },
+              {
+                name: 'first_name',
+                dataType: DataType.Varchar,
+                dataLength: 100,
+                dataTypeDisplay: 'varchar',
+                description: 'First name of the customer.',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.dim_address_clean.first_name',
+                tags: [],
+                ordinalPosition: 3,
+              },
+              {
+                name: 'last_name',
+                dataType: DataType.Varchar,
+                dataLength: 100,
+                dataTypeDisplay: 'varchar',
+                description: 'Last name of the customer.',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.dim_address_clean.last_name',
+                tags: [],
+                ordinalPosition: 4,
+              },
+              {
+                name: 'address',
+                dataType: DataType.Varchar,
+                dataLength: 500,
+                dataTypeDisplay: 'varchar',
+                description: 'Clean address test',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.dim_address_clean.address',
+                tags: [],
+                ordinalPosition: 5,
+              },
+              {
+                name: 'company',
+                dataType: DataType.Varchar,
+                dataLength: 100,
+                dataTypeDisplay: 'varchar',
+                description:
+                  "The name of the customer's business, if one exists.",
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.dim_address_clean.company',
+                tags: [],
+                ordinalPosition: 7,
+              },
+              {
+                name: 'city',
+                dataType: DataType.Varchar,
+                dataLength: 100,
+                dataTypeDisplay: 'varchar',
+                description: 'The name of the city. For example, Palo Alto.',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.dim_address_clean.city',
+                tags: [],
+                ordinalPosition: 8,
+              },
+              {
+                name: 'region',
+                dataType: DataType.Varchar,
+                dataLength: 512,
+                dataTypeDisplay: 'varchar',
+                description:
+                  // eslint-disable-next-line max-len
+                  'The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.dim_address_clean.region',
+                tags: [],
+                ordinalPosition: 9,
+              },
+              {
+                name: 'zip',
+                dataType: DataType.Varchar,
+                dataLength: 10,
+                dataTypeDisplay: 'varchar',
+                description: 'The ZIP or postal code. For example, 90210.',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.dim_address_clean.zip',
+                tags: [],
+                ordinalPosition: 10,
+              },
+              {
+                name: 'country',
+                dataType: DataType.Varchar,
+                dataLength: 50,
+                dataTypeDisplay: 'varchar',
+                description:
+                  'The full name of the country. For example, Canada.',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.dim_address_clean.country',
+                tags: [],
+                ordinalPosition: 11,
+              },
+              {
+                name: 'phone',
+                dataType: DataType.Varchar,
+                dataLength: 15,
+                dataTypeDisplay: 'varchar',
+                description: 'The phone number of the customer.',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.dim_address_clean.phone',
+                tags: [],
+                ordinalPosition: 12,
+              },
+            ],
+          }}
+          permissions={DEFAULT_ENTITY_PERMISSION}
+          type={EntityType.TABLE}
+          onUpdate={async () => noop()}>
+          <SchemaTable
+            hasDescriptionEditAccess={false}
+            hasTagEditAccess={false}
+            onThreadLinkSelect={noop}
+            onUpdate={async () => noop()}
+          />
+        </GenericProvider>
       );
     } else if (
       props.widgetKey.startsWith(DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES)

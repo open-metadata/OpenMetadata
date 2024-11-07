@@ -43,7 +43,7 @@ export const TAGS_WIDGET: CommonWidgetType = {
 
 export const GLOSSARY_TERMS_WIDGET: CommonWidgetType = {
   fullyQualifiedName: DetailPageWidgetKeys.GLOSSARY_TERMS,
-  name: i18n.t('label.tag-plural'),
+  name: i18n.t('label.glossary-term'),
   data: { gridSizes: ['small'] },
 };
 
@@ -62,5 +62,43 @@ export const DOMAIN_WIDGET: CommonWidgetType = {
 export const OWNER_WIDGET: CommonWidgetType = {
   fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.OWNER,
   name: i18n.t('label.owner'),
+  data: { gridSizes: ['small'] },
+};
+
+export const TERMS_TABLE_WIDGET: CommonWidgetType = {
+  fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.TERMS_TABLE,
+  name: i18n.t('label.terms'),
+  data: { gridSizes: ['large'] },
+};
+
+export const REFERENCES_WIDGET: CommonWidgetType = {
+  fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REFERENCES,
+  name: i18n.t('label.reference-plural'),
+  data: { gridSizes: ['small'] },
+};
+
+export const REVIEWER_WIDGET: CommonWidgetType = {
+  fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REVIEWER,
+  name: i18n.t('label.reviewer'),
+  data: { gridSizes: ['small'] },
+};
+
+export const SYNONYMS_WIDGET: CommonWidgetType = {
+  fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
+  name: i18n.t('label.synonym-plural'),
+  data: {
+    gridSizes: ['small'],
+  },
+};
+
+export const RELATED_TERMS_WIDGET: CommonWidgetType = {
+  fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
+  name: i18n.t('label.related-term-plural'),
+  data: { gridSizes: ['small'] },
+};
+
+export const DATA_PRODUCTS_WIDGET: CommonWidgetType = {
+  fullyQualifiedName: DetailPageWidgetKeys.DATA_PRODUCTS,
+  name: i18n.t('label.data-product-plural'),
   data: { gridSizes: ['small'] },
 };
