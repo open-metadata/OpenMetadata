@@ -75,6 +75,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         return {
           ...property,
           description: data.description,
+          displayName: data.displayName,
           ...(config
             ? {
                 customPropertyConfig: {

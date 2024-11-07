@@ -300,6 +300,7 @@ public class TypeRepository extends EntityRepository<Type> {
           continue;
         }
         updateCustomPropertyDescription(updated, storedProperty, updateProperty);
+        updateDisplayName(updated, storedProperty, updateProperty);
         updateCustomPropertyConfig(updated, storedProperty, updateProperty);
       }
     }
@@ -352,6 +353,32 @@ public class TypeRepository extends EntityRepository<Type> {
       String fieldName = getCustomField(origProperty, FIELD_DESCRIPTION);
       if (recordChange(
           fieldName, origProperty.getDescription(), updatedProperty.getDescription())) {
+        String customPropertyFQN =
+            getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
+        EntityReference propertyType =
+            updatedProperty.getPropertyType(); // Don't store entity reference
+        String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
+        updatedProperty.withPropertyType(propertyType); // Restore entity reference
+        daoCollection
+            .fieldRelationshipDAO()
+            .upsert(
+                customPropertyFQN,
+                updatedProperty.getPropertyType().getName(),
+                customPropertyFQN,
+                updatedProperty.getPropertyType().getName(),
+                Entity.TYPE,
+                Entity.TYPE,
+                Relationship.HAS.ordinal(),
+                "customProperty",
+                customPropertyJson);
+      }
+    }
+
+    private void updateDisplayName(
+        Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
+      String fieldName = getCustomField(origProperty, "displayName");
+      if (recordChange(
+          fieldName, origProperty.getDisplayName(), updatedProperty.getDisplayName())) {
         String customPropertyFQN =
             getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
         EntityReference propertyType =
