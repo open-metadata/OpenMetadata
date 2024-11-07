@@ -36,7 +36,7 @@
     "includeViews": {
       "description": "Optional configuration to turn off fetching metadata for views.",
       "type": "boolean",
-      "default": true,
+      "default": false,
       "title": "Include Views"
     },
     "useFqnForFiltering": {
