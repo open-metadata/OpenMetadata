@@ -346,7 +346,7 @@ def _create_lineage_by_table_name(
                 )
 
         for from_entity, to_entity in itertools.product(
-            from_table_entities, to_table_entities
+            from_table_entities or [], to_table_entities or []
         ):
             if to_entity and from_entity:
                 yield _build_table_lineage(
