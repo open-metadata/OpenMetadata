@@ -65,7 +65,7 @@ test.describe('Tag Page', async () => {
       NEW_CLASSIFICATION.displayName
     );
 
-    await page.click('[data-testid="add-new-tag-button"]');
+    await page.getByTestId('add-new-tag-button').click();
 
     await page.waitForSelector('.ant-modal-content', {
       state: 'visible',
