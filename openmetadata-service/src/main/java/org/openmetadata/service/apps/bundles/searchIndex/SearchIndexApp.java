@@ -5,7 +5,7 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -14,6 +14,7 @@ import java.util.concurrent.*;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -137,6 +138,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
         jobData.setRecreateIndex(false);
       }
       performReindex(jobExecutionContext);
+      sendUpdates(jobExecutionContext);
     } catch (Exception ex) {
       IndexingError indexingError =
           new IndexingError()
@@ -165,15 +167,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void initializeJob() {
     cleanUpStaleJobsFromRuns();
-
-    int totalRecords = getTotalRequestToProcess(jobData.getEntities(), collectionDAO);
-    this.jobData.setStats(
-        new Stats()
-            .withJobStats(
-                new StepStats()
-                    .withTotalRecords(totalRecords)
-                    .withFailedRecords(0)
-                    .withSuccessRecords(0)));
+    this.jobData.setStats(getInitialStatsForEntities(jobData.getEntities()));
 
     // Initialize the sink
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
@@ -260,7 +254,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     consumerExecutor.shutdown();
     try {
-      if (!consumerExecutor.awaitTermination(1, TimeUnit.HOURS)) {
+      if (!consumerExecutor.awaitTermination(20, TimeUnit.SECONDS)) {
         consumerExecutor.shutdownNow();
       }
     } catch (InterruptedException e) {
@@ -279,24 +273,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void processEntityType(String entityType)
       throws InterruptedException, SearchIndexException {
-    List<String> fields = List.of("*");
-    Source source;
-    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      PaginatedEntitiesSource paginatedSource =
-          new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
-      if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
-        paginatedSource.setCursor(jobData.getAfterCursor());
-      }
-      source = paginatedSource;
-    } else {
-      PaginatedEntityTimeSeriesSource paginatedSource =
-          new PaginatedEntityTimeSeriesSource(entityType, jobData.getBatchSize(), fields);
-      if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
-        paginatedSource.setCursor(jobData.getAfterCursor());
-      }
-      source = paginatedSource;
-    }
-
+    Source source = getSource(entityType);
     while (!source.isDone() && !stopped) {
       Object resultList = source.readNext(null);
       if (resultList == null) {
@@ -322,6 +299,28 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
+  @NotNull
+  private Source getSource(String entityType) {
+    List<String> fields = List.of("*");
+    Source source;
+    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
+      PaginatedEntitiesSource paginatedSource =
+          new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
+      if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
+        paginatedSource.setCursor(jobData.getAfterCursor());
+      }
+      source = paginatedSource;
+    } else {
+      PaginatedEntityTimeSeriesSource paginatedSource =
+          new PaginatedEntityTimeSeriesSource(entityType, jobData.getBatchSize(), fields);
+      if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
+        paginatedSource.setCursor(jobData.getAfterCursor());
+      }
+      source = paginatedSource;
+    }
+    return source;
+  }
+
   private void processTask(IndexingTask task, JobExecutionContext jobExecutionContext) {
     String entityType = task.getEntityType();
     List<?> entities = task.getEntities();
@@ -341,7 +340,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       synchronized (jobDataLock) {
         StepStats currentEntityStats =
-            new StepStats().withSuccessRecords(entities.size()).withFailedRecords(0);
+            (StepStats)
+                jobData.getStats().getEntityStats().getAdditionalProperties().get(entityType);
+        currentEntityStats.withSuccessRecords(entities.size());
         updateStats(entityType, currentEntityStats);
       }
       sendUpdates(jobExecutionContext);
@@ -377,20 +378,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     // Update Entity Level Stats
     StepStats entityLevelStats = jobDataStats.getEntityStats();
-    if (entityLevelStats == null) {
-      entityLevelStats = new StepStats();
-    }
     entityLevelStats.withAdditionalProperty(entityType, currentEntityStats);
 
     // Update job-level stats
     StepStats jobStats = jobDataStats.getJobStats();
-    if (jobStats == null) {
-      jobStats =
-          new StepStats()
-              .withTotalRecords(getTotalRequestToProcess(jobData.getEntities(), collectionDAO))
-              .withFailedRecords(0)
-              .withSuccessRecords(0);
-    }
 
     // Sum up the success and failed records
     int totalSuccess = jobStats.getSuccessRecords() + currentEntityStats.getSuccessRecords();
@@ -446,7 +437,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private class IndexingTask<T> {
+  @Getter
+  private static class IndexingTask<T> {
     private final String entityType;
     private final List<T> entities;
     public static final IndexingTask<?> POISON_PILL = new IndexingTask<>(null, null);
@@ -454,14 +446,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     public IndexingTask(String entityType, List<T> entities) {
       this.entityType = entityType;
       this.entities = entities;
-    }
-
-    public String getEntityType() {
-      return entityType;
-    }
-
-    public List<T> getEntities() {
-      return entities;
     }
   }
 }

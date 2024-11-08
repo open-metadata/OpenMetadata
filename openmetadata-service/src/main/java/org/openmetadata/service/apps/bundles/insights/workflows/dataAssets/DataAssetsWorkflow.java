@@ -5,7 +5,7 @@ import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.get
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.IndexingError;
+import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
@@ -97,7 +98,8 @@ public class DataAssetsWorkflow {
   }
 
   private void initialize() {
-    int totalRecords = getTotalRequestToProcess(entityTypes, collectionDAO);
+    Stats stats = getInitialStatsForEntities(entityTypes);
+    int totalRecords = stats.getJobStats().getTotalRecords();
 
     entityTypes.forEach(
         entityType -> {

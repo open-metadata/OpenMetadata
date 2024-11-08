@@ -35,7 +35,6 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ElasticSearchIndexSink implements BulkSink, Closeable {
-
   private final StepStats stats = new StepStats();
   private final SearchClient client;
   private final long maxPayloadSizeInBytes;

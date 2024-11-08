@@ -2,7 +2,7 @@ package org.openmetadata.service.apps.bundles.insights;
 
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
@@ -377,7 +377,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
     if (stats == null) {
       stats =
           new StepStats()
-              .withTotalRecords(getTotalRequestToProcess(jobData.getEntities(), collectionDAO));
+              .withTotalRecords(
+                  getInitialStatsForEntities(jobData.getEntities())
+                      .getJobStats()
+                      .getTotalRecords());
     }
 
     stats.setTotalRecords(
