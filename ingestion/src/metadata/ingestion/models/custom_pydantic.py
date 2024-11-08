@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pylint: disable=import-outside-toplevel
 """
 Pydantic classes overwritten defaults ones of code generation.
 
@@ -17,7 +18,7 @@ be self-sufficient with only pydantic at import time.
 """
 import json
 import logging
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import PlainSerializer, model_validator
@@ -34,6 +35,8 @@ RESTRICTED_KEYWORDS = ["::", ">"]
 RESERVED_COLON_KEYWORD = "__reserved__colon__"
 RESERVED_ARROW_KEYWORD = "__reserved__arrow__"
 
+CREATE_ADJACENT_MODELS = ["ProfilerResponse", "SampleData"]
+
 
 class BaseModel(PydanticBaseModel):
     """
@@ -43,30 +46,57 @@ class BaseModel(PydanticBaseModel):
 
     @model_validator(mode="after")
     @classmethod
-    def parse_name(cls, values):
+    def parse_name(  # pylint: disable=inconsistent-return-statements
+        cls, values
+    ):  # pylint: disable=too-many-locals
         """
         Parse the name field to ensure it is not empty.
         """
 
+        from metadata.generated.schema.api.data.createTable import CreateTableRequest
+        from metadata.generated.schema.api.data.createTableProfile import (
+            CreateTableProfileRequest,
+        )
+        from metadata.generated.schema.entity.data.table import (
+            Column,
+            Table,
+            TableConstraint,
+        )
+        from metadata.profiler.processor.core import ColumnProfile, ProfilerResponse
+        from metadata.profiler.source.metadata import ProfilerSourceAndEntity
+
+        def check_for_restricted_keywords(name_value: str) -> bool:
+            return any(keyword in name_value for keyword in RESTRICTED_KEYWORDS)
+
+        def check_for_reserved_keywords(name_value: str) -> bool:
+            return any(
+                keyword in name_value
+                for keyword in [RESERVED_COLON_KEYWORD, RESERVED_ARROW_KEYWORD]
+            )
+
         def process_name_and_display_name(
-            obj: Union["CreateTableRequest", "Column", "Table"]
+            obj: Union["CreateTableRequest", "Column", "Table", "ColumnProfile"],
+            is_create: bool,
+            has_root: bool = True,
         ) -> None:
-            name_value: Optional[str] = obj.name.root
-            if (
-                name_value
-                and RESERVED_COLON_KEYWORD in name_value
-                or RESERVED_ARROW_KEYWORD in name_value
-            ):
-                obj.name.root = revert_separators(value=name_value)
-                # if hasattr(obj, "fullyQualifiedName"):
-                # obj.fullyQualifiedName.root = revert_separators(obj.fullyQualifiedName.root)
-                return
-            if name_value and "::" in name_value:
-                obj.name.root = replace_separators(name_value)
-                if not obj.displayName:
-                    obj.displayName = name_value
-                return
-            return
+            name_value: Optional[str] = obj.name.root if has_root else obj.name
+
+            if name_value:
+                if check_for_reserved_keywords(name_value) and not is_create:
+                    if has_root and hasattr(obj.name, "root"):
+                        obj.name.root = revert_separators(value=name_value)
+                    else:
+                        obj.name = revert_separators(value=name_value)
+                    return
+
+                if is_create and check_for_restricted_keywords(name_value=name_value):
+                    if has_root:
+                        obj.name.root = replace_separators(name_value)
+                        if not obj.displayName:
+                            obj.displayName = name_value
+                    else:
+                        obj.name = replace_separators(name_value)
+                    return
 
         def revert_separators(value):
             return value.replace(RESERVED_COLON_KEYWORD, "::").replace(
@@ -78,41 +108,56 @@ class BaseModel(PydanticBaseModel):
                 ">", RESERVED_ARROW_KEYWORD
             )
 
-        def process_table_and_columns(values):
+        def process_column_name(values):
+            for column in values:
+                column.root = replace_separators(column.root)
+
+        def process_table_and_columns(values, is_create: bool, has_root: bool = True):
             # Table Level
-            process_name_and_display_name(values)
+            process_name_and_display_name(
+                values, is_create=is_create, has_root=has_root
+            )
             # Column level
             columns = values.columns
             if columns:
                 for column in columns:
-                    process_name_and_display_name(column)
+                    process_name_and_display_name(
+                        column, is_create=is_create, has_root=has_root
+                    )
+                if hasattr(values, "tableConstraints"):
+                    table_constraints: List[TableConstraint] = values.tableConstraints
+                    for constraint_obj in table_constraints or []:
+                        for index, constraint_column in enumerate(
+                            constraint_obj.columns or []
+                        ):
+                            constraint_obj.columns[index] = replace_separators(
+                                constraint_column
+                            )
 
-        from metadata.generated.schema.api.data.createTable import CreateTableRequest
-        from metadata.generated.schema.entity.data.table import Column, Table
-        from metadata.profiler.source.metadata import ProfilerSourceAndEntity
+        if not values:
+            return
 
-        if values:
-            if isinstance(values, (CreateTableRequest, Table)):
-                process_table_and_columns(values)
-            if isinstance(values, Column):
-                process_name_and_display_name(values)
-            if isinstance(values, ProfilerSourceAndEntity):
-                process_table_and_columns(values.entity)
-
-            # # Constraint Level
-            # table_constraints: Optional[List[Dict[str, Any]]] = values.get(
-            #     "tableConstraints"
-            # )
-            # if table_constraints:
-            #     for constraint in table_constraints:
-            #         constraint_columns: Optional[List[str]] = constraint.get("columns")
-            #         if constraint_columns:
-            #             for index, constraint_column in enumerate(constraint_columns):
-            #                 if "::" in constraint_column:
-            #                     constraint_columns[index] = replace_separators(
-            #                         constraint_column
-            #                     )
-
+        class_name = values.__class__.__name__
+        try:
+            if class_name.startswith("Create") or class_name in CREATE_ADJACENT_MODELS:
+                if isinstance(values, CreateTableRequest):
+                    process_table_and_columns(values, is_create=True)
+                elif isinstance(values, CreateTableProfileRequest):
+                    for column_profile in values.columnProfile or []:
+                        process_name_and_display_name(
+                            column_profile, is_create=True, has_root=False
+                        )
+                elif isinstance(values, ProfilerResponse):
+                    process_table_and_columns(values.table, is_create=True)
+                    if values.sample_data and values.sample_data.data:
+                        process_column_name(values=values.sample_data.data.columns)
+            else:
+                if isinstance(values, Table):
+                    process_table_and_columns(values, is_create=False)
+                elif isinstance(values, ProfilerSourceAndEntity):
+                    process_table_and_columns(values.entity, is_create=False)
+        except Exception as exc:
+            logger.error("Exception while parsing special characters: %s", exc)
         return values
 
     def model_dump_json(  # pylint: disable=too-many-arguments
