@@ -349,6 +349,11 @@ site_menu:
     isCollateOnly: true
   - category: Connectors / Pipeline / Matillion / Run Externally
     url: /connectors/pipeline/matillion/yaml
+  - category: Connectors / Pipeline / DataFactory
+    url: /connectors/pipeline/datafactory
+    isCollateOnly: true
+  - category: Connectors / Pipeline / DataFactory / Run Externally
+    url: /connectors/pipeline/datafactory/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -880,8 +885,6 @@ site_menu:
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
 
-  - category: Roadmap
-    url: /roadmap
 
   - category: Main Concepts
     url: /main-concepts

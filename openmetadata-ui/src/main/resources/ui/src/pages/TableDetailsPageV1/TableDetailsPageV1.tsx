@@ -61,11 +61,7 @@ import {
 } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
-import {
-  JoinedWith,
-  Table,
-  TableType,
-} from '../../generated/entity/data/table';
+import { Table, TableType } from '../../generated/entity/data/table';
 import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TestSummary } from '../../generated/tests/testCase';
@@ -91,7 +87,6 @@ import {
   addToRecentViewed,
   getFeedCounts,
   getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
@@ -100,7 +95,11 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import tableClassBase from '../../utils/TableClassBase';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import {
+  getJoinsFromTableJoins,
+  getTagsWithoutTier,
+  getTierTags,
+} from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
@@ -147,7 +146,9 @@ const TableDetailsPageV1: React.FC = () => {
 
   const alertBadge = useMemo(() => {
     return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (
-      <Tooltip placement="right" title={t('label.check-data-quality-failure')}>
+      <Tooltip
+        placement="right"
+        title={t('label.check-active-data-quality-incident-plural')}>
         <Link
           to={getEntityDetailsPath(
             EntityType.TABLE,
@@ -303,44 +304,13 @@ const TableDetailsPageV1: React.FC = () => {
       const { tags } = tableDetails;
 
       const { joins } = tableDetails ?? {};
-      const tableFQNGrouping = [
-        ...(joins?.columnJoins?.flatMap(
-          (cjs) =>
-            cjs.joinedWith?.map<JoinedWith>((jw) => ({
-              fullyQualifiedName: getTableFQNFromColumnFQN(
-                jw.fullyQualifiedName
-              ),
-              joinCount: jw.joinCount,
-            })) ?? []
-        ) ?? []),
-        ...(joins?.directTableJoins ?? []),
-      ].reduce(
-        (result, jw) => ({
-          ...result,
-          [jw.fullyQualifiedName]:
-            (result[jw.fullyQualifiedName] ?? 0) + jw.joinCount,
-        }),
-        {} as Record<string, number>
-      );
 
       return {
         ...tableDetails,
         tier: getTierTags(tags ?? []),
         tableTags: getTagsWithoutTier(tags ?? []),
         entityName: getEntityName(tableDetails),
-        joinedTables: Object.entries(tableFQNGrouping)
-          .map<JoinedWith & { name: string }>(
-            ([fullyQualifiedName, joinCount]) => ({
-              fullyQualifiedName,
-              joinCount,
-              name: getPartialNameFromTableFQN(
-                fullyQualifiedName,
-                [FqnPart.Database, FqnPart.Table],
-                FQN_SEPARATOR_CHAR
-              ),
-            })
-          )
-          .sort((a, b) => b.joinCount - a.joinCount),
+        joinedTables: getJoinsFromTableJoins(joins),
       };
     }
 
