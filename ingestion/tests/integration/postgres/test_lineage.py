@@ -4,6 +4,7 @@ from os import path
 
 import pytest
 
+from metadata.cli.lineage import LineageWorkflow
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
     DatabaseLineageConfigType,
@@ -55,6 +56,7 @@ def test_native_lineage(
 ):
     ingestion_config["source"]["sourceConfig"]["config"].update(source_config)
     run_workflow(MetadataWorkflow, ingestion_config)
+    run_workflow(LineageWorkflow, native_lineage_config)
     film_actor_edges = metadata.get_lineage_by_name(
         Table, f"{db_service.fullyQualifiedName.root}.dvdrental.public.film_actor"
     )
