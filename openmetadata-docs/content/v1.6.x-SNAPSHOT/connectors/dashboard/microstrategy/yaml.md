@@ -31,7 +31,7 @@ To integrate MicroStrategy, ensure you are using OpenMetadata version 1.2.x or h
 To run the MicroStrategy ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion"
+pip3 install "openmetadata-ingestion[mstr]"
 ```
 
 ## Metadata Ingestion
