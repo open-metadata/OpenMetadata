@@ -382,8 +382,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
-  public Response exportCsvInternal(SecurityContext securityContext, String name)
-      throws IOException {
+  public Response exportCsvInternalAsync(SecurityContext securityContext, String name) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
@@ -403,6 +402,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         });
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  public String exportCsvInternal(SecurityContext securityContext, String name) throws IOException {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    return repository.exportToCsv(name, securityContext.getUserPrincipal().getName());
   }
 
   protected CsvImportResult importCsvInternal(

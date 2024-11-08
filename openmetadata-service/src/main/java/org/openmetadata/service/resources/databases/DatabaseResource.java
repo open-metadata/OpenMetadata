@@ -423,7 +423,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   }
 
   @GET
-  @Path("/name/{name}/export")
+  @Path("/name/{name}/exportAsync")
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
@@ -438,7 +438,31 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                     mediaType = "application/json",
                     schema = @Schema(implementation = CSVExportResponse.class)))
       })
-  public Response exportCsv(
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name);
+  }
+
+  @GET
+  @Path("/name/{name}/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportDatabase",
+      summary = "Export database in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with database schemas",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public String exportCsv(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
           @PathParam("name")
