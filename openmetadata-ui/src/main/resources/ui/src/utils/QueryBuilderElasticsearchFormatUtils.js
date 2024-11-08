@@ -363,7 +363,11 @@ export function elasticSearchFormat(tree, config) {
         return;
       }
 
-      if (value && Array.isArray(value[0])) {
+      if (
+        value &&
+        Array.isArray(value[0]) &&
+        operator !== 'select_not_any_in'
+      ) {
         return {
           bool: {
             should: value[0].map((val) =>

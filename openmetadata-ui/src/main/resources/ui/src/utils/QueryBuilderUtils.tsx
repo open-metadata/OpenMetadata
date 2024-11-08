@@ -43,14 +43,20 @@ export const getSelectEqualsNotEqualsProperties = (
         value: [value],
         valueSrc: ['value'],
         operatorOptions: null,
-        valueType: ['select'],
-        asyncListValues: [
-          {
-            key: value,
-            value,
-            children: value,
-          },
-        ],
+        valueType: Array.isArray(value) ? ['multiselect'] : ['select'],
+        asyncListValues: Array.isArray(value)
+          ? value.map((valueItem) => ({
+              key: valueItem,
+              value: valueItem,
+              children: valueItem,
+            }))
+          : [
+              {
+                key: value,
+                value,
+                children: value,
+              },
+            ],
       },
       id,
       path: [...parentPath, id],
@@ -193,13 +199,15 @@ export const getJsonTreePropertyFromQueryFilter = (
       } else if (
         !isUndefined((curr.bool?.must_not as QueryFieldInterface)?.term)
       ) {
+        const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
+
         return {
           ...acc,
           ...getSelectEqualsNotEqualsProperties(
             parentPath,
             Object.keys((curr.bool?.must_not as EsTerm)?.term)[0],
-            Object.values((curr.bool?.must_not as EsTerm)?.term)[0] as string,
-            'select_not_equals'
+            value as string,
+            Array.isArray(value) ? 'select_not_any_in' : 'select_not_equals'
           ),
         };
       } else if (
@@ -431,7 +439,7 @@ export const elasticsearchToJsonLogic = (
     const termQuery = query.term;
     const field = Object.keys(termQuery)[0];
     const value = termQuery[field];
-
+    const op = Array.isArray(value) ? 'in' : '==';
     if (field.includes('.')) {
       const [parentField, childField] = field.split('.');
 
@@ -439,7 +447,7 @@ export const elasticsearchToJsonLogic = (
         some: [
           { var: parentField },
           {
-            '==': [{ var: childField }, value],
+            [op]: [{ var: childField }, value],
           },
         ],
       };
@@ -530,15 +538,9 @@ export const jsonLogicToElasticsearch = (
   if (logic.or) {
     return {
       bool: {
-        must: [
-          {
-            bool: {
-              should: logic.or.map((item: JsonLogic) =>
-                jsonLogicToElasticsearch(item, configFields)
-              ),
-            },
-          },
-        ],
+        should: logic.or.map((item: JsonLogic) =>
+          jsonLogicToElasticsearch(item, configFields)
+        ),
       },
     };
   }
@@ -634,27 +636,10 @@ export const jsonLogicToElasticsearch = (
   if (logic.in) {
     const [field, value] = logic.in;
     const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-    if (typeof field === 'object' && field.var && field.var.includes('.')) {
-      return {
-        bool: {
-          must: [
-            {
-              wildcard: {
-                [fieldVar]: {
-                  value,
-                },
-              },
-            },
-          ],
-        },
-      };
-    }
 
     return {
-      wildcard: {
-        [fieldVar]: {
-          value,
-        },
+      term: {
+        [fieldVar]: value,
       },
     };
   }
