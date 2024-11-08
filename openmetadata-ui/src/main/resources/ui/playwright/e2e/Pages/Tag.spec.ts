@@ -19,92 +19,88 @@ import { submitForm, validateForm } from '../../utils/tag';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const NEW_CLASSIFICATION = {
-  name: `TestClassification-${uuid()}`,
-  displayName: `TestClassification-${uuid()}`,
-  description: 'This is a test Classification',
-};
-const NEW_TAG = {
-  name: `TestTag-${uuid()}`,
-  displayName: `TestTag-${uuid()}`,
-  renamedName: `Tag-${uuid()}`,
-  description: 'This is a test Tag',
-  color: '#FF5733',
-  id: `TestId-${uuid()}`,
-};
-
-const getTagPage = async (page: Page) => {
-  await sidebarClick(page, SidebarItem.TAGS);
-  await page.click('[data-testid="add-classification"]');
-  await page.waitForSelector('.ant-modal-content', {
-    state: 'visible',
-  });
-
-  await expect(page.locator('.ant-modal-content')).toBeVisible();
-
-  await validateForm(page);
-
-  await page.fill('[data-testid="name"]', NEW_CLASSIFICATION.name);
-  await page.fill(
-    '[data-testid="displayName"]',
-    NEW_CLASSIFICATION.displayName
-  );
-  await page.fill(descriptionBox, NEW_CLASSIFICATION.description);
-  await page.click('[data-testid="mutually-exclusive-button"]');
-
-  const createTagCategoryResponse = page.waitForResponse(
-    'api/v1/classifications'
-  );
-  await submitForm(page);
-  await createTagCategoryResponse;
-
-  await page.click(`text=${NEW_CLASSIFICATION.displayName}`);
-
-  await expect(page.locator('.activeCategory')).toContainText(
-    NEW_CLASSIFICATION.displayName
-  );
-
-  await page.click('[data-testid="add-new-tag-button"]');
-
-  await page.waitForSelector('.ant-modal-content', {
-    state: 'visible',
-  });
-
-  await expect(page.locator('.ant-modal-content')).toBeVisible();
-
-  await validateForm(page);
-
-  await page.fill('[data-testid="name"]', NEW_TAG.name);
-  await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
-  await page.fill(descriptionBox, NEW_TAG.description);
-  await page.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
-
-  const createTagResponse = page.waitForResponse('api/v1/tags');
-  await submitForm(page);
-  await createTagResponse;
-
-  await expect(page.locator('[data-testid="table"]')).toContainText(
-    NEW_TAG.name
-  );
-
-  await expect(page.locator('[data-testid="table"]')).toContainText(
-    NEW_TAG.name
-  );
-
-  await page.getByRole('link', { name: NEW_TAG.name }).click();
-  const getTag = await page.waitForResponse(
-    `api/v1/tags/name/${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`
-  );
-  await page.goto(`/tag/${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`);
-  getTag;
-};
-
-test.beforeEach(async ({ page }) => {
-  await redirectToHomePage(page);
-  await getTagPage(page);
-});
-
 test.describe('Tag Page', async () => {
+  const NEW_CLASSIFICATION = {
+    name: `TestClassification-${uuid()}`,
+    displayName: `TestClassification-${uuid()}`,
+    description: 'This is a test Classification',
+  };
+  const NEW_TAG = {
+    name: `TestTag-${uuid()}`,
+    displayName: `TestTag-${uuid()}`,
+    renamedName: `Tag-${uuid()}`,
+    description: 'This is a test Tag',
+    color: '#FF5733',
+    id: `TestId-${uuid()}`,
+  };
+
+  const getTagPage = async (page: Page) => {
+    await sidebarClick(page, SidebarItem.TAGS);
+    await page.click('[data-testid="add-classification"]');
+    await page.waitForSelector('.ant-modal-content', {
+      state: 'visible',
+    });
+
+    await expect(page.locator('.ant-modal-content')).toBeVisible();
+
+    await validateForm(page);
+
+    await page.fill('[data-testid="name"]', NEW_CLASSIFICATION.name);
+    await page.fill(
+      '[data-testid="displayName"]',
+      NEW_CLASSIFICATION.displayName
+    );
+    await page.fill(descriptionBox, NEW_CLASSIFICATION.description);
+    await page.click('[data-testid="mutually-exclusive-button"]');
+
+    const createTagCategoryResponse = page.waitForResponse(
+      'api/v1/classifications'
+    );
+    await submitForm(page);
+    await createTagCategoryResponse;
+
+    await page.click(`text=${NEW_CLASSIFICATION.displayName}`);
+
+    await expect(page.locator('.activeCategory')).toContainText(
+      NEW_CLASSIFICATION.displayName
+    );
+
+    await page.click('[data-testid="add-new-tag-button"]');
+
+    await page.waitForSelector('.ant-modal-content', {
+      state: 'visible',
+    });
+
+    await expect(page.locator('.ant-modal-content')).toBeVisible();
+
+    await validateForm(page);
+
+    await page.fill('[data-testid="name"]', NEW_TAG.name);
+    await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
+    await page.fill(descriptionBox, NEW_TAG.description);
+    await page.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
+
+    const createTagResponse = page.waitForResponse('api/v1/tags');
+    await submitForm(page);
+    await createTagResponse;
+
+    await expect(page.locator('[data-testid="table"]')).toContainText(
+      NEW_TAG.name
+    );
+
+    await expect(page.locator('[data-testid="table"]')).toContainText(
+      NEW_TAG.name
+    );
+
+    await page.getByRole('link', { name: NEW_TAG.name }).click();
+    await page.goto(`/tag/${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`);
+  };
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+    await getTagPage(page);
+  });
+
   test('Name should be there when we move to the tag page', async ({
     page,
   }) => {
