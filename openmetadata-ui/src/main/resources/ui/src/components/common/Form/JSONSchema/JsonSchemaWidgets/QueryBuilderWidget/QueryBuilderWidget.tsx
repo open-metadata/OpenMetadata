@@ -13,6 +13,7 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { WidgetProps } from '@rjsf/utils';
 import { Alert, Button, Card, Col, Row, Skeleton, Typography } from 'antd';
+import classNames from 'classnames';
 import { t } from 'i18next';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -30,7 +31,11 @@ import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
-import { getJsonTreeFromQueryFilter } from '../../../../../../utils/QueryBuilderUtils';
+import {
+  elasticsearchToJsonLogic,
+  getJsonTreeFromQueryFilter,
+  jsonLogicToElasticsearch,
+} from '../../../../../../utils/QueryBuilderUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -121,8 +126,19 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
 
       onChange(!isEmpty(data) ? JSON.stringify(qFilter) : '');
     } else {
-      const data = QbUtils.jsonLogicFormat(nTree, config);
-      onChange(JSON.stringify(data.logic ?? '{}'));
+      const outputEs = elasticSearchFormat(nTree, config);
+      if (outputEs) {
+        const qFilter = {
+          query: outputEs,
+        };
+        try {
+          const jsonLogicData = elasticsearchToJsonLogic(qFilter.query);
+          onChange(JSON.stringify(jsonLogicData ?? ''));
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.log(e);
+        }
+      }
     }
   };
 
@@ -138,23 +154,28 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           onTreeUpdate(tree, config);
         }
       } else {
-        const emptyJsonTree: JsonTree = {
-          id: QbUtils.uuid(),
-          type: 'group',
-          properties: {
-            conjunction: 'AND',
-            not: false,
-          },
-          children1: {},
-        };
-        const tree = QbUtils.loadFromJsonLogic(JSON.parse(value || ''), config);
-        if (tree) {
-          const updatedTree = tree.toJS();
-          (emptyJsonTree.children1 as Record<string, JsonTree>)[
-            updatedTree.id
-          ] = updatedTree;
-          const immTree = QbUtils.loadTree(emptyJsonTree);
-          onTreeUpdate(immTree, config);
+        try {
+          const query = jsonLogicToElasticsearch(
+            JSON.parse(value || ''),
+            config.fields
+          );
+          const updatedQ = {
+            query: query,
+          };
+          const parsedTree = getJsonTreeFromQueryFilter(updatedQ) as JsonTree;
+
+          if (Object.keys(parsedTree).length > 0) {
+            const tree1 = QbUtils.checkTree(
+              QbUtils.loadTree(parsedTree),
+              config
+            );
+            if (tree1) {
+              onTreeUpdate(tree1, config);
+            }
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.log(e);
         }
       }
     }
@@ -179,7 +200,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     <div
       className="query-builder-form-field"
       data-testid="query-builder-form-field">
-      <Card className="query-builder-card">
+      <Card className={classNames('query-builder-card', outputType)}>
         <Row gutter={[8, 8]}>
           <Col className="p-t-sm" span={24}>
             <Query

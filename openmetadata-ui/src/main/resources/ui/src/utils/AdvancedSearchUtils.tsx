@@ -446,15 +446,9 @@ export const getTreeConfig = ({
   tierOptions: Promise<ListValues>;
   isExplorePage: boolean;
 }) => {
+  const index = isArray(searchIndex) ? searchIndex : [searchIndex];
+
   return searchOutputType === SearchOutputType.ElasticSearch
-    ? advancedSearchClassBase.getQbConfigs(
-        tierOptions,
-        isArray(searchIndex) ? searchIndex : [searchIndex],
-        isExplorePage
-      )
-    : jsonLogicSearchClassBase.getQbConfigs(
-        tierOptions,
-        isArray(searchIndex) ? searchIndex : [searchIndex],
-        isExplorePage
-      );
+    ? advancedSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage)
+    : jsonLogicSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage);
 };

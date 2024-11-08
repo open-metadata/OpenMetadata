@@ -100,9 +100,29 @@ class JSONLogicSearchClassBase {
       elasticSearchQueryType: 'regexp',
       valueSources: ['value'],
     },
-    some: {
-      ...this.baseConfig.operators.some,
-      label: t('label.where'),
+    equal: {
+      ...this.baseConfig.operators.equal,
+      label: t('label.is'),
+    },
+    not_equal: {
+      ...this.baseConfig.operators.not_equal,
+      label: t('label.is-not'),
+    },
+    select_equals: {
+      ...this.baseConfig.operators.select_equals,
+      label: t('label.is'),
+    },
+    select_not_equals: {
+      ...this.baseConfig.operators.select_not_equals,
+      label: t('label.is-not'),
+    },
+    is_null: {
+      ...this.baseConfig.operators.is_null,
+      label: t('label.is-not-set'),
+    },
+    is_not_null: {
+      ...this.baseConfig.operators.is_not_null,
+      label: t('label.is-set'),
     },
   };
 
@@ -151,6 +171,14 @@ class JSONLogicSearchClassBase {
       label: t('label.reviewer-plural'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
+      operators: [
+        'select_equals',
+        'select_not_equals',
+        'select_any_in',
+        'select_not_any_in',
+        'is_null',
+        'is_not_null',
+      ],
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
@@ -166,6 +194,26 @@ class JSONLogicSearchClassBase {
     tierOptions?: Promise<AsyncFetchListValues>;
   }) => {
     return {
+      [EntityReferenceFields.OWNERS]: {
+        label: t('label.owner-plural'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: [
+          'select_equals',
+          'select_not_equals',
+          'select_any_in',
+          'select_not_any_in',
+          'is_null',
+          'is_not_null',
+        ],
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+      },
       [EntityReferenceFields.DISPLAY_NAME]: {
         label: t('label.display-name'),
         type: 'select',
@@ -217,26 +265,36 @@ class JSONLogicSearchClassBase {
         label: t('label.description'),
         type: 'text',
         mainWidgetProps: this.mainWidgetProps,
+        operators: [
+          'equal',
+          'not_equal',
+          'like',
+          'not_like',
+          'starts_with',
+          'ends_with',
+          'is_null',
+          'is_not_null',
+        ],
       },
       [EntityReferenceFields.TAG]: {
         label: t('label.tag-plural'),
-        type: '!group',
+        type: 'select',
         mainWidgetProps: this.mainWidgetProps,
-        mode: 'some',
-        subfields: {
-          tagFQN: {
-            label: 'fullyQualifiedName',
-            type: 'select',
-            mainWidgetProps: this.mainWidgetProps,
-            fieldSettings: {
-              asyncFetch: this.searchAutocomplete({
-                searchIndex: SearchIndex.TAG,
-                fieldName: 'fullyQualifiedName',
-                fieldLabel: 'name',
-              }),
-              useAsyncSearch: true,
-            },
-          },
+        operators: [
+          'select_equals',
+          'select_not_equals',
+          'select_any_in',
+          'select_not_any_in',
+          'is_null',
+          'is_not_null',
+        ],
+        fieldSettings: {
+          asyncFetch: this.searchAutocomplete({
+            searchIndex: SearchIndex.TAG,
+            fieldName: 'fullyQualifiedName',
+            fieldLabel: 'name',
+          }),
+          useAsyncSearch: true,
         },
       },
 
