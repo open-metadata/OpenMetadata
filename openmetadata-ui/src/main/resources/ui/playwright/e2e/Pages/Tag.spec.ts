@@ -205,7 +205,7 @@ test.describe('Tag Page', async () => {
     await page
       .locator('#tabledatacard-aa1d01d8-42e6-4170-8a68-dbcf03905cea')
       .getByLabel('')
-      .check();
+      .click();
     await page.getByTestId('save-btn').scrollIntoViewIfNeeded();
     await page.getByTestId('save-btn').click();
     await page.goto(`/tag/${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`);
