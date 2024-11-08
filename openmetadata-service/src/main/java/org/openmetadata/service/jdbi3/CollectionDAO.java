@@ -2111,14 +2111,20 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("source") String source);
 
-    @SqlUpdate(
-        "INSERT INTO successful_sent_change_events (id, change_event_id, event_subscription_id, json, timestamp) VALUES (:id, :change_event_id, :event_subscription_id, :json, :timestamp)")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO successful_sent_change_events (id, change_event_id, event_subscription_id, json, timestamp) VALUES (:id, :change_event_id, :event_subscription_id, :json, :timestamp)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO successful_sent_change_events (id, change_event_id, event_subscription_id, json, timestamp) VALUES (:id, :change_event_id, :event_subscription_id, CAST(:json AS jsonb), :timestamp)",
+        connectionType = POSTGRES)
     void insertSuccessfulChangeEvent(
         @Bind("id") String id,
         @Bind("change_event_id") String changeEventId,
         @Bind("event_subscription_id") String eventSubscriptionId,
         @Bind("json") String json,
-        @Bind("timestamp") String timestamp);
+        @Bind("timestamp") long timestamp);
 
     @SqlQuery(
         "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")

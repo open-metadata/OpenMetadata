@@ -26,10 +26,10 @@ WHERE json -> 'offset' IS NOT NULL
 
 -- Create table successful_sent_change_events for storing successfully sent events per alert
 CREATE TABLE IF NOT EXISTS successful_sent_change_events (
-    id UUID PRIMARY KEY,
-    change_event_id UUID NOT NULL,
-    event_subscription_id UUID NOT NULL,
-    json JSONB NOT NULL,
+    id VARCHAR(36) PRIMARY KEY,
+    change_event_id VARCHAR(36) NOT NULL,
+    event_subscription_id VARCHAR(36) NOT NULL,
+    json jsonb NOT NULL,
     timestamp BIGINT NOT NULL
 );
 
