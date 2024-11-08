@@ -39,6 +39,12 @@ Ensure that the service principal or managed identity you’re using has the nec
 
 {% partial file="/v1.5/connectors/python-requirements.md" /%}
 
+To run the Data Factory ingestion, you will need to install:
+
+```bash
+pip3 install "openmetadata-ingestion[datafactory]"
+```
+
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
