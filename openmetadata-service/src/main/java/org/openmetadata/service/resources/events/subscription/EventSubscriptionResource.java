@@ -778,7 +778,11 @@ public class EventSubscriptionResource
           int paginationOffset,
       @Parameter(description = "UUID of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("subscriptionId")
-          UUID subscriptionId) {
+          UUID subscriptionId,
+      @Parameter(description = "Return only count if true")
+          @QueryParam("listCountOnly")
+          @DefaultValue("false")
+          boolean listCountOnly) {
     authorizer.authorizeAdmin(securityContext);
     try {
       if (!EventSubscriptionScheduler.getInstance().doesRecordExist(subscriptionId)) {
@@ -789,7 +793,8 @@ public class EventSubscriptionResource
 
       EventSubscriptionDiagnosticInfo diagnosticInfo =
           EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(subscriptionId, limit, paginationOffset);
+              .getEventSubscriptionDiagnosticInfo(
+                  subscriptionId, limit, paginationOffset, listCountOnly);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {
@@ -836,7 +841,11 @@ public class EventSubscriptionResource
           int paginationOffset,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
           @PathParam("subscriptionName")
-          String subscriptionName) {
+          String subscriptionName,
+      @Parameter(description = "Return only count if true")
+          @QueryParam("listCountOnly")
+          @DefaultValue("false")
+          boolean listCountOnly) {
     authorizer.authorizeAdmin(securityContext);
     try {
       EventSubscription subscription =
@@ -850,7 +859,8 @@ public class EventSubscriptionResource
 
       EventSubscriptionDiagnosticInfo diagnosticInfo =
           EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(subscription.getId(), limit, paginationOffset);
+              .getEventSubscriptionDiagnosticInfo(
+                  subscription.getId(), limit, paginationOffset, listCountOnly);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {

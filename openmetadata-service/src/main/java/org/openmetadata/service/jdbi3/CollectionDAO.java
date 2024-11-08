@@ -2128,7 +2128,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
-    int getRecordCount(@Bind("eventSubscriptionId") String eventSubscriptionId);
+    long getSuccessfulRecordCount(@Bind("eventSubscriptionId") String eventSubscriptionId);
 
     @SqlQuery(
         "SELECT event_subscription_id FROM successful_sent_change_events "
@@ -2139,7 +2139,7 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp ASC LIMIT :limit")
     void deleteOldRecords(
-        @Bind("eventSubscriptionId") String eventSubscriptionId, @Bind("limit") int limit);
+        @Bind("eventSubscriptionId") String eventSubscriptionId, @Bind("limit") long limit);
 
     @SqlQuery(
         "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
@@ -3994,6 +3994,9 @@ public interface CollectionDAO {
         @Bind("id") String id,
         @Bind("limit") int limit,
         @Bind("paginationOffset") int paginationOffset);
+
+    @SqlQuery("SELECT COUNT(*) FROM consumers_dlq WHERE id = :id")
+    long countFailedEvents(@Bind("id") String id);
 
     @SqlQuery(
         "SELECT json, source FROM consumers_dlq WHERE id = :id AND source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")

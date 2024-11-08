@@ -263,19 +263,40 @@ public class EventSubscriptionScheduler {
   }
 
   public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(
-      UUID subscriptionId, int limit, int paginationOffset) {
-    boolean hasProcessedAllEvents = checkIfPublisherPublishedAllEvents(subscriptionId);
-
+      UUID subscriptionId, int limit, int paginationOffset, boolean listCountOnly) {
     Optional<EventSubscriptionOffset> eventSubscriptionOffsetOptional =
         getEventSubscriptionOffset(subscriptionId);
 
     long currentOffset =
         eventSubscriptionOffsetOptional.map(EventSubscriptionOffset::getCurrentOffset).orElse(0L);
-
+    long latestOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
     long startingOffset =
         eventSubscriptionOffsetOptional.map(EventSubscriptionOffset::getStartingOffset).orElse(0L);
+    long failedEventsCount =
+        Entity.getCollectionDAO().changeEventDAO().countFailedEvents(subscriptionId.toString());
+
+    long successfulEventsCount =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getSuccessfulRecordCount(subscriptionId.toString());
 
     long totalUnprocessedEventCount = getUnpublishedEventCount(subscriptionId);
+
+    boolean hasProcessedAllEvents = checkIfPublisherPublishedAllEvents(subscriptionId);
+
+    if (listCountOnly) {
+      return new EventSubscriptionDiagnosticInfo()
+          .withLatestOffset(latestOffset)
+          .withCurrentOffset(currentOffset)
+          .withStartingOffset(startingOffset)
+          .withHasProcessedAllEvents(hasProcessedAllEvents)
+          .withSuccessfulEventsCount(successfulEventsCount)
+          .withFailedEventsCount(failedEventsCount)
+          .withTotalUnprocessedEventsCount(totalUnprocessedEventCount)
+          .withRelevantUnprocessedEventsList(null)
+          .withTotalUnprocessedEventsList(null);
+    }
+
     List<ChangeEvent> unprocessedEvents =
         Optional.ofNullable(getRelevantUnprocessedEvents(subscriptionId, limit, paginationOffset))
             .orElse(Collections.emptyList());
@@ -288,6 +309,8 @@ public class EventSubscriptionScheduler {
         .withCurrentOffset(currentOffset)
         .withStartingOffset(startingOffset)
         .withHasProcessedAllEvents(hasProcessedAllEvents)
+        .withSuccessfulEventsCount(successfulEventsCount)
+        .withFailedEventsCount(failedEventsCount)
         .withTotalUnprocessedEventsCount(totalUnprocessedEventCount)
         .withTotalUnprocessedEventsList(allUnprocessedEvents)
         .withRelevantUnprocessedEventsCount((long) unprocessedEvents.size())
