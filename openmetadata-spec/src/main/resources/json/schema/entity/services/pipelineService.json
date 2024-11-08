@@ -33,7 +33,8 @@
         "KafkaConnect",
         "DBTCloud",
         "Matillion",
-        "Stitch"
+        "Stitch",
+        "DataFactory"
       ],
       "javaEnums": [
         {
@@ -83,6 +84,9 @@
         },
         {
           "name": "Matillion"
+        },
+        {
+          "name": "DataFactory"
         },
         {
           "name": "Stitch"
@@ -147,6 +151,9 @@
             },
             {
               "$ref": "./connections/pipeline/matillionConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/datafactoryConnection.json"
             },
             {
               "$ref": "./connections/pipeline/stitchConnection.json"

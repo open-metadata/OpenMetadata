@@ -145,6 +145,7 @@ class ServiceUtilClassBase {
     APIServiceType.Webhook,
     MlModelServiceType.VertexAI,
     PipelineServiceType.Matillion,
+    PipelineServiceType.DataFactory,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
