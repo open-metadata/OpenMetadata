@@ -2,12 +2,17 @@
   "$id": "https://open-metadata.org/schema/events/eventSubscriptionOffset.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EventSubscriptionOffset",
-  "description": "Event Subscription Offset",
+  "description": "Represents the offsets for an event subscription, tracking the starting point and current position of events processed.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.events.EventSubscriptionOffset",
   "properties": {
-    "offset": {
-      "description": "Name of this Event Filter.",
+    "startingOffset": {
+      "description": "The offset from where event processing starts.",
+      "type": "integer",
+      "existingJavaType": "Long"
+    },
+    "currentOffset": {
+      "description": "The current position in the events.",
       "type": "integer",
       "existingJavaType": "Long"
     },
@@ -16,6 +21,6 @@
       "$ref": "../type/basic.json#/definitions/timestamp"
     }
   },
-  "required": ["offset"],
+  "required": ["startingOffset", "currentOffset"],
   "additionalProperties": false
 }
