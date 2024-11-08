@@ -3972,6 +3972,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
   }
 
+  protected String exportCsv(String entityName) throws HttpResponseException {
+    WebTarget target = getResourceByName(entityName + "/export");
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
   private String receiveCsvViaSocketIO(String entityName) throws Exception {
     UUID userId = getAdminUserId();
     String uri = String.format("http://localhost:%d", APP.getLocalPort());
@@ -4051,7 +4056,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return adminUser.getId();
   }
 
-  private String initiateExport(String entityName) throws IOException {
+  protected String initiateExport(String entityName) throws IOException {
     WebTarget target = getResourceByName(entityName + "/exportAsync");
     CSVExportResponse response =
         TestUtils.getWithResponse(
