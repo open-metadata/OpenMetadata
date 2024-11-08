@@ -25,7 +25,6 @@ import es.org.elasticsearch.xcontent.XContentType;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -41,9 +40,6 @@ import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.springframework.expression.Expression;
 
 public interface ElasticSearchDynamicChartAggregatorInterface {
-
-  Map<String, ElasticSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
-      new HashMap<>();
 
   long MILLISECONDS_IN_DAY = 24 * 60 * 60 * 1000;
 
@@ -219,13 +215,18 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
   }
 
   SearchRequest prepareSearchRequest(
-      @NotNull DataInsightCustomChart diChart, long start, long end, List<FormulaHolder> formulas)
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      List<FormulaHolder> formulas,
+      Map metricHolder)
       throws IOException;
 
   DataInsightCustomChartResultList processSearchResponse(
       @NotNull DataInsightCustomChart diChart,
       SearchResponse searchResponse,
-      List<FormulaHolder> formulas);
+      List<FormulaHolder> formulas,
+      Map metricHolder);
 
   default List<DataInsightCustomChartResult> processAggregations(
       List<Aggregation> aggregations,

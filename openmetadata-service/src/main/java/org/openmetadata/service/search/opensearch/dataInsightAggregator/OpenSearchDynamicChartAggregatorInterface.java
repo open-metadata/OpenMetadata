@@ -5,7 +5,6 @@ import static org.openmetadata.service.search.opensearch.OpenSearchClient.X_CONT
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -41,9 +40,6 @@ import os.org.opensearch.search.aggregations.support.ValuesSourceAggregationBuil
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 
 public interface OpenSearchDynamicChartAggregatorInterface {
-
-  Map<String, OpenSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
-      new HashMap<>();
   long MILLISECONDS_IN_DAY = 24 * 60 * 60 * 1000;
 
   private static ValuesSourceAggregationBuilder getSubAggregationsByFunction(
@@ -218,13 +214,18 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   }
 
   SearchRequest prepareSearchRequest(
-      @NotNull DataInsightCustomChart diChart, long start, long end, List<FormulaHolder> formulas)
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      List<FormulaHolder> formulas,
+      Map metricFormulaHolder)
       throws IOException;
 
   DataInsightCustomChartResultList processSearchResponse(
       @NotNull DataInsightCustomChart diChart,
       SearchResponse searchResponse,
-      List<FormulaHolder> formulas);
+      List<FormulaHolder> formulas,
+      Map metricFormulaHolder);
 
   default List<DataInsightCustomChartResult> processAggregations(
       List<Aggregation> aggregations,

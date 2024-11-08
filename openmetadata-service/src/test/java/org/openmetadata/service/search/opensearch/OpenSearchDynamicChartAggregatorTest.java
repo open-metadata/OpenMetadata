@@ -2,7 +2,6 @@ package org.openmetadata.service.search.opensearch;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorInterface.getDateHistogramByFormula;
-import static org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorInterface.metricFormulaHolder;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -78,7 +77,10 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
     OpenSearchDynamicChartAggregatorInterface aggregator =
         OpenSearchDynamicChartAggregatorFactory.getAggregator(chart);
     List<FormulaHolder> formulas = new ArrayList<>();
-    SearchRequest searchRequest = aggregator.prepareSearchRequest(chart, START, END, formulas);
+    Map<String, OpenSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
+        new HashMap<>();
+    SearchRequest searchRequest =
+        aggregator.prepareSearchRequest(chart, START, END, formulas, metricFormulaHolder);
 
     return expectedSearchRequest.equals(searchRequest);
   }
@@ -484,6 +486,8 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
     OpenSearchDynamicChartAggregatorInterface aggregator =
         OpenSearchDynamicChartAggregatorFactory.getAggregator(chart);
     List<FormulaHolder> formulas = new ArrayList<>();
+    Map<String, OpenSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
+        new HashMap<>();
     if (formula != null) {
       getDateHistogramByFormula(
           formula, null, new DateHistogramAggregationBuilder("demo"), formulas);
@@ -493,7 +497,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
               formula, OpenSearchDynamicChartAggregatorInterface.getFormulaList(formula)));
     }
     DataInsightCustomChartResultList resultList =
-        aggregator.processSearchResponse(chart, response, formulas);
+        aggregator.processSearchResponse(chart, response, formulas, metricFormulaHolder);
     DataInsightCustomChartResultList expectedResult =
         new DataInsightCustomChartResultList().withResults(expectedResultList);
     return resultList.equals(expectedResult);

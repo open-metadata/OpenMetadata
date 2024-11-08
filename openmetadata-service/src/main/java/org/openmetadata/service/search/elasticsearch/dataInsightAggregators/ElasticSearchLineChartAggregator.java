@@ -17,6 +17,7 @@ import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
@@ -45,7 +46,11 @@ public class ElasticSearchLineChartAggregator
   }
 
   public SearchRequest prepareSearchRequest(
-      @NotNull DataInsightCustomChart diChart, long start, long end, List<FormulaHolder> formulas)
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      List<FormulaHolder> formulas,
+      Map metricFormulaHolder)
       throws IOException {
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     AbstractAggregationBuilder aggregationBuilder;
@@ -124,7 +129,10 @@ public class ElasticSearchLineChartAggregator
   public DataInsightCustomChartResultList processSearchResponse(
       @NotNull DataInsightCustomChart diChart,
       SearchResponse searchResponse,
-      List<FormulaHolder> formulas) {
+      List<FormulaHolder> formulas,
+      Map metricFormulaHolder) {
+    Map<String, ElasticSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolderInternal =
+        metricFormulaHolder;
     DataInsightCustomChartResultList resultList = new DataInsightCustomChartResultList();
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     List<Aggregation> aggregationList =
@@ -140,9 +148,9 @@ public class ElasticSearchLineChartAggregator
             diChartResults.addAll(
                 processAggregations(
                     List.of(subArg),
-                    metricFormulaHolder.get(subArg.getName()).formula,
+                    metricFormulaHolderInternal.get(subArg.getName()).formula,
                     bucket.getKeyAsString(),
-                    metricFormulaHolder.get(subArg.getName()).holders,
+                    metricFormulaHolderInternal.get(subArg.getName()).holders,
                     getMetricName(lineChart, subArg.getName())));
           }
         }
@@ -156,7 +164,7 @@ public class ElasticSearchLineChartAggregator
       MetricFormulaHolder formulaHolder =
           metricFormulaHolder.get(aggregationList.get(i).getName()) == null
               ? new MetricFormulaHolder()
-              : metricFormulaHolder.get(aggregationList.get(i).getName());
+              : metricFormulaHolderInternal.get(aggregationList.get(i).getName());
       List<DataInsightCustomChartResult> results =
           processAggregations(
               List.of(aggregationList.get(i)),
