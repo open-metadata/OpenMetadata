@@ -83,7 +83,7 @@ public class SearchRepository {
 
   @Getter private final SearchClient searchClient;
 
-  private Map<String, IndexMapping> entityIndexMap;
+  @Getter private Map<String, IndexMapping> entityIndexMap;
 
   private final String language;
 
