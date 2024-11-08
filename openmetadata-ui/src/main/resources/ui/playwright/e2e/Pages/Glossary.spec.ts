@@ -104,9 +104,9 @@ test.describe('Glossary tests', () => {
     });
 
     await test.step('Approve Glossary Term from Glossary Listing', async () => {
-      // wait for 10 seconds as the flowable which creates task is triggered every 10 seconds
-      await page1.waitForTimeout(10000);
       await redirectToHomePage(page1);
+      // wait for 15 seconds as the flowable which creates task is triggered every 10 seconds
+      await page1.waitForTimeout(15000);
       await sidebarClick(page1, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page1, glossary1.data.name);
 
@@ -154,9 +154,9 @@ test.describe('Glossary tests', () => {
     });
 
     await test.step('Approve Glossary Term from Glossary Listing', async () => {
-      // wait for 10 seconds as the flowable which creates task is triggered every 10 seconds
-      await page1.waitForTimeout(10000);
       await redirectToHomePage(page1);
+      // wait for 10 seconds as the flowable which creates task is triggered every 10 seconds
+      await page1.waitForTimeout(15000);
       await sidebarClick(page1, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page1, glossary2.data.name);
       await approveGlossaryTermTask(page1, glossary2.data.terms[0].data);
