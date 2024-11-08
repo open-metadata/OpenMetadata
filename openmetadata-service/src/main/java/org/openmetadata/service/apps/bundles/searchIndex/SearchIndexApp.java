@@ -213,16 +213,26 @@ public class SearchIndexApp extends AbstractNativeApplication {
     int numConsumers = Math.min(Runtime.getRuntime().availableProcessors(), 10);
     this.consumerExecutor = Executors.newFixedThreadPool(numConsumers);
 
+    List<Future<?>> producerFutures = new ArrayList<>();
     for (String entityType : jobData.getEntities()) {
-      producerExecutor.submit(
-          () -> {
-            try {
-              reCreateIndexes(entityType);
-              processEntityType(entityType);
-            } catch (Exception e) {
-              LOG.error("Error processing entity type {}", entityType, e);
-            }
-          });
+      Future<?> future =
+          producerExecutor.submit(
+              () -> {
+                try {
+                  reCreateIndexes(entityType);
+                  processEntityType(entityType);
+                } catch (Exception e) {
+                  LOG.error("Error processing entity type {}", entityType, e);
+                }
+              });
+      producerFutures.add(future);
+    }
+    for (Future<?> future : producerFutures) {
+      try {
+        future.get();
+      } catch (InterruptedException | ExecutionException e) {
+        LOG.error("Producer thread interrupted or failed", e);
+      }
     }
 
     for (int i = 0; i < numConsumers; i++) {
@@ -412,7 +422,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     LOG.info("Stopping reindexing job.");
     stopped = true;
 
-    // Shutdown producerExecutor
     if (producerExecutor != null && !producerExecutor.isShutdown()) {
       producerExecutor.shutdownNow();
       try {
@@ -426,7 +435,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
     }
 
-    // Shutdown consumerExecutor
     if (consumerExecutor != null && !consumerExecutor.isShutdown()) {
       consumerExecutor.shutdownNow();
       try {
