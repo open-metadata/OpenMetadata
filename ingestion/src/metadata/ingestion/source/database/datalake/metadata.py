@@ -319,9 +319,6 @@ class DatalakeSource(DatabaseServiceSource):
                 )
             )
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        yield from []
-
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:

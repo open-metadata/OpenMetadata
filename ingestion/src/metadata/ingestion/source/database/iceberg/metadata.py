@@ -293,13 +293,6 @@ class IcebergSource(DatabaseServiceSource):
         """
         yield from []
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        """
-        From topology.
-        Parses view definition to get lineage information
-        """
-        yield from []
-
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not Implemented"""
 

@@ -881,9 +881,6 @@ class SasSource(
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """No tags to send"""
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        yield from []
-
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, list]]]:
         """Not implemented"""
 

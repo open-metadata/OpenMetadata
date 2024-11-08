@@ -710,14 +710,6 @@ class CommonDbSourceService(
                 else:
                     yield lineage
 
-    @calculate_execution_time_generator()
-    def yield_view_lineage(self) -> Iterable[Either[OMetaLineageRequest]]:
-        logger.info("Processing Lineage for Views")
-        if self.source_config.threads > 1:
-            yield from self.multithread_process_view_lineage()
-        else:
-            yield from self._process_view_def_serial()
-
     def _prepare_foreign_constraints(  # pylint: disable=too-many-arguments, too-many-locals
         self,
         supports_database: bool,

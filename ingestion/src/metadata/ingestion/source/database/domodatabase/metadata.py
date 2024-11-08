@@ -300,9 +300,6 @@ class DomodatabaseSource(DatabaseServiceSource):
         """Not Implemented"""
         yield from []
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        yield from []
-
     def get_source_url(
         self,
         table_name: Optional[str] = None,

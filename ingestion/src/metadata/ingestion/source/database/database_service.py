@@ -112,11 +112,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
-        # as post_processed. This is because we cannot ensure proper lineage processing
-        # until we have finished ingesting all the metadata from the source.
         post_process=[
-            "yield_view_lineage",
             "yield_external_table_lineage",
             "yield_table_constraints",
         ],
@@ -344,13 +340,6 @@ class DatabaseServiceSource(
         """
         if self.source_config.includeTags:
             yield from self.yield_database_tag(database_name) or []
-
-    @abstractmethod
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        """
-        From topology.
-        Parses view definition to get lineage information
-        """
 
     def update_table_constraints(
         self,

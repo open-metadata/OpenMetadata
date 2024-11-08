@@ -272,12 +272,6 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 )
             )
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        """
-        views are not supported with NoSQL
-        """
-        yield from []
-
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:

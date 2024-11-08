@@ -55,10 +55,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
-        # as post_processed. This is because we cannot ensure proper lineage processing
-        # until we have finished ingesting all the metadata from the source.
-        post_process=["yield_view_lineage", "yield_procedure_lineage_and_queries"],
+        post_process=["yield_procedure_lineage_and_queries"],
     )
     database = TopologyNode(
         producer="get_database_names",
