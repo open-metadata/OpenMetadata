@@ -369,32 +369,9 @@ public class EventSubscriptionScheduler {
       return Collections.emptyList();
     }
 
-    List<TypedEvent> typedEvents =
-        Entity.getCollectionDAO()
-            .changeEventDAO()
-            .listAllEventsWithStatuses(
-                subscriptionId.toString(),
-                eventSubscriptionOffset.get().getCurrentOffset(),
-                limit,
-                offset);
-
-    EventSubscription eventSubscription = getEventSubscription(subscriptionId);
-
-    return typedEvents.parallelStream()
-        .filter(
-            event -> {
-              if (TypedEvent.Status.UNPROCESSED.equals(event.getStatus())
-                  && !CommonUtil.nullOrEmpty(event.getData())) {
-                for (Object eventData : event.getData()) {
-                  if (eventData instanceof ChangeEvent changeEvent) {
-                    return AlertUtil.checkIfChangeEventIsAllowed(
-                        changeEvent, eventSubscription.getFilteringRules());
-                  }
-                }
-              }
-              return true; // Keep FAILED and SUCCESSFUL records
-            })
-        .toList();
+    return Entity.getCollectionDAO()
+        .changeEventDAO()
+        .listAllEventsWithStatuses(subscriptionId.toString(), limit, offset);
   }
 
   private EventSubscription getEventSubscription(UUID eventSubscriptionId) {

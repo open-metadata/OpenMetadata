@@ -4027,9 +4027,6 @@ public interface CollectionDAO {
                 + "    UNION ALL "
                 + "    SELECT json, 'SUCCESSFUL' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
-                + "    UNION ALL "
-                + "    SELECT ce.json, 'UNPROCESSED' AS status, ce.eventTime AS timestamp "
-                + "    FROM change_event ce WHERE ce.offset > :currentOffset "
                 + ") AS combined_events "
                 + "ORDER BY timestamp DESC "
                 + "LIMIT :limit OFFSET :paginationOffset",
@@ -4043,9 +4040,6 @@ public interface CollectionDAO {
                 + "    UNION ALL "
                 + "    SELECT json, 'successful' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
-                + "    UNION ALL "
-                + "    SELECT ce.json, 'unprocessed' AS status, ce.eventTime AS timestamp "
-                + "    FROM change_event ce WHERE ce.offset > :currentOffset "
                 + ") AS combined_events "
                 + "ORDER BY timestamp ASC "
                 + "LIMIT :limit OFFSET :paginationOffset",
@@ -4053,7 +4047,6 @@ public interface CollectionDAO {
     @RegisterRowMapper(EventResponseMapper.class)
     List<TypedEvent> listAllEventsWithStatuses(
         @Bind("id") String id,
-        @Bind("currentOffset") long currentOffset,
         @Bind("limit") int limit,
         @Bind("paginationOffset") long paginationOffset);
 

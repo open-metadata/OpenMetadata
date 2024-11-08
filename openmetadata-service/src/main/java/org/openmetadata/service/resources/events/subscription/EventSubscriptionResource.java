@@ -650,11 +650,11 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "Status of events to retrieve (failed, successful, unprocessed)",
+              description = "Status of events to retrieve (failed, successful)",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"failed", "successful", "unprocessed"}))
+                      allowableValues = {"failed", "successful"}))
           @QueryParam("status")
           String statusParam,
       @Parameter(description = "ID of the alert or destination", schema = @Schema(type = "UUID"))
@@ -684,8 +684,7 @@ public class EventSubscriptionResource
           status = TypedEvent.Status.fromValue(statusParam);
         } catch (IllegalArgumentException e) {
           throw new WebApplicationException(
-              "Invalid status. Must be 'failed', 'successful', or 'unprocessed'.",
-              Response.Status.BAD_REQUEST);
+              "Invalid status. Must be 'failed' or 'successful'.", Response.Status.BAD_REQUEST);
         }
       }
 
@@ -718,9 +717,6 @@ public class EventSubscriptionResource
       case SUCCESSFUL -> events =
           EventSubscriptionScheduler.getInstance()
               .getSuccessfullySentChangeEventsForAlert(id, limit, paginationOffset);
-      case UNPROCESSED -> events =
-          EventSubscriptionScheduler.getInstance()
-              .getRelevantUnprocessedEvents(id, limit, paginationOffset);
       default -> throw new IllegalArgumentException("Unknown event status: " + status);
     }
 
