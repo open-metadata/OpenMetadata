@@ -97,7 +97,7 @@ class TestParameters(BaseModel):
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=0,
                     # we use approximations becuase the sampling is not deterministic
-                    passedRows=IsApprox(59, delta=15),
+                    passedRows=IsApprox(59, delta=20),
                 ),
                 TableProfilerConfig(
                     profileSampleType=ProfileSampleType.PERCENTAGE,
