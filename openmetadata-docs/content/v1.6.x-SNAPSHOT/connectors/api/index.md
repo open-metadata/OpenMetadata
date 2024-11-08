@@ -1,5 +1,5 @@
 ---
-title: REST
+title: API Services
 slug: /connectors/api
 ---
 
