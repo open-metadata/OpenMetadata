@@ -9,6 +9,12 @@ The name must start with a lowercase letter, as preferred in the camelCase forma
 $$
 
 $$section
+### Display Name $(id="displayName")
+
+Display Name that identifies this custom property.
+$$
+
+$$section
 ### Type $(id="propertyType")
 
 Select the preferred property Type from among the options provided.
