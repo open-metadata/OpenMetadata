@@ -141,12 +141,15 @@ base_requirements = {
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
+    "shapely",
 }
 
 plugins: Dict[str, Set[str]] = {
     "airflow": {
-        VERSIONS["airflow"],
+        "opentelemetry-exporter-otlp==1.27.0",
+        "protobuf<5",
         "attrs",
+        VERSIONS["airflow"],
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {"pyathena~=3.0"},
@@ -340,6 +343,7 @@ dev = {
 
 test = {
     # Install Airflow as it's not part of `all` plugin
+    "opentelemetry-exporter-otlp==1.27.0",
     VERSIONS["airflow"],
     "boto3-stubs",
     "mypy-boto3-glue",
