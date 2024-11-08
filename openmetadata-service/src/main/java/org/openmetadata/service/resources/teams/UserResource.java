@@ -1392,8 +1392,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @GET
-  @Path("/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Path("/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
       operationId = "exportUsers",
@@ -1407,7 +1407,34 @@ public class UserResource extends EntityResource<User, UserRepository> {
                     mediaType = "application/json",
                     schema = @Schema(implementation = CSVExportResponse.class)))
       })
-  public Response exportUsersCsv(
+  public Response exportUsersCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the team to under which the users are imported to",
+              required = true,
+              schema = @Schema(type = "string"))
+          @QueryParam("team")
+          String team) {
+    return exportCsvInternalAsync(securityContext, team);
+  }
+
+  @GET
+  @Path("/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportUsers",
+      summary = "Export users in a team in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with user information",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public String exportUsersCsv(
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Name of the team to under which the users are imported to",

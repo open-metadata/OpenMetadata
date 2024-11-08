@@ -450,6 +450,30 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportTable",
+      summary = "Export table in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with columns from the table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name);
+  }
+
+  @GET
   @Path("/name/{name}/export")
   @Produces(MediaType.TEXT_PLAIN)
   @Valid
@@ -465,7 +489,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                     mediaType = "application/json",
                     schema = @Schema(implementation = String.class)))
       })
-  public Response exportCsv(
+  public String exportCsv(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("name")
