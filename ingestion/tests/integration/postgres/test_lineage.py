@@ -96,9 +96,7 @@ def test_log_lineage(
     workflow = run_workflow(
         MetadataWorkflow, log_lineage_config, raise_from_status=False
     )
-    assert len(workflow.source.status.failures) == 2
-    for failure in workflow.source.status.failures:
-        assert "Table entity not found" in failure.error
+    assert len(workflow.source.status.failures) == 0
     customer_table: Table = metadata.get_by_name(
         Table,
         f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",

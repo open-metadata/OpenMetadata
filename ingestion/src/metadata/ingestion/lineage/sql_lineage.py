@@ -341,10 +341,12 @@ def _create_lineage_by_table_name(
             (to_table, to_table_entities),
         ):
             if entity is None:
-                raise RuntimeError(f"Table entity not found: [{table_name}]")
+                logger.debug(
+                    f"WARNING: Table entity [{table_name}] not found in OpenMetadata"
+                )
 
         for from_entity, to_entity in itertools.product(
-            from_table_entities, to_table_entities
+            from_table_entities or [], to_table_entities or []
         ):
             if to_entity and from_entity:
                 yield _build_table_lineage(
