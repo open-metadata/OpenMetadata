@@ -203,7 +203,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
   }
 
-  private void performReindex(JobExecutionContext jobExecutionContext) {
+  private void performReindex(JobExecutionContext jobExecutionContext) throws InterruptedException {
     if (jobData.getStats() == null) {
       jobData.setStats(new Stats());
     }
@@ -212,45 +212,42 @@ public class SearchIndexApp extends AbstractNativeApplication {
     this.producerExecutor = Executors.newFixedThreadPool(numProducers);
     int numConsumers = Math.min(Runtime.getRuntime().availableProcessors(), 10);
     this.consumerExecutor = Executors.newFixedThreadPool(numConsumers);
+    CountDownLatch producerLatch = new CountDownLatch(numProducers);
 
-    List<Future<?>> producerFutures = new ArrayList<>();
     for (String entityType : jobData.getEntities()) {
-      Future<?> future =
-          producerExecutor.submit(
-              () -> {
-                try {
-                  reCreateIndexes(entityType);
-                  processEntityType(entityType);
-                } catch (Exception e) {
-                  LOG.error("Error processing entity type {}", entityType, e);
-                }
-              });
-      producerFutures.add(future);
-    }
-    for (Future<?> future : producerFutures) {
-      try {
-        future.get();
-      } catch (InterruptedException | ExecutionException e) {
-        LOG.error("Producer thread interrupted or failed", e);
-      }
+      producerExecutor.submit(
+          () -> {
+            try {
+              reCreateIndexes(entityType);
+              processEntityType(entityType);
+            } catch (Exception e) {
+              LOG.error("Error processing entity type {}", entityType, e);
+            } finally {
+              producerLatch.countDown();
+            }
+          });
     }
 
     for (int i = 0; i < numConsumers; i++) {
       consumerExecutor.submit(
           () -> {
             try {
-              while (!stopped || !taskQueue.isEmpty()) {
-                IndexingTask task = taskQueue.poll(1, TimeUnit.SECONDS);
-                if (task != null) {
-                  processTask(task, jobExecutionContext);
+              while (true) {
+                IndexingTask<?> task = taskQueue.take();
+                if (task == IndexingTask.POISON_PILL) {
+                  break;
                 }
+                processTask(task, jobExecutionContext);
               }
             } catch (InterruptedException e) {
               Thread.currentThread().interrupt();
             }
           });
     }
-
+    producerLatch.await();
+    for (int i = 0; i < numConsumers; i++) {
+      taskQueue.put(IndexingTask.POISON_PILL);
+    }
     producerExecutor.shutdown();
     try {
       if (!producerExecutor.awaitTermination(1, TimeUnit.HOURS)) {
@@ -452,6 +449,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private class IndexingTask<T> {
     private final String entityType;
     private final List<T> entities;
+    public static final IndexingTask<?> POISON_PILL = new IndexingTask<>(null, null);
 
     public IndexingTask(String entityType, List<T> entities) {
       this.entityType = entityType;
