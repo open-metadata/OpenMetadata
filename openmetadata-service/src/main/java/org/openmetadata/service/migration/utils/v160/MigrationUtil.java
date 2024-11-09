@@ -2,6 +2,7 @@ package org.openmetadata.service.migration.utils.v160;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -53,23 +54,36 @@ public class MigrationUtil {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
       Policy dataConsumerPolicy = repository.findByName("DataConsumerPolicy", Include.NON_DELETED);
-      boolean noEditGlosaryTermRule = true;
-      Rule dataConsumerEditRule = new Rule();
-      for (Rule rule : dataConsumerPolicy.getRules()) {
-        if (rule.getName().equals("DataConsumerPolicy-EditRule")) {
-          dataConsumerEditRule = rule;
-          for (MetadataOperation operation : rule.getOperations()) {
-            if (operation.equals(MetadataOperation.EDIT_GLOSSARY_TERMS)) {
-              noEditGlosaryTermRule = false;
-              break;
-            }
-          }
-        }
+      if (dataConsumerPolicy.getRules() == null) {
+        LOG.warn("DataConsumerPolicy has no rules defined.");
+        return;
       }
-      if (noEditGlosaryTermRule) {
-        dataConsumerPolicy.getRules().remove(dataConsumerEditRule);
-        dataConsumerEditRule.getOperations().add(MetadataOperation.EDIT_GLOSSARY_TERMS);
-        dataConsumerPolicy.getRules().add(dataConsumerEditRule);
+
+      Rule dataConsumerEditRule =
+          dataConsumerPolicy.getRules().stream()
+              .filter(rule -> "DataConsumerPolicy-EditRule".equals(rule.getName()))
+              .findFirst()
+              .orElse(null);
+
+      if (dataConsumerEditRule == null || dataConsumerEditRule.getOperations() == null) {
+        LOG.warn("DataConsumerPolicy-EditRule not found or has no operations.");
+        return;
+      }
+
+      List<MetadataOperation> operations = dataConsumerEditRule.getOperations();
+      boolean updatedRequired = false;
+
+      if (!operations.contains(MetadataOperation.EDIT_GLOSSARY_TERMS)) {
+        operations.add(MetadataOperation.EDIT_GLOSSARY_TERMS);
+        updatedRequired = true;
+      }
+
+      if (!operations.contains(MetadataOperation.EDIT_TIER)) {
+        operations.add(MetadataOperation.EDIT_TIER);
+        updatedRequired = true;
+      }
+
+      if (updatedRequired) {
         collectionDAO
             .policyDAO()
             .update(
@@ -78,7 +92,7 @@ public class MigrationUtil {
                 JsonUtils.pojoToJson(dataConsumerPolicy));
       }
     } catch (EntityNotFoundException ex) {
-      LOG.warn("DataConsumerPolicy not found, skipping adding EditGlossaryTerm all rule");
+      LOG.warn("DataConsumerPolicy not found, skipping updates.");
     }
   }
 
