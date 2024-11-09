@@ -49,6 +49,39 @@ public class MigrationUtil {
     }
   }
 
+  public static void addEditGlossaryTermsToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy dataConsumerPolicy = repository.findByName("DataConsumerPolicy", Include.NON_DELETED);
+      boolean noEditGlosaryTermRule = true;
+      Rule dataConsumerEditRule = new Rule();
+      for (Rule rule : dataConsumerPolicy.getRules()) {
+        if (rule.getName().equals("DataConsumerPolicy-EditRule")) {
+          dataConsumerEditRule = rule;
+          for (MetadataOperation operation : rule.getOperations()) {
+            if (operation.equals(MetadataOperation.EDIT_GLOSSARY_TERMS)) {
+              noEditGlosaryTermRule = false;
+              break;
+            }
+          }
+        }
+      }
+      if (noEditGlosaryTermRule) {
+        dataConsumerPolicy.getRules().remove(dataConsumerEditRule);
+        dataConsumerEditRule.getOperations().add(MetadataOperation.EDIT_GLOSSARY_TERMS);
+        dataConsumerPolicy.getRules().add(dataConsumerEditRule);
+        collectionDAO
+            .policyDAO()
+            .update(
+                dataConsumerPolicy.getId(),
+                dataConsumerPolicy.getFullyQualifiedName(),
+                JsonUtils.pojoToJson(dataConsumerPolicy));
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("DataConsumerPolicy not found, skipping adding EditGlossaryTerm all rule");
+    }
+  }
+
   public static void migrateServiceTypesAndConnections(Handle handle, boolean postgresql) {
     LOG.info("Starting service type and connection type migrations");
     try {
