@@ -57,6 +57,7 @@ import {
   deleteTag,
   getAllClassifications,
   getClassificationByName,
+  getTags,
   patchClassification,
   patchTag,
 } from '../../rest/tagAPI';
@@ -142,12 +143,7 @@ const TagsPage = () => {
 
     try {
       const response = await getAllClassifications({
-        fields: [
-          TabSpecificField.TERM_COUNT,
-          TabSpecificField.OWNERS,
-          TabSpecificField.REVIEWERS,
-          TabSpecificField.DOMAIN,
-        ],
+        fields: [TabSpecificField.TERM_COUNT, TabSpecificField.OWNERS],
         limit: 1000,
       });
       setClassifications(response.data);
@@ -183,8 +179,6 @@ const TagsPage = () => {
             TabSpecificField.USAGE_COUNT,
             TabSpecificField.TERM_COUNT,
             TabSpecificField.OWNERS,
-            TabSpecificField.REVIEWERS,
-            TabSpecificField.DOMAIN,
           ],
         });
         if (currentClassification) {
@@ -355,7 +349,10 @@ const TagsPage = () => {
             return item;
           })
         );
-        setCurrentClassification((prev) => ({ ...prev, ...response }));
+        setCurrentClassification((prev: Classification | undefined) => ({
+          ...prev,
+          ...response,
+        }));
         if (
           currentClassification?.fullyQualifiedName !==
             updatedClassification.fullyQualifiedName ||
@@ -363,6 +360,7 @@ const TagsPage = () => {
         ) {
           history.push(getTagPath(response.fullyQualifiedName));
         }
+        await handleUpdateTagOwners(updatedClassification);
       } catch (error) {
         if (
           (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -389,11 +387,40 @@ const TagsPage = () => {
     }
   };
 
+  const handleUpdateTagOwners = async (classification: Classification) => {
+    try {
+      const tagsResponse = await getTags({
+        parent: classification.name,
+        fields: ['owners'],
+      });
+
+      const tags = tagsResponse.data;
+
+      const updatePromises = tags.map(async (tag) => {
+        const updatedTag = { ...tag, owners: classification.owners };
+        const patchData = compare(tag, updatedTag);
+
+        return patchTag(tag.id ?? '', patchData);
+      });
+      await Promise.all(updatePromises);
+
+      classificationDetailsRef.current?.refreshClassificationTags();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.update-entity-error', {
+          entity: t('label.tag-lowercase'),
+        })
+      );
+    }
+  };
+
   const handleCreatePrimaryTag = async (data: CreateTag) => {
     try {
       await createTag({
         ...data,
         classification: currentClassification?.fullyQualifiedName,
+        owners: currentClassification?.owners,
       });
 
       setClassifications((prevClassifications) => {

@@ -86,7 +86,6 @@ const ClassificationDetails = forwardRef(
       handleEditDescriptionClick,
       handleCancelEditDescription,
       disableEditButton,
-
       isVersionView = false,
     }: Readonly<ClassificationDetailsProps>,
     ref
@@ -316,7 +315,6 @@ const ClassificationDetails = forwardRef(
           isClassificationDisabled,
           classificationPermissions,
           deleteTags,
-          disableEditButton,
           handleEditTagClick,
           handleActionDeleteTag,
           isVersionView,
@@ -325,7 +323,6 @@ const ClassificationDetails = forwardRef(
         isClassificationDisabled,
         classificationPermissions,
         deleteTags,
-        disableEditButton,
         handleEditTagClick,
         handleActionDeleteTag,
         isVersionView,
@@ -389,165 +386,6 @@ const ClassificationDetails = forwardRef(
         }
       },
     }));
-    /*
-    return (
-      <div className="p-t-sm p-x-md" data-testid="tags-container">
-        {currentClassification && (
-          <Row className="p-l-lg" data-testid="header" wrap={false}>
-            <Col flex="auto">
-              <EntityHeaderTitle
-                badge={
-                  <div className="d-flex gap-1">
-                    {headerBadge}
-                    {currentClassification?.mutuallyExclusive && (
-                      <div data-testid="mutually-exclusive-container">
-                        <AppBadge
-                          bgColor={theme.primaryColor}
-                          label={t('label.mutually-exclusive')}
-                        />
-                      </div>
-                    )}
-                  </div>
-                }
-                className={classNames({
-                  'opacity-60': isClassificationDisabled,
-                })}
-                displayName={displayName}
-                icon={
-                  <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
-                }
-                isDisabled={isClassificationDisabled}
-                name={name ?? currentClassification.name}
-                serviceName="classification"
-              />
-            </Col>
-
-            <Col className="d-flex justify-end items-start" flex="270px">
-              <Space>
-                {createPermission && (
-                  <Tooltip title={addTagButtonToolTip}>
-                    <Button
-                      data-testid="add-new-tag-button"
-                      disabled={isClassificationDisabled}
-                      type="primary"
-                      onClick={handleAddNewTagClick}>
-                      {t('label.add-entity', {
-                        entity: t('label.tag'),
-                      })}
-                    </Button>
-                  </Tooltip>
-                )}
-
-                <ButtonGroup size="small">
-                  <Tooltip
-                    title={t(
-                      `label.${
-                        isVersionView
-                          ? 'exit-version-history'
-                          : 'version-plural-history'
-                      }`
-                    )}>
-                    <Button
-                      className="w-16 p-0"
-                      data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
-                      onClick={versionHandler}>
-                      <Typography.Text>{currentVersion}</Typography.Text>
-                    </Button>
-                  </Tooltip>
-                  {showManageButton && (
-                    <ManageButton
-                      isRecursiveDelete
-                      afterDeleteAction={handleAfterDeleteAction}
-                      allowRename={!isSystemClassification}
-                      allowSoftDelete={false}
-                      canDelete={deletePermission && !isClassificationDisabled}
-                      displayName={
-                        currentClassification.displayName ??
-                        currentClassification.name
-                      }
-                      editDisplayNamePermission={
-                        editDisplayNamePermission && !isClassificationDisabled
-                      }
-                      entityFQN={currentClassification.fullyQualifiedName}
-                      entityId={currentClassification.id}
-                      entityName={currentClassification.name}
-                      entityType={EntityType.CLASSIFICATION}
-                      extraDropdownContent={extraDropdownContent}
-                      onEditDisplayName={handleUpdateDisplayName}
-                    />
-                  )}
-                </ButtonGroup>
-              </Space>
-            </Col>
-          </Row>
-        )}
-        <div className="m-b-sm m-t-xs" data-testid="description-container">
-          <DescriptionV1
-            className={classNames({
-              'opacity-60': isClassificationDisabled,
-            })}
-            description={description}
-            entityName={getEntityName(currentClassification)}
-            entityType={EntityType.CLASSIFICATION}
-            hasEditAccess={editDescriptionPermission}
-            isDescriptionExpanded={isEmpty(tags)}
-            isEdit={isEditClassification}
-            showCommentsIcon={false}
-            onCancel={handleCancelEditDescription}
-            onDescriptionEdit={handleEditDescriptionClick}
-            onDescriptionUpdate={handleUpdateDescription}
-          />
-        </div>
-        <ClassificationDetailsRightPanel
-          permissions={classificationPermissions}
-          selectedData={currentClassification!}
-          isClassification={true} // 根据需要设置
-          onUpdate={handleUpdateClassification || (() => Promise.resolve())} // Provide a default function
-          onThreadLinkSelect={() => {}} // 根据需要实现
-          entityType={EntityType.CLASSIFICATION}
-          refreshGlossaryTerms={() => {}} // 根据需要实现
-        />
-        <Space className="w-full m-b-md" direction="vertical" size="large">
-          <Table
-            bordered
-            className={classNames({
-              'opacity-60': isClassificationDisabled,
-            })}
-            columns={tableColumn}
-            data-testid="table"
-            dataSource={tags}
-            loading={isTagsLoading}
-            locale={{
-              emptyText: (
-                <ErrorPlaceHolder
-                  className="m-y-md"
-                  placeholderText={t('message.no-tags-description')}
-                />
-              ),
-            }}
-            pagination={false}
-            rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
-            rowKey="id"
-            size="small"
-          />
-
-          {showPagination && (
-            <NextPrevious
-              currentPage={currentPage}
-              isLoading={isTagsLoading}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={handleTagsPageChange}
-              onShowSizeChange={handlePageSizeChange}
-            />
-          )}
-        </Space>
-      </div>
-    );
-  }
-);
-*/
 
     return (
       <div className="classification-details">

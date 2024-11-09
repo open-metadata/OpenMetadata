@@ -12,8 +12,7 @@
  */
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
-import { cloneDeep, includes, isEqual } from 'lodash';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -22,29 +21,15 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
-// import { Glossary, TagSource } from '../../../generated/entity/data/glossary';
-/* import {
-  GlossaryTerm,
-  TagLabel,
-} from '../../../generated/entity/data/glossaryTerm';*/
-// import { ChangeDescription } from '../../../generated/entity/type';
 import { EntityReference } from '../../../generated/type/entityReference';
-import {
-  //  getEntityVersionTags,
-  getOwnerVersionLabel,
-} from '../../../utils/EntityVersionUtils';
-// import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-// import { ExtentionEntitiesKeys } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
-import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import TagButton from '../../common/TagButton/TagButton.component';
-// import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
-// import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
 type Props = {
   isVersionView?: boolean;
   permissions: OperationPermission;
   selectedData: Classification | Tag;
-  isClassification: boolean;
+  isClassification?: boolean;
   entityType: EntityType;
   onUpdate: (data: Classification | Tag) => void | Promise<void>;
   onThreadLinkSelect?: (value: string) => void;
@@ -56,53 +41,10 @@ type Props = {
 const ClassificationDetailsRightPanel = ({
   permissions,
   selectedData,
-  isClassification,
   onUpdate,
   isVersionView,
   refreshClassificationTags,
 }: Props) => {
-  const hasEditReviewerAccess = useMemo(() => {
-    return permissions.EditAll || permissions.EditReviewers;
-  }, [permissions]);
-
-  const { assignedReviewers, hasReviewers } = useMemo(() => {
-    const inheritedReviewers: EntityReference[] = [];
-    const assignedReviewers: EntityReference[] = [];
-
-    selectedData.reviewers?.forEach((item) => {
-      if (item.inherited) {
-        inheritedReviewers.push(item);
-      } else {
-        assignedReviewers.push(item);
-      }
-    });
-
-    return {
-      inheritedReviewers,
-      assignedReviewers,
-      hasReviewers: selectedData.reviewers && selectedData.reviewers.length > 0,
-    };
-  }, [selectedData.reviewers]);
-
-  const handleReviewerSave = async (data?: EntityReference[]) => {
-    const reviewers: EntityReference[] = data ?? [];
-
-    if (!isEqual(reviewers, assignedReviewers)) {
-      let updatedClassification = cloneDeep(selectedData);
-      const oldReviewer = reviewers.filter((d) =>
-        includes(assignedReviewers, d)
-      );
-      const newReviewer = reviewers
-        .filter((d) => !includes(assignedReviewers, d))
-        .map((d) => ({ id: d.id, type: d.type }));
-      updatedClassification = {
-        ...updatedClassification,
-        reviewers: [...oldReviewer, ...newReviewer],
-      };
-      await onUpdate(updatedClassification);
-    }
-  };
-
   const handleUpdatedOwner = async (newOwner?: EntityReference[]) => {
     const updatedData = {
       ...selectedData,
@@ -114,19 +56,6 @@ const ClassificationDetailsRightPanel = ({
 
   return (
     <Row data-testid="entity-right-panel" gutter={[0, 40]}>
-      <Col span={24}>
-        <DomainLabel
-          showDomainHeading
-          domain={selectedData.domain}
-          entityFqn={selectedData.fullyQualifiedName ?? ''}
-          entityId={selectedData.id ?? ''}
-          entityType={
-            isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
-          }
-          // Only allow domain selection at classification level. classification Term will inherit
-          hasPermission={isClassification ? permissions.EditAll : false}
-        />
-      </Col>
       <Col data-testid="classification-right-panel-owner-link" span="24">
         <div className="d-flex items-center m-b-xs">
           <Typography.Text className="right-panel-label">
@@ -181,68 +110,6 @@ const ClassificationDetailsRightPanel = ({
               />
             </UserTeamSelectableList>
           )}
-      </Col>
-      <Col data-testid="classification-reviewer" span="24">
-        <div className={`d-flex items-center ${hasReviewers ? 'm-b-xss' : ''}`}>
-          <Typography.Text
-            className="right-panel-label"
-            data-testid="classification-reviewer-heading-name">
-            {t('label.reviewer-plural')}
-          </Typography.Text>
-          {hasEditReviewerAccess && hasReviewers && (
-            <UserTeamSelectableList
-              previewSelected
-              hasPermission={hasEditReviewerAccess}
-              label={t('label.reviewer-plural')}
-              listHeight={200}
-              multiple={{ user: true, team: false }}
-              owner={assignedReviewers ?? []}
-              popoverProps={{ placement: 'topLeft' }}
-              onUpdate={handleReviewerSave}>
-              <Tooltip
-                title={t('label.edit-entity', {
-                  entity: t('label.reviewer-plural'),
-                })}>
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-reviewer-button"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                />
-              </Tooltip>
-            </UserTeamSelectableList>
-          )}
-        </div>
-        <div>
-          <div data-testid="classification-reviewer-name">
-            {getOwnerVersionLabel(
-              selectedData,
-              isVersionView ?? false,
-              TabSpecificField.REVIEWERS,
-              hasEditReviewerAccess
-            )}
-          </div>
-
-          {hasEditReviewerAccess && !hasReviewers && (
-            <UserTeamSelectableList
-              previewSelected
-              hasPermission={hasEditReviewerAccess}
-              label={t('label.reviewer-plural')}
-              listHeight={200}
-              multiple={{ user: true, team: false }}
-              owner={assignedReviewers ?? []}
-              popoverProps={{ placement: 'topLeft' }}
-              onUpdate={handleReviewerSave}>
-              <TagButton
-                className="text-primary cursor-pointer"
-                icon={<PlusIcon height={16} name="plus" width={16} />}
-                label={t('label.add')}
-                tooltip=""
-              />
-            </UserTeamSelectableList>
-          )}
-        </div>
       </Col>
     </Row>
   );

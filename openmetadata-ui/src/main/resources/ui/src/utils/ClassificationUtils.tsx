@@ -27,6 +27,21 @@ import { Tag } from '../generated/entity/classification/tag';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
 import { getDeleteIcon, getUsageCountLink } from './TagsUtils';
 
+export const getEditButtonData = (
+  isClassificationDisabled: boolean,
+  classificationPermissions: OperationPermission
+) => {
+  let disabledEditMessage: string = t('message.no-permission-for-action');
+  const disableEditButton =
+    !classificationPermissions.EditAll || isClassificationDisabled;
+
+  if (isClassificationDisabled) {
+    disabledEditMessage = t('message.disabled-classification-actions-message');
+  }
+
+  return { disableEditButton, disabledEditMessage };
+};
+
 export const getDeleteButtonData = (
   record: Tag,
   isClassificationDisabled: boolean,
@@ -128,7 +143,6 @@ export const getTagsTableColumn = ({
   handleEditTagClick,
   handleActionDeleteTag,
   isVersionView,
-  disableEditButton,
 }: {
   classificationPermissions: OperationPermission;
   isClassificationDisabled: boolean;
@@ -136,7 +150,6 @@ export const getTagsTableColumn = ({
   deleteTags?: DeleteTagsType;
   handleEditTagClick?: (selectedTag: Tag) => void;
   handleActionDeleteTag?: (record: Tag) => void;
-  disableEditButton?: boolean;
 }): ColumnsType<Tag> => {
   const columns: ColumnsType<Tag> = getCommonColumns();
 
@@ -155,16 +168,16 @@ export const getTagsTableColumn = ({
             classificationPermissions
           );
 
+        const { disableEditButton, disabledEditMessage } = getEditButtonData(
+          isClassificationDisabled,
+          classificationPermissions
+        );
+
         return (
           <Space align="center" size={8}>
             <Tooltip
               placement="topRight"
-              title={
-                disableEditButton &&
-                (isClassificationDisabled
-                  ? t('message.disabled-classification-actions-message')
-                  : t('message.no-permission-for-action'))
-              }>
+              title={disableEditButton && disabledEditMessage}>
               <Button
                 className="p-0 flex-center"
                 data-testid="edit-button"
