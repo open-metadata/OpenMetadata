@@ -359,7 +359,6 @@ const TagsPage = () => {
         ) {
           history.push(getTagPath(response.fullyQualifiedName));
         }
-        /* await handleUpdateTagOwners(updatedClassification);*/
       } catch (error) {
         if (
           (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -385,35 +384,7 @@ const TagsPage = () => {
       }
     }
   };
-  /*
-  const handleUpdateTagOwners = async (classification: Classification) => {
-    try {
-      const tagsResponse = await getTags({
-        parent: classification.name,
-        fields: ['owners'],
-      });
 
-      const tags = tagsResponse.data;
-
-      const updatePromises = tags.map(async (tag) => {
-        const updatedTag = { ...tag, owners: classification.owners };
-        const patchData = compare(tag, updatedTag);
-
-        return patchTag(tag.id ?? '', patchData);
-      });
-      await Promise.all(updatePromises);
-
-      classificationDetailsRef.current?.refreshClassificationTags();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.update-entity-error', {
-          entity: t('label.tag-lowercase'),
-        })
-      );
-    }
-  };
-  */
   const handleCreatePrimaryTag = async (data: CreateTag) => {
     try {
       await createTag({

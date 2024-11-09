@@ -389,7 +389,6 @@ const ClassificationDetails = forwardRef(
 
     return (
       <div className="classification-details">
-        {/* Header 部分 */}
         <div className="classification-header p-t-sm p-x-md">
           {currentClassification && (
             <>
@@ -487,8 +486,6 @@ const ClassificationDetails = forwardRef(
                   </Space>
                 </Col>
               </Row>
-
-              {/* DescriptionV1 部分 */}
               <div
                 className="m-b-sm m-t-xs"
                 data-testid="description-container">
@@ -511,8 +508,6 @@ const ClassificationDetails = forwardRef(
             </>
           )}
         </div>
-
-        {/* Resizable Panels 部分 */}
         <Row className="h-full" gutter={[0, 16]}>
           <Col span={24}>
             <ResizablePanels
@@ -521,7 +516,6 @@ const ClassificationDetails = forwardRef(
                 children: (
                   <div className="p-y-md p-x-md classification-content-container">
                     <Space className="w-full" direction="vertical" size={24}>
-                      {/* 表格部分 */}
                       <Table
                         bordered
                         className={classNames({
@@ -572,8 +566,6 @@ const ClassificationDetails = forwardRef(
                     onUpdate={
                       handleUpdateClassification || (() => Promise.resolve())
                     }
-                    // onThreadLinkSelect={() => {}} // 根據需要實現
-                    // refreshClassificationTags={() => {}} // 根據需要實現
                   />
                 ),
                 ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
