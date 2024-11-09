@@ -2136,8 +2136,14 @@ public interface CollectionDAO {
             + "HAVING COUNT(*) >= :threshold")
     List<String> findSubscriptionsAboveThreshold(@Bind("threshold") int threshold);
 
-    @SqlUpdate(
-        "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp ASC LIMIT :limit")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events WHERE ctid IN (SELECT ctid FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp ASC LIMIT :limit)",
+        connectionType = POSTGRES)
     void deleteOldRecords(
         @Bind("eventSubscriptionId") String eventSubscriptionId, @Bind("limit") long limit);
 
