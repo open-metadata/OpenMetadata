@@ -205,6 +205,12 @@ def create_test_data(trino_container):
             method=custom_insert,
         )
         sleep(1)
+        engine.execute(
+            "ANALYZE " + f'minio."my_schema"."{file.replace(".parquet", "")}"'
+        )
+    engine.execute(
+        "CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')"
+    )
     return
 
 
