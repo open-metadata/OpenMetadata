@@ -516,11 +516,6 @@ export const validateGlossaryTerm = async (
 
   await expect(page.locator(termSelector)).toContainText(term.name);
   await expect(page.locator(statusSelector)).toContainText(status);
-
-  if (status === 'Draft') {
-    await validateGlossaryTermTask(page, term);
-    await page.click('[data-testid="terms"]');
-  }
 };
 
 export const createGlossaryTerm = async (

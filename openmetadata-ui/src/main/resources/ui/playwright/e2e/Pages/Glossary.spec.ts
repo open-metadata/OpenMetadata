@@ -103,28 +103,25 @@ test.describe('Glossary tests', () => {
       await createGlossaryTerms(page, glossary1.data);
     });
 
-    await test.fixme(
-      'Approve Glossary Term from Glossary Listing',
-      async () => {
-        await redirectToHomePage(page1);
-        // wait for 15 seconds as the flowable which creates task is triggered every 10 seconds
-        await page1.waitForTimeout(15000);
-        await sidebarClick(page1, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page1, glossary1.data.name);
+    await test('Approve Glossary Term from Glossary Listing for reviewer user', async () => {
+      await redirectToHomePage(page1);
+      // wait for 15 seconds as the flowable which creates task is triggered every 10 seconds
+      await page1.waitForTimeout(15000);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary1.data.name);
 
-        await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
-        await redirectToHomePage(page1);
-        await sidebarClick(page1, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page1, glossary1.data.name);
-        await validateGlossaryTerm(
-          page1,
-          glossary1.data.terms[0].data,
-          'Approved'
-        );
+      await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary1.data.name);
+      await validateGlossaryTerm(
+        page1,
+        glossary1.data.terms[0].data,
+        'Approved'
+      );
 
-        await afterActionUser1();
-      }
-    );
+      await afterActionUser1();
+    });
 
     await glossary1.delete(apiContext);
     await afterAction();
@@ -156,28 +153,25 @@ test.describe('Glossary tests', () => {
       await createGlossaryTerms(page, glossary2.data);
     });
 
-    await test.fixme(
-      'Approve Glossary Term from Glossary Listing',
-      async () => {
-        await redirectToHomePage(page1);
-        // wait for 10 seconds as the flowable which creates task is triggered every 10 seconds
-        await page1.waitForTimeout(15000);
-        await sidebarClick(page1, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page1, glossary2.data.name);
-        await approveGlossaryTermTask(page1, glossary2.data.terms[0].data);
+    await test('Approve Glossary Term from Glossary Listing for reviewer team', async () => {
+      await redirectToHomePage(page1);
+      // wait for 10 seconds as the flowable which creates task is triggered every 10 seconds
+      await page1.waitForTimeout(15000);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary2.data.name);
+      await approveGlossaryTermTask(page1, glossary2.data.terms[0].data);
 
-        await redirectToHomePage(page1);
-        await sidebarClick(page1, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page1, glossary2.data.name);
-        await validateGlossaryTerm(
-          page1,
-          glossary2.data.terms[0].data,
-          'Approved'
-        );
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary2.data.name);
+      await validateGlossaryTerm(
+        page1,
+        glossary2.data.terms[0].data,
+        'Approved'
+      );
 
-        await afterActionUser1();
-      }
-    );
+      await afterActionUser1();
+    });
 
     await glossary2.delete(apiContext);
     await afterAction();
