@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,21 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+.certification-tag.ant-tag {
+  display: flex;
+  align-items: center;
+  border-radius: 16px;
+  padding: 2px 8px 2px 6px;
 
-import { AssetCertification } from '../../../generated/entity/data/table';
-
-export interface EntityHeaderTitleProps {
-  className?: string;
-  icon: React.ReactNode;
-  name: string;
-  displayName?: string;
-  link?: string;
-  color?: string;
-  openEntityInNewPage?: boolean;
-  deleted?: boolean;
-  serviceName: string;
-  badge?: React.ReactNode;
-  isDisabled?: boolean;
-  showName?: boolean;
-  certification?: AssetCertification;
+  img {
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+  }
 }

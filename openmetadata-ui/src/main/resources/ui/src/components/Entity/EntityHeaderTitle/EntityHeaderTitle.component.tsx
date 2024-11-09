@@ -21,6 +21,7 @@ import { TEXT_COLOR } from '../../../constants/Color.constants';
 import { ROUTES } from '../../../constants/constants';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -37,6 +38,7 @@ const EntityHeaderTitle = ({
   className,
   color,
   showName = true,
+  certification,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
@@ -83,6 +85,11 @@ const EntityHeaderTitle = ({
           )}
         </Typography.Text>
       </Col>
+      {certification && (
+        <Col className="text-xs">
+          <CertificationTag certification={certification} />
+        </Col>
+      )}
       {isDisabled && (
         <Badge
           className="m-l-xs badge-grey"
